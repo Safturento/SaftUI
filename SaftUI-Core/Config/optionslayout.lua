@@ -150,6 +150,21 @@ function OW.SidebarEntries(pages)
 	return entries
 end
 
+-- The page list the title opens (W.OpenList, optionsnav.lua) from
+-- OW.SidebarEntries' entries: a page is { key, label = its name, disabled }, and
+-- a { group } header a caption, { caption = true, label = the group }.
+function OW.PageMenuEntries(entries)
+	local list = {}
+	for _, entry in ipairs(entries) do
+		if entry.group then
+			list[#list + 1] = { caption = true, label = tostring(entry.group) }
+		else
+			list[#list + 1] = { key = entry.key, label = tostring(entry.name), disabled = entry.disabled and true or nil }
+		end
+	end
+	return list
+end
+
 ------------------------------------------------------------------ the footer control
 
 -- How far the status line keeps from a page's footer control (optionswindow.lua),

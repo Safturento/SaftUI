@@ -199,6 +199,7 @@ function S.CloseOverlays()
 	W.CloseList()
 	local focus = GetCurrentKeyBoardFocus()
 	if focus and S.Inside(focus, F.window) then focus:ClearFocus() end
+	S.ClosePop() -- the collapsed footer's search panel
 	OW:SetStatus(nil)
 	S.StopResize()
 end

@@ -52,7 +52,9 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	    Info, any other, then Other; OW.SidebarEntries); its foot holds the
 	    profile's name and the toggle that collapses it (F.sideToggle,
 	    optionsnav.lua: OW:SetSidebarShown, S.sidebar), which moves to the
-	    footer's left while it is collapsed;
+	    footer's left while it is collapsed, with Search, Edit mode and the
+	    commands as icon buttons after it (F.tools; Search opens the box in
+	    F.searchPop) and the title opening the page list (F.titleButton);
 	  - the header: the page's title and description, the size arrows
 	    (F.grow, F.shrink) and the close X (st:CreateCloseButton; under
 	    Blizzard in the metal's socket, the arrows on the title bar beside
@@ -67,7 +69,7 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	    of rows in quarters, halves and whole lines (OB.LayoutRows), drawn by
 	    an OB.New body;
 	  - the footer: the region (the status line from its left, or 12 after the
-	    sidebar toggle while that is collapsed, wrapping to
+	    last tool while the sidebar is collapsed, wrapping to
 	    two lines, and the open page's footer control), Reload UI and Close at
 	    the right end. Edit mode's controls are not here: they are on its bar
 	    (EditMode/Bar/).
@@ -551,6 +553,7 @@ end
 -- a tree of their own, as the picker's and the dialog's.
 local FOOTER_KEY = 'footer' -- the footer group's key in that tree
 local FOOTER_SPACING = 8 -- after the label, and between the widgets
+local FOOTER_MIN_ROOM = 24 -- a region narrower than this shows neither the status line nor the control
 
 local function ReleaseFooterControl()
 	for _, widget in ipairs(F.footerWidgets) do
@@ -622,6 +625,14 @@ local function PlaceFooter()
 	local region, control, status = F.footerRegion, F.footerControl, F.status
 	status:ClearAllPoints()
 	status:SetPoint('LEFT', region, 'LEFT', 0, 0)
+	-- A region too narrow to read in (the collapsed footer's tools take its
+	-- room): the status line and the control give way, never a button.
+	if floor(region:GetWidth() + 0.5) < FOOTER_MIN_ROOM then
+		control:Hide()
+		status:SetPoint('RIGHT', region, 'RIGHT', 0, 0)
+		status:Hide()
+		return
+	end
 	local label, widgets = F.footerLabel, F.footerWidgets
 	if #widgets == 0 then
 		status:SetPoint('RIGHT', region, 'RIGHT', 0, 0)
@@ -773,6 +784,7 @@ local function Heading(title, desc)
 		F.title:SetFontObject(OB.Font('brand'))
 		line = BRAND_LINE
 	end
+	S.PlaceTitle() -- its arrow and button while the sidebar is collapsed
 	F.desc:SetText(desc or '')
 	local height = 0
 	if (desc or '') ~= '' then
@@ -900,7 +912,7 @@ end
 -- What a layout is for: the look, the size and the sidebar. Draw lays the
 -- window out again when it differs from the one last laid out for.
 local function LayoutKey()
-	return format('%s %s %s', tostring(S.blizzard), tostring(S.size), tostring(S.sidebar))
+	return format('%s %s %s %s', tostring(S.blizzard), tostring(S.size), tostring(S.sidebar), S.ToolsKey())
 end
 
 -- Lays the window out for the look (S.blizzard: Blizzard's), the size and the
@@ -977,6 +989,9 @@ local function Relayout()
 		local reach = S.ArrowsLeft(S.size) - L.mainRight -- the leftmost arrow's left, from the main column's right
 		headerGap, titleRoom = reach + S.ARROW_GAP_TO_HEADER, mainWidth - PAD - reach - S.ARROW_GAP_TO_TITLE
 	end
+	-- The title's arrow (a chevron and its gap) takes room from it while the
+	-- sidebar is collapsed: the page list opens from it (S.PlaceTitle).
+	if S.sidebar == false then titleRoom = titleRoom - S.TITLE_ARROW_ROOM end
 	F.header:ClearAllPoints()
 	F.header:SetPoint('TOPLEFT', F.main, 'TOPLEFT', 0, 0)
 	F.header:SetPoint('TOPRIGHT', F.main, 'TOPRIGHT', -headerGap, 0)
@@ -1073,8 +1088,10 @@ local function Relayout()
 	end
 	F.reloadButton:SetPoint('RIGHT', F.closeButton, 'LEFT', -FOOTER_GAP, 0)
 	-- With the sidebar collapsed its toggle is at the footer's left (S.PlaceSideToggle),
-	-- and the region starts FOOTER_GAP after it.
-	if not sidebar then regionX = regionX + S.SIDE_TOGGLE_SIZE + FOOTER_GAP end
+	-- the tools (Search, Edit mode, the commands) after it, and the region
+	-- starts FOOTER_GAP after the last.
+	local toolsReach = S.DrawTools()
+	if not sidebar then regionX = regionX + S.SIDE_TOGGLE_SIZE + toolsReach + FOOTER_GAP end
 	F.footerRegion:SetPoint('LEFT', footer, 'LEFT', regionX, regionY)
 	F.footerRegion:SetPoint('RIGHT', F.reloadButton, 'LEFT', -FOOTER_GAP, 0)
 	footer:SetHeight(L.footer)
@@ -1162,6 +1179,7 @@ local function OnHide()
 	-- A window closed as the bar opens at half (the save says so).
 	if S.size == 'mini' then S.size = 'half' end
 	ClearSearch()
+	S.ClosePop()
 	ReleaseBody()
 	W.CloseList()
 	W.CancelConfirm()
@@ -1191,6 +1209,9 @@ local function BuildSearch(parent)
 	search:SetScript('OnEditFocusLost', function(self)
 		W.Edge(self, false)
 		self.hint:SetShown(self:GetText() == '')
+		-- With the sidebar collapsed the box is in its panel over the footer,
+		-- which goes with the keyboard; the search stays.
+		if S.sidebar == false then S.ClosePop() end
 	end)
 	search:SetScript('OnTextChanged', SearchChanged)
 	search:SetScript('OnEnterPressed', function(self)
@@ -1400,6 +1421,7 @@ local function Build()
 	BuildMain(window)
 	BuildFooter()
 	S.BuildSideToggle(F.foot)
+	S.BuildCollapsed()
 	BuildTitleBar(window)
 	S.BuildSizeButtons(window)
 	S.BuildMini(window)

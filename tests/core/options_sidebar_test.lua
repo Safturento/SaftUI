@@ -16,6 +16,13 @@ if not _G.GameTooltip then CreateFrame('GameTooltip', 'GameTooltip', UIParent) e
 
 local SCALE = UIParent:GetScale()
 
+-- Two commands the sidebar and the collapsed footer draw: Keybind mode with its
+-- icon, and one without (a text button in the footer).
+local ran = {}
+st.Config:AddCommand('kb', 'Keybind mode', function() ran[#ran + 1] = 'kb' end, st.icons.keyboard)
+st.Config:AddCommand('two', 'Two', function() ran[#ran + 1] = 'two' end)
+local EM = st.EditModeFrames
+
 local function set_screen(width, height)
 	stub.screen_width, stub.screen_height = width, height
 	UIParent:SetScale(768 / height)
@@ -334,7 +341,7 @@ test('the footer region starts 12 after the toggle while collapsed, and the prof
 	eq(F.footerRegion:GetLeft(), F.main:GetLeft() + 28, 'shown: from the footer\'s 28')
 	check(F.footerControl:IsShown(), 'the profile control shows at full')
 	OW:SetSidebarShown(false)
-	eq(F.footerRegion:GetLeft(), F.sideToggle:GetRight() + 12, 'collapsed: 12 after the toggle')
+	eq(F.footerRegion:GetLeft(), F.tools[#F.tools]:GetRight() + 12, 'collapsed: 12 after the last tool')
 	eq(F.footerRegion:GetRight(), F.reloadButton:GetLeft() - 12)
 	local function clear_of_toggle()
 		if F.footerControl:IsShown() then
@@ -345,13 +352,221 @@ test('the footer region starts 12 after the toggle while collapsed, and the prof
 	clear_of_toggle()
 	wait(); OW:SetWindowSize('half')
 	check(not F.footerControl:IsShown(), 'at W4 the region cannot hold it: hidden')
-	check(F.status:IsShown(), 'the status has the region')
+	-- (Task 6: with the tools at the footer's left the status line has no room at W4: it gives way.)
 	OW:SetSidebarShown(true)
+	OW:SetStatus('An error'); check(F.status:IsShown(), 'at W3 the status has the region'); OW:SetStatus(nil)
 	check(not F.footerControl:IsShown(), 'at W3 too')
 	wait(); OW:SetWindowSize('full')
 	OW:SetSidebarShown(false); OW:SetSidebarShown(true)
 	check(F.footerControl:IsShown(), 'back at full: shown again')
 	clear_of_toggle()
+	eq(#take_errors(), 0, 'no errors')
+	reset()
+end)
+
+
+------------------------------------------------------------------ the footer's tools
+
+-- A list's rows as 'label' (a caption as '[label]'), in order.
+local function listed()
+	local list = W.GetListFrames()
+	local out = {}
+	for _, entry in ipairs(list.entries) do out[#out + 1] = entry.caption and ('[' .. entry.label .. ']') or entry.label end
+	return table.concat(out, ',')
+end
+
+local function reset_edit_mode() if EM.active then EM:Deactivate() end end
+
+test('collapsed, the footer holds the toggle, then Search, Edit mode and each command, 6 apart, each with its tooltip', function()
+	reset()
+	st.Config:Open('Loot')
+	local F = frames()
+	for _, tool in ipairs(F.tools) do check(not tool:IsVisible(), 'none is shown with the sidebar') end
+	check(OW:SetSidebarShown(false))
+	eq(#F.tools, 4, 'Search, Edit mode and the two commands')
+	eq(st.Config:GetCommands()[1].icon, st.icons.keyboard, "GetCommands carries Keybind mode's icon")
+	eq(st.Config:GetCommands()[2].icon, nil, 'and none for a command added without one')
+	for _, tool in ipairs(F.tools) do check(tool:IsVisible(), 'shown collapsed') end
+	eq(F.tools[1].icon:GetTexture(), st.icons.search); eq(F.tools[2].icon:GetTexture(), st.icons.move)
+	eq(F.tools[3].icon:GetTexture(), st.icons.keyboard, "Keybind mode's icon")
+	eq(F.tools[4].text:GetText(), 'Two', 'a command without an icon: its label')
+	eq(F.tools[1]:GetLeft(), F.sideToggle:GetRight() + 6, '6 after the toggle')
+	for i = 2, 4 do eq(F.tools[i]:GetLeft(), F.tools[i - 1]:GetRight() + 6, '6 apart') end
+	for i = 1, 4 do
+		eq(F.tools[i]:GetTop(), F.sideToggle:GetTop(), 'level with the toggle')
+		eq(F.tools[i]:GetParent(), F.footer, 'in the footer')
+	end
+	eq(F.footerRegion:GetLeft(), F.tools[4]:GetRight() + 12, 'the region after them')
+	eq(F.tools[1]:GetWidth() .. 'x' .. F.tools[1]:GetHeight(), '26x26')
+	for i, want in ipairs({ 'Search settings | Finds a setting by name, on any page.',
+		"Edit mode | Drag and nudge SaftUI's frames. /sui edit does too.", 'Keybind mode' }) do
+		stub.fire_script(F.tools[i], 'OnEnter', true)
+		check(GameTooltip:IsOwned(F.tools[i]), 'its tooltip')
+		eq(tip_text(F.tools[i]), want)
+		stub.fire_script(F.tools[i], 'OnLeave', true)
+		check(not GameTooltip:IsShown(), 'and gone')
+	end
+	check(F.tools[3].onClick ~= nil and F.tools[1].onClick ~= nil, 'clicks through onClick')
+	click(F.tools[3]); click(F.tools[4])
+	eq(table.concat(ran, ','), 'kb,two', 'a command runs its func')
+	check(OW:SetSidebarShown(true))
+	for _, tool in ipairs(F.tools) do check(not tool:IsVisible(), 'hidden again with the sidebar') end
+	eq(#take_errors(), 0, 'no errors')
+	reset()
+end)
+
+test("Edit mode's icon toggles edit mode and is on while it is, from wherever it is toggled", function()
+	reset(); reset_edit_mode()
+	st.Config:Open('Loot'); OW:SetSidebarShown(false)
+	local F = frames()
+	check(not F.tools[2].on, 'off')
+	click(F.tools[2])
+	check(EM.active, 'edit mode on'); eq(F.tools[2].on, true, 'the icon on')
+	EM:Deactivate()
+	check(not F.tools[2].on, 'off again when edit mode is left from elsewhere')
+	EM:Activate()
+	eq(F.tools[2].on, true, 'on when it is entered from elsewhere')
+	click(F.tools[2])
+	check(not EM.active and not F.tools[2].on, 'a second click ends it')
+	reset_edit_mode()
+	eq(#take_errors(), 0, 'no errors')
+	reset()
+end)
+
+test("Search opens the sidebar's box over the footer; losing the keyboard closes it and keeps the search", function()
+	reset()
+	st.Config:Open('Unitframes', 'player', 'general'); OW:SetSidebarShown(false)
+	local F = frames()
+	check(not F.searchPop:IsShown(), 'closed')
+	check(not F.tools[1].on, 'the icon off')
+	click(F.tools[1])
+	check(F.searchPop:IsShown(), 'the panel opens'); eq(F.search:GetParent(), F.searchPop, 'with the sidebar\'s box')
+	check(F.search:HasFocus(), 'and the keyboard in it')
+	eq(F.searchPop:GetBottom(), F.tools[1]:GetTop() + 6, '6 above the icon'); eq(F.searchPop:GetLeft(), F.tools[1]:GetLeft(), 'from its left')
+	eq(F.searchPop:GetWidth(), F.search:GetWidth() + 16, 'the box and 8 round it'); eq(F.searchPop:GetHeight(), F.search:GetHeight() + 16)
+	eq(F.search:GetLeft(), F.searchPop:GetLeft() + 8, '8 in'); eq(F.search:GetTop(), F.searchPop:GetTop() - 8)
+	check(F.searchPop:GetFrameLevel() >= F.main:GetFrameLevel() + 20, 'above the page')
+	F.search:SetText('width'); tick(0.3)
+	eq(F.title:GetText(), 'Search', 'the results page'); check(F.searchPop:IsShown(), 'the panel stays while it types')
+	F.search:SetFocus()
+	stub.fire_script(F.search, 'OnEnterPressed')
+	check(not F.searchPop:IsShown(), 'Enter closes the panel')
+	eq(OW:GetState().search, 'width', 'the search is kept'); eq(F.title:GetText(), 'Search')
+	eq(F.tools[1].on, true, 'the icon is on while a search is')
+	eq(tip_text(F.tools[1]), 'Search settings | Searching for "width". Click to change it.')
+	-- A click on a result: its page, the sidebar still collapsed, the search ended.
+	local results = OW.GetDrawnRows()
+	check(#results > 0, 'a result is drawn')
+	click(results[1].frame)
+	eq(OW:IsSidebarShown(), false, 'the sidebar stays collapsed'); eq(OW:GetState().search, '', 'the search ended')
+	check(not F.tools[1].on, 'the icon off')
+	-- Open again, type, Esc: the search is cleared and the page is back.
+	click(F.tools[1]); F.search:SetText('power'); tick(0.3)
+	eq(OW:GetState().search, 'power')
+	stub.fire_script(F.search, 'OnEscapePressed')
+	check(not F.searchPop:IsShown(), 'Esc closes the panel')
+	eq(OW:GetState().search, '', 'and clears the search'); check(not F.tools[1].on)
+	-- Clicking the icon with the panel open closes it; the sidebar takes the box back.
+	click(F.tools[1]); check(F.searchPop:IsShown())
+	click(F.tools[1]); check(not F.searchPop:IsShown(), 'the icon again closes it')
+	click(F.tools[1])
+	OW:SetSidebarShown(true)
+	check(not F.searchPop:IsShown(), 'showing the sidebar closes it')
+	eq(F.search:GetParent(), F.actionsFrame, 'and the box is back in the sidebar')
+	eq(F.search:GetLeft(), F.actionsFrame:GetLeft() + 12)
+	eq(#take_errors(), 0, 'no errors')
+	reset()
+end)
+
+test('the title opens the page list, grouped as the sidebar is, while the sidebar is collapsed', function()
+	reset()
+	st.Config:Open('Loot')
+	local F = frames()
+	check(not F.titleArrow:IsVisible(), 'no arrow with the sidebar'); check(not F.titleButton:IsVisible(), 'and no button')
+	OW:SetSidebarShown(false)
+	check(F.titleArrow:IsVisible() and F.titleButton:IsVisible(), 'shown collapsed')
+	eq(F.titleArrow:GetWidth() .. 'x' .. F.titleArrow:GetHeight(), '16x16')
+	eq(F.titleArrow:GetTexture(), st.icons.chevronDown)
+	eq(F.titleArrow:GetLeft(), F.title:GetLeft() + math.ceil(F.title:GetStringWidth()) + 8, '8 after the title\'s text')
+	eq(F.titleButton:GetLeft(), F.title:GetLeft(), 'the button covers the title')
+	check(F.titleButton:GetRight() >= F.titleArrow:GetRight(), 'and the arrow')
+	click(F.titleButton)
+	eq(W.ListOwner(), F.titleButton, 'the list opens under the title')
+	local names = listed()
+	check(names:find('^Global settings,Profiles,%[Frames%],'), 'Global settings and Profiles, then the groups: ' .. names)
+	check(names:find(',%[Combat%],Auras,%[Info%],Loot,%[Other%],Zeta$'), 'the groups in order: ' .. names)
+	local list = W.GetListFrames()
+	-- A row of the label, the list scrolled with the wheel until it shows (up
+	-- 12 rows are drawn, the open page's first).
+	local function row(label)
+		for _, delta in ipairs({ 0, 1, 1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 }) do
+			if delta ~= 0 then stub.fire_script(list.frame, 'OnMouseWheel', delta) end
+			for i, r in ipairs(list.rows) do if r:IsShown() and r.text:GetText() == label then return r, i end end
+		end
+	end
+	local blue = string.format('%.2f,%.2f,%.2f', st.config.profile.colors.text.blue.r, st.config.profile.colors.text.blue.g, st.config.profile.colors.text.blue.b)
+	local function color(r) return string.format('%.2f,%.2f,%.2f', r.text:GetTextColor()) end
+	eq(color(row('Loot')), blue, 'the open page is blue')
+	local frames_row = row('Frames')
+	local grey = string.format('%.2f,%.2f,%.2f', st.config.profile.colors.text.grey.r, st.config.profile.colors.text.grey.g, st.config.profile.colors.text.grey.b)
+	eq(color(frames_row), grey, 'a caption is grey')
+	check(color(row('Zeta')) ~= grey, 'a page is not')
+	frames_row = row('Frames')
+	click(frames_row)
+	eq(W.ListOwner(), F.titleButton, 'a caption click keeps the list open')
+	eq(OW:GetState().page, 'Loot')
+	click(row('Chat'))
+	eq(OW:GetState().page, 'Chat', 'a pick navigates'); eq(OW:IsSidebarShown(), false, 'the sidebar stays collapsed')
+	eq(F.title:GetText(), 'Chat'); eq(W.ListOwner(), nil, 'and the list closes')
+	eq(F.titleArrow:GetLeft(), F.title:GetLeft() + math.ceil(F.title:GetStringWidth()) + 8, 'the arrow follows a new title')
+	stub.fire_script(F.titleButton, 'OnEnter', true)
+	check(GameTooltip:IsOwned(F.titleButton), 'its tooltip')
+	stub.fire_script(F.titleButton, 'OnLeave', true)
+	-- A search is ended by a pick.
+	F.search:SetText('width'); tick(0.3)
+	eq(OW:GetState().search, 'width')
+	click(F.titleButton); click(row('Loot'))
+	eq(OW:GetState().search, '', 'a pick ends the search'); eq(OW:GetState().page, 'Loot')
+	-- With the sidebar shown the button takes no click.
+	OW:SetSidebarShown(true)
+	check(not F.titleArrow:IsVisible() and not F.titleButton:IsVisible())
+	click(F.titleButton)
+	eq(W.ListOwner(), nil, 'no list')
+	eq(#take_errors(), 0, 'no errors')
+	reset()
+end)
+
+test('OW.PageMenuEntries: a page is a key and a label, a group a caption, a disabled page stays disabled', function()
+	local list = OW.PageMenuEntries({
+		{ key = 'global', name = 'Global settings', special = 'global' },
+		{ group = 'Frames' }, { key = 'Bags', name = 'Bags' }, { key = 'Off', name = 'Off', disabled = true },
+	})
+	eq(#list, 4)
+	eq(list[1].key .. '/' .. list[1].label .. '/' .. tostring(list[1].disabled) .. '/' .. tostring(list[1].caption), 'global/Global settings/nil/nil')
+	eq(list[2].label .. '/' .. tostring(list[2].caption) .. '/' .. tostring(list[2].key), 'Frames/true/nil', 'a group is a caption')
+	eq(list[4].key .. '/' .. tostring(list[4].disabled), 'Off/true', 'disabled kept')
+	eq(OW.PageMenuEntries({}) and #OW.PageMenuEntries({}), 0)
+end)
+
+test("a search result in an item's menu at W4 opens the menu, kept in the screen margin", function()
+	reset()
+	st.Config:Open('SideItems', 'texts')
+	OW:SetSidebarShown(false); wait(); check(OW:SetWindowSize('half'))
+	local F = frames()
+	click(F.tools[1]); F.search:SetText('Size'); tick(0.3)
+	local found
+	for _, c in ipairs(OW.GetDrawnRows()) do
+		if c.row.menu then found = c end
+	end
+	check(found ~= nil, "a result for the menu's Size")
+	click(found.frame)
+	check(OW:IsMenuShown(), 'the menu opens')
+	eq(OW:IsSidebarShown(), false, 'the sidebar stays collapsed'); eq(OW:GetState().search, '', 'the search ended')
+	local menu = OW.GetMenuFrames().frame
+	local left = st:GetScreenMargin(menu)
+	check(menu:GetLeft() >= left - 1e-3, 'the menu is inside the screen margin')
+	local off = P.off(menu)
+	eq(#off, 0, 'whole pixels ' .. P.report(off))
 	eq(#take_errors(), 0, 'no errors')
 	reset()
 end)
@@ -372,8 +587,21 @@ test('whole pixels at W1 to W4 under Thick and Thin', function()
 				eq(#off, 0, where .. state .. ' ' .. P.report(off))
 			end
 			check_pixels('W1')
-			check(OW:SetSidebarShown(false)); check_pixels('W2')
+			check(OW:SetSidebarShown(false)); check_pixels('W2 with its footer tools and the title arrow')
+			local function with_pop(state)
+				click(F.tools[1])
+				check(F.searchPop:IsShown(), 'the search panel opens')
+				check_pixels(state .. ' with the search panel')
+				click(F.tools[1])
+				click(F.titleButton)
+				local list = W.GetListFrames().frame
+				local listed_off = P.off(list)
+				eq(#listed_off, 0, where .. state .. ' the page list ' .. P.report(listed_off))
+				W.CloseList()
+			end
+			with_pop('W2')
 			wait(); check(OW:SetWindowSize('half')); check_pixels('W4')
+			with_pop('W4')
 			OW:SetStatus('An error long enough to need a second line in the footer region of the half window, so it wraps')
 			check_pixels('W4 with a wrapped status')
 			OW:SetStatus(nil)
@@ -426,6 +654,34 @@ test('a second click on the toggle within OW.SIZE_GUARD does nothing; after it t
 	st.Config:Close(); st.Config:Open('Unitframes', 'player', 'general')
 	click(frames().sideToggle)
 	eq(OW:IsSidebarShown(), true, 'a click right after opening is not swallowed')
+	eq(#take_errors(), 0, 'no errors')
+	reset()
+end)
+
+------------------------------------------------------------------ no room
+
+test('the footer never overlaps: the tools stop short of Reload UI at W4, and the status line gives way when the region has no room', function()
+	reset()
+	st.Config:Open('Unitframes', 'player', 'general')
+	local F = frames()
+	OW:SetSidebarShown(false)
+	check(F.footerRegion:GetWidth() >= 24, 'W2: the region holds a status line')
+	OW:SetStatus('A short error')
+	check(F.status:IsShown(), 'and shows it')
+	OW:SetStatus(nil)
+	wait(); OW:SetWindowSize('half')
+	check(F.tools[#F.tools]:GetRight() + 12 <= F.reloadButton:GetLeft() + 1e-3, 'W4: the last tool is 12 or more before Reload UI')
+	check(F.footerRegion:GetWidth() < 24, 'W4 with a text command: the region has no room: ' .. F.footerRegion:GetWidth())
+	OW:SetStatus('An error')
+	check(not F.status:IsShown(), 'so no status line')
+	check(not F.footerControl:IsShown(), 'and no profile control')
+	check(F.tools[#F.tools]:IsShown(), 'while every tool stays')
+	OW:SetStatus(nil)
+	OW:SetSidebarShown(true)
+	check(F.footerRegion:GetWidth() >= 24, 'W3: the sidebar is back, the region holds a status line')
+	OW:SetStatus('An error')
+	check(F.status:IsShown(), 'and shows it')
+	OW:SetStatus(nil)
 	eq(#take_errors(), 0, 'no errors')
 	reset()
 end)

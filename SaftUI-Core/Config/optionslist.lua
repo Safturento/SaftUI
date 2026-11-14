@@ -22,6 +22,7 @@ local SetCheck, CatchKeys = Kit.SetCheck, Kit.CatchKeys
 
 local LIST_ROW_HEIGHT, LIST_MAX_ROWS = 22, 12
 local LIST_WHEEL_ROWS = 3 -- a turn of the wheel over the list, or over its scroll bar
+local DISABLED_ALPHA = 0.4 -- a disabled entry, as a disabled control (optionscontrols.lua)
 
 -- The Apply list's button: 80 wide (W.Confirm's buttons), 6 under the rows.
 -- Under Blizzard it also keeps 6 above the menu's bottom inset; under Thick
@@ -61,11 +62,16 @@ local function ListFill()
 				SetFieldFont(row.text)
 			end
 			row.text:SetText(entry.label)
-			if entry.key == list.selected then
+			-- A caption is Text > Grey; the picked entry blue; the rest normal.
+			if entry.caption then
+				row.text:SetTextColor(Colors().text.grey:GetRGB())
+			elseif entry.key == list.selected then
 				row.text:SetTextColor(Colors().text.blue:GetRGB())
 			else
 				row.text:SetTextColor(Colors().text.normal:GetRGB())
 			end
+			if entry.caption or entry.disabled then row.hover:Hide() end -- a scroll can put one under the mouse
+			row:SetAlpha(entry.disabled and DISABLED_ALPHA or 1)
 			LayCheckRow(row, entry)
 			row:Show()
 		else
@@ -85,9 +91,11 @@ local function ListFill()
 	elseif total > shown then
 		blizzardBar:Hide()
 		local track = shown * LIST_ROW_HEIGHT
-		list.bar:SetHeight(max(10, track * shown / total))
+		-- On whole pixels: its height and its place are rounded.
+		local height = floor(max(10, track * shown / total) + 0.5)
+		list.bar:SetHeight(height)
 		list.bar:ClearAllPoints()
-		list.bar:SetPoint('TOPRIGHT', list.frame, 'TOPRIGHT', -2, -list.insets[2] - (track - list.bar:GetHeight()) * offset / (total - shown))
+		list.bar:SetPoint('TOPRIGHT', list.frame, 'TOPRIGHT', -2, -list.insets[2] - floor((track - height) * offset / (total - shown) + 0.5))
 		list.bar:Show()
 	else
 		blizzardBar:Hide()
@@ -200,9 +208,15 @@ local function BuildList()
 		row.text = NewText(row, 'LEFT')
 		row.text:SetPoint('LEFT', row, 'LEFT', 8, 0)
 		row.text:SetPoint('RIGHT', row, 'RIGHT', -10, 0)
-		row:SetScript('OnEnter', function(self) self.hover:Show() end)
+		-- A caption and a disabled entry are not lit, and do nothing when clicked:
+		-- the list stays open.
+		row:SetScript('OnEnter', function(self)
+			local entry = self.entry
+			if not (entry and (entry.caption or entry.disabled)) then self.hover:Show() end
+		end)
 		row:SetScript('OnLeave', function(self) self.hover:Hide() end)
 		row:SetScript('OnClick', function(self)
+			if self.entry and (self.entry.caption or self.entry.disabled) then return end
 			if list.onToggle then return ToggleCheck(self) end
 			local entry, onPick = self.entry, list.onPick
 			W.CloseList()
@@ -278,7 +292,10 @@ end
 
 -- Opens the list under owner (a frame; above it when there's no room below).
 -- entries: { {key, label, font = path} }, the selected key shows blue, and
--- onPick(key) runs on a choice. fontMode draws each label in its own face
+-- onPick(key) runs on a choice. An entry with caption = true is a heading
+-- (its label in Text > Grey, no hover, a click that does nothing, the list
+-- staying open) and one with disabled = true is dim (alpha 0.4), lit by no
+-- mouse and not to be picked. fontMode draws each label in its own face
 -- (entry.font). An empty list doesn't open.
 function W.OpenList(owner, entries, selected, onPick, fontMode)
 	OpenList(owner, entries, selected, onPick, fontMode)

@@ -12,13 +12,16 @@ st.Config = Config
 
 -- /sui subcommands that other SaftUI addons add, e.g. SaftUI-ActionBars' 'kb'.
 -- Each also gets a button at the top of the /sui window's sidebar, after Edit
--- mode, in the order they were added. Add them at file load or in OnEnable.
+-- mode, in the order they were added; with the sidebar collapsed it is an icon
+-- button in the window's footer when it has an icon, else a button with its
+-- label. Add them at file load or in OnEnable.
 local commands = {}
 
 -- '/sui <command>' runs func, and so does a button labelled label in /sui.
--- command is matched lowercase.
-function Config:AddCommand(command, label, func)
-	commands[#commands + 1] = { command = command:lower(), label = label, func = func }
+-- command is matched lowercase. icon, optional, is a texture path (a Lucide
+-- icon of st.icons): the button the collapsed sidebar's footer shows.
+function Config:AddCommand(command, label, func, icon)
+	commands[#commands + 1] = { command = command:lower(), label = label, func = func, icon = icon }
 end
 
 local function FindCommand(command)
@@ -27,12 +30,13 @@ local function FindCommand(command)
 	end
 end
 
--- The added commands, in order: { {command, label, func} }. The /sui window's
--- sidebar makes a button of each.
+-- The added commands, in order: { {command, label, func, icon} }. The /sui
+-- window's sidebar makes a button of each, and its footer too while the
+-- sidebar is collapsed.
 function Config:GetCommands()
 	local list = {}
 	for i, entry in ipairs(commands) do
-		list[i] = { command = entry.command, label = entry.label, func = entry.func }
+		list[i] = { command = entry.command, label = entry.label, func = entry.func, icon = entry.icon }
 	end
 	return list
 end
