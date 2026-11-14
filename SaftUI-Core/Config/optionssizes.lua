@@ -321,8 +321,9 @@ function OW:SetWindowSize(size)
 	local before = S.size
 	if size == 'mini' then S.CloseOverlays() end
 	-- A box of the window's keeps the keyboard no longer: the render rebinds its
-	-- pooled box to another row, which would be typed into (clearing it commits
-	-- what was typed, as leaving the box does).
+	-- pooled box to another row, which would be typed into. Leaving a box puts
+	-- back the value it was drawn with (as Esc does), so what was typed and not
+	-- entered is lost.
 	local focus = GetCurrentKeyBoardFocus()
 	if focus and S.Inside(focus, F.window) then focus:ClearFocus() end
 	-- The bar saves half: it opens again as half.

@@ -347,9 +347,13 @@ end
 -- above it, under Blizzard, but not the bar's panel) must stay while edit
 -- mode's bar is docked and shown (EM:BarCoverHeight): /sui is never under it.
 -- 0 when the bar is floating, hidden, or edit mode is off.
-local function CoverTop()
+function S.BarCover()
 	local EM = st.EditModeFrames
-	local cover = EM and EM.BarCoverHeight and EM:BarCoverHeight() or 0
+	return EM and EM.BarCoverHeight and EM:BarCoverHeight() or 0
+end
+
+local function CoverTop()
+	local cover = S.BarCover()
 	if cover <= 0 then return 0 end
 	local reach = (S.size ~= 'mini' and S.blizzard) and st.ThemeArt.MetalAbove() or 0
 	return Whole(cover + reach)
@@ -362,13 +366,22 @@ end
 local function Anchor()
 	local dx, dy = Shift()
 	F.window:ClearAllPoints()
-	F.window:SetPoint('TOPRIGHT', UIParent, 'TOPRIGHT', S.corner.x + dx, math.min(S.corner.y + dy, -CoverTop()))
+	local y = S.corner.y + dy
+	local cover = CoverTop()
+	if cover > 0 then y = math.min(y, -cover) end -- only while the edit bar covers the top
+	F.window:SetPoint('TOPRIGHT', UIParent, 'TOPRIGHT', S.corner.x + dx, y)
 end
 
 -- Edit mode's bar was docked, detached, shown or hidden (edit mode on or off,
 -- combat): place the window again.
 function S.UpdateBarCover()
-	if F.window and S.corner then Anchor() end
+	if F.window and S.corner then
+		Anchor()
+		-- A window taller than the room under the bar is shown no taller than
+		-- that (OW.WindowHeight, display only), and its saved height comes back
+		-- with the room.
+		if S.ApplyHeight then S.ApplyHeight() end
+	end
 end
 
 -- The layout of the look the window is about to be drawn in: Draw lays it out
@@ -399,7 +412,10 @@ local function ShownCorner()
 	local dx, dy = Shift()
 	-- Where it was dropped, never above the docked edit mode bar's bottom (what
 	-- shows is kept below it, so a doubled offset is never saved).
-	return Whole(right - screenRight) - dx, math.min(Whole(top - screenTop), -CoverTop()) - dy
+	local y = Whole(top - screenTop)
+	local cover = CoverTop()
+	if cover > 0 then y = math.min(y, -cover) end
+	return Whole(right - screenRight) - dx, y - dy
 end
 
 local function RestorePosition()
