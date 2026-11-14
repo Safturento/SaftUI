@@ -40,12 +40,26 @@ local function world(client, build, opts)
 	load_saftui('SaftUI-Misc/config.lua')
 	apply_defaults()
 	profile = st.config.profile
+	if opts.position then profile.objectivetracker.position = opts.position end
 	OT = load_test_file('misc/fixtures/objective_tracker.lua')
 	if not opts.late then OT.build(build) end
+	if opts.watch then OT.watch_size() end
 	load_saftui('SaftUI-Misc/Skinning/blizzard/Blizzard_ObjectiveTrackerPosition.lua')
 	OTP = st:GetModule('ObjectiveTracker')
 	OTP:Enable()
 end
+
+-- No error, and nothing of Blizzard's state-writing Lua (MarkDirty, Update,
+-- SetCollapsed, UpdateHeight) run from SaftUI's code, which would run the
+-- tracker's layout tainted (.agents/taint.md rule 5).
+local function clean()
+	eq(#take_errors(), 0, 'no errors')
+	eq(table.concat(OT.stray, ','), '', "SaftUI ran none of the tracker's state-writing methods")
+end
+
+-- A layout of Blizzard's that has the tracker's top left at 100 across and 100
+-- down: its top right on screen is 360, 500.
+local MOVED = { point = 'TOPLEFT', relativePoint = 'TOPLEFT', offsetX = 100, offsetY = -100 }
 
 local function top_right(frame) return ('%d,%d'):format(frame:GetRight(), frame:GetTop()) end
 
@@ -100,12 +114,17 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		local calls = OT.calls.SetPoint + OT.calls.ClearAllPoints
 		OTP:ApplyHolder()
 		eq(OT.calls.SetPoint + OT.calls.ClearAllPoints, calls, "SaftUI never calls Edit Mode's overrides")
-		eq(#take_errors(), 0, 'no errors')
+		clean()
 	end)
 
 	test(client .. ": Blizzard's re-places are put back; a snap break records a frame of Blizzard's", function()
 		world(client, { height = 400 })
 		local holder, tracker = OTP.holder, OT.tracker
+		-- The holder placed by the user (a position saved), so a snap break
+		-- doesn't count as a first load (see the capture tests below).
+		profile.objectivetracker.position = { point = 'TOPRIGHT', frame = 'UIParent', rel_point = 'TOPRIGHT',
+			x_off = -20, y_off = -(600 - default_top(client)) }
+		OTP:ApplyHolder()
 		OT.manage(-50)
 		eq(top_right(tracker), top_right(holder), 'ManageRightFrameContainer: back on the holder')
 		eq(anchored_to(tracker), 'TOPRIGHT RightManagedFrameContainer TOPRIGHT 30,' .. (client == 'forever' and '-15' or '0'),
@@ -126,16 +145,51 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		eq(top_right(tracker), top_right(holder), 'back on the holder')
 		eq(anchored_to(tracker), 'TOPRIGHT UIParent TOPRIGHT -20,' .. -(600 - default_top(client)), 'anchored to UIParent')
 		eq(tracker:GetHeight(), 400, "Blizzard's Height setting")
-		eq(#take_errors(), 0, 'no errors')
+		clean()
 	end)
 
-	test(client .. ": moved in Blizzard's Edit Mode before: on UIParent at the holder", function()
-		world(client, { moved = { point = 'TOPLEFT', relativePoint = 'TOPLEFT', offsetX = 100, offsetY = -100 }, height = 400 })
+	test(client .. ": moved in Blizzard's Edit Mode before: first load keeps that spot, saved as the position", function()
+		world(client, { moved = MOVED, height = 400 })
 		local tracker = OT.tracker
 		check(tracker:GetParent() == UIParent, 'on UIParent')
-		eq(top_right(tracker), top_right(OTP.holder), 'on the holder')
+		eq(top_right(tracker), '360,500', "where Blizzard's layout has it: the first load moved nothing")
+		eq(top_right(OTP.holder), '360,500', 'the holder there')
+		local position = profile.objectivetracker.position
+		check(position ~= nil, 'its spot saved as the profile\'s position')
+		eq(('%s %s %d,%d'):format(position.point, position.rel_point, position.x_off, position.y_off), 'TOPRIGHT TOPRIGHT -640,-100',
+			"as its top right corner on UIParent's")
 		eq(tracker:GetHeight(), 400, "Blizzard's Height")
-		eq(#take_errors(), 0, 'no errors')
+		clean()
+	end)
+
+	test(client .. ": in Blizzard's default position nothing is saved: the holder waits at Blizzard's spot", function()
+		world(client)
+		eq(profile.objectivetracker.position, nil, 'no position saved by loading')
+		eq(top_right(OTP.holder), '980,' .. default_top(client), "the holder at Blizzard's default spot")
+		stub.run_timers()
+		eq(profile.objectivetracker.position, nil, 'and none from the next frame either')
+		clean()
+	end)
+
+	test(client .. ': a saved position is kept over a tracker moved in Blizzard\'s Edit Mode', function()
+		local saved = { point = 'TOPLEFT', frame = 'UIParent', rel_point = 'TOPLEFT', x_off = 40, y_off = -100 }
+		world(client, { moved = MOVED, height = 400 }, { position = saved })
+		eq(top_right(OT.tracker), '300,500', 'the tracker on the saved spot (its top left 40 in)')
+		eq(profile.objectivetracker.position.x_off, 40, 'the position untouched')
+		eq(profile.objectivetracker.position.point, 'TOPLEFT', 'whole')
+		clean()
+	end)
+
+	test(client .. ': Blizzard moving the tracker after SaftUI loaded: its spot is captured on the next frame', function()
+		world(client)
+		OT.edit_mode_moves(MOVED)
+		eq(top_right(OT.tracker), '360,500', "left where Blizzard's layout put it")
+		eq(profile.objectivetracker.position, nil, 'not read yet: Blizzard may still be placing it')
+		stub.run_timers()
+		eq(top_right(OT.tracker), '360,500', 'still there')
+		eq(top_right(OTP.holder), '360,500', 'the holder on it')
+		eq(profile.objectivetracker.position.x_off, -640, 'saved')
+		clean()
 	end)
 
 	test(client .. ': a nudge is saved and the tracker follows; Position and a profile change too', function()
@@ -154,7 +208,7 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		profile.objectivetracker.position = { point = 'TOPLEFT', frame = 'UIParent', rel_point = 'TOPLEFT', x_off = 40, y_off = -100 }
 		OTP:UpdateConfig()
 		eq(('%d,%d'):format(OT.tracker:GetLeft(), OT.tracker:GetTop()), '40,500', 'a profile change places it')
-		eq(#take_errors(), 0, 'no errors')
+		clean()
 	end)
 
 	test(client .. ': in combat, put back at once; a protected tracker waits for the end of combat', function()
@@ -173,7 +227,52 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		stub.in_combat = false
 		stub.fire_event('PLAYER_REGEN_ENABLED')
 		eq(top_right(OT.tracker), top_right(OTP.holder), 'back on the holder once combat ends')
-		eq(#take_errors(), 0, 'no errors')
+		clean()
+	end)
+
+	test(client .. ': SaftUI reads the tracker\'s size with ignoreRect only, so no OnSizeChanged can run in its call', function()
+		world(client, { height = 400 }, { watch = true })
+		local reads = OT.size_reads
+		OT.manage(-50)
+		OT.show()
+		OT.break_snap()
+		OT.apply_layout()
+		SetMargin(0)
+		OTP:ApplyHolder()
+		OTP:KeepInMargin()
+		local plain = {}
+		for name, count in pairs(reads.plain) do plain[#plain + 1] = name .. '=' .. count end
+		eq(table.concat(plain, ','), '', "no plain GetWidth, GetHeight or GetSize on the tracker or a module")
+		check((reads.ignore.GetWidth or 0) > 0 and (reads.ignore.GetHeight or 0) > 0, 'the reach and Setup read the size with ignoreRect')
+		-- ...and still follow Blizzard's height.
+		eq(Insets(OTP.holder), '0,0,0,-368', 'the holder\'s reach: a 400 tall tracker 368 below it')
+		clean()
+	end)
+
+	test(client .. ': a tracker already where it should be is not re-anchored', function()
+		world(client)
+		local calls = 0
+		local clear, set = st.ClearAllPointsDirect, st.SetPointDirect
+		st.ClearAllPointsDirect = function(self, frame, ...)
+			if frame == OT.tracker then calls = calls + 1 end
+			return clear(self, frame, ...)
+		end
+		st.SetPointDirect = function(self, frame, ...)
+			if frame == OT.tracker then calls = calls + 1 end
+			return set(self, frame, ...)
+		end
+		OTP:PlaceTracker()
+		OTP:KeepInMargin()
+		eq(calls, 0, 'placing it where it is changes nothing')
+		-- Blizzard's re-place: cleared, then set to its own spot. Each is put back
+		-- (two anchors made) and the UpdateHeight that follows finds it in place.
+		OT.manage(-50)
+		eq(calls, 4, 'one clear and one set after the clear, and one clear and one set after the set')
+		calls = 0
+		OTP:KeepInMargin()
+		eq(calls, 0, 'and again nothing')
+		st.ClearAllPointsDirect, st.SetPointDirect = clear, set
+		clean()
 	end)
 
 	test(client .. ": the holder goes no lower than the tracker's own clamp lets the tracker go", function()
@@ -187,7 +286,7 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		OT.break_snap()
 		OT.apply_layout()
 		eq(Insets(OTP.holder), '-20,20,20,-368', 'a 400 tall tracker: 368 below the holder')
-		eq(#take_errors(), 0, 'no errors')
+		clean()
 	end)
 end
 
@@ -217,7 +316,7 @@ test('the Objective Tracker page: the fonts, then Position', function()
 	eq(general.args.position.get({}, 'point'), 'TOPRIGHT', 'Position reads the profile')
 	check(general.args.position.validate({}, 'frame', 'ObjectiveTrackerFrame') ~= true,
 		"Position can't be anchored to the tracker")
-	eq(#take_errors(), 0, 'no errors')
+	clean()
 end)
 
 test('the addon loading after SaftUI', function()
@@ -229,5 +328,5 @@ test('the addon loading after SaftUI', function()
 	stub.fire_event('ADDON_LOADED', 'Blizzard_ObjectiveTracker')
 	check(OTP.holder ~= nil, 'the holder once it loads')
 	eq(top_right(OT.tracker), top_right(OTP.holder), 'and the tracker on it')
-	eq(#take_errors(), 0, 'no errors')
+	clean()
 end)

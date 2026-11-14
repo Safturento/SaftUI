@@ -39,13 +39,28 @@ local OTP = st:NewModule('ObjectiveTracker')
 	Blizzard's re-places (post-hooks on the tracker's ClearAllPoints and
 	SetPoint), and after the screen edge margin changes.
 
-	SaftUI never sets the tracker's height. Setting it runs the tracker's
-	OnSizeChanged (ObjectiveTrackerContainerMixin:MarkDirty), and from SaftUI's
-	code that would write the tracker's dirty flag and schedule its layout
-	tainted, and the layout sets the quest item buttons' attributes, which
-	their clicks read: an item used in combat could then be blocked. So there
-	is no Height setting, and Blizzard's own (Edit Mode's) can't be reached
-	either, below.
+	SaftUI never sets the tracker's height, and never reads its size in a way
+	that could run its OnSizeChanged (GetWidth(true) and GetHeight(true), which
+	skip the rect resolve). Setting the height runs the tracker's OnSizeChanged
+	(ObjectiveTrackerContainerMixin:MarkDirty), and from SaftUI's code that
+	would write the tracker's dirty flag and schedule its layout tainted. A
+	tainted layout that makes a quest item button from the pool writes the
+	button's mixin methods tainted, OnClick among them (the click looks it up on
+	the button each time, and UseQuestLogSpecialItem is protected), and the pool
+	hands that same button out for the rest of the session; it also writes the
+	button's charges and rangeTimer tainted, which its OnUpdate reads. (The
+	buttons' attributes carry no taint: they're stored in the game, not in
+	Lua.) An item used in combat could then be blocked. So there is no Height
+	setting, and Blizzard's own (Edit Mode's) can't be reached either, below.
+
+	First load moves nothing. objectivetracker.position has no default (AceDB
+	fills defaults in, so one couldn't be told from a position the user set;
+	the totem bar's position works the same way, totemposition.lua). With none
+	saved the holder waits at Blizzard's default spot (DefaultPosition), the
+	tracker's own, unsaved, until it's moved. A tracker the player had moved in
+	Blizzard's Edit Mode (systemInfo.isInDefaultPosition false) is left where
+	it is, its spot read once the layout has placed it (OTP:CapturePosition)
+	and saved as the profile's position, and the holder goes there.
 
 	None of the tracker's frames is secure, so it isn't protected and is put
 	back at once, in combat too; should the game count it as protected, the
@@ -69,6 +84,26 @@ local OTP = st:NewModule('ObjectiveTracker')
 local HOLDER_HEIGHT = 32
 local TRACKER_WIDTH = 260 -- ObjectiveTrackerContainerTemplate, if the tracker's can't be read
 
+-- Where Blizzard's default puts the tracker's top right corner: in the right
+-- column 260 below the screen's top (275 on Forever, whose tracker sits 15
+-- lower in it), and the screen edge margin in from the right.
+local function DefaultPosition()
+	return {
+		point = 'TOPRIGHT',
+		frame = 'UIParent',
+		rel_point = 'TOPRIGHT',
+		x_off = -st.CLAMP_INSET,
+		y_off = st.forever and -275 or -260,
+	}
+end
+
+-- The holder's position: the profile's, or Blizzard's default spot while the
+-- profile has none. The edit mode mover and /sui Position change the table
+-- this hands them and save it, so a first move saves a position.
+function OTP:GetPosition()
+	return self.config.position or DefaultPosition()
+end
+
 -- Sizes and places the holder from the profile; its SetPoint hook puts the
 -- tracker there (PlaceTracker covers a holder already where the profile says).
 -- The holder isn't protected (nothing is anchored to it), so it's placed in
@@ -78,7 +113,7 @@ function OTP:ApplyHolder()
 	if not holder then return end
 	st:PlaceHolder(holder, 'objectivetracker_holder',
 		function() return self.width, HOLDER_HEIGHT end,
-		function() return self.config.position end)
+		function() return self:GetPosition() end)
 	self:PlaceTracker()
 end
 
@@ -90,12 +125,78 @@ local function Plain(...)
 	return true
 end
 
+-- Whether Blizzard's Edit Mode has the tracker moved from its default
+-- position. A read of Blizzard's layout state, nothing is written.
+local function Moved(tracker)
+	local info = tracker.systemInfo
+	return type(info) == 'table' and info.isInDefaultPosition == false
+end
+
+-- Whether the tracker already hangs where PlaceTracker would put it: its one
+-- point is that, so there's nothing to re-anchor (each re-anchor makes the game
+-- lay the tracker's whole subtree out again, and Blizzard re-places it several
+-- times in one right column update).
+local function PlacedAt(tracker, parent, x, y)
+	if tracker:GetNumPoints() ~= 1 then return false end
+	local point, relativeTo, relativePoint, px, py = tracker:GetPoint(1)
+	return Plain(point, relativePoint, px, py) and point == 'TOPRIGHT' and relativeTo == parent
+		and relativePoint == 'TOPRIGHT' and px == x and py == y
+end
+
+-- Saves the tracker's spot on screen as the profile's position, if the profile
+-- has none and Blizzard's Edit Mode has the tracker moved, and returns whether
+-- it did: its top right corner on UIParent's. Read once Blizzard has placed
+-- the tracker (OTP:QueueCapture); the tracker is never moved by this.
+function OTP:CapturePosition()
+	local tracker, holder = self.tracker, self.holder
+	if not (tracker and holder) or self.config.position or not Moved(tracker) then return false end
+	local right, top, scale = tracker:GetRight(), tracker:GetTop(), tracker:GetEffectiveScale()
+	local parentRight, parentTop, parentScale = UIParent:GetRight(), UIParent:GetTop(), UIParent:GetEffectiveScale()
+	if not Plain(right, top, scale, parentRight, parentTop, parentScale) or scale == 0 or parentScale == 0 then
+		return false
+	end
+	local ratio = scale / parentScale
+	self.config.position = {
+		point = 'TOPRIGHT',
+		frame = 'UIParent',
+		rel_point = 'TOPRIGHT',
+		x_off = st:RoundToPixel(right * ratio - parentRight, holder),
+		y_off = st:RoundToPixel(top * ratio - parentTop, holder),
+	}
+	return true
+end
+
+function OTP:TryCapture()
+	if self:CapturePosition() then self:ApplyHolder() end
+end
+
+-- Tries the capture on the next frame, once however often it's asked for in one
+-- frame. It's asked for from the post-hooks on Blizzard's re-places, where the
+-- tracker can be between two of Blizzard's anchors (a layout load puts it at
+-- UIParent's top left, then where the layout says); by the next frame Blizzard
+-- is done.
+local captureQueued = false
+function OTP:QueueCapture()
+	if captureQueued or not self.holder or self.config.position then return end
+	captureQueued = true
+	C_Timer.After(0, function()
+		captureQueued = false
+		self:TryCapture()
+	end)
+end
+
 -- Puts the tracker's top right corner on the holder's, anchored to the
 -- tracker's parent (see the top of this file), in whole pixels. A frame whose
--- edges can't be read yet (or are secret) leaves the tracker as it is.
+-- edges can't be read yet (or are secret) leaves the tracker as it is, and so
+-- does a tracker Blizzard's Edit Mode has moved while the profile has no
+-- position yet: that spot is the profile's first (OTP:CapturePosition).
 function OTP:PlaceTracker()
 	local tracker, holder = self.tracker, self.holder
 	if not (tracker and holder) then return end
+	if not self.config.position and Moved(tracker) then
+		self:QueueCapture()
+		return
+	end
 	if not st:CanMoveNow(tracker) and st:QueueAfterCombat('objectivetracker_place', function() self:PlaceTracker() end) then
 		return
 	end
@@ -105,8 +206,10 @@ function OTP:PlaceTracker()
 	if not Plain(right, top, parentRight, parentTop, scale, parentScale, trackerScale) or trackerScale == 0 then return end
 	local x = (right * scale - parentRight * parentScale) / trackerScale
 	local y = (top * scale - parentTop * parentScale) / trackerScale
+	x, y = st:RoundToPixel(x, tracker), st:RoundToPixel(y, tracker)
+	if PlacedAt(tracker, parent, x, y) then return end
 	st:ClearAllPointsDirect(tracker)
-	st:SetPointDirect(tracker, 'TOPRIGHT', parent, 'TOPRIGHT', st:RoundToPixel(x, tracker), st:RoundToPixel(y, tracker))
+	st:SetPointDirect(tracker, 'TOPRIGHT', parent, 'TOPRIGHT', x, y)
 end
 
 -- How far past the holder's edges the tracker's own clamp keeps the tracker,
@@ -119,7 +222,7 @@ function OTP:TrackerReach()
 	local clamped = tracker:IsClampedToScreen()
 	if issecretvalue(clamped) or not clamped then return 0, 0, 0, 0 end
 	local left, right, top, bottom = tracker:GetClampRectInsets()
-	local width, height = tracker:GetWidth(), tracker:GetHeight()
+	local width, height = tracker:GetWidth(true), tracker:GetHeight(true)
 	local holderWidth, holderHeight = holder:GetWidth(), holder:GetHeight()
 	local scale, holderScale = tracker:GetEffectiveScale(), holder:GetEffectiveScale()
 	if not Plain(left, right, top, bottom, width, height, holderWidth, holderHeight, scale, holderScale) or holderScale == 0 then
@@ -143,7 +246,7 @@ function OTP:Setup()
 	local tracker = _G.ObjectiveTrackerFrame
 	self.tracker = tracker
 
-	local width = tracker:GetWidth()
+	local width = tracker:GetWidth(true)
 	self.width = Plain(width) and width > 0 and width or TRACKER_WIDTH
 
 	local holder = CreateFrame('Frame', st.name .. 'ObjectiveTrackerHolder', UIParent)
@@ -170,12 +273,19 @@ function OTP:Setup()
 	st:HideEditModeSelection(tracker)
 	if tracker.Selection then tracker.Selection:Hide() end
 
+	-- A tracker moved in Blizzard's Edit Mode gives the profile its first
+	-- position before anything is placed (or, if Blizzard hasn't placed it yet,
+	-- from the next frame, and after each of its re-places, through PlaceTracker).
+	self:CapturePosition()
+	self:QueueCapture()
+
 	-- Sized and placed first: the margin's reach reads the holder's size.
 	self:ApplyHolder()
-	self.mover = st:RegisterConfigMover(holder, {
-		key = 'objectivetracker',
+	self.mover = st:RegisterMover('objectivetracker', {
+		frame = holder,
 		label = 'Objective Tracker',
-		config = function() return self.config end,
+		getPosition = function() return self:GetPosition() end,
+		setPosition = function(position) self.config.position = position end,
 		apply = function() self:ApplyHolder() end,
 		configPath = { 'ObjectiveTracker', 'general' },
 	})
@@ -219,9 +329,11 @@ function OTP:GetConfigTable()
 	-- The tracker is placed from the holder: anchoring the holder to it, or
 	-- to a frame anchored to it, would move the tracker with its own spot.
 	local position = generators.position(1000, true,
-		function(key) return self.config.position[key] end,
+		function(key) return self:GetPosition()[key] end,
 		function(key, value)
-			self.config.position[key] = value
+			local position = self:GetPosition()
+			position[key] = value
+			self.config.position = position
 			self:ApplyHolder()
 		end,
 		function() return self.holder end,

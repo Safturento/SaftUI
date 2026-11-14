@@ -46,20 +46,13 @@ st.defaults.skinning = {
 -- Blizzard's objective tracker (Skinning/blizzard/Blizzard_ObjectiveTrackerPosition.lua
 -- and Blizzard_ObjectiveTracker.lua). font is its quest titles', objectives' and bar
 -- texts' font and header_font its headers', while the skin is on. position is the
--- holder the tracker's top right corner hangs from: where Blizzard's default puts
--- it, in the right column 260 below the screen's top (275 on Forever, whose tracker
--- sits 15 lower in it), and the screen edge margin in from the right, so first
--- load pushes nothing.
+-- holder the tracker's top right corner hangs from. It has no default: AceDB fills in
+-- defaults, so one couldn't be told apart from a position the user set. With none the
+-- holder is at Blizzard's default spot, and a tracker the player moved in Blizzard's
+-- Edit Mode gives the profile its spot on first load, so first load pushes nothing.
 st.defaults.objectivetracker = {
 	font = 'normal',
 	header_font = 'normal',
-	position = {
-		point = 'TOPRIGHT',
-		frame = 'UIParent',
-		rel_point = 'TOPRIGHT',
-		x_off = -st.CLAMP_INSET,
-		y_off = st.forever and -275 or -260,
-	},
 }
 
 -- Forever's swing timer bars (SaftUI-Misc/Skinning/blizzard/Blizzard_SwingTimerPosition.lua).

@@ -88,6 +88,14 @@ local function box_of(frame)
 	return #children == 1 and children[1] or nil, #children
 end
 
+-- No error, and nothing of Blizzard's state-writing Lua (MarkDirty, Update,
+-- SetCollapsed, UpdateHeight) run from SaftUI's code, which would run the
+-- tracker's layout tainted (.agents/taint.md rule 5).
+local function clean()
+	eq(#take_errors(), 0, 'no errors')
+	eq(table.concat(OT.stray, ','), '', "SaftUI ran none of the tracker's state-writing methods")
+end
+
 local function rgb(fs) return T.rgb(fs:GetTextColor()) end
 
 local QUESTS = {
@@ -141,6 +149,10 @@ end
 
 local function check_header_blizzard(header, where)
 	check(header.Background:IsShown(), where .. ": Blizzard's banner back")
+	if header.Shine then
+		check(header.Shine:IsShown(), where .. ": a module header's Shine back")
+		check(header.Glow:IsShown(), where .. ": a module header's Glow back")
+	end
 	eq(header.Text:GetFontObject(), ObjectiveTrackerHeaderFont, where .. ": the title in Blizzard's font")
 	eq(rgb(header.Text), T.rgb(1, 0.82, 0), where .. ": in Blizzard's color")
 	for _, region in ipairs(own_regions(header)) do
@@ -205,6 +217,22 @@ local function check_stock_bar_blizzard(status, label, where)
 	eq(label:GetFontObject(), GameFontHighlightMedium, where .. ": its text in Blizzard's font")
 end
 
+-- A bonus objective or scenario bar under Blizzard's look: its frame art
+-- unfaded, its flash textures and flares shown again, the reward icon as ever.
+local function check_bonus_bar_blizzard(bar, where)
+	local status = bar.Bar
+	eq(status.BarFrame:GetAlpha(), 1, where .. ": the bar's frame art back")
+	eq(status.BarBG:GetAlpha(), 1, where .. ': its background back')
+	for _, key in ipairs({ 'BarFrame2', 'BarFrame3', 'BarGlow', 'Sheen', 'Starburst' }) do
+		check(status[key]:IsShown(), where .. ': ' .. key .. ' shown again')
+	end
+	for _, key in ipairs(OT.FLARES) do check(bar[key]:IsShown(), where .. ': ' .. key .. ' shown again') end
+	check(status.Icon:IsShown() and status.IconBG:IsShown(), where .. ': the reward icon and its ring still shown')
+	eq(status:GetStatusBarTexture():GetTexture(), OT.BAR_TEXTURE, where .. ": Blizzard's bar texture back")
+	eq(status.Label:GetFontObject(), GameFontHighlightMedium, where .. ": its text in Blizzard's font")
+	eq(drawn(status), 'none,theme,bar', where .. ': and its backdrop cleared')
+end
+
 local function crop()
 	local trim = profile.misc.icon_trim
 	return T.text(trim, 1 - trim, trim, 1 - trim)
@@ -234,6 +262,12 @@ local function check_item(button, inset, where)
 	if hovers[1] then
 		eq(hovers[1]:GetDrawLayer(), 'HIGHLIGHT', where .. ': shown under the mouse only')
 		check(hovers[1]:IsShown(), where .. ': the hover is on')
+		eq(hovers[1]:GetAlpha(), 1, where .. ': the hover shows (its alpha is not Blizzard\'s faded art\'s)')
+	end
+	local highlight = button:GetHighlightTexture()
+	check(OT.is_blizzard(highlight), where .. ": the button's highlight texture is still Blizzard's, not SaftUI's hover")
+	if hovers[1] then
+		check(highlight ~= hovers[1], where .. ': and the hover is not it')
 	end
 	eq(button.Count:GetFontObject(), st:GetFont(profile.skinning.font), where .. ': the count in the Skinning font')
 end
@@ -256,7 +290,7 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 	test(client .. ': every header restyled, its collapse button a small box with a chevron', function()
 		world(client)
 		for _, h in ipairs(headers()) do check_header(h[1], h[2]) end
-		eq(#take_errors(), 0, 'no errors')
+		clean()
 	end)
 
 	test(client .. ": a block's title and lines take the font before Blizzard measures them", function()
@@ -268,7 +302,7 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		local scenario = OT.modules.ScenarioObjectiveTracker
 		local line = scenario.ObjectivesBlock:AddObjective(1, 'Defeat the boss')
 		eq(OT.measured[line.Text], font, 'the scenario objective measured in the font')
-		eq(#take_errors(), 0, 'no errors')
+		clean()
 	end)
 
 	test(client .. ': progress bars, timer bars and quest item buttons', function()
@@ -310,7 +344,7 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 			eq(drawn(status), 'theme,theme,bar', name .. ': drawn as a bar')
 			eq(status.Label:GetFontObject(), st:GetFont(profile.objectivetracker.font), name .. ': its text in the font')
 		end
-		eq(#take_errors(), 0, 'no errors')
+		clean()
 	end)
 
 	test(client .. ': a collapse button follows its header, by a click or by Blizzard', function()
@@ -320,13 +354,13 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		stub.click(header.MinimizeButton)
 		check(quest_module():IsCollapsed(), 'the click collapses the module')
 		for _, icon in ipairs(icons) do eq(icon:GetTexture(), st.icons.chevronDown, 'the chevron points down') end
-		quest_module():SetCollapsed(false)
+		OT.as_blizzard(quest_module().SetCollapsed, quest_module(), false)
 		for _, icon in ipairs(icons) do eq(icon:GetTexture(), st.icons.chevronUp, 'and up again') end
-		OT.tracker:SetCollapsed(true)
+		OT.as_blizzard(OT.tracker.SetCollapsed, OT.tracker, true)
 		for _, icon in ipairs(own_regions(OT.tracker.Header.MinimizeButton)) do
 			eq(icon:GetTexture(), st.icons.chevronDown, "the tracker's own chevron follows it")
 		end
-		eq(#take_errors(), 0, 'no errors')
+		clean()
 	end)
 
 	test(client .. ': the theme switch both ways', function()
@@ -336,9 +370,14 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		local bar = block.lastRegion
 		local item = block.rightEdgeFrame
 		local font = st:GetFont(profile.objectivetracker.font)
+		local bonus = {}
+		for _, name in ipairs({ 'BonusObjectiveTracker', 'ScenarioObjectiveTracker' }) do
+			bonus[name] = OT.layout(OT.modules[name], { { id = 5, objectives = { 'Clear the area' }, progress = true } })[1].lastRegion
+		end
 
 		switch('blizzard')
 		for _, h in ipairs(headers()) do check_header_blizzard(h[1], h[2] .. ', Blizzard') end
+		for name, done in pairs(bonus) do check_bonus_bar_blizzard(done, name .. ', Blizzard') end
 		check_texts(block, ObjectiveTrackerLineFont, 'Blizzard', true)
 		check_stock_bar_blizzard(bar.Bar, bar.Bar.Label, 'the bar, Blizzard')
 		check_item_blizzard(item, 'the item, Blizzard')
@@ -359,12 +398,20 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		check_texts(block, font, 'Thick again, laid out again')
 		check_item(item, 2, 'the item, Thick again')
 		check_stock_bar(bar.Bar, bar.Bar.Label, 'the bar, Thick again')
+		for name, done in pairs(bonus) do
+			check(not done.Bar.BarFrame2:IsShown() and not done.Bar.Sheen:IsShown() and not done.FullBarFlare1:IsShown(),
+				name .. ': its flash art and flares hidden again, Thick again')
+			eq(done.Bar.BarFrame:GetAlpha(), 0, name .. ': its frame art faded again')
+		end
+		for _, h in ipairs(headers()) do
+			if h[1].Shine then check(not h[1].Shine:IsShown() and not h[1].Glow:IsShown(), h[2] .. ': Shine and Glow hidden again') end
+		end
 
 		switch('thin')
 		check_item(item, 1, 'the item, Thin')
 		check(box_of(bar.Bar) ~= nil, 'the bar keeps its backdrop under Thin')
 		eq(T.offset(box_of(bar.Bar), 'TOPLEFT'), '-1.00,1.00', "Thin's border outside the bar")
-		eq(#take_errors(), 0, 'no errors')
+		clean()
 	end)
 
 	test(client .. ': off at load: nothing hooked, everything Blizzard\'s; then on and off live', function()
@@ -376,9 +423,13 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 				return real(tbl, ...)
 			end
 		end })
+		-- A profile change or the page re-applying the skins while it's off
+		-- hooks nothing either.
+		skin:UpdateConfig()
+		SK:UpdateConfig()
 		local blocks = OT.layout(quest_module(), { { id = 1, objectives = { 'One' }, progress = true, item = 3 } })
 		hooksecurefunc = real
-		eq(hooked, 0, "nothing of Blizzard's is hooked")
+		eq(hooked, 0, "nothing of Blizzard's is hooked, at load or by UpdateConfig")
 		local block = blocks[1]
 		eq(block.HeaderText:GetFontObject(), ObjectiveTrackerLineFont, "the title keeps Blizzard's font")
 		eq(#own_children(block.rightEdgeFrame), 0, 'nothing of SaftUI\'s on the item button')
@@ -396,9 +447,27 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		check_header_blizzard(OT.tracker.Header, 'off live')
 		check_texts(block, ObjectiveTrackerLineFont, 'off live', true)
 		check_item_blizzard(block.rightEdgeFrame, 'the item, off live')
-		eq(#take_errors(), 0, 'no errors')
+		clean()
 	end)
 end
+
+test("SaftUI reads no size of the tracker or its modules, whatever it restyles", function()
+	world('forever', { before = function() OT.watch_size() end })
+	local QUEST = { { id = 1, objectives = { 'One', 'Two' }, progress = true, item = 3 } }
+	OT.layout(quest_module(), QUEST)
+	OT.layout(OT.modules.BonusObjectiveTracker, { { id = 2, objectives = { 'Two' }, progress = true } })
+	switch('blizzard')
+	switch('thick')
+	profile.objectivetracker.font = 'pixel'
+	skin:UpdateConfig()
+	OT.layout(quest_module(), QUEST)
+	local reads = {}
+	for _, form in ipairs({ 'plain', 'ignore' }) do
+		for name, count in pairs(OT.size_reads[form]) do reads[#reads + 1] = form .. ' ' .. name .. '=' .. count end
+	end
+	eq(table.concat(reads, ','), '', 'no GetWidth, GetHeight or GetSize on the tracker or a module')
+	clean()
+end)
 
 test('a pooled block handed out again is hooked once and stays styled', function()
 	world('forever')
@@ -421,7 +490,7 @@ test('a pooled block handed out again is hooked once and stays styled', function
 	local _, boxes = box_of(item)
 	eq(boxes, 1, 'one backdrop on it')
 	eq(#own_regions(item), 1, 'one hover on it')
-	eq(#take_errors(), 0, 'no errors')
+	clean()
 end)
 
 test('in combat: everything is styled with nothing blocked; a protected item button waits', function()
@@ -436,7 +505,7 @@ test('in combat: everything is styled with nothing blocked; a protected item but
 	eq(#stub.blocked, 0, 'nothing blocked')
 
 	stub.in_combat = false
-	eq(#take_errors(), 0, 'no errors')
+	clean()
 
 	-- The worst case: item buttons the game counts as protected, made in combat.
 	world('forever', { build = { protect_items = true } })
@@ -449,7 +518,7 @@ test('in combat: everything is styled with nothing blocked; a protected item but
 	stub.in_combat = false
 	stub.fire_event('PLAYER_REGEN_ENABLED')
 	check_item(item, 2, 'the protected button, after combat')
-	eq(#take_errors(), 0, 'no errors')
+	clean()
 end)
 
 test("the tracker's fonts on its page reach every text at once", function()
@@ -463,7 +532,7 @@ test("the tracker's fonts on its page reach every text at once", function()
 	check_texts(block, st:GetFont('pixel'), 'the font changed, laid out again')
 	eq(OT.tracker.Header.Text:GetFontObject(), st:GetFont('pixel_med'), 'the header font changed')
 	eq(block.lastRegion.Bar.Label:GetFontObject(), st:GetFont('pixel'), "the bar's text too")
-	eq(#take_errors(), 0, 'no errors')
+	clean()
 end)
 
 test('the addon loading after SaftUI', function()
@@ -474,7 +543,7 @@ test('the addon loading after SaftUI', function()
 	check_header(OT.tracker.Header, 'loaded late')
 	local block = OT.layout(quest_module(), QUESTS)[1]
 	check_texts(block, st:GetFont(profile.objectivetracker.font), 'loaded late')
-	eq(#take_errors(), 0, 'no errors')
+	clean()
 end)
 
 test("an error in a hook is reported, and Blizzard's layout goes on", function()

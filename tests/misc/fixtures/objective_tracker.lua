@@ -78,8 +78,23 @@
 
 	Every Blizzard frame and region here is locked once built
 	(lib/locked_widget.lua), so a skin that writes a field onto one, or
-	SetScripts one, fails. The fixture's own writes (Blizzard's) use rawset.
-	OT.is_blizzard(widget) tells them from the frames and textures SaftUI made.
+	SetScripts one, fails. Blizzard's plain tables are locked too (each module's
+	questItemButtonSettings, usedBlocks and its per-template tables,
+	usedProgressBars, usedTimerBars, usedRightEdgeFrames, and each block's
+	usedLines): a key written into one fails. The fixture's own writes
+	(Blizzard's) use rawset. OT.is_blizzard(widget) tells them from the frames
+	and textures SaftUI made.
+
+	The tracker and every module have MarkDirty, Update, SetCollapsed and
+	UpdateHeight, Blizzard's state-writing Lua, which SaftUI must never call.
+	The drivers below (and OT.as_blizzard(fn, ...), for a test standing in for
+	Blizzard, and a header button's click) run Blizzard's own calls; one made
+	outside them is SaftUI's, and is listed in OT.stray ('tracker:UpdateHeight').
+
+	OT.watch_size() counts the size reads on the tracker and every module, by
+	form: OT.size_reads.plain['GetHeight'] and OT.size_reads.ignore['GetHeight']
+	(GetWidth, GetHeight and GetSize with ignoreRect true, which skips the rect
+	resolve that could run a pending OnSizeChanged inside the caller).
 
 	Not built: the quest log and its events, the dirty updates and the
 	container's module stacking, heights (every text measures 12), POI and
@@ -92,6 +107,39 @@ local lock_widget = load_test_file('lib/locked_widget.lua')
 local OWNER = 'Blizzard objective tracker'
 
 local OT = {}
+OT.stray = {}
+
+-- Blizzard's own call chains: while one runs, a call of its state-writing
+-- methods is Blizzard's, not SaftUI's. Depth, as drivers call each other.
+local driving = 0
+local function drive(fn, ...)
+	driving = driving + 1
+	local results = { pcall(fn, ...) }
+	driving = driving - 1
+	if not results[1] then error(results[2], 0) end
+	return unpack(results, 2, table.maxn(results))
+end
+OT.as_blizzard = drive
+
+-- Wraps frame[name] so a call from outside Blizzard's drivers is recorded.
+local function guard(frame, label, name)
+	local fn = frame[name]
+	rawset(frame, name, function(self, ...)
+		if driving == 0 then OT.stray[#OT.stray + 1] = label .. ':' .. name end
+		return fn(self, ...)
+	end)
+end
+local GUARDED = { 'MarkDirty', 'Update', 'SetCollapsed', 'UpdateHeight' }
+
+-- A plain table of Blizzard's, locked: a key written into it errors. The
+-- fixture's own writes use rawset.
+local function lock_table(t, what)
+	return setmetatable(t, {
+		__newindex = function(_, key)
+			error(('skin wrote key "%s" into Blizzard\'s %s'):format(tostring(key), what), 2)
+		end,
+	})
+end
 
 -- Every frame and region of Blizzard's built here, locked.
 local blizzard = setmetatable({}, { __mode = 'k' })
@@ -214,7 +262,7 @@ local function header(parent, kind)
 	-- calls the header's.
 	button:SetScript('OnClick', function()
 		local owner = frame:GetParent()
-		owner:SetCollapsed(not owner:IsCollapsed())
+		drive(owner.SetCollapsed, owner, not owner:IsCollapsed())
 	end)
 	frame:SetCollapsed(false)
 	lock_all(button)
@@ -284,7 +332,7 @@ end
 local BLOCK = {}
 
 function BLOCK:Init()
-	rawset(self, 'usedLines', {})
+	rawset(self, 'usedLines', lock_table({}, 'block.usedLines'))
 	rawset(self, 'rightEdgeOffset', 0)
 end
 
@@ -309,7 +357,7 @@ function BLOCK:GetLine(objectiveKey, optTemplate)
 		line:SetParent(self)
 		line:Show()
 	end
-	self.usedLines[objectiveKey] = line
+	rawset(self.usedLines, objectiveKey, line)
 	rawset(line, 'objectiveKey', objectiveKey)
 	rawset(line, 'parentBlock', self)
 	rawset(line, 'used', true)
@@ -563,6 +611,12 @@ function MODULE:SetCollapsed(collapsed)
 	self.Header:SetCollapsed(collapsed)
 end
 
+-- ObjectiveTrackerModuleMixin's state writers, as far as the fixture goes: only
+-- a call from SaftUI matters (OT.stray).
+function MODULE:MarkDirty() rawset(self, 'dirty', true) end
+function MODULE:Update() rawset(self, 'updated', true) end
+function MODULE:UpdateHeight() rawset(self, 'heightUpdated', true) end
+
 function MODULE:AcquireFrame(template)
 	local frame, isNew = acquire(template)
 	secure(frame.SetParent, frame, self.ContentsFrame)
@@ -571,14 +625,16 @@ end
 
 function MODULE:GetBlock(id, optTemplate)
 	local template = optTemplate or self.blockTemplate
-	self.usedBlocks[template] = self.usedBlocks[template] or {}
+	if not self.usedBlocks[template] then
+		rawset(self.usedBlocks, template, lock_table({}, 'module.usedBlocks[template]'))
+	end
 	local block = self.usedBlocks[template][id]
 	if not block then
 		local isNew
 		block, isNew = self:AcquireFrame(template)
 		rawset(block, 'parentModule', self)
 		if isNew then block:Init() end
-		self.usedBlocks[template][id] = block
+		rawset(self.usedBlocks[template], id, block)
 		rawset(block, 'id', id)
 	end
 	block:Reset()
@@ -593,7 +649,7 @@ function MODULE:GetProgressBar(key)
 	local bar = self.usedProgressBars[key]
 	if not bar then
 		bar = self:AcquireFrame(self.progressBarTemplate)
-		self.usedProgressBars[key] = bar
+		rawset(self.usedProgressBars, key, bar)
 		bar:Show()
 	end
 	rawset(bar, 'used', true)
@@ -604,7 +660,7 @@ function MODULE:GetTimerBar(key)
 	local bar = self.usedTimerBars[key]
 	if not bar then
 		bar = self:AcquireFrame('ObjectiveTrackerTimerBarTemplate')
-		self.usedTimerBars[key] = bar
+		rawset(self.usedTimerBars, key, bar)
 		bar:Show()
 	end
 	rawset(bar, 'used', true)
@@ -617,7 +673,7 @@ function MODULE:GetRightEdgeFrame(settings, identifier)
 	if not frame then
 		frame = self:AcquireFrame(settings.template)
 		secure(frame.Show, frame)
-		self.usedRightEdgeFrames[key] = frame
+		rawset(self.usedRightEdgeFrames, key, frame)
 	end
 	rawset(frame, 'used', true)
 	return frame
@@ -646,14 +702,16 @@ local function module(name, tracker)
 	rawset(frame, 'blockTemplate', 'ObjectiveTrackerBlockTemplate')
 	rawset(frame, 'lineTemplate', 'ObjectiveTrackerLineTemplate')
 	rawset(frame, 'progressBarTemplate', 'ObjectiveTrackerProgressBarTemplate')
-	rawset(frame, 'questItemButtonSettings', { template = OT.ITEM_TEMPLATE, offsetX = 0, offsetY = 0 })
+	rawset(frame, 'questItemButtonSettings', lock_table({ template = OT.ITEM_TEMPLATE, offsetX = 0, offsetY = 0 },
+		'module.questItemButtonSettings'))
 	for key, value in pairs(SETTINGS[name] or {}) do rawset(frame, key, value) end
 	rawset(frame, 'isCollapsed', false)
-	rawset(frame, 'usedBlocks', {})
-	rawset(frame, 'usedProgressBars', {})
-	rawset(frame, 'usedTimerBars', {})
-	rawset(frame, 'usedRightEdgeFrames', {})
+	rawset(frame, 'usedBlocks', lock_table({}, 'module.usedBlocks'))
+	rawset(frame, 'usedProgressBars', lock_table({}, 'module.usedProgressBars'))
+	rawset(frame, 'usedTimerBars', lock_table({}, 'module.usedTimerBars'))
+	rawset(frame, 'usedRightEdgeFrames', lock_table({}, 'module.usedRightEdgeFrames'))
 	for key, fn in pairs(MODULE) do rawset(frame, key, fn) end
+	for _, name in ipairs(GUARDED) do guard(frame, 'module ' .. frame:GetName(), name) end
 	if name == 'ScenarioObjectiveTracker' then
 		-- Its fixed ObjectivesBlock (an ObjectiveTrackerBlockTemplate, Init
 		-- and Reset in InitModule).
@@ -681,6 +739,11 @@ function TRACKER:SetCollapsed(collapsed)
 	self.Header:SetCollapsed(collapsed)
 end
 
+-- ObjectiveTrackerContainerMixin:MarkDirty (what its OnSizeChanged runs) and
+-- Update, as far as the fixture goes.
+function TRACKER:MarkDirty() rawset(self, 'dirty', true) end
+function TRACKER:Update() rawset(self, 'updated', true) end
+
 -- ObjectiveTrackerContainerMixin:UpdateHeight.
 function TRACKER:UpdateHeight()
 	if not self:IsInDefaultPosition() then
@@ -698,6 +761,8 @@ function OT.build(opts)
 	OT.made, OT.measured, OT.used, OT.recorded = {}, setmetatable({}, { __mode = 'k' }), {}, nil
 	OT.protect_items = opts.protect_items
 	OT.calls = { SetPoint = 0, ClearAllPoints = 0 }
+	OT.stray = {}
+	OT.size_reads = nil
 	for key in pairs(pools) do pools[key] = nil end
 
 	local container = CreateFrame('Frame', 'RightManagedFrameContainer', UIParent)
@@ -725,6 +790,7 @@ function OT.build(opts)
 	rawset(tracker, 'editModeHeight', opts.height)
 	rawset(tracker, 'anchorInfo', opts.moved)
 	for key, fn in pairs(TRACKER) do rawset(tracker, key, fn) end
+	for _, name in ipairs(GUARDED) do guard(tracker, 'tracker', name) end
 	-- Edit Mode's overrides (SetPointOverride, ClearAllPointsOverride), which
 	-- addon code must never call. Blizzard's code calls them, as secure code.
 	local methods = getmetatable(tracker).__index
@@ -761,59 +827,83 @@ end
 
 -- ManageRightFrameContainer, then the tracker's height (ManageFramePositions).
 function OT.manage(x)
-	local container = OT.container
-	secure(function()
-		container:ClearAllPoints()
-		container:SetPoint('TOPRIGHT', UIParent, 'TOPRIGHT', x or -5, OT.CONTAINER_TOP)
-		container:SetHeight(UIParent:GetHeight() - OT.MINIMAP - 100)
+	return drive(function()
+		local container = OT.container
+		secure(function()
+			container:ClearAllPoints()
+			container:SetPoint('TOPRIGHT', UIParent, 'TOPRIGHT', x or -5, OT.CONTAINER_TOP)
+			container:SetHeight(UIParent:GetHeight() - OT.MINIMAP - 100)
+		end)
+		container:Layout()
+		if OT.tracker:IsShown() then OT.tracker:UpdateHeight() end
 	end)
-	container:Layout()
-	if OT.tracker:IsShown() then OT.tracker:UpdateHeight() end
 end
 
 -- The tracker showing in its default position: ManagedFrameMixin:OnShow,
 -- AddManagedFrame, UpdateFrame.
 function OT.show()
-	local tracker = OT.tracker
-	if not tracker:IsInDefaultPosition() then return end
-	tracker:ClearAllPoints()
-	secure(tracker.SetParent, tracker, OT.container)
-	OT.container:Layout()
-	tracker:UpdateHeight()
+	return drive(function()
+		local tracker = OT.tracker
+		if not tracker:IsInDefaultPosition() then return end
+		tracker:ClearAllPoints()
+		secure(tracker.SetParent, tracker, OT.container)
+		OT.container:Layout()
+		tracker:UpdateHeight()
+	end)
 end
 
 -- An Edit Mode layout apply (EditModeSystemMixin:ApplySystemAnchor).
 function OT.apply_layout()
-	local tracker = OT.tracker
-	if tracker:IsInDefaultPosition() then
-		OT.show()
-		return
-	end
-	secure(tracker.SetParent, tracker, UIParent)
-	tracker:ClearAllPoints()
-	local a = tracker.anchorInfo
-	tracker:SetPoint(a.point, UIParent, a.relativePoint, a.offsetX, a.offsetY)
-	tracker:UpdateHeight()
+	return drive(function()
+		local tracker = OT.tracker
+		if tracker:IsInDefaultPosition() then
+			OT.show()
+			return
+		end
+		secure(tracker.SetParent, tracker, UIParent)
+		tracker:ClearAllPoints()
+		local a = tracker.anchorInfo
+		tracker:SetPoint(a.point, UIParent, a.relativePoint, a.offsetX, a.offsetY)
+		tracker:UpdateHeight()
+	end)
+end
+
+-- Blizzard's Edit Mode moving the tracker (a layout apply naming a spot for
+-- it): it leaves its default position and is placed at anchor, { point,
+-- relativePoint, offsetX, offsetY } on UIParent.
+function OT.edit_mode_moves(anchor)
+	return drive(function()
+		rawset(OT.tracker, 'anchorInfo', anchor)
+		OT.tracker.systemInfo.isInDefaultPosition = false
+		OT.apply_layout()
+	end)
 end
 
 -- A snap break (BreakFrameSnap: the tracker put at its own top left on
 -- UIParent, then OnSystemPositionChange recording its first point, which a
 -- layout save keeps, and leaving its default position).
 function OT.break_snap()
-	local tracker = OT.tracker
-	local top, left = tracker:GetTop(), tracker:GetLeft()
-	tracker:ClearAllPoints()
-	tracker:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', left, top - UIParent:GetHeight())
-	local point, relativeTo, relativePoint, x, y = tracker:GetPoint(1)
-	OT.recorded = { point = point, relativeTo = relativeTo and relativeTo:GetName(), relativePoint = relativePoint, x = x, y = y }
-	tracker.systemInfo.isInDefaultPosition = false
-	rawset(tracker, 'anchorInfo', { point = point, relativePoint = relativePoint, offsetX = x, offsetY = y })
+	return drive(function()
+		local tracker = OT.tracker
+		local top, left = tracker:GetTop(), tracker:GetLeft()
+		tracker:ClearAllPoints()
+		tracker:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', left, top - UIParent:GetHeight())
+		local point, relativeTo, relativePoint, x, y = tracker:GetPoint(1)
+		OT.recorded = { point = point, relativeTo = relativeTo and relativeTo:GetName(), relativePoint = relativePoint, x = x, y = y }
+		tracker.systemInfo.isInDefaultPosition = false
+		rawset(tracker, 'anchorInfo', { point = point, relativePoint = relativePoint, offsetX = x, offsetY = y })
+	end)
 end
 
 -- A module's layout (BeginLayout, LayoutContents, EndLayout). quests: a list
 -- of { id, title, objectives = { text, ... }, progress = true, timer = true,
 -- item = questLogIndex }. Returns the blocks, in order.
+local layout_inner
 function OT.layout(module, quests)
+	return drive(layout_inner, module, quests)
+end
+
+function layout_inner(module, quests)
 	for _, blocks in pairs(module.usedBlocks) do
 		for _, block in pairs(blocks) do rawset(block, 'used', nil) end
 	end
@@ -857,6 +947,25 @@ function OT.layout(module, quests)
 	end
 	module:Show()
 	return out
+end
+
+-- Counts the size reads on the tracker and every module from now on, by form
+-- (see the top of this file). Call it after OT.build.
+function OT.watch_size()
+	local counts = { plain = {}, ignore = {} }
+	OT.size_reads = counts
+	local frames = { OT.tracker }
+	for _, name in ipairs(OT.MODULES) do frames[#frames + 1] = OT.modules[name] end
+	for _, frame in ipairs(frames) do
+		for _, name in ipairs({ 'GetWidth', 'GetHeight', 'GetSize' }) do
+			local read = frame[name]
+			rawset(frame, name, function(self, ignoreRect, ...)
+				local form = ignoreRect and counts.ignore or counts.plain
+				form[name] = (form[name] or 0) + 1
+				return read(self, ignoreRect, ...)
+			end)
+		end
+	end
 end
 
 -- Every frame the pools made with template, in the order made.
