@@ -538,3 +538,64 @@ test('the check list buttons are on whole pixels and centred, under each look an
 	stub.size_noise = 0
 	theme('thick')
 end)
+
+------------------------------------------------------------------ captions and disabled entries
+
+test('a list with captions and disabled entries: a caption takes no click and no hover, a disabled entry no pick', function()
+	for _, look in ipairs({ 'thick', 'blizzard' }) do
+		theme(look)
+		local owner = CreateFrame('Button', nil, parent)
+		owner:SetSize(200, 26); owner:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+		local picked = {}
+		W.OpenList(owner, {
+			{ caption = true, label = 'Frames' }, { key = 'a', label = 'A' }, { key = 'b', label = 'B', disabled = true },
+		}, 'a', function(key) picked[#picked + 1] = key end)
+		local list = W.GetListFrames()
+		local rows = list.rows
+		local grey = string.format('%.2f,%.2f,%.2f', st.config.profile.colors.text.grey.r, st.config.profile.colors.text.grey.g, st.config.profile.colors.text.grey.b)
+		local blue = string.format('%.2f,%.2f,%.2f', st.config.profile.colors.text.blue.r, st.config.profile.colors.text.blue.g, st.config.profile.colors.text.blue.b)
+		local function color(r) return string.format('%.2f,%.2f,%.2f', r.text:GetTextColor()) end
+		eq(rows[1].text:GetText(), 'Frames', look .. ': the caption')
+		eq(color(rows[1]), grey, look .. ': a caption is grey'); eq(color(rows[2]), blue, look .. ': the picked entry blue')
+		stub.fire_script(rows[1], 'OnEnter', true)
+		check(not rows[1].hover:IsShown(), look .. ': a caption shows no hover')
+		stub.fire_script(rows[1], 'OnLeave', true)
+		click(rows[1])
+		eq(W.ListOwner(), owner, look .. ': a caption click keeps the list open'); eq(#picked, 0, 'and picks nothing')
+		eq(rows[3]:GetAlpha(), 0.4, look .. ': a disabled entry is dim'); eq(rows[2]:GetAlpha(), 1); eq(rows[1]:GetAlpha(), 1)
+		stub.fire_script(rows[3], 'OnEnter', true)
+		check(not rows[3].hover:IsShown(), look .. ': a disabled entry shows no hover')
+		stub.fire_script(rows[3], 'OnLeave', true)
+		click(rows[3])
+		eq(#picked, 0, look .. ': a disabled entry is not picked'); eq(W.ListOwner(), owner, 'the list stays')
+		stub.fire_script(rows[2], 'OnEnter', true)
+		check(rows[2].hover:IsShown(), look .. ': an ordinary row lights')
+		stub.fire_script(rows[2], 'OnLeave', true)
+		click(rows[2])
+		eq(table.concat(picked, ','), 'a', look .. ': a pick runs'); eq(W.ListOwner(), nil, 'and closes')
+		-- The rows are shared: a plain list afterwards draws them whole again.
+		W.OpenList(owner, { { key = 'x', label = 'X' }, { key = 'y', label = 'Y' }, { key = 'z', label = 'Z' } }, 'x', function() end)
+		eq(rows[3]:GetAlpha(), 1, look .. ': a row is whole again'); eq(color(rows[1]), blue)
+		W.CloseList()
+	end
+	theme('thick')
+end)
+
+test("a caption is drawn in the group font like the sidebar's headings, and a scroll that puts one under the mouse unlights it", function()
+	theme('thick')
+	local owner = CreateFrame('Button', nil, parent)
+	owner:SetSize(200, 26); owner:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+	local entries = {}
+	for i = 1, 12 do entries[i] = { key = 'k' .. i, label = 'Entry ' .. i } end
+	entries[13] = { caption = true, label = 'Heading' }
+	W.OpenList(owner, entries, nil, function() end)
+	local list = W.GetListFrames()
+	stub.fire_script(list.rows[12], 'OnEnter', true)
+	check(list.rows[12].hover:IsShown(), 'row 12 is lit')
+	stub.fire_script(list.frame, 'OnMouseWheel', -1)
+	eq(list.rows[12].text:GetText(), 'Heading', 'the scroll put the caption in that row')
+	check(not list.rows[12].hover:IsShown(), 'and it is not lit')
+	eq(list.rows[12].text:GetFontObject(), st.OptionsBody.Font('group'), "in the sidebar headings' font")
+	check(list.rows[11].text:GetFontObject() ~= st.OptionsBody.Font('group'), 'a page keeps the field font')
+	W.CloseList()
+end)

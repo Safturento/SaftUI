@@ -310,4 +310,4 @@ function AB:ToggleKeybindMode()
 	end
 end
 
-st.Config:AddCommand('kb', 'Keybind mode', function() AB:ToggleKeybindMode() end)
+st.Config:AddCommand('kb', 'Keybind mode', function() AB:ToggleKeybindMode() end, st.icons.keyboard)

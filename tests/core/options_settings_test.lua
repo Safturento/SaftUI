@@ -1235,7 +1235,7 @@ test('collapsed under Blizzard: only the settings part of the inner frame, from 
 		eq(F.sideToggle:GetBottom(), F.closeButton:GetBottom(), client .. ': level with Close')
 		eq(panel_pieces(F.sideToggle), 3, client .. ": on Blizzard's panel button")
 		eq(F.sideToggle.icon:GetTexture(), st.icons.panelLeftClose, client .. ': the show icon')
-		eq(F.footerRegion:GetLeft(), F.sideToggle:GetRight() + 12, client .. ': the region 12 after it')
+		eq(F.footerRegion:GetLeft(), F.tools[#F.tools]:GetRight() + 12, client .. ': the region 12 after the last tool (Task 6)')
 		for _, noise in ipairs({ 2 ^ -14, -2 ^ -14, 0 }) do
 			stub.size_noise = noise
 			OW:Render()
@@ -1272,6 +1272,83 @@ test('collapsed under Blizzard: only the settings part of the inner frame, from 
 		stub.size_noise = 0
 		st.Config:Close()
 		st.config.global.optionsWindow = nil
+		eq(#take_errors(), 0, client .. ': no errors')
+	end
+end)
+
+test('collapsed under Blizzard: the footer tools on Blizzard panel buttons, the search panel and the page list on Blizzard art, clear of Reload UI, whole pixels', function()
+	local P = load_test_file('lib/pixels.lua')
+	for _, client in ipairs(CLIENTS) do
+		world(client)
+		CreateFrame('GameTooltip', 'GameTooltip', UIParent)
+		local ran = 0
+		st.Config:AddCommand('kb', 'Keybind mode', function() ran = ran + 1 end, st.icons.keyboard)
+		st.Config:AddCommand('two', 'Two', function() ran = ran + 1 end)
+		st.config.global.optionsWindow = nil
+		switch('blizzard'); st.Config:Open('Loot')
+		local F = OW.GetFrames()
+		local function panel_pieces(frame)
+			local n = 0
+			for _, region in ipairs({ frame:GetRegions() }) do
+				local file = region:GetObjectType() == 'Texture' and region:IsShown() and region:GetTexture()
+				if type(file) == 'string' and file:match('^Interface\\Buttons\\UI%-Panel%-Button%-%a+$') and not file:match('Highlight') then n = n + 1 end
+			end
+			return n
+		end
+		check(OW:SetSidebarShown(false), client .. ': collapsed')
+		eq(#F.tools, 4, client .. ': Search, Edit mode, two commands')
+		local function clear_of_neighbours(where)
+			eq(F.tools[1]:GetLeft(), F.sideToggle:GetRight() + 6, client .. where .. ': 6 after the toggle')
+			for i = 1, #F.tools do
+				eq(F.tools[i]:GetBottom(), F.sideToggle:GetBottom(), client .. where .. ': level with the toggle')
+				if i > 1 then eq(F.tools[i]:GetLeft(), F.tools[i - 1]:GetRight() + 6, client .. where .. ': 6 apart') end
+			end
+			check(F.tools[#F.tools]:GetRight() + 12 <= F.reloadButton:GetLeft() + 1e-3, client .. where .. ': the tools stop short of Reload UI: '
+				.. F.tools[#F.tools]:GetRight() .. ' vs ' .. F.reloadButton:GetLeft())
+		end
+		for i = 1, 4 do eq(panel_pieces(F.tools[i]), 3, client .. ": tool " .. i .. " on Blizzard's panel button") end
+		clear_of_neighbours(' W2')
+		stub.time = stub.time + 1
+		check(OW:SetWindowSize('half'), client .. ': half')
+		clear_of_neighbours(' W4')
+		for _, noise in ipairs({ 2 ^ -14, -2 ^ -14, 0 }) do
+			stub.size_noise = noise
+			OW:Render()
+			local off = P.off(F.window)
+			eq(#off, 0, client .. ' W4 tools noise ' .. noise .. ': ' .. P.report(off))
+			stub.fire_script(F.tools[1], 'OnClick', 'LeftButton')
+			check(F.searchPop:IsShown(), client .. ': the search panel opens')
+			off = P.off(F.window)
+			eq(#off, 0, client .. ' W4 search panel noise ' .. noise .. ': ' .. P.report(off))
+			stub.fire_script(F.tools[1], 'OnClick', 'LeftButton')
+			stub.fire_script(F.titleButton, 'OnClick', 'LeftButton')
+			eq(W.ListOwner(), F.titleButton, client .. ': the page list opens')
+			local list = W.GetListFrames()
+			check(list.skin ~= nil and list.skin:IsShown(), client .. ": on the Settings menu's art")
+			off = P.off(list.frame)
+			eq(#off, 0, client .. ' W4 page list noise ' .. noise .. ': ' .. P.report(off))
+			W.CloseList()
+		end
+		-- More commands, with and without icons: the rest are under the overflow
+		-- button, and nothing overlaps Reload UI or Close, at W4 and at W2.
+		st.Config:AddCommand('c3', 'Third', function() end, st.icons.search)
+		st.Config:AddCommand('c4', 'Fourth', function() end, st.icons.move)
+		st.Config:AddCommand('c5', 'Fifth', function() end)
+		for _, size in ipairs({ 'half', 'full' }) do
+			if size == 'full' then stub.time = stub.time + 1; check(OW:SetWindowSize('full'), client .. ': full') end
+			for _, noise in ipairs({ 2 ^ -14, -2 ^ -14, 0 }) do
+				stub.size_noise = noise
+				OW:Render()
+				clear_of_neighbours(' more commands ' .. size)
+				eq(F.tools[#F.tools].icon:GetTexture(), st.icons.ellipsis, client .. ': the overflow button last')
+				eq(panel_pieces(F.tools[#F.tools]), 3, client .. ": on Blizzard's panel button")
+				local off = P.off(F.window)
+				eq(#off, 0, client .. ' ' .. size .. ' with the overflow button, noise ' .. noise .. ': ' .. P.report(off))
+			end
+			stub.size_noise = 0
+		end
+		stub.size_noise = 0
+		st.Config:Close()
 		eq(#take_errors(), 0, client .. ': no errors')
 	end
 end)

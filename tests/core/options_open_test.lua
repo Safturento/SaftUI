@@ -44,7 +44,7 @@ end)
 
 test('the sidebar: commands, Global settings, Profiles, then the categories in order', function()
 	local ran = 0
-	st.Config:AddCommand('kb', 'Keybinds', function() ran = ran + 1 end)
+	st.Config:AddCommand('kb', 'Keybinds', function() ran = ran + 1 end, st.icons.keyboard)
 	st.Config:Open()
 	eq(keys(frames().actions, 'label'), 'Edit mode,Keybinds', 'Edit mode, then each AddCommand')
 	click(frames().actions[2])
@@ -57,6 +57,7 @@ test('the sidebar: commands, Global settings, Profiles, then the categories in o
 	check(st.Config:GetOptionsTable().topmenu == nil, 'no topmenu group any more')
 	eq(type(st.Config:GetCommands()), 'table', 'the commands, for the sidebar')
 	eq(st.Config:GetCommands()[1].label, 'Keybinds', 'as added')
+	eq(st.Config:GetCommands()[1].icon, st.icons.keyboard, 'with its icon')
 
 	-- Clicking an entry opens its page.
 	for _, item in ipairs(frames().nav) do

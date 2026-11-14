@@ -13,7 +13,7 @@ local W, OB = st.OptionsWidgets, st.OptionsBody
 local OW = st.OptionsWindow
 local S = OW.S
 
-local floor, min, ceil = math.floor, math.min, math.ceil
+local floor, min, max, ceil = math.floor, math.min, math.max, math.ceil
 local format = string.format
 
 -- The window's fonts and pieces (optionsbody.lua).
@@ -44,20 +44,24 @@ local HOVER = { 0.133, 0.133, 0.133, 1 } -- #222
 
 ------------------------------------------------------------------ the sidebar
 
+-- The sidebar's Edit mode button and the collapsed footer's (F.tools[2]) are
+-- on while edit mode is; the footer's Search is while a search is.
 local function UpdateEditModeButton()
-	local button = F.actions and F.actions[1]
-	if not button then return end
 	local EM = st.EditModeFrames
-	W.SetOn(button, (EM and EM.active) and true or false)
+	local on = (EM and EM.active) and true or false
+	local button = F.actions and F.actions[1]
+	if button then W.SetOn(button, on) end
+	local tool = F.tools and F.tools[2]
+	if tool then W.SetOn(tool, on) end
+	local search = F.tools and F.tools[1]
+	if search then W.SetOn(search, state.search ~= '') end
 end
 
 -- The search box (optionswindow.lua's), then under it Edit mode and every
 -- st.Config:AddCommand, two to a line. Under Blizzard the same, at the
 -- sidebar's top (the title bar names the window, so there is no brand).
 local function DrawActions()
-	F.search:ClearAllPoints()
-	F.search:SetPoint('TOPLEFT', F.actionsFrame, 'TOPLEFT', 12, -ACTION_PAD)
-	F.search:SetWidth(SEARCH_WIDTH)
+	S.PlaceSearch()
 	local top = ACTION_PAD + FIELD_HEIGHT + SEARCH_GAP
 	local list = { { label = 'Edit mode', func = function() st.EditModeFrames:Toggle() end } }
 	for _, command in ipairs(st.Config:GetCommands()) do list[#list + 1] = command end
@@ -167,6 +171,7 @@ local function MakeNavGroup()
 end
 
 local function DrawSidebar(entries)
+	S.pageEntries = entries -- the title's page list reads them (S.OpenPageList)
 	DrawActions()
 	ReleaseAll(pools.nav)
 	ReleaseAll(pools.group)
@@ -452,6 +457,265 @@ function OW:SetSidebarShown(shown)
 	S.sidebarAt = GetTime()
 	if window then self:Render() end
 	return true
+end
+
+------------------------------------------------------------------ with the sidebar collapsed
+
+--[[
+	What the sidebar offered moves while it is collapsed (S.sidebar == false;
+	Relayout, optionswindow.lua, draws them; none at the bar):
+
+	  - F.tools, in the footer in a line from the toggle, TOOL_GAP (6) apart,
+	    level with it (under Blizzard on Blizzard's panel button,
+	    W.LookControl):
+	      [1] Search, W.IconButton (search), whose click opens the search panel;
+	      [2] Edit mode (move), whose click is st.EditModeFrames:Toggle(),
+	      then each st.Config:AddCommand command with an icon, in order, as a
+	      W.IconButton (its label the title) while it fits before Reload UI
+	      with the footer's 12 gap. Every command that doesn't fit, and every
+	      one with no icon, is under one overflow button (ellipsis, "More"),
+	      last, which opens W.OpenList of their labels; a pick runs the
+	      command. The overflow button always fits (Search, Edit mode and it
+	      are the floor; the status line and the profile control have given
+	      way by then). Search is on (W.SetOn) while a search is, Edit mode while edit
+	      mode is (UpdateEditModeButton: edit mode's Enabled and Disabled, and
+	      every draw). S.DrawTools(room) places them and returns how far they
+	      reach from the toggle's right (the footer's region starts FOOTER_GAP
+	      after); room is what Relayout leaves them before Reload UI.
+	  - F.searchPop: the sidebar's own search box (F.search, moved into it by
+	    S.PlaceSearch) in a panel SEARCH_POP_PAD round it, a child of F.main 20
+	    levels up, its bottom left 6 over the Search icon's top left. The icon
+	    opens it with the keyboard in the box and closes it again; it closes
+	    when the box loses the keyboard (Enter, Esc) and on a mouse down
+	    anywhere else, through F.searchCatcher (a full-screen frame in the
+	    window's strata between the page and the panel, as the kit list's
+	    catcher: the click is the catcher's, so a click on the icon only
+	    closes it), and the search stays. The box goes back to the sidebar when that shows.
+	  - F.titleButton over the page's title and F.titleArrow (chevronDown, 16,
+	    Text > Grey, accent under the mouse) 8 after the title's text: the
+	    button opens the sidebar's pages as W.OpenList's list, groups as
+	    captions (OW.PageMenuEntries), and a pick goes where a click in the
+	    sidebar does (OW:Navigate). Hidden while the sidebar shows.
+]]
+
+local TOOL_GAP, SEARCH_POP_PAD, SEARCH_POP_GAP = 6, 8, 6
+local TITLE_ARROW, TITLE_ARROW_GAP = 16, 8
+S.TITLE_ARROW_ROOM = TITLE_ARROW + TITLE_ARROW_GAP -- the title's room less this while collapsed
+S.SEARCH_POP_WIDTH, S.SEARCH_POP_HEIGHT = SEARCH_WIDTH + 2 * SEARCH_POP_PAD, FIELD_HEIGHT + 2 * SEARCH_POP_PAD
+
+function S.ClosePop()
+	if F.searchPop then F.searchPop:Hide() end
+	if F.searchCatcher then F.searchCatcher:Hide() end
+end
+
+-- The search box in the sidebar's actions while that shows, else in the panel.
+function S.PlaceSearch()
+	local box = F.search
+	local collapsed = S.sidebar == false
+	local parent = collapsed and F.searchPop or F.actionsFrame
+	if box:GetParent() ~= parent then
+		box:SetParent(parent)
+		box:SetFrameLevel(parent:GetFrameLevel() + 1)
+	end
+	box:ClearAllPoints()
+	if collapsed then
+		box:SetPoint('TOPLEFT', parent, 'TOPLEFT', SEARCH_POP_PAD, -SEARCH_POP_PAD)
+	else
+		box:SetPoint('TOPLEFT', parent, 'TOPLEFT', 12, -ACTION_PAD)
+	end
+	box:SetWidth(SEARCH_WIDTH)
+end
+
+local function SearchTip()
+	if state.search ~= '' then
+		return 'Search settings', { format('Searching for "%s". Click to change it.', state.search) }
+	end
+	return 'Search settings', { 'Finds a setting by name, on any page.' }
+end
+
+local function EditModeTip()
+	return 'Edit mode', { "Drag and nudge SaftUI's frames. /sui edit does too." }
+end
+
+local function ToggleSearchPop()
+	if S.sidebar ~= false then return end
+	if F.searchPop:IsShown() then
+		S.ClosePop()
+		F.search:ClearFocus()
+		return
+	end
+	S.PlaceSearch()
+	F.searchCatcher:Show()
+	F.searchPop:Show()
+	F.search:SetFocus()
+end
+
+-- What the tools are made of (the commands, their icons and labels), to make
+-- them again if a command is added.
+function S.ToolsKey()
+	local parts = {}
+	for i, command in ipairs(st.Config:GetCommands()) do
+		parts[i] = format('%s|%s|%s', command.command, tostring(command.icon), tostring(command.label))
+	end
+	return table.concat(parts, ';')
+end
+
+-- A command's icon button, made once (F.commandTools, by command).
+local function CommandTool(command)
+	local tool = F.commandTools[command.command]
+	if not tool or tool.iconPath ~= command.icon then
+		tool = W.IconButton(F.footer, command.icon, function() return command.label end, TOGGLE_SIZE, TOGGLE_ICON)
+		tool.iconPath = command.icon
+		tool.onClick = function() command.func() end
+		F.commandTools[command.command] = tool
+	end
+	return tool
+end
+
+-- The overflow button's list: the commands that are not buttons, by label; a
+-- pick runs one.
+local function OpenOverflow(button)
+	local entries = {}
+	for i, command in ipairs(F.overflowCommands or {}) do entries[i] = { key = i, label = tostring(command.label) } end
+	W.OpenList(button, entries, nil, function(i)
+		local command = F.overflowCommands[i]
+		if command then command.func() end
+	end)
+end
+
+-- The footer's tools, placed and put in the look: shown only while the sidebar
+-- is collapsed. room is the width from the toggle's right to Reload UI's left
+-- less the gap (Relayout works it out): Search and Edit mode always, then each
+-- command with an icon, in order, while it fits (each TOOL_GAP and its width,
+-- keeping the overflow button's if anything is left over), and the rest, with
+-- the commands that have no icon, under the overflow button, last. Returns
+-- how far they reach right of the toggle.
+function S.DrawTools(room)
+	room = room or math.huge
+	local step = TOOL_GAP + TOGGLE_SIZE
+	if not F.search1 then
+		F.search1 = W.IconButton(F.footer, st.icons.search, SearchTip, TOGGLE_SIZE, TOGGLE_ICON)
+		F.search1.onClick = ToggleSearchPop
+		F.edit1 = W.IconButton(F.footer, st.icons.move, EditModeTip, TOGGLE_SIZE, TOGGLE_ICON)
+		F.edit1.onClick = function() st.EditModeFrames:Toggle() end
+		F.overflow1 = W.IconButton(F.footer, st.icons.ellipsis, function() return 'More' end, TOGGLE_SIZE, TOGGLE_ICON)
+		F.overflow1.onClick = OpenOverflow
+		F.commandTools = {}
+	end
+	local commands = st.Config:GetCommands()
+	local iconed, others = {}, 0
+	for _, command in ipairs(commands) do
+		if command.icon then iconed[#iconed + 1] = command else others = others + 1 end
+	end
+	-- How many icon commands fit: all of them if nothing else needs the
+	-- overflow button, else with its step kept.
+	local free = room - 2 * step
+	local fit = max(0, min(#iconed, floor(free / step)))
+	if fit < #iconed or others > 0 then fit = max(0, min(#iconed, floor((free - step) / step))) end
+	local shown = {}
+	for k = 1, fit do shown[iconed[k]] = true end
+	F.overflowCommands = {}
+	for _, command in ipairs(commands) do
+		if not shown[command] then F.overflowCommands[#F.overflowCommands + 1] = command end
+	end
+	local order = { F.search1, F.edit1 }
+	for k = 1, fit do order[#order + 1] = CommandTool(iconed[k]) end
+	if #F.overflowCommands > 0 then order[#order + 1] = F.overflow1 end
+	local inOrder = {}
+	for _, tool in ipairs(order) do inOrder[tool] = true end
+	for _, tool in pairs(F.commandTools) do if not inOrder[tool] then tool:Hide() end end
+	if not inOrder[F.overflow1] then F.overflow1:Hide() end
+	for i = #F.tools, 1, -1 do F.tools[i] = nil end
+	local collapsed = S.sidebar == false
+	local reach, previous = 0, F.sideToggle
+	for i, tool in ipairs(order) do
+		F.tools[i] = tool
+		tool.hoverIcon = true -- an icon is accent under the mouse, as the toggle's
+		tool:ClearAllPoints()
+		tool:SetPoint('LEFT', previous, 'RIGHT', TOOL_GAP, 0)
+		tool:SetFrameLevel(F.footer:GetFrameLevel() + 2)
+		W.LookControl(tool, S.blizzard)
+		tool:SetShown(collapsed)
+		reach = reach + step
+		previous = tool
+	end
+	F.searchPop:ClearAllPoints()
+	F.searchPop:SetPoint('BOTTOMLEFT', F.tools[1], 'TOPLEFT', 0, SEARCH_POP_GAP)
+	UpdateEditModeButton()
+	return reach
+end
+
+-- The title's page list: the sidebar's pages, the current one marked.
+function S.OpenPageList()
+	if S.sidebar ~= false or not S.pageEntries then return end
+	local current = state.search == '' and state.page or nil
+	W.OpenList(F.titleButton, OW.PageMenuEntries(S.pageEntries), current, function(key) OW:Navigate(key) end)
+end
+
+-- The page's title opens the page list while the sidebar is collapsed: its
+-- button covers the title's text and the arrow 8 after it. Hidden, and so
+-- taking no click, while the sidebar shows (Heading runs it).
+function S.PlaceTitle()
+	local collapsed = S.sidebar == false
+	F.titleButton:SetShown(collapsed)
+	if not collapsed then return end
+	local width = min(ceil(F.title:GetUnboundedStringWidth()), S.titleRoom)
+	local height = floor(F.title:GetStringHeight() + 0.5)
+	F.titleButton:ClearAllPoints()
+	F.titleButton:SetPoint('TOPLEFT', F.title, 'TOPLEFT', 0, 0)
+	F.titleButton:SetSize(width + TITLE_ARROW_GAP + TITLE_ARROW, height)
+	F.titleArrow:ClearAllPoints()
+	F.titleArrow:SetPoint('TOPLEFT', F.titleButton, 'TOPLEFT', width + TITLE_ARROW_GAP, -floor((height - TITLE_ARROW) / 2))
+	local r, g, b = Grey()
+	F.titleArrow:SetVertexColor(r, g, b)
+end
+
+-- Builds the search panel and the title's button (Build, after the footer).
+function S.BuildCollapsed()
+	F.tools = {}
+	local pop = st:CreateFrame('Frame', nil, F.main)
+	pop:SetFrameLevel(F.main:GetFrameLevel() + 20)
+	pop:SetSize(S.SEARCH_POP_WIDTH, S.SEARCH_POP_HEIGHT)
+	pop:EnableMouse(true)
+	pop:Hide()
+	st:SetTemplate(pop, 'theme', 'solid', 'panel')
+	F.searchPop = pop
+	-- A mouse down anywhere else closes the panel (and takes the keyboard from
+	-- its box): a full-screen catcher in the window's strata under the panel
+	-- and over the rest of the window, as the kit list's.
+	local catcher = CreateFrame('Frame', nil, UIParent)
+	catcher:SetAllPoints(UIParent)
+	catcher:SetFrameStrata(F.window:GetFrameStrata())
+	catcher:SetFrameLevel(pop:GetFrameLevel() - 1)
+	catcher:EnableMouse(true)
+	catcher:Hide()
+	catcher:SetScript('OnMouseDown', function()
+		S.ClosePop()
+		F.search:ClearFocus()
+	end)
+	F.searchCatcher = catcher
+	S.PlaceSearch() -- the sidebar shows by default: the box stays in it
+
+	local button = CreateFrame('Button', nil, F.header)
+	button:SetFrameLevel(F.header:GetFrameLevel() + 2)
+	button:EnableMouse(true)
+	button:Hide()
+	local arrow = button:CreateTexture(nil, 'OVERLAY')
+	arrow:SetTexture(st.icons.chevronDown)
+	arrow:SetSize(TITLE_ARROW, TITLE_ARROW)
+	arrow:SetVertexColor(Grey())
+	button:SetScript('OnEnter', function(self)
+		arrow:SetVertexColor(Blue())
+		W.ShowTip(self, 'Choose a page')
+	end)
+	button:SetScript('OnLeave', function(self)
+		arrow:SetVertexColor(Grey())
+		W.HideTip(self)
+	end)
+	button:SetScript('OnHide', function() arrow:SetVertexColor(Grey()) end)
+	S.Draggable(button) -- a drag on the title moves the window, a click opens the list
+	button:SetScript('OnClick', function() S.OpenPageList() end)
+	F.titleButton, F.titleArrow = button, arrow
 end
 
 ------------------------------------------------------------------ for optionswindow.lua
