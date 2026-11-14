@@ -197,8 +197,8 @@ test("the position is saved by the window's top right corner when a drag ends an
 	st.Config:Open()
 	local point, _, relPoint, x, y = window:GetPoint(1)
 	eq(table.concat({ point, relPoint, x, y }, ' '), 'TOPRIGHT TOPRIGHT -200 -50', 'restored')
-	local cx, cy = window:GetCenter()
 	local ux, uy = UIParent:GetCenter()
+	local cx, cy
 
 	st.Config:Close()
 	st.config.global.optionsWindow = { point = 'NOWHERE', x = 'a' }

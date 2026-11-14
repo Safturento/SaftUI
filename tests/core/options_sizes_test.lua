@@ -104,6 +104,9 @@ test('OW.MaxWidth and OW.Fits: the screen less the margin, and the metal under B
 	st.config.profile.misc.clamp_inset = inset
 	set_screen(10, 768)
 	eq(OW.MaxWidth(own), 0, 'a screen narrower than its margins: 0, never negative')
+	set_screen(1365, 767)
+	eq(OW.MaxWidth(own), 1324, 'an odd screen: the room (1325) made even')
+	eq(OW.MaxWidth(blizzard) % 2, 0, 'even under Blizzard too')
 	reset_screen()
 	check(OW.Fits(own, 'full', true), 'a 1920 screen holds W1')
 end)
@@ -112,6 +115,25 @@ test('OW.CentredCorner: centred by its top right corner, in whole units', functi
 	eq(table.concat({ OW.CentredCorner(1920, 1080, 1040, 700) }, ','), '-440,-190')
 	eq(table.concat({ OW.CentredCorner(1365, 767, 1040, 700) }, ','), '-162,-33', 'an odd screen rounds down')
 	eq(table.concat({ OW.CentredCorner(1040, 700, 1040, 700) }, ','), '0,0', 'a window as big as the screen: no minus zero')
+end)
+
+test('OW.CornerOf: the top right corner of a window placed by any point, in whole units', function()
+	local function corner(...) return table.concat({ OW.CornerOf(...) }, ',') end
+	-- 1920 x 1080 screen; Thick and Thin 1040 x 700, Blizzard 1110 x 728.
+	eq(corner('CENTER', -200, 50, 1040, 760, 1920, 1080), '-640,-110', 'Thick CENTER')
+	eq(corner('CENTER', 120, -40, 1110, 728, 1920, 1080), '-285,-216', 'Blizzard CENTER')
+	eq(corner('TOPLEFT', 100, -50, 1040, 700, 1920, 1080), '-780,-50', 'Thick TOPLEFT')
+	eq(corner('TOPLEFT', 100, -50, 1110, 728, 1920, 1080), '-710,-50', 'Blizzard TOPLEFT')
+	eq(corner('BOTTOMLEFT', 100, 40, 1040, 700, 1920, 1080), '-780,-340', 'Thick BOTTOMLEFT')
+	eq(corner('BOTTOMLEFT', 100, 40, 1110, 728, 1920, 1080), '-710,-312', 'Blizzard BOTTOMLEFT')
+	eq(corner('TOPRIGHT', -37, -21, 1040, 700, 1920, 1080), '-37,-21', 'TOPRIGHT is itself')
+	eq(corner('BOTTOMRIGHT', -10, 30, 1110, 728, 1920, 1080), '-10,-322', 'Blizzard BOTTOMRIGHT')
+	eq(corner('TOP', 0, -5, 1040, 700, 1920, 1080), '-440,-5', 'TOP')
+	eq(corner('LEFT', 10, 0, 1040, 700, 1920, 1080), '-870,-190', 'LEFT')
+	eq(corner('RIGHT', -10, 0, 1040, 700, 1920, 1080), '-10,-190', 'RIGHT')
+	eq(corner('BOTTOM', 0, 0, 1040, 700, 1920, 1080), '-440,-380', 'BOTTOM')
+	eq(corner('CENTER', 0, 0, 1040, 700, 1365, 767), '-162,-33', 'odd screen: the same as OW.CentredCorner, rounded')
+	eq(corner('CENTER', 0.4, -0.6, 1040, 700, 1920, 1080), '-440,-191', 'rounded to whole units')
 end)
 
 ------------------------------------------------------------------ the corner
@@ -133,6 +155,16 @@ test('the window is anchored and saved by its top right corner, read from where 
 	eq(OW.S.corner.x .. ' ' .. OW.S.corner.y, '-580 -100', 'S.corner follows')
 	point, _, relPoint, x, y = w:GetPoint(1)
 	eq(table.concat({ point, relPoint, x, y }, ' '), 'TOPRIGHT TOPRIGHT -580 -100', 'anchored by the corner again')
+
+	-- A drag that ends between pixels rounds to whole units.
+	stub.fire_script(frames().header, 'OnDragStart')
+	w:ClearAllPoints(); w:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 300.4, -100.6)
+	stub.fire_script(frames().header, 'OnDragStop')
+	saved = st.config.global.optionsWindow
+	eq(saved.x .. ' ' .. saved.y, '-580 -101', 'rounded, not cut')
+	w:ClearAllPoints(); w:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 300, -100)
+	stub.fire_script(frames().header, 'OnDragStop')
+	saved = st.config.global.optionsWindow
 
 	-- Another drag keeps the size, the sidebar and the height.
 	saved.size, saved.sidebar, saved.height = 'half', false, 760
@@ -221,4 +253,50 @@ test('a window saved by a corner keeps its place across the looks, and every edg
 	theme('thick')
 	st.config.global.optionsWindow = nil
 	close_all()
+end)
+
+test('a saved offset that is not whole is rounded when the window is placed', function()
+	theme('thick')
+	st.config.global.optionsWindow = { point = 'TOPRIGHT', x = -200.4, y = -49.6 }
+	st.Config:Close(); st.Config:Open()
+	local _, _, _, x, y = frames().window:GetPoint(1)
+	eq(x .. ' ' .. y, '-200 -50', 'whole units')
+	st.config.global.optionsWindow = nil
+	close_all()
+end)
+
+test('an older save is converted by arithmetic: a window with no rect before it shows still opens where it was', function()
+	for _, name in ipairs({ 'thick', 'blizzard' }) do
+		theme(name)
+		local w = frames().window or (st.Config:Open() and frames().window)
+		st.Config:Close()
+		for _, edge in ipairs({ 'GetRight', 'GetTop', 'GetLeft', 'GetBottom', 'GetCenter' }) do w[edge] = function() return nil end end
+		local width, height = name == 'thick' and 1040 or 1110, 760
+		st.config.global.optionsWindow = { point = 'CENTER', x = -200, y = 50, height = height }
+		st.Config:Open()
+		local saved = st.config.global.optionsWindow
+		eq(saved.point .. ' ' .. saved.x .. ' ' .. saved.y .. ' ' .. saved.height,
+			('TOPRIGHT %d %d 760'):format(-200 + (width - 1920) / 2, 50 + (760 - 1080) / 2), name .. ': rewritten as the corner')
+		local point, _, _, px, py = w:GetPoint(1)
+		eq(point .. ' ' .. px .. ' ' .. py, 'TOPRIGHT ' .. saved.x .. ' ' .. saved.y, name .. ': anchored there')
+		st.Config:Close()
+		for _, edge in ipairs({ 'GetRight', 'GetTop', 'GetLeft', 'GetBottom', 'GetCenter' }) do w[edge] = nil end
+		st.config.global.optionsWindow = nil
+		close_all()
+	end
+	theme('thick')
+end)
+
+test('a Blizzard look picked while the window is closed opens centred for that look', function()
+	theme('thick')
+	st.config.global.optionsWindow = nil
+	st.Config:Open(); st.Config:Close()
+	st.config.profile.theme.name = 'blizzard'
+	st.Config:Open()
+	local w = frames().window
+	local cx = w:GetCenter()
+	eq(cx, 960, 'centred at 1110 wide')
+	st.config.global.optionsWindow = nil
+	close_all()
+	theme('thick')
 end)

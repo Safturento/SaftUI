@@ -5,7 +5,8 @@ local OB = st.OptionsBody
 	The layouts of SaftUI's options window (st.OptionsWindow,
 	optionswindow.lua) and the layout math that needs no frame: OW.LAYOUT,
 	the sidebar's width and entries, the body's layout (OB's, here for the
-	window's tests), the window's height, and where a page's footer control
+	window's tests), the window's height and width limits and the sizes' numbers
+	(OW.WindowWidth, OW.CornerOf and the rest), and where a page's footer control
 	sits (OW.FooterPlace). It loads first of the window's files
 	(Config/load.xml), so it makes OW and OW.S.
 ]]
@@ -46,6 +47,8 @@ local CATEGORIES = { 'Frames', 'Combat', 'Info' } -- then any others, then Other
 	            its 774 and its height.
 
 	  width                  the window's
+	  halfBody               the body's width at half (W3 and W4) and at the bar;
+	                         full's is OB.WIDTH (774)
 	  height                 its least height, and its height with none saved
 	                         (OW.WindowHeight)
 	  sideX, sideTop, sideBottom, sideWidth
@@ -79,7 +82,7 @@ OW.LAYOUT = {
 		footer = 46,
 	},
 	blizzard = {
-		width = 1110, height = 728, -- 17 + 1076 + 17 by 28 + 654 + 46, both even (it's centred)
+		width = 1110, height = 728, -- 17 + 1076 + 17 by 28 + 654 + 46, both even (the small dialog sits on the window's centre)
 		halfBody = 368, -- W3 is 704 wide
 		sideX = 17, sideTop = 28, sideBottom = 46,
 		sideWidth = 242, -- OW.SidebarWidth(1076): its right edge on the divider
@@ -204,7 +207,7 @@ function OW.MaxHeight(L)
 end
 
 -- The window's height in layout L: the saved height (a number) made even (the
--- window is centred, so its edges stay on whole pixels), at most
+-- small dialog sits on the window's centre), at most
 -- OW.MaxHeight(L) and at least L's least height, which wins on a screen too
 -- small for it; L's least height with none saved.
 function OW.WindowHeight(L)
@@ -237,7 +240,7 @@ end
 	The window has three sizes, saved in st.config.global.optionsWindow as
 	size = 'half' or nil (full) and sidebar = false or nil (shown): 'full'
 	(the body 774 wide), 'half' (L.halfBody) and 'mini' (a bar, MINI_HEIGHT
-	tall, the half body's width). The bar is never saved: it comes back as half.
+	tall; its own width is the bar's, not a size's). The bar is never saved: it comes back as half.
 	Its width in each state, every one even (the window's centre is what the
 	small dialog sits on):
 	  W1 full with the sidebar   Thick and Thin 1040   Blizzard 1110
@@ -248,8 +251,8 @@ end
 OW.MINI_HEIGHT = 42 -- the bar's height
 OW.MINI_MAX = 400 -- the most the bar's width takes
 
--- The window's width in layout L at size ('full' or 'half'; the bar's is the
--- half's) with the sidebar shown (true) or collapsed (false).
+-- The window's width in layout L at size ('full'; anything else gives half's,
+-- the size the bar grows back to) with the sidebar shown (true) or collapsed (false).
 function OW.WindowWidth(L, size, sidebar)
 	local width = L.width
 	if sidebar == false then width = width - L.sideWidth end
@@ -288,6 +291,20 @@ function OW.SavedState()
 	if type(saved) ~= 'table' then return 'full', true end
 	local size = (saved.size == 'half' or saved.size == 'mini') and 'half' or 'full'
 	return size, saved.sidebar ~= false
+end
+
+-- The TOPRIGHT offset of a width by height window placed by point at x, y on a
+-- screenWidth by screenHeight UIParent, in whole units. Arithmetic, so an older
+-- save converts without asking a frame that may not be laid out yet.
+function OW.CornerOf(point, x, y, width, height, screenWidth, screenHeight)
+	local right, top
+	if point:find('LEFT') then right = x + width - screenWidth
+	elseif point:find('RIGHT') then right = x
+	else right = x + (width - screenWidth) / 2 end
+	if point:find('TOP') then top = y
+	elseif point:find('BOTTOM') then top = y + height - screenHeight
+	else top = y + (height - screenHeight) / 2 end
+	return floor(right + 0.5), floor(top + 0.5)
 end
 
 -- The corner offset, from UIParent's top right, that centres a window width by

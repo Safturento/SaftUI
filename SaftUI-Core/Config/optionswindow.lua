@@ -304,11 +304,21 @@ local function Anchor()
 	F.window:SetPoint('TOPRIGHT', UIParent, 'TOPRIGHT', S.corner.x, S.corner.y)
 end
 
+-- The layout of the look the window is about to be drawn in: Draw lays it out
+-- again when the look changed since it was last, after the open placed it.
+local function LookLayout()
+	return W.BlizzardLook() and OW.LAYOUT.blizzard or OW.LAYOUT.own
+end
+
+-- The screen's size in whole units.
+local function ScreenSize()
+	return Whole(UIParent:GetWidth()), Whole(UIParent:GetHeight())
+end
+
 -- With nothing saved: the full window with the sidebar, centred.
-local function CentredCorner()
-	local L = F.layout or OW.LAYOUT.own
-	local x, y = OW.CentredCorner(Whole(UIParent:GetWidth()), Whole(UIParent:GetHeight()),
-		OW.WindowWidth(L, 'full', true), OW.WindowHeight(L))
+local function CentredCorner(L)
+	local screenWidth, screenHeight = ScreenSize()
+	local x, y = OW.CentredCorner(screenWidth, screenHeight, OW.WindowWidth(L, 'full', true), OW.WindowHeight(L))
 	return { x = x, y = y }
 end
 
@@ -322,24 +332,24 @@ local function ShownCorner()
 end
 
 local function RestorePosition()
-	local window = F.window
-	window:SetHeight(OW.WindowHeight(F.layout or OW.LAYOUT.own))
+	local L = LookLayout()
+	local height = OW.WindowHeight(L)
+	F.window:SetHeight(height)
 	local point, x, y = SavedPosition()
 	if point == 'TOPRIGHT' then
 		S.corner = { x = x, y = y }
 	elseif point then
-		-- An older save: where it was, then the corner it shows at, written once.
-		window:ClearAllPoints()
-		window:SetPoint(point, UIParent, point, x, y)
-		local cornerX, cornerY = ShownCorner()
-		if cornerX then
-			S.corner = { x = cornerX, y = cornerY }
-			SaveWindow({ point = 'TOPRIGHT', x = cornerX, y = cornerY })
-		end
+		-- An older save (by another point, at the full width with the sidebar):
+		-- the corner it puts the window at, written once. Worked out, not read
+		-- from the window, which has no place before it is shown.
+		local screenWidth, screenHeight = ScreenSize()
+		local cornerX, cornerY = OW.CornerOf(point, x, y, OW.WindowWidth(L, 'full', true), height, screenWidth, screenHeight)
+		S.corner = { x = cornerX, y = cornerY }
+		SaveWindow({ point = 'TOPRIGHT', x = cornerX, y = cornerY })
 	else
-		S.corner = CentredCorner()
+		S.corner = CentredCorner(L)
 	end
-	if S.corner then Anchor() end
+	Anchor()
 end
 
 -- Where the user left the window: its corner, from where it shows. What else
@@ -1197,7 +1207,7 @@ local function Build()
 	-- layout of the look now.
 	Relayout(W.BlizzardLook())
 	PlaceBody(TABS_TOP + TAB_HEIGHT)
-	S.corner = CentredCorner()
+	S.corner = CentredCorner(F.layout)
 	Anchor()
 end
 

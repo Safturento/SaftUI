@@ -79,6 +79,7 @@ test('/sui grows taller by its bottom edge or its grip: its width and top stay, 
 	eq(w:GetTop(), top, 'the top still where it was')
 	eq(corner(), anchored, 'the anchor the same')
 	st.Config:Close(); st.Config:Open('Loot'); eq(w:GetHeight(), 752, 'restored when it opens'); eq(w:GetTop(), top)
+	eq(corner(), anchored, 'reopened: the same corner, x too')
 	resize(F.grip, 5000)
 	local inset = st.config.profile.misc.clamp_inset
 	check(w:GetBottom() >= inset and w:GetBottom() < inset + 2, 'it stops at the screen edge margin')
@@ -95,6 +96,18 @@ test('/sui grows taller by its bottom edge or its grip: its width and top stay, 
 	st.config.global.optionsWindow = nil
 	close_all()
 	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a resize keeps the size and the sidebar saved, and the corner it was given', function()
+	theme('thick')
+	st.config.global.optionsWindow = { point = 'TOPRIGHT', x = -100, y = -50, size = 'half', sidebar = false }
+	st.Config:Close(); st.Config:Open('Loot')
+	resize(frames().grip, 60)
+	local saved = st.config.global.optionsWindow
+	eq(saved.height .. ' ' .. saved.size .. ' ' .. tostring(saved.sidebar) .. ' ' .. saved.point .. ' ' .. saved.x .. ' ' .. saved.y,
+		'760 half false TOPRIGHT -100 -50', 'height added, the rest kept')
+	st.config.global.optionsWindow = nil
+	close_all()
 end)
 
 test('a resize renders nothing; a fill page draws its fill row once, when the mouse is let go', function()

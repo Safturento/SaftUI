@@ -37,8 +37,8 @@ local SetScroll, SetNavScroll = S.SetScroll, S.SetNavScroll
 	go. It ends on the button's release (OnMouseUp, or the handle's next frame
 	finding it up) or the window hiding, and a height it changed is saved,
 	with the window's corner. The window is anchored by its top right corner
-	(optionswindow.lua), so a new height moves only the bottom. A change of the screen edge margin moves the most
-	height, so the window takes its height again then (st:UpdateScreenMargin,
+	(optionswindow.lua), so a new height moves only the bottom. A change of
+	the screen edge margin moves the most height, so the window takes its height again then (st:UpdateScreenMargin,
 	hooked in Build; ApplyHeight).
 ]]
 local GRIP_SIZE = 16 -- st:EnableResizing's, and PanelResizeButtonTemplate's
