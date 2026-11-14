@@ -1,91 +1,40 @@
 # Questions for the owner
 
-Choices the code doesn't settle: two candidates for one standard, or a value with no stated reason. Each has the options and a recommendation. Until one is answered, this system documents what the code does.
+Four questions are left. Each was asked too tersely the first time, so each is restated here in plain words, and drawn side by side in the mockup tab (`open-questions-v1.html`). Everything else that was on this page has been answered and moved to Decisions.
 
-Six questions have been answered and moved to the Decisions page (2026-11-13): whether the options window follows the theme, the standard button, what "on" looks like, `/sui` tooltips, the colour control's code, and section-level resets. What remains is below. A proposal to rename the hue-named colours by role has its own page, Colour roles, with its own questions.
+## 1. The slider's knob
 
-## 1. The range knob's colour
+Every slider in `/sui` (Spacing, Alpha, Size and so on) has a track and a knob. Two drawings exist.
 
-The code (and the 11-09 mockup) draws a `text` knob over an `accent` fill; the approved v6 mockup drew an `accent` knob with no fill.
-- **A.** Keep the code's: the fill shows the value at a glance.
-- **B.** The v6 knob.
+- **A.** What the game draws today: the knob is the light text colour, and the track behind it fills with blue up to the knob, so the blue shows how far along the value is.
+- **B.** What the action bars mockup happened to draw: only the knob is blue, and the track stays dark.
 
-Recommendation: **A**; v6's change looks incidental to what that mockup was deciding (shared settings).
+Recommendation: **A**. The fill shows the value at a glance, and the mockup's version was a side effect of a drawing about something else.
 
-## 2. The close X's size
+## 2. Rows inside a text's menu
 
-Code: a 24 box with a 10px cross. v6: a 20 box with a 12px cross on the window's fill.
-- **A.** Keep 24 / 10 (also the 11-09 mockup's).
-- **B.** 20 / 12.
+On the new Action Bars page, the three dots on a text (Hotkey, Stack count, Macro name, Cooldown) open a small menu with Font, Size, Outline and Position. The page's own rows are 38 tall.
 
-Recommendation: **A**, which also matches the header's 23-tall buttons better.
+- **A.** Menu rows are 38 tall too and the menu is 400 wide. This is what is built. There is room for the blue "own" mark and the hover line under a label, and it lines up with the page.
+- **B.** Menu rows are 30 tall and the menu is 330 wide. Smaller, but the hover line under a label no longer fits inside a row.
 
-## 3. A menu's row height and width
+Recommendation: **A**.
 
-v6 drew menu rows 30 tall in a 330-wide menu for the bars and 400 for unit frames; the spec says about 400 and the body's rows are 38.
-- **A.** The body's rows (38, with marks and hover lines) in a 400-wide menu.
-- **B.** Denser 30 rows in menus only.
+## 3. Grey and red text under the Thin theme
 
-Recommendation: **A**: the hover line needs the 38 row's height, and one row metric keeps marks aligned.
+Thin's panels are a lighter grey than Thick's. Grey text (section titles, notes) and red text (errors) therefore stand out less on them than they should: both fall a little short of the usual legibility bar.
 
-## 4. Sidebar page names: which case?
+- **A.** Leave it: Thin is a look the player chose.
+- **B.** Change Thin's default colours (a darker panel, or a lighter grey and red).
+- **C.** Make sure small grey and red text always sits on a darker section panel under Thin. The new section backgrounds already do this for most pages.
 
-"Action Bars", "Micro Menu", "Totem Bar", "Swing Timer", "Global Settings" are Title Case; "Unitframes" is one word; nameplate pages and every option are sentence case; descs say "unit frames".
-- **A.** Sentence case everywhere: "Action bars", "Unit frames", "Global settings".
-- **B.** Title Case for page names only, and "Unit Frames" as two words.
+Recommendation: **C**. It costs nothing and changes no colour.
 
-Recommendation: **A**, matching every option name and desc. Page titles in Colus read as capitals either way.
+## 4. How strong a hover or selection tint is
 
-## 5. Spelling in the docs
+A hovered or selected row gets a see-through blue tint. Today the strength differs by where you are: dropdown lists and the sidebar use 25%; the bags' category list uses 10% for hover and 15% for the selected row; a selected mover in edit mode uses 15%.
 
-The UI and code say "color"; the docs mix (README 5 "colour" to 22 "color"; followups 21 to 163); this system's prose follows the owner's "colour".
-- **A.** "color" everywhere, docs included.
-- **B.** "colour" in docs and comments, "color" in UI strings and identifiers.
+- **A.** Two strengths, by meaning: 25% for any hovered or selected row, everywhere; 15% only for a selected object's fill, such as a mover, where a stronger tint would hide what is under it.
+- **B.** Leave each as it is.
 
-Recommendation: **A**: one spelling makes the docs searchable alongside the code. Either way, fix the one UI desc that says "colour" (`totemoptions.lua:21`).
-
-## 6. The item tooltip's fonts
-
-Misc's skin sets the Normal font on every line of GameTooltip, ItemRefTooltip and the shopping tooltips (`tooltip.lua:46-58,113-115,175-179`); the screenshot notes read the item lines as Blizzard's. Is Blizzard's look intended on item tooltips?
-- **A.** Normal on every line (what the code means to do; check in game why it may not).
-- **B.** Blizzard's fonts and colours on item lines, SaftUI's frame only.
-
-Recommendation: **A**, after an in-game check of the compare tooltips.
-
-## 7. Thin's grey and red text
-
-Under Thin, `text-grey` and `text-red` miss 4.5:1 on `backdrop` (4.3:1, 3.6:1).
-- **A.** Accept it (Thin is a look choice).
-- **B.** A darker default for Thin's backdrop, or a lighter grey and red.
-- **C.** Keep small grey text on panels under Thin.
-
-Recommendation: decide with question 1; **C** costs nothing and fixes section notes and titles' readability.
-
-## 8. Hover fills
-
-0.25 (kit rows, sidebar) or 0.1 and 0.15 (Categories, rule editor, movers).
-Recommendation: `accent-fill` (0.25) for a hovered or selected row; `accent-tint` (0.15) only for a selected object's fill (a mover).
-
-## 9. Under the Blizzard theme
-
-Should the rule editor's AND/OR keep blue and orange (`docs/followups.md:1027`), and own and diff keep SaftUI's colours (they do, `.agents/edit-mode.md`)?
-Recommendation: yes to both: they carry meaning Blizzard's art has no colour for.
-
-## 10. Values with no stated reason
-
-- `TABS_TOP` 87, `BRAND_HEIGHT` 73, `HEAD_TOP` 20: measured from the 11-09 mockup.
-- The small dialog's 24 padding against the window's 28.
-- The rule editor's 26 rows and 22 fields, Categories' 22 rows, against 24 fields and 38 rows: density, or drift?
-- In-world gaps 3, 5 x 15, 7, 8, 10, 12, with no scale written down.
-- `pixel_huge` and `normal_med` have no reader.
-- `cornerbr` is the resize grip, the group role wedge and the reagent wedge: one shape on purpose?
-
-Recommendation: write a spacing scale (2, 3, 4, 6, 8, 10, 12, 14, 16, 24, 28) and say which of these are on it; keep the measured window values as they are.
-
-## 11. Overlapping mover labels
-
-In edit mode, labels pile up where movers overlap (bars 4 to 8, the extra buttons).
-- **A.** Leave it to the picker list.
-- **B.** Hide every overlapping mover's label but the one under the mouse.
-
-Recommendation: **B**, if it can be done without moving frames.
+Recommendation: **A**.
