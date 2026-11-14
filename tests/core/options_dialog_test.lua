@@ -13,7 +13,7 @@ local H = load_test_file('core/options_widgets_helpers.lua')
 local st = SaftUI
 local W = st.OptionsWidgets
 local yes, click, no, bind, opt = H.yes, H.click, H.no, H.bind, H.opt
-local check_no_box, check_box, panel_of, BG_RGBA, theme = H.check_no_box, H.check_box, H.panel_of, H.BG_RGBA, H.theme
+local check_no_box, check_box, panel_of, theme = H.check_no_box, H.check_box, H.panel_of, H.theme
 local insets, INPUT_ART, atlases_of, size_of = H.insets, H.INPUT_ART, H.atlases_of, H.size_of
 
 ------------------------------------------------------------------ confirm dialog
@@ -207,7 +207,7 @@ test("the confirm dialog's buttons are panel buttons", function()
 		check_no_box(button, name)
 		eq(size_of(button), '80x24', name .. ' keeps its size')
 	end
-	check_no_box(d.frame, 'the dialog')
+	eq(d.frame.backdropInfo, nil, 'the dialog: no box of its own, its skin draws it')
 	check(d.skin ~= nil and d.skin:IsShown(), 'the dialog is drawn as the window is')
 	eq(st:DrawnTheme(d.skin), 'blizzard', "in SaftUI's theme")
 	eq(st:DrawnKind(d.skin), 'panel', 'as a panel')
@@ -225,8 +225,11 @@ test("the confirm dialog's buttons are panel buttons", function()
 		eq((panel_of(button)), '', 'Thick: ' .. name .. ' is no panel button')
 		check_box(button, 'Thick: ' .. name)
 	end
-	check_box(d.frame, 'Thick: the dialog', BG_RGBA)
-	check(not d.skin:IsShown(), 'Thick: not drawn as the window')
+	-- The dialog is drawn by its skin in every theme (it was a Box under
+	-- Thick and Thin, solid), so it is see-through with the window.
+	eq(d.frame.backdropInfo, nil, 'Thick: no box of its own')
+	check(d.skin:IsShown(), 'Thick: drawn as the window is')
+	eq(st:DrawnTheme(d.skin), 'thick', "Thick: in SaftUI's theme")
 	check_box(d.box, "Thick: the prompt's box", nil, true) -- focused, so lit
 	eq(atlases_of(d.box), '', "Thick: no art on the prompt's box")
 	no()

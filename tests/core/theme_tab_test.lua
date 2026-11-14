@@ -83,8 +83,8 @@ test('its rows, in order, with descs', function()
 		check(type(desc) == 'string' and desc ~= '', r.v.name .. ' has a desc')
 		eq(r.v.width, nil, r.v.name .. ' has no Ace width')
 	end
-	eq(table.concat(names, ','), 'Theme,Border,Outer border,Window background,Background', 'no Reset row')
-	eq(table.concat(types, ','), 'select,color,color,color,color')
+	eq(table.concat(names, ','), 'Theme,Border,Outer border,Window background,Background,Options windows', 'no Reset row')
+	eq(table.concat(types, ','), 'select,color,color,color,color,select')
 
 	local theme = rows[1].v
 	eq(theme.values.thick, 'Thick'); eq(theme.values.thin, 'Thin')

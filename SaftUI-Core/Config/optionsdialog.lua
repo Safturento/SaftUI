@@ -13,7 +13,7 @@ local floor, max, ceil = math.floor, math.max, math.ceil
 local Box, Edge, HoverEdge, BlizzardLook = W.Box, W.Edge, W.HoverEdge, W.BlizzardLook
 local LookButton = W.LookButton
 local FIELD_HEIGHT, LIST_STRATA = Kit.FIELD_HEIGHT, Kit.LIST_STRATA
-local BG, ALT, FIELD_FONT_SIZE, NewText = Kit.BG, Kit.ALT, Kit.FIELD_FONT_SIZE, Kit.NewText
+local FIELD_FONT_SIZE, NewText = Kit.FIELD_FONT_SIZE, Kit.NewText
 local LookInput, LookWindow = Kit.LookInput, Kit.LookWindow
 
 ------------------------------------------------------------------ the full-screen key catchers
@@ -96,12 +96,11 @@ local function BuildDialog()
 	catcher:EnableMouse(true)
 	catcher:Hide()
 
-	local frame = Box(st:CreateFrame('Frame', nil, catcher), BG)
+	-- Drawn by its skin (LookDialog), which is under it.
+	local frame = st:CreateFrame('Frame', nil, catcher)
 	frame:SetFrameLevel(110)
 	frame:SetWidth(DIALOG_WIDTH)
 	frame:EnableMouse(true)
-	-- The thick template's second border.
-	frame.outline:SetBackdropBorderColor(unpack(ALT))
 
 	local text = NewText(frame, 'CENTER')
 	text:SetWordWrap(true)
@@ -145,11 +144,11 @@ function W.SetDialogAnchor(frame)
 	W.dialogAnchor = frame
 end
 
--- The dialog in SaftUI's theme now: Box, or under Blizzard drawn as the
--- options window is, with Blizzard's panel buttons and a text box.
+-- The dialog in SaftUI's theme now: drawn as the options window is, with
+-- Blizzard's panel buttons and a text box under Blizzard.
 local function LookDialog()
 	local blizzard = BlizzardLook()
-	dialog.skin = LookWindow(dialog.frame, dialog.catcher, blizzard, BG)
+	dialog.skin = LookWindow(dialog.frame, dialog.catcher)
 	LookButton(dialog.yes, blizzard)
 	LookButton(dialog.no, blizzard)
 	LookInput(dialog.box, blizzard, FIELD_HEIGHT)

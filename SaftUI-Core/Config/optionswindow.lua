@@ -174,7 +174,7 @@ local ACTION_PAD, ACTION_HEIGHT = 10, 24
 local NAV_ITEM = 26
 local FOOT_HEIGHT = 30
 
-local SIDEBAR_BG = { 0.09, 0.09, 0.09, 1 } -- #171717
+local SIDEBAR_BG = { 0.09, 0.09, 0.09, 1 } -- #171717, at the window's alpha (OW:PaintSidebar)
 
 local POINTS = {
 	TOPLEFT = true, TOP = true, TOPRIGHT = true, LEFT = true, CENTER = true, RIGHT = true,
@@ -1015,7 +1015,7 @@ local function Relayout()
 	else
 		window:SetSize(width, OW.WindowHeight(L))
 	end
-	st:SetTemplate(window, 'theme', 'solid', mini and 'panel' or 'window')
+	st:SetTemplate(window, 'theme', 'options', mini and 'panel' or 'window')
 	-- The screen edge margin again, now the art reaches as far as the look's
 	-- (the metal under Blizzard, none at the bar).
 	st:KeepInScreenMargin(window)
@@ -1306,14 +1306,24 @@ local function BuildSearch(parent)
 	return search
 end
 
+-- The sidebar's fill, its own color at the alpha the window is drawn at (its
+-- Background: see-through with the theme's, or solid by Options windows), so
+-- the sidebar is see-through with the window. Config:OnColorsChanged runs it
+-- after a recolor or redraw, which is how a change of either reaches it.
+function OW:PaintSidebar()
+	if not F.sideFill then return end
+	local r, g, b, a = unpack(SIDEBAR_BG)
+	F.sideFill:SetColorTexture(r, g, b, a * st:ResolveTheme('theme', 'options', 'window').alpha)
+end
+
 -- The parts whose place or size the layout gives are placed by Relayout.
 local function BuildSidebar(window)
 	local side = CreateFrame('Frame', nil, window)
 	F.side = side
 	local bg = side:CreateTexture(nil, 'BACKGROUND')
 	bg:SetAllPoints(side)
-	bg:SetColorTexture(unpack(SIDEBAR_BG))
 	F.sideFill, F.sideLines = bg, {}
+	OW:PaintSidebar()
 	local edge = Line(side)
 	F.sideLines[#F.sideLines + 1] = edge
 	edge:SetPoint('TOPRIGHT', side, 'TOPRIGHT', 0, 0)

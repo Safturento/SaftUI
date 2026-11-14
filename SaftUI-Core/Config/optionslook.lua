@@ -308,25 +308,20 @@ local function LookLine(frame, blizzard)
 	end
 end
 
--- The confirm dialog's frame in its look, when it changed: Box with fill, or
--- drawn as the options window is (SaftUI's theme, Solid, a panel) by a frame
--- of SaftUI's just under it, the skin, a child of holder (the frame's
--- catcher) so it shows with it. Returns the skin (nil until the first
--- Blizzard look). The select list has its own (LookList).
-local function LookWindow(frame, holder, blizzard, fill)
+-- The confirm dialog's frame in its look: drawn as the options window is
+-- (SaftUI's theme, the options Background, a panel: see-through with the
+-- theme's Background unless Options windows says Solid) by a frame of SaftUI's
+-- just under it, the skin, a child of holder (the frame's catcher) so it shows
+-- with it, in every theme; the frame's own box is off. Returns the skin. The
+-- select list has its own (LookList), and stays solid.
+local function LookWindow(frame, holder)
 	local art = Art(frame)
-	if Changes(art, blizzard) then
-		ShowBox(frame, not blizzard, fill)
-		if blizzard and not art.skin then
-			art.skin = st:CreateFrame('Frame', nil, holder)
-			art.skin:SetAllPoints(frame)
-		end
-		if art.skin then art.skin:SetShown(blizzard) end
+	if not art.skin then
+		art.skin = st:CreateFrame('Frame', nil, holder)
+		art.skin:SetAllPoints(frame)
 	end
-	if blizzard then
-		art.skin:SetFrameLevel(max(0, frame:GetFrameLevel() - 1))
-		st:SetTemplate(art.skin, 'theme', 'solid', 'panel')
-	end
+	art.skin:SetFrameLevel(max(0, frame:GetFrameLevel() - 1))
+	st:SetTemplate(art.skin, 'theme', 'options', 'panel')
 	return art.skin
 end
 

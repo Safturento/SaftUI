@@ -95,7 +95,7 @@ end)
 
 ------------------------------------------------------------------ /sui
 
-test("the /sui window takes the theme's border and stays solid", function()
+test("the /sui window takes the theme's border and its Background, see-through with the theme", function()
 	local st = fresh()
 	st.Config:Open()
 	local window = OW.GetFrames().window
@@ -107,9 +107,9 @@ test("the /sui window takes the theme's border and stays solid", function()
 
 	for name, f in pairs({ window = window, dialog = dialog }) do
 		-- The window is a window (the metal under Blizzard); the dialog a panel.
-		eq(drawn(f), name == 'window' and 'theme,solid,window' or 'theme,solid,panel', name .. ": SaftUI's theme, Solid")
+		eq(drawn(f), name == 'window' and 'theme,options,window' or 'theme,options,panel', name .. ": SaftUI's theme, the options Background")
 		eq(edge(f), THICK_EDGE, name .. ": Thick's border")
-		eq(alpha(f), '1.00', name .. ': solid, though the theme is transparent')
+		eq(alpha(f), '0.90', name .. ": see-through at the theme's opacity")
 		eq(inset(f), 2, name .. ": Thick's 2px border")
 	end
 
@@ -117,7 +117,7 @@ test("the /sui window takes the theme's border and stays solid", function()
 	for name, f in pairs({ window = window, dialog = dialog }) do
 		eq(inset(f), 1, name .. ": after a switch to Thin, Thin's 1px border")
 		eq(edge(f), THIN_EDGE, name .. ": Thin's border color")
-		eq(alpha(f), '1.00', name .. ': still solid')
+		eq(alpha(f), '0.90', name .. ': still see-through')
 	end
 	st.Config:Close()
 end)
@@ -161,7 +161,7 @@ test('a profile switch to a profile with another theme redraws what was drawn on
 		eq(edge(button.backdrop), edgeColor, theme .. ": the button's border color")
 		eq(inset(window), px, theme .. ": the /sui window's border")
 		eq(edge(window), edgeColor, theme .. ": the /sui window's border color")
-		eq(alpha(window), '1.00', theme .. ': the /sui window stays solid')
+		eq(alpha(window), '0.90', theme .. ": the /sui window is see-through with the theme")
 		eq(inset(mover.overlay.backdrop), px, theme .. ": the mover's outline at the theme's border")
 		eq(edge(mover.overlay.backdrop), blue .. ',1.00', theme .. ': the selected mover keeps its blue line')
 		eq(fill(mover.overlay.backdrop), blue .. ',0.15', theme .. ': and its blue tint')

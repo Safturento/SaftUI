@@ -249,6 +249,14 @@ local function RedrawTheme()
 	Safely(function() st:ColorsChanged('theme') end)
 end
 
+-- After a theme recolor or redraw (st:ColorsChanged('theme')): what /sui
+-- colors itself, which the theme engine doesn't draw, takes the window's
+-- Background again (its sidebar's fill).
+function Config:OnColorsChanged(group)
+	local OW = st.OptionsWindow
+	if group == 'theme' and OW then OW:PaintSidebar() end
+end
+
 -- Runs on every profile change, copy or reset, and on a change of the theme or
 -- going solid or see-through (st:ThemeChanged, Media/theme.lua).
 function Config:UpdateConfig()

@@ -158,7 +158,7 @@ local function BuildDialog()
 	st:KeepInScreenMargin(frame)
 	frame:EnableMouse(true)
 	frame:Hide()
-	st:SetTemplate(frame, 'theme', 'solid', 'panel')
+	st:SetTemplate(frame, 'theme', 'options', 'panel')
 	D.frame = frame
 
 	D.title = Text(frame, 'brand')

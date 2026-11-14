@@ -349,7 +349,7 @@ function EM:GetBarWindow()
 	window:SetMovable(true)
 	window:EnableMouse(true)
 	window:Hide()
-	st:SetBackdrop(window, 'theme', 'theme', 'panel')
+	st:SetBackdrop(window, 'theme', 'options', 'panel')
 	st:KeepInScreenMargin(window)
 	window.captions, window.rules = {}, {}
 
