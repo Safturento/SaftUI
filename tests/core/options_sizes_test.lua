@@ -418,9 +418,9 @@ test('Shrink to half: 386 narrower from the left; the corner, the close X and th
 	click(F.shrink)
 	eq(OW:GetWindowSize(), 'half', 'half')
 	eq(w:GetWidth(), 654, '1040 less 386'); eq(w:GetRight(), right, 'the right edge stays'); eq(w:GetTop(), top, 'and the top')
-	eq(F.close:GetLeft(), closeLeft, 'the close X stays'); eq(F.shrink:GetLeft(), shrinkLeft, 'and the shrink arrow')
-	check(F.grow:IsShown(), 'grow at half'); eq(F.grow:GetRight(), F.shrink:GetLeft() - 6, '6 left of shrink')
-	check(F.shrink:IsShown(), 'shrink shows at half, beside grow')
+	eq(F.close:GetLeft(), closeLeft, 'the close X stays'); eq(F.grow:GetLeft(), shrinkLeft, 'and grow takes the place shrink had, beside the close X')
+	check(F.grow:IsShown(), 'grow at half'); eq(F.shrink:GetRight(), F.grow:GetLeft() - 6, 'shrink 6 left of grow')
+	check(F.shrink:IsShown(), 'shrink shows at half, left of grow')
 	eq(F.content:GetWidth(), 388, 'the body one column')
 	local state = OW:GetState()
 	eq(state.page .. '/' .. state.pick .. '/' .. state.tab, 'Unitframes/player/general', 'the page, pick and tab kept')
@@ -435,15 +435,16 @@ test('Shrink to half: 386 narrower from the left; the corner, the close X and th
 	eq(#take_errors(), 0, 'no errors')
 end)
 
-test("the arrows: the close X's size, chevrons at 20, grey at rest and accent under the mouse, each with its tooltip", function()
+test("the arrows: the close X's size, minimize-2 and maximize-2 at 16, grey at rest and accent under the mouse, each with its tooltip", function()
 	theme('thick')
 	st.config.global.optionsWindow = nil
 	st.Config:Open('Unitframes', 'player', 'general')
 	local F = frames()
 	eq(F.shrink:GetWidth() .. 'x' .. F.shrink:GetHeight(), '24x24', 'the close X\'s size')
-	eq(F.shrink.icon:GetTexture(), st.icons.chevronRight, 'shrink points right')
-	eq(F.shrink.icon:GetWidth() .. 'x' .. F.shrink.icon:GetHeight(), '20x20', 'a chevron at 20')
-	eq(F.grow.icon:GetTexture(), st.icons.chevronLeft, 'grow points left')
+	eq(F.shrink.icon:GetTexture(), st.icons.minimize2, 'shrink wears minimize-2')
+	eq(F.shrink.icon:GetWidth() .. 'x' .. F.shrink.icon:GetHeight(), '16x16', 'at 16')
+	eq(F.grow.icon:GetTexture(), st.icons.maximize2, 'grow wears maximize-2')
+	eq(F.grow.icon:GetWidth() .. 'x' .. F.grow.icon:GetHeight(), '16x16', 'at 16')
 	eq(F.shrink:GetTop(), F.close:GetTop(), 'top-aligned with the close X')
 	eq(F.shrink:GetRight(), F.close:GetLeft() - 6, '6 left of the close X')
 	eq(vertex(F.shrink.icon), color_of(st.config.profile.colors.text.grey), 'grey at rest')
@@ -463,7 +464,7 @@ test("the arrows: the close X's size, chevrons at 20, grey at rest and accent un
 	eq(tip_text(F.grow), 'Grow to full | The page in two columns.')
 	eq(tip_text(F.shrink), 'Shrink to a bar | A small bar, to see the whole UI. It keeps the page.', "shrink at half is the bar's (Task 4)")
 	-- The header stops 18 short of the leftmost arrow, at full and at half.
-	eq(F.header:GetRight(), F.grow:GetLeft() - 18, 'half: 18 short of grow')
+	eq(F.header:GetRight(), F.shrink:GetLeft() - 18, 'half: 18 short of shrink, the leftmost')
 	wait(); click(F.grow)
 	eq(F.header:GetRight(), F.shrink:GetLeft() - 18, 'full: 18 short of shrink')
 	-- The close X's tooltip.
@@ -476,6 +477,54 @@ test("the arrows: the close X's size, chevrons at 20, grey at rest and accent un
 	check(not GameTooltip:IsShown(), 'gone when it leaves')
 	st.config.global.optionsWindow = nil
 	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+-- The pair is [shrink][grow][X] at half and [shrink][X] at full: the button
+-- beside the close X is shrink at full and grow at half, so a click on that
+-- spot toggles full and half. Every edge whole, with the read-back's noise.
+test('the arrows: [shrink][grow][X] at half, [shrink][X] at full, whole pixels under Thick, Thin and Blizzard', function()
+	for _, look in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		theme(look)
+		st.config.global.optionsWindow = nil
+		st.Config:Open('Unitframes', 'player', 'general')
+		local F = frames()
+		for _, noise in ipairs({ 2 ^ -14, -2 ^ -14, 0 }) do
+			stub.size_noise = noise
+			OW:Render()
+			local where = look .. ' noise ' .. noise
+			-- Full: shrink is beside the close X.
+			check(F.shrink:IsShown() and not F.grow:IsShown(), where .. ' full: only shrink shows')
+			eq(F.shrink:GetRight(), F.close:GetLeft() - 6, where .. ' full: shrink 6 left of the close X, no empty slot')
+			-- Ruling 6's title room (under Blizzard the title is the body's width less 40, whatever the arrows).
+			if look ~= 'blizzard' then eq(F.title:GetRight(), F.shrink:GetLeft() - 8, where .. ' full: the title ends 8 short of the leftmost button') end
+			local off = P.off(F.window)
+			eq(#off, 0, where .. ' full: ' .. P.report(off))
+		end
+		stub.size_noise = 0
+		wait(); click(F.shrink)
+		eq(OW:GetWindowSize(), 'half', look .. ': half')
+		for _, noise in ipairs({ 2 ^ -14, -2 ^ -14, 0 }) do
+			stub.size_noise = noise
+			OW:Render()
+			local where = look .. ' noise ' .. noise
+			check(F.shrink:IsShown() and F.grow:IsShown(), where .. ' half: both show')
+			eq(F.grow:GetRight(), F.close:GetLeft() - 6, where .. ' half: grow 6 left of the close X')
+			eq(F.shrink:GetRight(), F.grow:GetLeft() - 6, where .. ' half: shrink 6 left of grow')
+			eq(F.shrink:GetTop(), F.grow:GetTop(), where .. ' half: level')
+			if look ~= 'blizzard' then eq(F.title:GetRight(), F.shrink:GetLeft() - 8, where .. ' half: the title ends 8 short of the leftmost button') end
+			local off = P.off(F.window)
+			eq(#off, 0, where .. ' half: ' .. P.report(off))
+		end
+		stub.size_noise = 0
+		-- The spot beside the close X toggles: grow there at half goes to full.
+		wait(); click(F.grow)
+		eq(OW:GetWindowSize(), 'full', look .. ': a click beside the close X at half grows to full')
+		wait(); click(F.shrink)
+		eq(OW:GetWindowSize(), 'half', look .. ': and shrink at full goes back to half')
+		st.config.global.optionsWindow = nil
+		close_all()
+	end
 	eq(#take_errors(), 0, 'no errors')
 end)
 

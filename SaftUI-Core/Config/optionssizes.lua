@@ -29,19 +29,22 @@ local W = st.OptionsWidgets
 	      size last changed (S.sizedAt), so a double click can't go on to the
 	      next size.
 
-	The arrows (F.grow, F.shrink): W.IconButton the close X's size, with a 20
-	chevron in Text > Grey and the accent under the mouse, each with its
-	tooltip in the mockup's words and, while it is disabled, the reason in red
-	(the color picker is open; the screen is too narrow). Grow points left
-	and sits at the left of the pair, shrink points right at the right, beside
-	the close X: under Thick and Thin 6 apart, right to left from the close X,
+	The size buttons (F.shrink, F.grow): W.IconButton the close X's size, with
+	a 16 Lucide icon in Text > Grey and the accent under the mouse (shrink
+	wears minimize-2, grow maximize-2), each with its tooltip in the mockup's
+	words and, while it is disabled, the reason in red (the color picker is
+	open; the screen is too narrow). Shrink is at the left of the pair and
+	grow at the right, beside the close X: [shrink][grow][X] at half and
+	[shrink][X] at full (no empty slot), so the spot beside the close X is
+	shrink at full and grow at half, and a click there toggles full and half.
+	Under Thick and Thin they are 6 apart, right to left from the close X,
 	top-aligned with it; under Blizzard on the title bar left of the metal's
 	socket, centred on the close button, wearing Blizzard's own expand
 	(grow) and condense (shrink) art (S.LookSizeButton, st.ThemeArt.Control(
 	'sizebutton'), MaximizeMinimizeButtonFrameTemplate's atlases: normal,
 	pushed and disabled, and the additive highlight) where the client has it,
 	which is both clients today; on a client without it, in Blizzard's panel
-	button (W.LookControl) with the chevron. Shrink shows at full and half,
+	button (W.LookControl) with the Lucide icon. Shrink shows at full and half,
 	grow at half; at the bar neither does.
 
 	The bar (F.mini, a frame over the whole window, shown only at the bar;
@@ -76,7 +79,7 @@ local MINI_GAP = 8 -- between the bar's parts
 local MINI_LEFT = 12 -- the name, in from the bar's left
 
 local ARROW_GAP = 6 -- between the arrows, and between them and the close X
-local ARROW_ICON = 20 -- a chevron 10 tall, drawn at twice its glyph
+local SIZE_ICON = 16 -- minimize-2 and maximize-2: a square glyph 12 across, drawn at 16 on the 24 button (whole 4 px margins)
 local GAP_TO_HEADER = 18 -- the drag strip stops this far short of the leftmost arrow
 local GAP_TO_TITLE = 8 -- and the title's room this far
 
@@ -132,7 +135,7 @@ end
 ------------------------------------------------------------------ Blizzard's art
 
 -- The expand and condense art this client has (st.ThemeArt.Control('sizebutton')),
--- or nil where it has none: a client without it keeps the chevron on Blizzard's
+-- or nil where it has none: a client without it keeps the Lucide icon on Blizzard's
 -- panel button (plan Ruling 17). Read at call time, as the client decides it.
 local function HasAtlases(set)
 	return set and C_Texture.GetAtlasInfo(set.normal) and C_Texture.GetAtlasInfo(set.pushed) and C_Texture.GetAtlasInfo(set.disabled)
@@ -196,8 +199,8 @@ end
 
 -- The arrow's look: under Blizzard, where the client has the art, Blizzard's
 -- expand (kind 'grow') or condense ('shrink') button drawn at the art's size,
--- centred on the button's square, its Box and chevron hidden, its disabled art
--- while button.disabled; otherwise the Box and the chevron as before (under
+-- centred on the button's square, its Box and icon hidden, its disabled art
+-- while button.disabled; otherwise the Box and the Lucide icon (under
 -- Blizzard on Blizzard's panel button, W.LookControl). The tooltip, the guard,
 -- the disabled alpha and hoverIcon are the button's own and don't change.
 function S.LookSizeButton(button, kind)
@@ -236,9 +239,9 @@ end
 
 function S.BuildSizeButtons(window)
 	local size = st.CLOSE_X_BUTTON_SIZE[1]
-	F.shrink = W.IconButton(window, st.icons.chevronRight, ShrinkTip, size, ARROW_ICON)
+	F.shrink = W.IconButton(window, st.icons.minimize2, ShrinkTip, size, SIZE_ICON)
 	F.shrink.onClick, F.shrink.hoverIcon = function() OW:Shrink() end, true
-	F.grow = W.IconButton(window, st.icons.chevronLeft, GrowTip, size, ARROW_ICON)
+	F.grow = W.IconButton(window, st.icons.maximize2, GrowTip, size, SIZE_ICON)
 	F.grow.onClick, F.grow.hoverIcon = function() OW:Grow() end, true
 	F.shrink:Hide()
 	F.grow:Hide()
@@ -273,10 +276,16 @@ function S.PlaceSizeButtons()
 	local width = st.CLOSE_X_BUTTON_SIZE[1]
 	-- Under Blizzard centred on the close button (28 tall on Forever, 24 on retail).
 	local drop = S.blizzard and floor((st.ThemeArt.Close().size - width) / 2) or 0
-	F.shrink:ClearAllPoints()
-	F.shrink:SetPoint('TOPRIGHT', F.close, 'TOPLEFT', -ARROW_GAP, -drop)
+	-- Grow sits beside the close X at half; at full shrink does, so the spot
+	-- beside the X toggles full and half, and at half shrink is left of grow.
 	F.grow:ClearAllPoints()
-	F.grow:SetPoint('TOPRIGHT', F.shrink, 'TOPLEFT', -ARROW_GAP, 0)
+	F.grow:SetPoint('TOPRIGHT', F.close, 'TOPLEFT', -ARROW_GAP, -drop)
+	F.shrink:ClearAllPoints()
+	if S.size == 'half' then
+		F.shrink:SetPoint('TOPRIGHT', F.grow, 'TOPLEFT', -ARROW_GAP, 0)
+	else
+		F.shrink:SetPoint('TOPRIGHT', F.close, 'TOPLEFT', -ARROW_GAP, -drop)
+	end
 	F.shrink:SetShown(S.size ~= 'mini')
 	F.grow:SetShown(S.size == 'half')
 	-- At the bar grow is the bar's own, 8 left of the close X, centred on the 42.
@@ -398,7 +407,7 @@ function S.BuildMini(window)
 	names:SetScript('OnLeave', function(self) W.HideTip(self) end)
 	F.miniNames = names
 
-	F.miniGrow = W.IconButton(mini, st.icons.chevronLeft, MiniGrowTip, st.CLOSE_X_BUTTON_SIZE[1], ARROW_ICON)
+	F.miniGrow = W.IconButton(mini, st.icons.maximize2, MiniGrowTip, st.CLOSE_X_BUTTON_SIZE[1], SIZE_ICON)
 	F.miniGrow.onClick, F.miniGrow.hoverIcon = function() OW:Grow() end, true
 end
 

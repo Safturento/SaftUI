@@ -29,7 +29,8 @@ The icon's name from `st.icons` (`x`, `chevronDown`, `chevronUp`, `rotateCcw`, `
 | `ellipsis-vertical` | the menu item's icon (spec; in the `sb-task5` build) | 16 | `text-grey`, `accent` |
 | `chevron-up`, `chevron-down` | the position nudges (12 x 12, one texture per arrow) | 12 | `text-grey`, `text` |
 | `log-out`, `grid-3x3`, `magnet`, `align-start-vertical`, `layers`, `map-pin`, `eye`, `power-off`, `search`, `undo-2`, `redo-2`, `history`, `picture-in-picture-2`, `panel-top` | the edit mode bar (registered with the kit's icon button; see Button) | 16 | `text-grey`, `accent` |
-| `chevron-left`, `chevron-right` | the window's size arrows and the Categories tab's previous and next (registered; used by the window's sizes work) | 20 in the header's arrows, 16 in the Categories tab's buttons | `text-grey`, `accent` |
+| `minimize-2`, `maximize-2` | the window's size buttons: shrink and grow, in the header and (grow) on the bar | 16 | `text-grey`, `accent` |
+| `chevron-left`, `chevron-right` | the Categories tab's previous and next (the size buttons wore them until 2026-11-14) | 16 in the Categories tab's buttons | `text-grey`, `accent` |
 | `panel-left-open`, `panel-left-close` | the /sui sidebar's toggle (registered; used by the window's sizes work) | 16 | `text-grey`, `accent` |
 | `move` | the Edit mode button in /sui's collapsed footer (registered; used by the window's sizes work) | 16 | `text-grey`, `accent` |
 | `keyboard` | the keybind mode command in /sui's collapsed footer (registered; used by the window's sizes work) | 16 | `text-grey`, `accent` |
