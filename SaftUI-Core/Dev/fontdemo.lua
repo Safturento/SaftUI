@@ -554,5 +554,34 @@ function FD:Toggle()
 	if self.window:IsShown() then self.window:Hide() else self.window:Show() end
 end
 
+-- TEMPORARY DIAGNOSTIC (2026-11-13): in game every candidate failed to load
+-- after a full restart, though the files are sound and on disk. "/suifonts test"
+-- prints what SetFont returns for the same font file under different folders and
+-- names, to tell a folder problem from a name problem from a file problem.
+-- Delete this block and the four test files it names once that is known.
+local DIAG = {
+	{ 'a working font, as a control', 'AgencyFB_Bold.ttf' },
+	{ 'a copy of that working font, in Candidates', 'Candidates\\agencycopy.ttf' },
+	{ 'a candidate, in Candidates, its own name', 'Candidates\\BarlowCondensed-SemiBold.ttf' },
+	{ 'the same candidate, in Candidates, a plain name', 'Candidates\\barlowtest.ttf' },
+	{ 'the same candidate, beside the working fonts, its own name', 'BarlowCondensed-SemiBold.ttf' },
+	{ 'the same candidate, beside the working fonts, a plain name', 'barlowtest.ttf' },
+}
+
+function FD:Diagnose()
+	local holder = self.diagHolder or CreateFrame('Frame', nil, UIParent)
+	self.diagHolder = holder
+	print('|cff00adefSaftUI font test|r (true = loaded):')
+	for i, test in ipairs(DIAG) do
+		local path = st:FontPath(test[2])
+		local fs = holder:CreateFontString(nil, 'OVERLAY')
+		local ok = fs:SetFont(path, 12, '')
+		print(('%d. %s: %s'):format(i, test[1], tostring(ok)))
+		print('   ' .. path)
+	end
+end
+
 SLASH_SAFTUIFONTS1 = '/suifonts'
-SlashCmdList['SAFTUIFONTS'] = function() FD:Toggle() end
+SlashCmdList['SAFTUIFONTS'] = function(msg)
+	if msg and msg:lower():match('^%s*test') then FD:Diagnose() else FD:Toggle() end
+end
