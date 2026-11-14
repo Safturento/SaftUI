@@ -525,12 +525,14 @@ local function Restore()
 	wipe(released)
 end
 
--- A focused Grid size box would keep the keyboard from edit mode's catcher, so
--- the arrow keys would not nudge: it lets go when a mover is pressed or dragged
--- and when edit mode closes.
+-- A focused Grid size box or History length box would keep the keyboard from
+-- edit mode's catcher, so the arrow keys would not nudge: they let go when a
+-- mover is pressed or dragged and when edit mode closes.
 local function DropFocus()
 	local control = EM:BarControl('gridSize')
 	if control and control.frame.edit then control.frame.edit:ClearFocus() end
+	local list = EM.historyList
+	if list and list.box then list.box.edit:ClearFocus() end
 end
 
 EM:On('Enabled', function()

@@ -167,6 +167,15 @@ function EM:CanReset(mover)
 		return false, EM.MoverName(mover) .. ' is already in its default place.'
 	end
 	if InCombatLockdown() then return false, "Can't reset in combat." end
+	-- The default may anchor to a frame that is anchored to this one since; the
+	-- same check Undo and Redo make before they put an anchor back.
+	local anchor = default.frame
+	if anchor ~= nil and anchor ~= UIParent and anchor ~= 'UIParent' then
+		local valid, why = st:ValidateAnchor(def.frame, anchor)
+		if not valid then
+			return false, ("%s can't go back to its default place: %s."):format(EM.MoverName(mover), why)
+		end
+	end
 	return true
 end
 

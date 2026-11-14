@@ -302,7 +302,9 @@ function EM:RefreshHistoryList()
 	local x2 = boxX + FOOT_BOX + FOOT_SPACE
 	PlaceText(list.foot2, list, x2, -footTop, FOOT_HEIGHT,
 		max(0, min(Width(list.foot2), HL.WIDTH - HL.PAD - x2)))
-	list.box:Refresh()
+	-- Not while it is being typed in: the once-a-second tick would put the
+	-- saved length back over the digits.
+	if not list.box.edit:HasFocus() then list.box:Refresh() end
 
 	list:SetSize(HL.WIDTH, footTop + FOOT_HEIGHT + HL.PAD)
 end
@@ -386,6 +388,9 @@ local function Build()
 	end)
 	list:SetScript('OnHide', function(self)
 		self.keys:Hide()
+		-- A hidden box may keep the keyboard, which would stop nudging and the
+		-- player's keybinds.
+		self.box.edit:ClearFocus()
 		ButtonRefresh()
 	end)
 

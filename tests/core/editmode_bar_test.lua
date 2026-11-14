@@ -500,6 +500,22 @@ test("the Grid size box lets go of the keyboard when a mover is pressed or dragg
 	reset_edit_mode()
 end)
 
+test("the Grid size box is not refreshed while it has the keyboard", function()
+	EM:Activate()
+	EM:SetSetting('grid', true)
+	local edit = frame_of('gridSize').edit
+	edit:SetFocus()
+	edit:SetText('2')
+	EM:RefreshBar()
+	eq(edit:GetText(), '2', 'a refresh leaves what is typed')
+	edit:SetText('20')
+	EM:SetSetting('grid_size', 24)
+	eq(edit:GetText(), '20', 'so does a change of the setting')
+	stub.fire_script(edit, 'OnEnterPressed')
+	eq(settings().grid_size, 20, 'Enter commits it')
+	reset_edit_mode()
+end)
+
 test('Pressed fires with the mover when the mouse goes down on its outline, and ColorsChanged with the group', function()
 	EM:Activate()
 	local mover = add_mover('press_test')

@@ -134,7 +134,8 @@ local function GridSize(bar)
 		Look = function(_, blizzard) W.LookNumberBox(box, blizzard) end,
 		Refresh = function()
 			local settings = EM:GetSettings()
-			box:Refresh()
+			-- Not while it is being typed in.
+			if not box.edit:HasFocus() then box:Refresh() end
 			W.SetEnabled(box, settings.grid == true or settings.snap_grid == true)
 		end,
 	}
