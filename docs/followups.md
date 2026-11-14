@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-14 — Categories tab at full size: a long "Reset <name> to default" overlaps Delete](#2026-11-14--categories-tab-at-full-size-a-long-reset-name-to-default-overlaps-delete)
   - [2026-11-14 — Copy from writes default tables into keys the source unit doesn't have](#2026-11-14--copy-from-writes-default-tables-into-keys-the-source-unit-doesnt-have)
   - [2026-11-13 — Design decisions waiting to be built](#2026-11-13--design-decisions-waiting-to-be-built)
   - [2026-11-13 — Objective tracker skin: in-game checks and what was left out](#2026-11-13--objective-tracker-skin-in-game-checks-and-what-was-left-out)
@@ -138,6 +139,20 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-14 — Categories tab at full size: a long "Reset <name> to default" overlaps Delete
+
+**What:** In the bags' Categories editor, the Reset button's label is `Reset <category name> to default`. For a long name the button is wider than its half-line slot and overlaps Delete beside it. The shipped default "Death Knight/Warlock/Demon Hunter" does it, and so does any default the player renames to a long name (renaming keeps the Reset row).
+
+**Why noticed:** Review of the Categories tab at half width (window sizes work, Task 8). At half the label was shortened to "Reset to default" (the button above the editor names the category), but full size was left as it was, to keep it unchanged. Measured at full: under Thick the label is 375 wide in a 264 slot and spills about 55 px over Delete (which spans 276..540); under Blizzard the 403 wide button sits over Delete (290..370). The parent commit of that task (`7cc5acb`) behaves the same, so it isn't a regression.
+
+**Anchors:** `SaftUI-Bags/categoriestab.lua` (`INV:CategoryEditorOptions`, `args.reset`), `SaftUI-Core/Config/optionsbody.lua` (a floating line's buttons fill their slots, `Body:ButtonSlotRect`), `tests/bags/categories_half_test.lua` (the half-width case).
+
+**What's been considered:** Use the same short label at full (the editor's Name box above already shows the category). Or let the body cap a shared-slot button's label to its slot with an ellipsis. Either changes full size, so it is the owner's call.
+
+**Shape of work:** One-line label change plus a test, or a small body change for the cap.
+
+**Open questions:** Short label at full too, or keep the name and truncate?
 
 ### 2026-11-14 — Copy from writes default tables into keys the source unit doesn't have
 

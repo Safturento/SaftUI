@@ -687,3 +687,97 @@ test('a long rule wraps in the narrow editor: every field clear of its X', funct
 		st.Config:Close()
 	end
 end)
+
+------------------------------------------------------------------ fix round 1
+
+test("at half the Reset button never passes the editor, whatever the category is called; at full it keeps its name", function()
+	for _, name in ipairs({ 'thick', 'blizzard' }) do
+		world()
+		look(name)
+		local long = 'Death Knight/Warlock/Demon Hunter'
+		INV:RenameCategory('Toys', 'A category with a very long name that cannot fit the button at all')
+		open(); half()
+		local list = INV:GetCategoryList()
+		check(list.byId[long], 'the longest default is there')
+		for _, entry in ipairs(list) do
+			INV.categoryEditor.selected = entry.id
+			OW:Render()
+			local w = tab()
+			for _, key in ipairs({ 'reset', 'delete' }) do
+				local c = w:EditorCell(key)
+				if c then
+					check(c.widget.frame:GetRight() <= w.editorScroll:GetRight() + 0.01,
+						('%s: %s: the %s button ends inside the editor'):format(name, entry.id, key))
+				end
+			end
+		end
+		INV.categoryEditor.selected = long
+		OW:Render()
+		eq(tab():EditorCell('reset').widget.text:GetText(), 'Reset to default', name .. ': the face names the category')
+		OW:SetWindowSize('full'); stub.time = stub.time + 1
+		eq(tab():EditorCell('reset').widget.text:GetText(), 'Reset ' .. long .. ' to default', name .. ': full as before')
+		st.Config:Close()
+	end
+end)
+
+test('the menu and its catcher are gone when the window closes or combat starts, and no key or click is left held', function()
+	world()
+	open(); half()
+	local w = tab()
+	click(w.menuButton)
+	check(w.menu.catcher:IsKeyboardEnabled(), 'the catcher takes keys while open')
+	st.Config:Close()
+	check(not w.menu:IsShown() and not w.menu.catcher:IsShown() and not w.menu.catcher:IsKeyboardEnabled(), 'closing /sui')
+	open()
+	w = tab()
+	click(w.menuButton)
+	stub.in_combat = true
+	stub.fire_event('PLAYER_REGEN_DISABLED')
+	stub.in_combat = false
+	check(not OW:IsShown(), 'combat closed the window')
+	check(not w.menu:IsShown() and not w.menu.catcher:IsShown() and not w.menu.catcher:IsKeyboardEnabled(), 'combat')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('Esc is kept from the game, other keys go on; the wheel stops at the menu; the face is lit while it is open', function()
+	world()
+	open(); half()
+	local w = tab()
+	click(w.menuButton)
+	stub.fire_script(w.menu.catcher, 'OnKeyDown', 'A')
+	eq(w.menu.catcher:GetPropagateKeyboardInput(), true, 'A goes on')
+	stub.fire_script(w.menu.catcher, 'OnKeyDown', 'ESCAPE')
+	eq(w.menu.catcher:GetPropagateKeyboardInput(), false, 'Esc is kept')
+	for _, frame in ipairs({ w.menu, w.menu.catcher }) do
+		check(frame:IsMouseWheelEnabled(), 'the wheel is taken')
+		check(type(frame:GetScript('OnMouseWheel')) == 'function', 'and goes nowhere')
+	end
+	check(not w.menuButton.on, 'the face is not lit closed')
+	click(w.menuButton)
+	check(tab().menuButton.on, 'the face is lit while the menu is open')
+	eq(#take_errors(), 0, 'no errors')
+	st.Config:Close()
+end)
+
+test("the list sits over the menu, the editor's view ends at its footer, and the footer is at most half the column", function()
+	world()
+	INV.categoryEditor.selected = 'Toys'
+	for i = 1, 150 do INV:PinItem(9000 + i, 'Toys') end
+	open(); half()
+	local w = tab()
+	click(w.menuButton)
+	local base = w.menu:GetFrameLevel()
+	check(w.listPane:GetFrameLevel() > base and w.listScroll:GetFrameLevel() > base, 'the pane and its scroll frame')
+	check(w.list:GetFrameLevel() > base and w.rows[1].frame:GetFrameLevel() > base and w.over:GetFrameLevel() > base, 'the rows and the drop line')
+	check(w.footer:IsShown(), 'there is a footer')
+	eq(w.editorScroll:GetBottom(), w.footer:GetTop(), "the editor's view ends where the footer starts")
+	local column = w.frame:GetHeight() - 34
+	eq(w.footer:GetHeight(), math.floor(column / 2), 'a tall footer is half the column, not half the tab')
+	-- Where the row starts: 14 in under Thick and Thin, 0 under Blizzard.
+	eq(w.menuButton:GetLeft(), w.frame:GetLeft() + 14, 'the button row at the editor content')
+	look('blizzard'); OW:Render()
+	eq(tab().menuButton:GetLeft(), tab().frame:GetLeft(), 'and at 0 under Blizzard')
+	look('thick')
+	eq(#take_errors(), 0, 'no errors')
+	st.Config:Close()
+end)

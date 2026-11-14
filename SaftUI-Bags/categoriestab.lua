@@ -7,8 +7,8 @@ local INV = st:GetModule('Inventory')
 	category's editor on the right. Two widget types (W.Define):
 
 	  { type = 'bagcategories', size = 'wide', name, desc }
-	      the whole tab: bare and fill (W.Define), the body's width (774) and
-	      the height its view leaves, so the body has nothing to scroll
+	      the whole tab: bare and fill (W.Define), the body's width (774 at full; 388, or 368
+	      under Blizzard, at half) and the height its view leaves, so the body has nothing to scroll
 	  { type = 'bagitems', size = 'wide', name, desc,
 	    items = function(info) -> { { itemID, info } } end,
 	    onRemove = function(itemID) end,     an X on each icon unpins it, or
@@ -114,7 +114,13 @@ local INV = st:GetModule('Inventory')
 	window, which waited for it, draws again.
 
 	  INV.categoryEditor.menuOpen       the menu is open while this is true and
-	                                    the tab is compact
+	                                    the tab is compact. It stays true,
+	                                    the menu hidden, from the tab's release
+	                                    until it is drawn again (state.menuAt,
+	                                    the OW.GetRenderCount() of the release),
+	                                    where Layout clears it unless that draw
+	                                    is in the same render. This depends on
+	                                    the count going up once per render.
 	  widget.compact, widget.menuButton, widget.prevButton, widget.nextButton,
 	  widget.menu (widget.menu.catcher, widget.menu.caption)
 
@@ -378,7 +384,9 @@ function INV:CategoryEditorOptions(id, tab, items)
 		args.reset = {
 			order = 40,
 			type = 'execute',
-			name = format('Reset %s to default', entry.name),
+			-- At half the button above the editor names the category, and a long name
+			-- would run the button past the editor.
+			name = (tab and tab.compact) and 'Reset to default' or format('Reset %s to default', entry.name),
 			desc = 'Put this category back as SaftUI ships it: its name, on or off, Show in and rule. Its pinned items stay.',
 			disabled = function() local e = Entry(); return not (e and e.edited) end,
 			func = function() INV:ResetCategory(id) end,
@@ -929,7 +937,9 @@ end
 -- The face's contents: the list icon, the name (cut short, not over the place)
 -- and its place at the right, before the caret. Under Blizzard the face's own
 -- code (W.LookSelectFace) puts the name across it, centred, each time it is
--- painted: so these go on again after it.
+-- painted: so these go on again after it (hooks on its scripts, and each
+-- layout). Never call W.SetEnabled or Kit.PaintFace on this face: they put the
+-- name back across it.
 local function PlaceFaceContents(face)
 	face.text:SetJustifyH('LEFT')
 	face.text:ClearAllPoints()
