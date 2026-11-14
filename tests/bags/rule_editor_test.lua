@@ -774,7 +774,7 @@ test('SetHighlight tints the row at a path', function()
 	w:SetHighlight({ 2, 2 })
 	eq(tinted(), '4', 'the row at the path')
 	local color = stub.state(w.rows[4].tint).color_texture
-	check(same_rgb(color, Color('text', 'orange')) and math.abs(color[4] - 0.15) < 1e-6, 'orange at 0.15')
+	check(same_rgb(color, Color('text', 'orange')) and math.abs(color[4] - 0.25) < 1e-6, 'orange at 0.25, a row tint')
 	w:SetHighlight({ 2 })
 	eq(tinted(), '2', "a group's title row")
 	click(w.rows[1].notBox)

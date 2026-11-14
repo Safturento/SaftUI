@@ -290,7 +290,7 @@ function STP:GetConfigTable()
 		args[info.key] = self:GetBarOptions(info, i)
 	end
 	return {
-		name = 'Swing Timer',
+		name = 'Swing timer',
 		type = 'group',
 		category = 'Combat', -- the /sui sidebar's group (optionslayout.lua)
 		childGroups = 'tab',

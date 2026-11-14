@@ -54,6 +54,10 @@ local LAB = LibStub('LibActionButton-1.0')
 -- with LibActionButton's or the template's.
 local skins = {}
 
+-- A hovered button's highlight: white at this alpha over the icon, faint enough
+-- to leave the icon readable. The same on every bar, the pet and stance bars too.
+local HOVER_ALPHA = 0.15
+
 -- The template's art (ActionButtonTemplate, the same keys on forever and live).
 local TEMPLATE_ART = {
 	'NormalTexture', 'PushedTexture', 'HighlightTexture', 'CheckedTexture',
@@ -434,7 +438,7 @@ function AB:StyleButton(button, config, theme, background)
 		end
 		-- Shown only under the mouse in this layer; moved out, all the time.
 		skin.hover:SetDrawLayer(st.ThemeArt.HOVER_LAYER, 0)
-		skin.hover:SetVertexColor(colors.button.blue:GetRGB())
+		skin.hover:SetVertexColor(1, 1, 1, HOVER_ALPHA)
 		skin.pushed:SetVertexColor(0, 0, 0, 0.1)
 		skin.checked:SetVertexColor(1, 1, 1, 0.3)
 		skin.checked:SetBlendMode('ADD')

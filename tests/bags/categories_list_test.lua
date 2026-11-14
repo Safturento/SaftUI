@@ -318,7 +318,9 @@ test("under Blizzard the category list is the Settings category list; its handle
 		check(hover:IsShown(), client .. ': Thick: the hover shows')
 		local c = stub.state(hover).color_texture
 		check(same_rgb(c, rgb('button', 'blue')), client .. ': Thick: a blue hover')
-		eq(c[4], 0.1, client .. ': at 0.1, fainter than the 0.25 tint')
+		eq(c[4], st.TINT_ROW, client .. ': at the row tint, the same as the selected row')
+		eq(c[4], 0.25, client .. ': 25%')
+		eq(stub.state(sel.tint).color_texture[4], st.TINT_ROW, client .. ': the selected row at the row tint')
 		eq(hover:GetAlpha(), 1, client .. ': its alpha in its color')
 		stub.fire_script(row_of(w, SETS).frame, 'OnLeave')
 		check(not hover:IsShown(), client .. ': Thick: gone when the mouse leaves')

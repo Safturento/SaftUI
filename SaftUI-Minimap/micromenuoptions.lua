@@ -16,7 +16,7 @@ function MicroMenu:GetConfigTable()
         self.Container
     )
     return {
-        name = 'Micro Menu',
+        name = 'Micro menu',
         type = 'group',
         category = 'Frames', -- the /sui sidebar's group (optionslayout.lua)
         childGroups = 'tab',

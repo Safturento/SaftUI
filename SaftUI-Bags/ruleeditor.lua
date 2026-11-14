@@ -79,7 +79,6 @@ local CHECK_SIZE = 14
 local GAP = 6
 local TEXT_BOX, NUMBER_BOX, SMALL_BOX = 150, 50, 40
 local FIELD_WIDTH, MODE_WIDTH, YES_NO_WIDTH, COUNT_WIDTH = 150, 80, 60, 90
-local TINT_ALPHA = 0.15
 
 ------------------------------------------------------------------ shared with the Categories tab
 
@@ -823,7 +822,7 @@ local function LayRow(w, i, row, top)
 	f.connector:SetPoint('TOPLEFT', f, 'TOPLEFT', lineX, -(ROW_HEIGHT - LINE_WIDTH) / 2)
 	f.tint:SetPoint('TOPLEFT', f, 'TOPLEFT', x - 4, 0)
 	local r, g, b = Colors().text.orange:GetRGB()
-	f.tint:SetColorTexture(r, g, b, TINT_ALPHA)
+	f.tint:SetColorTexture(r, g, b, st.TINT_ROW)
 
 	local known = row.kind == 'group' or (row.kind == 'block' and KnownBlock(row.node))
 	f:EnableMouse(row.kind == 'block' and known and row.node.block == 'items')

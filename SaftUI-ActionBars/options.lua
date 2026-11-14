@@ -682,7 +682,7 @@ function AB:GetConfigTable()
 		end
 	end
 	return {
-		name = 'Action Bars',
+		name = 'Action bars',
 		type = 'group',
 		category = 'Frames', -- the /sui sidebar's group (optionslayout.lua)
 		-- All bars, the bars and the extra buttons are the page's picker.
