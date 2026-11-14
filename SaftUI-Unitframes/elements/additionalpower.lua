@@ -110,7 +110,7 @@ local function GetConfigTable(unit)
 			framelevel = G.framelevel(6, 'Draws the bar over the parts of the unit frame with a lower frame level, and under those with a higher one.'),
 			size = UF.GenerateRelativeSizeConfigGroup(8),
 			-- oUF's AdditionalPower knows only colorPower.
-			colors = UF.GenerateColorsConfigGroup(9, unit, { 'colorPower' }, Config, Update, {
+			colors = UF.GenerateColorsConfigGroup(9, unit, 'additionalpower', { 'colorPower' }, Config, Update, {
 				colorPower = 'Colors the bar and its background in the mana color. With this and Custom both off, nothing colors them: they keep the last color they had.',
 			}),
 			text = Section(98, 'Text', 'text', {

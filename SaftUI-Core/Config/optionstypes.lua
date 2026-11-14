@@ -121,12 +121,23 @@ define('input', {
 	template's own white and black), BLIZZARD_INSET in from the face's edge,
 	clear of its border and round corners; the white square parts it from the
 	code, so there's no line.
+
+	A color with a toggle (SaftUI's field, OM.ToggleState: get, set, offText,
+	desc) is one control for "use this color" and the color: a check box at the
+	field's left, CHECK_SIZE square on its line, the kit's (Blizzard's art under
+	Blizzard), and the swatch and code after it, TOGGLE_LEAD further in. Ticked,
+	the field is as without a toggle. Unticked, the swatch and the code give
+	way to offText in Text > Grey, from where the swatch began, and a click on
+	the field ticks the box and opens no picker. The box takes its own click and
+	shows its own tooltip, which says what unticked means.
 ]]
 local SWATCH_WIDTH = 40
 local CODE_GAP = 8 -- the code after the swatch's line (Blizzard: its white square)
 local EDGE_WIDTH = 1 -- Box's edge, which the swatch sits inside under Thick and Thin
 local BLIZZARD_INSET = 3 -- the swatch in from the Blizzard face's edge
 local CHECKER = 4 -- a checker square
+local CHECK_SIZE, CHECK_X = 18, 4 -- a toggle's box, in from the field's left
+local TOGGLE_LEAD = 30 -- the swatch and code pushed right by the box (its art under Blizzard is 25 wide)
 -- The checker's greys (the mockup's #5a5a5a and #8a8a8a).
 local CHECKER_DARK, CHECKER_LIGHT = { 0.353, 0.353, 0.353, 1 }, { 0.541, 0.541, 0.541, 1 }
 Kit.CHECKER, Kit.CHECKER_DARK, Kit.CHECKER_LIGHT = CHECKER, CHECKER_DARK, CHECKER_LIGHT -- the color picker's checker is the same
@@ -156,21 +167,24 @@ end
 -- BLIZZARD_INSET in from the face, the black one and the color inside it.
 local function PlaceParts(w, blizzard)
 	local button = w.frame
+	local lead = w.lead or 0 -- the box's room, when the field has a toggle
 	w.white:SetShown(blizzard)
 	w.line:SetShown(not blizzard)
 	if blizzard then
 		local swatch = st.ThemeArt.Control('swatch')
 		local height = FIELD_HEIGHT - 2 * BLIZZARD_INSET
+		w.startX = BLIZZARD_INSET + lead
 		w.white:SetColorTexture(unpack(swatch.whiteColor))
-		Place(w.white, button, BLIZZARD_INSET, BLIZZARD_INSET, SWATCH_WIDTH, height)
+		Place(w.white, button, w.startX, BLIZZARD_INSET, SWATCH_WIDTH, height)
 		w.inner:SetColorTexture(unpack(swatch.blackColor))
-		PlaceSwatch(w, BLIZZARD_INSET + 1, BLIZZARD_INSET + 1, SWATCH_WIDTH - 2, height - 2,
-			BLIZZARD_INSET + SWATCH_WIDTH + CODE_GAP)
+		PlaceSwatch(w, w.startX + 1, BLIZZARD_INSET + 1, SWATCH_WIDTH - 2, height - 2,
+			w.startX + SWATCH_WIDTH + CODE_GAP)
 	else
 		local height = FIELD_HEIGHT - 2 * EDGE_WIDTH
+		w.startX = EDGE_WIDTH + lead
 		w.inner:SetColorTexture(0, 0, 0, 1)
-		Place(w.line, button, EDGE_WIDTH + SWATCH_WIDTH, EDGE_WIDTH, 1, height)
-		PlaceSwatch(w, EDGE_WIDTH, EDGE_WIDTH, SWATCH_WIDTH, height, EDGE_WIDTH + SWATCH_WIDTH + 1 + CODE_GAP)
+		Place(w.line, button, w.startX + SWATCH_WIDTH, EDGE_WIDTH, 1, height)
+		PlaceSwatch(w, w.startX, EDGE_WIDTH, SWATCH_WIDTH, height, w.startX + SWATCH_WIDTH + 1 + CODE_GAP)
 	end
 end
 
@@ -179,6 +193,7 @@ end
 -- Blizzard's swatch inside it.
 local function LookColor(w, blizzard)
 	local button = w.frame
+	w.blizzardLook = blizzard
 	local art = Art(button)
 	if not Changes(art, blizzard) then return end
 	ShowBox(button, not blizzard)
@@ -194,6 +209,46 @@ local function LookColor(w, blizzard)
 	end
 	PlaceParts(w, blizzard)
 	Kit.PaintFace(button)
+end
+
+-- A toggle's box, made the first time a field has one: the kit's check box
+-- (Blizzard's art under Blizzard) on the field, with its own click and tooltip.
+local function MakeCheck(w)
+	local box = CheckBox(w.frame, CHECK_SIZE)
+	HoverEdge(box, function() return w.disabled end)
+	box:SetScript('OnClick', function()
+		if w.disabled or not w.row or not w.toggle then return end
+		w:CommitToggle(not w.toggle.on)
+	end)
+	-- What unticked means: the option's own words, else what the field shows.
+	box:HookScript('OnEnter', function(self)
+		local state = w.toggle
+		if w.disabled or not w.row or not state then return end
+		local line = state.desc or ('Unticked, the field shows ' .. state.offText .. '.')
+		W.ShowTip(self, w.row.name, { line }, 'ANCHOR_TOPLEFT')
+	end)
+	box:HookScript('OnLeave', function(self) W.HideTip(self) end)
+	return box
+end
+
+-- The box for state (OM.ToggleState's, nil: the field has no toggle) put on
+-- the field in blizzard's look: shown and ticked, or hidden.
+local function LookToggle(w, state, blizzard)
+	if not state then
+		if w.check then
+			w.check:Hide()
+			w.check:EnableMouse(false)
+		end
+		return
+	end
+	if not w.check then w.check = MakeCheck(w) end
+	local box = w.check
+	LookCheckBox(box, blizzard, FIELD_HEIGHT, 'LEFT')
+	box:ClearAllPoints()
+	box:SetPoint('TOPLEFT', w.frame, 'TOPLEFT', CHECK_X, -floor((FIELD_HEIGHT - CHECK_SIZE) / 2))
+	box:Show()
+	box:EnableMouse(not w.disabled)
+	SetCheck(box, state.on, w.disabled)
 end
 
 builders.color = function(w)
@@ -221,7 +276,15 @@ builders.color = function(w)
 	HoverEdge(button, function() return w.disabled end)
 	-- Under Blizzard the face follows the mouse as a select's does.
 	W.DropdownStates(button, function() return w.disabled end)
-	button:SetScript('OnClick', function() w:Pick() end)
+	-- A field with a toggle that's off ticks it, and opens no picker.
+	button:SetScript('OnClick', function()
+		if w.disabled then return end
+		if w.toggle and not w.toggle.on then
+			w:CommitToggle(true)
+		else
+			w:Pick()
+		end
+	end)
 	-- Box's look until the first look change (LookColor).
 	PlaceParts(w, false)
 end
@@ -285,17 +348,50 @@ define('color', {
 		local r, g, b, a = self:Value()
 		self.r, self.g, self.b, self.a = r or 0, g or 0, b or 0, a or 1
 		self.hasAlpha = OM.Member(self.root, self.row, 'hasAlpha') and true or false
+		local state = OM.ToggleState(self.root, self.row)
+		self.toggle = state
+		local off = state ~= nil and not state.on
+		self.lead = state and TOGGLE_LEAD or 0
+		local blizzard = self.blizzardLook or false
+		PlaceParts(self, blizzard)
+		LookToggle(self, state, blizzard)
 		local shown = self.hasAlpha and self.a or 1
 		self.swatch:SetColorTexture(self.r, self.g, self.b, shown)
-		ShowChecker(self, Percent(self.a, self.hasAlpha) < 100)
-		self.text:SetText(HexText(self.r, self.g, self.b, self.a, self.hasAlpha))
-		self.text:SetTextColor(Colors().text.normal:GetRGB())
+		self.swatch:SetShown(not off)
+		self.inner:SetShown(not off)
+		self.line:SetShown(not off and not blizzard)
+		self.white:SetShown(not off and blizzard)
+		ShowChecker(self, not off and Percent(self.a, self.hasAlpha) < 100)
+		if off then
+			-- The word where the swatch began.
+			self.text:ClearAllPoints()
+			self.text:SetPoint('LEFT', self.frame, 'LEFT', self.startX, 0)
+			self.text:SetPoint('RIGHT', self.frame, 'RIGHT', -CODE_GAP, 0)
+			self.text:SetText(state.offText)
+			self.text:SetTextColor(Colors().text.grey:GetRGB())
+		else
+			self.text:SetText(HexText(self.r, self.g, self.b, self.a, self.hasAlpha))
+			self.text:SetTextColor(Colors().text.normal:GetRGB())
+		end
+	end,
+
+	-- The toggle's box was clicked (or the field, while it's off): sets it
+	-- through the option's toggle.set and tells the window as a change does.
+	-- Turning it off closes a picker open for the field first.
+	CommitToggle = function(self, value)
+		if self.disabled or not self.row then return end
+		local root, row = self.root, self.row
+		if not value then W.CloseColorPicker(self.frame) end
+		local ok = OM.ToggleSet(root, row, value)
+		if self.root == root and self.row == row then self:Refresh() end
+		if self.onChanged then self.onChanged(ok ~= false, nil, nil, self) end
 	end,
 
 	-- The field is released (the window drew another page, closed, a menu or
 	-- dialog closed): a picker open for it cancels now, while it is still bound.
 	OnRelease = function(self)
 		W.CloseColorPicker(self.frame)
+		if self.check and GameTooltip then W.HideTip(self.check) end
 	end,
 
 	-- Opens SaftUI's picker (optionscolorpicker.lua) on the current color. Each
@@ -309,6 +405,7 @@ define('color', {
 	-- to put its opening color back).
 	Pick = function(self)
 		if self.disabled or not self.row then return end
+		if self.toggle and not self.toggle.on then return end -- off: no color to pick
 		local root, row = self.root, self.row
 		local hasAlpha = self.hasAlpha
 		local function Current()
@@ -333,6 +430,10 @@ define('color', {
 
 	OnDisabled = function(self, disabled)
 		self.frame:EnableMouse(not disabled)
+		if self.check then
+			self.check:EnableMouse(not disabled)
+			SetCheck(self.check, self.check:GetChecked(), disabled)
+		end
 		Kit.PaintFace(self.frame)
 	end,
 })

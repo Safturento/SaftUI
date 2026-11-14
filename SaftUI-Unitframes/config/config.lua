@@ -102,10 +102,12 @@ end
 
 -- oUF's color flags, as its health and power elements check them: the
 -- option's name and desc, and the kind of unit it needs (UF.CanShow), if any.
+-- status marks a grey the bar wears only in a state (offline, tapped), which
+-- isn't what the bar normally falls back to.
 local COLOR_FLAGS = {
-	colorDisconnected = { name = 'Disconnected', shows = 'offline',
+	colorDisconnected = { name = 'Disconnected', shows = 'offline', status = true,
 		desc = 'Grey while the unit is offline.' },
-	colorTapping = { name = 'Tapped', shows = 'mobs',
+	colorTapping = { name = 'Tapped', shows = 'mobs', status = true,
 		desc = "Grey while someone else has tagged the unit, so it won't give you loot or experience." },
 	colorPower = { name = 'Power type',
 		desc = 'By the power the bar shows: blue for mana, red for rage, yellow for energy and so on.' },
@@ -123,24 +125,139 @@ local COLOR_FLAGS = {
 		desc = 'Plain green, for when none of the colors above fits.' },
 }
 
+-- A setting's value in the defaults a unit's profile starts from: the unit's
+-- own table where it sets the key (config/units/), else the shared '**' one,
+-- as AceDB lays them over each other. path is the keys down to the table that
+-- holds key ({ 'health', 'text' }); nil when neither sets it. The tables are
+-- AceDB's defaults: read, never written.
+function UF.DefaultFor(unit, path, key)
+	local profiles = st.defaults.unitframes.profiles['**']
+	for _, root in ipairs({ profiles[unit], profiles['**'] }) do
+		local node = root
+		for _, step in ipairs(path) do
+			node = type(node) == 'table' and node[step] or nil
+		end
+		if type(node) == 'table' and node[key] ~= nil then return node[key] end
+	end
+end
+
+local function Near(a, b) return math.abs(a - b) < 0.0001 end
+
+-- '#RRGGBB' of a color, as the options window writes it.
+local function Hex(r, g, b)
+	local function byte(v) return math.max(0, math.min(255, math.floor(v * 255 + 0.5))) end
+	return ('#%02X%02X%02X'):format(byte(r), byte(g), byte(b))
+end
+
+--[[
+	A "use a custom color" setting as one row: a color whose check box is the
+	setting's colorCustom and whose color is its customColor (SaftUI's toggle
+	field on a color, SaftUI-Core/Config/optionstypes.lua). spec:
+	  name, desc   the row's
+	  offDesc      the check box's tooltip: what unticked means (optional)
+	  offText      the word the field shows while unticked: a string, or a
+	               function(info) -> string
+	  unit, path   where the settings live, for their defaults: the unit's
+	               config key, then the keys down to the table holding
+	               colorCustom and customColor ({ 'health' }, { 'health', 'text' })
+	  config()     that table, looked up on every call (a profile change
+	               replaces it)
+	  update()     re-applies the unit frames
+	The saved keys are the ones the two controls always had. customColor is a
+	{ r, g, b } list in the defaults, and can be a color object in a saved
+	profile (UF.UnpackColor reads both); it's written in the shape it has. The
+	reset puts both back, and names the default as its word while the default
+	is unticked, else as the color.
+]]
+function UF.CustomColorOption(order, spec)
+	local config, update = spec.config, spec.update
+	local function Default(key) return UF.DefaultFor(spec.unit, spec.path, key) end
+	local function Write(settings, r, g, b)
+		local color = settings.customColor
+		if type(color) == 'table' and color.GetRGB then
+			color.r, color.g, color.b = r, g, b
+		elseif type(color) == 'table' then
+			color[1], color[2], color[3] = r, g, b
+		else
+			settings.customColor = { r, g, b }
+		end
+	end
+	return {
+		order = order,
+		name = spec.name,
+		desc = spec.desc,
+		type = 'color',
+		size = 'small',
+		get = function() return UF.UnpackColor(config().customColor) end,
+		set = function(_, r, g, b)
+			Write(config(), r, g, b)
+			update()
+		end,
+		toggle = {
+			get = function() return config().colorCustom and true or false end,
+			set = function(_, value)
+				config().colorCustom = value
+				update()
+			end,
+			offText = spec.offText,
+			desc = spec.offDesc,
+		},
+		default = {
+			differs = function()
+				local settings = config()
+				if (settings.colorCustom and true or false) ~= (Default('colorCustom') and true or false) then return true end
+				local r, g, b = UF.UnpackColor(settings.customColor)
+				local dr, dg, db = UF.UnpackColor(Default('customColor'))
+				return not (Near(r, dr) and Near(g, dg) and Near(b, db))
+			end,
+			reset = function()
+				local settings = config()
+				settings.colorCustom = Default('colorCustom') and true or false
+				Write(settings, UF.UnpackColor(Default('customColor')))
+				update()
+			end,
+			text = function(info)
+				if Default('colorCustom') then return Hex(UF.UnpackColor(Default('customColor'))) end
+				local word = spec.offText
+				if type(word) == 'function' then word = word(info) end
+				return word
+			end,
+		},
+	}
+end
+
 --[[
 	A bar's Colors section (health, power, additional power): the color flags
-	in flags' order, which is the order oUF checks them in, then Custom and
-	its color on a line of their own (an untitled group, args.custom). A flag
-	the unit's frames never show the kind of unit for (UF.CanShow) is left
-	out. The toggles read and write the element's config through the tab's
-	get and set; descs overrides a flag's desc. config() returns the
-	element's config, and update() re-applies it.
+	in flags' order, which is the order oUF checks them in, then Custom on a
+	line of its own (an untitled group, args.custom): one row, the color with
+	its check box (UF.CustomColorOption). A flag the unit's frames never show
+	the kind of unit for (UF.CanShow) is left out. The toggles read and write
+	the element's config through the tab's get and set; descs overrides a
+	flag's desc. element is the config's key for the element ('health'), for the
+	row's defaults. config() returns the element's config, and update()
+	re-applies it. The check box's word, while it's unticked, is the first color
+	above that is on and fits the unit, which is the one the bar takes (Default
+	when none is on); Disconnected and Tapped are left out, as the bar wears
+	them only while the unit is offline or tapped.
 ]]
-function UF.GenerateColorsConfigGroup(order, unit, flags, config, update, descs)
+function UF.GenerateColorsConfigGroup(order, unit, element, flags, config, update, descs)
 	local G = st.Config.generators
 	local args, i = {}, 0
+	local shown = {}
 	for _, key in ipairs(flags) do
 		local flag = COLOR_FLAGS[key]
 		if not flag.shows or UF.CanShow(unit, flag.shows) then
 			i = i + 1
 			args[key] = G.toggle(i, flag.name, descs and descs[key] or flag.desc, 'small')
+			shown[#shown + 1] = key
 		end
+	end
+	local function OffText()
+		local settings = config()
+		for _, key in ipairs(shown) do
+			if settings[key] and not COLOR_FLAGS[key].status then return COLOR_FLAGS[key].name end
+		end
+		return 'Default'
 	end
 	args.custom = {
 		order = i + 1,
@@ -148,27 +265,16 @@ function UF.GenerateColorsConfigGroup(order, unit, flags, config, update, descs)
 		type = 'group',
 		inline = true,
 		args = {
-			colorCustom = G.toggle(1, 'Custom', 'Colors the bar with Custom color, over every color above.', 'small'),
-			-- customColor is a { r, g, b } list in the defaults, and can be a
-			-- color object in a saved profile (UF.UnpackColor reads both); it's
-			-- written in the shape it has.
-			customColor = {
-				order = 2,
+			customColor = UF.CustomColorOption(1, {
 				name = 'Custom color',
-				desc = 'The color Custom gives the bar.',
-				type = 'color',
-				size = 'small',
-				get = function() return UF.UnpackColor(config().customColor) end,
-				set = function(_, r, g, b)
-					local color = config().customColor
-					if type(color) == 'table' and color.GetRGB then
-						color.r, color.g, color.b = r, g, b
-					else
-						color[1], color[2], color[3] = r, g, b
-					end
-					update()
-				end,
-			},
+				desc = 'Colors the bar with this color, over every color above.',
+				offDesc = 'Unticked, the bar takes the first of the colors above that fits.',
+				offText = OffText,
+				unit = unit,
+				path = { element },
+				config = config,
+				update = update,
+			}),
 		},
 	}
 	return {

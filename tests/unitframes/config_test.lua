@@ -766,12 +766,12 @@ test('Health and Power: the color toggles, small, in a Colors section, in the or
 				for _, flag in ipairs(flags) do
 					if not FLAG_UNITS[flag] or FLAG_UNITS[flag][unit] then expected[#expected + 1] = flag end
 				end
-				-- Then Custom and its color, together on a line of their own.
+				-- Then Custom: its check box and its color are one row, on a line of its own.
 				expected[#expected + 1] = 'custom'
 				eq(table.concat(in_order(colors), ','), table.concat(expected, ','), where .. "'s colors")
 				local custom = colors.args.custom
 				if check(custom.type == 'group' and custom.inline and custom.name == '', where .. ': Custom in an untitled group') then
-					eq(table.concat(in_order(custom), ','), 'colorCustom,customColor', where .. "'s custom color")
+					eq(table.concat(in_order(custom), ','), 'customColor', where .. "'s custom color, its toggle in the field")
 				end
 				for i = 1, #expected - 1 do
 					local option = colors.args[expected[i]]
@@ -790,15 +790,15 @@ test('Health and Power: the color toggles, small, in a Colors section, in the or
 		"target's health colors, four to a line")
 	eq(layout(config, 'player', 'Power', 'Colors'), 'colorPower:small 1/1, colorClass:small 1/2, colorReaction:small 2/1',
 		"the player's power colors")
-	eq(layout(config, 'player', 'Power', 'Colors', true), 'colorCustom:small 1/1, customColor:normal 2',
-		'Custom and its color on the next line, untitled, whatever the count above: the color takes the right half')
+	eq(layout(config, 'player', 'Power', 'Colors', true), 'customColor:normal 1',
+		'Custom, one row on the next line, untitled, whatever the count above')
 	eq(layout(config, 'nameplate', 'Health', 'Colors'),
 		'colorTapping:small 1/1, colorClass:small 1/2, colorClassNPC:small 2/1, colorClassPet:small 2/2, '
 		.. 'colorReaction:small 1/1, colorSmooth:small 1/2, colorHealth:small 2/1',
 		"the nameplates' health colors: every one but Disconnected")
 end)
 
-test('Health, Power and Additional power: Custom and its color, kept in the shape the profile holds it', function()
+test('Health, Power and Additional power: Custom and its color are one row, its toggle the saved colorCustom, kept in the shape the profile holds it', function()
 	local config = UF:GetConfigTable()
 	local P = UF:GetProfileConfig()
 	local root = { Unitframes = config }
@@ -806,10 +806,24 @@ test('Health, Power and Additional power: Custom and its color, kept in the shap
 		local unit, tab = case[1], case[2]
 		local where = unit .. '.' .. tab
 		local store = P[unit][string.lower(tab)]
-		reads_and_writes(config, unit, tab, { 'colors', 'custom', 'colorCustom' }, store, 'colorCustom', not store.colorCustom)
+		check(option_at(config, unit, tab, 'colors', 'custom', 'colorCustom') == nil, where .. ' has no Custom toggle of its own')
 
 		local option, row = option_at(config, unit, tab, 'colors', 'custom', 'customColor')
 		if check(option and option.type == 'color' and option.size == 'small', where .. ' has a small Custom color') then
+			-- Its check box is the saved colorCustom, written through the same update.
+			local toggle = option.toggle
+			if check(type(toggle) == 'table', where .. ' has a toggle') then
+				local info = { 'Unitframes', unit, tab, 'colors', 'custom', 'customColor' }
+				eq(toggle.get(info), store.colorCustom, where .. ' reads colorCustom')
+				local n = updates
+				local before = store.colorCustom
+				toggle.set(info, not before)
+				eq(store.colorCustom, not before, where .. ' writes colorCustom')
+				eq(toggle.get(info), not before, where .. ' reads what it wrote')
+				eq(updates, n + 1, where .. ' updates the unit frames')
+				toggle.set(info, false)
+				eq(store.colorCustom, false, where .. ' writes it back')
+			end
 			local list = store.customColor
 			local r, g, b = OM.Get(root, row)
 			check(near(r, list[1]) and near(g, list[2]) and near(b, list[3]), where .. ' reads the default list')
@@ -833,6 +847,100 @@ test('Health, Power and Additional power: Custom and its color, kept in the shap
 	eq(colors and table.concat(in_order(colors), ','), 'colorPower,custom', "additional power's colors: Power type, then Custom")
 	reads_and_writes(config, 'player', 'AdditionalPower', { 'colors', 'colorPower' }, P.player.additionalpower, 'colorPower',
 		not P.player.additionalpower.colorPower)
+end)
+
+-- The tabs' Custom rows and the text colors.
+local function row_of(unit, tab, ...)
+	local config = UF:GetConfigTable()
+	local option, row = option_at(config, unit, tab, ...)
+	return option, row, { Unitframes = config }
+end
+
+local function plain_info(unit, tab, ...) return { 'Unitframes', unit, tab, ... } end
+
+test('no Custom check box is left on its own: every Custom is one color row with a toggle, and the unticked word says what the bar falls back to', function()
+	local config = UF:GetConfigTable()
+	local P = UF:GetProfileConfig()
+	for _, unit in ipairs(UNITS) do
+		for _, tab in ipairs({ 'Health', 'Power', 'AdditionalPower' }) do
+			local group = element_tabs(config, unit)[tab]
+			if group then
+				each_option(group, function(option, path)
+					check(path[#path] ~= 'colorCustom', unit .. '.' .. tab .. ' has no colorCustom row of its own')
+				end)
+				local option = option_at(config, unit, tab, 'colors', 'custom', 'customColor')
+				local store = P[unit][string.lower(tab)]
+				if check(option and option.toggle, unit .. '.' .. tab .. ' has the merged row') then
+					local saved = {}
+					for key, value in pairs(store) do if type(value) == 'boolean' then saved[key] = value; store[key] = false end end
+					eq(option.toggle.offText(plain_info(unit, tab)), 'Default', unit .. '.' .. tab .. ': with no color above on, Default')
+					for key, value in pairs(saved) do store[key] = value end
+				end
+			end
+		end
+	end
+	-- With a flag on, the first that fits the unit is the word: oUF checks them in this order.
+	local function word(unit, tab)
+		local option = option_at(UF:GetConfigTable(), unit, tab, 'colors', 'custom', 'customColor')
+		return option.toggle.offText(plain_info(unit, tab))
+	end
+	local h = P.target.health
+	local saved = { h.colorDisconnected, h.colorTapping, h.colorClass, h.colorClassNPC, h.colorClassPet, h.colorReaction, h.colorSmooth, h.colorHealth }
+	h.colorDisconnected, h.colorTapping, h.colorClass, h.colorClassNPC, h.colorClassPet, h.colorReaction, h.colorSmooth, h.colorHealth =
+		false, false, false, false, false, true, true, false
+	eq(word('target', 'Health'), 'Reaction', "Health: the first of the colors on, Reaction")
+	h.colorClass = true
+	eq(word('target', 'Health'), 'Class', 'and Class when it comes first')
+	P.player.power.colorPower = true
+	eq(word('player', 'Power'), 'Power type', "Power: Power type")
+	P.player.power.colorPower = false
+	P.player.additionalpower.colorPower = true
+	eq(word('player', 'AdditionalPower'), 'Power type', "Additional power: Power type")
+	h.colorDisconnected, h.colorTapping, h.colorClass, h.colorClassNPC, h.colorClassPet, h.colorReaction, h.colorSmooth, h.colorHealth = unpack(saved)
+end)
+
+test("a Custom row's reset: it shows when the color or the check box differs from the default, and puts both back", function()
+	local P = UF:GetProfileConfig()
+	for _, case in ipairs({ { 'target', 'Health', 'health', 'Class' }, { 'player', 'Power', 'power', 'Class' }, { 'player', 'AdditionalPower', 'additionalpower', 'Power type' } }) do
+		local unit, tab, key = case[1], case[2], case[3]
+		local where = unit .. '.' .. tab
+		local option, row, root = row_of(unit, tab, 'colors', 'custom', 'customColor')
+		local store = P[unit][key]
+		-- Earlier tests wrote the colors; the profile at its defaults again.
+		store.colorCustom = false
+		local d = st.defaults.unitframes.profiles['**']['**'][key].customColor
+		store.customColor = { d[1], d[2], d[3] }
+		local state = OM.DefaultState(root, row)
+		if check(state, where .. ' has a default') then
+			eq(state.differs, false, where .. ': at its default, no reset')
+			store.colorCustom = true
+			eq(OM.DefaultState(root, row).differs, true, where .. ': the check box alone differs')
+			store.colorCustom = false
+			OM.Set(root, row, 0.9, 0.1, 0.1, 1)
+			eq(OM.DefaultState(root, row).differs, true, where .. ': the color alone differs')
+			store.colorCustom = true
+			local n = updates
+			check(OM.DefaultReset(root, row), where .. ': a reset runs')
+			eq(store.colorCustom, false, where .. ': the check box is back')
+			local r, g, b = OM.Get(root, row)
+			check(near(r, d[1]) and near(g, d[2]) and near(b, d[3]), where .. ': and the color')
+			eq(updates, n + 1, where .. ': the unit frames follow')
+			eq(OM.DefaultState(root, row).differs, false, where .. ': no reset again')
+			eq(OM.DefaultState(root, row).text, case[4], where .. ': the tooltip names the default as the word, the color the bar takes')
+		end
+	end
+end)
+
+test('Custom rows are found by search: by custom and by the color', function()
+	local config = UF:GetConfigTable()
+	local root = { Unitframes = config }
+	for _, needle in ipairs({ 'custom', 'Custom color' }) do
+		local hits = 0
+		for _, hit in ipairs(OM.Search(root, needle)) do
+			if hit.name == 'Custom color' and hit.path[2] == 'target' and hit.path[3] == 'Health' then hits = hits + 1 end
+		end
+		check(hits >= 1, 'target Health: "' .. needle .. '" finds the merged row')
+	end
 end)
 
 test("every element's alpha has an option, 0 to 1, on the element's config", function()

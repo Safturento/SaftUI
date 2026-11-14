@@ -530,6 +530,203 @@ test('color: the bar draws under Thick, Thin and Blizzard, and a look change red
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+------------------------------------------------------------------ color with a toggle
+
+-- A color field with SaftUI's toggle field: a check box at its left that turns
+-- the color on (its get and set, and offText, the grey word the field shows
+-- while it's off).
+local function toggled_color(fields)
+	fields = fields or {}
+	local value = fields.value or { 0.2, 0.4, 0.6, 1 }
+	local on = fields.on ~= false
+	local log = { sets = {}, toggles = {} }
+	local w, told, root, row = bind('color', 'tint', opt('color', 'Tint', {
+		get = function() return unpack(value) end,
+		set = function(_, r, g, b, a) log.sets[#log.sets + 1] = { r, g, b, a }; value = { r, g, b, a } end,
+		toggle = {
+			get = function() return on end,
+			set = function(_, v) log.toggles[#log.toggles + 1] = v; on = v end,
+			offText = fields.offText or 'Class',
+			desc = fields.desc,
+		},
+	}))
+	log.on = function() return on end
+	return w, told, log, root, row
+end
+
+local function grey_rgb() return string.format('%.2f,%.2f,%.2f', st.config.profile.colors.text.grey:GetRGB()) end
+
+test('color with a toggle: a check box at the left of the field, 18 square on whole pixels, then the swatch and the code', function()
+	theme('thick')
+	local w = toggled_color()
+	w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+	check(w.check and w.check:IsShown(), 'a check box is drawn')
+	eq(size_of(w.check), '18x18', "the kit's check box size")
+	eq(H.insets(w.check, w.frame), '4,3,148,3', 'inside the field, 4 from its left, centred on its line')
+	eq(w.check:GetChecked(), true, 'ticked')
+	check(w.check.mark:IsShown(), "with the kit's blue mark")
+	check(w.swatch:IsShown() and w.inner:IsShown() and w.line:IsShown(), 'the swatch is shown')
+	check(w.swatch:GetLeft() > w.check:GetRight(), 'after the check box')
+	eq(w.text:GetText(), '#336699', 'the code')
+	eq(ink_of(w.text), normal_rgb(), 'in the normal text color')
+	eq(size_of(w.frame), '170x24', 'the field keeps its size')
+	w:Release()
+end)
+
+test('color with a toggle: off, a grey word the option gives takes the swatch and the code', function()
+	local w, _, log = toggled_color({ on = false, offText = 'Class color' })
+	check(w.check:IsShown() and not w.check:GetChecked(), 'the box is empty')
+	check(not w.check.mark:IsShown(), 'with no mark')
+	check(not w.swatch:IsShown() and not w.inner:IsShown() and not w.line:IsShown() and not w.checkerBack:IsShown(),
+		'no swatch, line or checker')
+	eq(w.text:GetText(), 'Class color', 'the word')
+	eq(ink_of(w.text), grey_rgb(), 'in the grey of Text > Grey')
+	eq(#log.toggles, 0, 'nothing was set by showing it')
+	w:Release()
+end)
+
+test('color with a toggle: offText can be a function of the row', function()
+	local seen = 'Reaction'
+	local w = bind('color', 'tint', opt('color', 'Tint', {
+		get = function() return 1, 0, 0, 1 end, set = function() end,
+		toggle = { get = function() return false end, set = function() end, offText = function() return seen end },
+	}))
+	eq(w.text:GetText(), 'Reaction', 'the word is what the function gives')
+	w:Release()
+end)
+
+test('color with a toggle: the box takes its own click and toggles, opening no picker', function()
+	local w, told, log = toggled_color({ on = true })
+	click(w.check)
+	eq(table.concat({ tostring(log.toggles[1]) }), 'false', 'ticking off sets false')
+	check(not W.ColorPickerShown(), 'no picker')
+	eq(told.n, 1, 'the window is told')
+	eq(told.ok, true, 'it went well')
+	check(not w.check:GetChecked() and not w.swatch:IsShown() and w.text:GetText() == 'Class', 'the field shows it off')
+	click(w.check)
+	eq(log.toggles[2], true, 'ticking on sets true')
+	check(w.swatch:IsShown() and w.text:GetText() == '#336699', 'the color is back')
+	check(not W.ColorPickerShown(), 'still no picker')
+	eq(#log.sets, 0, 'the color itself is never set by the box')
+	w:Release()
+end)
+
+test('color with a toggle: a click on the field when off ticks it and opens nothing; when on, opens the picker', function()
+	local w, told, log = toggled_color({ on = false })
+	click(w.frame)
+	eq(log.toggles[1], true, 'ticked')
+	check(not W.ColorPickerShown(), 'no picker as it ticks')
+	eq(told.n, 1, 'the window is told')
+	click(w.frame)
+	check(W.ColorPickerShown(), 'on: the picker opens')
+	eq(#log.toggles, 1, 'and nothing is ticked')
+	pick_color(1, 1, 1, 1)
+	eq(#log.sets, 1, 'a pick sets the color')
+	picker_cancel()
+	w:Release()
+end)
+
+test('color with a toggle: turning it off closes the picker', function()
+	local w = toggled_color({ on = true })
+	click(w.frame)
+	check(W.ColorPickerShown(), 'open')
+	click(w.check)
+	check(not W.ColorPickerShown(), 'closed by the box')
+	w:Release()
+end)
+
+test('color with a toggle: disabled, neither the box nor the field takes the mouse or a click', function()
+	local w, _, log = toggled_color({ on = false })
+	w:SetDisabled(true)
+	eq(w.frame:IsMouseEnabled(), false, 'the field takes no mouse')
+	eq(w.check:IsMouseEnabled(), false, 'nor does the box')
+	click(w.check)
+	click(w.frame)
+	eq(#log.toggles, 0, 'nothing ticked')
+	w:SetDisabled(false)
+	eq(w.check:IsMouseEnabled(), true, 'enabled: the box takes the mouse again')
+	w:Release()
+end)
+
+test("color with a toggle: the box's tooltip says what unticked means; its own desc wins", function()
+	local lines, owner = {}, nil
+	local saved = _G.GameTooltip
+	_G.GameTooltip = {
+		SetOwner = function(_, frame) owner = frame end, ClearLines = function() lines = {} end,
+		AddLine = function(_, text) lines[#lines + 1] = text end, Show = function() end,
+		IsOwned = function(_, frame) return owner == frame end, Hide = function() owner = nil end,
+	}
+	local ok, err = pcall(function()
+		local w = toggled_color({ on = true, offText = 'Class color' })
+		stub.fire_script(w.check, 'OnEnter', true)
+		eq(owner, w.check, 'owned by the box')
+		check((lines[2] or ''):find('Class color', 1, true), 'unticked, the field shows Class color: ' .. tostring(lines[2]))
+		stub.fire_script(w.check, 'OnLeave', true)
+		eq(owner, nil, 'hidden on leave')
+		w:Release()
+		w = toggled_color({ on = true, offText = 'Class color', desc = 'Unticked, the bar is class colored.' })
+		stub.fire_script(w.check, 'OnEnter', true)
+		eq(lines[2], 'Unticked, the bar is class colored.', "the option's own words")
+		stub.fire_script(w.check, 'OnLeave', true)
+		w:Release()
+	end)
+	_G.GameTooltip = saved
+	if not ok then error(err, 0) end
+end)
+
+test('color with a toggle: a field rebound to a row without one has no box and the swatch where it always was', function()
+	theme('thick')
+	local w = toggled_color()
+	w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+	local root, row = H.make('plain', opt('color', 'Plain', { get = function() return 1, 0, 0, 1 end, set = function() end }))
+	w:Bind(root, row, function() end)
+	check(not w.check:IsShown(), 'no box')
+	eq(H.insets(w.swatch, w.frame), '2,2,130,2', "the swatch where a plain field has it")
+	eq(code_place(w), 'LEFT LEFT 50 LEFT', 'and the code')
+	check(w.swatch:IsShown() and w.text:GetText() == '#FF0000', 'the color is shown')
+	w:Release()
+end)
+
+test('color with a toggle: the box and the field follow the look, under Thick, Thin and Blizzard', function()
+	local w = toggled_color({ on = true })
+	w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+	for _, name in ipairs({ 'thick', 'blizzard', 'thin', 'blizzard', 'thick' }) do
+		theme(name)
+		rebind(w)
+		eq(size_of(w.frame), '170x24', name .. ': the same field')
+		check(w.check:IsShown(), name .. ': the box is shown')
+		if name == 'blizzard' then
+			check(w.check.art and w.check.art.normal:IsShown(), name .. ": Blizzard's check box art")
+			check(w.check.art.check:IsShown(), name .. ': ticked, its check')
+			check(not w.check.mark:IsShown(), name .. ': no blue mark')
+		else
+			check(w.check.mark:IsShown(), name .. ': the blue mark')
+		end
+		check(w.swatch:GetLeft() >= w.check:GetRight(), name .. ': the swatch after the box')
+	end
+	w:Release()
+end)
+
+test('color with a toggle: every edge on a whole pixel, on or off, under Thick, Thin and Blizzard, with a size read back a hair off', function()
+	local P = load_test_file('lib/pixels.lua')
+	local HAIR = 2 ^ -14
+	for _, name in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		for _, on in ipairs({ true, false }) do
+			for _, noise in ipairs({ 0, HAIR, -HAIR }) do
+				stub.size_noise = noise
+				theme(name)
+				local w = toggled_color({ on = on })
+				w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+				local off = P.off(w.frame)
+				eq(#off, 0, name .. (on and ' on' or ' off') .. ', noise ' .. noise .. ': ' .. P.report(off))
+				w:Release()
+			end
+		end
+	end
+	stub.size_noise = 0
+	theme('thick')
+end)
+
 ------------------------------------------------------------------ execute
 
 test('execute: runs func; confirm asks first and runs only after Yes', function()
