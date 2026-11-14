@@ -27,10 +27,31 @@ local st, drawn, CP, SK, skin, profile
 
 local blizzard -- Blizzard's frames and regions, as a set
 local built -- their key lists as built, before any skin
+local original -- their fonts, colors and title anchor as built
 
 local function key_lists_of(widgets)
 	local out = {}
 	for _, widget in ipairs(widgets) do out[widget] = CP.keys(widget) end
+	return out
+end
+
+-- Every font, color and the title's anchor as they are now.
+local function snapshot()
+	local frame = CP.frame
+	local out = {}
+	local function text(key, fs)
+		if not fs then return end
+		out[key] = { fs:GetFontObject(), T.rgb(fs:GetTextColor()) }
+	end
+	text('title', frame.Header and frame.Header.Text)
+	text('hash', frame.Content.HexBox.Hash)
+	text('instructions', frame.Content.HexBox.Instructions)
+	text('hex', frame.Content.HexBox)
+	for _, key in ipairs({ 'OkayButton', 'CancelButton' }) do
+		local b = frame.Footer[key]
+		out[key] = { b:GetNormalFontObject(), b:GetHighlightFontObject(), b:GetDisabledFontObject() }
+	end
+	out.title_point = T.anchor(frame.Header.Text, { [frame.Header] = 'header' })
 	return out
 end
 
@@ -56,10 +77,13 @@ local function world(client, opts)
 	SK = st:GetModule('Skinning')
 	skin = SK:GetModule('Blizzard_ColorPicker')
 	CP = load_test_file('misc/fixtures/color_picker.lua')
-	if not opts.late then CP.build(opts.build) end
+	local build = { forever = client == 'forever' }
+	for key, value in pairs(opts.build or {}) do build[key] = value end
+	if not opts.late then CP.build(build) end
 	blizzard = {}
 	for _, widget in ipairs(CP.widgets or {}) do blizzard[widget] = true end
 	built = CP.widgets and key_lists_of(CP.widgets)
+	original = CP.frame and not opts.build and snapshot()
 	SK:Enable()
 end
 
@@ -99,19 +123,6 @@ local function clean()
 	eq(table.concat(CP.stray, ','), '', 'SaftUI ran none of the .agents/taint.md rule 3 functions')
 end
 
-local function fonts()
-	local frame = CP.frame
-	return {
-		title = frame.Header.Text:GetFontObject(),
-		okay = frame.Footer.OkayButton:GetNormalFontObject(),
-		okay_hover = frame.Footer.OkayButton:GetHighlightFontObject(),
-		cancel_disabled = frame.Footer.CancelButton:GetDisabledFontObject(),
-		hex = frame.Content.HexBox:GetFontObject(),
-		instructions = frame.Content.HexBox.Instructions:GetFontObject(),
-		hash = frame.Content.HexBox.Hash:GetFontObject(),
-	}
-end
-
 ------------------------------------------------------------------ checks
 
 local ALPHA_PARTS = {
@@ -139,14 +150,22 @@ local function check_blizzard(where)
 		for _, box in ipairs(own_children(button)) do check(not box:IsShown(), where .. ": SaftUI's box hidden") end
 		for _, region in ipairs(own_regions(button)) do check(not region:IsShown(), where .. ": SaftUI's hover hidden") end
 	end
-	local f = fonts()
-	eq(f.title, GameFontNormal, where .. ': the title in Blizzard\'s font')
-	eq(f.okay, GameFontNormalOutline, where .. ': the Okay text in Blizzard\'s font')
-	eq(f.okay_hover, GameFontHighlightOutline, where .. ': and its highlight font')
-	eq(f.cancel_disabled, GameFontDisable, where .. ': and the disabled font')
-	eq(f.hex, GameFontHighlightSmall, where .. ': the hex box text')
-	eq(f.instructions, GameFontDisableSmall, where .. ': its instructions')
-	eq(f.hash, GameFontNormalLarge, where .. ': the "#"')
+	local now = snapshot()
+	for key, value in pairs(original) do
+		if type(value) == 'table' then
+			for i, v in ipairs(value) do eq(now[key][i], v, where .. ': ' .. key .. ' as Blizzard had it (' .. i .. ')') end
+		else
+			eq(now[key], value, where .. ': ' .. key .. ' as Blizzard had it')
+		end
+	end
+	eq(now.OkayButton[1], GameFontNormal, where .. ": the buttons' normal font is UIPanelButtonNoTooltipTemplate's")
+	eq(now.OkayButton[2], GameFontHighlight, where .. ': and its highlight font')
+	eq(now.CancelButton[3], GameFontDisable, where .. ': and its disabled font')
+	eq(now.hash[2], T.rgb(0.6, 0.6, 0.6), where .. ': the "#" grey as Blizzard\'s XML has it')
+	eq(now.instructions[2], T.rgb(0.35, 0.35, 0.35), where .. ': the placeholder grey')
+	for _, button in ipairs({ CP.frame.Footer.OkayButton, CP.frame.Footer.CancelButton }) do
+		eq(#own_regions(button), 0, where .. ': no hover texture of SaftUI\'s over the label')
+	end
 	for _, child in ipairs(own_children(CP.frame)) do check(not child:IsShown(), where .. ': no panel shows') end
 	for _, child in ipairs(own_children(CP.frame.Content.HexBox)) do
 		check(not child:IsShown(), where .. ': no hex box backdrop shows')
@@ -172,7 +191,12 @@ local function check_skinned(where)
 		and panel:GetTop() > frame:GetTop() and panel:GetBottom() < frame:GetBottom(),
 		where .. ': around the picker, as Thick draws a border')
 
-	eq(frame.Header.Text:GetFontObject(), font, where .. ': the title in the Skinning font')
+	eq(frame.Header.Text:GetFontObject(), st:GetFont(profile.headers.font), where .. ': the title in the Window titles font')
+	eq(T.anchor(frame.Header.Text, { [frame.Header] = 'header' }),
+		('CENTER header TOP %s'):format(T.text(0, -profile.headers.height / 2)),
+		where .. ": the title centered in a header-high strip at the panel's top")
+	check(panel:GetTop() >= frame.Header:GetTop(), where .. ': the panel covers the drag strip above the frame')
+	check(panel:GetTop() <= frame.Header:GetTop() + 2, where .. ': and no more than the theme border above it')
 
 	for _, key in ipairs({ 'OkayButton', 'CancelButton' }) do
 		local button = frame.Footer[key]
@@ -181,8 +205,8 @@ local function check_skinned(where)
 		eq(drawn(box), 'theme,theme,control', where .. ': ' .. key .. ' drawn as a control')
 		check(box:GetLeft() >= button:GetLeft() and box:GetRight() <= button:GetRight(), where .. ': inside the button')
 		eq(button:GetHighlightTexture():GetAlpha(), 0, where .. ': ' .. key .. "'s highlight faded")
-		local hover = the_one(own_regions(button), where .. ': one texture of SaftUI\'s on ' .. key)
-		eq(stub.state(hover).draw_layer, st.ThemeArt.HOVER_LAYER, where .. ': a hover shown only under the mouse')
+		eq(#own_regions(button), 0, where .. ': nothing of SaftUI\'s drawn over ' .. key .. "'s label")
+		check(box:GetFrameLevel() < button:GetFrameLevel(), where .. ': the box under the button')
 		eq(button:GetNormalFontObject(), font, where .. ': ' .. key .. ' text in the Skinning font')
 		eq(button:GetHighlightFontObject(), font, where .. ': and highlighted')
 		eq(button:GetDisabledFontObject(), font, where .. ': and disabled')
@@ -195,6 +219,8 @@ local function check_skinned(where)
 	eq(hex:GetFontObject(), font, where .. ': the hex text in the Skinning font')
 	eq(hex.Instructions:GetFontObject(), font, where .. ': its instructions')
 	eq(hex.Hash:GetFontObject(), font, where .. ': the "#"')
+	eq(T.rgb(hex.Hash:GetTextColor()), T.rgb(0.6, 0.6, 0.6), where .. ': the "#" keeps its grey')
+	eq(T.rgb(hex.Instructions:GetTextColor()), T.rgb(0.35, 0.35, 0.35), where .. ': the placeholder keeps its grey')
 
 	-- Left alone.
 	for _, path in ipairs({ { 'Content', 'AlphaBackground' }, { 'Content', 'ColorSwatchCurrent' },
@@ -260,6 +286,13 @@ test('Skinning -> Color picker off at load: nothing touched, nothing made', func
 	local before
 	world('forever', { off = true })
 	check_blizzard('off at load')
+	SK:UpdateConfig()
+	st:ColorsChanged('theme')
+	eq(table.concat(CP.calls, ','), '', "no call that changes anything was made on any of Blizzard's widgets")
+	for _, key in ipairs({ 'OkayButton', 'CancelButton' }) do
+		eq(#own_children(CP.frame.Footer[key]), 0, key .. ': nothing made on it')
+		eq(#own_regions(CP.frame.Footer[key]), 0, key .. ': no texture made on it')
+	end
 	eq(#own_children(CP.frame), 0, 'no frame of SaftUI\'s on the picker')
 	eq(drawn(CP.frame), nil, 'nothing drawn')
 	for _, widget in ipairs(CP.widgets) do
@@ -282,6 +315,13 @@ test('under the Blizzard theme the picker is left as Blizzard draws it, and the 
 	-- Blizzard from the start: never touched.
 	world('forever', { theme = 'blizzard' })
 	check_blizzard('Blizzard from the start')
+	SK:UpdateConfig()
+	st:ColorsChanged('theme')
+	eq(table.concat(CP.calls, ','), '', "no call that changes anything was made on any of Blizzard's widgets")
+	for _, key in ipairs({ 'OkayButton', 'CancelButton' }) do
+		eq(#own_children(CP.frame.Footer[key]), 0, key .. ': nothing made on it')
+		eq(#own_regions(CP.frame.Footer[key]), 0, key .. ': no texture made on it')
+	end
 	eq(#own_children(CP.frame), 0, 'no panel made under Blizzard')
 	eq(#own_children(CP.frame.Content.HexBox), 0, 'no hex backdrop made under Blizzard')
 	clean()
@@ -389,5 +429,97 @@ test('skinned once: a second Install and a repeated style add nothing', function
 	check_skinned('after repeats')
 	eq(#own_children(CP.frame), 1, 'one panel')
 	eq(#own_children(CP.frame.Content.HexBox), 1, 'one hex backdrop')
+	clean()
+end)
+
+test("hovering Okay or Cancel turns the edge of SaftUI's box blue; nothing covers the label", function()
+	world('forever')
+	local blue = T.text(profile.colors.button.blue:GetRGB())
+	for _, key in ipairs({ 'OkayButton', 'CancelButton' }) do
+		local button = CP.frame.Footer[key]
+		local box = the_one(own_children(button), key .. "'s box")
+		local normal = T.edge(box)
+		check(normal ~= T.text(1, 1, 1, 1) and not normal:find(blue, 1, true), key .. ': not blue at rest')
+		-- The game passes a second argument, motion, to OnEnter and OnLeave.
+		stub.fire_script(button, 'OnEnter', true)
+		check(T.edge(box):find(blue, 1, true) ~= nil, key .. ': blue under the mouse')
+		eq(#own_regions(button), 0, key .. ": no texture of SaftUI's, which would sit over the label")
+		stub.fire_script(button, 'OnLeave', true)
+		eq(T.edge(box), normal, key .. ': back when the mouse leaves')
+	end
+	-- A recolor while hovered keeps the hover.
+	local button = CP.frame.Footer.OkayButton
+	stub.fire_script(button, 'OnEnter', true)
+	st:ColorsChanged('theme')
+	check(T.edge(the_one(own_children(button), 'the box')):find(blue, 1, true) ~= nil, 'a recolor keeps the hover')
+	stub.fire_script(button, 'OnLeave', true)
+	-- Under the Blizzard theme the hooks color nothing.
+	switch('blizzard')
+	stub.fire_script(button, 'OnEnter', true)
+	stub.fire_script(button, 'OnLeave', true)
+	clean()
+end)
+
+-- Every frame and region of SaftUI's on the picker, under its panel and boxes.
+local function own_pieces()
+	local out = {}
+	local function walk(region)
+		out[#out + 1] = region
+		if region.GetRegions then
+			for _, part in ipairs({ region:GetRegions() }) do walk(part) end
+			for _, kid in ipairs({ region:GetChildren() }) do walk(kid) end
+		end
+	end
+	walk(panel_of(CP.frame))
+	for _, key in ipairs({ 'OkayButton', 'CancelButton' }) do walk(the_one(own_children(CP.frame.Footer[key]), key)) end
+	walk(the_one(own_children(CP.frame.Content.HexBox), 'the hex box backdrop'))
+	return out
+end
+
+test('SaftUI\'s frames are kept on whole pixels at both widths and after a drag', function()
+	-- The stubs lay nothing out by pixels (SetRoundLayoutToNearestPixel is only
+	-- remembered), so what is checked is that the game is asked to, for every
+	-- frame and region of SaftUI's, with the picker on a fractional offset.
+	world('forever')
+	local function check_rounded(where)
+		local pieces = own_pieces()
+		check(#pieces > 3, where .. ': pieces of SaftUI\'s to check')
+		for i, piece in ipairs(pieces) do
+			eq(stub.state(piece).round_layout, true, where .. ': piece ' .. i .. ' rounded to whole pixels')
+		end
+	end
+	CP.frame:ClearAllPoints()
+	CP.frame:SetPoint('TOPLEFT', UIParent, 'BOTTOMLEFT', 100.5, 700.5)
+	for _, opacity in ipairs({ true, false }) do
+		CP.show({ r = 1, g = 0, b = 0, hasOpacity = opacity, opacity = 1, swatchFunc = function() end })
+		check_rounded(opacity and '388 wide' or '331 wide')
+	end
+	-- After a drag: Blizzard anchors it by a corner somewhere else.
+	CP.frame:ClearAllPoints()
+	CP.frame:SetPoint('CENTER', UIParent, 'CENTER', 33.5, -20.5)
+	CP.show({ r = 1, g = 0, b = 0, hasOpacity = true, opacity = 1, swatchFunc = function() end })
+	check_rounded('after a drag, 388')
+	CP.show({ r = 1, g = 0, b = 0, hasOpacity = false, opacity = 1, swatchFunc = function() end })
+	check_rounded('after a drag, 331')
+	-- A theme switch draws new pieces: they are rounded too.
+	switch('thin')
+	check_rounded('Thin')
+	-- No size or point of Blizzard's was changed for it: the controls sit where Blizzard put them.
+	eq(T.offset(CP.frame.Footer.CancelButton, 'BOTTOMRIGHT'), '-11.50,0.00', "Cancel is where Blizzard anchors it")
+	clean()
+end)
+
+test('skin on then off puts back every font, color and the title anchor it read', function()
+	world('forever')
+	check_skinned('on')
+	profile.skinning.color_picker = false
+	SK:UpdateConfig()
+	check_blizzard('off again')
+	-- And a second round trip.
+	profile.skinning.color_picker = true
+	SK:UpdateConfig()
+	check_skinned('on again')
+	switch('blizzard')
+	check_blizzard('Blizzard')
 	clean()
 end)

@@ -14,20 +14,25 @@
 	      .Border      DialogBorderTemplate (a NineSlice frame; its .Bg texture),
 	      .Header      DialogHeaderTemplate: .LeftBG, .RightBG, .CenterBG (the
 	                   metal) and .Text (GameFontNormal),
-	      .DragBar,
+	      .DragBar     (PanelDragBarTemplate: a Button over the Header),
 	      .Content     with the textures .AlphaBackground, .ColorSwatchCurrent and
 	                   .ColorSwatchOriginal, the ColorSelect .ColorPicker (.Wheel,
 	                   .Value, .Alpha ... here a frame with its .Wheel, as the
 	                   skin never looks at it), and .HexBox (an EditBox of
 	                   InputBoxInstructionsTemplate: the border textures .Left,
 	                   .Middle and .Right of InputBoxVisualTemplate, the font
-	                   string .Instructions, and its own .Hash, "#"),
+	                   string .Instructions (grey 0.35) and its own .Hash, "#"
+	                   (grey 0.6)),
 	      .Footer      with .CancelButton and .OkayButton, both
 	                   UIPanelButtonTemplate: the textures .Left, .Middle and
 	                   .Right, a highlight texture, the text, and the state fonts
-	                   GameFontNormalOutline, GameFontHighlightOutline and
-	                   GameFontDisable (UIPanelButtonNoTooltipTemplate),
-	      .FrameGlow   (Forever only: FrameGlowTemplate, hidden, level 505).
+	                   GameFontNormal, GameFontHighlight and GameFontDisable
+	                   (UIPanelButtonNoTooltipTemplate, SecureUIPanelTemplates.xml),
+	      .FrameGlow   (Forever only, CP.build{ forever = true }: FrameGlowTemplate,
+	                   hidden, level 505).
+	  - The Header is anchored TOP, y 11 above the frame, 39 tall; its Text TOP,
+	    y -13. The Border is DialogBorderNoCenterTemplate's useParentLevel: at the
+	    frame's own level.
 	  - ColorPickerFrameMixin: OnShow sets the frame's width to 388 with the alpha
 	    slider (hasOpacity) and 331 without (the wheel to 255 or 200 wide), and
 	    :SetupColorPickerAndShow(info) keeps the caller's functions in swatchFunc,
@@ -42,7 +47,10 @@
 	the fields Blizzard's tables have, for comparing before and after. The
 	frame's methods Blizzard's code calls (OnShow, SetupColorPickerAndShow) record
 	a call from SaftUI's code, outside CP.show, in CP.stray: the skin must never
-	run them (.agents/taint.md rule 3).
+	run them (.agents/taint.md rule 3). Every method of a Blizzard widget that
+	changes it (Set..., Hide, Show, Clear..., Enable, Disable, Create..., Add...,
+	Hook..., Register...) called from SaftUI's code is listed in CP.calls, as
+	'Name', so a test can prove a skin that is off touches nothing.
 ]]
 
 local lock_widget = load_test_file('lib/locked_widget.lua')
@@ -53,7 +61,7 @@ CP.stray = {}
 
 -- The named fonts the templates use; the stubs have only some.
 for _, name in ipairs({ 'GameFontNormal', 'GameFontNormalLarge', 'GameFontDisableSmall', 'GameFontHighlightSmall',
-		'GameFontNormalOutline', 'GameFontHighlightOutline', 'GameFontDisable' }) do
+		'GameFontHighlight', 'GameFontDisable' }) do
 	if not _G[name] then
 		local font = CreateFont(name)
 		font:SetFont([[Fonts\FRIZQT__.TTF]], 12, '')
@@ -106,8 +114,8 @@ local function panel_button(footer, key, label)
 		texture(button, part, 'BACKGROUND', path .. '.' .. part)
 	end
 	button:SetHighlightTexture([[Interface\Buttons\UI-Panel-Button-Highlight]])
-	button:SetNormalFontObject(GameFontNormalOutline)
-	button:SetHighlightFontObject(GameFontHighlightOutline)
+	button:SetNormalFontObject(GameFontNormal)
+	button:SetHighlightFontObject(GameFontHighlight)
 	button:SetDisabledFontObject(GameFontDisable)
 	return button
 end
@@ -126,6 +134,7 @@ function CP.build(opts)
 	local border = child(frame, 'Border', 'Frame', 'Border')
 	if border then
 		border:SetAllPoints()
+		border:SetFrameLevel(frame:GetFrameLevel()) -- useParentLevel
 		texture(border, 'Bg', 'BACKGROUND', 'Border.Bg')
 	end
 
@@ -144,7 +153,12 @@ function CP.build(opts)
 		end
 	end
 
-	child(frame, 'DragBar', 'Frame', 'DragBar')
+	local drag = child(frame, 'DragBar', 'Button', 'DragBar')
+	if drag and header then
+		drag:SetPoint('TOPLEFT', header)
+		drag:SetPoint('BOTTOMRIGHT', header)
+		drag:EnableMouse(true)
+	end
 
 	local content = child(frame, 'Content', 'Frame', 'Content')
 	if content then
@@ -170,12 +184,14 @@ function CP.build(opts)
 				local instructions = box:CreateFontString(nil, 'ARTWORK', 'GameFontDisableSmall')
 				instructions:SetPoint('TOPLEFT', 16, 0)
 				instructions:SetPoint('BOTTOMRIGHT', -20, 0)
+				instructions:SetTextColor(0.35, 0.35, 0.35)
 				rawset(box, 'Instructions', instructions)
 			end
 			if wanted('Content.HexBox.Hash') then
 				local hash = box:CreateFontString(nil, 'OVERLAY', 'GameFontNormalLarge')
 				hash:SetPoint('LEFT')
 				hash:SetText('#')
+				hash:SetTextColor(0.6, 0.6, 0.6)
 				rawset(box, 'Hash', hash)
 			end
 		end
@@ -193,8 +209,13 @@ function CP.build(opts)
 		end
 	end
 
-	local glow = child(frame, 'FrameGlow', 'Frame', 'FrameGlow')
-	if glow then glow:Hide() end
+	if opts.forever then
+		local glow = child(frame, 'FrameGlow', 'Frame', 'FrameGlow')
+		if glow then
+			glow:SetFrameLevel(505)
+			glow:Hide()
+		end
+	end
 
 	-- ColorPickerFrameMixin: what other addons call and read.
 	rawset(frame, 'OnShow', guard('OnShow', function(self)
@@ -237,6 +258,29 @@ function CP.build(opts)
 	CP.widgets = list
 
 	lock_tree(frame)
+
+	-- From here a change made from outside Blizzard's own drivers is counted.
+	CP.calls = {}
+	local PREFIXES = { 'Set', 'Hide', 'Show', 'Clear', 'Enable', 'Disable', 'Create', 'Add', 'Hook', 'Register', 'Unregister' }
+	local function changes(name)
+		for _, prefix in ipairs(PREFIXES) do
+			if name:sub(1, #prefix) == prefix then return true end
+		end
+	end
+	for _, widget in ipairs(list) do
+		local meta = getmetatable(widget)
+		local base = meta.__index
+		meta.__index = function(t, key)
+			local value = base[key]
+			if type(value) == 'function' and type(key) == 'string' and changes(key) then
+				return function(...)
+					if driving == 0 then CP.calls[#CP.calls + 1] = key end
+					return value(...)
+				end
+			end
+			return value
+		end
+	end
 	CP.frame = frame
 	return frame
 end
