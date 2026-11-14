@@ -34,7 +34,7 @@ local EM = st.EditModeFrames
 
 EM.COORD_GAP = 2
 
-local LEVEL = 9100 -- over every mover (they climb to 9000), under the bar (9500)
+local LEVEL = 9600 -- over every mover (they climb to 9000), the bar and its floating window (9500), under the History list (9700)
 local floor = math.floor
 
 local function Round(v) return floor(v + 0.5) end

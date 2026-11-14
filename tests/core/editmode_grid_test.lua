@@ -173,7 +173,7 @@ test('UpdateConfig', function()
 	check(EM.gridFrame:IsShown(), 'UpdateConfig shows grid')
 end)
 
-test('StepGridSize and SetGridSize', function()
+test('SetGridSize', function()
 	-- Count the Refresh calls that redraw an open /sui.
 	local refreshes = 0
 	local refresh = st.Config.Refresh
@@ -182,19 +182,7 @@ test('StepGridSize and SetGridSize', function()
 		return refresh(...)
 	end
 
-	settings.grid_size = 32
-	EM:StepGridSize(4)
-	check(settings.grid_size == 36, 'step 32+4 = 36')
-	settings.grid_size = 126
-	EM:StepGridSize(4)
-	check(settings.grid_size == 128, 'step clamps at 128')
-	settings.grid_size = 10
-	EM:StepGridSize(-4)
-	check(settings.grid_size == 8, 'step clamps at 8')
-	local before = refreshes
-	EM:StepGridSize(4)
-	check(refreshes == before + 1, 'step refreshes /sui')
-
+	local before
 	-- SetGridSize: a whole size within the range, the grid redrawn at once.
 	settings.grid = true
 	EM:SetGridSize(30)

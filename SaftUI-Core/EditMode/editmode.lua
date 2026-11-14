@@ -25,7 +25,8 @@ local callbacks = {}
 --   'ShownChanged'     no arguments: an overlay was shown or hidden, a selected
 --                      mover that stopped showing was deselected, or a mover's
 --                      overlap state changed (filter.lua's EM:UpdateShown, which
---                      the ticker runs twice a second: fired only on a change)
+--                      the ticker runs twice a second: fired only on a change;
+--                      nothing listens to it yet, it is here for part two)
 --   'BarLaid'          no arguments: the bar, or the floating window, laid its
 --                      controls out (Bar/bar.lua); docked, EM:BarGap() says where
 --                      the gap is now (it is not updated while floating)

@@ -7,7 +7,7 @@ local EM = st.EditModeFrames
 -- profile (st.defaults.editmode); the bar (Bar/) shows them.
 
 EM.MIN_GRID_SIZE, EM.MAX_GRID_SIZE, EM.GRID_STEP = 8, 128, 4
-EM.MIN_HISTORY, EM.MAX_HISTORY = 1, 1000 -- History length (history.lua's LIMIT_MIN and LIMIT_MAX)
+EM.MIN_HISTORY, EM.MAX_HISTORY = 1, 1000 -- History length; history.lua's LIMIT_MIN and LIMIT_MAX are these
 
 function EM:GetSettings()
 	return st.config.profile.editmode
@@ -16,7 +16,8 @@ end
 -- Sets one of the settings. Grid size is made a whole number from MIN_GRID_SIZE
 -- to MAX_GRID_SIZE first (a value that is not a number changes nothing), and
 -- History length the same from MIN_HISTORY to MAX_HISTORY, which the history
--- then keeps (History:SetLimit: lowering it drops the oldest steps at once).
+-- then keeps (History:SetLimit: lowering it trims lazily, at the next recorded
+-- step).
 -- Then 'SettingsChanged' (key) tells the grid and the bar, and an open /sui
 -- shows the new value on its row.
 function EM:SetSetting(key, value)
@@ -35,11 +36,6 @@ end
 
 function EM:SetGridSize(size)
 	self:SetSetting('grid_size', size)
-end
-
--- Steps Grid size by delta within its range.
-function EM:StepGridSize(delta)
-	self:SetGridSize(self:GetSettings().grid_size + delta)
 end
 
 -- The saved History length goes to the history: at load, and when the profile

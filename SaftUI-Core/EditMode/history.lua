@@ -20,7 +20,7 @@ local History = {}
 EM.History = History
 
 History.MERGE_GAP = 1 -- seconds: a nudge within this of the run's last joins the run
-History.LIMIT_MIN, History.LIMIT_MAX = 1, 1000
+History.LIMIT_MIN, History.LIMIT_MAX = EM.MIN_HISTORY, EM.MAX_HISTORY -- settings.lua, which loads first
 History.limit = 50
 
 local TOLERANCE = 1e-4 -- numbers closer than this are one number
@@ -151,7 +151,13 @@ end
 
 ----------------------------------------------------------------- changing
 
-local function Changed() EM:Fire('HistoryChanged') end
+-- While a jump walks several steps, what each step would announce is held back
+-- (the finishes of its kinds, HistoryChanged) and runs once at the end.
+local batch
+
+local function Changed()
+	if batch then batch.changed = true else EM:Fire('HistoryChanged') end
+end
 
 -- Drops the steps past the limit: the oldest applied ones first (what has to
 -- go is the oldest history), then, if the redo steps alone are still over,
@@ -274,6 +280,23 @@ end
 
 -- Runs each kind's finish once with the wheres it was given, through xpcall.
 local function Finish(byKind, order)
+	if batch then
+		for _, kind in ipairs(order) do
+			local held = batch.byKind[kind]
+			if not held then
+				held = { list = {}, seen = {} }
+				batch.byKind[kind] = held
+				batch.order[#batch.order + 1] = kind
+			end
+			for _, where in ipairs(byKind[kind]) do
+				if not held.seen[where] then
+					held.seen[where] = true
+					held.list[#held.list + 1] = where
+				end
+			end
+		end
+		return
+	end
 	for _, kind in ipairs(order) do
 		local finish = Handler(kind).finish
 		if finish then xpcall(finish, geterrorhandler(), byKind[kind]) end
@@ -414,11 +437,21 @@ function History:JumpTo(n)
 	if type(n) ~= 'number' or n ~= n or n < 0 or n > #steps or n ~= math.floor(n) then
 		return false, 'No such step.'
 	end
+	-- Every step is written and checked in turn (a stale one stops the jump),
+	-- but the frames are placed and the listeners told once, at the end.
+	local held = { byKind = {}, order = {} }
+	batch = held
+	local ok, message = true, nil
 	while position ~= n do
-		local ok, message = Step(position > n)
-		if not ok then return false, message end
+		ok, message = Step(position > n)
+		if not ok then break end
 	end
-	return true
+	batch = nil
+	local byKind = {}
+	for kind, one in pairs(held.byKind) do byKind[kind] = one.list end
+	Finish(byKind, held.order)
+	if held.changed then Changed() end
+	return ok, message
 end
 
 ------------------------------------------------------------------- revert

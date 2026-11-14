@@ -141,7 +141,7 @@ test("Coordinates shows the selected mover's position, follows a drag, and hides
 	check(EM.coordinates and not EM.coordinates:IsShown(), 'off: hidden, with a mover selected')
 	eq(EM.coordinates:IsMouseEnabled(), false, 'takes no mouse')
 	eq(EM.coordinates:GetFrameStrata(), 'FULLSCREEN_DIALOG', 'strata')
-	eq(EM.coordinates:GetFrameLevel(), 9100, 'level')
+	eq(EM.coordinates:GetFrameLevel(), 9600, 'level: over the bar and the floating window (9500), under the History list (9700)')
 
 	EM:SetSetting('coordinates', true)
 	check(EM.coordinates:IsShown(), 'on with a mover selected: shown')

@@ -457,7 +457,7 @@ test("a jump's note is about the steps it walked, and a jump that stops part way
 	eq(status(), 'Went back to: Moved P1. Its mover is hidden by Show or the filter.', 'the step that moved is P2, which is hidden')
 	EM:SetFilter('')
 	EM:JumpToStep(2)
-	eq(status(), 'Went back to: Moved P2', 'nothing hidden: no note')
+	eq(status(), 'Went to: Moved P2', 'a jump forward; nothing hidden: no note')
 
 	-- Part way: P2 is moved from outside, then a jump to the start.
 	reset()
