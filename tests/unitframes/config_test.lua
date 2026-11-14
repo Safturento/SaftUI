@@ -27,9 +27,8 @@
 --     game), UF.holders for the groups, and UF:GetMoverFrame (unitframes.lua's:
 --     the holder, else the unit's frame). The frames have no elements, so an
 --     element Position's dropdown lists every registered element.
---   * UF.unit_strings, empty: unitframes.lua's name the units (Player,
---     Target, ...), and without them a unit is named by its key. UF.group_strings
---     is unitframes.lua's, as the Ready check element's ValidUnit reads it;
+--   * UF.unit_strings, unitframes.lua's (arena has no page, so no name), and
+--     UF.group_strings, which is also unitframes.lua's, as the Ready check element's ValidUnit reads it;
 --     so are UF.PLATE_UNITS and UF.IsPlateUnit, which Power's and the role
 --     indicators' ValidUnit read.
 --   * UF.oUF, as far as tags.lua uses it: oUF's tag tables, where tags.lua
@@ -44,9 +43,12 @@
 load_core_helpers()
 load_saftui('SaftUI-Unitframes/config/position.lua') -- config/load.xml's order: first
 load_saftui('SaftUI-Unitframes/config/default.lua')
--- The nameplates' own defaults (enable, friendly, threat_solo, the threat
--- text, width, height); the other units' come from every unit's.
-load_saftui('SaftUI-Unitframes/config/units/nameplate.lua')
+-- Every unit's own defaults, as config/load.xml lists them (the nameplates'
+-- are enable, friendly, threat_solo, the threat text, width, height).
+for _, file in ipairs({ 'player', 'target', 'targettarget', 'focus', 'focustarget', 'pet', 'pettarget', 'boss',
+	'arena', 'party', 'raid10', 'raid40', 'nameplate', 'friendlynameplate' }) do
+	load_saftui('SaftUI-Unitframes/config/units/' .. file .. '.lua')
+end
 apply_defaults()
 load_saftui('SaftUI-Core/Libraries/Ace3/AceConfig-3.0/AceConfigRegistry-3.0/AceConfigRegistry-3.0.lua')
 load_saftui('SaftUI-Core/Config/optionsmodel.lua')
@@ -73,7 +75,10 @@ for _, group in ipairs({ 'raid40', 'party', 'raid10' }) do
 	UF.groups[group] = CreateFrame('Frame', nil, UIParent)
 	UF.holders[group] = CreateFrame('Frame', nil, UIParent)
 end
-UF.unit_strings = {}
+UF.unit_strings = {
+	player = 'Player', target = 'Target', targettarget = 'TargetTarget', focus = 'Focus',
+	focustarget = 'FocusTarget', pet = 'Pet', pettarget = 'PetTarget', boss = 'Boss', -- arena's is commented out
+}
 UF.group_strings = { party = 'Party', raid10 = 'Raid 10', raid40 = 'Raid 40' }
 UF.PLATE_UNITS = { nameplate = true, friendlynameplate = true }
 function UF.IsPlateUnit(unit) return UF.PLATE_UNITS[unit] == true end
@@ -120,18 +125,19 @@ test('Copy from opens a SaftUI dialog whose rows come from its table, and copies
 	UF:OpenCopyTable('player')
 	check(OW:IsDialogShown(), 'a SaftUI dialog')
 	local d = OW.GetDialogFrames()
-	eq(d.title:GetText(), 'Copy to player from', 'its title')
+	eq(d.title:GetText(), 'Copy to Player from', 'its title')
 
 	-- Copy from, All and None, a toggle per setting of the unit's, Confirm copy and Cancel.
 	local keys = rows()
 	eq(table.concat(keys, ',', 1, 3), 'copy_from,toggle_all,toggle_none', 'the unit to copy from, All, None')
 	eq(keys[#keys - 1] .. ',' .. keys[#keys], 'accept,cancel', 'Confirm copy, then Cancel, last')
-	local expected, got = {}, {}
-	for key in pairs(P.player) do expected[#expected + 1] = key end
+	local got = {}
 	for i = 4, #keys - 2 do got[#got + 1] = keys[i] end
-	table.sort(expected)
 	table.sort(got)
-	eq(table.concat(got, ','), table.concat(expected, ','), "a toggle per setting of player's")
+	-- Only what player's config has and its page names: not Aura watch, Portrait or
+	-- Range (no element reads the first two, a single unit has no Range section) or
+	-- Ready check (a group-only element), which would copy nothing.
+	eq(table.concat(got, ','), 'additionalpower,background,buffs,castbar,classpower,debuffs,enable,grouproleindicator,health,height,name,position,power,questindicator,raidroleindicator,raidtargetindicator,theme,width', "a toggle per part of player's")
 	check(#got > 10, 'many of them: ' .. #got)
 	for i = 4, #keys - 2 do
 		local size = cell(keys[i]).row.size
@@ -143,15 +149,15 @@ test('Copy from opens a SaftUI dialog whose rows come from its table, and copies
 	click(cell('copy_from').widget.frame)
 	local list, picked = W.GetListFrames(), false
 	for _, row in ipairs(list.rows) do
-		check(not (row:IsShown() and row.text:GetText() == 'player'), 'player is not offered')
-		if row:IsShown() and row.text:GetText() == 'target' then
+		check(not (row:IsShown() and row.text:GetText() == 'Player'), 'player is not offered')
+		if row:IsShown() and row.text:GetText() == 'Target' then
 			click(row)
 			picked = true
 			break
 		end
 	end
 	check(picked, 'target is offered')
-	eq(d.title:GetText(), 'Copy to player from target', 'the title says so')
+	eq(d.title:GetText(), 'Copy to Player from Target', 'the title says so')
 	check(not cell('accept').widget:IsDisabled(), 'Confirm copy is on')
 
 	-- All, then None, then width and health.
@@ -170,7 +176,7 @@ test('Copy from opens a SaftUI dialog whose rows come from its table, and copies
 	-- Confirm copy asks first, in SaftUI's confirm dialog.
 	local before = updates
 	click(cell('accept').widget.frame)
-	eq(W.ConfirmText(), 'Are you sure you want to copy the ticked settings to player from target?', 'it asks')
+	eq(W.ConfirmText(), 'Are you sure you want to copy the ticked settings to Player from Target?', 'it asks')
 	eq(P.player.width, 1, 'nothing copied before Yes')
 	click(W.GetDialogFrames().yes)
 	eq(P.player.width, 123, 'width copied')
@@ -184,7 +190,7 @@ end)
 test("opening Copy from again starts over, with the new unit's settings", function()
 	UF:OpenCopyTable('target')
 	local d = OW.GetDialogFrames()
-	eq(d.title:GetText(), 'Copy to target from', 'a new title')
+	eq(d.title:GetText(), 'Copy to Target from', 'a new title')
 	for _, key in ipairs(rows()) do
 		local c = cell(key)
 		if c.row.type == 'toggle' then check(not c.widget.value, key .. ' starts unticked') end
@@ -207,10 +213,34 @@ local COPY_LABELS = {
 	unitsPerColumn = 'Units per column', width = 'Width',
 }
 
+local COPY_UNITS = { 'player', 'target', 'targettarget', 'focus', 'focustarget', 'pet', 'pettarget', 'boss',
+	'party', 'raid10', 'raid40' }
+
+test("Copy from lists only parts the unit has and its page names, and only units that have a page", function()
+	for _, unit in ipairs(COPY_UNITS) do
+		UF:OpenCopyTable(unit)
+		local P = UF:GetProfileConfig()[unit]
+		local keys = rows()
+		for i = 4, #keys - 2 do
+			check(rawget(P, keys[i]) ~= nil, unit .. ': ' .. keys[i] .. ' is in its defaults')
+		end
+		for _, dead in ipairs({ 'aurawatch', 'portrait', 'auras' }) do
+			check(cell(dead) == nil, unit .. ': no ' .. dead .. ' (nothing reads it)')
+		end
+		if not UF.group_strings[unit] then check(cell('range_alpha') == nil, unit .. ': no Range on a single unit') end
+		for _, entry in ipairs(OM.Values(OW.GetDialogFrames().body.root, cell('copy_from').row)) do
+			check(UF.unit_strings[entry.key] or UF.group_strings[entry.key], entry.key .. ' has a page and a display name')
+			check(entry.name ~= entry.key, entry.key .. ' is not named by its key')
+			check(entry.key ~= 'arena', 'arena is not offered')
+		end
+		OW:CloseDialog()
+	end
+	check(UF:GetProfileConfig().arena ~= nil, 'arena is in the profile, so this is what leaves it out')
+	check(rawget(st.defaults.unitframes.profiles['**'].pettarget, 'auras') == nil, "pet target has no dead auras key")
+end)
+
 test("Copy from's settings carry the names /sui shows for them, in sentence case and sorted by name; the title and the list name the units", function()
-	local saved = UF.unit_strings
-	UF.unit_strings = { player = 'Player', target = 'Target', focus = 'Focus' }
-	for _, unit in ipairs({ 'player', 'party', 'boss', 'target' }) do
+	for _, unit in ipairs(COPY_UNITS) do
 		UF:OpenCopyTable(unit)
 		local keys = rows()
 		local labels = {}
@@ -247,7 +277,6 @@ test("Copy from's settings carry the names /sui shows for them, in sentence case
 	eq(W.ConfirmText(), 'Are you sure you want to copy the ticked settings to Player from Target?', 'Confirm copy asks by name')
 	click(W.GetDialogFrames().no)
 	OW:CloseDialog()
-	UF.unit_strings = saved
 end)
 
 -- Where a drawn cell starts in the dialog's content.
@@ -325,7 +354,7 @@ test("Copy from's label has room: All and None sit at its line's right end; Conf
 	check_copy_layout('Thick')
 	-- Picking a unit draws it again the same way.
 	cell('copy_from').widget:Commit('target')
-	eq(OW.GetDialogFrames().title:GetText(), 'Copy to player from target', 'picked')
+	eq(OW.GetDialogFrames().title:GetText(), 'Copy to Player from Target', 'picked')
 	check_copy_layout('after a pick')
 	OW:CloseDialog()
 end)
@@ -355,7 +384,7 @@ test('Cancel closes Copy from and copies nothing; Confirm copy still asks and wa
 	cell('copy_from').widget:Commit('target')
 	click(cell('toggle_all').widget.frame)
 	click(cell('accept').widget.frame)
-	eq(W.ConfirmText(), 'Are you sure you want to copy the ticked settings to player from target?', 'Confirm copy asks')
+	eq(W.ConfirmText(), 'Are you sure you want to copy the ticked settings to Player from Target?', 'Confirm copy asks')
 	click(W.GetDialogFrames().no)
 	check(OW:IsDialogShown(), 'No leaves the dialog open')
 	eq(P.player.width, 1, 'and copies nothing')
@@ -384,7 +413,7 @@ test('Copy from leaves the nameplates out: never offered to copy from, and their
 	for _, row in ipairs(W.GetListFrames().rows) do
 		if row:IsShown() then offered[row.text:GetText()] = true end
 	end
-	check(offered.target, 'target is offered')
+	check(offered.Target, 'target is offered')
 	check(not offered.nameplate, 'the nameplates are not')
 	W.CloseList()
 	OW:CloseDialog()

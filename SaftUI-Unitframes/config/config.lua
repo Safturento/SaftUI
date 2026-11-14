@@ -184,26 +184,13 @@ local function UnitName(unit)
 	return UF.unit_strings[unit] or UF.group_strings[unit] or unit
 end
 
--- What Copy from calls the parts of a unit frame no page in /sui names (no
--- element registers a tab for them).
-local COPY_NAMES = {
-	aurawatch = 'Aura watch',
-	portrait = 'Portrait',
-}
-
--- A key's name made from the key itself, for one nothing else names: its
--- words apart and in sentence case ('range_alpha', 'growthDirection').
-local function KeyName(key)
-	local words = tostring(key):gsub('_', ' '):gsub('(%l)(%u)', '%1 %2'):lower()
-	return (words:gsub('^%l', string.upper))
-end
-
--- What Copy from calls each key of a unit's config: the name /sui shows for
--- that part, read from the unit frames' pages (the units' own page first,
--- then the others by key; never a nameplate page's, which Copy from leaves
--- out): an element's tab by its key in lower case (the config's key for it),
--- and General's options, sections and the options in them by their keys
--- (Layout's settings, the Range section). Then COPY_NAMES, else KeyName.
+-- What Copy from calls each setting of a unit, and so which it lists: the
+-- name the unit's own /sui page shows for that part. An element's tab by its
+-- key in lower case (the config's key for it), and General's options, sections
+-- and the options in them by their keys (Layout's settings, the Range section).
+-- A key the page names nothing for isn't listed: the config holds it but
+-- nothing reads it for this unit (Aura watch and Portrait have no element, a
+-- single unit has no Range section), so ticking it would copy nothing.
 local function CopyNames(self, unit)
 	local names = {}
 	local function Add(key, name)
@@ -217,19 +204,11 @@ local function CopyNames(self, unit)
 			if option.type == 'group' and type(option.args) == 'table' then AddGeneral(option.args) end
 		end
 	end
-	local pages = self:GetConfigTable().args
-	local order = {}
-	for key in pairs(pages) do
-		if key ~= unit and not UF.IsPlateUnit(key) then order[#order + 1] = key end
+	local page = self:GetConfigTable().args[unit]
+	for tabKey, tab in pairs(page and page.args or {}) do
+		if tabKey == 'general' then AddGeneral(tab.args or {}) else Add(tabKey:lower(), tab.name) end
 	end
-	table.sort(order)
-	table.insert(order, 1, unit)
-	for _, key in ipairs(order) do
-		for tabKey, tab in pairs(pages[key] and pages[key].args or {}) do
-			if tabKey == 'general' then AddGeneral(tab.args or {}) else Add(tabKey:lower(), tab.name) end
-		end
-	end
-	return setmetatable(names, { __index = function(_, key) return COPY_NAMES[key] or KeyName(key) end })
+	return names
 end
 
 -- The Copy from dialog: copies the ticked settings of another unit (in the
@@ -252,9 +231,11 @@ function UF:OpenCopyTable(unit)
 	local settingArgs = {}
 	local names = CopyNames(self, unit)
 	for key in pairs(self:GetProfileConfig()[unit]) do
-		copy.settings[key] = false
-		settingArgs[key] = st.Config.generators.toggle(0, names[key],
-			'Copies this setting from the other unit frame onto this one.')
+		if names[key] then
+			copy.settings[key] = false
+			settingArgs[key] = st.Config.generators.toggle(0, names[key],
+				'Copies this setting from the other unit frame onto this one.')
+		end
 	end
 	local function SetAll(value)
 		for key in pairs(copy.settings) do copy.settings[key] = value end
@@ -274,7 +255,9 @@ function UF:OpenCopyTable(unit)
 					local units = {}
 					-- The current profile's, in case the profile changed since opening
 					for key in pairs(UF:GetProfileConfig()) do
-						if key ~= unit and not UF.IsPlateUnit(key) then
+						-- Only the units that have a page (arena has none)
+						if key ~= unit and not UF.IsPlateUnit(key)
+							and (UF.unit_strings[key] or UF.group_strings[key]) then
 							units[key] = UnitName(key)
 						end
 					end
