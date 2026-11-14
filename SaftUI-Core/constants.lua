@@ -98,6 +98,13 @@ st.icons = {
 	history = st:TexturePath('lucide-history.tga'),
 	pictureInPicture2 = st:TexturePath('lucide-picture-in-picture-2.tga'),
 	panelTop = st:TexturePath('lucide-panel-top.tga'),
+	chevronLeft = st:TexturePath('lucide-chevron-left.tga'),
+	chevronRight = st:TexturePath('lucide-chevron-right.tga'),
+	panelLeftOpen = st:TexturePath('lucide-panel-left-open.tga'),
+	panelLeftClose = st:TexturePath('lucide-panel-left-close.tga'),
+	move = st:TexturePath('lucide-move.tga'),
+	keyboard = st:TexturePath('lucide-keyboard.tga'),
+	list = st:TexturePath('lucide-list.tga'),
 }
 
 st.FRAME_ANCHORS = {

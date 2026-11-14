@@ -59,17 +59,27 @@ test('/sui grows taller by its bottom edge or its grip: its width and top stay, 
 	eq(F.sizer:GetFrameLevel(), F.grip:GetFrameLevel(), 'the edge at its level')
 	check(F.grip:IsMouseEnabled() and F.sizer:IsMouseEnabled(), 'both take the mouse')
 
+	local function corner()
+		local point, relative, relPoint, x, y = w:GetPoint(1)
+		return table.concat({ point, tostring(relative == UIParent), relPoint, x, y }, ' ')
+	end
+	local anchored = corner()
+	eq(anchored, 'TOPRIGHT true TOPRIGHT -440 -190', 'anchored by its top right corner')
 	resize(F.grip, 100)
 	eq(at(w), '0,0 1040x800')
 	eq(w:GetTop(), top, 'its top stays')
+	eq(corner(), anchored, 'the anchor stays TOPRIGHT at the same offsets: no re-anchoring')
 	eq(at(F.side), '2,2 208x796'); eq(at(F.navFrame), '2,152 207x615'); eq(at(F.body), '238,113 774x639')
 	eq(at(F.reloadButton:GetParent()), '210,752 828x46', 'the footer at the bottom')
 	eq(at(F.grip), '1024,784 16x16', 'the grip with it')
 	eq(st.config.global.optionsWindow.height, 800, "saved in SaftUI's global settings")
 	resize(F.sizer, -300); eq(w:GetHeight(), 700, 'no shorter than its default')
-	resize(F.sizer, 51); eq(w:GetHeight(), 752, 'an even height: centred on whole pixels')
+	eq(corner(), anchored, 'shorter: the anchor the same')
+	resize(F.sizer, 51); eq(w:GetHeight(), 752, 'an even height')
 	eq(w:GetTop(), top, 'the top still where it was')
+	eq(corner(), anchored, 'the anchor the same')
 	st.Config:Close(); st.Config:Open('Loot'); eq(w:GetHeight(), 752, 'restored when it opens'); eq(w:GetTop(), top)
+	eq(corner(), anchored, 'reopened: the same corner, x too')
 	resize(F.grip, 5000)
 	local inset = st.config.profile.misc.clamp_inset
 	check(w:GetBottom() >= inset and w:GetBottom() < inset + 2, 'it stops at the screen edge margin')
@@ -86,6 +96,18 @@ test('/sui grows taller by its bottom edge or its grip: its width and top stay, 
 	st.config.global.optionsWindow = nil
 	close_all()
 	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a resize keeps the size and the sidebar saved, and the corner it was given', function()
+	theme('thick')
+	st.config.global.optionsWindow = { point = 'TOPRIGHT', x = -100, y = -50, size = 'half', sidebar = false }
+	st.Config:Close(); st.Config:Open('Loot')
+	resize(frames().grip, 60)
+	local saved = st.config.global.optionsWindow
+	eq(saved.height .. ' ' .. saved.size .. ' ' .. tostring(saved.sidebar) .. ' ' .. saved.point .. ' ' .. saved.x .. ' ' .. saved.y,
+		'760 half false TOPRIGHT -100 -50', 'height added, the rest kept')
+	st.config.global.optionsWindow = nil
+	close_all()
 end)
 
 test('a resize renders nothing; a fill page draws its fill row once, when the mouse is let go', function()

@@ -198,6 +198,9 @@ local tick = tick_options_window
 
 local function close_all()
 	st.Config:Close()
+	-- No test's size or sidebar leaks into the next.
+	local saved = st.config.global.optionsWindow
+	if type(saved) == 'table' then saved.size, saved.sidebar = nil, nil end
 	stub.in_combat = false
 	hideTarget = false
 end

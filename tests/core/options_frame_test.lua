@@ -180,7 +180,7 @@ end)
 
 ------------------------------------------------------------------ moving, keys, combat
 
-test('the position is saved when a drag ends and restored on open', function()
+test("the position is saved by the window's top right corner when a drag ends and restored on open", function()
 	st.Config:Open()
 	local window = frames().window
 	stub.fire_script(frames().header, 'OnDragStart')
@@ -190,14 +190,15 @@ test('the position is saved when a drag ends and restored on open', function()
 	stub.fire_script(frames().header, 'OnDragStop')
 	eq(stub.state(window).moving, false, 'stopped')
 	local saved = st.config.global.optionsWindow
-	eq(saved.point .. ' ' .. saved.x .. ' ' .. saved.y, 'CENTER 120 -40', 'saved account-wide')
+	eq(saved.point .. ' ' .. saved.x .. ' ' .. saved.y, 'TOPRIGHT -320 -230', 'saved account-wide, by its corner: the 1040 x 700 window centred 120 right and 40 down')
 
 	st.Config:Close()
-	st.config.global.optionsWindow = { point = 'CENTER', x = -200, y = 50 }
+	st.config.global.optionsWindow = { point = 'TOPRIGHT', x = -200, y = -50 }
 	st.Config:Open()
-	local cx, cy = window:GetCenter()
+	local point, _, relPoint, x, y = window:GetPoint(1)
+	eq(table.concat({ point, relPoint, x, y }, ' '), 'TOPRIGHT TOPRIGHT -200 -50', 'restored')
 	local ux, uy = UIParent:GetCenter()
-	eq((cx - ux) .. ',' .. (cy - uy), '-200,50', 'restored')
+	local cx, cy
 
 	st.Config:Close()
 	st.config.global.optionsWindow = { point = 'NOWHERE', x = 'a' }

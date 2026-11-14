@@ -44,7 +44,8 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	    (st:CreateCloseButton; under Blizzard in the metal's socket). Dragging
 	    it, the sidebar's title (under Thick and Thin) or the title bar (under
 	    Blizzard) moves the window, and where it was left is kept in
-	    st.config.global.optionsWindow, with the height it was dragged to;
+	    st.config.global.optionsWindow, by its top right corner, with the height
+	    it was dragged to;
 	  - the tab row, across the main column; a second row for subtabs; the
 	    picker row (the picked group's control, its pickerControl, right of
 	    the picker); the body, a scroll frame of sections (OB.LayoutSections)
@@ -253,38 +254,112 @@ end
 ------------------------------------------------------------------ position and height
 
 --[[
-	st.config.global.optionsWindow = { point = 'CENTER', x, y, height }: where
-	the user left the window, its centre's offset from the screen's, and the
-	height they dragged it to (nil until they do). A move keeps the height saved
-	as it was, and only a resize writes it: a height saved by a move under
-	Blizzard (728) would open Thick's window 728 tall.
+	st.config.global.optionsWindow = { point = 'TOPRIGHT', x, y, height, size,
+	sidebar }: where the user left the window, the offset of its top right
+	corner from UIParent's, and the height they dragged it to (nil until they
+	do); size and sidebar are the window's state (OW.SavedState, nil until the
+	player changes it). The window is anchored by that corner (S.corner), so
+	changing its width or height never moves the corner. Only a drag saves a new
+	corner, read from where the window shows (the game's clamp may have moved it
+	from its anchor); a resize saves the height, with the corner it has. A move
+	keeps what else was saved, and so does a resize (S.SaveWindow): a height
+	saved by a move under Blizzard (728) would open Thick's window 728 tall.
+	With nothing saved the full window with the sidebar is centred
+	(OW.CentredCorner), and nothing is written.
+
+	A save by an older version is by another point (its centre's offset). It is
+	placed as saved on the first open, at the width an older version drew, then
+	rewritten as the corner it shows at, keeping its height.
 ]]
 
+-- S.corner = { x, y }: the offset the window's TOPRIGHT sits from UIParent's
+-- TOPRIGHT at. Set by Build, RestorePosition and SavePosition.
+S.corner = nil
+
+local function Whole(value) return floor(value + 0.5) end
+
+-- The saved place: its point and offsets, or nil when there is none or it's
+-- not one (a point that isn't one of the nine, an offset that isn't a number).
 local function SavedPosition()
 	local saved = st.config.global.optionsWindow
 	if type(saved) == 'table' and POINTS[saved.point] and type(saved.x) == 'number' and type(saved.y) == 'number' then
-		return saved.point, saved.x, saved.y
+		return saved.point, Whole(saved.x), Whole(saved.y)
 	end
-	return 'CENTER', 0, 0
+end
+
+-- Sets fields' keys in the saved place, making it if there is none and
+-- keeping its other keys.
+local function SaveWindow(fields)
+	local saved = st.config.global.optionsWindow
+	if type(saved) ~= 'table' then
+		saved = {}
+		st.config.global.optionsWindow = saved
+	end
+	for key, value in pairs(fields) do saved[key] = value end
+end
+
+-- The window at S.corner.
+local function Anchor()
+	F.window:ClearAllPoints()
+	F.window:SetPoint('TOPRIGHT', UIParent, 'TOPRIGHT', S.corner.x, S.corner.y)
+end
+
+-- The layout of the look the window is about to be drawn in: Draw lays it out
+-- again when the look changed since it was last, after the open placed it.
+local function LookLayout()
+	return W.BlizzardLook() and OW.LAYOUT.blizzard or OW.LAYOUT.own
+end
+
+-- The screen's size in whole units.
+local function ScreenSize()
+	return Whole(UIParent:GetWidth()), Whole(UIParent:GetHeight())
+end
+
+-- With nothing saved: the full window with the sidebar, centred.
+local function CentredCorner(L)
+	local screenWidth, screenHeight = ScreenSize()
+	local x, y = OW.CentredCorner(screenWidth, screenHeight, OW.WindowWidth(L, 'full', true), OW.WindowHeight(L))
+	return { x = x, y = y }
+end
+
+-- Where the window's top right corner shows, as its offset from the screen's,
+-- in whole units (pixels, at SaftUI's scale); nothing before it has a place.
+local function ShownCorner()
+	local right, top = F.window:GetRight(), F.window:GetTop()
+	local screenRight, screenTop = UIParent:GetRight(), UIParent:GetTop()
+	if not (right and screenRight) then return end
+	return Whole(right - screenRight), Whole(top - screenTop)
 end
 
 local function RestorePosition()
+	local L = LookLayout()
+	local height = OW.WindowHeight(L)
+	F.window:SetHeight(height)
 	local point, x, y = SavedPosition()
-	F.window:SetHeight(OW.WindowHeight(F.layout or OW.LAYOUT.own))
-	F.window:ClearAllPoints()
-	F.window:SetPoint(point, UIParent, point, x, y)
+	if point == 'TOPRIGHT' then
+		S.corner = { x = x, y = y }
+	elseif point then
+		-- An older save (by another point, at the full width with the sidebar):
+		-- the corner it puts the window at, written once. Worked out, not read
+		-- from the window, which has no place before it is shown.
+		local screenWidth, screenHeight = ScreenSize()
+		local cornerX, cornerY = OW.CornerOf(point, x, y, OW.WindowWidth(L, 'full', true), height, screenWidth, screenHeight)
+		S.corner = { x = cornerX, y = cornerY }
+		SaveWindow({ point = 'TOPRIGHT', x = cornerX, y = cornerY })
+	else
+		S.corner = CentredCorner(L)
+	end
+	Anchor()
 end
 
--- Where the user left the window, as its center's offset from the screen's,
--- in whole units (pixels, at SaftUI's scale). The saved height stays.
+-- Where the user left the window: its corner, from where it shows. What else
+-- is saved stays.
 local function SavePosition()
-	local cx, cy = F.window:GetCenter()
-	local ux, uy = UIParent:GetCenter()
-	if not (cx and ux) then return end
-	local saved = st.config.global.optionsWindow
-	local height = type(saved) == 'table' and type(saved.height) == 'number' and saved.height or nil
-	st.config.global.optionsWindow = { point = 'CENTER', x = floor(cx - ux + 0.5), y = floor(cy - uy + 0.5), height = height }
-	RestorePosition()
+	local x, y = ShownCorner()
+	if not x then return end
+	S.corner = { x = x, y = y }
+	SaveWindow({ point = 'TOPRIGHT', x = x, y = y })
+	Anchor()
 end
 
 local function Draggable(frame)
@@ -1084,7 +1159,6 @@ local function Build()
 	local window = st:CreateFrame('Frame', nil, UIParent)
 	window:SetFrameStrata('FULLSCREEN_DIALOG')
 	window:SetFrameLevel(100)
-	window:SetPoint('CENTER', UIParent, 'CENTER', 0, 0)
 	window:SetMovable(true)
 	-- Dragged by its header, so it keeps to the margin too, with its art.
 	st:KeepInScreenMargin(window, function() return ArtReach(S.layout) end)
@@ -1133,6 +1207,8 @@ local function Build()
 	-- layout of the look now.
 	Relayout(W.BlizzardLook())
 	PlaceBody(TABS_TOP + TAB_HEIGHT)
+	S.corner = CentredCorner(F.layout)
+	Anchor()
 end
 
 ------------------------------------------------------------------ the API
@@ -1233,7 +1309,7 @@ end)
 
 ------------------------------------------------------------------ for the later files
 
-S.F, S.Colors, S.Schedule, S.SavePosition, S.Inside = F, Colors, Schedule, SavePosition, Inside
+S.F, S.Colors, S.Schedule, S.SavePosition, S.SaveWindow, S.Inside = F, Colors, Schedule, SavePosition, SaveWindow, Inside
 S.ColorPickerShown, S.EscapeKeys = ColorPickerShown, EscapeKeys
 S.SetScroll, S.SetNavScroll = SetScroll, SetNavScroll
 S.state, S.pools, S.Normal, S.Grey, S.Blue, S.Button, S.Select = state, pools, Normal, Grey, Blue, W.Button, Select
