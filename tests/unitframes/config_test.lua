@@ -895,6 +895,7 @@ test('each element tab offers Theme and Background, with descs, and no template'
 	-- Nothing in the unit frames' pages is a Template, or offers an old
 	-- template, Highlight or Close Button.
 	T.check_no_old_names(config, 'Unitframes')
+	eq(config.name, 'Unit frames', 'the page is named in sentence case, as the sidebar shows it')
 end)
 
 -- The castbar's Bar and Icon sections each have their own Theme and

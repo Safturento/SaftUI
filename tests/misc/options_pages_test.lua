@@ -129,6 +129,7 @@ test('Totem bar: one small color per element, read and written as the bar reads 
 		TB[name] = function() applied[#applied + 1] = name end
 	end
 	local tree = TB:GetConfigTable()
+	eq(tree.name, 'Totem bar', 'sentence case, as the sidebar shows it')
 	eq(check_page('TotemBar', tree), 1, 'one Position')
 	local args = tree.args.general.args
 
@@ -166,6 +167,7 @@ test('Totem bar: one small color per element, read and written as the bar reads 
 	profile.totembar.position = nil
 	TB.holder = nil
 	local plain = TB:GetConfigTable()
+	eq(plain.name, 'Totem bar', 'off a totem class too')
 	check_page('TotemBarOffClass', plain)
 end)
 
@@ -219,6 +221,7 @@ test('Swing timer: sizes and descs, Position last', function()
 	function STP:ApplyAppearance() end
 	function STP:ApplyHolder() end
 	local tree = STP:GetConfigTable()
+	eq(tree.name, 'Swing timer', 'sentence case, as the sidebar shows it')
 	eq(check_page('SwingTimer', tree), 3, 'three Positions')
 	local got = layout({ SwingTimer = tree }, 'SwingTimer', 'mainhand')
 	eq(got, 'width:normal 1, height:normal 2, showtitle:small 1/1, showtime:small 1/2, opacity:normal 2', 'Width | Height, the toggles | Opacity')

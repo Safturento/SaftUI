@@ -308,7 +308,7 @@ end
 
 function UF:GetConfigTable()
 	local config = {
-		name = 'Unitframes',
+		name = 'Unit frames',
 		type = 'group',
 		category = 'Frames', -- the /sui sidebar's group (optionslayout.lua)
 		-- The units are the page's picker; each unit's elements are its tabs.

@@ -347,6 +347,7 @@ test('the Objective Tracker page: the fonts, then Position', function()
 	load_test_file('lib/options_walk.lua')
 	local tree = OTP:GetConfigTable()
 	eq(tree.category, 'Info', 'in the Info group')
+	eq(tree.name, 'Objective tracker', 'sentence case, as the sidebar shows it')
 	local general = tree.args.general
 	eq(general.args.font.type, 'select', 'Font')
 	eq(general.args.header_font.name, 'Header font', 'Header font')

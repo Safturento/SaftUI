@@ -425,7 +425,7 @@ function OTP:GetConfigTable()
 	end
 
 	return {
-		name = 'Objective Tracker',
+		name = 'Objective tracker',
 		type = 'group',
 		category = 'Info', -- the /sui sidebar's group (optionslayout.lua)
 		childGroups = 'tab',

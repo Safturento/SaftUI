@@ -106,7 +106,7 @@ function TB:GetConfigTable()
 	}
 
 	if not self.holder then
-		general.name = 'Totem Bar'
+		general.name = 'Totem bar'
 		general.order = nil
 		return general
 	end
@@ -142,7 +142,7 @@ function TB:GetConfigTable()
 	general.args.position = position
 
 	return {
-		name = 'Totem Bar',
+		name = 'Totem bar',
 		type = 'group',
 		category = 'Combat', -- the /sui sidebar's group (optionslayout.lua)
 		childGroups = 'tab',

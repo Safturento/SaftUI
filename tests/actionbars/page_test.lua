@@ -763,6 +763,7 @@ test('every option and menu option has a desc; AceConfig accepts the page and ea
 	load_saftui('SaftUI-Core/Libraries/Ace3/AceConfig-3.0/AceConfigRegistry-3.0/AceConfigRegistry-3.0.lua')
 	local Registry = LibStub('AceConfigRegistry-3.0')
 	local tree = AB:GetConfigTable()
+	eq(tree.name, 'Action bars', 'sentence case, as the sidebar shows it')
 	local NO_DESC = { group = true, header = true, description = true }
 	local menus = 0
 	each_option(tree, function(option, path)

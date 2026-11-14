@@ -41,7 +41,8 @@ test('each page offers Theme and Background, not Template', function()
 	T.check_no_old_names(MM:GetConfigTable(), 'Minimap')
 	local MicroMenu = st:GetModule('MicroMenu')
 	MicroMenu.Container = CreateFrame('Frame', nil, UIParent) -- SaftUI's, made by OnEnable
-	T.check_no_old_names(MicroMenu:GetConfigTable(), 'Micro Menu')
+	eq(MicroMenu:GetConfigTable().name, 'Micro menu', 'sentence case, as the sidebar shows it')
+	T.check_no_old_names(MicroMenu:GetConfigTable(), 'Micro menu')
 	T.check_theme_page({
 		group = MM:GetConfigTable().args.general, where = 'Minimap', config = profile.minimap, path = 'minimap',
 		reads = { { 'theme', 'theme' }, { 'background', 'solid' } },
