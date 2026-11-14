@@ -133,6 +133,30 @@ local function ByTheme(blizzard, other)
 	return function() return Name() == 'blizzard' and blizzard or other end
 end
 
+-- The Background of SaftUI's own config windows: the kit's Background select
+-- (generators.background), named for them. Windows are drawn with the
+-- Background 'options', which theme.lua reads at each draw, so a change only
+-- recolors; its reset puts the default back the same way.
+local function OptionsRow(order)
+	local row = st.Config.generators.background(order,
+		"The Background of SaftUI's own windows: /sui and its small dialogs, and edit mode's bar, window and History list. Use SaftUI's theme follows the Background above, see-through or solid; Solid is never see-through. What opens over content, like lists and menus, stays solid.")
+	row.name = 'Options windows'
+	row.get = function() return Theme().optionsbackground end
+	row.set = function(_, value)
+		Theme().optionsbackground = value
+		Recolor()
+	end
+	row.default = {
+		differs = function() return Theme().optionsbackground ~= st.defaults.theme.optionsbackground end,
+		reset = function()
+			Theme().optionsbackground = st.defaults.theme.optionsbackground
+			Recolor()
+		end,
+		value = function() return st.defaults.theme.optionsbackground end,
+	}
+	return row
+end
+
 function TH:GetConfigTable()
 	return {
 		type = 'group',
@@ -202,6 +226,7 @@ function TH:GetConfigTable()
 					end,
 				},
 			},
+			optionsbackground = OptionsRow(6),
 		},
 	}
 end

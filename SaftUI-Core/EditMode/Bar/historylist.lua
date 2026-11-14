@@ -329,7 +329,7 @@ local function Build()
 	list:EnableMouse(true)
 	list:EnableMouseWheel(true)
 	list:Hide()
-	st:SetBackdrop(list, 'theme', 'theme', 'panel')
+	st:SetBackdrop(list, 'theme', 'options', 'panel')
 	st:KeepInScreenMargin(list)
 	list.offset = 0
 

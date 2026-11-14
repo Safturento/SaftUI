@@ -9,7 +9,10 @@ local st = SaftUI
 	override the theme with a Theme ('theme', 'thick', 'thin', 'blizzard' or
 	'none') and a Background ('theme', 'solid' or 'transparent'); 'theme', or
 	nil, follows the profile's. st:ResolveTheme turns the pair into the look a
-	frame is drawn with.
+	frame is drawn with. SaftUI's own config windows (the /sui window, edit
+	mode's bar, window and History list, the small dialogs) are drawn with the
+	Background 'options', which follows the Theme tab's Options windows choice
+	(profile.theme.optionsbackground) and so the theme's Background by default.
 
 	Every draw call (st:SetTemplate, st:SetBackdrop, st:SetBackdropIn) names the
 	kind of frame it draws (st.THEME_KINDS), last. Under Thick and Thin only the
@@ -97,6 +100,13 @@ function st:ResolveTheme(theme, background, kind)
 	local inset = INSETS[name]
 	if name == 'blizzard' then
 		inset = kind and st.ThemeArt.Inset(kind) or nil
+	end
+
+	-- 'options' is SaftUI's own config windows' Background: the Theme tab's
+	-- Options windows choice ('theme', 'solid' or 'transparent'), read here at
+	-- each draw, so a change of it reaches every window on a recolor.
+	if background == 'options' then
+		background = profile.theme.optionsbackground
 	end
 
 	local transparent

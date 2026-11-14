@@ -209,7 +209,7 @@ local function check_own(where)
 	eq(at(F.tabLine), '210,113 828x1', where .. ': the tab line')
 	eq(at(F.body), '238,113 774x539', where .. ': the body')
 	eq(at(F.footer), '210,652 828x46', where .. ': the footer')
-	eq(table.concat(stub.state(F.sideFill).color_texture, ','), '0.09,0.09,0.09,1', where .. ': the sidebar fill')
+	eq(table.concat(stub.state(F.sideFill).color_texture, ','), '0.09,0.09,0.09,0.9', where .. ': the sidebar fill, at the window\'s alpha')
 	for _, l in ipairs(F.sideLines) do check(l:IsShown(), where .. ': a sidebar line shown') end
 	eq(F.window.backdropInfo.insets.left, 2, where .. ': the border inset')
 	for _, item in ipairs(F.nav) do
@@ -224,7 +224,7 @@ test('/sui under Blizzard: the metal, its title bar and the close button in the 
 		world(client)
 		switch('blizzard'); st.Config:Open('Loot')
 		local F, close = OW.GetFrames(), st.ThemeArt.Close()
-		eq(drawn(F.window), 'theme,solid,window', client)
+		eq(drawn(F.window), 'theme,options,window', client)
 		eq(T.art(F.window), METAL, client .. ': the metal')
 		eq(at(F.window), '0,0 1110x728', client)
 		eq(F.titleText:GetText(), 'SaftUI Options', client)
@@ -401,7 +401,7 @@ test("the bar under Blizzard: a panel at the metal's top right, the red close bu
 		eq(w:GetRight(), metalRight, client .. ": the bar's right is the metal's")
 		eq(w:GetTop(), metalTop, client .. ": and its top")
 		eq(w:GetHeight(), 42, client .. ': 42 tall')
-		eq(drawn(w), 'theme,solid,panel', client .. ': a panel')
+		eq(drawn(w), 'theme,options,panel', client .. ': a panel')
 		local reference = st:CreateFrame('Frame', nil, UIParent)
 		st:SetTemplate(reference, 'theme', 'solid', 'panel')
 		eq(T.art(w), T.art(reference), client .. ": the panel kind's art")
@@ -426,10 +426,10 @@ test("the bar under Blizzard: a panel at the metal's top right, the red close bu
 		stub.size_noise = 0
 		-- A switch to Thick and back keeps it a bar.
 		switch('thick')
-		eq(OW:GetWindowSize(), 'mini', client .. ': Thick: still the bar'); eq(drawn(w), 'theme,solid,panel')
+		eq(OW:GetWindowSize(), 'mini', client .. ': Thick: still the bar'); eq(drawn(w), 'theme,options,panel')
 		eq(select(4, w:GetPoint(1)) .. ' ' .. select(5, w:GetPoint(1)), x0 .. ' ' .. y0, client .. ': under Thick the bar sits at the corner')
 		switch('blizzard')
-		eq(OW:GetWindowSize(), 'mini', client .. ': Blizzard again: still the bar'); eq(drawn(w), 'theme,solid,panel')
+		eq(OW:GetWindowSize(), 'mini', client .. ': Blizzard again: still the bar'); eq(drawn(w), 'theme,options,panel')
 		eq(w:GetRight(), metalRight, client .. ": at the metal's corner again")
 		-- A drag saves the corner less the shift.
 		stub.fire_script(F.miniNames, 'OnMouseDown', 'LeftButton')
@@ -442,7 +442,7 @@ test("the bar under Blizzard: a panel at the metal's top right, the red close bu
 		-- Grow: the window under the metal again, at that corner.
 		stub.time = stub.time + 1; stub.click(F.miniGrow)
 		eq(OW:GetWindowSize(), 'half', client .. ': half')
-		eq(drawn(w), 'theme,solid,window', client .. ': a window')
+		eq(drawn(w), 'theme,options,window', client .. ': a window')
 		eq(T.art(w), METAL, client .. ': the metal again')
 		eq(select(4, w:GetPoint(1)) .. ' ' .. select(5, w:GetPoint(1)), '-200 -100', client .. ': the corner')
 		eq(F.close:GetWidth(), close.size)
@@ -493,7 +493,7 @@ test('Thick to Blizzard to Thick, and a profile switch, re-lay /sui out', functi
 	check(not F.titleBar:IsShown(), 'Thick again: no title bar')
 	check(F.brand:IsShown(), 'Thick again: the brand')
 	eq(T.art(F.window), '', 'Thick again: no metal')
-	eq(drawn(F.window), 'theme,solid,window', 'Thick again: still drawn as a window')
+	eq(drawn(F.window), 'theme,options,window', 'Thick again: still drawn as a window')
 	eq(T.inset(F.window), 2, "Thick again: Thick's border")
 	eq(anchor(F.close), 'TOPRIGHT window TOPRIGHT -16,-14', 'Thick again: the close X at its place')
 
@@ -670,7 +670,7 @@ test('the dressing comes off under Thick', function()
 	switch('thick')
 	local F = OW.GetFrames()
 	local r, g, b, a = unpack(stub.state(F.sideFill).color_texture)
-	eq(('%.2f,%.2f,%.2f,%.2f'):format(r, g, b, a), '0.09,0.09,0.09,1.00', 'the sidebar fill back')
+	eq(('%.2f,%.2f,%.2f,%.2f'):format(r, g, b, a), '0.09,0.09,0.09,0.90', 'the sidebar fill back, at the window\'s alpha')
 	check(F.sideFill:IsShown(), 'shown')
 	for _, l in ipairs(F.sideLines) do check(l:IsShown(), 'every side line shown') end
 	local header = first_header()

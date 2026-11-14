@@ -398,7 +398,7 @@ function EM:GetBar()
 	bar:SetPoint('TOPRIGHT', UIParent, 'TOPRIGHT', 0, 0)
 	bar:SetHeight(BAR.HEIGHT)
 	bar:EnableMouse(false)
-	st:SetBackdrop(bar, 'theme', 'theme', 'panel')
+	st:SetBackdrop(bar, 'theme', 'options', 'panel')
 	bar:Hide()
 	-- The screen events can fire before UIParent has its new size, so the bar
 	-- also lays out when its own size (UIParent's width) changes.

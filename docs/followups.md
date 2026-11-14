@@ -193,7 +193,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **Not yet built, with no task running:**
 
-- 1, 2: the options window's controls and the close button follow the theme; one theme setting makes panels see-through or solid across the UI, `/sui` included.
+- 1: the options window's controls' lines follow the theme's, and the in-world close button is drawn in its window's theme. 2: built for the config windows (the `/sui` window, edit mode's bar and History list and the small dialogs follow the theme's Background, with Global settings > Theme > Options windows to turn it off, 2026-11-14; decision 44); what remains of 2 is checking that every other panel follows the theme's Background and nothing is left drawn solid by mistake.
 - 3: every colour-plus-opacity pair becomes one colour control (the pairs still need listing).
 - 4, 19: one button component at one size and font; the close button and the window's small buttons the same height as buttons, icons centred.
 - 7: the accent as a theme colour with its own swatch; "on" drawn in the accent everywhere (the edit mode bar's plan covers its own toggles).

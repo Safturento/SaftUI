@@ -76,10 +76,13 @@ st.defaults.panels = {
 
 -- SaftUI's theme (SaftUI-Core/theme.lua): Thick, Thin or Blizzard, and whether
 -- backgrounds are see-through, at opacity, where a module doesn't say.
+-- optionsbackground is SaftUI's own config windows' Background (theme.lua's
+-- 'options'): 'theme' follows the theme's, 'solid' or 'transparent' is their own.
 st.defaults.theme = {
 	name = 'thick',
 	transparent = true,
 	opacity = 0.9,
+	optionsbackground = 'theme',
 }
 
 -- Each theme's colors, by its name, and the close button's fill. Thick draws
