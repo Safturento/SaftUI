@@ -281,7 +281,7 @@ test("W.OpenCheckList under Blizzard: drawn as the select list is, its boxes Set
 	open()
 	check(not list.skin:IsShown(), 'Thick: no c-bg')
 	check_box(list.frame, 'Thick: the list', BG_RGBA)
-	eq(anchor(list.rows[1], { [list.frame] = 'frame' }), 'TOPLEFT frame TOPLEFT 1,-1', 'Thick: the rows 1 in')
+	eq(anchor(list.rows[1], { [list.frame] = 'frame' }), 'TOPLEFT frame TOPLEFT 5,-5', 'Thick: the rows 5 in (the edge and 4 of air)')
 	for i = 1, 2 do
 		local box = list.rows[i].box
 		check_box(box, 'Thick: row ' .. i .. "'s box", nil, true)
@@ -315,7 +315,7 @@ test('the Apply list: checks change nothing until Apply, which hands over the ch
 	eq(list.apply.text:GetText(), 'Apply')
 	check(list.apply:GetTop() <= list.rows[3]:GetBottom(), 'under the rows')
 	check(inside(list.apply, list.frame), 'inside the list')
-	eq(list.frame:GetHeight(), 3 * 22 + 2 + 36, 'the rows, the edge and the button\'s room')
+	eq(list.frame:GetHeight(), 3 * 22 + 10 + 6 + 24, 'the rows, 5 above and below, and the button with 6 over it')
 	check_box(list.apply, 'Thick: the Apply button', nil, true)
 
 	click(list.rows[2]); click(list.rows[3])
@@ -370,6 +370,56 @@ test('the Apply list: checks change nothing until Apply, which hands over the ch
 	theme('thick')
 	W.OpenApplyList(owner, entries, onApply)
 	eq((H.panel_of(list.apply)), '', 'Thick: no panel button')
+	W.CloseList()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('the check list and the Apply list pad their rows 4 inside the edge on every side; the select list and Blizzard do not change', function()
+	local owner = W.Box(st:CreateFrame('Button', nil, UIParent))
+	owner:SetSize(170, 24)
+	owner:SetPoint('CENTER', UIParent, 'CENTER', 0, 0)
+	local entries = { { key = 'a', label = 'Alpha' }, { key = 'b', label = 'Bravo' } }
+	local names = {}
+	local list
+	for _, name in ipairs({ 'thick', 'thin' }) do
+		theme(name)
+		W.OpenCheckList(owner, entries, function() return false end, function() end)
+		list = W.GetListFrames(); names[list.frame] = 'frame'
+		eq(anchor(list.rows[1], names), 'TOPLEFT frame TOPLEFT 5,-5', name .. ': the first row 5 in and down')
+		eq(list.frame:GetRight() - list.rows[1]:GetRight(), 5, name .. ': 5 in from the right')
+		eq(list.rows[2]:GetBottom() - list.frame:GetBottom(), 5, name .. ': 5 up from the bottom')
+		eq(list.frame:GetHeight(), 2 * 22 + 10, name .. ': two rows and 5 each side')
+		eq(list.frame:GetWidth(), 170, name .. ': as wide as its owner')
+		eq(list.frame:GetLeft(), owner:GetLeft(), name .. ': still at its owner\'s left')
+		check(list.rows[1].box:GetLeft() - list.frame:GetLeft() > 5, name .. ': the box clear of the edge')
+		W.CloseList()
+
+		-- The select's list keeps its rows against the edge, so its rows line up with its button.
+		W.OpenList(owner, entries, 'a', function() end)
+		eq(anchor(list.rows[1], names), 'TOPLEFT frame TOPLEFT 1,-1', name .. ': the select list: 1 in')
+		eq(list.frame:GetHeight(), 2 * 22 + 2, name .. ': two rows and the edge')
+		W.CloseList()
+
+		-- Opening a check list does not leave its padding on the next select list.
+		W.OpenCheckList(owner, entries, function() return false end, function() end)
+		W.CloseList()
+		W.OpenList(owner, entries, 'a', function() end)
+		eq(anchor(list.rows[1], names), 'TOPLEFT frame TOPLEFT 1,-1', name .. ': the select list after a check list')
+		W.CloseList()
+
+		W.OpenApplyList(owner, entries, function() end)
+		eq(anchor(list.rows[1], names), 'TOPLEFT frame TOPLEFT 5,-5', name .. ': the Apply list: 5 in and down')
+		eq(list.frame:GetHeight(), 2 * 22 + 10 + 6 + 24, name .. ': rows, 5 each side, the button and 6 over it')
+		eq(list.apply:GetBottom() - list.frame:GetBottom(), 5, name .. ': the button 5 up from the bottom')
+		eq(list.rows[2]:GetBottom() - list.apply:GetTop(), 6, name .. ': 6 between the rows and the button')
+		W.CloseList()
+	end
+
+	theme('blizzard')
+	W.OpenApplyList(owner, entries, function() end)
+	list = W.GetListFrames(); names[list.frame] = 'frame'
+	eq(anchor(list.rows[1], names), 'TOPLEFT frame TOPLEFT 3,-6', "Blizzard: its menu's own insets, no more")
+	eq(list.frame:GetHeight(), 2 * 22 + 13 + 36, 'Blizzard: its Apply list as before')
 	W.CloseList()
 	eq(#take_errors(), 0, 'no errors')
 end)

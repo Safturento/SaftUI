@@ -23,10 +23,16 @@ local SetCheck, CatchKeys = Kit.SetCheck, Kit.CatchKeys
 local LIST_ROW_HEIGHT, LIST_MAX_ROWS = 22, 12
 local LIST_WHEEL_ROWS = 3 -- a turn of the wheel over the list, or over its scroll bar
 
--- The Apply list's button: 80 wide (W.Confirm's buttons), 6 under the rows
--- and 6 above the list's bottom edge (inside its insets).
+-- The Apply list's button: 80 wide (W.Confirm's buttons), 6 under the rows.
+-- Under Blizzard it also keeps 6 above the menu's bottom inset; under Thick
+-- and Thin the list's padding is that room.
 local APPLY_WIDTH, APPLY_GAP = 80, 6
-local APPLY_ROOM = APPLY_GAP + FIELD_HEIGHT + APPLY_GAP
+
+-- A check list's rows (and the Apply list's) sit 4 further in than a select's,
+-- on all four sides, so the boxes don't touch the border; a select's rows
+-- stay against the edge, as its owner's face does. Blizzard's menu art has its
+-- own insets (listInsets) and gets none.
+local LIST_PAD = 4
 
 ------------------------------------------------------------------ the select list
 
@@ -36,7 +42,7 @@ local list
 
 -- Where the rows sit in from the list's edges (left, top, right, bottom)
 -- under Thick and Thin: inside Box's edge. Under Blizzard the dropdown's
--- listInsets.
+-- listInsets. list.insets is these, plus the padding the open list asks for.
 local LIST_INSETS = { 1, 1, 1, 1 }
 
 -- The check list's (below): a row laid out for the list that's open, and a
@@ -147,9 +153,8 @@ local function LookList()
 		list.menu:SetPoint('TOPLEFT', list.frame, 'TOPLEFT', outsets[1], outsets[2])
 		list.menu:SetPoint('BOTTOMRIGHT', list.frame, 'BOTTOMRIGHT', outsets[3], outsets[4])
 	end
-	list.insets = blizzard and look.listInsets or LIST_INSETS
+	list.baseInsets = blizzard and look.listInsets or LIST_INSETS
 	for i, row in ipairs(list.rows) do
-		PlaceListRow(row, i)
 		if blizzard then
 			row.hover:SetAtlas(look.rowHover)
 			row.hover:SetAlpha(1)
@@ -178,7 +183,7 @@ local function BuildList()
 	bar:SetWidth(3)
 	bar:Hide()
 
-	list = { catcher = catcher, frame = frame, bar = bar, rows = {}, offset = 0, insets = LIST_INSETS }
+	list = { catcher = catcher, frame = frame, bar = bar, rows = {}, offset = 0, insets = LIST_INSETS, baseInsets = LIST_INSETS }
 	list.blizzardBar = W.BlizzardBar(frame, ScrollList, { narrow = true, step = 1, wheel = LIST_WHEEL_ROWS })
 
 	for i = 1, LIST_MAX_ROWS do
@@ -218,17 +223,28 @@ local function BuildList()
 	end)
 end
 
--- Opens the list under owner, as W.OpenList says, extra taller than its rows
--- (the Apply list's button's room).
-local function OpenList(owner, entries, selected, onPick, fontMode, extra)
+-- The rows' insets for the list that's open: the look's, and LIST_PAD more
+-- when it's a check list under SaftUI's theme.
+local function SetListInsets(padded)
+	local base, pad = list.baseInsets, padded and not list.blizzard and LIST_PAD or 0
+	list.insets = { base[1] + pad, base[2] + pad, base[3] + pad, base[4] + pad }
+	for i, row in ipairs(list.rows) do PlaceListRow(row, i) end
+end
+
+-- Opens the list under owner, as W.OpenList says. kind is nil for a select's,
+-- 'check' for a check list's (padded rows) and 'apply' for the Apply list's
+-- (padded, taller by its button's room).
+local function OpenList(owner, entries, selected, onPick, fontMode, kind)
 	if not list then BuildList() end
 	W.CloseList()
 	if #entries == 0 then return end
 	list.owner, list.entries, list.selected, list.onPick, list.fontMode = owner, entries, selected, onPick, fontMode
 	LookList()
+	SetListInsets(kind ~= nil)
 
 	local rows = min(#entries, LIST_MAX_ROWS)
-	local height = rows * LIST_ROW_HEIGHT + list.insets[2] + list.insets[4] + (extra or 0)
+	local extra = kind == 'apply' and APPLY_GAP + FIELD_HEIGHT + (list.blizzard and APPLY_GAP or 0) or 0
+	local height = rows * LIST_ROW_HEIGHT + list.insets[2] + list.insets[4] + extra
 	list.frame:SetSize(max(owner:GetWidth(), W.WIDTH.select), height)
 	list.frame:SetScale(owner:GetEffectiveScale() / UIParent:GetEffectiveScale())
 	list.frame:ClearAllPoints()
@@ -256,7 +272,7 @@ end
 -- onPick(key) runs on a choice. fontMode draws each label in its own face
 -- (entry.font). An empty list doesn't open.
 function W.OpenList(owner, entries, selected, onPick, fontMode)
-	OpenList(owner, entries, selected, onPick, fontMode, 0)
+	OpenList(owner, entries, selected, onPick, fontMode)
 end
 
 -- The list's frames { catcher, frame, rows, skin, menu, insets, apply, ... }
@@ -318,7 +334,7 @@ end
 -- reports owner while it's open, so the options window waits to re-render.
 -- An empty list doesn't open.
 function W.OpenCheckList(owner, entries, isChecked, onToggle)
-	W.OpenList(owner, entries, nil, nil)
+	OpenList(owner, entries, nil, nil, nil, 'check')
 	if W.ListOwner() ~= owner then return end
 	list.isChecked, list.onToggle = isChecked, onToggle
 	ListFill()
@@ -355,7 +371,7 @@ end
 -- owner while it's open. An empty list doesn't open. Under Blizzard the
 -- button is the panel button (W.LookButton), as the confirm dialog's.
 function W.OpenApplyList(owner, entries, onApply)
-	OpenList(owner, entries, nil, nil, nil, APPLY_ROOM)
+	OpenList(owner, entries, nil, nil, nil, 'apply')
 	if W.ListOwner() ~= owner then return end
 	local checked = {}
 	list.isChecked = function(key) return checked[key] end
