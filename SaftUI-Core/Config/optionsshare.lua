@@ -47,9 +47,9 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	    which is what they act on. No tooltip builds "s's": a possessive
 	    after a final s is just an apostrophe (Possessive), and All and
 	    Multiple say "from <page>" and "follow <source> again for <name>".
-	    The share's noun names the members in them ("every bar", "which
-	    bars"), and its pageText is the page as a sentence reads it ("the
-	    Pet bar"; TIPS).
+	    The share's noun names the members in them ("every page", "which
+	    pages"), and its pageText is the page as a sentence reads it ("the
+	    Third"; TIPS).
 	  - showing it: OB.ShareEnter shows the line on an offering row, the
 	    label lifted so it and the line are centred in the row; the row
 	    frame's OnEnter calls it, and so does each mouse-enabled part of the
@@ -206,8 +206,8 @@ end
 -- What each link's tooltip says (name: SettingName's; parts, the line's
 -- pieces). Every name comes from the share; no possessive is built from the
 -- source's or the page's name but Reset's, through Possessive. With the
--- share's noun, what a member is ({ 'bar', 'bars' }), All and Multiple name
--- the members ('Every bar that keeps...', 'Pick which bars...'); without it,
+-- share's noun, what a member is ({ 'page', 'pages' }), All and Multiple name
+-- the members ('Every page that keeps...', 'Pick which pages...'); without it,
 -- the wording as before ('Everything', 'Pick which'). A line too
 -- long for its room drops Own (FillLine: parts.ownDropped), and Reset's
 -- tooltip then carries Own's '<source>: <shared>'.

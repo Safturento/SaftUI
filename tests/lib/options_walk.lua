@@ -13,7 +13,8 @@
 --                          validator can check: SaftUI's own fields
 --                          (category, size, target, nameKey, pickerLabel,
 --                          align, disabledDesc, justifyH, fill, footer,
---                          share, menu, menuTitle, default) are left off
+--                          share, menu, menuTitle, default, pickerControl,
+--                          reserveBox) are left off
 --                          every option, and the options of SaftUI's own types
 --                          (SAFTUI_TYPES) are left out. AceConfig knows neither, so
 --                          its validator rejects them; everything else in the

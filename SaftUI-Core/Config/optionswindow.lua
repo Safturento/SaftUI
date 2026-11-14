@@ -486,6 +486,21 @@ local function TipFooterWidget(widget, row)
 	owner.footerTip = Tip
 end
 
+-- A control's widgets, one for each row of its view, made in parent and bound
+-- to the control's own tree, listed in into; place (optional) is called with
+-- each widget.
+local function CreateControlWidgets(view, tree, parent, into, place)
+	for _, section in ipairs(view.sections) do
+		for _, row in ipairs(section.rows) do
+			local widget = W.Create(parent, row.type)
+			widget:Bind(tree, row, Changed)
+			TipFooterWidget(widget, row)
+			if place then place(widget) end
+			into[#into + 1] = widget
+		end
+	end
+end
+
 -- footer (a page's view.footer, or nil for none) drawn into the control.
 local function DrawFooterControl(footer)
 	if not footer then return end
@@ -493,14 +508,7 @@ local function DrawFooterControl(footer)
 	local view = OM.BuildView(tree, FOOTER_KEY)
 	if not view then return end -- hidden
 	F.footerLabel:SetText(view.title)
-	for _, section in ipairs(view.sections) do
-		for _, row in ipairs(section.rows) do
-			local widget = W.Create(F.footerControl, row.type)
-			widget:Bind(tree, row, Changed)
-			TipFooterWidget(widget, row)
-			F.footerWidgets[#F.footerWidgets + 1] = widget
-		end
-	end
+	CreateControlWidgets(view, tree, F.footerControl, F.footerWidgets)
 	F.footerControl:SetShown(#F.footerWidgets > 0)
 end
 
@@ -560,7 +568,7 @@ end
 -- tooltip, read and set through the model from a tree of their own, as the
 -- footer control's (Changed: a set draws the page again). They go with the
 -- page's rows, and a pick without one draws none.
-local PICKER_CONTROL_KEY = 'pickerControl' -- the control's key in that tree
+local PICKER_CONTROL_KEY = OM.PICKER_CONTROL_KEY -- the control's key in that tree
 local PICKER_CONTROL_GAP = 12 -- as the buttons on a line are apart
 
 local function ReleasePickerControl()
@@ -579,19 +587,13 @@ local function DrawPickerControl(picker)
 	local view = OM.BuildView(tree, PICKER_CONTROL_KEY)
 	if not view then return end -- hidden
 	local anchor = F.picker.frame
-	for _, section in ipairs(view.sections) do
-		for _, row in ipairs(section.rows) do
-			local widget = W.Create(F.main, row.type)
-			widget:Bind(tree, row, Changed)
-			TipFooterWidget(widget, row)
-			-- By its left, on the picker's middle line: a button 2 taller than
-			-- the picker sits 1 over and under it, on whole pixels.
-			widget.frame:ClearAllPoints()
-			widget.frame:SetPoint('LEFT', anchor, 'RIGHT', PICKER_CONTROL_GAP, 0)
-			anchor = widget.frame
-			F.pickerWidgets[#F.pickerWidgets + 1] = widget
-		end
-	end
+	CreateControlWidgets(view, tree, F.main, F.pickerWidgets, function(widget)
+		-- By its left, on the picker's middle line: a button 2 taller than
+		-- the picker sits 1 over and under it, on whole pixels.
+		widget.frame:ClearAllPoints()
+		widget.frame:SetPoint('LEFT', anchor, 'RIGHT', PICKER_CONTROL_GAP, 0)
+		anchor = widget.frame
+	end)
 end
 
 ------------------------------------------------------------------ the body

@@ -154,8 +154,10 @@ function OM.Colors() return st.config.profile.colors end
 -- The most results OM.Search gives.
 local MAX_RESULTS = 100
 
--- A pick's control's key in the tree of its own Search reads it from.
+-- A pick's control's key in the tree of its own, where Search reads it from
+-- and the window draws it from.
 local PICKER_CONTROL_KEY = 'pickerControl'
+OM.PICKER_CONTROL_KEY = PICKER_CONTROL_KEY
 
 -- The pages the window shows apart from the module groups.
 local SPECIAL = { Fonts = 'global', profile = 'profiles' }
