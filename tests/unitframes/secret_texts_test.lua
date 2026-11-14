@@ -59,6 +59,8 @@ local function world(client)
 	load_saftui('SaftUI-Unitframes/updaters.lua')
 	load_saftui('SaftUI-Unitframes/constructors.lua')
 	load_saftui('SaftUI-Unitframes/elements/health.lua')
+	load_saftui('SaftUI-Unitframes/elements/power.lua')
+	load_saftui('SaftUI-Unitframes/elements/additionalpower.lua')
 	UF.oUF = { Tags = { Events = {}, Methods = {} }, colors = { class = st.config.profile.colors.class } }
 	load_saftui('SaftUI-Core/Libraries/LibStringFormat-1.0/LibStringFormat-1.0.lua')
 	st.StringFormat = LibStub('LibStringFormat-1.0')
@@ -91,7 +93,7 @@ local function bar(element_name)
 	local unit_defaults = st.defaults.unitframes.profiles['**']
 	local defaults = unit_defaults['**'] or unit_defaults
 	local frame = CreateFrame('Button', 'TestUnitFrame', UIParent) -- its parts are named after it
-	frame.config = { health = copy(defaults.health) }
+	frame.config = { health = copy(defaults.health), power = copy(defaults.power), additionalpower = copy(defaults.additionalpower) }
 	frame.GetConfig = function(self) return self.config end
 	frame.TextOverlay = CreateFrame('Frame', nil, frame)
 	return UF.elements[element_name].Constructor(frame), frame
@@ -213,6 +215,118 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		eq(type(shown) == 'table' and AbbreviateNumbers(12500, shown.options), '12.5K', 'in the short form')
 	end)
 end
+
+------------------------------------------------------------------ the power texts
+
+-- Power's PostUpdate asks the game how much power is missing for a secret
+-- value, which the stubs don't have: the amount doesn't matter here, only
+-- that it isn't zero.
+local function power_world()
+	UnitPowerMissing = UnitPowerMissing or function() return 1 end
+	C_StringUtil.TruncateWhenZero = C_StringUtil.TruncateWhenZero or function(value) return value end
+	UnitPercentLast = nil
+end
+
+test('Short is off by default on the power and additional power texts, as health\'s is', function()
+	eq(st.defaults.unitframes.profiles['**']['**'].power.text.short, false, 'power')
+	eq(st.defaults.unitframes.profiles['**']['**'].additionalpower.text.short, false, 'additional power')
+end)
+
+test('the power text: Short shortens a plain value as health does, 1K, 12.5K, 1.2M', function()
+	power_world()
+	local power = bar('Power')
+	power.config.enable, power.config.text.short = true, true
+	local health = bar('Health')
+	health.config.text.short, health.config.text.boss_percent = true, false
+	for _, case in ipairs({ { 999, '999' }, { 1000, '1K' }, { 1500, '1.5K' }, { 12500, '12.5K' }, { 123456, '123.4K' },
+			{ 1234567, '1.2M' }, { 2500000000, '2.5B' } }) do
+		power.PostUpdate(power, 'player', case[1], 0, case[1] * 2)
+		eq(power.text:GetText(), case[2], case[1] .. ' in short')
+		health.PostUpdate(health, 'target', case[1], case[1] * 2)
+		eq(power.text:GetText(), health.text:GetText(), case[1] .. ': what health shows')
+	end
+end)
+
+test('the power text: Short off shows the value as it did, whole under 10000, shortened over', function()
+	power_world()
+	local power = bar('Power')
+	power.config.enable = true
+	eq(power.config.text.short, false, 'off by default')
+	power.PostUpdate(power, 'player', 1500, 0, 3000)
+	eq(power.text:GetText(), '1500', 'a value under 10000 whole')
+	power.PostUpdate(power, 'player', 12500, 0, 30000)
+	eq(power.text:GetText(), st.StringFormat:ShortFormat(12500, 1), 'one over 10000 as before')
+end)
+
+test('the power text: Short does not apply to Percent, nor to Hide full', function()
+	power_world()
+	local power = bar('Power')
+	power.config.enable, power.config.text.short = true, true
+	power.config.text.percent = true
+	power.PostUpdate(power, 'player', 12500, 0, 25000)
+	eq(power.text:GetText(), '50', 'Percent: the percent, whole, not 12.5K')
+	power.config.text.percent = false
+	power.config.text.hide_full = true
+	power.PostUpdate(power, 'player', 25000, 0, 25000)
+	eq(power.text:GetText(), '', 'Hide full: the text is empty while full')
+	power.PostUpdate(power, 'player', 12500, 0, 25000)
+	eq(power.text:GetText(), '12.5K', 'and short while it is not')
+end)
+
+for _, client in ipairs({ 'forever', 'retail' }) do
+	test(client .. ': the power text with a secret value: Short has the game shorten it, off shows it as it is', function()
+		world(client)
+		power_world()
+		local power = bar('Power')
+		power.config.enable = true
+		local shown
+		power.text.SetText = function(_, v) shown = v end
+		power.text.SetFormattedText = function() error('a secret value is set with SetText') end
+		local current, max = S.secret('CUR'), S.secret('MAX')
+		power.config.text.short = true
+		local ok, err = pcall(power.PostUpdate, power, 'player', current, 0, max)
+		check(ok, tostring(err))
+		check(type(shown) == 'table' and shown.abbreviated == current, 'AbbreviateNumbers got the secret power, and SetText its result')
+		eq(type(shown) == 'table' and AbbreviateNumbers(12500, shown.options), '12.5K', 'in health\'s short form')
+		power.config.text.short = false
+		ok, err = pcall(power.PostUpdate, power, 'player', current, 0, max)
+		check(ok, tostring(err))
+		check(shown == current, 'Short off: the secret as it is')
+	end)
+end
+
+test('the additional power text: Short shortens the mana, a secret mana too; Percent and Hide full come first', function()
+	local function mana_bar()
+		local ap = bar('AdditionalPower')
+		ap.__owner = { unit = 'player' }
+		return ap
+	end
+	local ap = mana_bar()
+	eq(ap.config.text.short, false, 'off by default')
+	ap:PostUpdate(12500, 50000)
+	eq(ap.text:GetText(), '12500', 'Short off: the value whole')
+	ap.config.text.short = true
+	for _, case in ipairs({ { 999, '999' }, { 1500, '1.5K' }, { 12500, '12.5K' }, { 1234567, '1.2M' } }) do
+		ap:PostUpdate(case[1], case[1] * 4)
+		eq(ap.text:GetText(), case[2], case[1] .. ' in short')
+	end
+	ap.config.text.percent = true
+	ap:PostUpdate(12500, 50000)
+	eq(ap.text:GetText(), '25', 'Percent: the percent, not 12.5K')
+	ap.config.text.percent, ap.config.text.hide_full = false, true
+	ap:PostUpdate(50000, 50000)
+	eq(ap.text:GetText(), '', 'Hide full: empty while full')
+	ap.config.text.hide_full = false
+	local shown
+	ap.text.SetText = function(_, v) shown = v end
+	local current = S.secret('MANA')
+	local ok, err = pcall(ap.PostUpdate, ap, current, S.secret('MAX'))
+	check(ok, tostring(err))
+	check(type(shown) == 'table' and shown.abbreviated == current, 'a secret mana is abbreviated by the game')
+	ap.config.text.short = false
+	ok, err = pcall(ap.PostUpdate, ap, current, S.secret('MAX'))
+	check(ok and shown == current, 'Short off: the secret as it is')
+end)
 
 test('the secrets come out of issecretvalue once the file is done with them', function()
 	restoreSecrets()

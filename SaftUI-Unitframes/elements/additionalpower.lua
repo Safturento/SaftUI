@@ -10,7 +10,8 @@ local function PostUpdate(additionalPower, curr, max)
 	elseif config.percent then
 		UF:SetPowerPercentText(text, additionalPower.__owner.unit, curr, max, Enum.PowerType.Mana)
 	else
-		text:SetText(curr)
+		-- Short is health's abbreviation, a secret value included.
+		text:SetText(config.short and UF.ShortNumber(curr) or curr)
 	end
 end
 
@@ -118,6 +119,7 @@ local function GetConfigTable(unit)
 				hide_full = G.toggle(1, 'Hide full', 'Hides the text while your mana is full.', 'small'),
 				font = G.font(2, "The mana text's font."),
 				percent = G.toggle(3, 'Percent', 'Shows your mana as a percent instead of the number.', 'small'),
+				short = G.toggle(4.5, 'Short', 'Shortens your mana, as 12.5K or 1.2M. Not with Percent on.', 'small'),
 				-- Last in Text.
 				position = G.uf_element_position(1000,
 					function(index) return Config().text.position[index] end,

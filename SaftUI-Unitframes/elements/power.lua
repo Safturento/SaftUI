@@ -16,11 +16,16 @@ local function PostUpdatePower(power, unit, current, min, max)
 		elseif power.config.text.percent then
 			UF:SetPowerPercentText(power.text, unit, current, max)
 		else
-			if issecretvalue(current) then
-				power.text:SetText(current)
-			else
-				power.text:SetFormattedText(current < 10000 and current or st.StringFormat:ShortFormat(current, 1))
+			-- Short is health's abbreviation, a secret value included. Without
+			-- it a secret shows as it is, and a plain value whole under 10000
+			-- and shortened from there.
+			local text = current
+			if power.config.text.short then
+				text = UF.ShortNumber(current)
+			elseif not issecretvalue(current) and current >= 10000 then
+				text = st.StringFormat:ShortFormat(current, 1)
 			end
+			power.text:SetText(text)
 		end
 	end
 
@@ -126,6 +131,7 @@ local function GetConfigTable(unit)
 					hide_full = G.toggle(1, 'Hide full', 'Hides the text while power is full.', 'small'),
 					font = G.font(2, "The power text's font."),
 					percent = G.toggle(3, 'Percent', 'Shows the power as a percent instead of the number.', 'small'),
+					short = G.toggle(4.5, 'Short', 'Shortens the power, as 12.5K or 1.2M. Not with Percent on.', 'small'),
 					-- Last in Text.
 					position = G.uf_element_position(1000,
 						function(index) return UnitConfig().power.text.position[index] end,

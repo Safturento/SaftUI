@@ -23,6 +23,12 @@ local SHORT = {
 	},
 }
 
+-- The abbreviated form of a number, as the Short options of the health and
+-- power texts show it (power.lua and additionalpower.lua call this too).
+function UF.ShortNumber(value)
+	return AbbreviateNumbers(value, SHORT)
+end
+
 -- A secret health (enemy nameplates in restricted content) can't be
 -- subtracted, divided or compared here: the game works out what the text
 -- shows, and only the text that's shown is worked out.
@@ -50,7 +56,7 @@ local function PostUpdateHealth(health, unit, current, max)
 		else
 			local text = current
 			if config.short then
-				text = AbbreviateNumbers(current, SHORT)
+				text = UF.ShortNumber(current)
 			end
 
 			if config.boss_percent and UnitLevel(unit) == -1 then

@@ -992,6 +992,27 @@ test('Health: Texture on every unit, its text options, and Boss percent only whe
 	end
 end)
 
+test("Power and Additional power: Short is a small toggle after Percent, as Health's is, and is off by default", function()
+	local config = UF:GetConfigTable()
+	local P = UF:GetProfileConfig()
+	for _, unit in ipairs(UNITS) do
+		for _, case in ipairs({ { 'Power', 'power' }, { 'AdditionalPower', 'additionalpower' } }) do
+			local tab, key = case[1], case[2]
+			local text = option_at(config, unit, tab, 'text')
+			if text then
+				local where = unit .. '.' .. tab
+				local short = text.args.short
+				if check(short and short.type == 'toggle' and short.size == 'small', where .. ' has a small Short') then
+					check(text.args.percent.order < short.order and short.order < text.args.position.order, where .. ': after Percent, before the Position')
+					local store = P[unit][key].text
+					eq(store.short, false, where .. ': off by default')
+					reads_and_writes(config, unit, tab, { 'text', 'short' }, store, 'short', true)
+				end
+			end
+		end
+	end
+end)
+
 test('Name: Classification where rare and elite units can show, Class color where players can', function()
 	local config = UF:GetConfigTable()
 	local P = UF:GetProfileConfig()

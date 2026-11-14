@@ -257,7 +257,8 @@ local function FillPreviewFrame(frame, member)
 			if powerConfig.text.hide_full and current == max then
 				power.text:SetText('')
 			else
-				power.text:SetText(current < 10000 and current or st.StringFormat:ShortFormat(current, 1))
+				power.text:SetText(powerConfig.text.short and UF.ShortNumber(current)
+					or current < 10000 and current or st.StringFormat:ShortFormat(current, 1))
 			end
 		end
 	end
