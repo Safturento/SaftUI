@@ -343,11 +343,32 @@ local function Shift()
 	return 0, 0
 end
 
--- The window at S.corner (and the bar's shift).
+-- How far down from the screen's top the window's top (and the metal's art
+-- above it, under Blizzard, but not the bar's panel) must stay while edit
+-- mode's bar is docked and shown (EM:BarCoverHeight): /sui is never under it.
+-- 0 when the bar is floating, hidden, or edit mode is off.
+local function CoverTop()
+	local EM = st.EditModeFrames
+	local cover = EM and EM.BarCoverHeight and EM:BarCoverHeight() or 0
+	if cover <= 0 then return 0 end
+	local reach = (S.size ~= 'mini' and S.blizzard) and st.ThemeArt.MetalAbove() or 0
+	return Whole(cover + reach)
+end
+
+-- The window at S.corner (and the bar's shift), no higher than the docked edit
+-- mode bar's bottom. That drop is for showing only: S.corner and the save are
+-- never changed by it, so the window is back at its saved place when the edit
+-- bar goes.
 local function Anchor()
 	local dx, dy = Shift()
 	F.window:ClearAllPoints()
-	F.window:SetPoint('TOPRIGHT', UIParent, 'TOPRIGHT', S.corner.x + dx, S.corner.y + dy)
+	F.window:SetPoint('TOPRIGHT', UIParent, 'TOPRIGHT', S.corner.x + dx, math.min(S.corner.y + dy, -CoverTop()))
+end
+
+-- Edit mode's bar was docked, detached, shown or hidden (edit mode on or off,
+-- combat): place the window again.
+function S.UpdateBarCover()
+	if F.window and S.corner then Anchor() end
 end
 
 -- The layout of the look the window is about to be drawn in: Draw lays it out
@@ -376,7 +397,9 @@ local function ShownCorner()
 	local screenRight, screenTop = UIParent:GetRight(), UIParent:GetTop()
 	if not (right and screenRight) then return end
 	local dx, dy = Shift()
-	return Whole(right - screenRight) - dx, Whole(top - screenTop) - dy
+	-- Where it was dropped, never above the docked edit mode bar's bottom (what
+	-- shows is kept below it, so a doubled offset is never saved).
+	return Whole(right - screenRight) - dx, math.min(Whole(top - screenTop), -CoverTop()) - dy
 end
 
 local function RestorePosition()
@@ -960,6 +983,7 @@ end
 -- top left, the body's width (S.bodyWidth) the state's. Build runs it, and
 -- Draw again when the look, the size or the sidebar changed.
 local function Relayout()
+	S.HideToggleGuard()
 	local settings = S.blizzard
 	local mini = S.size == 'mini'
 	local L = settings and OW.LAYOUT.blizzard or OW.LAYOUT.own
@@ -1208,6 +1232,7 @@ local function OnShow()
 end
 
 local function OnHide()
+	S.HideToggleGuard()
 	-- A picker open from a row cancels first, while its widget is still there to take the color back.
 	W.CloseColorPicker()
 	F.window:StopMovingOrSizing()
@@ -1494,6 +1519,10 @@ local function Build()
 	if EM then
 		EM:On('Enabled', S.UpdateEditModeButton)
 		EM:On('Disabled', S.UpdateEditModeButton)
+		-- Registered after the bar's own listeners, so it is shown or hidden by now.
+		EM:On('Enabled', S.UpdateBarCover)
+		EM:On('Disabled', S.UpdateBarCover)
+		EM:On('BarModeChanged', S.UpdateBarCover)
 	end
 	-- The size arrows follow SaftUI's color picker, which they refuse beside.
 	if W.WatchColorPicker then W.WatchColorPicker(S.UpdateWindowButtons) end

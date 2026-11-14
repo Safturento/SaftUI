@@ -443,6 +443,38 @@ function OW:IsSidebarShown()
 	return S.sidebar ~= false
 end
 
+-- A double click on the toggle sends its second click where the toggle was, which
+-- the change has moved away from (the sidebar's foot to the footer's left, or
+-- back): to the game world, or a control. So for OW.SIZE_GUARD after the change a
+-- small frame of the window's own, with the mouse, sits on the old spot and
+-- takes that click (F.toggleGuard). It is hidden when the guard ends, on any
+-- relayout and when the window hides. The toggle at its new spot ignores clicks
+-- for the same time (its onClick, S.sidebarAt).
+-- spot is { x, y, width, height }: the old spot's bottom left from the
+-- window's bottom right corner, which a sidebar change leaves where it was.
+function S.GuardToggleSpot(spot)
+	local guard = F.toggleGuard
+	if not guard then
+		guard = CreateFrame('Frame', nil, F.window)
+		guard:EnableMouse(true)
+		guard:SetScript('OnUpdate', function(self)
+			if GetTime() - self.since >= OW.SIZE_GUARD then self:Hide() end
+		end)
+		guard:Hide()
+		F.toggleGuard = guard
+	end
+	guard.since = GetTime()
+	guard:ClearAllPoints()
+	guard:SetPoint('BOTTOMLEFT', F.window, 'BOTTOMRIGHT', spot[1], spot[2])
+	guard:SetSize(spot[3], spot[4])
+	guard:SetFrameLevel(F.window:GetFrameLevel() + 100)
+	guard:Show()
+end
+
+function S.HideToggleGuard()
+	if F.toggleGuard then F.toggleGuard:Hide() end
+end
+
 function OW:SetSidebarShown(shown)
 	shown = shown ~= false
 	if InCombatLockdown() or S.ColorPickerShown() then return false end
@@ -451,11 +483,18 @@ function OW:SetSidebarShown(shown)
 	-- screen); the other sizes need the width.
 	if S.size ~= 'mini' and not OW.Fits(S.layout, S.size, shown) then return false end
 	local window = self:IsShown()
+	local spot
+	local toggle, w = F.sideToggle, F.window
+	if window and toggle and toggle:IsVisible() and toggle:GetLeft() then
+		spot = { floor(toggle:GetLeft() - w:GetRight() + 0.5), floor(toggle:GetBottom() - w:GetBottom() + 0.5),
+			floor(toggle:GetWidth() + 0.5), floor(toggle:GetHeight() + 0.5) }
+	end
 	if window then S.CloseOverlays() end
 	S.SaveWindow({ sidebar = shown and S.UNSET or false })
 	S.sidebar = shown
 	S.sidebarAt = GetTime()
 	if window then self:Render() end
+	if spot then S.GuardToggleSpot(spot) end
 	return true
 end
 
