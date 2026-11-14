@@ -45,9 +45,10 @@ local W, OB = st.OptionsWidgets, st.OptionsBody
 	control in it) and the window's height: the title, then for each section
 	with a control SECTION_PAD, its caption, CAPTION_GAP, its lines GAP apart,
 	SECTION_PAD, and a 1px line between sections. Controls wrap into lines
-	within width less twice PAD; a field-wide control (WIDE, 100 or more) does
-	not share a line with narrower ones (so the Show section is its toggles,
-	then the face and filter on a line of their own), and one that is
+	within width less twice PAD; a control WIDE (100) or more wide starts a new
+	line when the line already holds a narrower one (one way: a narrow one after
+	it may share; so the Show section is its toggles, then the face and filter on
+	a line of their own), and one that is
 	right-aligned ends its line at the right padding. A width of 0 is not shown.
 
 	The status line (barchanges.lua, EM:SetBarStatus) is under the Changes
@@ -221,7 +222,9 @@ function EM:LayoutWindow()
 	for _, control in ipairs(self:BarControls()) do
 		local width = control:Lay(0, true) or 0
 		control.frame:SetShown(width > 0)
-		local into = control.section == 'title' and title or lists[sectionOf[control.section] or 0]
+		-- A section the window does not have goes in the last one (never left
+		-- shown with no place).
+		local into = control.section == 'title' and title or lists[sectionOf[control.section] or #lists]
 		if into and width > 0 then into[#into + 1] = { control = control, width = width } end
 	end
 
@@ -305,12 +308,16 @@ function EM:PlaceWindowStatus(text)
 	local base = frame.baseHeight or Whole(frame:GetHeight())
 	if not text or (text:GetText() or '') == '' then
 		frame:SetHeight(base)
+		if frame:IsShown() then self:PlaceBarWindow() end
 		return
 	end
 	text:SetParent(frame)
 	text:SetJustifyH('LEFT')
 	text:SetWordWrap(true)
 	text:SetWidth(WIN.WIDTH - 2 * WIN.PAD)
+	-- A font string lays its text out inside the height it was given (lines
+	-- past it are dropped), so it is measured with none: 0 sizes it to its text.
+	text:SetHeight(0)
 	local height = ceil(text:GetStringHeight())
 	text:SetHeight(height)
 	text:ClearAllPoints()
@@ -355,6 +362,9 @@ function EM:GetBarWindow()
 	title:RegisterForDrag('LeftButton')
 	title:SetScript('OnDragStart', function() window:StartMoving() end)
 	title:SetScript('OnDragStop', Dropped)
+	-- Hidden mid-drag (combat closes edit mode): it must not go on following the
+	-- cursor when it shows again.
+	window:SetScript('OnHide', function(self) self:StopMovingOrSizing() end)
 
 	window.heading = OB.Text(title, 'section', 'LEFT')
 	window.heading:SetText('Edit mode')
@@ -368,7 +378,7 @@ function EM:GetBarWindow()
 		return 'Dock', { 'Puts the controls back in a bar across the top of the screen.' }
 	end)
 	dock.onClick = EM.BarGuard(function() EM:SetBarFloating(false) end)
-	EM.SettleLevel(dock, window:GetFrameLevel() + 2)
+	EM.SettleLevel(dock, window:GetFrameLevel() + 2, EM.LevelShape(dock))
 	window.dock = dock
 
 	-- The screen's size or scale, and the screen edge margin, change where it
@@ -377,6 +387,11 @@ function EM:GetBarWindow()
 	window:RegisterEvent('DISPLAY_SIZE_CHANGED')
 	window:SetScript('OnEvent', function()
 		if EM:IsBarFloating() then EM:LayoutBar() end
+		-- The events can fire before UIParent has its new size: place again on
+		-- the next frame, as the bar also lays out on its own size change.
+		C_Timer.After(0, function()
+			if EM:IsBarFloating() and window:IsShown() then EM:PlaceBarWindow() end
+		end)
 	end)
 	hooksecurefunc(st, 'UpdateScreenMargin', function()
 		if window:IsShown() then EM:PlaceBarWindow() end

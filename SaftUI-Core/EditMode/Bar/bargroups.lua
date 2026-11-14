@@ -82,7 +82,7 @@ local function Options(bar)
 	end)
 	return {
 		key = 'options', frame = button, align = 'right',
-		Lay = function(_, stage) return W.SetCompact(button, stage >= 4) end,
+		Lay = function(_, stage, floating) return W.SetCompact(button, not floating and stage >= 4) end,
 	}
 end
 

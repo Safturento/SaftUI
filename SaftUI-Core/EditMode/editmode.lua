@@ -26,8 +26,9 @@ local callbacks = {}
 --                      mover that stopped showing was deselected, or a mover's
 --                      overlap state changed (filter.lua's EM:UpdateShown, which
 --                      the ticker runs twice a second: fired only on a change)
---   'BarLaid'          no arguments: the bar laid its controls out (Bar/bar.lua);
---                      EM:BarGap() says where the gap is now
+--   'BarLaid'          no arguments: the bar, or the floating window, laid its
+--                      controls out (Bar/bar.lua); docked, EM:BarGap() says where
+--                      the gap is now (it is not updated while floating)
 --   'BarModeChanged'   no arguments: the bar detached into its floating window or
 --                      docked again (Bar/bar.lua's EM:SetBarFloating)
 --   'ColorsChanged'    group: st:ColorsChanged(group), for every group

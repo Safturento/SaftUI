@@ -406,19 +406,28 @@ local WINDOW_GAP = 8 -- beside the floating window
 -- Docked: its top right 6 under the History button's bottom right. Floating:
 -- its top left 8 right of the window's top right, or, where there is no room
 -- on that side (inside the screen edge margin), its top right 8 left of the
--- window's top left; the game's clamp keeps the rest of it on the screen.
+-- window's top left; with room on neither side (a narrow screen), the side with
+-- more room, and the game's clamp keeps the rest of it on the screen.
 function EM:PlaceHistoryList()
 	local control = EM:BarControl('history')
 	if not (list and control) then return end
 	list:ClearAllPoints()
 	if EM:IsBarFloating() and EM.barWindow then
 		local window = EM.barWindow
-		local _, marginRight = st:GetScreenMargin(list)
-		local right = window:GetRight()
-		if right and right + WINDOW_GAP + HL.WIDTH > UIParent:GetRight() - marginRight then
-			list:SetPoint('TOPRIGHT', window, 'TOPLEFT', -WINDOW_GAP, 0)
-		else
+		local marginLeft, marginRight = st:GetScreenMargin(list)
+		local right, left = window:GetRight(), window:GetLeft()
+		local onRight = true
+		if right and left then
+			-- The side with room for it (inside the margin); with room on
+			-- neither, the side with more.
+			local roomRight = UIParent:GetRight() - marginRight - right - WINDOW_GAP
+			local roomLeft = left - UIParent:GetLeft() - marginLeft - WINDOW_GAP
+			onRight = roomRight >= HL.WIDTH or (roomLeft < HL.WIDTH and roomRight >= roomLeft)
+		end
+		if onRight then
 			list:SetPoint('TOPLEFT', window, 'TOPRIGHT', WINDOW_GAP, 0)
+		else
+			list:SetPoint('TOPRIGHT', window, 'TOPLEFT', -WINDOW_GAP, 0)
 		end
 		return
 	end

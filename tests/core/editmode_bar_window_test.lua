@@ -623,3 +623,144 @@ test('the Coordinates label follows the mode: it re-places itself when the bar d
 	eq(EM.coordinates:GetTop(), docked, 'docked: under the bar again')
 	reset()
 end)
+
+------------------------------------------------------------------ fix round 1
+
+local function levels_under(frame, base, out)
+	for _, child in ipairs({ frame:GetChildren() }) do
+		out[#out + 1] = child:GetFrameLevel() - base
+		levels_under(child, base, out)
+	end
+	return out
+end
+
+-- Every control's level, and each descendant's, relative to the control's parent.
+local function level_shape()
+	local out = {}
+	for _, c in ipairs(EM:BarControls()) do
+		local base = c.frame:GetParent():GetFrameLevel()
+		out[#out + 1] = c.key .. ':' .. (c.frame:GetFrameLevel() - base) .. '/' .. table.concat(levels_under(c.frame, base, {}), ',')
+	end
+	return table.concat(out, ' ')
+end
+
+test("a long status after a short one grows the window to the long one's wrapped height: it is measured with no height of its own", function()
+	reset()
+	EM:Activate()
+	stub.click(frame_of('detach'))
+	local window = EM:GetBarWindow()
+	local base = window:GetHeight()
+	EM:SetBarStatus('Reset Player')
+	eq(window:GetHeight(), base + 13 + 8, 'one line (the small font is 13 tall in the stub)')
+	eq(EM.statusText:GetStringHeight(), 13, 'one line')
+	local long = 'Undid: Moved Player. Its mover is hidden by Show or the filter.'
+	EM:SetBarStatus(long)
+	eq(window:GetHeight(), base + 26 + 8, 'two lines of 288: the whole of it, not the height the short one left')
+	eq(EM.statusText:GetStringHeight(), 26, 'the text is not cut to its old height')
+	EM:SetBarStatus('Reset Player')
+	eq(window:GetHeight(), base + 13 + 8, 'and back to one line')
+	reset()
+end)
+
+test('a control and everything under it keep the same levels over their parent through any number of Detach and Dock', function()
+	reset()
+	EM:Activate()
+	EM:SetSetting('grid', true)
+	local docked = level_shape()
+	check(docked:find('gridSize:2/', 1, true), 'the number box is two over the bar')
+	for round = 1, 4 do
+		stub.click(frame_of('detach'))
+		eq(level_shape(), docked, 'floating, round ' .. round .. ': the same shape over the window')
+		stub.click(EM:GetBarWindow().dock)
+		eq(level_shape(), docked, 'docked, round ' .. round .. ': the same shape over the bar')
+	end
+	stub.click(frame_of('detach'))
+	eq(EM:GetBarWindow().dock:GetFrameLevel(), EM:GetBarWindow():GetFrameLevel() + 2, 'Dock is two over the window, over its title')
+	check(EM:GetBarWindow().dock:GetFrameLevel() > EM:GetBarWindow().title:GetFrameLevel(), 'so it takes the clicks')
+	reset()
+end)
+
+test('a window hidden mid-drag stops moving; a screen change that fires before UIParent resizes is placed again on the next frame', function()
+	reset()
+	EM:Activate()
+	stub.click(frame_of('detach'))
+	local window = EM:GetBarWindow()
+	stub.fire_script(window.title, 'OnDragStart')
+	eq(stub.state(window).moving, true, 'moving')
+	EM:Deactivate()
+	eq(stub.state(window).moving, false, 'hiding it stops the move')
+	EM:Activate()
+	st.config.global.editModeBar.x = 1500
+	set_screen(1920, 1080)
+	stub.fire_event('DISPLAY_SIZE_CHANGED')
+	set_screen(1024, 768) -- UIParent gets its new size after the event
+	stub.run_timers()
+	check(window:GetRight() - UIParent:GetLeft() <= 1024 - margin(), 'placed against the new size: ' .. window:GetRight())
+	reset()
+end)
+
+test('the status clears and the default place is written on a mode change; centring in a line; the line under the title; Dock raised', function()
+	reset()
+	EM:Activate()
+	EM:SetBarStatus('Reset Player')
+	stub.click(frame_of('detach'))
+	eq(EM.statusText:GetText(), '', 'a mode change clears the status')
+	local saved = st.config.global.editModeBar
+	eq(saved.x .. ',' .. saved.y, math.floor((1920 - 312) / 2) .. ',-80', 'the default place is written on Detach')
+	local window = EM:GetBarWindow()
+	eq(frame_of('gridSize'):GetTop(), frame_of('grid'):GetTop() - 2, 'the 22 tall box is centred in its 26 line')
+	local rule = window.rules[1]
+	eq(rule:GetTop(), window:GetTop() - (EM.WINDOW.TITLE - 1), 'a line under the title')
+	eq(rule:GetWidth(), 312, 'across the window')
+	reset()
+end)
+
+test('a right-aligned control ends its line even where room is left', function()
+	local rows = EM.WindowLayout(312, { { widths = { 26, 80, 26 }, aligns = { nil, 'right', nil } } })
+	eq(rows[1][2].y, rows[1][1].y, 'the options on the first line')
+	eq(rows[1][3].y, rows[1][1].y + 30, 'the next one on a line of its own, though it would fit')
+end)
+
+test('the History list takes the side with room inside the margin; with room on neither, the side with more', function()
+	reset()
+	EM:Activate()
+	stub.click(frame_of('detach'))
+	local window = EM:GetBarWindow()
+	local list = EM:GetHistoryList()
+	st.config.profile.misc.clamp_inset = 30
+	st:UpdateScreenMargin()
+	stub.click(frame_of('history'))
+	drag_title(window, 1271, -100) -- 299 from the margin: it does not fit on the right
+	eq(list:GetRight(), window:GetLeft() - 8, 'left of the window: the margin counts')
+	drag_title(window, 1260, -100) -- 310: it fits
+	eq(list:GetLeft(), window:GetRight() + 8, 'right of the window')
+	set_screen(800, 600)
+	stub.fire_event('DISPLAY_SIZE_CHANGED')
+	drag_title(window, 200, -100)
+	eq(list:GetLeft(), window:GetRight() + 8, 'room on neither side: the right has more (278 against 190)')
+	drag_title(window, 290, -100)
+	eq(list:GetRight(), window:GetLeft() - 8, 'and here the left (280 against 188)')
+	reset()
+end)
+
+-- Last: a group added to the bar stays in it for the rest of the file.
+test('a group added while floating is in the window, and a control whose section the window lacks goes in the last one', function()
+	reset()
+	EM:Activate()
+	stub.click(frame_of('detach'))
+	local window = EM:GetBarWindow()
+	EM:AddBarGroup({
+		key = 'zzextra', order = 95, side = 'right',
+		controls = function(parent)
+			local button = W.IconButton(parent, st.icons.history, function() return 'Extra', { 'x' } end)
+			return { { key = 'extra', frame = button, Lay = function() return 26 end } }
+		end,
+	})
+	eq(frame_of('extra'):GetParent(), window, 'built into the window')
+	eq(frame_of('extra'):GetFrameLevel(), window:GetFrameLevel() + 2, 'two over it')
+	check(frame_of('extra'):IsShown(), 'shown')
+	local _, anchor = frame_of('extra'):GetPoint(1)
+	eq(anchor, window, 'anchored to the window, not the hidden bar')
+	check(top_of(frame_of('extra')) <= top_of(frame_of('undo')), 'in the last section, under the Show one')
+	world()
+end)

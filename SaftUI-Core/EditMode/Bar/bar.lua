@@ -4,7 +4,8 @@ local W, OB = st.OptionsWidgets, st.OptionsBody
 
 --[[
 	Edit mode's bar: the controls of edit mode (Exit, the grid and its size, the
-	snaps, Dim world, Coordinates, Show disabled, Show hidden, the module list, the filter, Options) in one strip across the top of the screen, shown while edit
+	snaps, Dim world, Coordinates, Show disabled, Show hidden, the module list, the filter, Options, Detach) in one strip across the top of the
+	screen (or, detached, in the floating window of barwindow.lua), shown while edit
 	mode is on, with /sui open or closed. This file is the bar itself: its
 	frame, the list of groups of controls, the layout (EM.BarLayout, pure) and
 	the events that show it, fade it and keep it current. The groups and their
@@ -296,18 +297,28 @@ local function Raise(frame)
 	for _, child in ipairs({ frame:GetChildren() }) do Raise(child) end
 end
 
--- Sets frame's level, and every descendant's by the same shift, so each keeps
--- its place relative to the frame. SetParent gives a frame the level one over
--- its new parent's (the game, as the stub), so a control moved to the window
--- is settled again to the level it had over the bar: two over its parent's.
-local function Settle(frame, level)
-	local shift = level - frame:GetFrameLevel()
-	if shift == 0 then return end
-	local function move(f)
-		f:SetFrameLevel(f:GetFrameLevel() + shift)
-		for _, child in ipairs({ f:GetChildren() }) do move(child) end
+-- A frame's descendants' levels relative to its own, top down: { { frame, offset }, ... }.
+local function LevelShape(frame)
+	local base, list = frame:GetFrameLevel(), {}
+	local function walk(f)
+		for _, child in ipairs({ f:GetChildren() }) do
+			list[#list + 1] = { child, child:GetFrameLevel() - base }
+			walk(child)
+		end
 	end
-	move(frame)
+	walk(frame)
+	return list
+end
+EM.LevelShape = LevelShape
+
+-- Sets frame's level and each descendant of shape (LevelShape, taken once, when
+-- the control was built) to level plus its offset, top down. SetParent gives a
+-- frame the level one over its new parent's (the game, as the stub), and may or
+-- may not carry its children along; absolute levels from the one shape are the
+-- same either way, however many times the control moves.
+local function Settle(frame, level, shape)
+	frame:SetFrameLevel(level)
+	for _, item in ipairs(shape) do item[1]:SetFrameLevel(level + item[2]) end
 end
 EM.SettleLevel = Settle -- barwindow.lua puts its own buttons the same two over
 
@@ -315,7 +326,7 @@ EM.SettleLevel = Settle -- barwindow.lua puts its own buttons the same two over
 local function Adopt(group, parent)
 	for _, control in ipairs(group.built or {}) do
 		control.frame:SetParent(parent)
-		Settle(control.frame, parent:GetFrameLevel() + 2)
+		Settle(control.frame, parent:GetFrameLevel() + 2, control.shape)
 	end
 end
 
@@ -325,6 +336,7 @@ local function BuildGroup(group)
 		control.group = group
 		control.section = control.section or group.section
 		Raise(control.frame)
+		control.shape = LevelShape(control.frame)
 	end
 	if windowed then Adopt(group, EM:GetBarWindow()) end
 end
@@ -379,7 +391,7 @@ end
 function EM:GetBar()
 	if bar then return bar end
 	bar = st:CreateFrame('Frame', nil, UIParent)
-	EM.bar = bar -- EM:ScreenTop reads whether it is shown
+	EM.bar = bar -- the docked bar's frame (EM:BarCoverHeight reads whether it is shown)
 	bar:SetFrameStrata('FULLSCREEN_DIALOG')
 	bar:SetFrameLevel(BAR.LEVEL)
 	bar:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 0, 0)
@@ -430,6 +442,7 @@ end
 -- owns it, and the keyboard.
 local function CloseOpenThings()
 	local owner = W.ListOwner and W.ListOwner()
+	if EM.barWindow then W.HideTip(EM.barWindow.dock) end
 	for _, group in ipairs(groups) do
 		for _, control in ipairs(group.built or {}) do
 			W.HideTip(control.frame)

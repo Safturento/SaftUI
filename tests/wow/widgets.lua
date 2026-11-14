@@ -847,17 +847,22 @@ function FontString.GetStringWidth(self, s)
 	if s.width and s.word_wrap == false then return math.min(full, s.width) end
 	return full
 end
+-- Like the game, a font string with a height (not 0) lays its text out inside
+-- it: lines past it are dropped, so the height never exceeds what it was given
+-- until it is set to 0 again.
 function FontString.GetStringHeight(self, s)
 	local font = font_of(s)
 	if not font or not s.text or s.text == '' then return 0 end
+	local height = font[2]
 	-- Wrapped (SetWordWrap(true) said so, and it has a width): as many lines as
 	-- the text's full width needs of that width.
 	if s.word_wrap == true and s.width and s.width > 0 then
 		local lines = math.ceil(#s.text * font[2] / 2 / s.width)
 		if s.max_lines and s.max_lines > 0 then lines = math.min(lines, s.max_lines) end
-		return lines * font[2]
+		height = lines * font[2]
 	end
-	return font[2]
+	if s.height and s.height > 0 then height = math.min(height, s.height) end
+	return height
 end
 
 ------------------------------------------------------------------ Frame
