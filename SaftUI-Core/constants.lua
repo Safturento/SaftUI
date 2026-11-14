@@ -77,6 +77,8 @@ st.icons = {
 	ellipsis = st:TexturePath('lucide-ellipsis.tga'),
 	ellipsisVertical = st:TexturePath('lucide-ellipsis-vertical.tga'),
 	settings = st:TexturePath('lucide-settings.tga'),
+	funnel = st:TexturePath('lucide-filter.tga'), -- Lucide 0.460.0 names the funnel `filter` (the bags' own hand-drawn one is st.textures.filter)
+	arrowDownToLine = st:TexturePath('lucide-arrow-down-to-line.tga'),
 }
 
 st.FRAME_ANCHORS = {
