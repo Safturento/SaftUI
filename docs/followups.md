@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-14 — /sui at half with the sidebar collapsed: a validation error is cut or hidden in the footer](#2026-11-14--sui-at-half-with-the-sidebar-collapsed-a-validation-error-is-cut-or-hidden-in-the-footer)
   - [2026-11-14 — Categories tab at full size: a long "Reset <name> to default" overlaps Delete](#2026-11-14--categories-tab-at-full-size-a-long-reset-name-to-default-overlaps-delete)
   - [2026-11-14 — Copy from writes default tables into keys the source unit doesn't have](#2026-11-14--copy-from-writes-default-tables-into-keys-the-source-unit-doesnt-have)
   - [2026-11-13 — Design decisions waiting to be built](#2026-11-13--design-decisions-waiting-to-be-built)
@@ -140,6 +141,20 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 ## Active
 
+### 2026-11-14 — /sui at half with the sidebar collapsed: a validation error is cut or hidden in the footer
+
+**What:** With the sidebar collapsed at half width (W4), the footer's status line, where a validation error such as "Size: a number, please" shows, has a region about 54 wide under Thick and Thin (96 under Blizzard), so the message is cut after two lines, and with one more icon command registered the region is 22, under `FOOTER_MIN_ROOM` (24), so the status line is hidden and no message shows anywhere. The page's field then keeps only the typed text.
+
+**Why noticed:** Review of the footer's collapsed tools (window sizes work, Task 6). The plan's Ruling 7 expected about 65 wide and a wrapped status line; the real room is smaller because Search, Edit mode, the toggle and the "More" button are the floor and take the footer. The task's report had said errors still show in the field itself, which they don't: the field shows the typed text, not the error (`optionswidgets.lua`, the field's validation path).
+
+**Anchors:** `SaftUI-Core/Config/optionswindow.lua` (`PlaceFooter`, `FOOTER_MIN_ROOM`, the status line), `SaftUI-Core/Config/optionsnav.lua` (`S.DrawTools`), `SaftUI-Core/Config/optionswidgets.lua` (a field's error), `tests/core/options_footer_tools_test.lua`, `tests/core/options_sidebar_test.lua` (the footer never overlaps).
+
+**What's been considered:** Show the error in the field's tooltip, or on a line over the footer (or over the page's bottom) while the footer's region is short; or let the status line borrow the room of the tools that follow Reload UI. None is built. The owner's rule that nothing overlaps (the footer's tools stop short of Reload UI) means the status line can only give way, so the message needs another place.
+
+**Shape of work:** A small design pass on where an error shows when the region is short (a tooltip on the field is the smallest), then a change in `PlaceFooter` or the field plus a test at W4 with the real command set and with one more icon command.
+
+**Open questions:** Where should the message show when the footer has no room: the field's tooltip, a line over the footer, or both? An in-game check at W4 with Keybind mode only (54 wide) decides how often it matters.
+
 ### 2026-11-14 — Categories tab at full size: a long "Reset <name> to default" overlaps Delete
 
 **What:** In the bags' Categories editor, the Reset button's label is `Reset <category name> to default`. For a long name the button is wider than its half-line slot and overlaps Delete beside it. The shipped default "Death Knight/Warlock/Demon Hunter" does it, and so does any default the player renames to a long name (renaming keeps the Reset row).
@@ -190,7 +205,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 - The loot feed's and other hand-drawn glyphs still to become Lucide icons (the audit's list).
 - Remaining section Reset buttons (bags' Categories "Reset ... to default" and "Reset all").
 
-**Being built or planned elsewhere:** 5, 15, 31 to 33 (the edit mode bar: `docs/superpowers/specs/2026-11-13-saftui-edit-mode-bar-design.md`); 6, 16, 18 (the `/sui` window's sizes: `docs/superpowers/specs/2026-11-13-saftui-options-window-sizes-design.md`, waiting on five answers); 9, 13, 17 (the colour control as a field, Copy from beside the Unit dropdown: branch `fb-kit2`); 11, 12 (scaling and the small-text font: their own followup); 25 (overlapping mover labels: in the edit mode bar's plan).
+**Being built or planned elsewhere:** 5, 15, 31 to 33 (the edit mode bar: `docs/superpowers/specs/2026-11-13-saftui-edit-mode-bar-design.md`); 9, 13, 17 (the colour control as a field, Copy from beside the Unit dropdown: branch `fb-kit2`); 11, 12 (scaling and the small-text font: their own followup); 25 (overlapping mover labels: in the edit mode bar's plan).
 
 **Shape of work:** Several small tasks (20, 21, 28, 29, 30, 8, 22 are each small) and two projects (the theme-following options window with the accent and one button; the colour roles rename). Group the small ones into one or two passes.
 

@@ -257,11 +257,38 @@ test('every atlas the theme names exists on the clients it is for', function()
 			'_editmode-actionbar-selected-NineSlice-EdgeTop', 'editmode-actionbar-selected-NineSlice-Center',
 			'uf-holypower-rune1', 'uf-holypower-rune5-active', 'UI-HUD-ActionBar-IconFrame-Border',
 			'checkbox-minimal', 'RedButton-Exit-Disabled', '!UI-Frame-Metal-EdgeRight',
+			-- /sui's size arrows (MaximizeMinimizeButtonFrameTemplate), which both clients have
+			'RedButton-Expand', 'RedButton-Expand-Pressed', 'RedButton-Expand-Disabled',
+			'RedButton-Condense', 'RedButton-Condense-Pressed', 'RedButton-Condense-disabled',
 		}) do
 			check(names[name], client .. ': names ' .. name)
 		end
 		eq(names['ui-hud-minimap-header-button'], 'forever', "Forever's Camelot chrome is Forever's only")
 		eq(names['ui-hud-minimap-button-NineSlice-Center'], true, 'the minimap button kit is on both')
+	end
+end)
+
+test("the size arrows' art is Blizzard's expand and condense button, an atlas each client has, 24 square", function()
+	for _, client in ipairs(CLIENTS) do
+		local st = T.client(client)
+		local art = st.ThemeArt.Control('sizebutton')
+		local names = st:ThemeAtlases()
+		eq(art.size, 24, client .. ": the template's 24 square")
+		eq(art.highlightBlend, 'ADD', client .. ': the highlight is additive')
+		local expect = {
+			['grow.normal'] = 'RedButton-Expand', ['grow.pushed'] = 'RedButton-Expand-Pressed', ['grow.disabled'] = 'RedButton-Expand-Disabled',
+			['shrink.normal'] = 'RedButton-Condense', ['shrink.pushed'] = 'RedButton-Condense-Pressed', ['shrink.disabled'] = 'RedButton-Condense-disabled',
+		}
+		for path, atlas in pairs(expect) do
+			local kind, state = path:match('^(%a+)%.(%a+)$')
+			eq(art[kind][state], atlas, client .. ': ' .. path)
+			eq(names[atlas], true, client .. ': ' .. atlas .. ' is marked for both clients')
+			check(C_Texture.GetAtlasInfo(atlas), client .. ': ' .. atlas .. ' exists')
+		end
+		eq(art.highlight, 'RedButton-Highlight', client .. ': the highlight')
+		-- The art is a copy: nothing can change the table through it.
+		art.grow.normal = 'x'
+		eq(st.ThemeArt.Control('sizebutton').grow.normal, 'RedButton-Expand', client .. ': a copy')
 	end
 end)
 

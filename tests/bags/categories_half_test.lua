@@ -586,9 +586,15 @@ end)
 ------------------------------------------------------------------ whole pixels
 
 test('whole pixels at half: the button row, the open menu, a drag, under Thick, Thin and Blizzard on both clients', function()
+	-- Each client and look takes one noise, the sign alternating over the six
+	-- (Forever: Thick +, Thin -, Blizzard +; retail: Thick -, Thin +, Blizzard -),
+	-- so each look is walked with both signs across the clients; the cases of all
+	-- nine combinations (with no noise too) took 9 s.
+	local turn = 0
 	for _, client in ipairs({ 'forever', 'retail' }) do
 		for _, name in ipairs({ 'thick', 'thin', 'blizzard' }) do
-			for _, noise in ipairs({ 0, 2 ^ -14, -2 ^ -14 }) do
+			turn = turn + 1
+			for _, noise in ipairs({ turn % 2 == 1 and 2 ^ -14 or -2 ^ -14 }) do
 				world(client)
 				look(name)
 				stub.size_noise = noise

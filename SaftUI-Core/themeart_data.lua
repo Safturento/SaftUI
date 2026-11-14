@@ -331,6 +331,33 @@ ThemeArt.ART = {
 		disabled = Atlas('RedButton-Exit-Disabled'),
 	},
 
+	-- /sui's size arrows, as Blizzard's expand and condense buttons
+	-- (MaximizeMinimizeButtonFrameTemplate, Blizzard_SharedXML/Mainline/
+	-- SharedUIPanelTemplates.xml, the same on both branches: the frame is 24
+	-- square, set by its Size on retail and by its OnLoad on Forever, its two
+	-- buttons setAllPoints, so each atlas is stretched to it): a button's
+	-- normal, pushed and disabled art, and the additive RedButton-Highlight
+	-- both share. grow takes the expand art (the Maximize button) and shrink
+	-- the condense art (the Minimize button). Both clients have every atlas
+	-- under these names (Forever's are the 32 square Camelot members, retail's
+	-- 18x19), so both are marked for both; a client without them would be
+	-- marked Atlas(name, client) and keep the Lucide chevrons.
+	sizebutton = {
+		size = 24,
+		grow = {
+			normal = Atlas('RedButton-Expand'),
+			pushed = Atlas('RedButton-Expand-Pressed'),
+			disabled = Atlas('RedButton-Expand-Disabled'),
+		},
+		shrink = {
+			normal = Atlas('RedButton-Condense'),
+			pushed = Atlas('RedButton-Condense-Pressed'),
+			disabled = Atlas('RedButton-Condense-disabled'),
+		},
+		highlight = Atlas('RedButton-Highlight'),
+		highlightBlend = 'ADD',
+	},
+
 	-- The controls. Each is drawn inside its own rect, by the control's own code.
 
 	-- SaftUI's buttons, as Blizzard's panel button (UIPanelButtonNoTooltipTemplate):

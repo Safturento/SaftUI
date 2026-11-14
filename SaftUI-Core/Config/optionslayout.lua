@@ -250,7 +250,14 @@ end
 local function Margins(L)
 	local margin = max(0, st.config.profile.misc.clamp_inset)
 	local _, _, above, below = ArtReach(L)
-	return margin + above, margin + below
+	-- While edit mode's bar is docked and shown the window is lowered to its
+	-- bottom (optionswindow.lua's Anchor), so it has only the room under it:
+	-- the cover (and the art above the window) stands for the top margin when
+	-- it is more, and the game's clamp never lifts the window under the bar.
+	local cover = S.BarCover and S.BarCover() or 0
+	local top = margin + above
+	if cover > 0 then top = max(top, floor(cover + above + 0.5)) end
+	return top, margin + below
 end
 
 -- The most height the window takes in layout L (the one it's in when nil):
