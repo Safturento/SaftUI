@@ -97,6 +97,29 @@ local st = SaftUI
 	it inherits get, set and the rest from the menu group only, not from the
 	item's page. Search finds a menu's settings (OM.Search).
 
+	Any option may carry default (SaftUI's own field, read raw from the
+	option, never inherited): whether its value differs from its default
+	now, and how to put the default back. The window draws a reset icon by
+	the control while it differs (optionsshare.lua's OB.PlaceDefault); it is
+	the standard for resets, one per setting, in place of a section's or a
+	page's Reset button. Its functions are each called with the option's
+	info:
+	  default = {
+	    differs = function(info) -> bool,  -- the value isn't its default now
+	    reset = function(info),            -- puts the default back (no confirm)
+	    value = function(info) -> ...,     -- the default as get gives it (a
+	                                       -- color's r, g, b[, a]), which the
+	                                       -- icon's tooltip names by the row's
+	                                       -- type: a color's hex (with its
+	                                       -- opacity when it hasAlpha), a
+	                                       -- select's label, On or Off, ...
+	    text = string | function(info),    -- or the default in words, which
+	                                       -- wins over value
+	  }
+	OM.DefaultState reads it, OM.DefaultReset runs reset. A row whose share
+	has own (a member page) shows only its share's Reset; a disabled row
+	shows none.
+
 	A page's group may carry a footer (SaftUI's own field, never in its args):
 	a group of options the window draws in its footer while the page is open,
 	its name as their one label (optionswindow.lua). BuildView hands it on as
@@ -974,6 +997,51 @@ function OM.ShareTargets(root, row)
 		end
 	end
 	return list
+end
+
+-- The option's default (SaftUI's field, read raw: never inherited), or nil.
+local function DefaultOf(option)
+	return type(option.default) == 'table' and option.default or nil
+end
+
+-- safecall's answers packed: ok, then { n, ... }.
+local function Packed(ok, ...)
+	return ok, { n = select('#', ...), ... }
+end
+
+--[[
+	A row's default (its option's default field, the header's): nil without
+	one; else { differs, text, value }:
+	  differs  default.differs(info), true or false
+	  text     default.text (a string, or a function's answer) as text, or nil
+	  value    default.value(info)'s answers, { n, ... }, when there's no
+	           text (the drawing names them by the row's type), or nil
+	A function that errors is reported and counts as false or nothing.
+]]
+function OM.DefaultState(root, row)
+	local default = DefaultOf(row.option)
+	if not default then return nil end
+	local info = BuildInfo(row.option, Options(root), row.path)
+	local state = { differs = ShareAsk(default, 'differs', info) and true or false }
+	local text = default.text
+	if type(text) == 'function' then text = ShareAsk(default, 'text', info) end
+	if text ~= nil then
+		state.text = Text(text)
+	elseif type(default.value) == 'function' then
+		local ok, values = Packed(safecall(default.value, info))
+		if ok then state.value = values end
+	end
+	return state
+end
+
+-- Runs the row's default.reset(info) through safecall: true when it ran,
+-- false when there's none or it errored (the error goes to the handler).
+function OM.DefaultReset(root, row)
+	local default = DefaultOf(row.option)
+	local func = default and default.reset
+	if type(func) ~= 'function' then return false end
+	local info = BuildInfo(row.option, Options(root), row.path)
+	return (safecall(func, info)) and true or false
 end
 
 --[[

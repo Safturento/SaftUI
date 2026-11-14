@@ -505,14 +505,15 @@ test("ace_ready leaves an item out, menu and all; each_option walks into an item
 		"its menu, through the item's key and 'menu', all the way down")
 end)
 
-test("ace_ready leaves off SaftUI's own fields, disabledDesc, justifyH, fill and share among them", function()
+test("ace_ready leaves off SaftUI's own fields, disabledDesc, justifyH, fill, share and default among them", function()
 	local AceConfigRegistry = LibStub('AceConfigRegistry-3.0')
 	local function Validate(page)
 		return pcall(AceConfigRegistry.ValidateOptionsTable, AceConfigRegistry,
 			{ name = st.name, type = 'group', args = { Page = page } }, st.name)
 	end
-	local onToggle = { disabledDesc = true, share = true }
-	for field, value in pairs({ disabledDesc = 'Why.', justifyH = 'CENTER', fill = true, share = { source = 'All' } }) do
+	local onToggle = { disabledDesc = true, share = true, default = true }
+	for field, value in pairs({ disabledDesc = 'Why.', justifyH = 'CENTER', fill = true, share = { source = 'All' },
+		default = { differs = function() return false end, reset = function() end } }) do
 		local option = { type = onToggle[field] and 'toggle' or 'description', name = 'Mine' }
 		option[field] = value
 		local page = { type = 'group', name = 'Page', args = { mine = option } }

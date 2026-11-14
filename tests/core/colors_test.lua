@@ -51,7 +51,7 @@ local function Section(key) return Tab().args[key] end
 
 local NOTE = 'Most of SaftUI reads these when it builds its frames: reload (Reload UI, bottom left) to see a change everywhere.'
 
-test('the sections and their colors, in order, as small color swatches with tooltips', function()
+test('the sections and their colors, in order, as small color swatches with tooltips, each with its own reset and no section Reset', function()
 	local sections, names = ByOrder(Tab().args), {}
 	for i, s in ipairs(sections) do names[i] = s.v.name end
 	eq(table.concat(names, ','), 'Text,Buttons,Class,Reputation,Power,Item quality,Status,Threat')
@@ -68,20 +68,19 @@ test('the sections and their colors, in order, as small color swatches with tool
 	}
 	for _, s in ipairs(sections) do
 		local rows, rowNames = ByOrder(s.v.args), {}
-		local last = table.remove(rows)
-		eq(last.key, 'reset', s.key .. ' ends with Reset')
-		eq(last.v.type, 'execute'); eq(last.v.size, 'small'); eq(last.v.confirm, true)
+		eq(s.v.args.reset, nil, s.key .. ': no section Reset')
 		for i, r in ipairs(rows) do
 			rowNames[i] = r.v.name
 			eq(r.v.type, 'color', s.key .. ' ' .. r.v.name); eq(r.v.size, 'small', r.v.name)
 			check(type(r.v.desc) == 'string' and r.v.desc ~= '', s.key .. ' ' .. r.v.name .. ' has a desc')
 			eq(r.v.hasAlpha, s.key == 'button' or nil, s.key .. ' ' .. r.v.name .. ' hasAlpha')
+			local d = r.v.default
+			check(type(d) == 'table' and type(d.differs) == 'function' and type(d.reset) == 'function' and type(d.value) == 'function',
+				s.key .. ' ' .. r.v.name .. ': its own reset (default)')
+			eq(d.differs(), false, s.key .. ' ' .. r.v.name .. ': at its default on a new profile')
 		end
 		eq(table.concat(rowNames, ','), expected[s.key], s.key)
 	end
-	eq(Section('class').args.reset.confirmText, "Reset the Class colors to SaftUI's defaults?")
-	eq(Section('class').args.reset.name, 'Reset')
-	eq(Section('class').args.reset.desc, "Puts every color in this section back to SaftUI's default.")
 end)
 
 test('Text and Buttons say a change shows after a reload; the others have no note', function()
@@ -140,26 +139,54 @@ test('after a profile switch, get and set reach the new profile', function()
 	restore()
 end)
 
-test('Reset puts a section back to the defaults and says so once per group', function()
+test("a color's own reset: it differs once changed, puts back its own color (alpha too) and says its group changed", function()
 	local got, restore = Recorder()
 	local class = Section('class')
 	class.args.MAGE.set({}, 0.1, 0.1, 0.1)
 	class.args.ROGUE.set({}, 0.2, 0.2, 0.2)
-	got[1], got[2] = nil, nil
-	class.args.reset.func()
-	for _, k in ipairs({ 'MAGE', 'ROGUE' }) do
-		local c, d = st.config.profile.colors.class[k], st.defaults.colors.class[k]
-		eq(c.r .. ',' .. c.g .. ',' .. c.b, d.r .. ',' .. d.g .. ',' .. d.b, k)
-	end
-	eq(table.concat(got, ','), 'class')
+	check(class.args.MAGE.default.differs(), 'Mage differs')
+	check(class.args.ROGUE.default.differs(), 'Rogue differs')
+	check(not class.args.WARRIOR.default.differs(), 'Warrior, untouched, does not')
+	local d = st.defaults.colors.class.MAGE
+	eq(table.concat({ class.args.MAGE.default.value() }, ','), table.concat({ d.r, d.g, d.b, d.a }, ','), "its value: the default's r, g, b, a")
+	for i = #got, 1, -1 do got[i] = nil end
+	class.args.MAGE.default.reset()
+	local c = st.config.profile.colors.class.MAGE
+	eq(c.r .. ',' .. c.g .. ',' .. c.b, d.r .. ',' .. d.g .. ',' .. d.b, 'Mage back to its default')
+	check(not class.args.MAGE.default.differs(), 'and no longer differs')
+	eq(st.config.profile.colors.class.ROGUE.r, 0.2, 'Rogue left as it was')
+	eq(table.concat(got, ','), 'class', 'its group changed, once, as the section Reset said')
+	class.args.ROGUE.default.reset()
 
+	-- A pick within a hair of the default (the picker's floats) is the default.
+	local m = st.defaults.colors.class.MAGE
+	class.args.MAGE.set({}, m.r + 0.0004, m.g, m.b)
+	check(not class.args.MAGE.default.differs(), 'the same hex: not different')
+
+	-- Renown, the top-level color; Buttons with an opacity; Text, whose alpha the tab never shows.
+	for i = #got, 1, -1 do got[i] = nil end
 	Section('reaction').args.renown.set({}, 0, 0, 0)
-	got = {}
-	restore()
-	got, restore = Recorder()
-	Section('reaction').args.reset.func()
-	eq(table.concat(got, ','), 'reaction,renown')
-	eq(st.config.profile.colors.renown.r, st.defaults.colors.renown.r, 'renown is reset too')
+	check(Section('reaction').args.renown.default.differs(), 'renown differs')
+	Section('reaction').args.renown.default.reset()
+	eq(st.config.profile.colors.renown.r, st.defaults.colors.renown.r, 'renown is reset')
+	eq(got[#got], 'renown', 'and says renown changed')
+
+	local blue = Section('button').args.blue
+	local b = st.config.profile.colors.button.blue
+	blue.set({}, b.r, b.g, b.b, 0.25)
+	check(blue.default.differs(), 'Buttons: a new opacity alone differs')
+	blue.default.reset()
+	eq(st.config.profile.colors.button.blue.a, st.defaults.colors.button.blue.a, 'and its reset puts the opacity back')
+
+	Section('text').args.red.default.reset() -- an earlier case set it
+	local red = st.config.profile.colors.text.red
+	local alpha = red.a
+	red.a = 0.3
+	check(not Section('text').args.red.default.differs(), "Text: an alpha the tab can't show is no difference")
+	red.r = 0.123
+	Section('text').args.red.default.reset()
+	eq(red.a, st.defaults.colors.text.red.a, 'its reset puts the alpha back with the rest, as the section Reset did')
+	red.a = alpha
 	restore()
 end)
 

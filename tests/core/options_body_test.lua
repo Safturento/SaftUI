@@ -1463,42 +1463,6 @@ test("under panels a line of buttons floats off the panel wherever it is, 24 fro
 	end)
 end)
 
-test("Global Settings' Colors and Theme: a section's lone Reset floats under its panel; one beside a row stays on it", function()
-	st.Config:Open('Loot')
-	local seen = {}
-	for _, tab in ipairs({ 'colors', 'theme' }) do
-		OW:Navigate('Fonts', { tab = tab })
-		local byY, resets = {}, {}
-		for _, c in ipairs(OW.GetDrawnRows()) do
-			byY[c.y] = (byY[c.y] or 0) + 1
-			if c.row.key == 'reset' then resets[#resets + 1] = c end
-		end
-		check(#resets >= 1, tab .. ': its Resets drawn')
-		for _, c in ipairs(resets) do
-			local _, _, _, x = c.frame:GetPoint(1)
-			local where = tab .. ' ' .. tostring(c.row.path[#c.row.path - 1])
-			if byY[c.y] == 1 then
-				-- Alone on its line: under its section's panel, 24 below, the button's height, at the panel's left edge.
-				eq(c.height .. ' at ' .. x, c.widget:GetHeight() .. ' at 0', where .. ': a lone Reset floats')
-				local ends, under = false, false
-				for _, p in ipairs(c.body.pools.panel.used) do
-					local _, _, _, _, py = p:GetPoint(1)
-					if -py + p:GetHeight() == c.y - 24 then ends = true end
-					if -py <= c.y and -py + p:GetHeight() > c.y then under = true end
-				end
-				check(ends, where .. ': its panel ends 24 above it')
-				check(not under, where .. ': no panel under it')
-				seen[#seen + 1] = where .. ' floats'
-			else
-				eq(c.height .. ' at ' .. x, '38 at 401', where .. ': a Reset beside a color stays on the panel, in the second half')
-				seen[#seen + 1] = where .. ' stays'
-			end
-		end
-	end
-	print('Resets: ' .. table.concat(seen, ', '))
-	close_all()
-end)
-
 test("the Profiles page's Reset Profile, a line of its own between descriptions, floats off the panel: 24 from the panel above and the one below", function()
 	st.Config:Open('profile')
 	local reset

@@ -5,12 +5,14 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	Shareable options drawn (the share field, optionsmodel.lua): the own mark,
 	the diff icon and its tooltip, the hover line under a label with Reset
 	and Apply to: All | Multiple, and a position block's marks on its
-	section's title. The body (optionsbody.lua) calls in: PlaceRow ends with
-	OB.PlaceShare(cell), the row frame's OnEnter (and a position block's
-	parts) with OB.ShareEnter(frame), and DrawSections with
-	OB.PlaceShareTitle(body, entry, title) for a section with a shareRow.
-	Nothing here names what is shared: every name and text comes from the
-	option's share.
+	section's title; and a setting's own reset (the default field: the same
+	reset icon by its control, OB.PlaceDefault, at the end of this file). The
+	body (optionsbody.lua) calls in: PlaceRow ends with OB.PlaceDefault(cell)
+	then OB.PlaceShare(cell), its Refresh runs OB.PlaceDefault again, the row
+	frame's OnEnter (and a position block's parts) runs OB.ShareEnter(frame),
+	and DrawSections OB.PlaceShareTitle(body, entry, title) for a section
+	with a shareRow. Nothing here names what is shared: every name and text
+	comes from the option's share or default.
 
 	What each piece draws, from OM.ShareState (rows of a type
 	OB.SHARE_KINDS marks 'row': toggle, range, select, input, color, item; a
@@ -123,6 +125,33 @@ end
 
 local function Untip(owner)
 	if GameTooltip:IsOwned(owner) then GameTooltip:Hide() end
+end
+
+-- The reset icon, which a shared row's hover line (Reset) and a setting's
+-- own reset (OB.PlaceDefault) both draw: a 14x14 button holding Lucide's
+-- rotate-ccw (st.icons.rotateCcw) in Button > Blue, white under the mouse.
+-- tip(self) shows its tooltip; a click hides that, then runs onClick(self).
+local function ResetIcon(parent, tip, onClick)
+	local button = CreateFrame('Button', nil, parent)
+	button:SetSize(RESET_SIZE, RESET_SIZE)
+	button:EnableMouse(true)
+	button.icon = button:CreateTexture(nil, 'ARTWORK')
+	button.icon:SetAllPoints(button)
+	button.icon:SetTexture(st.icons.rotateCcw)
+	button.icon:SetVertexColor(Colors().button.blue:GetRGB())
+	button:SetScript('OnEnter', function(self)
+		tip(self)
+		self.icon:SetVertexColor(1, 1, 1)
+	end)
+	button:SetScript('OnLeave', function(self)
+		Untip(self)
+		self.icon:SetVertexColor(Colors().button.blue:GetRGB())
+	end)
+	button:SetScript('OnClick', function(self)
+		Untip(self)
+		onClick(self)
+	end)
+	return button
 end
 
 -- name's possessive: just an apostrophe after a final s, so none reads "s's".
@@ -294,15 +323,11 @@ local function MakeParts(host, withMark)
 	parts.ownText.text:SetPoint('LEFT', parts.ownText, 'LEFT', 0, 0)
 	parts.ownText.text:SetText('Own')
 
-	parts.reset = Piece(host, line, 'reset', 'Button')
-	parts.reset:SetWidth(RESET_SIZE)
-	parts.reset.icon = parts.reset:CreateTexture(nil, 'ARTWORK')
-	parts.reset.icon:SetAllPoints(parts.reset)
-	parts.reset.icon:SetTexture(st.icons.rotateCcw)
-	parts.reset:SetScript('OnClick', function(self)
-		Untip(self)
-		ActNow(host, 'reset')
-	end)
+	parts.reset = ResetIcon(line, function(self)
+		local state = host.shareState
+		Tip(self, TIPS.reset(state, SettingName(state, host.shareCell.row.name), host.share))
+	end, function() ActNow(host, 'reset') end)
+	parts.reset:SetFrameLevel(line:GetFrameLevel() + 1)
 
 	parts.sep = OB.Text(line, 'small')
 	parts.all = Link(host, line, 'all', 'All', function() ActNow(host, 'applyAll') end)
@@ -578,4 +603,136 @@ function OB.PlaceShareTitle(body, entry, title)
 			-floor((OB.TITLE_HEIGHT - LINE_HEIGHT) / 2))
 	end
 	body.shareTitles[#body.shareTitles + 1] = { section = entry.section, title = title, hover = hover, parts = parts }
+end
+
+------------------------------------------------------------------ a setting's own reset
+
+local DEFAULT_GAP = 6 -- the icon's right edge this far left of what the control draws
+local LABEL_ROOM = 4 -- the label (and a hover line) end at least this far before the icon
+local BLOCK_LINE = 24 -- a position block's first line (its dropdowns), 6 down its cell
+-- Rows with no value of their own to reset: the field is left alone on them.
+local NO_DEFAULT = { execute = true, description = true }
+
+-- How far left region draws (in its own units): itself, and every part of
+-- it shown, its regions and its children's, down the tree. Under Blizzard a
+-- control's art reaches past its frame (a dropdown's glow, the check box's
+-- art), and the icon keeps clear of it.
+local function DrawnLeft(region, left)
+	if not region:IsShown() then return left end
+	local l = region:GetLeft()
+	if l and (not left or l < left) then left = l end
+	if region.GetRegions then
+		for _, part in ipairs({ region:GetRegions() }) do left = DrawnLeft(part, left) end
+		for _, child in ipairs({ region:GetChildren() }) do left = DrawnLeft(child, left) end
+	end
+	return left
+end
+
+-- The default in words, for the icon's tooltip: the field's text, or its
+-- value named by the row's type (a color's hex, with its opacity when the
+-- row hasAlpha, as its swatch writes it; on or off; a select's label; a percent
+-- range as a percent; a string or a number as it is), or nil.
+local function DefaultText(body, row, state)
+	if state.text then return state.text end
+	local value = state.value
+	if not (value and value.n > 0) then return nil end
+	local first = value[1]
+	if row.type == 'color' then
+		local hasAlpha = OM.Member(body.root, row, 'hasAlpha') and true or false
+		return W.HexText(value[1] or 0, value[2] or 0, value[3] or 0, value[4] or 1, hasAlpha)
+	elseif row.type == 'toggle' or row.type == 'item' then
+		return first and 'on' or 'off'
+	elseif row.type == 'select' then
+		for _, entry in ipairs(OM.Values(body.root, row)) do
+			if entry.key == first then return tostring(entry.name) end
+		end
+	elseif row.type == 'range' and type(first) == 'number' and OM.Member(body.root, row, 'isPercent') then
+		return floor(first * 100 + 0.5) .. '%'
+	end
+	if type(first) == 'string' or type(first) == 'number' then return tostring(first) end
+end
+
+-- The icon's tooltip: Reset, then what it does and the default.
+local function DefaultTip(owner, cell)
+	if not cell then return end
+	local row = cell.row
+	local name = row.type == 'item' and (Possessive(row.name) .. ' Show') or row.name
+	local text = DefaultText(cell.body, row, OM.DefaultState(cell.body.root, row) or {})
+	Tip(owner, 'Reset', text and format('%s goes back to its default: %s.', name, text)
+		or format('%s goes back to its default.', name))
+end
+
+--[[
+	A setting's own reset (its option's default field, optionsmodel.lua): the
+	reset icon (ResetIcon, the hover line's piece and look) just left of the
+	row's control, only while the value differs from its default and the row
+	isn't disabled; its tooltip says what it does and names the default; a
+	click runs default.reset (no confirm), then the body's onChanged(true),
+	which draws the page again. The body's PlaceRow calls this before
+	OB.PlaceShare, and its Refresh again mid-drag, so the icon follows a
+	dragged value.
+	  - where: its right edge DEFAULT_GAP left of what the control draws
+	    (DrawnLeft: under Blizzard its art, a dropdown's glow included),
+	    centred on the row (on its first band for a taller row, a
+	    multiselect's); an item's left of its dots (its control's right end;
+	    the cell's right edge without them); a position block, which has no
+	    label, has it after the block on its first line.
+	  - the label, and the hover line (cell.lineEnd), end LABEL_ROOM before it.
+	  - a row whose share has own (a member page: its hover line's Reset
+	    acts on it) never shows it: one reset per row, the share's. A
+	    source page's row, whose line has no Reset, does.
+	  - execute and description rows (no value) and custom types (W.Define)
+	    leave it alone.
+	The icon is the row frame's (frame.defaultReset, made the first time a
+	row needs one, hidden on every row that doesn't); frame.defaultCell is
+	the cell it acts on.
+]]
+function OB.PlaceDefault(cell)
+	local frame, body, row, widget = cell.frame, cell.body, cell.row, cell.widget
+	if frame.defaultReset then frame.defaultReset:Hide() end
+	frame.defaultCell = nil
+	if not (body and widget) or NO_DEFAULT[row.type] or W.CUSTOM[row.type] then return end
+	local share = row.option.share
+	if type(share) == 'table' and share.own ~= nil then return end
+	if widget:IsDisabled() then return end
+	local state = OM.DefaultState(body.root, row)
+	if not (state and state.differs) then return end
+
+	local icon = frame.defaultReset
+	if not icon then
+		icon = ResetIcon(frame, function(self) DefaultTip(self, frame.defaultCell) end, function()
+			local at = frame.defaultCell
+			if not at then return end
+			OM.DefaultReset(at.body.root, at.row)
+			if at.body.onChanged then at.body.onChanged(true) end
+		end)
+		frame.defaultReset = icon
+	end
+	frame.defaultCell = cell
+	icon.icon:SetVertexColor(Colors().button.blue:GetRGB())
+	icon:ClearAllPoints()
+	icon:Show()
+	if row.type == 'position' then
+		icon:SetPoint('TOPLEFT', frame, 'TOPLEFT', ceil(widget:GetWidth()) + DEFAULT_GAP,
+			-(6 + floor((BLOCK_LINE - RESET_SIZE) / 2)))
+		return
+	end
+	local x0, right = frame:GetLeft(), nil
+	if row.type == 'item' then
+		local dots = widget.hasMenu and widget.dots:GetLeft()
+		right = dots and x0 and floor(dots - x0 + 0.5) or (widget.hasMenu and frame:GetWidth() - widget.dots:GetWidth()) or frame:GetWidth()
+	else
+		local drawn = DrawnLeft(widget.frame)
+		right = drawn and x0 and floor(drawn - x0) or (frame:GetWidth() - widget:GetWidth())
+	end
+	right = right - DEFAULT_GAP
+	if cell.height > cell.rowHeight then
+		icon:SetPoint('RIGHT', frame, 'TOPLEFT', right, -floor(cell.rowHeight / 2))
+	else
+		icon:SetPoint('RIGHT', frame, 'LEFT', right, 0)
+	end
+	local stop = right - RESET_SIZE - LABEL_ROOM
+	local label = cell.label
+	if label:IsShown() then label:SetWidth(max(1, min(label:GetWidth(), stop - (cell.labelX or 0)))) end
+	cell.lineEnd = min(cell.lineEnd or frame:GetWidth(), stop)
 end

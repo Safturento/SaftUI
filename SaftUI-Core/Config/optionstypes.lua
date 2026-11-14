@@ -182,6 +182,7 @@ local function HexText(r, g, b, a, hasAlpha)
 	if percent < 100 then text = text .. ' \194\183 ' .. percent .. '%' end
 	return text
 end
+W.HexText = HexText -- a color's code as its swatch writes it: a setting's reset names its default with it (optionsshare.lua)
 
 define('color', {
 	Bind = function(self, ...)

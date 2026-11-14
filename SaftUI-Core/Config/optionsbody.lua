@@ -117,7 +117,10 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	the height it would have without: its text sits in the middle of it.
 
 	Shareable options (SaftUI's share field) are drawn by optionsshare.lua,
-	which loads right after this file and hooks in at three places: PlaceRow
+	which loads right after this file, and so is a setting's own reset (its
+	default field: OB.PlaceDefault, which PlaceRow runs before
+	OB.PlaceShare, and Refresh again for a row with one, so the icon follows
+	a drag). The share hooks in at three places: PlaceRow
 	ends with OB.PlaceShare(cell) (cell.body is the body), the row frame's
 	OnEnter and a position block's parts call OB.ShareEnter(frame), and
 	DrawSections calls OB.PlaceShareTitle(body, entry, title) for a section
@@ -768,6 +771,9 @@ local function PlaceRow(cell, x, y, width)
 			widget:SetPoint('RIGHT', frame, 'RIGHT', 0, 0)
 		end
 	end
+	-- A setting's own reset by its control (its default), then a shareable
+	-- row's marks: optionsshare.lua.
+	if OB.PlaceDefault then OB.PlaceDefault(cell) end
 	if OB.PlaceShare then OB.PlaceShare(cell) end
 	-- An item's box moves under its own mark with the label (markShift).
 	if row.type == 'item' then
@@ -1189,6 +1195,8 @@ function Body:Refresh(except)
 				cell.label:SetTextColor(OB.LabelColor(cell, disabled))
 			end
 		end
+		-- A setting's own reset follows the drag (the dragged row's too).
+		if widget and OB.PlaceDefault and type(cell.row.option.default) == 'table' then OB.PlaceDefault(cell) end
 	end
 end
 
