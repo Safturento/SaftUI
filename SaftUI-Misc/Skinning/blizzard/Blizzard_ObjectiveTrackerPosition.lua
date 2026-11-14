@@ -416,8 +416,8 @@ local function SkinOff()
 	return not (skin and skin:IsActive())
 end
 
--- The Objective Tracker page in /sui: General, the tracker's fonts, then its
--- Position. Clicking the tracker in edit mode opens it (the mover's
+-- The Objective Tracker page in /sui: General, the tracker's fonts, its Objective
+-- colors, then its Position. Clicking the tracker in edit mode opens it (the mover's
 -- configPath). Absent until the tracker exists.
 function OTP:GetConfigTable()
 	if not self.holder then return end
@@ -451,6 +451,52 @@ function OTP:GetConfigTable()
 		return option
 	end
 
+	-- A finished or failed objective's color (config.status_colors[state], an
+	-- { r, g, b } array edited in place, which the skin reads each time a line is
+	-- colored), with its own reset by it while it differs from the shipped one.
+	-- Like the fonts, only while the skin is on.
+	local function StatusColor(order, name, state, desc)
+		local option = {
+			order = order,
+			name = name,
+			desc = desc,
+			type = 'color',
+			disabled = SkinOff,
+			disabledDesc = "Only while Skinning -> Objective tracker is on and the Skinning page's Theme isn't Blizzard: otherwise the tracker keeps Blizzard's colors.",
+			get = function()
+				local color = self.config.status_colors[state]
+				return color[1], color[2], color[3]
+			end,
+			set = function(_, r, g, b)
+				local color = self.config.status_colors[state]
+				color[1], color[2], color[3] = r, g, b
+				local skin = Skin()
+				if skin then skin:UpdateConfig() end
+			end,
+		}
+		local function Shipped() return st.defaults.objectivetracker.status_colors[state] end
+		option.default = {
+			differs = function()
+				local color, shipped = self.config.status_colors[state], Shipped()
+				for i = 1, 3 do
+					if math.floor(color[i] * 255 + 0.5) ~= math.floor(shipped[i] * 255 + 0.5) then return true end
+				end
+				return false
+			end,
+			reset = function()
+				local color, shipped = self.config.status_colors[state], Shipped()
+				color[1], color[2], color[3] = shipped[1], shipped[2], shipped[3]
+				local skin = Skin()
+				if skin then skin:UpdateConfig() end
+			end,
+			value = function()
+				local shipped = Shipped()
+				return shipped[1], shipped[2], shipped[3]
+			end,
+		}
+		return option
+	end
+
 	return {
 		name = 'Objective Tracker',
 		type = 'group',
@@ -472,6 +518,18 @@ function OTP:GetConfigTable()
 						"The font of the quest titles, objectives and bar texts in the objective tracker. Texts already showing take it at once; their spacing follows at the tracker's next update."),
 					header_font = FontOption(2, 'Header font',
 						"The font of the objective tracker's headers: All Objectives, Quests, Campaign, Scenario, Achievements and the rest."),
+					colors = {
+						name = 'Objective colors',
+						type = 'group',
+						inline = true,
+						order = 3,
+						args = {
+							completed = StatusColor(1, 'Completed', 'completed',
+								"The color of an objective that's done, in the quest and other lists. Blizzard's own is a plain grey; a line you haven't finished keeps Blizzard's color."),
+							failed = StatusColor(2, 'Failed', 'failed',
+								"The color of a failed objective, and of a failed quest's line. Under the mouse Blizzard still brightens it, as it does every line."),
+						},
+					},
 					position = position,
 				},
 			},

@@ -188,8 +188,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 **Seen in game 2026-11-13:** the owner: "Objective tracker skin is looking good". No report yet on the quest item in combat (check 1).
 
 **Asked for next (the owner, 2026-11-13):** "I'll probably want some additional enhancements like zone grouping, objective status coloring, is it possible to set a max height and a scroll frame on it? I'd also love the mover to fill the full height of the tracker not just the header."
-- *The mover filling the tracker's height:* small. The outline can follow the tracker's height read with `GetHeight(true)` (the read the skin already uses); the holder and what is saved don't change.
-- *Objective status colouring* (done, in progress, failed): small to medium, in the skin's line hooks, colours from the Colors page.
+- ~~*The mover filling the tracker's height*~~ **Built 2026-11-13** (`OTP:UpdateFootprint`): in edit mode the outline is as tall as the tracker, from the holder's top; the holder and what is saved are unchanged.
+- ~~*Objective status colouring*~~ **Built 2026-11-13** (completed and failed lines): two colours on the tracker's page, Objective colors (Completed default Blizzard's dim green, Failed the text red). In-game: a failed line shows Blizzard's brighter red while hovered; "in progress" keeps Blizzard's normal color, as there is no third state to colour.
 - *Zone grouping:* Blizzard's tracker groups by module (Quests, Campaign, ...), not zone. Regrouping its blocks means changing its layout, which the skin never does today (taint: a tainted layout makes the quest item buttons it creates tainted). Needs a design and a taint study; it may only be safe as a SaftUI-drawn list beside or in place of Blizzard's.
 - *A max height and a scroll frame:* the same hazard. Blizzard already limits the tracker's height (its Edit Mode Height) and collapses modules that don't fit; putting its container in a scroll frame means re-parenting or sizing it from addon code. To be studied with zone grouping.
 

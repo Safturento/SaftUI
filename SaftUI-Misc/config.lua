@@ -53,6 +53,14 @@ st.defaults.skinning = {
 st.defaults.objectivetracker = {
 	font = 'normal',
 	header_font = 'normal',
+	-- The colors of a finished and a failed objective's line (the skin's
+	-- OT:StatusColor), as { r, g, b } arrays edited in place. Completed is
+	-- Blizzard's DIM_GREEN_FONT_COLOR (its own completed lines are a plain grey),
+	-- Failed the text red of the Colors page.
+	status_colors = {
+		completed = { 0.251, 0.753, 0.251 },
+		failed = { 220 / 255, 100 / 255, 100 / 255 },
+	},
 }
 
 -- Forever's swing timer bars (SaftUI-Misc/Skinning/blizzard/Blizzard_SwingTimerPosition.lua).
