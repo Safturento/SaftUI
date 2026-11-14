@@ -35,3 +35,17 @@ Answers the owner has given to the questions and discrepancies. Each stands as a
 23. **Under the Blizzard theme, meaning-carrying colours stay SaftUI's:** the rule editor's AND and OR, the own mark and the diff icon. ("Agreed, maybe if it bothers me later we can change this but it's fine for now")
 24. **Unexplained values get tidied toward consistency:** a spacing scale is written down and values move onto it where that changes nothing a player would miss. ("A lot of these could be hard coded years ago by me or recently by you, if you think we can do something to improve consistency go for it")
 25. **Overlapping mover labels:** where movers overlap in edit mode, only the one under the mouse shows its label. ("yeah it's pretty unreadable, that's a good call. we can grab the names from the swap tooltip anyways when we need them")
+
+## 2026-11-13, the last four questions
+
+26. **The slider keeps today's look:** a light knob over a blue fill. ("That's fine with me")
+27. **Rows inside a menu are the page's rows:** 38 tall, in a 400-wide menu. ("A works for me!")
+28. **Thin's default background matches Thick's.** "lets actually just update thin's default background color to match the thick's default to keep everything consistent". This also settles the grey and red text's contrast under Thin.
+29. **Hover and selection tints: two strengths, by meaning.** 25% for any hovered or selected row, everywhere; 15% for a selected object's fill, such as a mover. ("Sounds good.")
+30. **The action buttons' hover highlight is too strong** and hides the icon: it is dimmed. "the highlight on the action buttons is pretty powerful and makes it hard to see the icon ... we should probably dim it"
+
+## 2026-11-13, edit mode
+
+31. **Which movers show is two toggles, Show disabled and Show hidden,** not a switch: showing frames' movers always show. ("what if this is actually just two buttons 'Show disabled' and 'Show hidden'?")
+32. **The history tracks every change,** in two parts: first what edit mode and bulk actions change, then every setting changed in `/sui`. ("I think it should track everything, if you want to split it into two parts that's totally fine with me.")
+33. **What counts as one step is to be settled from research** into well-designed history systems, so a run of small nudges can't flood the list; building starts with the first definition and is adjusted. ("if someone decides to nudge the frame 16 pixels one pixel at a time does that become 16 entries in the history? that could flood it and wipe out meaningful changes easily.")
