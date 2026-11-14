@@ -156,7 +156,11 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **Shape of work:** A project: a design round with the user (automatic or chosen scale, border thickness, pixel fonts, per-machine or per-profile), then an audit of every place that assumes a unit is a pixel, a "one pixel" token and rounding helpers used everywhere (this meets the design system's tokens table), and in-game checks at 1080p, 1440p and 4K. Best done after the design system's tokens and spacing are in code, since that work touches the same constants.
 
-**Open questions:** All of the design round's. Does the user play the same profile on several machines? Which displays (exact resolutions)?
+**Decided so far (2026-11-13):** The user plays at 1440p; the problem is their friends': "I have friends who play at different resolutions including 1080p and 3456x2234 (mac) that are having scaling issues I'd like to resolve for them". So it must work on the addon's defaults with no setup. Proposed and accepted ("I like that fix, lets do that"): the scale is automatic, the screen's height over 1440 (0.75 at 1080p, about 1.55 on that Mac), with a "UI size" slider in Global Settings to override it; borders are whole pixels, the scale rounded to a whole number and never under 1 (1 at 1080p and 1440p, 2 on the Mac); every size and position rounded to whole pixels.
+
+**Fonts:** The user: "I almost wonder if this would be a good time to move away from pixel fonts anyways, maybe we can find a non pixel font that looks good at smaller sizes, agency fb is a great font but looks a bit rough when really small". A shortlist of free condensed faces is mocked up at every place the Pixel font is used (`.superpowers/brainstorm/46409-1794604463/content/small-fonts-v1.html`); the two or three the user likes get tried in game at each scale before one is chosen. This joins the font roles followup ("Fonts: separate the fonts users pick per kind of text from SaftUI's internal font objects").
+
+**Open questions:** Which small-text face. Whether Agency FB stays for labels. The Mac's taller aspect ratio (less width than 16:9).
 
 ### 2026-11-13 — Bags: a general sort order of draggable blocks, with a per-category override
 
