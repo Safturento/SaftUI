@@ -423,3 +423,86 @@ test('the check list and the Apply list pad their rows 4 inside the edge on ever
 	W.CloseList()
 	eq(#take_errors(), 0, 'no errors')
 end)
+
+test('a check list with buttons: All and None under the rows, each applying at once and leaving it open', function()
+	local owner = W.Box(st:CreateFrame('Button', nil, UIParent))
+	owner:SetSize(52, 14)
+	owner:SetPoint('CENTER', UIParent, 'CENTER', 0, 0)
+	local entries = { { key = 'a', label = 'A' }, { key = 'b', label = 'B' }, { key = 'c', label = 'C' } }
+	local checked = { b = true }
+	local ran = {}
+	local function isChecked(key) return checked[key] end
+	local function onToggle(key) checked[key] = not checked[key] or nil end
+	local function all() ran[#ran + 1] = 'all'; for _, e in ipairs(entries) do checked[e.key] = true end end
+	local function none() ran[#ran + 1] = 'none'; checked = {} end
+	local buttons = { { label = 'All', onClick = all }, { label = 'None', onClick = none } }
+	local function marks()
+		local out = {}
+		for i = 1, 3 do out[i] = tostring(W.GetListFrames().rows[i].box:GetChecked()) end
+		return table.concat(out, ',')
+	end
+
+	theme('thick')
+	W.OpenCheckList(owner, entries, isChecked, onToggle, buttons)
+	local list = W.GetListFrames()
+	eq(W.ListOwner(), owner, 'open')
+	local shown = {}
+	for _, b in ipairs(list.checkButtons) do
+		if b:IsShown() then shown[#shown + 1] = b end
+	end
+	eq(#shown, 2, 'two buttons')
+	eq(shown[1].text:GetText() .. ',' .. shown[2].text:GetText(), 'All,None', 'All then None')
+	for i, b in ipairs(shown) do
+		eq(H.size_of(b), '80x24', 'button ' .. i .. ': 80 by FIELD_HEIGHT')
+		check(inside(b, list.frame), 'button ' .. i .. ' inside the list')
+		check(b:GetTop() <= list.rows[3]:GetBottom() + 0.001, 'button ' .. i .. ' under the rows')
+		H.check_box(b, 'Thick: button ' .. i, nil, true)
+	end
+	eq(shown[2]:GetLeft() - shown[1]:GetRight(), 6, '6 apart')
+	eq(math.floor(shown[1]:GetLeft() - list.frame:GetLeft() + 0.5),
+		math.floor(list.frame:GetRight() - shown[2]:GetRight() + 0.5), 'centred')
+	eq(math.floor(list.rows[3]:GetBottom() - shown[1]:GetTop() + 0.5), 6, '6 under the rows')
+	check(list.frame:GetWidth() >= 166 + 10, 'at least the buttons and the insets wide')
+	eq(list.frame:GetHeight(), 3 * 22 + 10 + 6 + 24, 'the rows, 5 above and below, and the buttons with 6 over them')
+	eq(marks(), 'false,true,false', 'the marks')
+	click(shown[1])
+	eq(ran[1], 'all', 'All ran')
+	eq(marks(), 'true,true,true', 'every box marked at once')
+	eq(W.ListOwner(), owner, 'the list stays open')
+	click(shown[2])
+	eq(ran[2], 'none', 'None ran')
+	eq(marks(), 'false,false,false', 'every box cleared')
+	eq(W.ListOwner(), owner, 'still open')
+	stub.fire_script(list.catcher, 'OnKeyDown', 'ESCAPE')
+	eq(W.ListOwner(), nil, 'Esc closes it')
+	for i, b in ipairs(list.checkButtons) do check(not b:IsShown(), 'closed: button ' .. i .. ' hidden') end
+
+	-- Without buttons: as today.
+	W.OpenCheckList(owner, entries, isChecked, onToggle)
+	for i, b in ipairs(list.checkButtons) do check(not b:IsShown(), 'no buttons: button ' .. i .. ' hidden') end
+	eq(list.frame:GetHeight(), 3 * 22 + 10, 'and no room for them')
+	W.CloseList()
+
+	-- A wide list is wider than its buttons ask; a narrow owner gets the buttons' width.
+	local wide = W.Box(st:CreateFrame('Button', nil, UIParent))
+	wide:SetSize(300, 24)
+	wide:SetPoint('CENTER', UIParent, 'CENTER', 0, 0)
+	W.OpenCheckList(wide, entries, isChecked, onToggle, buttons)
+	eq(list.frame:GetWidth(), 300, 'a wider owner keeps its width')
+	W.CloseList()
+
+	-- Under Blizzard the buttons are the panel button.
+	theme('blizzard')
+	W.OpenCheckList(owner, entries, isChecked, onToggle, buttons)
+	eq((H.panel_of(list.checkButtons[1])), 'Left=Up,Middle=Up,Right=Up', "Blizzard's panel button")
+	check_no_box(list.checkButtons[1], 'Blizzard: the All button')
+	check(inside(list.checkButtons[2], list.frame), 'inside the list')
+	click(list.checkButtons[1])
+	eq(ran[3], 'all', 'and it runs')
+	W.CloseList()
+	theme('thick')
+	W.OpenCheckList(owner, entries, isChecked, onToggle, buttons)
+	eq((H.panel_of(list.checkButtons[1])), '', 'Thick: no panel button')
+	W.CloseList()
+	eq(#take_errors(), 0, 'no errors')
+end)

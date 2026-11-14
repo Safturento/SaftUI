@@ -8,7 +8,7 @@ Wherever an icon fits (the owner's rule, from 2026-11-13 on): close, dropdown ca
 
 ## What the consumer provides
 
-The icon's name from `st.icons` (`x`, `chevronDown`, `chevronUp`, `rotateCcw`, `diff`, `ellipsis`, `ellipsisVertical`, `settings`), its size, its colour, and a tooltip naming what it does.
+The icon's name from `st.icons` (`x`, `chevronDown`, `chevronUp`, `rotateCcw`, `diff`, `ellipsis`, `ellipsisVertical`, `settings`, `funnel`, `arrowDownToLine`, and for the edit mode bar `logOut`, `grid3x3`, `magnet`, `alignStartVertical`, `layers`, `mapPin`, `eye`, `powerOff`, `search`, `undo2`, `redo2`, `history`, `pictureInPicture2`, `panelTop`), its size, its colour, and a tooltip naming what it does.
 
 ## Rules
 
@@ -27,11 +27,13 @@ The icon's name from `st.icons` (`x`, `chevronDown`, `chevronUp`, `rotateCcw`, `
 | `rotate-ccw` | reset | 14 | `accent`, `white` |
 | `diff` | diff icon | 16 | `diff` |
 | `ellipsis-vertical` | the menu item's icon (spec; in the `sb-task5` build) | 16 | `text-grey`, `accent` |
-| `chevron-up`, `ellipsis`, `settings` | registered, unused | | |
+| `chevron-up`, `chevron-down` | the position nudges (12 x 12, one texture per arrow) | 12 | `text-grey`, `text` |
+| `log-out`, `grid-3x3`, `magnet`, `align-start-vertical`, `layers`, `map-pin`, `eye`, `power-off`, `search`, `undo-2`, `redo-2`, `history`, `picture-in-picture-2`, `panel-top` | the edit mode bar (registered with the kit's icon button; see Button) | 16 | `text-grey`, `accent` |
+| `ellipsis`, `settings` | registered, unused | | |
 
 ## To replace with Lucide
 
-These are hand-made today and should become Lucide icons with tooltips: the loot feed's "F" and "V" letter buttons (`funnel`, `chevrons-down`), the bag view glyphs drawn from rectangles (`square`, `layout-grid`, `grip`, `rows-3`), the drag handle's 2 x 2 dots (`grip-vertical`), the position nudges' drawn triangles (`chevron-up`, `chevron-down`), the resize corner, and the hand-made funnel, eye open and closed, and mail TGAs (`funnel`, `eye`, `eye-off`, `mail`).
+These are hand-made today and should become Lucide icons with tooltips: the loot feed's "F" and "V" letter buttons (`funnel`, `chevrons-down`), the bag view glyphs drawn from rectangles (`square`, `layout-grid`, `grip`, `rows-3`), the drag handle's 2 x 2 dots (`grip-vertical`), the resize corner, and the hand-made funnel, eye open and closed, and mail TGAs (`funnel`, `eye`, `eye-off`, `mail`).
 
 ## Do and don't
 
