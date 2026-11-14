@@ -46,7 +46,7 @@ function LT:UpdateConfig()
 			self:UpdateLootFeedConfig()
 			-- The new filters give a different list, so start back at the top.
 			self.feed.offset = 0
-			self.feed.reset_button:Hide()
+			self:UpdateFeedButtons()
 			self:UpdateFeed()
 		end)
 	end

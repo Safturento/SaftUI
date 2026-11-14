@@ -35,36 +35,54 @@ function LT:GetFilteredItems(useCache)
 	return items
 end
 
+-- The filter menu's entries, top to bottom: Self Only first, as it narrows
+-- whatever the kinds show, then the kinds. Each is a key of config.feed.filters.
+local FILTER_ENTRIES = {
+	{ key = 'Self', label = 'Self Only' },
+	{ key = 'Loot', label = 'Loot' },
+	{ key = 'Rolls', label = 'Rolls' },
+	{ key = 'Gold', label = 'Gold' },
+	{ key = 'Currency', label = 'Currency' },
+	{ key = 'Skill', label = 'Skill ups' },
+	{ key = 'Experience', label = 'Experience' },
+	{ key = 'Reputation', label = 'Reputation' },
+	{ key = 'Honor', label = 'Honor' },
+}
+LT.FILTER_ENTRIES = FILTER_ENTRIES
+
 local function isChecked(key)
-    return LT.config.feed.filters[key]
+	return LT.config.feed.filters[key]
 end
 
-local function setChecked(key, menuInputData, menu)
-    LT.config.feed.filters[key] = not LT.config.feed.filters[key]
-    LT:UpdateFeed()
+-- A click on a row: the filter flips and the feed is drawn again at once. The
+-- list stays open, as the kit's check list does.
+local function toggle(key)
+	local filters = LT.config.feed.filters
+	filters[key] = not filters[key]
+	LT:UpdateFeed()
 end
 
-function LT:OpenSlotOptions(filterButton, mouseButton, down)
-    self.filterDropdown:Open()
+-- Opens SaftUI's own check list (the options kit's W.OpenCheckList, Core's) at the
+-- filter button's side: on the far side of the button from the feed, in the
+-- button's row, so it covers neither the feed nor the jump button.
+function LT:OpenSlotOptions()
+	local feed, W = self.feed, st.OptionsWidgets
+	local anchor, button = feed.filterMenuAnchor, feed.filterButton
+	if GameTooltip:IsOwned(button) then GameTooltip:Hide() end
+	anchor:SetSize(W.WIDTH.select, button:GetHeight())
+	anchor:ClearAllPoints()
+	if feed.buttonsOnLeft then
+		anchor:SetPoint('BOTTOMRIGHT', button, 'BOTTOMLEFT', -self.config.feed.spacing, 0)
+	else
+		anchor:SetPoint('BOTTOMLEFT', button, 'BOTTOMRIGHT', self.config.feed.spacing, 0)
+	end
+	W.OpenCheckList(anchor, FILTER_ENTRIES, isChecked, toggle)
 end
 
 function LT:InitializeFilterDropdown()
-	local filterButton = st:CreateButton(self.feed:GetName()..'FilterButton', self.feed, 'F', 'theme', 'solid')
-	filterButton:SetSize(20, 20)
+	local filterButton = self:CreateFeedIconButton(self.feed:GetName()..'FilterButton', st.icons.funnel,
+		'Filter the loot feed', 'Choose which kinds of entry the feed shows.')
 	self.feed.filterButton = filterButton
+	self.feed.filterMenuAnchor = CreateFrame('Frame', nil, self.feed)
 	self:HookScript(filterButton, 'OnClick', 'OpenSlotOptions')
-
-	local entries = {
-		Loot = { text = 'Loot' },
-		Skill = { text = 'Skill ups' },
-		Gold = { text = 'Gold' },
-		Self = { text = 'Self Only' },
-		Honor = { text = 'Honor' },
-		Currency = { text = 'Currency' },
-		Experience = { text = 'Experience' },
-		Reputation = { text = 'Reputation' },
-		Rolls = { text = 'Rolls' },
-	}
-	self.filterDropdown = st:CreateCheckboxDropdown(
-	    "SaftUILootFilterDropdownMenu", filterButton, entries, isChecked, setChecked)
 end
