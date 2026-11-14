@@ -443,7 +443,7 @@ test("Copy from lists a migrated profile's Theme and Background, not its old tem
 	player.theme, player.background, health.theme, health.background = unpack(kept)
 end)
 
-test('the unit picker lists the units in a fixed order, Player first, and no Profile (it is the footer control)', function()
+test('the unit picker lists the units in a fixed order, Player first, and no Profile (it is on each unit page\'s line)', function()
 	local view = OM.BuildView({ Unitframes = UF:GetConfigTable() }, 'Unitframes')
 	local keys = {}
 	for i, entry in ipairs(view.picker.values) do keys[i] = entry.key end
@@ -551,8 +551,8 @@ test('every unit-level option has a tooltip and no Ace width', function()
 			check(type(option.desc) == 'string' and option.desc ~= '', where .. ' has a desc')
 		end
 	end)
-	-- The footer control's options and the Unit frame profiles dialog's.
-	for where, tree in pairs({ footer = config.footer, dialog = UF.GenerateProfileConfigGroup() }) do
+	-- The unit pages' line (Copy from, Profile, Manage), the plates' and the Unit frame profiles dialog's.
+	for where, tree in pairs({ line = config.args.player.pickerControl, plates = config.args.nameplate.pickerControl, dialog = UF.GenerateProfileConfigGroup() }) do
 		local count = 0
 		each_option(tree, function(option, path)
 			count = count + 1

@@ -210,7 +210,7 @@ function OW.PickerFlow(widths, width)
 	local line = st.OptionsWidgets.FIELD_HEIGHT
 	local places, x, y = {}, 0, 0
 	for i, w in ipairs(widths) do
-		if i > 1 and x > 0 and x + w > width then
+		if i > 1 and x + w > width then
 			x, y = 0, y + line + OW.PICKER_LINE_GAP
 		end
 		places[i] = { x = x, y = y }

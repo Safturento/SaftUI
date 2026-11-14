@@ -686,6 +686,10 @@ test("a pick's control: a dropdown drawn after its name, and the line wrapping a
 			local _, py = f.picker.frame:GetCenter()
 			local _, by = profile.frame:GetCenter()
 			eq(by, py, tag .. ': one line')
+			-- The name is the Unit label's colour, and level with the line's middle.
+			eq(table.concat({ label:GetTextColor() }, ','), table.concat({ f.pickerLabel:GetTextColor() }, ','), tag .. ": the name in the Unit label's colour")
+			local _, ly = label:GetCenter()
+			eq(ly, py, tag .. ": the name level with the line's middle")
 			local bodyTop = f.body:GetTop()
 			local oneLine = f.picker.frame:GetBottom()
 			eq(bodyTop, oneLine, tag .. ": the body's top under the line")

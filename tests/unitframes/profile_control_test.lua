@@ -188,6 +188,20 @@ test("the line's dropdown lists the profiles and switches, and the page draws ag
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+test("a switch on the line keeps the unit and tab you are on", function()
+	for _, case in ipairs({ { 'party', 'general' }, { 'nameplate', 'general' } }) do
+		st.Config:Open('Unitframes', case[1], case[2])
+		click((footer()).frame)
+		pick('Healer')
+		tick()
+		local state = OW:GetState()
+		eq(state.page .. '/' .. state.pick .. '/' .. state.tab, 'Unitframes/' .. case[1] .. '/' .. case[2], case[1] .. ': still there after the switch')
+		eq((footer()).text:GetText(), 'Healer', case[1] .. ': showing the new profile')
+		close_all()
+	end
+	eq(#take_errors(), 0, 'no errors')
+end)
+
 test('Manage opens Unit frame profiles: the profile, then New, Copy, Rename, Delete, Export and Import, then Close', function()
 	st.Config:Open('Unitframes')
 	click(select(2, footer()).frame)
@@ -302,23 +316,39 @@ local function found(name)
 	return out
 end
 
-test("a search for the profile finds it on every pick's path, a result opens the Unitframes page on that pick", function()
+test("a search for the unit frame profile lists it once, not once per unit: by its words, and by its names", function()
 	st.Config:Open('Fonts')
 	local f = frames()
-	f.search:SetText('profile')
-	tick(0.3)
-	local profiles, manages = found('Profile'), found('Manage')
-	check(#profiles > 2 and #manages == 0 or #manages > 0, 'the dropdown and Manage are found')
-	local plate
-	for _, c in ipairs(profiles) do
-		if c.row.path[2] == 'nameplate' then plate = c end
+	for _, case in ipairs({
+		{ 'unit frame profile', 1, 1 }, { 'unit frame', 1, 1 }, { 'profile', 1, 1 }, { 'manage', 0, 1 },
+	}) do
+		f.search:SetText(case[1])
+		tick(0.3)
+		local what = '"' .. case[1] .. '"'
+		eq(#found('Profile'), case[2], what .. ': the Profile dropdown once')
+		eq(#found('Manage'), case[3], what .. ': Manage once')
 	end
-	check(plate ~= nil, "on the Enemy nameplates pick's path")
-	eq(#f.pickerWidgets, 0, 'no control over the results')
-	click(plate.frame)
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("a unit frame profile result keeps the unit and tab you are on, and from another page opens Unitframes", function()
+	st.Config:Open('Unitframes', 'party', 'general') -- no element tabs in this world
+	local f = frames()
+	f.search:SetText('unit frame profile')
+	tick(0.3)
+	check(OW:GetState().search ~= '', 'searching')
+	click(found('Manage')[1].frame)
 	local state = OW:GetState()
-	eq(state.page .. '/' .. state.pick, 'Unitframes/nameplate', 'a result opens the page on its pick')
-	eq(table.concat((function() local t = {} for i, w in ipairs(f.pickerWidgets) do t[i] = w.type end return t end)(), ','), 'select,execute', 'with Profile and Manage, no Copy from')
+	eq(state.page .. '/' .. state.pick .. '/' .. state.tab, 'Unitframes/party/general', 'the unit and tab as they were (not Player)')
+	eq(#f.pickerWidgets, 3, "with the line's control")
+	st.Config:Open('Fonts')
+	f.search:SetText('unit frame profile')
+	tick(0.3)
+	click(found('Profile')[1].frame)
+	state = OW:GetState()
+	eq(state.page, 'Unitframes', 'from another page it opens the unit frames page')
+	check(state.pick ~= nil and #f.pickerWidgets >= 2, 'on a pick with the control')
 	close_all()
 	eq(#take_errors(), 0, 'no errors')
 end)

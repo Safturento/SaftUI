@@ -99,7 +99,8 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	(S.FollowMenu, after the dialog's), and closes with the window, on
 	OW:Navigate (a search result's too) and on a tab or pick (Select).
 
-	A page's footer control is its group's footer (SaftUI's field,
+	A page's footer control (in the kit; no page draws one now: the unit
+	frames' profile is on the Unit dropdown's line) is its group's footer (SaftUI's field,
 	OM.BuildView's view.footer): a group whose options are drawn in the
 	footer's region after its name (their one label), with the options kit's
 	own widgets, so in either look. It's centred in the region (left of Reload
@@ -114,11 +115,13 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	UF's profile prompts).
 
 	A pick's control is the picked group's pickerControl (SaftUI's field,
-	OM.BuildView's view.picker.control): a group whose options, buttons, are
-	drawn on the picker's line, 12 right of the picker and apart, with the
-	options kit's own widgets and their options' tooltips, on every tab of
-	that pick (DrawPickerControl). A pick without one draws none; nor do
-	search results.
+	OM.BuildView's view.picker.control): a group whose options are drawn on
+	the picker's line, 12 right of the picker and apart (a button as it is,
+	any other option after its name, 10 before its widget), with the options
+	kit's own widgets and their options' tooltips, on every tab of that pick
+	(DrawPickerControl). OW.PickerFlow wraps a piece that would pass the
+	body's width onto a new line, and the body starts under the last. A pick
+	without one draws none; nor do search results.
 
 	Esc closes the window through a SaftUI keyboard catcher that is on only
 	while the window is shown (not Blizzard's UISpecialFrames). It passes every

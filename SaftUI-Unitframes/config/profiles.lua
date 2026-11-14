@@ -282,7 +282,8 @@ end
 -- The unit frame profile's two options, for each unit's pickerControl (SaftUI's
 -- field: /sui draws them on the Unit dropdown's line, Profile after its name,
 -- then Manage, which opens the dialog). Their orders (10 and 11) put them
--- after Copy from. Nameplate settings are in the unit frame profile, so the
+-- after Copy from. searchText (SaftUI's field) is what a search finds them
+-- by (OM.Search: listed once, not once per unit). Nameplate settings are in the unit frame profile, so the
 -- nameplate pages have them too.
 function UF.GenerateProfileControl()
 	-- The dialog's select takes its own line (size 'wide'); the line has none.
@@ -291,12 +292,14 @@ function UF.GenerateProfileControl()
 	profile.size = nil
 	profile.name = 'Profile'
 	profile.order = 10
+	profile.searchText = 'Unit frame profile'
 	return {
 		profile = profile,
 		manage = {
 			order = 11,
 			type = 'execute',
 			name = 'Manage',
+			searchText = 'Unit frame profile',
 			desc = 'Opens Unit frame profiles, to make, copy, rename, delete, export or import one.',
 			func = function() UF:OpenProfileDialog() end,
 		},
