@@ -471,7 +471,7 @@ function OTP:GetConfigTable()
 				local color = self.config.status_colors[state]
 				color[1], color[2], color[3] = r, g, b
 				local skin = Skin()
-				if skin then skin:UpdateConfig() end
+				if skin then skin:RecolorLines() end
 			end,
 		}
 		local function Shipped() return st.defaults.objectivetracker.status_colors[state] end
@@ -487,7 +487,7 @@ function OTP:GetConfigTable()
 				local color, shipped = self.config.status_colors[state], Shipped()
 				color[1], color[2], color[3] = shipped[1], shipped[2], shipped[3]
 				local skin = Skin()
-				if skin then skin:UpdateConfig() end
+				if skin then skin:RecolorLines() end
 			end,
 			value = function()
 				local shipped = Shipped()
@@ -527,7 +527,7 @@ function OTP:GetConfigTable()
 							completed = StatusColor(1, 'Completed', 'completed',
 								"The color of an objective that's done, in the quest and other lists. Blizzard's own is a plain grey; a line you haven't finished keeps Blizzard's color."),
 							failed = StatusColor(2, 'Failed', 'failed',
-								"The color of a failed objective, and of a failed quest's line. Under the mouse Blizzard still brightens it, as it does every line."),
+								"The color of a failed objective, and of a failed quest's line. Under the mouse Blizzard brightens a failed quest line, as it does its unfinished lines."),
 						},
 					},
 					position = position,

@@ -303,7 +303,7 @@ end
 -- tables of r, g, b, the highlighted pairs each other's `reverse`. A line's
 -- Text keeps the table it was given in colorStyle.
 local COLORS = {
-	Normal = { 0.8, 0.8, 0.8, r = 0.8, g = 0.8, b = 0.8 }, -- also OT.NORMAL, which the skin tests read as an array
+	Normal = { 0.8, 0.8, 0.8, r = 0.8, g = 0.8, b = 0.8 }, -- the array part is the tests' own (OT.NORMAL), Blizzard's has only r, g, b
 	NormalHighlight = { r = 1, g = 1, b = 1 },
 	Failed = { r = 0.8, g = 0.1, b = 0.1 },
 	FailedHighlight = { r = 1, g = 0.1, b = 0.1 },

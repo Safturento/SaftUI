@@ -321,20 +321,23 @@ end
 
 -- AddObjective sets the line's text color after GetLine, from the style it's
 -- given, so the status color goes on after it.
+local function OnAddObjective(block, objectiveKey)
+	local line = block.usedLines and block.usedLines[objectiveKey]
+	if line then ColorLine(line, Active()) end
+end
 local function TryOnAddObjective(block, objectiveKey)
-	xpcall(function()
-		local line = block.usedLines and block.usedLines[objectiveKey]
-		if line then ColorLine(line, Active()) end
-	end, geterrorhandler())
+	xpcall(OnAddObjective, geterrorhandler(), block, objectiveKey)
+end
+
+local function ColorBlock(block, active)
+	for _, line in pairs(block.usedLines or {}) do ColorLine(line, active) end
 end
 
 -- UpdateHighlight sets every line's color again as the mouse goes on and off
 -- the block (a failed line's too): SaftUI's goes back on after it.
+local function OnUpdateHighlight(block) ColorBlock(block, Active()) end
 local function TryOnUpdateHighlight(block)
-	xpcall(function()
-		local active = Active()
-		for _, line in pairs(block.usedLines or {}) do ColorLine(line, active) end
-	end, geterrorhandler())
+	xpcall(OnUpdateHighlight, geterrorhandler(), block)
 end
 
 local function StyleBlock(block, active)
@@ -601,6 +604,20 @@ end
 -- Objective tracker: on, the tracker is hooked if it wasn't and takes the
 -- look; off or under the Blizzard theme, Blizzard's look goes back on. Widget
 -- calls only, so it runs in combat too.
+-- A status color changed on the page: only the lines are colored again (no
+-- StyleAll, which would restyle every bar and item button for each step of the
+-- color picker).
+function OT:RecolorLines()
+	if not installed then return end
+	local active = Active()
+	EachModule(function(module)
+		if module.ObjectivesBlock then Apply(ColorBlock, module.ObjectivesBlock, active) end
+		for _, blocks in pairs(module.usedBlocks or {}) do
+			for _, block in pairs(blocks) do Apply(ColorBlock, block, active) end
+		end
+	end)
+end
+
 function OT:UpdateConfig()
 	if installed then
 		self:StyleAll()

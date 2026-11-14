@@ -75,6 +75,15 @@ local function Insets(frame)
 	return table.concat(out, ',')
 end
 
+-- Runs fn with chat's print silenced (edit mode says "Edit mode on.").
+local function printed(fn)
+	local real = print
+	print = function() end -- edit mode says "Edit mode on."
+	local ok, err = pcall(fn)
+	print = real
+	if not ok then error(err, 0) end
+end
+
 local function SetMargin(value)
 	profile.misc.clamp_inset = value
 	st:UpdateScreenMargin()
@@ -233,6 +242,9 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 	test(client .. ': SaftUI reads the tracker\'s size with ignoreRect only, so no OnSizeChanged can run in its call', function()
 		world(client, { height = 400 }, { watch = true })
 		local reads = OT.size_reads
+		-- Edit mode open, so UpdateFootprint reads the tracker's height on each
+		-- of Blizzard's UpdateHeight and when edit mode opens.
+		printed(function() st.EditModeFrames:Activate() end)
 		OT.manage(-50)
 		OT.show()
 		OT.break_snap()
@@ -240,6 +252,7 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		SetMargin(0)
 		OTP:ApplyHolder()
 		OTP:KeepInMargin()
+		OTP:UpdateFootprint()
 		-- A capture too: Blizzard's layout moves the tracker, nothing saved yet.
 		profile.objectivetracker.position = nil
 		OT.edit_mode_moves(MOVED)
@@ -298,14 +311,6 @@ end
 -- The mover's outline in edit mode: as tall as the tracker (a read of
 -- GetHeight(true), as the skin reads sizes), never shorter than the header,
 -- hanging down from the holder's top and sides so what's saved is the holder's.
-local function printed(fn)
-	local real = print
-	print = function() end -- edit mode says "Edit mode on."
-	local ok, err = pcall(fn)
-	print = real
-	if not ok then error(err, 0) end
-end
-
 local function outline(client, mover)
 	local overlay = mover.overlay
 	return ('%d,%d,%d,%d'):format(overlay:GetLeft(), overlay:GetRight(), overlay:GetTop(), overlay:GetBottom())
@@ -359,6 +364,54 @@ test("what the mover saves is the holder's spot, whatever the outline's height",
 	eq(('%d,%d'):format(OTP.holder:GetSize()), '260,32', 'the holder is the header')
 	eq(top_right(OT.tracker), top_right(OTP.holder), 'the tracker on the holder')
 	eq(mover.overlay:GetTop(), OTP.holder:GetTop(), 'the outline from the same top')
+	clean()
+end)
+
+-- A drag of the mover's overlay by dx, dy (UIParent units), as
+-- tests/chat/screen_margin_test.lua drives one.
+local function drag(mover, dx, dy)
+	local EM = st.EditModeFrames
+	local scale = UIParent:GetEffectiveScale()
+	stub.cursor_x, stub.cursor_y = 500 * scale, 300 * scale
+	EM:StartDrag(mover)
+	stub.cursor_x, stub.cursor_y = (500 + dx) * scale, (300 + dy) * scale
+	EM:UpdateDrag(mover)
+	EM:StopDrag(mover)
+end
+
+test('a drag with snapping off saves the same position as before the outline grew', function()
+	world('forever')
+	local mover = st.EditModeFrames.movers.objectivetracker
+	printed(function() st.EditModeFrames:Activate() end)
+	check(mover.overlay:GetHeight() > 32, 'the outline is tall')
+	drag(mover, -150, 115)
+	local position = profile.objectivetracker.position
+	eq(('%d,%d'):format(position.x_off, position.y_off), '-170,-160', 'the default spot moved by the drag, nothing more')
+	eq(('%d,%d'):format(OTP.holder:GetSize()), '260,32', 'the holder is still the header')
+	clean()
+end)
+
+test("with Snap to frames on, a drag snaps by the outline's full height (the outline is what the player sees)", function()
+	world('forever')
+	local mover = st.EditModeFrames.movers.objectivetracker
+	profile.editmode.snap_frames = true
+	printed(function() st.EditModeFrames:Activate() end)
+	drag(mover, -150, 115)
+	local position = profile.objectivetracker.position
+	-- The tall outline's middle (a line of its own) snaps to the screen's centre
+	-- line, 2 up from where the drag alone puts it (-160): a header-only outline
+	-- would save -160.
+	eq(('%d,%d'):format(position.x_off, position.y_off), '-170,-158', 'snapped by the tall outline')
+	eq(('%d,%d'):format(OTP.holder:GetSize()), '260,32', 'the holder is still the header')
+	clean()
+end)
+
+test('with edit mode closed, Blizzard\'s UpdateHeight leaves the outline on the holder', function()
+	world('forever')
+	local mover = st.EditModeFrames.movers.objectivetracker
+	OT.apply_layout()
+	OT.manage(-50)
+	eq(mover.overlay:GetHeight(), 32, 'the outline is the holder, read and re-anchored only in edit mode')
 	clean()
 end)
 

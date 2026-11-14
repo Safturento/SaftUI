@@ -103,6 +103,20 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		clean()
 	end)
 
+	test(client .. ": a pooled line coloured, then the skin off, then handed out again with the same state: Blizzard's", function()
+		world(client)
+		local block = mixed()
+		-- The line is freed (a quest with fewer objectives), then the skin goes off
+		-- while it is pooled.
+		OT.layout(quest_module(), { { id = 1, title = 'Mixed', objectives = { 'Kill 0/8 boars' } } })
+		profile.skinning.objective_tracker = false
+		skin:UpdateConfig()
+		OT.layout(quest_module(), MIXED)
+		eq(rgb(block.usedLines[2].Text), hex(OT.COLORS.Complete), "Blizzard's Complete, not a stale Completed")
+		eq(rgb(block.usedLines[3].Text), hex(OT.COLORS.Failed), "Blizzard's Failed")
+		clean()
+	end)
+
 	test(client .. ': a color changed on the page reaches the lines at once; its default comes back', function()
 		world(client)
 		local block = mixed()
@@ -181,10 +195,16 @@ test('the page: Objective colors, a Completed and a Failed color, each with its 
 	end
 	check(general.args.position.order > section.order, 'Position stays last')
 
-	local block = mixed()
+	-- With a progress bar, so a full restyle would show.
+	local block = OT.layout(quest_module(), { { id = 1, title = 'Mixed', objectives = MIXED[1].objectives, progress = true } })[1]
 	eq(T.rgb(completed.get()), COMPLETED_DEFAULT, 'Completed reads the profile')
 	check(not completed.default.differs(), 'at its default: no reset icon')
+	local restyled = 0
+	local real = st.SetBackdropIn
+	st.SetBackdropIn = function(...) restyled = restyled + 1; return real(...) end
 	completed.set({}, 0.1, 0.2, 0.9)
+	st.SetBackdropIn = real
+	eq(restyled, 0, 'a color step recolors the lines only, not every bar and item button')
 	eq(T.rgb(unpack(profile.objectivetracker.status_colors.completed)), T.rgb(0.1, 0.2, 0.9), 'Completed saved')
 	eq(rgb(block.usedLines[2].Text), T.rgb(0.1, 0.2, 0.9), 'and on the lines at once')
 	check(completed.default.differs(), 'now it differs')
