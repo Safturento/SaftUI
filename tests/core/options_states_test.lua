@@ -542,8 +542,9 @@ do
 			check(button.icon:IsShown(), 'the chevron')
 			check(button.backdropInfo ~= nil and button.outline:IsShown(), 'the box')
 		end
-		eq(F.shrink.icon:GetTexture(), st.icons.chevronRight, 'shrink points right')
-		eq(F.grow.icon:GetTexture(), st.icons.chevronLeft, 'grow points left')
+		eq(F.shrink.icon:GetTexture(), st.icons.minimize2, 'shrink wears minimize-2')
+		eq(F.grow.icon:GetTexture(), st.icons.maximize2, 'grow wears maximize-2')
+		eq(F.miniGrow.icon:GetTexture(), st.icons.maximize2, "the bar's grow wears maximize-2")
 		look('blizzard')
 		eq(atlases_of(F.miniGrow), sorted(art.grow.normal, glow), 'and back under Blizzard')
 		reset()
@@ -580,7 +581,8 @@ do
 				check(files_of(button):find('UI%-Panel%-Button'), what .. ": Blizzard's panel button: " .. files_of(button))
 				eq(button.backdropInfo, nil, what .. ': the box is off under Blizzard')
 			end
-			eq(F.shrink.icon:GetTexture(), st.icons.chevronRight, what .. ': the chevron points as before')
+			eq(F.shrink.icon:GetTexture(), st.icons.minimize2, what .. ': the Lucide fallback is minimize-2')
+			eq(F.grow.icon:GetTexture(), st.icons.maximize2, what .. ': and maximize-2')
 			-- Everything else is as with the art.
 			W.OpenColorPicker(F.window, { r = 1, g = 0, b = 0, onChange = function() end })
 			check(F.shrink.disabled, what .. ': disabled by the picker')

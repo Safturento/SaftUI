@@ -105,6 +105,8 @@ st.icons = {
 	move = st:TexturePath('lucide-move.tga'),
 	keyboard = st:TexturePath('lucide-keyboard.tga'),
 	list = st:TexturePath('lucide-list.tga'),
+	minimize2 = st:TexturePath('lucide-minimize-2.tga'), -- the options window's shrink
+	maximize2 = st:TexturePath('lucide-maximize-2.tga'), -- and its grow
 }
 
 st.FRAME_ANCHORS = {

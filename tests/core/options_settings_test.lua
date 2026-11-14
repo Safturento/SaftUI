@@ -326,10 +326,13 @@ test('under Blizzard: the inner frame in two parts, the arrows on the title bar,
 		parts(' full')
 		local close = st.ThemeArt.Close()
 		local function arrows(where)
-			eq(F.shrink:GetWidth() .. 'x' .. F.shrink:GetHeight(), '24x24', client .. where .. ": the close X's size")
-			eq(F.shrink:GetRight(), F.close:GetLeft() - 6, client .. where .. ': 6 left of the close button')
-			eq(F.close:GetTop() - F.shrink:GetTop(), (close.size - 24) / 2, client .. where .. ': centred on it (' .. close.size .. ' tall)')
-			check(F.shrink:GetFrameLevel() > F.titleBar:GetFrameLevel(), client .. where .. ': over the title bar')
+			-- The one beside the close X: shrink at full, grow at half.
+			local beside = OW:GetWindowSize() == 'full' and F.shrink or F.grow
+			eq(beside:GetWidth() .. 'x' .. beside:GetHeight(), '24x24', client .. where .. ": the close X's size")
+			eq(beside:GetRight(), F.close:GetLeft() - 6, client .. where .. ': 6 left of the close button')
+			eq(F.close:GetTop() - beside:GetTop(), (close.size - 24) / 2, client .. where .. ': centred on it (' .. close.size .. ' tall)')
+			eq(F.shrink:GetTop(), beside:GetTop(), client .. where .. ': shrink level with it')
+			check(beside:GetFrameLevel() > F.titleBar:GetFrameLevel(), client .. where .. ': over the title bar')
 			eq(F.window:GetRight() - 16, F.closeButton:GetRight(), client .. where .. ': Close 16 from the right')
 			eq(F.window:GetBottom() + 16, F.closeButton:GetBottom(), client .. where .. ': and 16 up')
 			eq(F.reloadButton:GetRight(), F.closeButton:GetLeft() - 12, client .. where .. ': Reload UI 12 left of Close')
@@ -358,7 +361,7 @@ test('under Blizzard: the inner frame in two parts, the arrows on the title bar,
 		parts(' half')
 		arrows(' half')
 		check(F.grow:IsShown(), client .. ': grow shown at half')
-		eq(F.grow:GetRight(), F.shrink:GetLeft() - 6, client .. ': 6 left of shrink')
+		eq(F.shrink:GetRight(), F.grow:GetLeft() - 6, client .. ': shrink 6 left of grow')
 		eq(F.content:GetWidth(), 368, client .. ': the body is 368')
 		for _, noise in ipairs({ 2 ^ -14, -2 ^ -14, 0 }) do
 			stub.size_noise = noise

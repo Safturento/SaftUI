@@ -127,8 +127,8 @@ test('Shrink at half: a 42 tall bar at the same corner with the name, the page, 
 	eq(w:GetTop() - F.close:GetTop(), 9, 'close 9 from the top'); eq(F.close:GetBottom() - w:GetBottom(), 9, 'and 9 from the bottom')
 	eq(w:GetWidth() % 2, 0, 'even'); check(w:GetWidth() <= 400, 'at most 400')
 	eq(w:GetWidth(), sum + sum % 2, 'the parts add up, rounded up to even')
-	eq(F.miniGrow.icon:GetTexture(), st.icons.chevronLeft, 'grow points left')
-	eq(F.miniGrow.icon:GetWidth(), 20, 'at 20')
+	eq(F.miniGrow.icon:GetTexture(), st.icons.maximize2, 'grow wears maximize-2')
+	eq(F.miniGrow.icon:GetWidth(), 16, 'at 16')
 	eq(F.close:GetParent(), w, 'the close X is still the window\'s'); check(F.close:GetFrameLevel() > F.mini:GetFrameLevel(), 'over the bar')
 	check(F.miniGrow:GetFrameLevel() > F.mini:GetFrameLevel() and F.miniNames:GetFrameLevel() > F.mini:GetFrameLevel(), 'its buttons over it')
 	-- The tooltips.
