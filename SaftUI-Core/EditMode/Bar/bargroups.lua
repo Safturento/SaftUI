@@ -6,7 +6,8 @@ local W = st.OptionsWidgets
 	The groups of the edit mode bar's controls (bar.lua):
 	  exit     (left, 10, section 'title')    Exit
 	  grid     (left, 20, section 'grid')     Grid, Grid size, Snap to grid,
-	                                          Snap to frames
+	                                          Snap to frames, Dim world,
+	                                          Coordinates
 	  options  (right, 90, section 'changes') Options
 	Each control is { key, frame, Lay, Refresh, ... } as bar.lua says. The
 	tooltips sit under the control (W.ShowTip), in the spec's wording; an icon
@@ -18,7 +19,7 @@ local W = st.OptionsWidgets
 	Guard, which does nothing in combat (the bar is gone then anyway, since
 	edit mode closes on entering combat; this is for the frames' last moment).
 
-	Grid, Grid size and the snaps read and write the profile's settings only
+	Grid, Grid size, the snaps, Dim world and Coordinates read and write the profile's settings only
 	through EM:GetSettings and EM:SetSetting (settings.lua), which tells the
 	grid and the bar ('SettingsChanged').
 ]]
@@ -138,6 +139,10 @@ EM:AddBarGroup({
 				"A dragged frame snaps to the grid's lines, shown or not. Hold Ctrl to drag without snapping."),
 			Toggle(bar, 'snapFrames', st.icons.alignStartVertical, 'snap_frames', 'Snap to frames',
 				"A dragged frame snaps to the edges and middles of the other frames shown, and to the screen's middle. Hold Ctrl to drag without snapping."),
+			Toggle(bar, 'dim', st.icons.layers, 'dim', 'Dim world',
+				'Darkens the game world behind your frames while edit mode is on.'),
+			Toggle(bar, 'coordinates', st.icons.mapPin, 'coordinates', 'Coordinates',
+				"Shows the selected frame's position by the corner it's anchored by."),
 		}
 	end,
 })

@@ -15,6 +15,8 @@ st.defaults.editmode = {
 	grid_size = 32,
 	snap_grid = false,
 	snap_frames = false,
+	dim = true,
+	coordinates = false,
 }
 
 st.defaults.fonts = {

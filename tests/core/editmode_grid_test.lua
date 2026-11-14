@@ -242,3 +242,47 @@ test('the /sui options', function()
 	check(settings.grid_size == 48, 'options set writes settings')
 	check(opts.args.general.get({ 'EditMode', 'general', 'grid_size' }) == 48, 'options get reads settings')
 end)
+
+test('Dim world: a full-screen black layer at 50%, under the grid, only while edit mode and Dim are on', function()
+	settings.grid = false
+	check(settings.dim == true, 'Dim world is on by default')
+	check(settings.coordinates == false, 'Coordinates is off by default')
+	if EM.active then EM:Deactivate() end
+	EM:UpdateDim()
+	check(not EM.dimFrame:IsShown(), 'edit mode off: hidden')
+
+	EM:Activate()
+	local dim = EM.dimFrame
+	check(dim:IsShown(), 'edit mode and Dim on: shown')
+	check(dim:GetFrameStrata() == 'BACKGROUND', 'BACKGROUND strata')
+	check(dim:GetFrameLevel() < EM.gridFrame:GetFrameLevel(), "under the grid's level")
+	check(not dim:IsMouseEnabled(), 'takes no mouse')
+	check(dim:GetParent() == UIParent, "a child of UIParent")
+	check(dim:GetLeft() == 0 and dim:GetBottom() == 0 and dim:GetRight() == UIParent:GetWidth()
+		and dim:GetTop() == UIParent:GetHeight(), 'over all of UIParent')
+	check(EM.DIM_ALPHA == 0.5, 'DIM_ALPHA')
+	local color
+	for _, region in ipairs({ dim:GetRegions() }) do
+		if region:GetObjectType() == 'Texture' and stub.state(region).color_texture then color = stub.state(region).color_texture end
+	end
+	check(color and color[1] == 0 and color[2] == 0 and color[3] == 0 and color[4] == 0.5, 'one black texture at 50%')
+
+	EM:SetSetting('dim', false)
+	check(not dim:IsShown(), 'Dim off: hidden')
+	EM:SetSetting('dim', true)
+	check(dim:IsShown(), 'Dim on again: shown')
+	EM:Deactivate()
+	check(not dim:IsShown(), 'edit mode off: hidden')
+	EM:SetSetting('dim', false)
+	EM:Activate()
+	check(not dim:IsShown(), 'edit mode on, Dim off: hidden')
+	EM:SetSetting('dim', true)
+	check(dim:IsShown(), 'turned on in edit mode: shown')
+	EM:Deactivate()
+end)
+
+test('the /sui options gain Dim world and Coordinates', function()
+	local g = EM:GetConfigTable().args.general.args
+	check(g.dim and g.coordinates, 'options: dim and coordinates')
+	check(g.dim.name == 'Dim world' and g.coordinates.name == 'Coordinates', 'their names')
+end)

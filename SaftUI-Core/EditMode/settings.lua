@@ -1,7 +1,7 @@
 local st = SaftUI
 local EM = st.EditModeFrames
 
--- Edit mode's grid and snapping settings: where they live, how they are set
+-- Edit mode's grid, snapping, Dim world and Coordinates settings: where they live, how they are set
 -- (EM:SetSetting, which the bar's controls and the "Edit mode" tab in /sui both
 -- use), and the screen events that redraw the grid. The values live in the
 -- profile (st.defaults.editmode); the bar (Bar/) shows them.
@@ -65,6 +65,10 @@ function EM:GetConfigTable()
 						"A frame you drag in edit mode snaps to the grid's lines, shown or not."),
 					snap_frames = generators.toggle(4, 'Snap to frames',
 						"A frame you drag in edit mode snaps to the edges and middles of the other frames on screen, and to the screen's middle."),
+					dim = generators.toggle(5, 'Dim world',
+						'Darkens the game world behind your frames while edit mode is on.'),
+					coordinates = generators.toggle(6, 'Coordinates',
+						"Shows the selected frame's position by the corner it's anchored by."),
 				},
 			},
 		},

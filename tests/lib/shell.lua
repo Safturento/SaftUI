@@ -480,6 +480,7 @@ function editmode_files()
 		'SaftUI-Core/EditMode/grid.lua',
 		'SaftUI-Core/EditMode/snap.lua',
 		'SaftUI-Core/EditMode/settings.lua',
+		'SaftUI-Core/EditMode/coordinates.lua',
 	}
 end
 

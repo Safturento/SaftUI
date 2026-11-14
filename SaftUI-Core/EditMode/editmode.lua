@@ -16,7 +16,8 @@ local callbacks = {}
 --   'Selected'         mover, or nil when nothing is selected now
 --   'Enabled', 'Disabled'  edit mode turned on or off
 --   'SettingsChanged'  key, or nil for every setting (a profile change): a
---                      setting of the grid and snapping changed (settings.lua)
+--                      setting of the grid, snapping, Dim world or
+--                      Coordinates changed (settings.lua)
 --   'Pressed'          mover: the mouse went down on its outline
 --   'DragStarted', 'DragStopped'  mover: a drag began, or ended (by a drop, or
 --                      dropped by a profile change)
