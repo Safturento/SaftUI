@@ -269,7 +269,7 @@ end
 function EM:GetDefaultPosition(mover)
 	local get = mover.def.getDefaultPosition
 	if not get then return nil end
-	local position = get()
-	if type(position) ~= 'table' then return nil end
+	local ok, position = xpcall(get, geterrorhandler())
+	if not ok or type(position) ~= 'table' then return nil end
 	return st.tablecopy(position, true)
 end

@@ -193,13 +193,11 @@ test("a bar's mover knows its module, follows its enable setting, and is hidden 
 	AB.config.bar2.enable = true
 	eq(EM:IsMoverDisabled(two), false, 'and on again')
 
-	AB.barTypes.pet.IsAvailable = function() return false end
-	eq(EM:IsMoverHidden(pet), true, 'the pet bar is hidden while IsBarAvailable is false')
-	AB.barTypes.pet.IsAvailable = function() return true end
+	-- The pet bar has no IsAvailable: the visibility driver ([nopet] hide) shows and hides it.
 	AB.bars.pet:Show()
-	eq(EM:IsMoverHidden(pet), false, 'shown when available and shown')
+	eq(EM:IsMoverHidden(pet), false, 'shown while the driver shows the bar')
 	AB.bars.pet:Hide()
-	eq(EM:IsMoverHidden(pet), true, 'hidden while the bar is not shown')
+	eq(EM:IsMoverHidden(pet), true, 'hidden while the driver hides it')
 
 	local default = EM:GetDefaultPosition(two)
 	eq(default.frame, 'SaftUI_ActionBar1', 'the default position is st.defaults')

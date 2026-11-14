@@ -451,6 +451,6 @@ function XP:OnEnable()
 			end
 			return true
 		end,
-		getDefaultPosition = function() return st.defaults.experience.position end,
+		getDefaultPosition = function() return st.tablecopy(st.defaults.experience.position, true) end,
 	})
 end

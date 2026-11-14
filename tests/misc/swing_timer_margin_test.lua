@@ -85,7 +85,13 @@ test("a swing timer mover is disabled while Blizzard's saved Visibility for its 
 	local EM = st.EditModeFrames
 	local mover = EM.movers.swingtimer_mainhand
 	eq(EM:MoverModule(mover), 'Misc', 'module')
-	eq(EM:IsMoverHidden(mover), false, 'never hidden on its own')
+	eq(EM:IsMoverHidden(mover), false, 'shown while its bar is')
+	local bar = STP.bars.mainhand
+	STP.bars.mainhand = { IsShown = function() return false end }
+	eq(EM:IsMoverHidden(mover), true, 'hidden while its bar is not shown (combat only, no weapon)')
+	STP.bars.mainhand = nil
+	eq(EM:IsMoverHidden(mover), true, 'and with no frame')
+	STP.bars.mainhand = bar
 	local realBar, enum = STP.bars.mainhand, Enum
 	Enum = { EditModeSwingTimerVisibility = { Always = 0, Hidden = 1 } }
 	STP.bars.mainhand = { visibility = 0 }

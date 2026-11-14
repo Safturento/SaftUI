@@ -14,7 +14,7 @@
 -- experience.lua, totembar.lua, totemlayout.lua, totemposition.lua,
 -- totemoptions.lua, totemskin.lua and Skinning/skinning.lua,
 -- Blizzard_BuffFrame.lua and Blizzard_SwingTimer.lua, Core's helpers and the
--- theme engine. Blizzard's frames are built as far as the skins read them, and
+-- theme engine, and Core's edit mode (the totem bar's mover). Blizzard's frames are built as far as the skins read them, and
 -- locked (lib/locked_widget.lua), so a skin that writes a field onto one fails.
 load_core_helpers()
 load_editmode() -- the totem bar's holder registers a mover (the last test)
@@ -663,9 +663,21 @@ test('the totem bar has no default place and says why; it is hidden while Blizza
 	eq(EM:MoverModule(mover), 'Misc', 'module')
 	eq(EM:GetDefaultPosition(mover), nil, 'no default position')
 	eq(mover.def.noDefaultReason, "The totem bar has no default place: SaftUI took its place from Blizzard's Edit Mode.", 'and why')
-	eq(EM:IsMoverDisabled(mover), false, 'never disabled')
+	TB.config.hide = false
+	eq(EM:IsMoverDisabled(mover), false, 'not disabled while Hide totem bar is off')
+	TB.config.hide = true
+	eq(EM:IsMoverDisabled(mover), true, 'disabled by the Hide totem bar setting')
+	TB.config.hide = false
 	bar:Show()
 	eq(EM:IsMoverHidden(mover), false, "shown while Blizzard's bar is")
 	bar:Hide()
 	eq(EM:IsMoverHidden(mover), true, "hidden while Blizzard's bar isn't shown")
+	bar:Show()
+	local hider = CreateFrame('Frame', nil, UIParent)
+	hider:Hide()
+	bar:SetParent(hider)
+	eq(bar:IsShown(), true, 'under a hidden frame the bar keeps its own shown flag')
+	eq(EM:IsMoverHidden(mover), true, 'but is hidden: it is not visible')
+	TB.bar, TB.holder = nil, nil
+	EM.movers.totembar = nil
 end)

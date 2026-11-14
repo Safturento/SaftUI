@@ -194,6 +194,11 @@ function STP:RegisterBarMover(info)
 		module = 'Misc',
 		-- Off while Blizzard's setting hides the bar (the read UpdateMoverLabel makes).
 		isDisabled = function() return self:IsHiddenByBlizzard(key) end,
+		-- On but not on screen: shown in combat only, or no such weapon. Read only.
+		isHidden = function()
+			local bar = self.bars[key]
+			return not (bar and bar:IsShown())
+		end,
 		defaults = function() return st.defaults.swingtimer[key] end,
 	})
 end

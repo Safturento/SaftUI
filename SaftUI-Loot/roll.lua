@@ -566,16 +566,10 @@ function LT:InitializeRollFrame()
 	self:RegisterEvent('CANCEL_ALL_LOOT_ROLLS', 'OnCancelAllLootRolls')
 end
 
--- True while a roll bar is on screen: a held roll, one of Blizzard's roll
--- frames, or Test mode's previews. Only reads.
+-- True while a roll bar is on screen: a real or held roll (rolltest.lua's
+-- RealRollShowing), or Test mode's previews. Only reads.
 local function AnyRollBarShown(self)
-	if held[1] then return true end
-	local container = _G.GroupLootContainer
-	if container and container.rollFrames then
-		for _, frame in pairs(container.rollFrames) do
-			if frame:IsShown() then return true end
-		end
-	end
+	if self.RealRollShowing and self:RealRollShowing() then return true end
 	return (self.rollPreview and self.rollPreview:IsShown()) == true
 end
 
