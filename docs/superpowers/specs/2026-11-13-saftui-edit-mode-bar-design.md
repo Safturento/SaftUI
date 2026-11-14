@@ -647,3 +647,21 @@ Most likely to matter to the owner first.
     hidden.
 24. Buttons are the kit's 26 (not the mockup's 24), icons drawn 16, 4 apart inside a group,
     tooltips anchored under the controls; Dim world at 50%.
+
+## Settled with the owner after the first draft (2026-11-13)
+
+These override anything above that they contradict. The owner's words are quoted.
+
+1. **The bar can be detached.** "Lets add an option to detached it from the top of the screen, we can turn it into a floating window that can be moved around as needed." Docked is the full-width bar; a button at its right end turns it into a small movable window holding the same controls in groups, and the same button on the window docks it again. Which of the two it is, and where the window sits, are remembered. Mockup: `editmode-floating-v1.html`, awaiting the owner's look.
+2. **Which movers show is a switch, not one toggle.** "maybe a three way toggle that allows you to toggle disabled vs hidden vs all?" Drawn as four positions (builder's reading, to confirm): movers of frames that are showing; plus disabled ones; plus ones hidden right now; all.
+3. **Selecting a mover still opens `/sui` on its page.** "I'm fine with it opening the options menu on mover click, if its in the way we can minimize it easily now."
+4. **Dim world stays, on by default.** "dim world is cool, send it. On by default is fine for now."
+5. **Every choice on the bar is saved** across reloads and relaunches: "these selections (dim, show grid, grid size, etc.) should also persist across reload/relaunches."
+6. **A bulk action is one step.** "if a user performs a bulk action like copying an entire unitframe config from a different unitframe that should count as one step in the history, and a single undo click should undo the full action." So a step can hold more than a position: Copy from's step restores everything the copy changed on that unit.
+7. **A Reset can be undone.** "lets make sure you can undo a reset."
+8. **A History list.** "should we also have a button to show the history and selectively be able to revert individual changes? that could be really cool." A History button beside Undo and Redo opens the list of steps, newest first, each with a revert control.
+9. **The history's length can be set:** 50 by default, up to 1000. "50's a sane default but if I'm modifying a lot of stuff I might want to backup further. Maybe a hard cap at 1000?"
+10. **Grid size:** the arrows step by 4, and any size can be typed into the box. "Grid steps of 4 are fine, lets also allow a user to input any grid size manually in the input box."
+11. **Coordinates name the anchor's parent:** "should we also include the anchor parent? might get confusing otherwise." For example "Top left of the screen: 120, -330" or "Bottom of Bar 2: 0, 3".
+
+Open after these, for the owner: whether the history holds only what edit mode and bulk actions change, or every setting changed in `/sui` (see the session's question); what reverting one older step does when a later step changed the same thing.
