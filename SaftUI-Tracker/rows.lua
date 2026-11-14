@@ -448,6 +448,11 @@ function TR:GetRow(kind, key)
 	if row and row.inUse then return row end
 end
 
+-- A popup's row: an offer and a complete popup of one quest have one each.
+function TR:GetPopupRow(questID, kind)
+	return self:GetRow('popup', ('%d:%s'):format(questID, kind))
+end
+
 -- The quest's row, or nil while it isn't drawn (not tracked, or under a
 -- collapsed zone header).
 function TR:GetQuestRow(questID)
@@ -794,7 +799,7 @@ local function RowKey(entry)
 	local kind = entry.kind
 	if kind == 'zone' then return entry.group.key end
 	if kind == 'quest' then return entry.quest.id end
-	if kind == 'popup' then return entry.popup.id end
+	if kind == 'popup' then return ('%d:%s'):format(entry.popup.id, entry.popup.kind) end
 	return 'empty'
 end
 

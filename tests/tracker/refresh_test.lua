@@ -46,8 +46,9 @@ RW.both('every event of the list marks it dirty, once per frame, whichever mix',
 	for _, event in ipairs(TR.EVENTS) do
 		if event ~= 'PLAYER_MONEY' and event ~= 'BAG_UPDATE_COOLDOWN' then
 			counted.n = 0
-			stub.fire_event(event, 'player')
-			stub.fire_event(event, 'player')
+			local argument = event == 'QUEST_DATA_LOAD_RESULT' and 1 or 'player'
+			stub.fire_event(event, argument)
+			stub.fire_event(event, argument)
 			RW.later(1)
 			eq(counted.n, 1, event .. ': one refresh')
 		end
@@ -449,10 +450,10 @@ RW.both('QUEST_DETAIL and QUEST_DATA_LOAD_RESULT refresh: an offer popup from a 
 	stub.fire_event('QUEST_DETAIL')
 	RW.later(0)
 	eq(counted.n, 1, 'QUEST_DETAIL: refreshed on the next frame')
-	check(TR:GetRow('popup', 77) ~= nil, 'the popup shows')
+	check(TR:GetPopupRow(77, 'OFFER') ~= nil, 'the popup shows')
 	RW.later(1)
 	counted.n = 0
-	stub.fire_event('QUEST_DATA_LOAD_RESULT', 5, true)
+	stub.fire_event('QUEST_DATA_LOAD_RESULT', 77, true)
 	RW.later(0)
 	eq(counted.n, 1, 'QUEST_DATA_LOAD_RESULT: refreshed')
 end)
@@ -477,7 +478,7 @@ RW.both('the events are the spec\'s, by name', function(st, TR)
 		if event ~= 'BAG_UPDATE_COOLDOWN' and event ~= 'PLAYER_MONEY' then
 			RW.later(1)
 			counted.n = 0
-			stub.fire_event(event, 'player')
+			stub.fire_event(event, event == 'QUEST_DATA_LOAD_RESULT' and 1 or 'player')
 			RW.later(0)
 			eq(counted.n, 1, event .. ' refreshes')
 		end
@@ -492,4 +493,24 @@ RW.both('the timer ticker is a one second ticker', function(st, TR)
 	TR:Refresh()
 	C_Timer.NewTicker = new_ticker
 	eq(interval, 1, 'every second')
+end)
+
+RW.both('QUEST_DATA_LOAD_RESULT refreshes only for a quest the tracker shows, a popup\'s, or one waiting for its data', function(st, TR)
+	Q.set({ Q.header('A'), Q.quest(1), Q.quest(2, { title = '' }) }, { 1, 2 }, { popups = { { id = 77, kind = 'OFFER' } }, titles = { [77] = 'Offer' } })
+	TR:Refresh()
+	RW.later(1)
+	local counted = count_refreshes(TR)
+	local function load(id)
+		counted.n = 0
+		stub.fire_event('QUEST_DATA_LOAD_RESULT', id, true)
+		RW.later(0)
+		return counted.n
+	end
+	eq(load(555), 0, 'a quest the tracker knows nothing of: nothing')
+	RW.later(1)
+	eq(load(1), 1, 'a quest it shows')
+	RW.later(1)
+	eq(load(77), 1, "a popup's quest")
+	RW.later(1)
+	eq(load(2), 1, 'a quest waiting for its title')
 end)

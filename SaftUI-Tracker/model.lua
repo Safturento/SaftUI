@@ -267,7 +267,11 @@ local function ReadQuest(questID, watchIndex, context)
 	-- A title is shown as it is, secret or not; one the log hasn't got yet
 	-- (nothing, or an empty string) skips the quest until a later read has it.
 	local title = info.title
-	if not issecretvalue(title) and (type(title) ~= 'string' or title == '') then return nil end
+	if not issecretvalue(title) and (type(title) ~= 'string' or title == '') then
+		-- Its data isn't loaded yet: QUEST_DATA_LOAD_RESULT for it is worth a refresh.
+		context.waiting[questID] = true
+		return nil
+	end
 	if not Model.Shown(info) then return nil end
 
 	local tagInfo = Exists(C_QuestLog, 'GetQuestTagInfo') and C_QuestLog.GetQuestTagInfo(questID) or nil
@@ -314,7 +318,7 @@ local function ReadQuest(questID, watchIndex, context)
 end
 
 -- The auto quest pop-ups that are up, unless the splash screen is.
-local function ReadPopups()
+local function ReadPopups(waiting)
 	local popups = {}
 	if type(GetNumAutoQuestPopUps) ~= 'function' or type(GetAutoQuestPopUp) ~= 'function' then return popups end
 	if type(SplashFrame) == 'table' and Exists(SplashFrame, 'IsShown') and Flag(SplashFrame:IsShown()) then return popups end
@@ -332,6 +336,8 @@ local function ReadPopups()
 			local title = not hidden and Exists(C_QuestLog, 'GetTitleForQuestID') and C_QuestLog.GetTitleForQuestID(questID) or nil
 			if title and (issecretvalue(title) or (type(title) == 'string' and title ~= '')) then
 				popups[#popups + 1] = { id = questID, kind = kind, title = title }
+			elseif not hidden then
+				waiting[questID] = true
 			end
 		end
 	end
@@ -361,6 +367,7 @@ end
 function Model.Read(show)
 	local model = {
 		quests = {}, popups = {}, counts = {}, zoneNames = Model.ZoneNames(), arena = false,
+		waiting = {}, -- questIDs skipped for want of a title, a set
 	}
 	local counts = model.counts
 	if Exists(C_QuestLog, 'GetNumQuestLogEntries') then
@@ -384,9 +391,9 @@ function Model.Read(show)
 	end
 	if model.arena then return model end
 
-	model.popups = ReadPopups()
+	model.popups = ReadPopups(model.waiting)
 
-	local context = { headers = {}, focused = model.focused }
+	local context = { headers = {}, focused = model.focused, waiting = model.waiting }
 	if Exists(C_QuestLog, 'GetQuestTimers') then
 		local timers = C_QuestLog.GetQuestTimers()
 		context.timers = type(timers) == 'table' and timers or {}

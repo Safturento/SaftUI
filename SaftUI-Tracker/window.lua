@@ -244,6 +244,8 @@ function TR:SetCollapsed(collapsed)
 	if not self.window then return end
 	self.header.collapse:SetDown(self:IsCollapsed())
 	self:LayoutWindow()
+	-- Opening draws the rows a collapsed refresh left alone.
+	if not self:IsCollapsed() and self.rowsStale and self.model then self:Redraw() end
 	self:UpdateTicker()
 end
 

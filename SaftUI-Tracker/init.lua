@@ -67,8 +67,10 @@ function TR:Build()
 	-- once.
 	local fonts = st:GetModule('Fonts', true)
 	if fonts and type(fonts.UpdateFontConfig) == 'function' then
+		-- A profile change calls it once for each font: the marks fold into one
+		-- refresh through the same throttle.
 		hooksecurefunc(fonts, 'UpdateFontConfig', function()
-			if TR.model then TR:Redraw() end
+			if TR.model then TR:MarkDirty('FONTS') end
 		end)
 	end
 	-- The first refresh, on the next frame like any other.
@@ -233,15 +235,36 @@ function TR:OnEvent(event, ...)
 	-- untracked quests) is not that.
 	if event == 'QUEST_WATCH_LIST_CHANGED' then
 		local questID, added = ...
-		if added == true and type(questID) == 'number' then
-			self.trackedQuest, self.trackedAt = questID, GetTime()
-		end
+		self:NoteTracked(questID, added)
+	elseif event == 'QUEST_DATA_LOAD_RESULT' then
+		-- Fires for every quest the game loads (retail's world map loads many):
+		-- only one the tracker shows, a popup's, or one waiting for its data
+		-- is worth a refresh.
+		local questID = ...
+		if self.knownIds and not self.knownIds[questID] then return end
 	end
 	if event == 'BAG_UPDATE_COOLDOWN' then
 		if self.RefreshCooldowns then self:RefreshCooldowns() end
 		return
 	end
 	self:MarkDirty(event)
+end
+
+-- The quests the game just said were tracked, in order, each waiting for its row
+-- to be drawn; an untrack takes its quest off. Two tracks inside one throttle
+-- gap both keep their rows (the rows come from the model), and the scroll goes
+-- to the last one still wanted.
+function TR:NoteTracked(questID, added)
+	if type(questID) ~= 'number' then return end
+	local list = self.trackedQuests
+	if not list then
+		list = {}
+		self.trackedQuests = list
+	end
+	for index = #list, 1, -1 do
+		if list[index].id == questID then table.remove(list, index) end
+	end
+	if added == true then list[#list + 1] = { id = questID, at = GetTime() } end
 end
 
 -- PLAYER_MONEY, while a quest needs more money than the player has.
@@ -292,6 +315,15 @@ function TR:Refresh()
 	self.lastRefresh = GetTime()
 	local model = TR.Model.Read(self.config.quests.show)
 	self.model = model
+	local known = self.knownIds
+	if not known then
+		known = {}
+		self.knownIds = known
+	end
+	for id in pairs(known) do known[id] = nil end
+	for _, quest in ipairs(model.quests) do known[quest.id] = true end
+	for _, popup in ipairs(model.popups) do known[popup.id] = true end
+	for id in pairs(model.waiting) do known[id] = true end
 	self:UpdateMoneyEvent(model)
 	self:UpdateHeader(model)
 	self:Redraw()
@@ -317,6 +349,18 @@ function TR:Redraw()
 	local empty = #model.quests == 0 and #model.popups == 0
 	self:SetPopups(#model.popups > 0)
 	self:SetEmpty(empty)
+	-- A collapsed tracker shows only its header (the count, set by the refresh):
+	-- its rows are drawn once when it opens.
+	if self:IsCollapsed() then
+		self.rowsStale = true
+		-- Opening scrolls to nothing the tracker was told while it was closed.
+		self.lastFocused = model.focused
+		self.trackedQuests = nil
+		self:SetContentHeight(self.contentHeight or 0)
+		self:RunStages()
+		return
+	end
+	self.rowsStale = false
 	local entries = self:BuildEntries(model, groups)
 
 	-- The list's width depends on whether it scrolls (the bar's room), which
@@ -346,7 +390,12 @@ function TR:Redraw()
 	self:SetContentHeight(height)
 	self:KeepInView(entries, placed)
 
-	-- The stages of the later tasks, each once its file defines it.
+	self:RunStages()
+end
+
+-- The stages of the later tasks, each once its file defines it (the item
+-- buttons, the probes, the handover, the visibility).
+function TR:RunStages()
 	if self.RefreshItems then self:RefreshItems() end
 	if self.RunProbes then self:RunProbes() end
 	if self.UpdateHandover then self:UpdateHandover() end
@@ -368,12 +417,12 @@ function TR:KeepInView(entries, placed)
 	local model = self.model
 	local now = GetTime()
 	local target
-	if self.trackedQuest then
-		if now - self.trackedAt > TR.TRACK_WAIT then
-			self.trackedQuest = nil
-		else
-			target = self.trackedQuest
+	local tracked = self.trackedQuests
+	if tracked then
+		for index = #tracked, 1, -1 do
+			if now - tracked[index].at > TR.TRACK_WAIT then table.remove(tracked, index) end
 		end
+		if #tracked > 0 then target = tracked[#tracked].id end
 	end
 	if model.focused ~= self.lastFocused then
 		self.lastFocused = model.focused
@@ -382,8 +431,10 @@ function TR:KeepInView(entries, placed)
 	if not target or self:IsCollapsed() or self:IsScrollLocked() then return end
 	for index, entry in ipairs(entries) do
 		if entry.quest and entry.quest.id == target then
-			-- Drawn: the request is used, whether or not the list may move now.
-			if target == self.trackedQuest then self.trackedQuest = nil end
+			-- Drawn: the requests are used, whether or not the list may move now.
+			if tracked and target == (tracked[#tracked] and tracked[#tracked].id) then
+				for index = #tracked, 1, -1 do tracked[index] = nil end
+			end
 			if self:IsHovered() or (self.lastUserScroll and now - self.lastUserScroll < TR.SCROLL_QUIET) then return end
 			local p = placed[index]
 			self:ScrollTo(TR.Layout.IntoView(self:GetScroll(), p.y, p.height, self:ViewHeight(), self.scrollRange or 0))
