@@ -430,8 +430,8 @@ end
 local NAV_BAR_GAP = 4
 
 local function SetNavScroll(offset)
-	-- A hidden list has no view to read: its offset stays as it was, for when
-	-- the sidebar is shown again.
+	-- Nothing scrolls a hidden list; its offset is kept for when the sidebar is
+	-- shown again (a re-application while it is hidden has nothing to read).
 	if S.sidebar == false then return end
 	S.navOffset = ScrollTo(F.navFrame, F.navBar, offset, S.navHeight, NAV_BAR_GAP)
 end
@@ -1042,7 +1042,7 @@ local function Relayout()
 	F.navContent:SetWidth(L.navWidth)
 	-- The profile line: the foot's width less 18 at its left, and 8 and the toggle
 	-- (26, 8 in from the foot's right) at its right: it ends 8 before the toggle.
-	F.profile:SetWidth(L.sideWidth - 1 - 18 - 8 - F.sideToggle:GetWidth() - 8)
+	F.profile:SetWidth(L.sideWidth - 1 - 18 - 8 - S.SIDE_TOGGLE_SIZE - 8)
 
 	F.main:ClearAllPoints()
 	F.main:SetPoint('TOPLEFT', window, 'TOPLEFT', mainLeft, -L.mainTop)
@@ -1074,7 +1074,7 @@ local function Relayout()
 	F.reloadButton:SetPoint('RIGHT', F.closeButton, 'LEFT', -FOOTER_GAP, 0)
 	-- With the sidebar collapsed its toggle is at the footer's left (S.PlaceSideToggle),
 	-- and the region starts FOOTER_GAP after it.
-	if not sidebar then regionX = regionX + F.sideToggle:GetWidth() + FOOTER_GAP end
+	if not sidebar then regionX = regionX + S.SIDE_TOGGLE_SIZE + FOOTER_GAP end
 	F.footerRegion:SetPoint('LEFT', footer, 'LEFT', regionX, regionY)
 	F.footerRegion:SetPoint('RIGHT', F.reloadButton, 'LEFT', -FOOTER_GAP, 0)
 	footer:SetHeight(L.footer)
@@ -1489,7 +1489,7 @@ function OW:Open(path, tree)
 		-- as it is (Ruling 4).
 		local size, sidebar = OW.SavedState()
 		if not OW.Fits(LookLayout(), size, sidebar) then size = 'half' end
-		S.size, S.sidebar, S.keepRow, S.sizedAt = size, sidebar, nil, nil
+		S.size, S.sidebar, S.keepRow, S.sizedAt, S.sidebarAt = size, sidebar, nil, nil, nil
 		F.window:Show() -- OnShow draws it
 	end
 	return true

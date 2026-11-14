@@ -214,7 +214,7 @@ local function DrawSidebar(entries)
 		end
 		frame:SetWidth(S.layout.navWidth)
 		frame:SetPoint('TOPLEFT', F.navContent, 'TOPLEFT', 0, -y)
-		y = y + frame:GetHeight()
+		y = y + floor(frame:GetHeight() + 0.5) -- a height read back is a hair off the one set
 		F.nav[#F.nav + 1] = frame
 	end
 	S.navHeight = y + 10
@@ -361,7 +361,9 @@ end
 	      kept as they are: the search is not ended, a results page stays, and
 	      the box (its text and all) is drawn again when the sidebar is.
 
-	F.sideToggle, W.IconButton (26, a 16 icon) with its tooltip, placed by
+	F.sideToggle, W.IconButton (26, a 16 icon, its icon accent under the mouse)
+	with its tooltip, whose click is ignored for OW.SIZE_GUARD after the sidebar
+	last changed (S.sidebarAt; the API is not guarded), placed by
 	S.PlaceSideToggle (Relayout runs it): shown, a child of the sidebar's foot
 	(F.foot), 8 in from its right, centred on its 30, wearing panelLeftOpen
 	("Collapse the sidebar", pointing right); collapsed, a child of the footer,
@@ -374,7 +376,7 @@ end
 ]]
 
 local TOGGLE_SIZE, TOGGLE_ICON = 26, 16
-S.SIDE_TOGGLE_RIGHT = 8 -- in the sidebar's foot, from its right
+S.SIDE_TOGGLE_SIZE, S.SIDE_TOGGLE_RIGHT = TOGGLE_SIZE, 8 -- in the sidebar's foot, 8 from its right
 
 local function ToggleTip()
 	local collapsed = S.sidebar == false
@@ -399,7 +401,13 @@ end
 
 function S.BuildSideToggle(foot)
 	local toggle = W.IconButton(foot, st.icons.panelLeftOpen, ToggleTip, TOGGLE_SIZE, TOGGLE_ICON)
-	toggle.onClick = function() OW:SetSidebarShown(S.sidebar == false) end
+	toggle.hoverIcon = true -- its icon turns accent under the mouse, as the arrows'
+	-- Guarded as the size buttons are (OW.SIZE_GUARD): a double click would fall
+	-- through to what lands under the mouse (the world, or a control).
+	toggle.onClick = function()
+		if S.sidebarAt ~= nil and GetTime() - S.sidebarAt < OW.SIZE_GUARD then return end
+		OW:SetSidebarShown(S.sidebar == false)
+	end
 	F.sideToggle = toggle
 end
 
@@ -441,6 +449,7 @@ function OW:SetSidebarShown(shown)
 	if window then S.CloseOverlays() end
 	S.SaveWindow({ sidebar = shown and S.UNSET or false })
 	S.sidebar = shown
+	S.sidebarAt = GetTime()
 	if window then self:Render() end
 	return true
 end

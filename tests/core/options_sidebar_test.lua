@@ -4,7 +4,7 @@
 -- shown again at full and at half, the window narrowing from its left, the
 -- page and the window's right edge and top never moving; the toggle's two
 -- places and looks, what it refuses, what it closes, what it keeps; the state
--- remembered. Real: Core's Config on a real AceDB-3.0 and AceConfigRegistry-3.0,
+-- remembered; the sidebar's list scrolling (twenty pages), kept exactly. Real: Core's Config on a real AceDB-3.0 and AceConfigRegistry-3.0,
 -- the model, the widgets, the body and the window (options_window_helpers.lua).
 -- The mouse and the frame clock are played by firing scripts.
 local H = load_test_file('core/options_window_helpers.lua')
@@ -39,11 +39,39 @@ local function tip_text(button)
 	return table.concat(out, ' | ')
 end
 
+-- A click on the toggle after the guard (OW.SIZE_GUARD) has passed.
+local function tap(button) wait(); click(button) end
+
 local function reset()
 	st.config.global.optionsWindow = nil
 	close_all()
 	theme('thick')
 	reset_screen()
+end
+
+-- Twenty small pages, so the sidebar's list scrolls.
+for i = 1, 20 do
+	local module = st:NewModule('SideN' .. i)
+	function module:GetConfigTable()
+		return {
+			name = 'Side page ' .. i, type = 'group', category = 'Frames', order = 100 + i,
+			args = { general = { name = 'General', type = 'group', args = {
+				on = { type = 'toggle', name = 'Side ' .. i .. ' on', get = function() return true end, set = function() end },
+			} } },
+		}
+	end
+end
+
+-- Sixty toggles: a page that scrolls.
+local manyValue = {}
+local MANY = st:NewModule('SideMany')
+function MANY:GetConfigTable()
+	local args = {}
+	for i = 1, 60 do
+		args['t' .. i] = { order = i, type = 'toggle', name = 'Toggle ' .. i, desc = 'Toggle ' .. i,
+			get = function() return manyValue[i] end, set = function(_, v) manyValue[i] = v end }
+	end
+	return { name = 'Many', type = 'group', category = 'Frames', args = args }
 end
 
 -- One item with a menu.
@@ -70,16 +98,17 @@ test('Collapse the sidebar at full: 208 narrower from the left, and the page doe
 	local F = frames(); local w = F.window
 	local right, top, mainLeft, titleLeft, bodyLeft = w:GetRight(), w:GetTop(), F.main:GetLeft(), F.title:GetLeft(), F.body:GetLeft()
 	eq(OW:IsSidebarShown(), true)
-	click(F.sideToggle)
+	tap(F.sideToggle)
 	eq(OW:IsSidebarShown(), false); eq(w:GetWidth(), 832); eq(w:GetRight(), right); eq(w:GetTop(), top)
 	check(not F.side:IsShown(), 'the sidebar hidden')
 	eq(F.main:GetLeft(), mainLeft, 'the main column stays'); eq(F.title:GetLeft(), titleLeft); eq(F.body:GetLeft(), bodyLeft)
 	eq(st.config.global.optionsWindow.sidebar, false, 'remembered')
 	eq(F.sideToggle:GetLeft(), F.main:GetLeft() + 28, "the toggle at the footer's left")
+	eq(F.footer:GetTop() - F.sideToggle:GetTop(), (F.footer:GetHeight() - 26) / 2, 'centred on the footer')
 	eq(F.sideToggle:GetParent(), F.footer, 'in the footer')
 	eq(F.sideToggle.icon:GetTexture(), st.icons.panelLeftClose, 'its arrow points left: show')
 	eq(tip_text(F.sideToggle), 'Show the sidebar | Shows the page list again.')
-	click(F.sideToggle)
+	tap(F.sideToggle)
 	eq(w:GetWidth(), 1040); check(F.side:IsShown()); eq(st.config.global.optionsWindow.sidebar, nil)
 	eq(w:GetRight(), right); eq(F.main:GetLeft(), mainLeft)
 	eq(F.sideToggle:GetParent(), F.foot, 'back in the sidebar\'s foot')
@@ -105,6 +134,14 @@ test("the toggle in the sidebar's foot at its right; the profile line ends 8 bef
 	stub.fire_script(F.sideToggle, 'OnLeave', true)
 	check(not GameTooltip:IsShown(), 'and gone')
 	check(F.sideToggle.onClick ~= nil, 'a click through onClick, never OnClick')
+	-- Grey at rest, the accent under the mouse, as the arrows' icons.
+	local function vertex(t) return string.format('%.2f,%.2f,%.2f', t:GetVertexColor()) end
+	local grey = vertex(F.sideToggle.icon)
+	local blue = string.format('%.2f,%.2f,%.2f', st.config.profile.colors.button.blue.r, st.config.profile.colors.button.blue.g, st.config.profile.colors.button.blue.b)
+	stub.fire_script(F.sideToggle, 'OnEnter', true)
+	eq(vertex(F.sideToggle.icon), blue, 'the icon is accent under the mouse')
+	stub.fire_script(F.sideToggle, 'OnLeave', true)
+	eq(vertex(F.sideToggle.icon), grey, 'and grey again')
 	eq(#take_errors(), 0, 'no errors')
 	reset()
 end)
@@ -128,7 +165,7 @@ test('the sidebar and the size are separate: collapsed at full stays collapsed a
 	eq(OW:GetWindowSize(), 'half'); eq(OW:IsSidebarShown(), false, 'opened as saved')
 	eq(F.window:GetWidth(), 446)
 	-- Show it at half.
-	click(F.sideToggle)
+	tap(F.sideToggle)
 	eq(F.window:GetWidth(), 654, 'the sidebar at half: 654'); check(F.side:IsShown())
 	eq(F.sideToggle:GetParent(), F.foot)
 	eq(F.profile:GetWidth(), 147)
@@ -146,30 +183,61 @@ test('collapsing takes the keyboard off the search box and keeps the search; sho
 	eq(OW:GetState().search, 'width'); eq(F.title:GetText(), 'Search', 'the results page')
 	F.search:SetFocus()
 	eq(GetCurrentKeyBoardFocus(), F.search)
-	click(F.sideToggle)
+	tap(F.sideToggle)
 	eq(GetCurrentKeyBoardFocus(), nil, 'the box lost the keyboard')
 	eq(OW:GetState().search, 'width', 'the search is kept'); eq(F.title:GetText(), 'Search', 'the results still shown')
 	check(not F.search:IsVisible(), 'and the box is hidden')
-	click(F.sideToggle)
+	tap(F.sideToggle)
 	eq(F.search:GetText(), 'width'); check(not F.search.hint:IsShown(), 'its hint hidden')
 	eq(F.title:GetText(), 'Search', 'the results still shown')
 	-- A search typed but not yet run when the sidebar collapses still runs.
 	F.search:SetText('')
 	eq(OW:GetState().search, '')
 	F.search:SetFocus(); F.search:SetText('power')
-	click(F.sideToggle)
+	tap(F.sideToggle)
 	eq(GetCurrentKeyBoardFocus(), nil)
 	tick(0.5)
 	eq(OW:GetState().search, 'power', 'the search ran')
 	eq(F.title:GetText(), 'Search')
 	-- A box that isn't the window's keeps the keyboard.
-	click(F.sideToggle)
+	tap(F.sideToggle)
 	local outside = CreateFrame('EditBox', nil, UIParent)
 	outside:SetFontObject(W.GetFont())
 	outside:SetFocus()
-	click(F.sideToggle)
+	tap(F.sideToggle)
 	eq(GetCurrentKeyBoardFocus(), outside, 'a box outside the window keeps it')
 	outside:ClearFocus()
+	eq(#take_errors(), 0, 'no errors')
+	reset()
+end)
+
+test("the page's and the nav's scroll are kept exactly across a collapse", function()
+	reset()
+	st.Config:Open('SideMany')
+	local F, S = frames(), OW.S
+	S.SetScroll(240)
+	check(S.navHeight > F.navFrame:GetHeight(), 'the sidebar scrolls')
+	S.SetNavScroll(37)
+	eq(S.navOffset, 37)
+	local page, nav = F.body:GetVerticalScroll(), F.navFrame:GetVerticalScroll()
+	eq(page, 240)
+	tap(F.sideToggle)
+	eq(S.scrollOffset, 240, 'the page is kept'); eq(F.body:GetVerticalScroll(), page)
+	eq(S.navOffset, 37, "the nav's offset is kept")
+	tap(F.sideToggle)
+	eq(S.scrollOffset, 240); eq(F.body:GetVerticalScroll(), page)
+	eq(S.navOffset, 37); eq(F.navFrame:GetVerticalScroll(), nav, "the nav's scroll comes back as it was")
+	-- At half too.
+	wait(); OW:SetWindowSize('half')
+	S.SetScroll(100); S.SetNavScroll(11)
+	tap(F.sideToggle); tap(F.sideToggle)
+	eq(S.scrollOffset, 100); eq(S.navOffset, 11)
+	-- The grip's resize while collapsed leaves the nav's offset be.
+	tap(F.sideToggle)
+	S.SetNavScroll(11)
+	F.navFrame:SetHeight(F.navFrame:GetHeight()) -- a hidden frame's view
+	S.SetNavScroll(500)
+	eq(S.navOffset, 11, 'a nav offset is not taken while its sidebar is hidden')
 	eq(#take_errors(), 0, 'no errors')
 	reset()
 end)
@@ -178,7 +246,7 @@ test('page, tab, pick and search are kept across a collapse', function()
 	reset()
 	st.Config:Open('Unitframes', 'target', 'power')
 	local before = OW:GetState()
-	click(frames().sideToggle)
+	tap(frames().sideToggle)
 	local after = OW:GetState()
 	eq(after.page .. '/' .. after.pick .. '/' .. after.tab, before.page .. '/' .. before.pick .. '/' .. before.tab)
 	check(frames().picker.frame:IsShown() and frames().tabs[1] ~= nil, 'the picker and tabs drawn')
@@ -197,13 +265,13 @@ test('it does nothing in combat, or with the color picker open, which the toggle
 	check(W.OpenColorPicker(F.window, { r = 1, g = 0, b = 0, onChange = function() end }), 'the picker opens')
 	check(F.sideToggle.disabled, 'the toggle is disabled')
 	eq(tip_text(F.sideToggle), 'Collapse the sidebar | Hides the page list; the window narrows from its left. | red:Close the color picker first.')
-	wait(); click(F.sideToggle)
+	wait(); tap(F.sideToggle)
 	eq(OW:IsSidebarShown(), true, 'a click does nothing')
 	eq(OW:SetSidebarShown(false), false)
 	check(W.ColorPickerShown(), 'and the picker stays')
 	W.CloseColorPicker()
 	check(not F.sideToggle.disabled, 'enabled again')
-	click(F.sideToggle)
+	tap(F.sideToggle)
 	eq(OW:IsSidebarShown(), false)
 	eq(#take_errors(), 0, 'no errors')
 	reset()
@@ -218,14 +286,14 @@ test('on a screen too narrow for full with the sidebar, the toggle at full is di
 	eq(OW:GetWindowSize(), 'full'); eq(F.window:GetWidth(), 832, 'full fits without the sidebar')
 	check(F.sideToggle.disabled, 'the toggle is disabled')
 	eq(tip_text(F.sideToggle), 'Show the sidebar | Shows the page list again. | red:The screen is too narrow for the sidebar at full size. Shrink to half first.')
-	wait(); click(F.sideToggle)
+	wait(); tap(F.sideToggle)
 	eq(OW:IsSidebarShown(), false, 'a click does nothing'); eq(F.window:GetWidth(), 832)
 	eq(OW:SetSidebarShown(true), false)
 	wait(); click(F.shrink)
 	eq(OW:GetWindowSize(), 'half')
 	check(not F.sideToggle.disabled, 'at half it is enabled')
 	eq(tip_text(F.sideToggle), 'Show the sidebar | Shows the page list again.')
-	click(F.sideToggle)
+	tap(F.sideToggle)
 	eq(F.window:GetWidth(), 654)
 	eq(#take_errors(), 0, 'no errors')
 	reset()
@@ -239,7 +307,7 @@ test('collapsing closes a menu, the small dialog and a list, and follows cleanly
 	local F = frames()
 	check(OW:OpenDialog('A dialog', { type = 'group', name = 'A dialog', args = { on = { type = 'toggle', name = 'On',
 		get = function() return true end, set = function() end } } }), 'the dialog opens')
-	click(F.sideToggle)
+	tap(F.sideToggle)
 	check(not OW:IsDialogShown(), 'the dialog is closed')
 	click(H.cell('hotkey').widget.dots)
 	check(OW:IsMenuShown(), "the item's menu opens")
@@ -333,4 +401,31 @@ test('whole pixels at W1 to W4 under Thick and Thin', function()
 	end
 	reset()
 	eq(#take_errors(), 0, 'no errors')
+end)
+
+------------------------------------------------------------------ the guard
+
+test('a second click on the toggle within OW.SIZE_GUARD does nothing; after it the toggle works', function()
+	reset()
+	st.Config:Open('Unitframes', 'player', 'general')
+	local F = frames()
+	wait(); click(F.sideToggle)
+	eq(OW:IsSidebarShown(), false, 'collapsed')
+	click(F.sideToggle)
+	eq(OW:IsSidebarShown(), false, 'a second click at once does nothing')
+	stub.time = stub.time + OW.SIZE_GUARD - 0.01
+	click(F.sideToggle)
+	eq(OW:IsSidebarShown(), false, 'still inside the guard')
+	stub.time = stub.time + 0.02
+	click(F.sideToggle)
+	eq(OW:IsSidebarShown(), true, 'after it the toggle works')
+	click(F.sideToggle)
+	eq(OW:IsSidebarShown(), true, 'and guards again')
+	-- The API is not guarded; a reopened window starts clear.
+	check(OW:SetSidebarShown(false), 'SetSidebarShown goes at once')
+	st.Config:Close(); st.Config:Open('Unitframes', 'player', 'general')
+	click(frames().sideToggle)
+	eq(OW:IsSidebarShown(), true, 'a click right after opening is not swallowed')
+	eq(#take_errors(), 0, 'no errors')
+	reset()
 end)
