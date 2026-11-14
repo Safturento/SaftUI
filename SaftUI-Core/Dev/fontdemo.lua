@@ -593,35 +593,58 @@ end
 -- Delete this block and the four test files it names once that is known.
 local DIAG = {
 	{ 'a working font, as a control', 'AgencyFB_Bold.ttf' },
-	{ 'a copy of that working font, in Candidates', 'Candidates\\agencycopy.ttf' },
+	{ 'an OLD file nothing has used (visitor2)', 'visitor2.ttf' },
+	{ 'an OLD file nothing has used, in a folder (FiraCode Light)', 'FiraCode\\FiraCode-Light.ttf' },
+	{ 'a copy of the working font, in Candidates', 'Candidates\\agencycopy.ttf' },
 	{ 'a candidate, in Candidates, its own name', 'Candidates\\BarlowCondensed-SemiBold.ttf' },
 	{ 'the same candidate, in Candidates, a plain name', 'Candidates\\barlowtest.ttf' },
 	{ 'the same candidate, beside the working fonts, its own name', 'BarlowCondensed-SemiBold.ttf' },
 	{ 'the same candidate, beside the working fonts, a plain name', 'barlowtest.ttf' },
 }
 
+-- Each test: a shown font string with text (in case the game only loads a
+-- font it has to draw), SetFont's result now, and again 2 and 10 seconds
+-- later; then the same path on a font object (CreateFont), which is how
+-- SaftUI's own fonts are set.
 function FD:Diagnose()
-	local holder = self.diagHolder or CreateFrame('Frame', nil, UIParent)
-	self.diagHolder = holder
-	print('|cff00adefSaftUI font test|r (true = loaded):')
+	local holder = self.diagHolder
+	if not holder then
+		holder = CreateFrame('Frame', nil, UIParent)
+		holder:SetPoint('BOTTOMLEFT', UIParent, 'BOTTOMLEFT', 4, 4)
+		holder:SetSize(10, 10)
+		holder:SetAlpha(0.02)
+		self.diagHolder = holder
+	end
+	self.diagRun = (self.diagRun or 0) + 1
+	local run = self.diagRun
+	print('|cff00adefSaftUI font test|r run ' .. run .. ' (true = loaded). Wait ten seconds for the two later lines.')
+	local strings, objects = {}, {}
 	for i, test in ipairs(DIAG) do
 		local path = st:FontPath(test[2])
 		local fs = holder:CreateFontString(nil, 'OVERLAY')
+		fs:SetPoint('BOTTOMLEFT', holder, 'BOTTOMLEFT', 0, 0)
 		local ok = fs:SetFont(path, 12, '')
-		print(('%d. %s: %s'):format(i, test[1], tostring(ok)))
+		if ok then fs:SetText('Test 123') end
+		strings[i] = fs
+		local object = CreateFont('SaftUIFontTest' .. run .. '_' .. i)
+		local okObject = object:SetFont(path, 12, '')
+		objects[i] = object
+		print(('%d. %s: string %s, font object %s'):format(i, test[1], tostring(ok), tostring(okObject)))
 		print('   ' .. path)
-		test.fs = fs
 	end
-	-- The same font strings again in two seconds: true now and false above
-	-- means the files load, only not on the first ask.
+	local function Again(label)
+		local a, b = {}, {}
+		for i, test in ipairs(DIAG) do
+			local path = st:FontPath(test[2])
+			a[i] = tostring(strings[i]:SetFont(path, 12, ''))
+			b[i] = tostring(objects[i]:SetFont(path, 12, ''))
+		end
+		print('|cff00adefSaftUI font test|r ' .. label .. ': strings ' .. table.concat(a, ', '))
+		print('   font objects ' .. table.concat(b, ', '))
+	end
 	if C_Timer and C_Timer.After then
-		C_Timer.After(2, function()
-			local again = {}
-			for i, test in ipairs(DIAG) do
-				again[i] = tostring(test.fs:SetFont(st:FontPath(test[2]), 12, ''))
-			end
-			print('|cff00adefSaftUI font test|r, two seconds later: ' .. table.concat(again, ', '))
-		end)
+		C_Timer.After(2, function() Again('2 seconds later') end)
+		C_Timer.After(10, function() Again('10 seconds later') end)
 	end
 end
 
