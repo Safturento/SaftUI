@@ -54,7 +54,7 @@ local NOTE = 'Most of SaftUI reads these when it builds its frames: reload (Relo
 test('the sections and their colors, in order, as small color swatches with tooltips, each with its own reset and no section Reset', function()
 	local sections, names = ByOrder(Tab().args), {}
 	for i, s in ipairs(sections) do names[i] = s.v.name end
-	eq(table.concat(names, ','), 'Text,Buttons,Class,Reputation,Power,Item quality,Status,Threat')
+	eq(table.concat(names, ','), 'Text,Buttons,Class,Reputation,Power,Item quality,Status,Threat,Objectives')
 
 	local expected = {
 		text = 'Text,Grey,Red,Orange,Yellow,Green,Blue,Purple,Cyan,White',
@@ -65,6 +65,7 @@ test('the sections and their colors, in order, as small color swatches with tool
 		item_quality = 'Poor,Common,Uncommon,Rare,Epic,Legendary,Artifact,Heirloom,WoW Token',
 		status = 'Disconnected,Tapped',
 		threat = 'Warning,Bad',
+		objectives = 'Completed,Failed',
 	}
 	for _, s in ipairs(sections) do
 		local rows, rowNames = ByOrder(s.v.args), {}
@@ -86,7 +87,7 @@ end)
 test('Text and Buttons say a change shows after a reload; the others have no note', function()
 	eq(Section('text').desc, NOTE)
 	eq(Section('button').desc, NOTE)
-	for _, key in ipairs({ 'class', 'reaction', 'power', 'item_quality', 'status', 'threat' }) do
+	for _, key in ipairs({ 'class', 'reaction', 'power', 'item_quality', 'status', 'threat', 'objectives' }) do
 		eq(Section(key).desc, nil, key)
 	end
 end)
@@ -136,6 +137,22 @@ test('after a profile switch, get and set reach the new profile', function()
 	eq(st.config.profile.colors.class.MAGE.r, 0.9, 'set reaches the new profile')
 	st.config:SetProfile(first)
 	eq(mage.get({}), 0.1, "the first profile's value is as it was")
+	restore()
+end)
+
+test("Objectives: Completed and Failed default to the colors the skin shipped, and a reset puts one back and says 'objectives'", function()
+	local got, restore = Recorder()
+	local completed = Section('objectives').args.completed
+	local default = st.defaults.colors.objectives
+	eq(default.completed.r .. ',' .. default.completed.g .. ',' .. default.completed.b, '0.251,0.753,0.251')
+	eq(default.failed.r .. ',' .. default.failed.g .. ',' .. default.failed.b, (220 / 255) .. ',' .. (100 / 255) .. ',' .. (100 / 255))
+	completed.set({}, 0.1, 0.2, 0.3)
+	eq(got[#got], 'objectives', 'a set says objectives')
+	eq(completed.default.differs(), true, 'it differs')
+	got[#got] = nil
+	completed.default.reset()
+	eq(st.config.profile.colors.objectives.completed.g, 0.753, 'the default is back')
+	eq(got[#got], 'objectives', 'a reset says objectives')
 	restore()
 end)
 
