@@ -47,6 +47,9 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	    which is what they act on. No tooltip builds "s's": a possessive
 	    after a final s is just an apostrophe (Possessive), and All and
 	    Multiple say "from <page>" and "follow <source> again for <name>".
+	    The share's noun names the members in them ("every bar", "which
+	    bars"), and its pageText is the page as a sentence reads it ("the
+	    Pet bar"; TIPS).
 	  - showing it: OB.ShareEnter shows the line on an offering row, the
 	    label lifted so it and the line are centred in the row; the row
 	    frame's OnEnter calls it, and so does each mouse-enabled part of the
@@ -188,29 +191,49 @@ local function DiffTip(host, owner)
 	GameTooltip:Show()
 end
 
+-- text with its first letter a capital, to start a sentence: the only change
+-- Core makes to a name it's given (a pageText's 'the').
+local function Sentence(text)
+	return (text:gsub('^%l', string.upper))
+end
+
+-- The page as a sentence reads it: the share's pageText (its article, if
+-- its names take one, is the module's to give), else its name; nil for none.
+local function PageText(state)
+	return state.pageText or state.page
+end
+
 -- What each link's tooltip says (name: SettingName's; parts, the line's
 -- pieces). Every name comes from the share; no possessive is built from the
--- source's or the page's name but Reset's, through Possessive. A line too
+-- source's or the page's name but Reset's, through Possessive. With the
+-- share's noun, what a member is ({ 'bar', 'bars' }), All and Multiple name
+-- the members ('Every bar that keeps...', 'Pick which bars...'); without it,
+-- the wording as before ('Everything', 'Pick which'). A line too
 -- long for its room drops Own (FillLine: parts.ownDropped), and Reset's
 -- tooltip then carries Own's '<source>: <shared>'.
 local TIPS = {
 	ownText = function(state, name) return name, SourceLine(state) end,
 	reset = function(state, name, parts)
-		local dropped = state.page and (Possessive(state.page) .. ' own value is dropped.') or 'Its own value is dropped.'
+		local page = PageText(state)
+		local dropped = page and (Sentence(Possessive(page)) .. ' own value is dropped.') or 'Its own value is dropped.'
 		return 'Reset', format('%s follows %s again. %s', name, state.source, dropped),
 			parts and parts.ownDropped and SourceLine(state) or nil
 	end,
 	all = function(state, name)
+		local noun = state.noun
 		if state.member then
-			return 'Apply to: All', format('%s takes %s from %s, and nothing keeps its own any more.', state.source, name, state.page or 'this page')
+			return 'Apply to: All', format('%s takes %s from %s, and %s keeps its own any more.', state.source, name,
+				PageText(state) or 'this page', noun and ('no ' .. noun[1]) or 'nothing')
 		end
-		return 'Apply to: All', format('Everything that keeps its own %s follows %s again.', name, state.source)
+		return 'Apply to: All', format('%s that keeps its own %s follows %s again.',
+			noun and ('Every ' .. noun[1]) or 'Everything', name, state.source)
 	end,
 	multiple = function(state, name)
+		local which = state.noun and ('Pick which ' .. state.noun[2]) or 'Pick which'
 		if state.member then
-			return 'Apply to: Multiple', format('Pick which take %s from %s as their own.', name, state.page or 'this page')
+			return 'Apply to: Multiple', format('%s take %s from %s as their own.', which, name, PageText(state) or 'this page')
 		end
-		return 'Apply to: Multiple', format('Pick which follow %s again for %s.', state.source, name)
+		return 'Apply to: Multiple', format('%s follow %s again for %s.', which, state.source, name)
 	end,
 }
 

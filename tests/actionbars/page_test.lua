@@ -333,6 +333,29 @@ test('Reset, All and Multiple on a bar, and on All bars', function()
 	no_errors()
 end)
 
+test("the shares name the members ('bar', 'bars'), and the pet and stance bars with their article", function()
+	fresh()
+	local r = root()
+	for _, case in ipairs({
+		{ 'all', 'size', nil }, { 'bar3', 'size', 'Bar 3' }, { 'bar1', 'perrow', 'Bar 1' },
+		{ 'pet', 'size', 'the Pet bar' }, { 'stance', 'size', 'the Stance bar' },
+	}) do
+		local id, key, text = case[1], case[2], case[3]
+		local share = AB:ShareFor(id, key)
+		eq(share.noun and table.concat(share.noun, ','), 'bar,bars', id .. ': a member is a bar')
+		eq(share.pageText, text, id .. ': its page in a sentence')
+		local state = OM.ShareState(r, row(r, id, key))
+		eq(state.pageText, text, id .. ': as the model hands it on')
+		eq(state.noun and state.noun[2], 'bars', id .. ': and its noun')
+	end
+	eq(AB:ShareFor('pet', 'size').page, 'Pet bar', "the page's own name is as before")
+	-- An item's Show, and a setting in its menu, carry them too.
+	local item = row(r, 'pet', 'hotkey')
+	eq(OM.ShareState(r, item).pageText, 'the Pet bar', "the pet bar's Hotkey")
+	eq(OM.ShareState(menu_row(item, 'size')).pageText, 'the Pet bar', 'and its Size')
+	no_errors()
+end)
+
 test('a text item: own-marked by its menu, its diff lines naming the settings', function()
 	fresh()
 	AB:SetSetting('bar3', 'hotkey.size', 8)

@@ -1037,6 +1037,68 @@ test("no tooltip builds s's: All and Multiple name no page's or source's own, th
 	end)
 end)
 
+test("a share's noun and pageText: the tooltips name the members ('every bar', 'which bars') and the page with its article", function()
+	in_look('thick', function(tip)
+		-- A member page whose name reads as a common noun: the module says how
+		-- it reads in a sentence (pageText); Core only starts a sentence with a
+		-- capital.
+		fresh()
+		own.spacing = true
+		local root = Page('member')
+		local share = root.page.args.spacing.share
+		share.page, share.pageText, share.noun = 'Pet bar', 'the Pet bar', { 'bar', 'bars' }
+		local body, by = draw(root)
+		local parts = by.spacing.frame.share
+		stub.fire_script(by.spacing.frame, 'OnEnter', true)
+		eq(read_tip(tip, parts.reset), "Reset|Spacing follows All bars again. The Pet bar's own value is dropped.")
+		eq(read_tip(tip, parts.all), 'Apply to: All|All bars takes Spacing from the Pet bar, and no bar keeps its own any more.')
+		eq(read_tip(tip, parts.multiple), 'Apply to: Multiple|Pick which bars take Spacing from the Pet bar as their own.')
+		eq(read_tip(tip, parts.ownText), 'Spacing|All bars: 3', 'Own names no page')
+
+		-- A name that reads as a name: pageText is the name itself.
+		share.page, share.pageText = 'Bar 3', 'Bar 3'
+		by = redraw(body, root)
+		parts = by.spacing.frame.share
+		stub.fire_script(by.spacing.frame, 'OnEnter', true)
+		eq(read_tip(tip, parts.reset), "Reset|Spacing follows All bars again. Bar 3's own value is dropped.")
+		eq(read_tip(tip, parts.all), 'Apply to: All|All bars takes Spacing from Bar 3, and no bar keeps its own any more.')
+
+		-- A noun that isn't two strings is no noun: the wording as without one.
+		share.noun = { 'bar' }
+		by = redraw(body, root)
+		parts = by.spacing.frame.share
+		stub.fire_script(by.spacing.frame, 'OnEnter', true)
+		eq(read_tip(tip, parts.multiple), 'Apply to: Multiple|Pick which take Spacing from Bar 3 as their own.')
+
+		-- The source page.
+		fresh()
+		differs.spacing = { { name = 'Pet bar', value = '2' } }
+		root = Page('source')
+		root.page.args.spacing.share.noun = { 'bar', 'bars' }
+		by = redraw(body, root)
+		parts = by.spacing.frame.share
+		stub.fire_script(by.spacing.frame, 'OnEnter', true)
+		eq(read_tip(tip, parts.all), 'Apply to: All|Every bar that keeps its own Spacing follows All bars again.')
+		eq(read_tip(tip, parts.multiple), 'Apply to: Multiple|Pick which bars follow All bars again for Spacing.')
+		body:Release()
+	end)
+end)
+
+test('OM.ShareState hands on the noun and pageText, as text, or nil without them', function()
+	fresh()
+	local root = Page('member')
+	local share = root.page.args.spacing.share
+	local function state() return OM.ShareState(root, row_of(root, 'spacing')) end
+	eq(state().noun, nil, 'no noun')
+	eq(state().pageText, nil, 'no pageText')
+	share.noun, share.pageText = { 'bar', 'bars' }, 'the Pet bar'
+	eq(table.concat(state().noun, ','), 'bar,bars', 'the noun, singular and plural')
+	eq(state().pageText, 'the Pet bar', 'the page in a sentence')
+	share.noun, share.pageText = { 'bar', 7 }, ''
+	eq(state().noun, nil, 'a noun of anything but two strings is none')
+	eq(state().pageText, nil, 'an empty pageText is none')
+end)
+
 test("an item's row: its line's tooltips name its Show, its diff tooltip has no source line, and its label sits labelX in", function()
 	in_look('thick', function(tip)
 		do

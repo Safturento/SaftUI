@@ -50,7 +50,7 @@ local st = SaftUI
 	align, disabled, disabledDesc, path, option }: path is the keys from the
 	root, option the option table. size is the option's own size member:
 	'small' (honored only for a toggle, execute, input or item; a color is a
-	bar as wide as a dropdown, which a quarter can't hold, so it is normal) or 'wide';
+	field as wide as a dropdown, which a quarter can't hold, so it is normal) or 'wide';
 	anything else is normal. Every description and every position row is wide.
 	Ace's width is not read. align is an execute's own align member, SaftUI's:
 	'right' or 'center' (a button the body lines up with the buttons beside
@@ -68,6 +68,12 @@ local st = SaftUI
 	  share = {
 	    source = 'Everything',   -- the page everything follows, for texts
 	    page = 'Third',          -- a member page: this page's name, for texts
+	    pageText = 'the third',  -- optional: page as it reads in a sentence,
+	                             -- with any article the module's names take
+	                             -- (Core guesses none); page when nil
+	    noun = { 'page', 'pages' }, -- optional: what a member is, singular
+	                             -- and plural, for texts ('every page', 'which
+	                             -- pages'); the wording without one when nil
 	    own = function(info) -> bool,           -- a member page: it's this page's own
 	    reset = function(info),                 -- a member page: follow the source again
 	    differs = function(info) -> { {name, value} }, -- the source page: who owns it, with what
@@ -879,6 +885,14 @@ local function ShareAsk(share, name, info, ...)
 	if ok then return answer end
 end
 
+-- A share's noun, { singular, plural } when it's two strings that aren't
+-- empty, else nil.
+local function NounOf(noun)
+	if type(noun) ~= 'table' then return nil end
+	local one, many = noun[1], noun[2]
+	if type(one) == 'string' and one ~= '' and type(many) == 'string' and many ~= '' then return { one, many } end
+end
+
 -- A differs answer as { {name, value} }, names and values as text.
 local function DiffList(answer)
 	local list = {}
@@ -916,7 +930,7 @@ end
 	any option directly in its menu has share. A share's own makes its page a
 	member page (it follows the source page until a setting is its own), its
 	differs the source page.
-	{ member, own, marked, offers, source, page, shared, differs, item }:
+	{ member, own, marked, offers, source, page, pageText, noun, shared, differs, item }:
 	  own      a member page and share.own(info);
 	  marked   own, or for an item any option in its menu own;
 	  differs  { {name, value} }: the source page's share.differs(info); an
@@ -926,7 +940,9 @@ end
 	  offers   own on a member page, or a non-empty own differs on the source
 	           page (an item's Show alone);
 	  source, page, shared: the share's source and page names and its
-	           shared(info), as text (shared and page nil when there's none).
+	           shared(info), as text (shared and page nil when there's none);
+	  pageText, noun: the share's pageText (nil when there's none) and noun
+	           ({ singular, plural }, nil unless it's two strings).
 	A share function that errors is reported and counts as false or empty.
 ]]
 function OM.ShareState(root, row)
@@ -977,6 +993,8 @@ function OM.ShareState(root, row)
 		offers = (member and own) or (not member and #ownDiffers > 0),
 		source = Text(first.source),
 		page = Title(first.page),
+		pageText = Title(first.pageText),
+		noun = NounOf(first.noun),
 		shared = shared ~= nil and Text(shared) or nil,
 		differs = differs,
 		item = item,
