@@ -14,7 +14,7 @@ local floor, max, min = math.floor, math.max, math.min
 
 -- From optionslayout.lua and optionswindow.lua.
 local Margins = S.Margins
-local F, Colors, Schedule, SavePosition = S.F, S.Colors, S.Schedule, S.SavePosition
+local F, Colors, Schedule, SaveWindow = S.F, S.Colors, S.Schedule, S.SaveWindow
 local SetScroll, SetNavScroll = S.SetScroll, S.SetNavScroll
 
 ------------------------------------------------------------------ growing taller
@@ -23,9 +23,9 @@ local SetScroll, SetNavScroll = S.SetScroll, S.SetNavScroll
 	The window grows taller by its grip (F.grip, the bottom right corner:
 	Blizzard's PanelResizeButtonTemplate under Blizzard, st:EnableResizing's
 	corner under Thick and Thin) or its bottom edge (F.sizer, the strip left of
-	the grip). Its width and top stay; the sidebar, the main column, the inner
-	frame and the body take the height (their anchors), the footer staying at
-	the bottom. Its height stays even, from the layout's least to the most
+	the grip). Its width and top stay (it is anchored by its top); the
+	sidebar, the main column, the inner frame and the body take the height
+	(their anchors), the footer staying at the bottom. Its height stays even, from the layout's least to the most
 	(OW.MaxHeight), and stops where its bottom, or under Blizzard the metal
 	under it, meets the screen edge margin (Margins).
 
@@ -36,7 +36,8 @@ local SetScroll, SetNavScroll = S.SetScroll, S.SetNavScroll
 	a fill page (the Categories tab) draws its fill row again once it's let
 	go. It ends on the button's release (OnMouseUp, or the handle's next frame
 	finding it up) or the window hiding, and a height it changed is saved,
-	then the position. A change of the screen edge margin moves the most
+	with the window's corner. The window is anchored by its top right corner
+	(optionswindow.lua), so a new height moves only the bottom. A change of the screen edge margin moves the most
 	height, so the window takes its height again then (st:UpdateScreenMargin,
 	hooked in Build; ApplyHeight).
 ]]
@@ -71,13 +72,9 @@ local function StopResize()
 	S.sizing = nil
 	resize.handle:SetScript('OnUpdate', nil)
 	if resize.at == resize.height then return end
-	local saved = st.config.global.optionsWindow
-	if type(saved) ~= 'table' then
-		saved = {}
-		st.config.global.optionsWindow = saved
-	end
-	saved.height = resize.at
-	SavePosition()
+	-- The height, with the corner it has (a window never moved has none saved,
+	-- and the next open would centre it again): the top stays where it was.
+	SaveWindow({ height = resize.at, point = 'TOPRIGHT', x = S.corner.x, y = S.corner.y })
 end
 
 local function UpdateResize()
@@ -90,32 +87,24 @@ local function UpdateResize()
 	height = max(S.layout.height, min(most, 2 * floor(height / 2 + 0.5)))
 	if height == S.sizing.at then return end
 	S.sizing.at = height
-	-- Centred, so it moves down by half the change (a whole number: the
-	-- change is even) and its top stays.
+	-- Anchored by its top right corner: the top stays, the bottom moves.
 	window:SetHeight(height)
-	window:ClearAllPoints()
-	window:SetPoint('CENTER', UIParent, 'CENTER', S.sizing.x, S.sizing.y - (height - S.sizing.height) / 2)
 	FollowHeight()
 end
 
 -- From where the window shows (the game's clamp may have moved it from its
--- anchor): the cursor's y, the window's height, its centre's offset from the
--- screen's and its top.
+-- anchor): the cursor's y, the window's height and its top.
 local function StartResize(handle, button)
 	if button ~= 'LeftButton' or S.sizing then return end
 	local window = F.window
-	local cx, cy = window:GetCenter()
-	local ux, uy = UIParent:GetCenter()
-	if not (cx and ux) then return end
+	if not window:GetTop() then return end
 	local _, y = GetCursorPosition()
 	local height = floor(window:GetHeight() + 0.5)
-	-- cursor and height at the press, at the height now, x and y the centre's
-	-- offset at the press.
+	-- cursor and height at the press, at the height now, and the top.
 	S.sizing = {
 		handle = handle,
 		cursor = y / window:GetEffectiveScale(),
 		height = height, at = height,
-		x = floor(cx - ux + 0.5), y = floor(cy - uy + 0.5),
 		top = window:GetTop(),
 	}
 	handle:SetScript('OnUpdate', UpdateResize)

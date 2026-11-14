@@ -246,7 +246,8 @@ test('/sui under Blizzard: the metal, its title bar and the close button in the 
 		stub.fire_script(F.titleBar, 'OnDragStop')
 		eq(stub.state(F.window).moving, false, client .. ': stopped')
 		local saved = st.config.global.optionsWindow
-		eq(saved.point .. ' ' .. saved.x .. ' ' .. saved.y, 'CENTER 120 -40', client .. ': where it was left is saved')
+		-- By its top right corner: the 1110 x 728 window centred 120 right and 40 down.
+		eq(saved.point .. ' ' .. saved.x .. ' ' .. saved.y, 'TOPRIGHT -285 -216', client .. ': where it was left is saved')
 
 		st.Config:Close()
 		eq(#take_errors(), 0, client .. ': no errors')

@@ -68,6 +68,7 @@ local CATEGORIES = { 'Frames', 'Combat', 'Info' } -- then any others, then Other
 OW.LAYOUT = {
 	own = {
 		width = 1040, height = 700,
+		halfBody = 388, -- W3 is 654 wide
 		sideX = 2, sideTop = 2, sideBottom = 2, sideWidth = 208,
 		navWidth = 207,
 		mainLeft = 210, mainTop = 2, mainRight = 2, mainBottom = 2,
@@ -79,6 +80,7 @@ OW.LAYOUT = {
 	},
 	blizzard = {
 		width = 1110, height = 728, -- 17 + 1076 + 17 by 28 + 654 + 46, both even (it's centred)
+		halfBody = 368, -- W3 is 704 wide
 		sideX = 17, sideTop = 28, sideBottom = 46,
 		sideWidth = 242, -- OW.SidebarWidth(1076): its right edge on the divider
 		navWidth = 226, -- the sidebar less 16: the nav's narrow bar 4 from the rows and 4 from the divider
@@ -210,6 +212,88 @@ function OW.WindowHeight(L)
 	local height = type(saved) == 'table' and saved.height
 	if type(height) ~= 'number' then return L.height end
 	return max(L.height, min(OW.MaxHeight(L), 2 * floor(height / 2 + 0.5)))
+end
+
+-- The most width the window takes in layout L (the one it's in when nil): the
+-- screen less the margin each side and, under Blizzard, the metal at each
+-- side, even; 0 on a screen narrower than that.
+function OW.MaxWidth(L)
+	L = L or S.layout
+	local margin = max(0, st.config.profile.misc.clamp_inset)
+	local left, right = ArtReach(L)
+	local room = floor(UIParent:GetWidth() + 0.5) - 2 * margin - left - right
+	return max(0, 2 * floor(room / 2))
+end
+
+-- Whether the window in layout L fits the screen at size with the sidebar
+-- shown or collapsed.
+function OW.Fits(L, size, sidebar)
+	return OW.WindowWidth(L, size, sidebar) <= OW.MaxWidth(L)
+end
+
+------------------------------------------------------------------ the window's sizes
+
+--[[
+	The window has three sizes, saved in st.config.global.optionsWindow as
+	size = 'half' or nil (full) and sidebar = false or nil (shown): 'full'
+	(the body 774 wide), 'half' (L.halfBody) and 'mini' (a bar, MINI_HEIGHT
+	tall, the half body's width). The bar is never saved: it comes back as half.
+	Its width in each state, every one even (the window's centre is what the
+	small dialog sits on):
+	  W1 full with the sidebar   Thick and Thin 1040   Blizzard 1110
+	  W2 full, sidebar collapsed 832                   868
+	  W3 half with the sidebar   654                   704
+	  W4 half, sidebar collapsed 446                   462
+]]
+OW.MINI_HEIGHT = 42 -- the bar's height
+OW.MINI_MAX = 400 -- the most the bar's width takes
+
+-- The window's width in layout L at size ('full' or 'half'; the bar's is the
+-- half's) with the sidebar shown (true) or collapsed (false).
+function OW.WindowWidth(L, size, sidebar)
+	local width = L.width
+	if sidebar == false then width = width - L.sideWidth end
+	if size ~= 'full' then width = width - (OB.WIDTH - L.halfBody) end
+	return width
+end
+
+-- Where the main column starts, from the window's left: after the sidebar, or
+-- at the sidebar's place when it's collapsed.
+function OW.MainLeft(L, sidebar)
+	if sidebar == false then return L.sideX end
+	return L.mainLeft
+end
+
+-- The body's width at size: OB.WIDTH at full, L.halfBody at half and at the bar.
+function OW.BodyWidth(L, size)
+	if size == 'full' then return OB.WIDTH end
+	return L.halfBody
+end
+
+local SIZES = { 'full', 'half', 'mini' }
+
+-- The size step from size: 1 shrinks (full, half, mini), -1 grows. nil past
+-- either end, and for a size that isn't one.
+function OW.NextSize(size, step)
+	for i, name in ipairs(SIZES) do
+		if name == size then return SIZES[i + step] end
+	end
+end
+
+-- The size and the sidebar the window opens in, from the save: 'full' and
+-- shown unless it says otherwise. 'half' and a saved bar ('mini') are half;
+-- anything else is full, and only false collapses the sidebar.
+function OW.SavedState()
+	local saved = st.config.global.optionsWindow
+	if type(saved) ~= 'table' then return 'full', true end
+	local size = (saved.size == 'half' or saved.size == 'mini') and 'half' or 'full'
+	return size, saved.sidebar ~= false
+end
+
+-- The corner offset, from UIParent's top right, that centres a window width by
+-- height on a screen screenWidth by screenHeight: whole, rounded down.
+function OW.CentredCorner(screenWidth, screenHeight, width, height)
+	return 0 - floor((screenWidth - width) / 2), 0 - floor((screenHeight - height) / 2)
 end
 
 ------------------------------------------------------------------ for the later files
