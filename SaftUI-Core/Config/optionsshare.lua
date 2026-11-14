@@ -50,8 +50,13 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	    row's control (hooked once per pooled part, finding the row when it
 	    runs), so a row entered through its control shows its line too. The
 	    line starts under the label and ends no further right than its
-	    cell's right edge: a longer one is cut there (it clips its pieces,
-	    and a piece past the cut takes no mouse there). The line's OnUpdate
+	    cell's right edge. When the whole line doesn't fit there it drops
+	    Own (the mark and the label still say it; Reset's tooltip gains
+	    Own's '<source>: <shared>' line), then the words before All ('·
+	    Apply to:'; All's and Multiple's tooltips are titled with them),
+	    leaving the reset icon and All | Multiple. Still longer, it is cut
+	    there (it clips its pieces, and a piece past the cut takes no mouse
+	    there). A title's line has no room and is always whole. The line's OnUpdate
 	    (it runs only while the line shows) hides it and puts the label back
 	    once the body's view (the content's parent) isn't under the mouse,
 	    or neither the row frame nor the line is (IsMouseOver), unless the
@@ -150,14 +155,17 @@ local function DiffTip(host, owner)
 	GameTooltip:Show()
 end
 
--- What each link's tooltip says (name: SettingName's). Every name comes from
--- the share; no possessive is built from the source's or the page's name but
--- Reset's, through Possessive.
+-- What each link's tooltip says (name: SettingName's; parts, the line's
+-- pieces). Every name comes from the share; no possessive is built from the
+-- source's or the page's name but Reset's, through Possessive. A line too
+-- long for its room drops Own (FillLine: parts.ownDropped), and Reset's
+-- tooltip then carries Own's '<source>: <shared>'.
 local TIPS = {
 	ownText = function(state, name) return name, SourceLine(state) end,
-	reset = function(state, name)
+	reset = function(state, name, parts)
 		local dropped = state.page and (Possessive(state.page) .. ' own value is dropped.') or 'Its own value is dropped.'
-		return 'Reset', format('%s follows %s again. %s', name, state.source, dropped)
+		return 'Reset', format('%s follows %s again. %s', name, state.source, dropped),
+			parts and parts.ownDropped and SourceLine(state) or nil
 	end,
 	all = function(state, name)
 		if state.member then
@@ -200,7 +208,7 @@ local function Piece(host, line, key, frameType)
 	piece:SetHeight(LINE_HEIGHT)
 	piece:SetScript('OnEnter', function(self)
 		local state = host.shareState
-		Tip(self, TIPS[key](state, SettingName(state, host.shareCell.row.name)))
+		Tip(self, TIPS[key](state, SettingName(state, host.shareCell.row.name), host.share))
 		if self.text and self.lit then self.text:SetTextColor(1, 1, 1) end
 		if self.icon then self.icon:SetVertexColor(1, 1, 1) end
 	end)
@@ -351,18 +359,29 @@ local function FillLine(parts, state, room)
 	end
 	parts.sep:SetTextColor(Grey())
 	parts.pipe:SetTextColor(Grey())
-	if state.member then
-		local ownWidth = TextWidth(parts.ownText.text)
+	-- Too long for its room: Own goes first (the mark and the label say it;
+	-- Reset's tooltip takes its line), then the words before All (their
+	-- links' tooltips say them). The cut below is the last resort.
+	local member = state.member
+	parts.sep:SetText(member and '· Apply to:' or 'Apply to:')
+	local ownWidth, sepWidth = TextWidth(parts.ownText.text), TextWidth(parts.sep)
+	local links = parts.all:GetWidth() + WORD_GAP + TextWidth(parts.pipe) + WORD_GAP + parts.multiple:GetWidth()
+	local withOwn, withWords = member, true
+	local function Width()
+		return (withOwn and ownWidth + RESET_GAP or 0) + (member and RESET_SIZE + RESET_GAP or 0)
+			+ (withWords and sepWidth + WORD_GAP or 0) + links
+	end
+	if room and withOwn and Width() > room then withOwn = false end
+	if room and Width() > room then withWords = false end
+	parts.ownDropped = member and not withOwn
+	if withOwn then
 		parts.ownText:SetWidth(ownWidth)
 		Put(parts.ownText, ownWidth, RESET_GAP)
-		Put(parts.reset, RESET_SIZE, RESET_GAP)
-		parts.sep:SetText('· Apply to:')
 	else
 		parts.ownText:Hide()
-		parts.reset:Hide()
-		parts.sep:SetText('Apply to:')
 	end
-	Put(parts.sep, TextWidth(parts.sep), WORD_GAP)
+	if member then Put(parts.reset, RESET_SIZE, RESET_GAP) else parts.reset:Hide() end
+	if withWords then Put(parts.sep, sepWidth, WORD_GAP) else parts.sep:Hide() end
 	Put(parts.all, parts.all:GetWidth(), WORD_GAP)
 	Put(parts.pipe, TextWidth(parts.pipe), WORD_GAP)
 	Put(parts.multiple, parts.multiple:GetWidth())

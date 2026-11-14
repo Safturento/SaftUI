@@ -233,7 +233,19 @@ test("the window's render leaves an open dialog be while its own dropdown list o
 	W.CancelConfirm()
 	OW:Render()
 	eq(dialogCell('pick').label:GetText(), 'During confirm', 'drawn again once it is answered')
+
+	-- Closing the dialog takes its list and a confirm with it.
+	click(dialogCell('pick').widget.frame)
+	check(W.ListOwner() ~= nil, 'its list open')
 	OW:CloseDialog()
+	eq(W.ListOwner(), nil, 'the list goes with the dialog')
+	OW:OpenDialog('Guard', { type = 'group', name = 'Guard', args = {
+		go = { order = 1, type = 'execute', name = 'Go', confirm = true, func = function() end },
+	} })
+	click(dialogCell('go').widget.frame)
+	check(W.ConfirmText() ~= nil, 'a confirm from it')
+	OW:CloseDialog()
+	eq(W.ConfirmText(), nil, 'the confirm goes with the dialog')
 	close_all()
 	eq(#take_errors(), 0, 'no errors')
 end)

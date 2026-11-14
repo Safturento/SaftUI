@@ -22,10 +22,14 @@ local Kit = W.Kit
 	            ellipsis-vertical (st.icons.ellipsisVertical) at 16x16 on it,
 	            Text > Grey; under the mouse Text > Blue, or white under
 	            Blizzard. A click opens the menu, or closes it when it's this
-	            item's
+	            item's. Shown only when the option has a menu (a table):
+	            w.hasMenu, which the body reads to end the label at the
+	            cell's right edge instead
 	  w.labelX  where the body starts the name: 26 with a box (its 18 and a
 	            gap of 8), else 0
 	  w.value   the Show box's value (nil without one)
+	The box and the dots are centred on the widget's frame, which the body
+	makes as tall as the row.
 	  w:OpenMenu()       st.OptionsWindow:OpenMenu(w): true when it opened
 	  w:SetWidth(width)  the cell's (the body's PlaceRow)
 	  w:ShiftBox(x)      the box x right of the cell's left: the body moves
@@ -104,6 +108,8 @@ define('item', {
 	Refresh = function(self)
 		self.hasBox = OM.Has(self.root, self.row, 'get')
 		self.labelX = self.hasBox and LABEL_X or 0
+		self.hasMenu = type(self.row.option and self.row.option.menu) == 'table'
+		self.dots:SetShown(self.hasMenu)
 		self.box:SetShown(self.hasBox)
 		if self.hasBox then
 			self.value = self:Value() and true or false
@@ -147,7 +153,7 @@ define('item', {
 	end,
 
 	OnRelease = function(self)
-		self.width, self.value, self.hasBox, self.labelX = W.WIDTH.item, nil, nil, nil
+		self.width, self.value, self.hasBox, self.hasMenu, self.labelX = W.WIDTH.item, nil, nil, nil, nil
 		self:ShiftBox(0)
 		PaintDots(self, false)
 	end,

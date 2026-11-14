@@ -258,7 +258,9 @@ test("an item's marks: own-marked by its menu, its diff icon short of the dots",
 		stub.fire_script(c.frame, 'OnLeave', true)
 		body:Release()
 
-		-- Its Show own too: the line, under the label, and cut short of the dots.
+		-- Its Show own too: the line, under the label, short of the dots. In a
+		-- quarter the whole line doesn't fit, so Own and the words go: the reset
+		-- icon and All | Multiple, whole.
 		own.hotkey = true
 		body, by = draw(Page({ hotkey = Item('Hotkey', 1, 'member') }))
 		c = by.hotkey
@@ -267,7 +269,9 @@ test("an item's marks: own-marked by its menu, its diff icon short of the dots",
 		check(parts.line:IsShown(), 'its line')
 		eq(x_in(parts.line, c.frame), 26, 'under the label')
 		check(parts.line:GetRight() <= c.widget.dots:GetLeft() - 6, 'it ends 6 before the dots')
-		check(parts.line:DoesClipChildren(), 'cut there: it runs longer')
+		check(not parts.ownText:IsShown() and not parts.sep:IsShown(), 'Own and the words dropped')
+		check(parts.reset:IsShown() and parts.all:IsShown() and parts.multiple:IsShown(), 'the reset icon, All and Multiple')
+		check(not parts.line:DoesClipChildren(), 'and they fit: nothing cut')
 		stub.cursor_x, stub.cursor_y = 0, 0
 		stub.fire_script(parts.line, 'OnUpdate', 0.01)
 		body:Release()
@@ -330,6 +334,122 @@ test('Blizzard: the box is the Settings check box at the row size, the dots whit
 		check(line:GetRight() <= c.widget.dots:GetLeft() - 6, 'short of its dots')
 		stub.cursor_x, stub.cursor_y = 0, 0
 		stub.fire_script(line, 'OnUpdate', 0.01)
+		body:Release()
+	end)
+end)
+
+------------------------------------------------------------------ fix round 1
+
+test("an item's box and dots sit centred on its row, under both looks", function()
+	local function mid(region) return (region:GetTop() + region:GetBottom()) / 2 end
+	for _, look in ipairs({ 'thick', 'blizzard' }) do
+		in_look(look, function()
+			fresh()
+			local body, by = draw(Page(FourItems()))
+			for _, key in ipairs({ 'hotkey', 'cooldown' }) do
+				local c = by[key]
+				eq(c.widget.frame:GetHeight(), c.height, look .. ' ' .. key .. ': the widget as tall as the row')
+				eq(mid(c.widget.box), mid(c.frame), look .. ' ' .. key .. ': the box centred')
+				eq(mid(c.widget.dots), mid(c.frame), look .. ' ' .. key .. ': the dots centred')
+			end
+			body:Release()
+		end)
+	end
+end)
+
+test("an item's box takes the mouse over Blizzard's art under Blizzard, and on itself again under Thick", function()
+	local insets = function(box) return table.concat({ box:GetHitRectInsets() }, ',') end
+	local boxes = {}
+	in_look('blizzard', function()
+		fresh()
+		local body, by = draw(Page(FourItems()))
+		for key, c in pairs(by) do
+			boxes[key] = c.widget.box
+			-- The art is 23 x 22 from the box's left, 2 over its top: the box reaches it.
+			eq(insets(c.widget.box), '0,-5,-2,-2', key .. ': over the art')
+		end
+		body:Release()
+	end)
+	in_look('thick', function()
+		fresh()
+		local body, by = draw(Page(FourItems()))
+		local reused = 0
+		for key, c in pairs(by) do
+			for _, box in pairs(boxes) do
+				if box == c.widget.box then reused = reused + 1 end
+			end
+			eq(insets(c.widget.box), '0,0,0,0', key .. ': on itself again')
+		end
+		eq(reused, 4, 'the same pooled boxes')
+		body:Release()
+	end)
+end)
+
+test("an item's dots take Text > Grey as each draw binds them; an item with no menu has none", function()
+	in_look('thick', function()
+		fresh()
+		local body, by = draw(Page(FourItems()))
+		body:Release()
+		local grey = st.config.profile.colors.text.grey
+		local r, g, b = grey.r, grey.g, grey.b
+		grey.r, grey.g, grey.b = 0.2, 0.4, 0.6
+		body, by = draw(Page(FourItems()))
+		eq(vertex(by.hotkey.widget.dots.icon), '0.20,0.40,0.60', 'the new grey')
+		grey.r, grey.g, grey.b = r, g, b
+		body:Release()
+
+		-- No menu: no dots, and the name and its line go on to the cell's right edge.
+		fresh()
+		local args = FourItems()
+		args.cooldown.menu = nil
+		body, by = draw(Page(args))
+		local c = by.cooldown
+		check(not c.widget.dots:IsShown(), 'no dots')
+		eq(c.widget.hasMenu, false)
+		eq(c.label:GetWidth(), 165 - 26, "the label on to the cell's right edge")
+		eq(c.lineEnd, 165, 'and its line')
+		eq(st.OptionsWindow:OpenMenu(c.widget), false, 'no menu to open')
+		check(by.hotkey.widget.dots:IsShown(), 'an item with a menu has its dots')
+		body:Release()
+		-- The same pooled widget drawn with a menu again: its dots back.
+		body, by = draw(Page(FourItems()))
+		for key, each in pairs(by) do check(each.widget.dots:IsShown(), key .. ': dots') end
+		body:Release()
+	end)
+end)
+
+test("an item's label through a drag: enabled by a dragged slider it stays grey while its Show is off, and follows its Show", function()
+	in_look('thick', function()
+		fresh()
+		local level = 3
+		local args = FourItems()
+		args.macro.disabled = function() return level < 5 end
+		args.level = { type = 'range', name = 'Level', desc = 'Level.', order = 5, min = 0, max = 10, step = 1,
+			get = function() return level end, set = function(_, v) level = v end }
+		local body, by
+		body, by = draw(Page(args), function(ok, err, isDragging, widget)
+			if isDragging then body:Refresh(widget) end
+		end)
+		local macro = by.macro
+		check(macro.widget.disabled, 'Macro name disabled at 3')
+		eq(text_rgb(macro.label), color('text', 'grey'), 'grey')
+		local slider = by.level.widget
+		stub.mouse_buttons.LeftButton = true
+		slider.dragging = true
+		slider:Commit(6)
+		check(not macro.widget.disabled, 'enabled mid-drag')
+		eq(text_rgb(macro.label), color('text', 'grey'), 'its label stays grey: its Show is off')
+		shows.macro = true -- its Show turned on meanwhile
+		slider:Commit(7)
+		eq(text_rgb(macro.label), color('text', 'normal'), 'its Show on: the text color')
+		shows.macro = false
+		slider:Commit(6)
+		eq(text_rgb(macro.label), color('text', 'grey'), 'off again: grey')
+		slider:Commit(4)
+		check(macro.widget.disabled, 'disabled again')
+		eq(text_rgb(macro.label), color('text', 'grey'))
+		stub.mouse_buttons.LeftButton = nil
+		slider.dragging = nil
 		body:Release()
 	end)
 end)

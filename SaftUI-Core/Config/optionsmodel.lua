@@ -993,7 +993,8 @@ end
 	section title) or a tab name above the item; hidden ones aren't. Each is
 	{ pageKey, path = the item's path, name = the setting's name, tabName,
 	sectionTitle = the item's name, menu = true }, which opens the page with
-	the item in view and its menu open.
+	the item in view and its menu open; an item in a page's footer gives
+	footer = true too, as its own row does (the page opens as it is).
 ]]
 function OM.Search(root, text)
 	local results = {}
@@ -1007,8 +1008,9 @@ function OM.Search(root, text)
 
 	-- Adds the matching settings of an item's menu (row, an item's row): by
 	-- their name, the item's name or a tab's (tabMatch), each a result on the
-	-- item's path; true once there are enough.
-	local function CollectMenu(pageKey, row, tabMatch, tabName)
+	-- item's path (a footer's item's with footer, as its own row's); true once
+	-- there are enough.
+	local function CollectMenu(pageKey, row, tabMatch, tabName, footer)
 		local menu = row.option.menu
 		if type(menu) ~= 'table' or menu.type ~= 'group' then return end
 		local within = Options(OM.MenuRoot(row.option))
@@ -1024,6 +1026,7 @@ function OM.Search(root, text)
 						name = inner.name,
 						tabName = tabName,
 						sectionTitle = row.name,
+						footer = footer or nil,
 						menu = true,
 					}
 					if #results >= MAX_RESULTS then return true end
@@ -1056,7 +1059,7 @@ function OM.Search(root, text)
 					}
 					if #results >= MAX_RESULTS then return true end
 				end
-				if row.type == 'item' and CollectMenu(pageKey, row, tabMatch, tabName) then return true end
+				if row.type == 'item' and CollectMenu(pageKey, row, tabMatch, tabName, footer) then return true end
 			end
 		end
 	end

@@ -21,26 +21,34 @@ local drawn = T.watch() -- before the menu is first built, so its draw is seen
 
 ------------------------------------------------------------------ the Items module
 
-local values, pos, resets
+local values, pos, resets, tint
 hideHotkey = false
+disableCooldown = false -- Cooldown's item disabled
+showTint = false -- a color in each menu (hidden, so no search or layout counts it, until a case shows it)
 
 local function fresh()
 	values = { hotkey = true, outline = 'none', size = 10, plain = true }
 	pos = { point = 'TOPRIGHT', rel_point = 'TOPRIGHT', x_off = -3, y_off = -3 }
+	tint = { 1, 0, 0 }
 	resets = 0
-	hideHotkey = false
+	hideHotkey, disableCooldown, showTint = false, false, false
 end
 fresh()
 
--- A text's menu: Outline (a select), Size (a range), its Position, a centred Reset.
+-- A text's menu: Outline (a select, disabled from a Size of 18 up), Size (a
+-- range), its Position, a centred Reset, and Tint (a color) while showTint.
 local function TextMenu(name)
 	return {
 		type = 'group', name = name,
 		get = function(info) return values[info[#info]] end,
 		set = function(info, value) values[info[#info]] = value end,
 		args = {
-			outline = { order = 1, type = 'select', name = 'Outline', desc = 'Its outline.', values = { none = 'None', thick = 'Thick' } },
+			outline = { order = 1, type = 'select', name = 'Outline', desc = 'Its outline.', values = { none = 'None', thick = 'Thick' },
+				disabled = function() return values.size >= 18 end },
 			size = { order = 2, type = 'range', name = 'Size', desc = 'Its size.', min = 6, max = 20, step = 1 },
+			tint = { order = 5, type = 'color', name = 'Tint', desc = 'Its tint.', hidden = function() return not showTint end,
+				get = function() return tint[1], tint[2], tint[3] end,
+				set = function(_, r, g, b) tint = { r, g, b } end },
 			position = st.Config.generators.position(3, false, function(part) return pos[part] end,
 				function(part, value) pos[part] = value end, nil, 'Where it sits.', 'Position'),
 			reset = { order = 4, type = 'execute', name = 'Reset', desc = 'Back to the default.', align = 'center',
@@ -70,6 +78,7 @@ function ITM:GetConfigTable()
 				hotkey = HotkeyItem(),
 				-- No Show: no box; its menu titled with menuTitle as a function.
 				cooldown = { order = 2, type = 'item', name = 'Cooldown', desc = 'The numbers.', size = 'small',
+					disabled = function() return disableCooldown end,
 					menuTitle = function() return 'Cooldown numbers' end, menu = TextMenu('Cooldown') },
 			} },
 			other = { order = 2, type = 'group', name = 'Other', args = {
@@ -480,6 +489,288 @@ test("OM.Search: a menu's settings by their name, the item's name, or a tab's; h
 	hideHotkey = true
 	eq(find('Outline'), 'Outline@cooldown+menu:Cooldown', 'a hidden item: none of its menu')
 	hideHotkey = false
+end)
+
+------------------------------------------------------------------ fix round 1
+
+test('MenuPlace: inside the screen edge margin; the side that goes less far past; the exact edge', function()
+	local function at(...) return table.concat({ OW.MenuPlace(...) }, ',') end
+	local margin = { left = 20, right = 20, top = 20, bottom = 20 }
+	-- Fitting below by 10, less than a margin of 20: above.
+	eq(at({ left = 600, right = 616, top = 338, bottom = 314 }, 400, 300, 1920, 1080), 'TOPRIGHT,BOTTOMRIGHT,0,-4', 'no margin: below, 10 to spare')
+	eq(at({ left = 600, right = 616, top = 338, bottom = 314 }, 400, 300, 1920, 1080, margin), 'BOTTOMRIGHT,TOPRIGHT,0,4', 'the margin: above')
+	-- Right-aligned 10 inside the screen's left, 10 past the margin's: left-aligned.
+	eq(at({ left = 394, right = 410, top = 500, bottom = 476 }, 400, 300, 1920, 1080), 'TOPRIGHT,BOTTOMRIGHT,0,-4', 'no margin: right-aligned')
+	eq(at({ left = 394, right = 410, top = 500, bottom = 476 }, 400, 300, 1920, 1080, margin), 'TOPLEFT,BOTTOMLEFT,0,-4', 'the margin: left-aligned')
+	-- Too narrow a screen either way: the side that goes less far past it.
+	eq(at({ left = 300, right = 316, top = 500, bottom = 476 }, 400, 300, 500, 1080), 'TOPRIGHT,BOTTOMRIGHT,0,-4', 'right-aligned past by 84, left-aligned by 200')
+	eq(at({ left = 150, right = 166, top = 500, bottom = 476 }, 400, 300, 500, 1080), 'TOPLEFT,BOTTOMLEFT,0,-4', 'right-aligned past by 234, left-aligned by 50')
+	-- At the exact edge: its left on the screen's, right-aligned.
+	eq(at({ left = 384, right = 400, top = 500, bottom = 476 }, 400, 300, 1920, 1080), 'TOPRIGHT,BOTTOMRIGHT,0,-4', "its left on the screen's")
+end)
+
+test("the menu's place: its dots read in the menu's units, inside the margin it's clamped to", function()
+	fresh()
+	-- An item drawn at half the menu's scale.
+	local content = CreateFrame('Frame', nil, UIParent)
+	content:SetScale(0.5)
+	content:SetSize(774, 600)
+	local root = { page = { type = 'group', name = 'Page', args = { hotkey = HotkeyItem() } } }
+	local body = OB.New(content, root, function() end, 774)
+	local function at(bottom) -- the dots' bottom, in the menu's units
+		content:ClearAllPoints()
+		content:SetPoint('TOPLEFT', UIParent, 'BOTTOMLEFT', 1400, 1200)
+		body:Release()
+		body:Draw(OM.BuildView(root, 'page').sections)
+		local dots = body.cells[1].widget.dots
+		content:SetPoint('TOPLEFT', UIParent, 'BOTTOMLEFT', 1400, 1200 + (bottom * 2 - dots:GetBottom()))
+		eq(math.floor(dots:GetBottom() * dots:GetEffectiveScale() / M().frame:GetEffectiveScale() + 0.5), bottom, 'the dots placed')
+		OW:OpenMenu(body.cells[1].widget)
+		local p = point(M().frame)
+		OW:CloseMenu()
+		return p
+	end
+	content:SetPoint('TOPLEFT', UIParent, 'BOTTOMLEFT', 1400, 1200)
+	body:Draw(OM.BuildView(root, 'page').sections)
+	OW:OpenMenu(body.cells[1].widget) -- built, for its height
+	local height = M().frame:GetHeight()
+	OW:CloseMenu()
+	check(height > 100, 'a menu of some height')
+	local margin = st.config.profile.misc.clamp_inset
+	st.config.profile.misc.clamp_inset = 0
+	eq(at(height + 4 + 10), 'TOPRIGHT', 'room below, in its units: below')
+	-- Read in the dots' own units the bottom would be twice as high, and room below.
+	eq(at(math.floor((height + 4) * 0.75)), 'BOTTOMRIGHT', 'no room below in its units: above')
+	st.config.profile.misc.clamp_inset = 30
+	st:UpdateScreenMargin()
+	eq(at(height + 4 + 10), 'BOTTOMRIGHT', 'room below the screen but not the margin: above')
+	st.config.profile.misc.clamp_inset = margin
+	st:UpdateScreenMargin()
+	body:Release()
+end)
+
+test("the small dialog opened again, or drawn again by its own set, under its item's menu", function()
+	open_items()
+	local plain = { type = 'toggle', name = 'Plain', desc = 'Plain.', order = 2,
+		get = function() return values.plain end, set = function(_, v) values.plain = v end }
+	OW:OpenDialog('D1', { type = 'group', name = 'D', args = { hotkey = HotkeyItem(), plain = plain } })
+	local d = OW.GetDialogFrames()
+	click(d.body.cells[1].widget.dots)
+	check(OW:IsMenuShown(), 'its menu open')
+	-- The dialog's own set (one of its rows): drawn again, and the menu with it.
+	local before, plainCell = menuCell('size'), nil
+	for _, c in ipairs(d.body.cells) do
+		if c.row.key == 'plain' then plainCell = c end
+	end
+	plainCell.widget:Commit(false)
+	eq(values.plain, false, 'set')
+	check(OW:IsMenuShown(), 'the menu stays')
+	check(menuCell('size') ~= before, 'drawn again with the dialog')
+	eq((select(2, point(M().frame))), d.body.cells[1].widget.dots, "on its item's dots")
+	eq(M().owner.body, d.body)
+
+	-- Opened again on other options: the menu goes, never left on the new item.
+	OW:OpenDialog('D2', { type = 'group', name = 'D2', args = { hotkey = { order = 1, type = 'item', name = 'Other', desc = 'Other.', size = 'small',
+		get = function() return true end, set = function() end,
+		menu = { type = 'group', name = 'Other', args = {
+			other = { type = 'toggle', name = 'Other toggle', desc = 'Other.', get = function() return true end, set = function() end },
+		} } } } })
+	check(not OW:IsMenuShown(), 'closed')
+	eq(#M().body.cells, 0, 'its rows released')
+	eq(d.body.cells[1].row.name, 'Other', 'the dialog shows the new options')
+
+	-- A page item's menu stays when the dialog opens again.
+	click(dots('hotkey'))
+	OW:OpenDialog('D3', { type = 'group', name = 'D3', args = { hotkey = HotkeyItem() } })
+	check(OW:IsMenuShown(cell('hotkey').widget), "a page item's menu stays")
+	close_all()
+end)
+
+test("a disabled item's menu doesn't open, from its dots or from search", function()
+	open_items()
+	disableCooldown = true
+	OW:Render()
+	local w = cell('cooldown').widget
+	check(w.disabled, 'Cooldown disabled')
+	eq(OW:OpenMenu(w), false, 'OpenMenu refuses it')
+	check(not OW:IsMenuShown())
+	eq(OW:OpenMenu({ row = cell('hotkey').row, dots = dots('hotkey') }), false, 'a widget no body drew: false')
+	OW:Navigate('Loot')
+	frames().search:SetText('Outline')
+	tick(0.3)
+	local found
+	for _, c in ipairs(OW.GetDrawnRows()) do
+		if c.row.menu and c.row.path[#c.row.path] == 'cooldown' then found = c end
+	end
+	check(found ~= nil, "Cooldown's Outline is found")
+	click(found.frame)
+	eq(OW:GetState().page, 'Items', 'the page opens')
+	eq(T.rgb(cell('cooldown').label:GetTextColor()), T.rgb(st.config.profile.colors.text.blue:GetRGB()), 'the item marked blue')
+	check(not OW:IsMenuShown(), 'its menu stays shut')
+	close_all()
+end)
+
+test("a click outside while the color picker is open is the picker's: the menu stays, and Cancel puts the color back", function()
+	open_items()
+	showTint = true
+	click(dots('hotkey'))
+	local c = menuCell('tint')
+	check(c ~= nil, 'a color in the menu')
+	click(c.widget.frame)
+	check(ColorPickerFrame:IsShown(), 'the picker opens')
+	stub.pick_color(0, 1, 0)
+	eq(table.concat(tint, ','), '0,1,0', 'a pick is set')
+	stub.fire_script(M().catcher, 'OnMouseDown', 'LeftButton')
+	check(OW:IsMenuShown(), 'the menu stays under the picker')
+	stub.color_picker_cancel()
+	eq(table.concat(tint, ','), '1,0,0', 'Cancel puts the color back')
+	check(not ColorPickerFrame:IsShown(), 'the picker gone')
+	tick()
+	stub.fire_script(M().catcher, 'OnMouseDown', 'LeftButton')
+	check(not OW:IsMenuShown(), 'then a click outside closes it')
+	close_all()
+end)
+
+test('the mouse wheel stops at the menu and its catcher', function()
+	open_items()
+	click(dots('hotkey'))
+	local m = M()
+	for name, f in pairs({ catcher = m.catcher, menu = m.frame }) do
+		check(f:IsMouseWheelEnabled(), name .. ' takes the wheel')
+		check(f:GetScript('OnMouseWheel') ~= nil, name .. ' has a wheel script')
+		stub.fire_script(f, 'OnMouseWheel', -1)
+	end
+	check(OW:IsMenuShown(), 'nothing closed')
+	eq((select(2, point(m.frame))), dots('hotkey'), 'still on its dots')
+	close_all()
+end)
+
+test("the menu's title takes Text > Grey on each draw", function()
+	open_items()
+	click(dots('hotkey'))
+	local grey = st.config.profile.colors.text.grey
+	local r, g, b = grey.r, grey.g, grey.b
+	grey.r, grey.g, grey.b = 0.2, 0.4, 0.6
+	OW:Render()
+	eq(T.rgb(M().title:GetTextColor()), '0.20,0.40,0.60', 'a changed grey')
+	grey.r, grey.g, grey.b = r, g, b
+	OW:Render()
+	eq(T.rgb(M().title:GetTextColor()), T.rgb(r, g, b), 'and back')
+	close_all()
+end)
+
+test("a failed validate in the menu draws nothing again, and shows where its item is: the window's status line, or the dialog's", function()
+	open_items()
+	click(dots('hotkey'))
+	local size = M().body.root.menu.args.size
+	size.validate = function() return 'Size: too big' end
+	local renders, before = OW.GetRenderCount(), menuCell('size')
+	menuCell('size').widget:Commit(19)
+	eq(frames().status:GetText(), 'Size: too big', "in the window's status line")
+	eq(OW.GetRenderCount(), renders, 'no render')
+	eq(menuCell('size'), before, 'the menu not drawn again')
+	size.validate = nil
+	menuCell('size').widget:Commit(12)
+	eq(frames().status:GetText(), '', 'a good set clears it')
+	OW:CloseMenu()
+
+	-- An item in the dialog: the dialog's status line, which is over the window's.
+	OW:OpenDialog('Dialog', { type = 'group', name = 'Dialog', args = { hotkey = HotkeyItem() } })
+	local d = OW.GetDialogFrames()
+	click(d.body.cells[1].widget.dots)
+	size = M().body.root.menu.args.size
+	size.validate = function() return 'Size: too big' end
+	menuCell('size').widget:Commit(19)
+	eq(d.status:GetText(), 'Size: too big', "in the dialog's status line")
+	eq(frames().status:GetText(), '', "not the window's, behind it")
+	size.validate = nil
+	menuCell('size').widget:Commit(12)
+	eq(d.status:GetText(), '', 'a good set clears it')
+	close_all()
+end)
+
+test('closing the menu releases its rows and takes a confirm still open from it', function()
+	open_items()
+	click(dots('hotkey'))
+	check(#M().body.cells > 0, 'rows drawn')
+	OW:CloseMenu()
+	eq(#M().body.cells, 0, 'its rows released')
+	eq(#M().body.pools.row.used, 0, 'every row frame back in its pool')
+	click(dots('hotkey'))
+	M().body.root.menu.args.reset.confirm = true
+	click(menuCell('reset').widget.frame)
+	check(W.ConfirmText() ~= nil, 'a confirm from it')
+	OW:CloseMenu()
+	eq(W.ConfirmText(), nil, 'gone with the menu')
+	eq(resets, 0, 'nothing ran')
+	close_all()
+end)
+
+test('a drag in the menu: another of its rows follows it, and a render meanwhile leaves its rows', function()
+	open_items()
+	click(dots('hotkey'))
+	local outline, slider = menuCell('outline'), menuCell('size').widget
+	check(not outline.widget.disabled, 'Outline enabled at 10')
+	stub.mouse_buttons.LeftButton = true
+	slider.dragging = true
+	slider:Commit(18)
+	check(outline.widget.disabled, 'Outline follows the drag: disabled at 18')
+	eq(T.rgb(outline.label:GetTextColor()), T.rgb(st.config.profile.colors.text.grey:GetRGB()), 'its label grey')
+	OW:Render() -- a render from elsewhere (a ConfigTableChange)
+	eq(menuCell('outline'), outline, 'its rows kept under the held slider')
+	eq(menuCell('size').widget, slider, 'the slider not taken from under the mouse')
+	stub.mouse_buttons.LeftButton = nil
+	slider.dragging = nil
+	slider:Commit(18)
+	check(menuCell('outline') ~= outline, 'drawn again once let go')
+	check(menuCell('outline').widget.disabled, 'Outline still disabled')
+	close_all()
+end)
+
+test("going to the item's own page and tab closes its menu; a result for the item's own row opens the page, not the menu", function()
+	open_items()
+	click(dots('hotkey'))
+	OW:Navigate('Items', { tab = 'texts' })
+	check(not OW:IsMenuShown(), "the item's own page and tab: closed")
+	OW:Navigate('Loot')
+	frames().search:SetText('Hotkey')
+	tick(0.3)
+	local own
+	for _, c in ipairs(OW.GetDrawnRows()) do
+		if not c.row.menu and c.row.path[#c.row.path] == 'hotkey' then own = c end
+	end
+	check(own ~= nil, "a result for Hotkey's own row")
+	click(own.frame)
+	eq(OW:GetState().page, 'Items', 'its page')
+	eq(T.rgb(cell('hotkey').label:GetTextColor()), T.rgb(st.config.profile.colors.text.blue:GetRGB()), 'the item marked blue')
+	check(not OW:IsMenuShown(), 'its menu shut')
+	close_all()
+end)
+
+test("OM.Search in menus: a footer item's results keep footer; no description, no menu that isn't a group; the cap", function()
+	local function toggle(name, order) return { type = 'toggle', name = name, desc = name .. '.', order = order } end
+	local function item(menu) return { type = 'item', name = 'It', desc = 'It.', order = 1, menu = menu } end
+	local root = {
+		Pg = { type = 'group', name = 'Pg', args = {
+			it = item({ type = 'group', name = 'It', args = {
+				words = { type = 'description', name = 'Outline words', order = 1 },
+				outline = toggle('Outline', 2),
+			} }),
+			loose = { type = 'item', name = 'Loose', desc = 'Loose.', order = 2, menu = { args = { outline = toggle('Outline', 1) } } },
+		}, footer = { type = 'group', name = 'Foot', args = {
+			fit = item({ type = 'group', name = 'It', args = { outline = toggle('Outline', 1) } }),
+		} } },
+	}
+	local out = {}
+	for _, r in ipairs(OM.Search(root, 'Outline')) do
+		out[#out + 1] = r.name .. '@' .. table.concat(r.path, '.') .. (r.menu and '+menu' or '') .. (r.footer and '+footer' or '')
+	end
+	eq(table.concat(out, ','), 'Outline@Pg.it+menu,Outline@Pg.fit+menu+footer',
+		"the page's item's, then the footer's with footer; no description, no menu that isn't a group")
+	local many = {}
+	for i = 1, 150 do many['x' .. i] = toggle('Many ' .. i, i) end
+	local big = { Pg = { type = 'group', name = 'Pg', args = { it = item({ type = 'group', name = 'It', args = many }) } } }
+	eq(#OM.Search(big, 'Many'), 100, 'at most 100, in a menu too')
 end)
 
 ------------------------------------------------------------------ the look

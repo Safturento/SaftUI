@@ -12,20 +12,24 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 
 	  OW:OpenMenu(widget) -> boolean
 	      opens the menu of an item widget (its row's option's menu, a group),
-	      closing any open one first. false in combat, or when the row has no
-	      menu. It remembers the item as { body = widget.rowBody, path =
-	      widget.row.path }, the body that drew it (the window's page or the
-	      small dialog's) and its path there.
+	      closing any open one first. false in combat, when the item is
+	      disabled (a search result can ask, though its dots can't), or when
+	      the row has no menu. It remembers the item as { body =
+	      widget.rowBody, path = widget.row.path }, the body that drew it (the
+	      window's page or the small dialog's) and its path there.
 	  OW:CloseMenu(body)   closes it; with body, only when its item is in it
 	  OW:IsMenuShown(widget) -> boolean
 	      whether it's shown; with widget, whether it's that item's
-	  OW.MenuPlace(anchor, width, height, screenWidth, screenHeight)
+	  OW.MenuPlace(anchor, width, height, screenWidth, screenHeight, margin)
 	      -> point, relPoint, x, y: where a menu width x height goes by the
 	      dots (anchor = { left, right, top, bottom }, their rect, in the
-	      menu's units): its TOPRIGHT on the dots' BOTTOMRIGHT, 4 below; its
-	      left edge past the screen's, TOPLEFT on BOTTOMLEFT instead (unless
-	      that goes further past its right); its bottom past the screen's,
-	      above (BOTTOM* on TOP*, 4 above) when there's more room there.
+	      menu's units), inside the screen less margin ({ left, right, top,
+	      bottom }, the screen edge margin st:KeepInScreenMargin clamps the
+	      menu to; none when nil): its TOPRIGHT on the dots' BOTTOMRIGHT, 4
+	      below; its left edge past the margin's, TOPLEFT on BOTTOMLEFT
+	      instead (unless that goes further past the right one); its bottom
+	      past the margin's, above (BOTTOM* on TOP*, 4 above) when there's
+	      more room there.
 	  OW.GetMenuFrames() -> { frame, catcher, title, content, body, keys,
 	      owner = { body, path } } (owner nil while closed), for tests.
 
@@ -44,17 +48,24 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	content's parent is the menu, which the hover lines' watcher takes for
 	the body's view (optionsshare.lua). Its catcher: a frame over UIParent at
 	FULLSCREEN_DIALOG level 400 that takes the mouse and closes the menu on a
-	click (OnMouseDown). Its keys: the window's EscapeKeys on the menu, Esc
-	closing it (the window's and the dialog's own pass Esc on while it
-	shows). A dropdown's list and a confirm draw at TOOLTIP, above it: their
-	catchers close them and leave the menu, and Esc closes the list first.
+	click (OnMouseDown), but not while Blizzard's color picker is open (that
+	click is the picker's: it cancels, and the color widget the menu holds
+	must still be there to put its color back). The catcher and the menu
+	take the mouse wheel and do nothing with it, so the page under an open
+	menu doesn't scroll away from it (the menu's own content doesn't
+	scroll). Its keys: the window's EscapeKeys on the menu, Esc closing it
+	(the window's and the dialog's own pass Esc on while it shows). A
+	dropdown's list and a confirm draw at TOOLTIP, above it: their catchers
+	close them and leave the menu, and Esc closes the list first.
 
-	A set in it (MenuChanged): a failed validate shows in the window's status
-	line; mid-drag the menu's own rows follow in place (body:Refresh, as the
-	window's do); otherwise the window renders (OW:Render), drawing the page
-	(the item's marks) and the menu again, or with the window closed the
-	small dialog and the menu. While Blizzard's color picker is open it waits,
-	as the window does.
+	A set in it (MenuChanged): a failed validate shows in the status line of
+	what its item is in, the window's, or the small dialog's when the item is
+	one of its rows (the window's sits behind it), and nothing is drawn
+	again; mid-drag the menu's own rows follow in place (body:Refresh, as
+	the window's do); otherwise the window renders (OW:Render), drawing the
+	page (the item's marks) and the menu again, or with the window closed
+	the small dialog and the menu. While Blizzard's color picker is open it
+	waits, as the window does.
 
 	Following its item (S.FollowMenu, on every render after the dialog's): it
 	finds its item's cell again in owner.body's cells by path, re-anchors to
@@ -66,9 +77,9 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 
 	It closes on Esc, a click outside, OW:Navigate, a tab or pick (Select), a
 	search result's GoTo (through OW:Navigate), the window hiding (combat
-	closes the window), the small dialog hiding when its item is the dialog's,
-	and entering combat. Closing releases its body, and closes a list or
-	confirm still open from it.
+	closes the window), the small dialog hiding or opening again when its
+	item is the dialog's, and entering combat. Closing closes a list or
+	confirm still open from it, then releases its body.
 ]]
 
 local OW = st.OptionsWindow
@@ -91,18 +102,21 @@ local M = {} -- the menu's frames and body, and its owner while it shows
 
 ------------------------------------------------------------------ where it goes
 
-function OW.MenuPlace(anchor, width, height, screenWidth, screenHeight)
-	-- Right-aligned, unless that passes the screen's left and left-aligned
+local NO_MARGIN = { left = 0, right = 0, top = 0, bottom = 0 }
+
+function OW.MenuPlace(anchor, width, height, screenWidth, screenHeight, margin)
+	margin = margin or NO_MARGIN
+	-- Right-aligned, unless that passes the margin's left and left-aligned
 	-- passes its right by less.
 	local side = 'RIGHT'
-	local pastLeft = width - anchor.right
+	local pastLeft = margin.left - (anchor.right - width)
 	if pastLeft > 0 then
-		local pastRight = anchor.left + width - screenWidth
+		local pastRight = anchor.left + width - (screenWidth - margin.right)
 		if pastRight < pastLeft then side = 'LEFT' end
 	end
-	-- Below, unless its bottom passes the screen's and above has more room.
-	local below = anchor.bottom - DOTS_GAP - height
-	local above = screenHeight - (anchor.top + DOTS_GAP + height)
+	-- Below, unless its bottom passes the margin's and above has more room.
+	local below = anchor.bottom - DOTS_GAP - height - margin.bottom
+	local above = screenHeight - margin.top - (anchor.top + DOTS_GAP + height)
 	if below < 0 and above > below then
 		return 'BOTTOM' .. side, 'TOP' .. side, 0, DOTS_GAP
 	end
@@ -110,7 +124,9 @@ function OW.MenuPlace(anchor, width, height, screenWidth, screenHeight)
 end
 
 -- The menu on dots (an item's), by OW.MenuPlace, anchored to them so it
--- moves with them (the page scrolled).
+-- moves with them (the page scrolled). The margin is the one the menu is
+-- clamped to (st:KeepInScreenMargin, in its own units), so a menu placed
+-- below is never pushed back up over its dots by the clamp.
 local function Anchor(dots)
 	local frame = M.frame
 	local left, right, top, bottom = dots:GetLeft(), dots:GetRight(), dots:GetTop(), dots:GetBottom()
@@ -118,9 +134,11 @@ local function Anchor(dots)
 	if left and right and top and bottom then
 		local scale = dots:GetEffectiveScale() / frame:GetEffectiveScale()
 		local units = UIParent:GetEffectiveScale() / frame:GetEffectiveScale()
+		local mLeft, mRight, mTop, mBottom = st:GetScreenMargin(frame)
 		point, relPoint, x, y = OW.MenuPlace(
 			{ left = left * scale, right = right * scale, top = top * scale, bottom = bottom * scale },
-			frame:GetWidth(), frame:GetHeight(), UIParent:GetWidth() * units, UIParent:GetHeight() * units)
+			frame:GetWidth(), frame:GetHeight(), UIParent:GetWidth() * units, UIParent:GetHeight() * units,
+			{ left = mLeft, right = mRight, top = mTop, bottom = mBottom })
 	end
 	frame:ClearAllPoints()
 	frame:SetPoint(point, dots, relPoint, x, y)
@@ -162,14 +180,27 @@ local function Draw(body, row, dots)
 	local title = OM.Member(body.root, row, 'menuTitle')
 	if type(title) == 'number' then title = tostring(title) end
 	M.title:SetText(type(title) == 'string' and title ~= '' and title or row.name)
+	-- On each draw: Text > Grey can change, or the profile with it.
+	M.title:SetTextColor(Grey())
 	DrawBody()
 	Anchor(dots)
+end
+
+-- A validate's message (nil clears it) in the status line of what the item
+-- is in: the small dialog's for one of its rows, else the window's.
+local function SetStatus(text)
+	local dialog = OW.GetDialogFrames and OW.GetDialogFrames()
+	if M.owner and dialog and M.owner.body == dialog.body and S.SetDialogStatus then
+		S.SetDialogStatus(text)
+	else
+		OW:SetStatus(text)
+	end
 end
 
 -- The menu's widgets' onChanged (see the top).
 local function MenuChanged(ok, err, isDragging, widget)
 	M.dragging = isDragging and true or nil
-	OW:SetStatus(ok == false and err or nil)
+	SetStatus(ok == false and err or nil)
 	if ok == false and err then return end
 	if isDragging then
 		xpcall(function() M.body:Refresh(widget) end, geterrorhandler())
@@ -192,7 +223,10 @@ local function Build()
 	catcher:SetFrameLevel(CATCHER_LEVEL)
 	catcher:EnableMouse(true)
 	catcher:Hide()
-	catcher:SetScript('OnMouseDown', function() OW:CloseMenu() end)
+	-- While the color picker is open the click is the picker's (see the top).
+	catcher:SetScript('OnMouseDown', function()
+		if not ColorPickerShown() then OW:CloseMenu() end
+	end)
 
 	local frame = st:CreateFrame('Frame', nil, UIParent)
 	frame:SetFrameStrata('FULLSCREEN_DIALOG')
@@ -203,10 +237,15 @@ local function Build()
 	frame:Hide()
 	st:SetTemplate(frame, 'theme', 'solid', 'panel')
 
+	-- The wheel stops at the menu and its catcher: the page under them stays.
+	for _, wheel in ipairs({ catcher, frame }) do
+		wheel:EnableMouseWheel(true)
+		wheel:SetScript('OnMouseWheel', function() end)
+	end
+
 	local title = Text(frame, 'section')
 	title:SetPoint('TOPLEFT', frame, 'TOPLEFT', MENU_PAD, -TITLE_TOP)
 	title:SetWidth(BODY_WIDTH)
-	title:SetTextColor(Grey())
 
 	-- A plain frame: the menu is as tall as its rows, and the hover lines'
 	-- watcher takes the menu (its parent) for the view.
@@ -231,10 +270,12 @@ local function Build()
 		catcher:Hide()
 		keys:EnableKeyboard(false)
 		keys:Hide()
-		M.body:Release()
+		-- Its list first, while its owner is still inside the menu (a
+		-- released widget is parented away).
 		local owner = W.ListOwner()
 		if owner and Inside(owner, frame) then W.CloseList() end
 		W.CancelConfirm()
+		M.body:Release()
 		M.owner, M.root, M.dragging = nil, nil, nil
 	end)
 	-- Its sets can reach protected frames, as the dialog's.
@@ -273,6 +314,7 @@ end
 
 function OW:OpenMenu(widget)
 	if InCombatLockdown() then return false end
+	if widget and widget.disabled then return false end
 	local row = widget and widget.row
 	local menu = row and row.option and row.option.menu
 	if type(menu) ~= 'table' or not (widget.rowBody and widget.dots) then return false end

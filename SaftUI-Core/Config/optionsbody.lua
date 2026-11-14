@@ -82,11 +82,14 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	inside the padding.
 	A toggle's check box and a color's bar sit at their cell's right edge,
 	the label taking the rest; a small input's box is 60 wide. An item
-	(optionsitem.lua) is given its cell's width and spans it, its Show box
-	at the cell's left and its dots at the right; its label starts its
-	labelX in (26 after a box, else 0), centred on the row, and ends 6
-	before the dots, and so does its hover line (lineEnd); its label is grey
-	while its Show is off or it's disabled. Under its own mark the box
+	(optionsitem.lua) is given its cell's width and spans it, as tall as the
+	row (its box and dots centred on it), its Show box at the cell's left
+	and its dots at the right; its label starts its labelX in (26 after a
+	box, else 0), centred on the row, and ends 6 before the dots, and so
+	does its hover line (lineEnd; an item with no menu has no dots, and
+	both end at the cell's right edge); its label is grey while its Show is
+	off or it's disabled (OB.LabelColor, which a drag's Refresh reads too,
+	so a row a drag enables stays grey while its Show is off). Under its own mark the box
 	moves markShift right with the label (under Blizzard 6). A position block
 	has no label (its section is titled Position), is as tall as the widget
 	plus 12, and shows the row's desc when the mouse is anywhere on it. A
@@ -629,6 +632,17 @@ function OB.PlaceLabel(cell, x)
 	end
 end
 
+-- A row's label color (r, g, b): grey while it's disabled; an own row's
+-- light blue (cell.ownLabel, optionsshare.lua); an item's grey while its
+-- Show is off (widget.value false); else the text color. PlaceRow and a
+-- drag's Refresh both read it.
+function OB.LabelColor(cell, disabled)
+	if disabled then return Grey() end
+	if cell.ownLabel then return unpack(OB.OWN_TEXT) end
+	if cell.row.type == 'item' and cell.widget and cell.widget.value == false then return Grey() end
+	return Normal()
+end
+
 -- A row's place in its cell: the label on the left, the control on the
 -- right. A description is text across the row, and a button stands alone.
 -- Then a shareable row's marks (OB.PlaceShare, optionsshare.lua, which a
@@ -669,10 +683,11 @@ local function PlaceRow(cell, x, y, width)
 		widget.frame:SetHeight(cell.height)
 		widget:SetPoint('TOPLEFT', frame, 'TOPLEFT', 0, 0)
 		label:SetText(row.name)
-		if row.disabled or widget.value == false then label:SetTextColor(Grey()) else label:SetTextColor(Normal()) end
+		label:SetTextColor(OB.LabelColor(cell, row.disabled))
 		label:Show()
-		-- After the box (cell.labelX), ending short of the dots; the hover line too.
-		local stop = width - widget.dots:GetWidth() - ITEM_GAP
+		-- After the box (cell.labelX), ending short of the dots (an item with
+		-- no menu has none: at the cell's right edge); the hover line too.
+		local stop = widget.hasMenu and width - widget.dots:GetWidth() - ITEM_GAP or width
 		label:SetWidth(max(1, stop - (cell.labelX or 0)))
 		cell.lineEnd = stop
 		OB.PlaceLabel(cell, 0)
@@ -1082,27 +1097,21 @@ end
 -- take the slider out from under the mouse), so the other rows follow the
 -- drag in place: each widget but except (the dragged one, whose own commit
 -- has refreshed it) reads its value again, a description its image too, and
--- whether it's disabled, which greys its label as the next Draw would.
--- Nothing is released or laid out again: rows that would show, hide or
--- change height wait for the Draw after the drag.
+-- whether it's disabled, which colors its label as the next Draw would
+-- (OB.LabelColor; an item's also when its Show changed). Nothing is
+-- released or laid out again: rows that would show, hide or change height
+-- wait for the Draw after the drag.
 function Body:Refresh(except)
 	for _, cell in ipairs(self.cells) do
 		local widget = cell.widget
 		if widget and widget ~= except then
 			local disabled = OM.IsDisabled(self.root, cell.row)
-			if disabled ~= widget:IsDisabled() then
-				widget:SetDisabled(disabled)
-				if cell.label:IsShown() then
-					if disabled then
-						cell.label:SetTextColor(Grey())
-					elseif cell.ownLabel then -- an own row's (OB.PlaceShare)
-						cell.label:SetTextColor(unpack(OB.OWN_TEXT))
-					else
-						cell.label:SetTextColor(Normal())
-					end
-				end
-			end
+			local flipped, was = disabled ~= widget:IsDisabled(), widget.value
+			if flipped then widget:SetDisabled(disabled) end
 			widget:Refresh()
+			if (flipped or (cell.row.type == 'item' and widget.value ~= was)) and cell.label:IsShown() then
+				cell.label:SetTextColor(OB.LabelColor(cell, disabled))
+			end
 		end
 	end
 end
