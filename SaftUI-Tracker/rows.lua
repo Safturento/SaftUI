@@ -169,6 +169,8 @@ local function FontOf(role)
 	return st:GetFont('pixel')
 end
 
+local FONT_ROLES = { 'text', 'header', 'pixel' }
+
 local function FontKey(font)
 	if not font then return '' end
 	local path, size, flags = font:GetFont()
@@ -194,8 +196,9 @@ end
 -- telling any module). Checked at the start of every draw.
 function TR:CheckFonts()
 	local changed = false
-	local key = {}
-	for _, role in ipairs({ 'text', 'header', 'pixel' }) do
+	local key = ''
+	for index = 1, #FONT_ROLES do
+		local role = FONT_ROLES[index]
 		local font = FontOf(role)
 		if font ~= self.fonts[role] then
 			self.fonts[role] = font
@@ -204,9 +207,8 @@ function TR:CheckFonts()
 			end
 			changed = true
 		end
-		key[#key + 1] = FontKey(font)
+		key = key .. FontKey(font) .. '|'
 	end
-	key = table.concat(key, '|')
 	if key ~= self.fontKey then
 		self.fontKey = key
 		changed = true

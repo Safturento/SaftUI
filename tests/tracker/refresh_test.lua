@@ -408,3 +408,33 @@ RW.both('a timer that reaches 0 asks for a refresh', function(st, TR)
 	RW.later(0)
 	eq(counted.n, 1, 'time is up: a refresh reads the quest again')
 end)
+
+RW.both('a refresh with nothing changed does nothing to any frame: no resize, no re-anchor, no scroll, no text', function(st, TR)
+	st.config.profile.tracker.quests.zones = true
+	stub.real_zone_text = 'Elwynn Forest'
+	local log, watched = { Q.header('Elwynn Forest') }, {}
+	for id = 1, 30 do
+		log[#log + 1] = Q.quest(id, { objectives = { { text = id .. '/9 Things', type = 'monster' } } })
+		watched[#watched + 1] = id
+	end
+	log[3].objectives = { { text = 'Escort', type = 'progressbar' } }
+	log[3].percent = 40
+	log[4].time, log[4].timer = { total = 300, elapsed = 10 }, 290
+	Q.set(log, watched, { focused = 5, popups = { { id = 77, kind = 'OFFER' } }, titles = { [77] = 'An offer' } })
+	TR:Refresh()
+	TR:ScrollTo(100)
+	TR:Refresh()
+	local calls = RW.calls()
+	TR:Refresh()
+	local names = {}
+	for name, n in pairs(calls.by) do names[#names + 1] = name .. '=' .. n end
+	table.sort(names)
+	eq(calls.total, 0, 'an idle refresh changed nothing: ' .. table.concat(names, ' '))
+	-- Collapsed and empty windows are as idle.
+	TR:SetCollapsed(true)
+	TR:Refresh()
+	calls.total = 0
+	TR:Refresh()
+	eq(calls.total, 0, 'collapsed: nothing')
+	calls.stop()
+end)

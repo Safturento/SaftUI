@@ -286,19 +286,25 @@ function TR:LayoutWindow()
 	local room = range > 0 and Round(st:ScrollBarRoom(scroll)) or 0
 	local childWidth = Layout.ChildWidth(width, room)
 
-	window:SetSize(width, height)
-	self.header:SetSize(width - 2 * L.PAD, L.HEADER)
-	scroll:ClearAllPoints()
-	scroll:SetPoint('TOPLEFT', window, 'TOPLEFT', L.PAD, -(L.PAD + (header and L.HEADER + L.HEADER_GAP or 0)))
-	scroll:SetSize(childWidth, view)
-	scroll:SetContentSize(childWidth, content)
-	scroll:SetShown(not collapsed)
+	-- Only when something it is made of changed: a refresh that changed nothing
+	-- resizes and re-anchors nothing.
+	local key = ('%s,%s,%s,%s,%s,%s,%s,%s'):format(width, height, view, childWidth, content, range, header and 1 or 0, collapsed and 1 or 0)
+	if key ~= self.layoutKey then
+		self.layoutKey = key
+		window:SetSize(width, height)
+		self.header:SetSize(width - 2 * L.PAD, L.HEADER)
+		scroll:ClearAllPoints()
+		scroll:SetPoint('TOPLEFT', window, 'TOPLEFT', L.PAD, -(L.PAD + (header and L.HEADER + L.HEADER_GAP or 0)))
+		scroll:SetSize(childWidth, view)
+		scroll:SetContentSize(childWidth, content)
+		scroll:SetShown(not collapsed)
+		-- The window and the list take the wheel only while the list scrolls, so
+		-- the camera still zooms with the cursor over a tracker that fits, is empty
+		-- or is collapsed. Neither frame is protected: safe in combat.
+		window:EnableMouseWheel(range > 0)
+		scroll:EnableMouseWheel(range > 0)
+	end
 	self.scrollRange = range
-	-- The window and the list take the wheel only while the list scrolls, so
-	-- the camera still zooms with the cursor over a tracker that fits, is empty
-	-- or is collapsed. Neither frame is protected: safe in combat.
-	window:EnableMouseWheel(range > 0)
-	scroll:EnableMouseWheel(range > 0)
 	self:UpdateWatcher()
 	-- A collapsed window keeps the player's place for when it opens again.
 	if not collapsed then self:ScrollTo(self:GetScroll()) end
@@ -320,9 +326,11 @@ function TR:ScrollTo(offset)
 	if not self.scroll then return end
 	local whole = math.min(math.max(Round(offset), 0), self.scrollRange or 0)
 	self.scrollAt = whole
-	self.scrolling = true
-	self.scroll:SetVerticalScroll(whole)
-	self.scrolling = false
+	if self.scroll:GetVerticalScroll() ~= whole then
+		self.scrolling = true
+		self.scroll:SetVerticalScroll(whole)
+		self.scrolling = false
+	end
 	self:PlaceFocusBar()
 end
 
@@ -360,7 +368,11 @@ function TR:UpdateBar()
 			visible = self.hoverAt ~= nil and now - self.hoverAt < L.BAR_LINGER
 		end
 	end
-	bar:SetAlpha(visible and 1 or 0)
+	local alpha = visible and 1 or 0
+	if self.barAlpha ~= alpha or bar:GetAlpha() ~= alpha then
+		self.barAlpha = alpha
+		bar:SetAlpha(alpha)
+	end
 end
 
 local function OnWatch()

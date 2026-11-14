@@ -84,6 +84,48 @@ function RW.counter()
 	return counter
 end
 
+-- Counts every call that changes a widget (its size, anchors, shown state,
+-- scroll, text, color, texture, font, script) from now on, by name:
+-- c.total, c.by.SetSize, c.stop(). A sample of every widget type gives the
+-- method tables; each is wrapped once.
+local MUTATORS = {
+	'SetSize', 'SetWidth', 'SetHeight', 'SetPoint', 'ClearAllPoints', 'SetShown', 'Show', 'Hide',
+	'SetVerticalScroll', 'EnableMouseWheel', 'EnableMouse', 'SetAlpha', 'SetText', 'SetTextColor',
+	'SetVertexColor', 'SetColorTexture', 'SetTexture', 'SetAtlas', 'SetFontObject', 'SetScript',
+	'SetScrollChild', 'SetFrameLevel', 'SetBackdrop', 'SetBackdropColor', 'SetBackdropBorderColor',
+}
+
+function RW.calls()
+	local counter = { total = 0, by = {} }
+	local originals = {}
+	local samples = {
+		CreateFrame('Frame'), CreateFrame('Button'), CreateFrame('ScrollFrame'),
+		UIParent:CreateFontString(nil, 'OVERLAY'), UIParent:CreateTexture(nil, 'ARTWORK'),
+	}
+	local seen = {}
+	for _, sample in ipairs(samples) do
+		local methods = getmetatable(sample).__index
+		if type(methods) == 'table' and not seen[methods] then
+			seen[methods] = true
+			for _, name in ipairs(MUTATORS) do
+				local original = rawget(methods, name)
+				if original then
+					originals[#originals + 1] = { methods, name, original }
+					methods[name] = function(...)
+						counter.total = counter.total + 1
+						counter.by[name] = (counter.by[name] or 0) + 1
+						return original(...)
+					end
+				end
+			end
+		end
+	end
+	function counter.stop()
+		for _, saved in ipairs(originals) do saved[1][saved[2]] = saved[3] end
+	end
+	return counter
+end
+
 function RW.rows(TR, kind)
 	local rows = {}
 	for _, row in ipairs(TR.pools[kind].rows) do
