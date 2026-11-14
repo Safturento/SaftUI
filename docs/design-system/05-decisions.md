@@ -49,3 +49,11 @@ Answers the owner has given to the questions and discrepancies. Each stands as a
 31. **Which movers show is two toggles, Show disabled and Show hidden,** not a switch: showing frames' movers always show. ("what if this is actually just two buttons 'Show disabled' and 'Show hidden'?")
 32. **The history tracks every change,** in two parts: first what edit mode and bulk actions change, then every setting changed in `/sui`. ("I think it should track everything, if you want to split it into two parts that's totally fine with me.")
 33. **What counts as one step is to be settled from research** into well-designed history systems, so a run of small nudges can't flood the list; building starts with the first definition and is adjusted. ("if someone decides to nudge the frame 16 pixels one pixel at a time does that become 16 entries in the history? that could flood it and wipe out meaningful changes easily.")
+
+## 2026-11-13, the window's sizes and the colour picker
+
+34. **With the sidebar collapsed, Search, Edit mode and Keybind mode are icon buttons in the footer.** ("I like the sidebar collapse items going to the footer")
+35. **The unit frames' profile control leaves the footer** and sits beside the Unit dropdown. ("unitframe profile is probably going to have to move")
+36. **The SaftUI name: "Saft" in the text colour, "UI" in the accent.** ("Lets go with accent choice A.")
+37. **`/sui` remembers its size,** and everything of the config hides in combat, the mini bar included.
+38. **SaftUI gets its own colour picker** (the third drawn), and Blizzard's colour picker is skinned as well. ("That third color picker is awesome, I'm okay with the additional work so lets do it. Lets also skin the blizzard color picker anyways just to make it look nice")
