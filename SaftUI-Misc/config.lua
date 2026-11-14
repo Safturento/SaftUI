@@ -56,14 +56,10 @@ st.defaults.skinning = {
 st.defaults.objectivetracker = {
 	font = 'normal',
 	header_font = 'normal',
-	-- The colors of a finished and a failed objective's line (the skin's
-	-- OT:StatusColor), as { r, g, b } arrays edited in place. Completed is
-	-- Blizzard's DIM_GREEN_FONT_COLOR (its own completed lines are a plain grey),
-	-- Failed the text red of the Colors page.
-	status_colors = {
-		completed = { 0.251, 0.753, 0.251 },
-		failed = { 220 / 255, 100 / 255, 100 / 255 },
-	},
+	-- The finished and failed objective colors are Global settings > Colors >
+	-- Objectives (colors.objectives). A profile saved with the old status_colors
+	-- (no default any more) keeps them: OTP:MoveStatusColors converts it once and
+	-- sets colorsMoved.
 }
 
 -- Blizzard's armour durability figure (durability.lua). move lets it be moved in

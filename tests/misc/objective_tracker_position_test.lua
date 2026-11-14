@@ -478,7 +478,7 @@ test('the Objective Tracker page: the fonts, then Position', function()
 	each_option(tree, function(option, path)
 		local where = table.concat(path, '.')
 		check(option.width == nil, where .. ' has no Ace width')
-		if option.type ~= 'group' then
+		if option.type ~= 'group' and option.type ~= 'description' then -- a description's text is its name
 			check(type(option.desc) == 'string' and option.desc ~= '', where .. ' has a desc')
 		end
 	end)

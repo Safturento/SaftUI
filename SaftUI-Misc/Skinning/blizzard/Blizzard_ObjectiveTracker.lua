@@ -268,9 +268,12 @@ end
 
 ------------------------------------------------------------------ blocks and lines
 
--- The color a status gets from the tracker's page: 'completed' or 'failed'.
+-- The color a status gets from Global settings > Colors > Objectives
+-- (colors.objectives), read each time a line is colored: 'completed' or
+-- 'failed'. A color object, read with :GetRGB(); nil for any other state.
 function OT:StatusColor(state)
-	local colors = Profile().objectivetracker.status_colors
+	if not state then return end
+	local colors = Profile().colors.objectives
 	return colors and colors[state]
 end
 
@@ -296,7 +299,7 @@ local function ColorLine(line, active)
 	local color = active and OT:StatusColor(StateOf(fs))
 	if color then
 		colored[fs] = true
-		fs:SetTextColor(color[1], color[2], color[3])
+		fs:SetTextColor(color:GetRGB())
 	elseif colored[fs] then
 		colored[fs] = nil
 		local style = fs.colorStyle
@@ -604,9 +607,9 @@ end
 -- Objective tracker: on, the tracker is hooked if it wasn't and takes the
 -- look; off or under the Blizzard theme, Blizzard's look goes back on. Widget
 -- calls only, so it runs in combat too.
--- A status color changed on the page: only the lines are colored again (no
--- StyleAll, which would restyle every bar and item button for each step of the
--- color picker).
+-- A status color changed on the Colors tab (OnColorsChanged('objectives')): only
+-- the lines are colored again (no StyleAll, which would restyle every bar and
+-- item button for each step of the color picker).
 function OT:RecolorLines()
 	if not installed then return end
 	local active = Active()
@@ -627,8 +630,10 @@ function OT:UpdateConfig()
 end
 
 -- A theme recolor or a color change: the header lines, the chevrons and the
--- item buttons' hover take the colors again.
-function OT:OnColorsChanged()
+-- item buttons' hover take the colors again, and the objective lines for a
+-- change of the Objectives colors or of the theme (Blizzard's look back or ours).
+function OT:OnColorsChanged(group)
+	if group == 'objectives' or group == 'theme' then self:RecolorLines() end
 	for _, entry in pairs(headers) do entry.line:SetVertexColor(LineColor()) end
 	for _, entry in pairs(collapses) do ColorCollapse(entry) end
 	for _, entry in pairs(items) do ColorItem(entry) end

@@ -11,8 +11,10 @@
 --     Skinning -> Objective tracker off, or the Blizzard theme, putting
 --     Blizzard's colors back;
 --   - only the lines' texts restyled (the dashes, titles and bars keep their colors);
---   - the page: an "Objective colors" section with a Completed and a Failed
---     color, each with its own reset (the options kit's `default` field);
+--   - the colors live on Global settings > Colors > Objectives
+--     (profile.colors.objectives), read by OT:StatusColor; a profile saved with
+--     the skin's old status_colors keeps them, converted once (OTP:MoveStatusColors);
+--   - the page: no color section, a description row that names where they went;
 --   - styled in combat with stub.blocked empty, and no Blizzard field written.
 -- On both clients.
 --
@@ -32,6 +34,7 @@ local function world(client, opts)
 	load_saftui('SaftUI-Misc/config.lua')
 	apply_defaults()
 	profile = st.config.profile
+	if opts.setup then opts.setup(profile) end
 	load_saftui('SaftUI-Misc/Skinning/skinning.lua')
 	load_saftui('SaftUI-Misc/Skinning/blizzard/Blizzard_ObjectiveTracker.lua')
 	SK = st:GetModule('Skinning')
@@ -120,12 +123,8 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 	test(client .. ': a color changed on the page reaches the lines at once; its default comes back', function()
 		world(client)
 		local block = mixed()
-		profile.objectivetracker.status_colors.completed[1] = 0.1
-		profile.objectivetracker.status_colors.completed[2] = 0.2
-		profile.objectivetracker.status_colors.completed[3] = 0.9
-		profile.objectivetracker.status_colors.failed[1] = 1
-		profile.objectivetracker.status_colors.failed[2] = 0
-		profile.objectivetracker.status_colors.failed[3] = 1
+		profile.colors.objectives.completed:SetRGB(0.1, 0.2, 0.9)
+		profile.colors.objectives.failed:SetRGB(1, 0, 1)
 		skin:UpdateConfig()
 		eq(rgb(block.usedLines[2].Text), T.rgb(0.1, 0.2, 0.9), 'Completed')
 		eq(rgb(block.usedLines[3].Text), T.rgb(1, 0, 1), 'Failed')
@@ -179,49 +178,85 @@ test("Blizzard's color table missing leaves every line as Blizzard colored it", 
 	eq(rgb(block.usedLines[2].Text), hex(OT.COLORS.Complete), "no state known: Blizzard's color")
 end)
 
-test('the page: Objective colors, a Completed and a Failed color, each with its own reset', function()
+test('the page: no Objective colors section; a description row names Global settings > Colors > Objectives', function()
 	world('forever', { page = true })
 	load_test_file('lib/options_walk.lua')
 	local general = OTP:GetConfigTable().args.general
-	local section = general.args.colors
-	eq(section.name, 'Objective colors', 'the section')
-	local completed, failed = section.args.completed, section.args.failed
-	eq(completed.type, 'color', 'Completed is a color')
-	eq(failed.type, 'color', 'Failed is a color')
-	for _, option in ipairs({ completed, failed }) do
-		check(type(option.desc) == 'string' and option.desc ~= '', option.name .. ' has a desc')
-		check(option.width == nil, option.name .. ' has no Ace width')
-		eq(type(option.default), 'table', option.name .. ' has its own reset')
-	end
-	check(general.args.position.order > section.order, 'Position stays last')
-
-	-- With a progress bar, so a full restyle would show.
-	local block = OT.layout(quest_module(), { { id = 1, title = 'Mixed', objectives = MIXED[1].objectives, progress = true } })[1]
-	eq(T.rgb(completed.get()), COMPLETED_DEFAULT, 'Completed reads the profile')
-	check(not completed.default.differs(), 'at its default: no reset icon')
-	local restyled = 0
-	local real = st.SetBackdropIn
-	st.SetBackdropIn = function(...) restyled = restyled + 1; return real(...) end
-	completed.set({}, 0.1, 0.2, 0.9)
-	st.SetBackdropIn = real
-	eq(restyled, 0, 'a color step recolors the lines only, not every bar and item button')
-	eq(T.rgb(unpack(profile.objectivetracker.status_colors.completed)), T.rgb(0.1, 0.2, 0.9), 'Completed saved')
-	eq(rgb(block.usedLines[2].Text), T.rgb(0.1, 0.2, 0.9), 'and on the lines at once')
-	check(completed.default.differs(), 'now it differs')
-	eq(T.rgb(completed.default.value()), COMPLETED_DEFAULT, "the reset's value is the default")
-	completed.default.reset()
-	eq(rgb(block.usedLines[2].Text), COMPLETED_DEFAULT, 'its reset puts it back on the lines')
-	check(not completed.default.differs(), 'and it no longer differs')
-
-	failed.set({}, 1, 0, 1)
-	eq(rgb(block.usedLines[3].Text), T.rgb(1, 0, 1), 'Failed on the lines')
-	failed.default.reset()
-	eq(rgb(block.usedLines[3].Text), FAILED_DEFAULT, 'Failed reset')
-
-	check(not completed.disabled(), 'enabled while the skin is on')
-	profile.skinning.objective_tracker = false
-	skin:UpdateConfig()
-	check(completed.disabled() and failed.disabled(), 'disabled while the skin is off')
-	eq(type(completed.disabledDesc), 'string', 'and says why')
+	local row = general.args.colors
+	eq(row.type, 'description', 'the colors row is a description')
+	eq(row.name, 'Finished and failed objectives take Global settings > Colors > Objectives.', 'it says where they went')
+	eq(row.args, nil, 'no Completed or Failed color here')
+	check(general.args.position.order > row.order, 'Position stays last')
+	check(general.args.font and general.args.header_font, 'the fonts stay')
 	clean()
 end)
+
+for _, client in ipairs({ 'forever', 'retail' }) do
+	local function completed() return profile.colors.objectives.completed end
+	local function failed() return profile.colors.objectives.failed end
+
+	test(client .. ': a profile with the old colors keeps them on the Colors tab, once, slots AceDB dropped filled from the old defaults', function()
+		world(client, { page = true, setup = function(p)
+			p.objectivetracker.status_colors = { completed = { [2] = 0.9 } }
+		end })
+		eq(T.rgb(completed():GetRGB()), T.rgb(0.251, 0.9, 0.251), 'Completed keeps its saved slot, the rest from the old default')
+		eq(T.rgb(failed():GetRGB()), FAILED_DEFAULT, 'Failed at its default')
+		eq(profile.objectivetracker.status_colors, nil, 'status_colors gone')
+		eq(profile.objectivetracker.colorsMoved, true, 'marked')
+		completed():SetRGB(0.3, 0.3, 0.3)
+		OTP:UpdateConfig()
+		eq(T.rgb(completed():GetRGB()), T.rgb(0.3, 0.3, 0.3), 'a Colors tab change stays through UpdateConfig')
+		clean()
+	end)
+
+	test(client .. ': a color the skin was set to before the move reaches the lines once converted', function()
+		world(client, { page = true, setup = function(p)
+			p.objectivetracker.status_colors = { failed = { [1] = 1, [2] = 0, [3] = 1 } }
+		end })
+		local block = mixed()
+		eq(rgb(block.usedLines[3].Text), T.rgb(1, 0, 1), 'Failed on the lines')
+		eq(rgb(block.usedLines[2].Text), COMPLETED_DEFAULT, 'Completed at its default')
+		clean()
+	end)
+
+	test(client .. ': a profile switched to in combat converts before the next layout, with stub.blocked empty', function()
+		world(client, { page = true })
+		local block = mixed()
+		stub.in_combat, stub.blocked = true, {}
+		-- A profile switched to (its own tables, saved before the move), in combat.
+		profile.objectivetracker.status_colors = { failed = { [3] = 0.5 } }
+		profile.objectivetracker.colorsMoved = nil
+		OTP:UpdateConfig()
+		eq(T.rgb(profile.colors.objectives.failed:GetRGB()), T.rgb(220 / 255, 100 / 255, 0.5), 'converted by the switch')
+		eq(profile.objectivetracker.status_colors, nil, 'status_colors gone')
+		eq(profile.objectivetracker.colorsMoved, true, 'marked')
+		eq(rgb(block.usedLines[3].Text), T.rgb(220 / 255, 100 / 255, 0.5), 'and on the lines')
+		eq(#stub.blocked, 0, 'nothing blocked')
+		stub.in_combat = false
+		clean()
+	end)
+
+	test(client .. ': a profile with nothing saved gets only the marker', function()
+		world(client, { page = true })
+		eq(profile.objectivetracker.colorsMoved, true, 'marked')
+		eq(profile.objectivetracker.status_colors, nil, 'nothing made')
+		eq(T.rgb(completed():GetRGB()), COMPLETED_DEFAULT, 'Completed at its default')
+		eq(T.rgb(failed():GetRGB()), FAILED_DEFAULT, 'Failed at its default')
+		clean()
+	end)
+
+	test(client .. ": a Colors tab change recolors the skin's lines at once (st:ColorsChanged('objectives'))", function()
+		world(client)
+		local block = mixed()
+		local fresh = 0
+		local real = st.SetBackdropIn
+		st.SetBackdropIn = function(...) fresh = fresh + 1; return real(...) end
+		completed():SetRGB(0.1, 0.2, 0.9)
+		st:ColorsChanged('objectives')
+		st.SetBackdropIn = real
+		eq(fresh, 0, 'the lines only, no restyle')
+		eq(rgb(block.usedLines[2].Text), T.rgb(0.1, 0.2, 0.9), 'Completed on the lines')
+		eq(rgb(block.usedLines[3].Text), FAILED_DEFAULT, 'Failed unchanged')
+		clean()
+	end)
+end

@@ -399,13 +399,62 @@ function OTP:Setup()
 	st.EditModeFrames:On('Enabled', function() self:UpdateFootprint() end)
 end
 
--- A profile change: the holder from the new profile, and the tracker on it.
+-- What the skin's two status colors defaulted to before they moved to
+-- colors.objectives. AceDB saves only the slots of an { r, g, b } array that
+-- differed from its default, so a saved color can lack slots: these fill them.
+OTP.OLD_STATUS_COLORS = {
+	completed = { 0.251, 0.753, 0.251 },
+	failed = { 220 / 255, 100 / 255, 100 / 255 },
+}
+
+-- Converts a profile saved with the skin's own status colors
+-- (config.status_colors[state] = { r, g, b }) to Global settings > Colors >
+-- Objectives, once: each saved state, its missing slots filled from
+-- OLD_STATUS_COLORS, is written onto colors.objectives[state]; then status_colors
+-- is dropped and colorsMoved marks the profile (inside its own table, so a copy
+-- carries it and a reset clears it). A profile with nothing saved gets only the
+-- marker. Table writes only, so it runs in combat too. True when it converted.
+function OTP:MoveStatusColors()
+	local config = self.config
+	if not config or config.colorsMoved then return false end
+	local saved, moved = config.status_colors, false
+	if type(saved) == 'table' then
+		local objectives = st.config.profile.colors.objectives
+		for state, old in pairs(OTP.OLD_STATUS_COLORS) do
+			local color, target = saved[state], objectives and objectives[state]
+			if type(color) == 'table' and target then
+				local rgb = {}
+				for i = 1, 3 do
+					rgb[i] = type(color[i]) == 'number' and color[i] or old[i]
+				end
+				target:SetRGB(rgb[1], rgb[2], rgb[3])
+				moved = true
+			end
+		end
+	end
+	config.status_colors = nil
+	config.colorsMoved = true
+	return moved
+end
+
+-- The skin's lines wear the converted colors (the skin may have colored them,
+-- in a profile change, before this ran).
+local function RecolorSkin()
+	local SK = st:GetModule('Skinning', true)
+	local skin = SK and SK:GetModule('Blizzard_ObjectiveTracker', true)
+	if skin and skin.RecolorLines then skin:RecolorLines() end
+end
+
+-- A profile change: the colors converted if the profile is an old one, the
+-- holder from the new profile, and the tracker on it.
 function OTP:UpdateConfig()
+	if self:MoveStatusColors() then RecolorSkin() end
 	self:ApplyHolder()
 end
 
 function OTP:OnEnable()
 	st:BindModuleConfig(self, 'objectivetracker')
+	self:MoveStatusColors()
 	if _G.ObjectiveTrackerFrame then
 		self:Setup()
 	elseif C_AddOns.DoesAddOnExist('Blizzard_ObjectiveTracker') then
@@ -425,8 +474,8 @@ local function SkinOff()
 	return not (skin and skin:IsActive())
 end
 
--- The Objective Tracker page in /sui: General, the tracker's fonts, its Objective
--- colors, then its Position. Clicking the tracker in edit mode opens it (the mover's
+-- The Objective Tracker page in /sui: General, the tracker's fonts, a line saying
+-- where its objective colors went, then its Position. Clicking the tracker in edit mode opens it (the mover's
 -- configPath). Absent until the tracker exists.
 function OTP:GetConfigTable()
 	if not self.holder then return end
@@ -460,52 +509,6 @@ function OTP:GetConfigTable()
 		return option
 	end
 
-	-- A finished or failed objective's color (config.status_colors[state], an
-	-- { r, g, b } array edited in place, which the skin reads each time a line is
-	-- colored), with its own reset by it while it differs from the shipped one.
-	-- Like the fonts, only while the skin is on.
-	local function StatusColor(order, name, state, desc)
-		local option = {
-			order = order,
-			name = name,
-			desc = desc,
-			type = 'color',
-			disabled = SkinOff,
-			disabledDesc = "Only while Skinning -> Objective tracker is on and the Skinning page's Theme isn't Blizzard: otherwise the tracker keeps Blizzard's colors.",
-			get = function()
-				local color = self.config.status_colors[state]
-				return color[1], color[2], color[3]
-			end,
-			set = function(_, r, g, b)
-				local color = self.config.status_colors[state]
-				color[1], color[2], color[3] = r, g, b
-				local skin = Skin()
-				if skin then skin:RecolorLines() end
-			end,
-		}
-		local function Shipped() return st.defaults.objectivetracker.status_colors[state] end
-		option.default = {
-			differs = function()
-				local color, shipped = self.config.status_colors[state], Shipped()
-				for i = 1, 3 do
-					if math.floor(color[i] * 255 + 0.5) ~= math.floor(shipped[i] * 255 + 0.5) then return true end
-				end
-				return false
-			end,
-			reset = function()
-				local color, shipped = self.config.status_colors[state], Shipped()
-				color[1], color[2], color[3] = shipped[1], shipped[2], shipped[3]
-				local skin = Skin()
-				if skin then skin:RecolorLines() end
-			end,
-			value = function()
-				local shipped = Shipped()
-				return shipped[1], shipped[2], shipped[3]
-			end,
-		}
-		return option
-	end
-
 	return {
 		name = 'Objective tracker',
 		type = 'group',
@@ -528,16 +531,9 @@ function OTP:GetConfigTable()
 					header_font = FontOption(2, 'Header font',
 						"The font of the objective tracker's headers: All Objectives, Quests, Campaign, Scenario, Achievements and the rest."),
 					colors = {
-						name = 'Objective colors',
-						type = 'group',
-						inline = true,
+						name = 'Finished and failed objectives take Global settings > Colors > Objectives.',
+						type = 'description',
 						order = 3,
-						args = {
-							completed = StatusColor(1, 'Completed', 'completed',
-								"The color of an objective that's done, in the quest and other lists. Blizzard's own is a plain grey; a line you haven't finished keeps Blizzard's color."),
-							failed = StatusColor(2, 'Failed', 'failed',
-								"The color of a failed objective, and of a failed quest's line. Under the mouse Blizzard brightens a failed quest line, as it does its unfinished lines."),
-						},
 					},
 					position = position,
 				},

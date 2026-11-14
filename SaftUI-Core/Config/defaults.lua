@@ -212,4 +212,12 @@ st.defaults.colors = {
 		warning = CreateColor(1, 0.6, 0),
 		bad = CreateColor(1, 0.1, 0.1),
 	},
+	-- A finished and a failed objective's line, in Blizzard's objective tracker
+	-- (the skin, OT:StatusColor) and in SaftUI's own tracker. Completed is
+	-- Blizzard's DIM_GREEN_FONT_COLOR (its own completed lines are a plain
+	-- grey), Failed the text red.
+	objectives = {
+		completed = CreateColor(0.251, 0.753, 0.251),
+		failed = CreateColor(220/255, 100/255, 100/255),
+	},
 }

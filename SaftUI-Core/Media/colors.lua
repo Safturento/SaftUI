@@ -5,7 +5,7 @@ local CO = st:NewModule('Colors')
 -- Tells every module that shows profile colors that a group of them changed
 -- (the Colors tab calls this after an edit). group is 'text', 'button',
 -- 'class', 'reaction', 'renown', 'power', 'item_quality', 'status' or
--- 'threat'. Each module's OnColorsChanged(group) runs in xpcall, so one that
+-- 'threat' or 'objectives'. Each module's OnColorsChanged(group) runs in xpcall, so one that
 -- errors doesn't stop the rest.
 function st:ColorsChanged(group)
 	for _, module in pairs(st.modules) do
@@ -126,6 +126,13 @@ CO.SECTIONS = {
 		colors = Colors('threat', {
 			{ 'warning', 'Warning', "An enemy nameplate's health bar and threat text when you're about to pull it as damage or healing, or about to lose it as a tank." },
 			{ 'bad', 'Bad', "An enemy nameplate's health bar and threat text when it's attacking you as damage or healing, or someone else while you tank." },
+		}),
+	},
+	{
+		key = 'objectives', name = 'Objectives',
+		colors = Colors('objectives', {
+			{ 'completed', 'Completed', "The line of a finished objective in SaftUI's objective tracker, and in Blizzard's tracker while Skinning -> Objective tracker is on. Blizzard's own is a plain grey; a line you haven't finished keeps its normal color." },
+			{ 'failed', 'Failed', "The line of a failed objective in SaftUI's objective tracker, and in Blizzard's tracker while Skinning -> Objective tracker is on. Under the mouse Blizzard brightens a failed quest line, as it does its unfinished lines." },
 		}),
 	},
 }
