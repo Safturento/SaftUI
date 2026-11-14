@@ -303,25 +303,113 @@ RW.both("the focused quest: a 2 px accent bar 4 left of its row, its waypoint li
 	TR.IsScrollLocked = locked
 end)
 
-RW.both('a newly tracked quest is scrolled into view', function(st, TR)
+-- A log of n watched quests of one zone: the list scrolls (30 or so fill it).
+local function long_log(n, extra)
 	local log, watched = { Q.header('A') }, {}
-	for id = 1, 30 do
+	for id = 1, n do
 		log[#log + 1] = Q.quest(id)
 		watched[#watched + 1] = id
 	end
-	Q.set(log, watched)
+	Q.set(log, watched, extra)
+	return log, watched
+end
+
+RW.both('a quest the game says was just tracked is scrolled into view; nothing else that is merely new is', function(st, TR)
+	local log, watched = long_log(30)
 	TR:Refresh()
 	eq(TR:GetScroll(), 0, 'the first refresh does not scroll')
 	log[#log + 1] = Q.quest(31, { title = 'New one' })
 	watched[#watched + 1] = 31
 	Q.set(log, watched)
-	TR:Refresh()
+	-- Seen in the log, but nobody said it was tracked: no scroll.
+	stub.fire_event('QUEST_LOG_UPDATE')
+	RW.later(1)
+	eq(TR:GetScroll(), 0, 'a quest that is only new to the tracker does not scroll the list')
+	TR:ScrollTo(0)
+	stub.fire_event('QUEST_WATCH_LIST_CHANGED', 31, true)
+	RW.later(1)
 	local row = RW.quest(TR, 31)
-	check(TR:GetScroll() > 0, 'scrolled to it')
+	check(TR:GetScroll() > 0, 'QUEST_WATCH_LIST_CHANGED with added: scrolled to it')
 	check(row:GetBottom() >= TR.scroll:GetBottom(), 'whole in view')
 	TR:ScrollTo(0)
+	stub.fire_event('QUEST_WATCH_LIST_CHANGED', 31, false)
+	RW.later(1)
+	eq(TR:GetScroll(), 0, 'a quest taken off the list: no scroll')
+	stub.fire_event('QUEST_LOG_UPDATE')
+	RW.later(1)
+	eq(TR:GetScroll(), 0, 'and the next refresh keeps the place: the request was used up')
+end)
+
+RW.both('the list does not jump when the log arrives after login, titles arrive one by one, or the zone changes', function(st, TR)
+	-- An empty first read, then the whole log.
+	Q.set({}, {})
 	TR:Refresh()
-	eq(TR:GetScroll(), 0, 'nothing new: the place is kept')
+	long_log(25)
+	stub.fire_event('QUEST_LOG_UPDATE')
+	RW.later(1)
+	eq(TR:GetScroll(), 0, 'the log arriving after an empty read does not scroll')
+	-- Titles arriving one by one: a quest with no title is skipped until it has one.
+	local log, watched = long_log(25)
+	for id = 26, 30 do
+		log[#log + 1] = Q.quest(id, { title = '' })
+		watched[#watched + 1] = id
+	end
+	Q.set(log, watched)
+	TR:Refresh()
+	for id = 26, 30 do
+		log[id + 1].title = 'Quest ' .. id
+		TR:Refresh()
+		eq(TR:GetScroll(), 0, 'quest ' .. id .. "'s title arrived: no scroll")
+	end
+	-- Show the zone's: a zone change makes its untracked quests appear.
+	TR.config.quests.show = 'zone'
+	stub.real_zone_text = 'Elsewhere'
+	local more = { Q.header('Elsewhere') }
+	for id = 40, 45 do more[#more + 1] = Q.quest(id) end
+	local all = { unpack(log) }
+	for _, entry in ipairs(more) do all[#all + 1] = entry end
+	Q.set(all, watched)
+	stub.fire_event('ZONE_CHANGED_NEW_AREA')
+	RW.later(1)
+	check(RW.quest(TR, 40) ~= nil, 'the zone\'s untracked quests are drawn')
+	eq(TR:GetScroll(), 0, 'and the list stays')
+end)
+
+RW.both('no scroll into view while the mouse is over the tracker or the player scrolled in the last few seconds', function(st, TR)
+	long_log(30, { focused = 0 })
+	TR:Refresh()
+	local function focus(id)
+		stub.quests.focused = id
+		TR:Refresh()
+	end
+	RW.mouse_on(TR.window)
+	focus(28)
+	eq(TR:GetScroll(), 0, 'the mouse is over the tracker: the focus change does not scroll it')
+	RW.mouse_off()
+	focus(0)
+	-- The wheel, as the player turns it.
+	stub.fire_script(TR.window, 'OnMouseWheel', -1)
+	local at = TR:GetScroll()
+	check(at > 0, 'the wheel scrolled')
+	focus(29)
+	eq(TR:GetScroll(), at, 'scrolled by the player a moment ago: the list stays')
+	RW.later(TR.SCROLL_QUIET + 1)
+	focus(30)
+	check(TR:GetScroll() > at, 'a few seconds on: it scrolls to the focused quest')
+	-- A drag of the bar counts as the player's too.
+	TR:ScrollTo(0)
+	focus(0)
+	TR.scroll.ScrollBar:SetScrollPercentage(0.5)
+	local dragged = TR:GetScroll()
+	focus(28)
+	eq(TR:GetScroll(), dragged, 'a bar drag a moment ago: the list stays')
+	-- A new quest tracked under the mouse waits no more than the focus does.
+	RW.later(TR.SCROLL_QUIET + 1)
+	TR:ScrollTo(0)
+	RW.mouse_on(TR.window)
+	stub.fire_event('QUEST_WATCH_LIST_CHANGED', 27, true)
+	RW.later(1)
+	eq(TR:GetScroll(), 0, 'tracked under the mouse: no scroll')
 end)
 
 RW.both('hover fills a quest row with the accent at TINT_ROW, 2 beyond it above and below', function(st, TR)

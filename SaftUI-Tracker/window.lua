@@ -320,7 +320,9 @@ function TR:ScrollTo(offset)
 	if not self.scroll then return end
 	local whole = math.min(math.max(Round(offset), 0), self.scrollRange or 0)
 	self.scrollAt = whole
+	self.scrolling = true
 	self.scroll:SetVerticalScroll(whole)
+	self.scrolling = false
 	self:PlaceFocusBar()
 end
 
@@ -332,6 +334,7 @@ end
 -- The wheel over the window or the scroll frame: 40 a notch, clamped.
 local function OnWheel(_, delta)
 	if (TR.scrollRange or 0) <= 0 or TR:IsScrollLocked() then return end
+	TR.lastUserScroll = GetTime()
 	TR:ScrollTo(Layout.Wheel(TR:GetScroll(), delta, TR.scrollRange or 0))
 end
 
@@ -526,6 +529,8 @@ function TR:BuildWindow()
 	local settling = false
 	scroll:HookScript('OnVerticalScroll', function(frame, offset)
 		if settling then return end
+		-- Not the tracker's own ScrollTo: the player dragged or clicked the bar.
+		if not TR.scrolling then TR.lastUserScroll = GetTime() end
 		local at = TR.scrollAt or 0
 		local target
 		if TR:IsScrollLocked() and math.abs(offset - at) > 0.01 then

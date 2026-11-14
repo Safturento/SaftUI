@@ -198,7 +198,7 @@ TR.REFRESH_GAP = 0.1
 -- no event is registered.
 function TR:RegisterEvents()
 	local frame = CreateFrame('Frame')
-	frame:SetScript('OnEvent', function(_, event) TR:OnEvent(event) end)
+	frame:SetScript('OnEvent', function(_, event, ...) TR:OnEvent(event, ...) end)
 	for _, event in ipairs(TR.EVENTS) do
 		local unit = TR.UNIT_EVENTS[event]
 		if unit then
@@ -210,7 +210,17 @@ function TR:RegisterEvents()
 	self.eventFrame = frame
 end
 
-function TR:OnEvent(event)
+function TR:OnEvent(event, ...)
+	-- The game says a quest was just tracked: its row is scrolled into view
+	-- once it's drawn, whatever refresh that is. A quest merely new to the
+	-- tracker (the log arriving after login, a title that came late, a zone's
+	-- untracked quests) is not that.
+	if event == 'QUEST_WATCH_LIST_CHANGED' then
+		local questID, added = ...
+		if added == true and type(questID) == 'number' then
+			self.trackedQuest, self.trackedAt = questID, GetTime()
+		end
+	end
 	if event == 'BAG_UPDATE_COOLDOWN' then
 		if self.RefreshCooldowns then self:RefreshCooldowns() end
 		return
@@ -330,24 +340,28 @@ function TR:Redraw()
 	if self.ApplyVisibility then self:ApplyVisibility() end
 end
 
+-- How long a request to scroll a quest into view waits for its row, and how long
+-- after the player's own scrolling the list is left alone (seconds).
+TR.TRACK_WAIT = 5
+TR.SCROLL_QUIET = 3
+
 -- The list keeps the player's place across a refresh, except that the focused
--- quest (when the focus changed) or a newly tracked one (the first, when
--- several) is scrolled into view, unless scrolling is locked.
+-- quest (when the focus changed) or a quest the game just said was tracked
+-- (QUEST_WATCH_LIST_CHANGED with added) is scrolled into view, out of combat or
+-- while scrolling isn't locked, never while the mouse is over the tracker or
+-- within TR.SCROLL_QUIET of the player's own scrolling, and never while the
+-- window is collapsed.
 function TR:KeepInView(entries, placed)
 	local model = self.model
+	local now = GetTime()
 	local target
-	local known = self.knownQuests
-	if not known then
-		known = {}
-		self.knownQuests = known
+	if self.trackedQuest then
+		if now - self.trackedAt > TR.TRACK_WAIT then
+			self.trackedQuest = nil
+		else
+			target = self.trackedQuest
+		end
 	end
-	local first = not self.hasRefreshed
-	for _, quest in ipairs(model.quests) do
-		if not known[quest.id] and not first and not target then target = quest.id end
-	end
-	for id in pairs(known) do known[id] = nil end
-	for _, quest in ipairs(model.quests) do known[quest.id] = true end
-	self.hasRefreshed = true
 	if model.focused ~= self.lastFocused then
 		self.lastFocused = model.focused
 		if model.focused then target = model.focused end
@@ -355,6 +369,9 @@ function TR:KeepInView(entries, placed)
 	if not target or self:IsCollapsed() or self:IsScrollLocked() then return end
 	for index, entry in ipairs(entries) do
 		if entry.quest and entry.quest.id == target then
+			-- Drawn: the request is used, whether or not the list may move now.
+			if target == self.trackedQuest then self.trackedQuest = nil end
+			if self:IsHovered() or (self.lastUserScroll and now - self.lastUserScroll < TR.SCROLL_QUIET) then return end
 			local p = placed[index]
 			self:ScrollTo(TR.Layout.IntoView(self:GetScroll(), p.y, p.height, self:ViewHeight(), self.scrollRange or 0))
 			return
