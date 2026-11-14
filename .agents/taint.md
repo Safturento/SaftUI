@@ -1,7 +1,7 @@
 ---
 name: taint
 description: Rules for touching Blizzard frames and code without causing taint, blocked actions or crashes
-last_updated: 2026-11-13
+last_updated: 2026-11-14
 covers:
   - 'SaftUI-Core/api.lua'
   - 'SaftUI-Core/taintfix.lua'
@@ -118,6 +118,7 @@ The RestedXP skin stands down for RestedXP's v2 window because RestedXP hides th
    - the totem flyout's top and middle (`StyleFlyout`, `SaftUI-Misc/totemskin.lua`);
    - the bank's deposit button's `Left`, `Middle` and `Right` (`st:SkinButton`, `SaftUI-Core/Widgets/button.lua`).
    - the objective tracker, which under the Blizzard theme isn't drawn by SaftUI at all: the skin puts every piece of Blizzard's back (alpha, `Show`, Blizzard's named fonts, its bar texture) and hides and clears its own (`SaftUI-Misc/Skinning/blizzard/Blizzard_ObjectiveTracker.lua`).
+   - the color picker (`SaftUI-Misc/Skinning/blizzard/Blizzard_ColorPicker.lua`), likewise: under the Blizzard theme, or with Skinning -> Color picker off, every piece is put back (alpha, Blizzard's named fonts) and SaftUI's panel, boxes and hover are hidden. Other addons drive the picker (`swatchFunc`, `cancelFunc`, `hasOpacity`), so it is only restyled: no hook but `HookScript` post-hooks on its hex box (focus) and on Okay and Cancel (`OnEnter`, `OnLeave`, wrapped: the game passes a `motion` argument) that color SaftUI's own boxes, nothing written onto it, the fonts, colors and title anchor it restores read before the first restyle and kept in a weak table of SaftUI's, and its Okay and Cancel buttons and hex box drawn with `st:SetTemplate` on a frame of SaftUI's and `st:SetBackdropIn` (never `st:SkinButton`, which writes `button.hover` and the like onto the button). Its panel is a `st:SetBackdropIn` child of `ColorPickerFrame`, so it follows the width Blizzard's `OnShow` sets.
 
    `st:SkinEditBox` conceals a box's border textures with `SetAlpha(0)` under Thick and Thin, not `st:Kill`, because `st:Kill` replaces `Show` (rule 1) and the textures must come back on a switch to Blizzard. Whether a region's alpha is ever set by Blizzard is checked against its source first (`.agents/clients.md`): the buttons' checked texture and the spell highlight are, so those are swapped, not faded (rule 1).
 13. **Nameplates** (`SaftUI-Unitframes/nameplates/`, `.agents/architecture.md`). The game makes the plates (`NamePlate1`, `NamePlate2`, ...) and hands each one to unit after unit, and Blizzard's `NamePlateDriverFrame` runs them. On every add Blizzard's driver hands the plate a `UnitFrame` from its pool, which oUF blocks.

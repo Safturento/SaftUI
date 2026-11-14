@@ -35,12 +35,15 @@ st.defaults.tooltip = {
 -- (Skinning/blizzard/Blizzard_CooldownViewer.lua); turning it off or on takes a reload.
 -- objective_tracker skins Blizzard's objective tracker
 -- (Skinning/blizzard/Blizzard_ObjectiveTracker.lua), off and on live.
+-- color_picker skins Blizzard's color picker (Skinning/blizzard/Blizzard_ColorPicker.lua),
+-- off and on live.
 st.defaults.skinning = {
 	font = 'pixel',
 	theme = 'theme',
 	background = 'theme',
 	cooldown_manager = true,
 	objective_tracker = true,
+	color_picker = true,
 }
 
 -- Blizzard's objective tracker (Skinning/blizzard/Blizzard_ObjectiveTrackerPosition.lua

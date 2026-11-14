@@ -277,7 +277,17 @@ test('Skinning: a page with the shared Theme, Background and font, which re-appl
 	eq(reapplied, 4, 'and re-applies the skins')
 	profile.skinning.objective_tracker = true
 
+	-- Color picker turns the color picker's skin on or off at once.
+	local picker = general.args.color_picker
+	eq(picker.type, 'toggle', 'Color picker is a toggle')
+	check(picker.desc:find('reload', 1, true) == nil, 'its tooltip asks for no reload')
+	eq(general.get(info_for('color_picker')), true, 'on by default')
+	general.set(info_for('color_picker'), false)
+	eq(profile.skinning.color_picker, false, 'Color picker writes skinning.color_picker')
+	eq(reapplied, 5, 'and re-applies the skins')
+	profile.skinning.color_picker = true
+
 	eq(layout({ Skinning = tree }, 'Skinning'),
-		'theme:normal 1, background:normal 2, font:normal 1, cooldown_manager:normal 2, objective_tracker:normal 1',
-		'Theme | Background, Font | Cooldown Manager, Objective tracker')
+		'theme:normal 1, background:normal 2, font:normal 1, cooldown_manager:normal 2, objective_tracker:normal 1, color_picker:normal 2',
+		'Theme | Background, Font | Cooldown Manager, Objective tracker, Color picker')
 end)

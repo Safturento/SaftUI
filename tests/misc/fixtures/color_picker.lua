@@ -1,0 +1,345 @@
+--[[
+	Blizzard's color picker (Blizzard_ColorPickerFrame), as far as SaftUI's skin
+	(SaftUI-Misc/Skinning/blizzard/Blizzard_ColorPicker.lua) reads and styles it.
+	Load it with `local CP = load_test_file('misc/fixtures/color_picker.lua')`,
+	then CP.build() makes what the game makes when the addon loads (CP.widgets is every
+	frame and region of Blizzard's it made, before any skin adds its own). Every field
+	below is one Blizzard really has; checked 2026-11-13 against the forever
+	(Mainline/ColorPickerFrame.xml and .lua) and live (Mainline/...) branches of
+	Gethe/wow-ui-source, which agree on all of it but Forever's extra gamepad
+	frames:
+
+	  - ColorPickerFrame (ColorPickerFrame.xml): 388 by 210, DIALOG strata, hidden,
+	    centered, movable, clamped, with the parentKeys
+	      .Border      DialogBorderTemplate (a NineSlice frame; its .Bg texture),
+	      .Header      DialogHeaderTemplate: .LeftBG, .RightBG, .CenterBG (the
+	                   metal) and .Text (GameFontNormal),
+	      .DragBar     (PanelDragBarTemplate: a Button over the Header),
+	      .Content     with the textures .AlphaBackground, .ColorSwatchCurrent and
+	                   .ColorSwatchOriginal, the ColorSelect .ColorPicker (.Wheel,
+	                   .Value, .Alpha ... here a frame with its .Wheel, as the
+	                   skin never looks at it), and .HexBox (an EditBox of
+	                   InputBoxInstructionsTemplate: the border textures .Left,
+	                   .Middle and .Right of InputBoxVisualTemplate, the font
+	                   string .Instructions (grey 0.35) and its own .Hash, "#"
+	                   (grey 0.6)),
+	      .Footer      with .CancelButton and .OkayButton, both
+	                   UIPanelButtonTemplate: the textures .Left, .Middle and
+	                   .Right, a highlight texture, the text, and the state fonts
+	                   GameFontNormal, GameFontHighlight and GameFontDisable
+	                   (UIPanelButtonNoTooltipTemplate, SecureUIPanelTemplates.xml),
+	      .FrameGlow   (Forever only, CP.build{ forever = true }: FrameGlowTemplate,
+	                   hidden, level 505).
+	  - The Header is anchored TOP, y 11 above the frame, 39 tall; its Text TOP,
+	    y -13. The Border is DialogBorderNoCenterTemplate's useParentLevel: at the
+	    frame's own level.
+	  - ColorPickerFrameMixin: OnShow sets the frame's width to 388 with the alpha
+	    slider (hasOpacity) and 331 without (the wheel to 255 or 200 wide), and
+	    :SetupColorPickerAndShow(info) keeps the caller's functions in swatchFunc,
+	    opacityFunc, cancelFunc, hasOpacity, opacity, previousValues, extraInfo
+	    and swatch, which other addons read.
+	  - The Okay and Cancel buttons' OnClick is Blizzard's (SetScript in OnLoad).
+
+	CP.build{ omit = { 'Border', ... } } leaves out named parts (a client that
+	lacks one); the names are the parentKeys, 'HexBox.Hash' for a part of one.
+	Every frame and region is locked once built (lib/locked_widget.lua), so a skin
+	that writes a field onto one, or SetScripts one, fails. CP.keys(widget) lists
+	the fields Blizzard's tables have, for comparing before and after. The
+	frame's methods Blizzard's code calls (OnShow, SetupColorPickerAndShow) record
+	a call from SaftUI's code, outside CP.show, in CP.stray: the skin must never
+	run them (.agents/taint.md rule 3). Every method of a Blizzard widget that
+	changes it (Set..., Hide, Show, Clear..., Enable, Disable, Create..., Add...,
+	Hook..., Register...) called from SaftUI's code is listed in CP.calls, as
+	'Name', so a test can prove a skin that is off touches nothing.
+]]
+
+local lock_widget = load_test_file('lib/locked_widget.lua')
+local OWNER = 'Blizzard color picker'
+
+local CP = {}
+CP.stray = {}
+
+-- The named fonts the templates use; the stubs have only some.
+for _, name in ipairs({ 'GameFontNormal', 'GameFontNormalLarge', 'GameFontDisableSmall', 'GameFontHighlightSmall',
+		'GameFontHighlight', 'GameFontDisable' }) do
+	if not _G[name] then
+		local font = CreateFont(name)
+		font:SetFont([[Fonts\FRIZQT__.TTF]], 12, '')
+	end
+end
+
+local driving = 0
+
+-- Blizzard's own entry points, for CP.show: a call outside them is SaftUI's.
+local function guard(name, fn)
+	return function(...)
+		if driving == 0 then CP.stray[#CP.stray + 1] = name end
+		return fn(...)
+	end
+end
+
+local omitted
+
+local function wanted(path) return not omitted[path] end
+
+local function texture(parent, key, layer, path)
+	if not wanted(path) then return end
+	local t = parent:CreateTexture(nil, layer)
+	rawset(parent, key, t)
+	return t
+end
+
+local function child(parent, key, kind, path, name)
+	if not wanted(path) then return end
+	local f = CreateFrame(kind, nil, parent)
+	rawset(parent, key, f)
+	return f
+end
+
+local function lock_tree(frame)
+	for _, region in ipairs({ frame:GetRegions() }) do lock_widget(region, OWNER) end
+	for _, kid in ipairs({ frame:GetChildren() }) do lock_tree(kid) end
+	lock_widget(frame, OWNER)
+end
+
+-- A UIPanelButtonTemplate button: Left, Middle, Right, the highlight texture
+-- (HighlightTexture inherits UIPanelButtonHighlightTexture), the text and the
+-- three state fonts.
+local function panel_button(footer, key, label)
+	local path = 'Footer.' .. key
+	local button = child(footer, key, 'Button', path)
+	if not button then return end
+	button:SetSize(154, 22)
+	for _, part in ipairs({ 'Left', 'Middle', 'Right' }) do
+		texture(button, part, 'BACKGROUND', path .. '.' .. part)
+	end
+	button:SetHighlightTexture([[Interface\Buttons\UI-Panel-Button-Highlight]])
+	button:SetNormalFontObject(GameFontNormal)
+	button:SetHighlightFontObject(GameFontHighlight)
+	button:SetDisabledFontObject(GameFontDisable)
+	return button
+end
+
+function CP.build(opts)
+	opts = opts or {}
+	omitted = {}
+	for _, path in ipairs(opts.omit or {}) do omitted[path] = true end
+
+	local frame = CreateFrame('Frame', 'ColorPickerFrame', UIParent)
+	frame:SetSize(388, 210)
+	frame:SetFrameStrata('DIALOG')
+	frame:EnableMouse(true)
+	frame:SetPoint('CENTER')
+	frame:Hide()
+
+	local border = child(frame, 'Border', 'Frame', 'Border')
+	if border then
+		border:SetAllPoints()
+		border:SetFrameLevel(frame:GetFrameLevel()) -- useParentLevel
+		texture(border, 'Bg', 'BACKGROUND', 'Border.Bg')
+	end
+
+	local header = child(frame, 'Header', 'Frame', 'Header')
+	if header then
+		header:SetSize(200, 39)
+		header:SetPoint('TOP', 0, 11)
+		for _, part in ipairs({ 'LeftBG', 'RightBG', 'CenterBG' }) do
+			texture(header, part, 'ARTWORK', 'Header.' .. part)
+		end
+		if wanted('Header.Text') then
+			local text = header:CreateFontString(nil, 'ARTWORK', 'GameFontNormal')
+			text:SetPoint('TOP', 0, -13)
+			text:SetText('Color Picker')
+			rawset(header, 'Text', text)
+		end
+	end
+
+	local drag = child(frame, 'DragBar', 'Button', 'DragBar')
+	if drag and header then
+		drag:SetPoint('TOPLEFT', header)
+		drag:SetPoint('BOTTOMRIGHT', header)
+		drag:EnableMouse(true)
+	end
+
+	local content = child(frame, 'Content', 'Frame', 'Content')
+	if content then
+		content:SetAllPoints()
+		texture(content, 'AlphaBackground', 'ARTWORK', 'Content.AlphaBackground')
+		texture(content, 'ColorSwatchCurrent', 'ARTWORK', 'Content.ColorSwatchCurrent')
+		texture(content, 'ColorSwatchOriginal', 'ARTWORK', 'Content.ColorSwatchOriginal')
+		local wheel = child(content, 'ColorPicker', 'Frame', 'Content.ColorPicker')
+		if wheel then
+			wheel:SetSize(255, 142)
+			wheel:SetPoint('TOPLEFT', 23, -30)
+			texture(wheel, 'Wheel', 'ARTWORK', 'Content.ColorPicker.Wheel')
+		end
+		local box = child(content, 'HexBox', 'EditBox', 'Content.HexBox')
+		if box then
+			box:SetSize(73, 22)
+			box:SetPoint('BOTTOMRIGHT', -23, 44)
+			box:SetFontObject(GameFontHighlightSmall)
+			for _, part in ipairs({ 'Left', 'Middle', 'Right' }) do
+				texture(box, part, 'BACKGROUND', 'Content.HexBox.' .. part)
+			end
+			if wanted('Content.HexBox.Instructions') then
+				local instructions = box:CreateFontString(nil, 'ARTWORK', 'GameFontDisableSmall')
+				instructions:SetPoint('TOPLEFT', 16, 0)
+				instructions:SetPoint('BOTTOMRIGHT', -20, 0)
+				instructions:SetTextColor(0.35, 0.35, 0.35)
+				rawset(box, 'Instructions', instructions)
+			end
+			if wanted('Content.HexBox.Hash') then
+				local hash = box:CreateFontString(nil, 'OVERLAY', 'GameFontNormalLarge')
+				hash:SetPoint('LEFT')
+				hash:SetText('#')
+				hash:SetTextColor(0.6, 0.6, 0.6)
+				rawset(box, 'Hash', hash)
+			end
+		end
+	end
+
+	local footer = child(frame, 'Footer', 'Frame', 'Footer')
+	if footer then
+		footer:SetSize(331, 25)
+		footer:SetPoint('BOTTOM', 0, 12)
+		local cancel = panel_button(footer, 'CancelButton')
+		if cancel then cancel:SetPoint('BOTTOMRIGHT', -11.5, 0) end
+		local okay = panel_button(footer, 'OkayButton')
+		if okay then
+			if cancel then okay:SetPoint('RIGHT', cancel, 'LEFT') else okay:SetPoint('BOTTOMRIGHT', -165.5, 0) end
+		end
+	end
+
+	if opts.forever then
+		local glow = child(frame, 'FrameGlow', 'Frame', 'FrameGlow')
+		if glow then
+			glow:SetFrameLevel(505)
+			glow:Hide()
+		end
+	end
+
+	-- ColorPickerFrameMixin: what other addons call and read.
+	rawset(frame, 'OnShow', guard('OnShow', function(self)
+		local width = self.hasOpacity and 388 or 331
+		self:SetWidth(width)
+	end))
+	rawset(frame, 'SetupColorPickerAndShow', guard('SetupColorPickerAndShow', function(self, info)
+		-- Blizzard's own writes, which the lock would refuse from anyone else.
+		rawset(self, 'swatchFunc', info.swatchFunc)
+		rawset(self, 'hasOpacity', info.hasOpacity)
+		rawset(self, 'opacityFunc', info.opacityFunc)
+		rawset(self, 'opacity', info.opacity)
+		rawset(self, 'previousValues', { r = info.r, g = info.g, b = info.b, a = info.opacity })
+		rawset(self, 'cancelFunc', info.cancelFunc)
+		rawset(self, 'extraInfo', info.extraInfo)
+		rawset(self, 'swatch', info.swatch)
+		self:Show()
+		self:OnShow()
+	end))
+
+	-- Blizzard's own OnClick on the buttons (set in OnLoad, before any skin).
+	if footer then
+		for _, key in ipairs({ 'OkayButton', 'CancelButton' }) do
+			local button = footer[key]
+			if button then
+				CP[key] = { clicks = 0 }
+				button:SetScript('OnClick', function() CP[key].clicks = CP[key].clicks + 1 end)
+			end
+		end
+	end
+
+	-- Every frame and region of Blizzard's, before any skin adds its own.
+	local list = {}
+	local function walk(f)
+		list[#list + 1] = f
+		for _, region in ipairs({ f:GetRegions() }) do list[#list + 1] = region end
+		for _, kid in ipairs({ f:GetChildren() }) do walk(kid) end
+	end
+	walk(frame)
+	CP.widgets = list
+
+	lock_tree(frame)
+
+	-- From here a change made from outside Blizzard's own drivers is counted.
+	CP.calls = {}
+	local PREFIXES = { 'Set', 'Hide', 'Show', 'Clear', 'Enable', 'Disable', 'Create', 'Add', 'Hook', 'Register', 'Unregister' }
+	local function changes(name)
+		for _, prefix in ipairs(PREFIXES) do
+			if name:sub(1, #prefix) == prefix then return true end
+		end
+	end
+	for _, widget in ipairs(list) do
+		local meta = getmetatable(widget)
+		local base = meta.__index
+		meta.__index = function(t, key)
+			local value = base[key]
+			if type(value) == 'function' and type(key) == 'string' and changes(key) then
+				return function(...)
+					if driving == 0 then CP.calls[#CP.calls + 1] = key end
+					return value(...)
+				end
+			end
+			return value
+		end
+	end
+	CP.frame = frame
+	return frame
+end
+
+-- Opens the picker the way an addon does (Blizzard's SetupColorPickerAndShow).
+function CP.show(info)
+	driving = driving + 1
+	local ok, err = pcall(CP.frame.SetupColorPickerAndShow, CP.frame, info or {
+		r = 1, g = 0.5, b = 0.25, hasOpacity = false,
+		swatchFunc = function() end, cancelFunc = function() end,
+	})
+	driving = driving - 1
+	if not ok then error(err, 2) end
+end
+
+-- The fields a Blizzard table has now, as a sorted 'key,key' text.
+function CP.keys(widget)
+	local out = {}
+	for key in pairs(widget) do out[#out + 1] = tostring(key) end
+	table.sort(out)
+	return table.concat(out, ',')
+end
+
+
+-- A click at (x, y) in UIParent's units, as the game and Blizzard's handler
+-- (ColorPickerFrameMixin:OnEvent, GLOBAL_MOUSE_DOWN) see it: the frame under
+-- the point that takes the mouse is the highest by frame level (the later of
+-- equals), and the picker, while shown, cancels and hides itself unless that
+-- frame is it or one of its descendants (DoesAncestryIncludeAny(self,
+-- GetMouseFoci())). Returns the frame that got the click (nil for none) and
+-- whether the picker cancelled.
+function CP.click(x, y)
+	local focus
+	local function walk(frame)
+		if frame:IsVisible() and frame:IsMouseEnabled() then
+			local l, r, t, b = frame:GetLeft(), frame:GetRight(), frame:GetTop(), frame:GetBottom()
+			if l and x >= l and x <= r and y >= b and y <= t
+					and (not focus or frame:GetFrameLevel() >= focus:GetFrameLevel()) then
+				focus = frame
+			end
+		end
+		for _, kid in ipairs({ frame:GetChildren() }) do walk(kid) end
+	end
+	walk(CP.frame)
+	local inside = false
+	local f = focus
+	while f do
+		if f == CP.frame then inside = true break end
+		f = f:GetParent()
+	end
+	local cancelled = false
+	if CP.frame:IsShown() and not inside then
+		cancelled = true
+		driving = driving + 1
+		pcall(CP.frame.Hide, CP.frame)
+		driving = driving - 1
+	end
+	return focus, cancelled
+end
+
+return CP
