@@ -11,12 +11,10 @@ local st = SaftUI
 local EM = st.EditModeFrames
 local settings = EM:GetSettings()
 
--- A screen of width x height physical pixels, at the scale SaftUI sets at
--- login: one UIParent unit per pixel, so UIParent is width x height too.
-local function set_screen(width, height)
-	stub.screen_width, stub.screen_height = width, height
-	UIParent:SetScale(768 / height)
-end
+-- set_screen: a screen of width x height physical pixels, at the scale SaftUI
+-- sets at login (one UIParent unit per pixel).
+local EMH = load_test_file('core/editmode_helpers.lua')
+local set_screen = EMH.set_screen
 
 local function eqlist(a, b)
 	if #a ~= #b then return false end

@@ -19,7 +19,8 @@ EM:Enable()
 
 local SCALE = UIParent:GetEffectiveScale()
 
-local function settings() return EM:GetSettings() end
+local EMH = load_test_file('core/editmode_helpers.lua')
+local settings = EMH.settings
 
 -- A mover on a 100 x 50 frame whose position is config.position; apply places
 -- the frame from it (through SafeReposition, as every real apply does) and

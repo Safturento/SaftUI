@@ -35,16 +35,8 @@ end
 
 build()
 
-local function settings() return EM:GetSettings() end
-local function control(key) return EM:BarControl(key) end
-local function frame_of(key) return EM:BarControl(key).frame end
-
--- A screen of width x height physical pixels at SaftUI's scale: a UIParent unit
--- a pixel.
-local function set_screen(width, height)
-	stub.screen_width, stub.screen_height = width, height
-	UIParent:SetScale(768 / height)
-end
+local EMH = load_test_file('core/editmode_helpers.lua')
+local settings, control, frame_of, set_screen, look = EMH.settings, EMH.control, EMH.frame_of, EMH.set_screen, EMH.look
 
 -- What fn printed to chat, joined.
 local function printed(fn)
@@ -88,12 +80,6 @@ local function hover(owner, target)
 end
 
 local function rgb(color) return string.format('%.2f,%.2f,%.2f', color:GetRGB()) end
-
--- Puts SaftUI's theme on, as the Theme tab does.
-local function look(name)
-	st.config.profile.theme.name = name
-	st:ThemeChanged()
-end
 
 local function reset_edit_mode()
 	if EM.active then EM:Deactivate() end

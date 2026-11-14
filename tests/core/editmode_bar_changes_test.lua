@@ -28,14 +28,9 @@ end
 
 build()
 
-local function settings() return EM:GetSettings() end
-local function control(key) return EM:BarControl(key) end
-local function frame_of(key) return EM:BarControl(key).frame end
+local EMH = load_test_file('core/editmode_helpers.lua')
+local settings, control, frame_of, set_screen, look = EMH.settings, EMH.control, EMH.frame_of, EMH.set_screen, EMH.look
 
-local function set_screen(width, height)
-	stub.screen_width, stub.screen_height = width, height
-	UIParent:SetScale(768 / height)
-end
 set_screen(1920, 1080)
 local SCALE = UIParent:GetEffectiveScale()
 
@@ -47,10 +42,6 @@ local function fill(texture)
 	return string.format('%.2f,%.2f,%.2f', c[1], c[2], c[3]), c[4]
 end
 
-local function look(name)
-	st.config.profile.theme.name = name
-	st:ThemeChanged()
-end
 
 -- The tooltip's lines as they are added: { text, color } each, title first.
 local lines = {}

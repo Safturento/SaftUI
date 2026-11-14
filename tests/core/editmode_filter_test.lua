@@ -24,14 +24,9 @@ end
 
 build()
 
-local function settings() return EM:GetSettings() end
-local function control(key) return EM:BarControl(key) end
-local function frame_of(key) return EM:BarControl(key).frame end
+local EMH = load_test_file('core/editmode_helpers.lua')
+local settings, control, frame_of, set_screen, look = EMH.settings, EMH.control, EMH.frame_of, EMH.set_screen, EMH.look
 
-local function set_screen(width, height)
-	stub.screen_width, stub.screen_height = width, height
-	UIParent:SetScale(768 / height)
-end
 
 local added = {}
 
@@ -57,10 +52,6 @@ local function add_mover(key, extra)
 	return mover, config
 end
 
-local function look(name)
-	st.config.profile.theme.name = name
-	st:ThemeChanged()
-end
 
 local function reset()
 	if EM.active then EM:Deactivate() end
