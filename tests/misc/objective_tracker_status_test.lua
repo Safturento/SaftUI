@@ -247,7 +247,9 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 
 	test(client .. ": a Colors tab change recolors the skin's lines at once (st:ColorsChanged('objectives'))", function()
 		world(client)
-		local block = mixed()
+		-- With a progress bar, so a full restyle (which draws the bar's backdrop
+		-- again) would show: only the lines may change.
+		local block = OT.layout(quest_module(), { { id = 1, title = 'Mixed', progress = true, objectives = MIXED[1].objectives } })[1]
 		local fresh = 0
 		local real = st.SetBackdropIn
 		st.SetBackdropIn = function(...) fresh = fresh + 1; return real(...) end
