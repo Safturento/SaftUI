@@ -186,6 +186,11 @@ TR.EVENTS = {
 	'SUPER_TRACKING_PATH_UPDATED', 'ZONE_CHANGED', 'ZONE_CHANGED_INDOORS', 'ZONE_CHANGED_NEW_AREA',
 	'PLAYER_ENTERING_WORLD', 'PLAYER_LEVEL_UP', 'PLAYER_MONEY', 'BAG_UPDATE_DELAYED',
 	'BAG_UPDATE_COOLDOWN', 'PLAYER_REGEN_ENABLED', 'PLAYER_REGEN_DISABLED',
+	-- Not in the design's first list (settled 2026-11-14): QUEST_DETAIL, in whose
+	-- handler Blizzard adds the offer popup of a quest-starting item before it
+	-- closes the quest frame, and QUEST_DATA_LOAD_RESULT, when a quest's data
+	-- the log was missing (its title, a popup's) arrives.
+	'QUEST_DETAIL', 'QUEST_DATA_LOAD_RESULT',
 }
 TR.UNIT_EVENTS = { UNIT_QUEST_LOG_CHANGED = 'player' }
 TR.CONDITIONAL_EVENTS = { PLAYER_MONEY = true }
@@ -203,7 +208,9 @@ function TR:RegisterEvents()
 		local unit = TR.UNIT_EVENTS[event]
 		if unit then
 			frame:RegisterUnitEvent(event, unit)
-		elseif not TR.CONDITIONAL_EVENTS[event] then
+		elseif not TR.CONDITIONAL_EVENTS[event]
+			and not (C_EventUtils and C_EventUtils.IsEventValid and not C_EventUtils.IsEventValid(event)) then
+			-- (an event a client doesn't have is left out, not an error)
 			frame:RegisterEvent(event)
 		end
 	end

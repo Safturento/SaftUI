@@ -438,3 +438,21 @@ RW.both('a refresh with nothing changed does nothing to any frame: no resize, no
 	eq(calls.total, 0, 'collapsed: nothing')
 	calls.stop()
 end)
+
+RW.both('QUEST_DETAIL and QUEST_DATA_LOAD_RESULT refresh: an offer popup from a quest item shows, and a quest whose data was late', function(st, TR)
+	quiet_log()
+	RW.later(1)
+	local counted = count_refreshes(TR)
+	-- Blizzard adds the popup in its QUEST_DETAIL handler, then closes the quest frame.
+	stub.quests.popups = { { id = 77, kind = 'OFFER' } }
+	stub.quests.titles = { [77] = 'From an item' }
+	stub.fire_event('QUEST_DETAIL')
+	RW.later(0)
+	eq(counted.n, 1, 'QUEST_DETAIL: refreshed on the next frame')
+	check(TR:GetRow('popup', 77) ~= nil, 'the popup shows')
+	RW.later(1)
+	counted.n = 0
+	stub.fire_event('QUEST_DATA_LOAD_RESULT', 5, true)
+	RW.later(0)
+	eq(counted.n, 1, 'QUEST_DATA_LOAD_RESULT: refreshed')
+end)
