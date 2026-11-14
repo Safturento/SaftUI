@@ -255,13 +255,14 @@ end
 
 -- Makes unit's page (config_table, as UF:GetConfigTable in config/config.lua
 -- builds it) its nameplate page, before the element tabs go on: its own
--- General, no Copy from beside the picker (see UF:OpenCopyTable), and everything disabled while
+-- General, the unit frame profile and Manage beside the picker, no Copy from (see UF:OpenCopyTable), and everything disabled while
 -- another nameplate addon draws the plates. Any other unit's page is left as
 -- it is.
 function UF.SetUpPlatePage(unit, config_table)
 	local plate = PLATE_PAGES[unit]
 	if plate then
-		config_table.pickerControl = nil
+		-- The unit frame profile and Manage, without Copy from.
+		config_table.pickerControl = { type = 'group', name = '', args = UF.GenerateProfileControl() }
 		if unit == 'nameplate' then
 			config_table.name = 'Enemy nameplates'
 			config_table.args.general = NameplateGeneral()

@@ -417,7 +417,7 @@ test('Copy from leaves the nameplates out: never offered to copy from, and their
 	check(not offered.nameplate, 'the nameplates are not')
 	W.CloseList()
 	OW:CloseDialog()
-	eq(UF:GetConfigTable().args.nameplate.pickerControl, nil, 'no Copy from on the Enemy nameplates page')
+	eq((function() local out = {} for key in pairs(UF:GetConfigTable().args.nameplate.pickerControl.args) do out[#out + 1] = key end table.sort(out) return table.concat(out, ',') end)(), 'manage,profile', 'the Enemy nameplates page has Profile and Manage, no Copy from')
 	check(UF:GetConfigTable().args.player.pickerControl ~= nil, "the player's page has it")
 end)
 
@@ -460,11 +460,12 @@ test("the unit frames' table passes AceConfigRegistry validation, SaftUI's field
 		ace_ready({ name = st.name, type = 'group', args = { Unitframes = config } }), st.name)
 	check(ok, 'valid: ' .. tostring(err))
 	check(config.category ~= nil, 'the table itself keeps its category')
-	check(config.footer ~= nil, 'and its footer (SaftUI\'s field, which ace_ready leaves off)')
-	-- The footer control's options and the Unit frame profiles dialog's, as groups of their own.
+	eq(config.footer, nil, 'and no footer: the profile is on the Unit dropdown\'s line')
+	-- The line's options (a pick\'s pickerControl, SaftUI\'s field, which ace_ready leaves off)
+	-- and the Unit frame profiles dialog's, as groups of their own.
 	ok, err = pcall(AceConfigRegistry.ValidateOptionsTable, AceConfigRegistry,
-		ace_ready({ name = st.name, type = 'group', args = { footer = config.footer, dialog = UF.GenerateProfileConfigGroup() } }), st.name)
-	check(ok, 'the footer and the dialog valid: ' .. tostring(err))
+		ace_ready({ name = st.name, type = 'group', args = { line = config.args.player.pickerControl, dialog = UF.GenerateProfileConfigGroup() } }), st.name)
+	check(ok, 'the line and the dialog valid: ' .. tostring(err))
 end)
 
 test("the unit frames' page: picker labelled Unit; boss has Layout with test mode; range alpha on the groups only", function()
@@ -1082,8 +1083,8 @@ test("Copy from is beside the Unit dropdown, on every unit's page but the namepl
 		eq(opened, unit, unit .. ': it opens the dialog for the unit')
 	end
 	UF.OpenCopyTable = real
-	eq(config.args.nameplate.pickerControl, nil, 'none on Enemy nameplates')
-	eq(config.args.friendlynameplate.pickerControl, nil, 'none on Friendly nameplates')
+	eq((function() local out = {} for key in pairs(config.args.nameplate.pickerControl.args) do out[#out + 1] = key end table.sort(out) return table.concat(out, ',') end)(), 'manage,profile', 'Profile and Manage, no Copy from, on Enemy nameplates')
+	eq((function() local out = {} for key in pairs(config.args.friendlynameplate.pickerControl.args) do out[#out + 1] = key end table.sort(out) return table.concat(out, ',') end)(), 'manage,profile', 'and on Friendly nameplates')
 	-- Search finds it on each unit, on the unit's path, which opens its page.
 	local results = OM.Search({ Unitframes = config }, 'copy from')
 	local found = {}

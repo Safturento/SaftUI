@@ -27,7 +27,7 @@ There is one. A module adds a page by returning an Ace options group from `GetCo
 | Title | `page-title`, 20 from the top, 28 in | `head-top`, `window-pad` |
 | Description | `field` in `text-grey`, 4 under the title | `note-gap` |
 | Tabs | `tab`, 22 apart, top at 87; current in `text` with a 2px `accent` underline, others `text-grey`, disabled at `alpha-disabled`; a `line` rule under them; wrap at the body's width with 6 between lines | `tabs-top`, `tab-gap`, `tab-wrap-gap` |
-| Picker | its label in `field`, a `Select` 10 after it, 12 under the tabs | `picker-gap`, `label-gap` |
+| Picker | its label in `field`, a `Select` 10 after it, 12 under the tabs; a pick's control after it on the same line, 12 apart: a button as it is, any other control with its name in `field` (`text`) and its widget 10 after it. A piece that would pass the body's width starts a new line at the left, 8 under the last (24 tall each) | `picker-gap`, `label-gap`, `picker-line-gap` |
 | Body | 774 wide (388 at half), scrolls; the kit's scroll bar 3 wide, 10 outside | `content-width`, `scrollbar-width`, `scrollbar-out` |
 | Footer | 46 tall under a `line`: Close at the right end, Reload UI 12 left of it, and from 28 in to 12 before Reload UI a status line in `text-red` (two lines at most) | `footer-height` |
 | Close | `CloseButton`, 16 in and 14 down, with its tooltip | `window-close-x`, `window-close-y` |

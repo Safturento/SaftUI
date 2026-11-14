@@ -192,11 +192,11 @@ test("the dialog's Confirm copy records the step; a unit frame profile switch cl
 	eq(P.focus.health.height, 0, 'and health')
 	eq(P.focus.position.x_off, -180, 'the unticked one never changed')
 
-	-- The profile footer's dropdown.
+	-- The unit frame profile's dropdown, on the Unit dropdown's line.
 	History:Redo()
 	local _ = st.config.profile.unitframes.profiles.Healer -- reading makes it
 	eq(#History:Steps(), 1, 'a step before the switch')
-	local footer = UF:GetConfigTable().footer.args.current
+	local footer = UF:GetConfigTable().args.player.pickerControl.args.profile
 	footer.set({}, 'Healer')
 	eq(st.config.profile.unitframes.config_profile, 'Healer', 'switched')
 	eq(#History:Steps(), 0, 'the history is empty after the switch')
@@ -212,13 +212,13 @@ test('every way to change the unit frame profile clears the history, a pick of t
 		return #History:Steps()
 	end
 	local _ = st.config.profile.unitframes.profiles.Healer
-	local footer = UF:GetConfigTable().footer.args.current
+	local footer = UF:GetConfigTable().args.player.pickerControl.args.profile
 
 	check(step() >= 1, 'a step')
 	footer.set({}, 'SaftUI')
 	check(#History:Steps() >= 1, 'picking the profile already in use clears nothing')
 	footer.set({}, 'Healer')
-	eq(#History:Steps(), 0, 'the footer dropdown clears')
+	eq(#History:Steps(), 0, "the line's dropdown clears")
 
 	step()
 	UF:SetProfile('SaftUI')

@@ -883,3 +883,29 @@ test('the arrows carry no reason the brief does not give: none for a size that f
 	st.config.global.optionsWindow = nil
 	close_all()
 end)
+
+------------------------------------------------------------------ the picker's line
+
+test('OW.PickerFlow: pieces 12 apart, wrapping at the width, a line 24 tall and 8 under the last', function()
+	eq(OW.PICKER_LINE_GAP, 8, 'the gap between lines')
+	local function show(places)
+		local out = {}
+		for i, p in ipairs(places) do out[i] = ('(%d,%d)'):format(p.x, p.y) end
+		return table.concat(out, ' ')
+	end
+	local places, height = OW.PickerFlow({ 210, 90, 225, 84 }, 774)
+	eq(show(places), '(0,0) (222,0) (324,0) (561,0)', 'one line at full')
+	eq(height, 24, 'a line is 24 tall')
+	places, height = OW.PickerFlow({ 210, 90, 225, 84 }, 388)
+	eq(show(places), '(0,0) (222,0) (0,32) (237,32)', 'two lines at half')
+	eq(height, 56, 'two lines: 24 + 8 + 24')
+	places, height = OW.PickerFlow({ 210, 400 }, 388)
+	eq(show(places), '(0,0) (0,32)', 'a piece wider than the line goes alone on one')
+	eq(height, 56)
+	places, height = OW.PickerFlow({ 210 }, 388)
+	eq(show(places), '(0,0)', 'the picker alone')
+	eq(height, 24)
+	places, height = OW.PickerFlow({ 210, 90, 90, 90, 90, 90, 90 }, 388)
+	eq(show(places), '(0,0) (222,0) (0,32) (102,32) (204,32) (0,64) (102,64)', 'three lines')
+	eq(height, 88, 'three lines: 3 * 24 + 2 * 8')
+end)

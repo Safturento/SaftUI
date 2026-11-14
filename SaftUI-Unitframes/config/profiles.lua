@@ -5,9 +5,11 @@ local UF = st:GetModule('Unitframes')
 	The unit frame profiles: layouts kept inside the SaftUI profile, in
 	st.config.profile.unitframes.profiles, config_profile naming the one every
 	unit frame uses (UF:GetProfileConfig). In /sui they're the Unitframes
-	page's footer control (UF.GenerateProfileFooter, which UF:GetConfigTable in
-	config.lua makes the page group's footer: drawn in the footer's region, left
-	of Reload UI, while the page is open), a dropdown that picks one and Manage, which opens
+	Unit dropdown's line (UF.GenerateProfileControl: UF:GetConfigTable in
+	config.lua and UF.SetUpPlatePage in nameplates/options.lua put its two
+	options in each unit's pickerControl, after Copy from, so the line reads
+	Unit, Copy from, Profile, Manage; the nameplate pages have no Copy from),
+	a dropdown that picks one and Manage, which opens
 	the Unit frame profiles dialog (UF:OpenProfileDialog, over
 	UF.GenerateProfileConfigGroup): the same dropdown, and the buttons that
 	make, copy, rename, delete, export and import them.
@@ -171,8 +173,8 @@ end
 -- The Unit frame profiles dialog's options (UF:OpenProfileDialog), as the
 -- approved mockup lays them out: the profile being edited on a line of its
 -- own, the buttons that make, copy, rename, delete, export and import one, two
--- to a half line, and Close in the middle of the last line. The footer
--- control's dropdown is its current (UF.GenerateProfileFooter).
+-- to a half line, and Close in the middle of the last line. The Unit
+-- dropdown's line's Profile is its current (UF.GenerateProfileControl).
 function UF.GenerateProfileConfigGroup()
 	return {
 		name = 'Unit frame profiles',
@@ -277,27 +279,26 @@ function UF:OpenProfileDialog()
 	st.OptionsWindow:OpenDialog('Unit frame profiles', UF.GenerateProfileConfigGroup())
 end
 
--- The Unitframes page's footer control (the page group's footer, SaftUI's
--- field: /sui draws it in the footer's region, left of Reload UI, while the page is open,
--- after its name): the dialog's own profile dropdown, then Manage, which
--- opens the dialog.
-function UF.GenerateProfileFooter()
-	-- The dialog's select takes its own line (size 'wide'); the footer has no lines.
-	local current = {}
-	for key, value in pairs(UF.GenerateProfileConfigGroup().args.current) do current[key] = value end
-	current.size = nil
+-- The unit frame profile's two options, for each unit's pickerControl (SaftUI's
+-- field: /sui draws them on the Unit dropdown's line, Profile after its name,
+-- then Manage, which opens the dialog). Their orders (10 and 11) put them
+-- after Copy from. Nameplate settings are in the unit frame profile, so the
+-- nameplate pages have them too.
+function UF.GenerateProfileControl()
+	-- The dialog's select takes its own line (size 'wide'); the line has none.
+	local profile = {}
+	for key, value in pairs(UF.GenerateProfileConfigGroup().args.current) do profile[key] = value end
+	profile.size = nil
+	profile.name = 'Profile'
+	profile.order = 10
 	return {
-		type = 'group',
-		name = 'Unit frame profile',
-		args = {
-			current = current,
-			manage = {
-				order = 2,
-				type = 'execute',
-				name = 'Manage',
-				desc = 'Opens Unit frame profiles, to make, copy, rename, delete, export or import one.',
-				func = function() UF:OpenProfileDialog() end,
-			},
+		profile = profile,
+		manage = {
+			order = 11,
+			type = 'execute',
+			name = 'Manage',
+			desc = 'Opens Unit frame profiles, to make, copy, rename, delete, export or import one.',
+			func = function() UF:OpenProfileDialog() end,
 		},
 	}
 end

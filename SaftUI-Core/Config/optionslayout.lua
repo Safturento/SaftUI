@@ -8,7 +8,7 @@ local OB = st.OptionsBody
 	window's tests), the window's height and width limits and the sizes' numbers
 	(OW.WindowWidth, OW.CornerOf, OW.MiniLayout, OW.MiniShift and the rest), what changing size needs
 	(OW.SIZE_GUARD, OW.FirstInView, OW.OffsetFor, OW.InnerCuts), and where a
-	page's footer control sits (OW.FooterPlace). It loads first of the window's files
+	page's footer control sits (OW.FooterPlace) and how a pick's control flows on the picker's line (OW.PickerFlow). It loads first of the window's files
 	(Config/load.xml), so it makes OW and OW.S.
 ]]
 
@@ -187,6 +187,36 @@ function OW.FooterPlace(regionWidth, labelWidth, widgetsWidth)
 	local centred = floor((regionWidth - full) / 2)
 	if centred >= 0 then return centred, true end
 	return regionWidth - widgetsWidth, false
+end
+
+------------------------------------------------------------------ the picker's line
+
+--[[
+	The picker's line: a pick's control (the unit frames' Copy from, Profile
+	and Manage) is drawn on the Unit dropdown's line, wrapping when a piece
+	would pass the body's width.
+	  OW.PickerFlow(widths, width) -> places, height
+	widths[1] is the picker with its label, each later entry one piece of the
+	control (a button, or a label and its widget). Pieces go left to right,
+	PICKER_CONTROL_GAP apart. One that would pass width starts a new line at x 0,
+	a line's height and PICKER_LINE_GAP under the last; one wider than the line
+	goes alone on one. places[i] = { x, y }, both whole, from the line's
+	top left; height = lines * FIELD_HEIGHT + (lines - 1) * PICKER_LINE_GAP.
+]]
+OW.PICKER_LINE_GAP = 8
+OW.PICKER_CONTROL_GAP = 12 -- as the buttons on a line are apart
+
+function OW.PickerFlow(widths, width)
+	local line = st.OptionsWidgets.FIELD_HEIGHT
+	local places, x, y = {}, 0, 0
+	for i, w in ipairs(widths) do
+		if i > 1 and x > 0 and x + w > width then
+			x, y = 0, y + line + OW.PICKER_LINE_GAP
+		end
+		places[i] = { x = x, y = y }
+		x = x + w + OW.PICKER_CONTROL_GAP
+	end
+	return places, y + line
 end
 
 ------------------------------------------------------------------ the window's height
