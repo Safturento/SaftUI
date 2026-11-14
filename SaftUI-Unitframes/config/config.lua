@@ -342,16 +342,6 @@ function UF:GetConfigTable()
 			-- Elements (General, Health, Name, Power, ...) as tabs, not a dropdown.
 			childGroups = 'tab',
 			args = {
-				copy = {
-					name = 'Copy from',
-					desc = "Copies chosen settings from another unit frame onto this one.",
-					size = 'small',
-					type = 'execute',
-					func = function()
-						UF:OpenCopyTable(unit)
-					end,
-					order = -99,
-				},
 				-- Clicking the unit's frame in edit mode selects this group (the
 				-- mover's configPath, UF:RegisterMovers).
 				general = {
@@ -366,7 +356,19 @@ function UF:GetConfigTable()
 						UF:UpdateConfig(unit)
 					end,
 					args = {
-						enable = st.Config.generators.enable(0, 'Shows this unit frame. When off, the unit frame is hidden.'),
+						enable = st.Config.generators.enable(0, 'Shows this unit frame. When off, the unit frame is hidden.', 'small'),
+						-- A quarter beside Enable, with Theme in the right half
+						-- of the line.
+						copy = {
+							name = 'Copy from',
+							desc = "Copies chosen settings from another unit frame onto this one.",
+							size = 'small',
+							type = 'execute',
+							func = function()
+								UF:OpenCopyTable(unit)
+							end,
+							order = 0.5,
+						},
 						theme = st.Config.generators.theme(1, "How this unit frame's border and background are drawn."),
 						background = st.Config.generators.background(1.5),
 						width = st.Config.generators.width(2, "The unit frame's width."),

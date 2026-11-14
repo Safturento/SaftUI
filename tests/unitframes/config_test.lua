@@ -328,8 +328,8 @@ test('Copy from leaves the nameplates out: never offered to copy from, and their
 	check(not offered.nameplate, 'the nameplates are not')
 	W.CloseList()
 	OW:CloseDialog()
-	eq(UF:GetConfigTable().args.nameplate.args.copy, nil, 'no Copy from on the Enemy nameplates page')
-	check(UF:GetConfigTable().args.player.args.copy ~= nil, "the player's keeps it")
+	eq(UF:GetConfigTable().args.nameplate.args.general.args.copy, nil, 'no Copy from on the Enemy nameplates page')
+	check(UF:GetConfigTable().args.player.args.general.args.copy ~= nil, "the player's General has it")
 end)
 
 test("Copy from lists a migrated profile's Theme and Background, not its old template", function()
@@ -929,7 +929,7 @@ end)
 test("Health's first section: the toggles four to a line, then the settings two to a line", function()
 	local config = UF:GetConfigTable()
 	local view = OM.BuildView({ Unitframes = config }, 'Unitframes', { pick = 'target', tab = 'Health' })
-	-- The unit's Copy from comes first, above every tab; then the tab's own.
+	-- The tab's own first section.
 	local first
 	for _, section in ipairs(view.sections) do
 		if section.rows[1].path[3] == 'Health' then first = section break end
@@ -943,6 +943,73 @@ test("Health's first section: the toggles four to a line, then the settings two 
 		.. 'theme:normal 1, background:normal 2, texture:normal 1, alpha:normal 2, framelevel:normal 1',
 		"Health's first section")
 	eq(view.sections[#view.sections].title, 'Position', 'Position is the last section')
+end)
+
+-- 'key:size col[/quarter]' for each row of a unit's tab's first section, in
+-- the lines the window packs them in, a line to an entry.
+local function first_lines(unit, tab)
+	local view = OM.BuildView({ Unitframes = UF:GetConfigTable() }, 'Unitframes', { pick = unit, tab = tab })
+	local lines, byY = {}, {}
+	for _, p in ipairs(st.OptionsBody.LayoutRows(view.sections[1].rows)) do
+		local line = byY[p.y]
+		if not line then line = {}; byY[p.y] = line; lines[#lines + 1] = line end
+		line[#line + 1] = string.format('%s:%s %s%s', p.row.key, p.row.size, tostring(p.col), p.quarter and ('/' .. p.quarter) or '')
+	end
+	for i, line in ipairs(lines) do lines[i] = table.concat(line, ', ') end
+	return lines
+end
+
+test("a unit's General starts with Enable and Copy from, a quarter each, and Theme in the right half; Background follows", function()
+	for _, unit in ipairs({ 'player', 'target', 'targettarget', 'focus', 'focustarget', 'pet', 'pettarget', 'boss', 'party', 'raid10', 'raid40' }) do
+		local lines = first_lines(unit, 'general')
+		eq(lines[1], 'enable:small 1/1, copy:small 1/2, theme:normal 2', unit .. ': first line')
+		eq(lines[2], 'background:normal 1, width:normal 2', unit .. ': second line')
+		eq(lines[3], 'height:normal 1', unit .. ': third line')
+		eq(#lines, 3, unit .. ': nothing more in its first section')
+		-- Nothing above the tabs any more: the unit's page holds General and the element tabs.
+		eq(UF:GetConfigTable().args[unit].args.copy, nil, unit .. ': Copy from is in General only')
+		check(UF:GetConfigTable().args[unit].args.general.args.copy.order > UF:GetConfigTable().args[unit].args.general.args.enable.order, unit .. ': after Enable')
+	end
+end)
+
+test("Copy from in General is the same button: it opens the dialog for the unit", function()
+	local opened
+	local real = UF.OpenCopyTable
+	function UF:OpenCopyTable(unit) opened = unit end
+	local copy = UF:GetConfigTable().args.raid10.args.general.args.copy
+	eq(copy.type, 'execute'); eq(copy.name, 'Copy from'); eq(copy.size, 'small')
+	copy.func()
+	UF.OpenCopyTable = real
+	eq(opened, 'raid10')
+end)
+
+test("the nameplate pages' General keeps its own first lines, with no Copy from", function()
+	local enemy = first_lines('nameplate', 'general')
+	eq(enemy[1], 'enable:small 1/1, threat_solo:small 1/2, use_friendly:normal 2', 'Enemy: the two toggles and the box')
+	eq(enemy[2], 'theme:normal 1, background:normal 2', 'Enemy: Theme and Background')
+	local friendly = first_lines('friendlynameplate', 'general')
+	eq(friendly[1], 'friendly:small 1/1, use_enemy:normal 2', 'Friendly: its toggle and the box')
+end)
+
+-- Every section of the player's Class power tab, as the window packs it: a
+-- line to an entry, and whether it shares the panel above.
+test("Class power: Enable and Theme across one line, no gap beside Enable; width, Relative and Height on one line with Height filling its half", function()
+	local view = OM.BuildView({ Unitframes = UF:GetConfigTable() }, 'Unitframes', { pick = 'player', tab = 'ClassPower' })
+	local got = {}
+	for i, section in ipairs(view.sections) do
+		got[i] = {}
+		for _, p in ipairs(st.OptionsBody.LayoutRows(section.rows)) do
+			got[i][#got[i] + 1] = string.format('%s:%s %s%s y%d', p.row.key, p.row.size, tostring(p.col), p.quarter and ('/' .. p.quarter) or '', p.y)
+		end
+		got[i] = table.concat(got[i], ', ')
+	end
+	eq(got[1], 'enable:normal 1 y0, theme:normal 2 y0, background:normal 1 y34, alpha:normal 2 y34, framelevel:normal 1 y68, spacing:normal 2 y68',
+		'six rows in three full lines')
+	eq(got[2], 'width:small 1/1 y0, relative_width:small 1/2 y0, height:normal 2 y0',
+		"Width and its Relative in the left half, Height the right: no lone quarter beside an empty one")
+	eq(got[3], 'position:wide full y0', 'Position last')
+	eq(#got, 3)
+	eq(view.sections[2].title, nil, "the size row continues the panel above, untitled")
 end)
 
 test("the name tag marks rare (R), rare elite (R+), elite (+) and world boss (B) units with Classification on", function()
