@@ -35,16 +35,8 @@ end
 
 build()
 
-local function settings() return EM:GetSettings() end
-local function control(key) return EM:BarControl(key) end
-local function frame_of(key) return EM:BarControl(key).frame end
-
--- A screen of width x height physical pixels at SaftUI's scale: a UIParent unit
--- a pixel.
-local function set_screen(width, height)
-	stub.screen_width, stub.screen_height = width, height
-	UIParent:SetScale(768 / height)
-end
+local EMH = load_test_file('core/editmode_helpers.lua')
+local settings, control, frame_of, set_screen, look = EMH.settings, EMH.control, EMH.frame_of, EMH.set_screen, EMH.look
 
 -- What fn printed to chat, joined.
 local function printed(fn)
@@ -88,12 +80,6 @@ local function hover(owner, target)
 end
 
 local function rgb(color) return string.format('%.2f,%.2f,%.2f', color:GetRGB()) end
-
--- Puts SaftUI's theme on, as the Theme tab does.
-local function look(name)
-	st.config.profile.theme.name = name
-	st:ThemeChanged()
-end
 
 local function reset_edit_mode()
 	if EM.active then EM:Deactivate() end
@@ -327,11 +313,9 @@ test('EM:SetSetting: grid_size a whole number from 8 to 128, other keys as given
 	eq(settings().grid_size, 8, 'not a number: unchanged')
 	EM:SetGridSize(64)
 	eq(settings().grid_size, 64, 'EM:SetGridSize')
-	EM:StepGridSize(EM.GRID_STEP)
-	eq(settings().grid_size, 68, 'EM:StepGridSize')
 	EM:SetSetting('snap_frames', true)
 	eq(settings().snap_frames, true, 'another key')
-	eq(table.concat(got, ','), 'grid_size,grid_size,grid_size,grid_size,grid_size,snap_frames', 'the key; none for what changed nothing')
+	eq(table.concat(got, ','), 'grid_size,grid_size,grid_size,grid_size,snap_frames', 'the key; none for what changed nothing')
 	eq(EM.MIN_GRID_SIZE .. ',' .. EM.MAX_GRID_SIZE .. ',' .. EM.GRID_STEP, '8,128,4', 'the range and the step')
 	reset_edit_mode()
 end)
@@ -497,6 +481,30 @@ test("the Grid size box lets go of the keyboard when a mover is pressed or dragg
 		else EM:Deactivate() end
 		check(not edit:HasFocus(), how .. ': focus let go')
 	end
+	reset_edit_mode()
+end)
+
+test("the Grid size box is not refreshed while it has the keyboard", function()
+	EM:Activate()
+	EM:SetSetting('grid', true)
+	local edit = frame_of('gridSize').edit
+	edit:SetFocus()
+	edit:SetText('2')
+	EM:RefreshBar()
+	eq(edit:GetText(), '2', 'a refresh leaves what is typed')
+	edit:SetText('20')
+	EM:RefreshBar()
+	eq(edit:GetText(), '20', 'so does another refresh')
+	stub.fire_script(edit, 'OnEnterPressed')
+	eq(settings().grid_size, 20, 'Enter commits it')
+	-- An arrow is the player's own input: its value shows, and Enter keeps it.
+	local box = frame_of('gridSize')
+	edit:SetFocus()
+	stub.click(box.pair.up)
+	eq(settings().grid_size, 24, 'the arrow steps the size')
+	eq(edit:GetText(), '24', 'and the box shows it')
+	stub.fire_script(edit, 'OnEnterPressed')
+	eq(settings().grid_size, 24, 'Enter does not put the old number back')
 	reset_edit_mode()
 end)
 

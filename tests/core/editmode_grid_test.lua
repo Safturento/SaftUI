@@ -11,12 +11,10 @@ local st = SaftUI
 local EM = st.EditModeFrames
 local settings = EM:GetSettings()
 
--- A screen of width x height physical pixels, at the scale SaftUI sets at
--- login: one UIParent unit per pixel, so UIParent is width x height too.
-local function set_screen(width, height)
-	stub.screen_width, stub.screen_height = width, height
-	UIParent:SetScale(768 / height)
-end
+-- set_screen: a screen of width x height physical pixels, at the scale SaftUI
+-- sets at login (one UIParent unit per pixel).
+local EMH = load_test_file('core/editmode_helpers.lua')
+local set_screen = EMH.set_screen
 
 local function eqlist(a, b)
 	if #a ~= #b then return false end
@@ -173,7 +171,7 @@ test('UpdateConfig', function()
 	check(EM.gridFrame:IsShown(), 'UpdateConfig shows grid')
 end)
 
-test('StepGridSize and SetGridSize', function()
+test('SetGridSize', function()
 	-- Count the Refresh calls that redraw an open /sui.
 	local refreshes = 0
 	local refresh = st.Config.Refresh
@@ -182,19 +180,7 @@ test('StepGridSize and SetGridSize', function()
 		return refresh(...)
 	end
 
-	settings.grid_size = 32
-	EM:StepGridSize(4)
-	check(settings.grid_size == 36, 'step 32+4 = 36')
-	settings.grid_size = 126
-	EM:StepGridSize(4)
-	check(settings.grid_size == 128, 'step clamps at 128')
-	settings.grid_size = 10
-	EM:StepGridSize(-4)
-	check(settings.grid_size == 8, 'step clamps at 8')
-	local before = refreshes
-	EM:StepGridSize(4)
-	check(refreshes == before + 1, 'step refreshes /sui')
-
+	local before
 	-- SetGridSize: a whole size within the range, the grid redrawn at once.
 	settings.grid = true
 	EM:SetGridSize(30)

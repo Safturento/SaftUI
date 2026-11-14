@@ -291,6 +291,46 @@ test('JumpTo goes to any state and every step stays redoable until a new one', f
 	eq(store.a4, 0, 'a4 was undone before it stopped')
 end)
 
+test('a long jump places every step (finish per step) but fires HistoryChanged once, and ends where stepping one by one does', function()
+	fresh()
+	for i = 1, 4 do push('move', 'a' .. i, 'a' .. i, 0, i) end
+	push('move', 'a1', 'a1', 1, 10)
+	local function copy() local out = {} for k, v in pairs(store) do out[k] = v end return out end
+	local function same(a, b)
+		for k, v in pairs(a) do if b[k] ~= v then return false end end
+		for k, v in pairs(b) do if a[k] ~= v then return false end end
+		return true
+	end
+	-- One by one.
+	for _ = 1, 5 do History:Undo() end
+	local stepwise = copy()
+	for _ = 1, 5 do History:Redo() end
+	-- The same, as a jump.
+	finishes, fired = {}, 0
+	eq(History:JumpTo(0), true, 'jumped')
+	eq(History:Position(), 0, 'to the start')
+	eq(#finishes, 5, 'the kind finished at every step, as its checks read what it places')
+	eq(fired, 1, 'HistoryChanged fired once')
+	check(same(copy(), stepwise), 'the same values as stepping one by one')
+	finishes, fired = {}, 0
+	History:JumpTo(5)
+	eq(#finishes, 5, 'and forward: a finish per step'); eq(fired, 1, 'one HistoryChanged')
+	eq(store.a1, 10, 'every step redone')
+	-- A refusal part way still announces once, for what was walked.
+	finishes, fired = {}, 0
+	store.a3 = 99
+	local ok = History:JumpTo(0)
+	eq(ok, false, 'refused')
+	eq(#finishes, 2, 'a finish for each step undone'); eq(fired, 1, 'one HistoryChanged')
+	eq(store.a4, 0, 'a4 was undone')
+	-- A single step still announces at once.
+	fresh()
+	push('move', 'a', 'a', 0, 1)
+	fired = 0
+	History:Undo()
+	eq(fired, 1, 'Undo: one')
+end)
+
 test('Revert puts back one older step as a new step, only when nothing later touched its place and it is not stale', function()
 	fresh()
 	push('move', 'a', 'a', 1, 2)

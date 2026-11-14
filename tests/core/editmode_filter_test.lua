@@ -24,14 +24,9 @@ end
 
 build()
 
-local function settings() return EM:GetSettings() end
-local function control(key) return EM:BarControl(key) end
-local function frame_of(key) return EM:BarControl(key).frame end
+local EMH = load_test_file('core/editmode_helpers.lua')
+local settings, control, frame_of, set_screen, look = EMH.settings, EMH.control, EMH.frame_of, EMH.set_screen, EMH.look
 
-local function set_screen(width, height)
-	stub.screen_width, stub.screen_height = width, height
-	UIParent:SetScale(768 / height)
-end
 
 local added = {}
 
@@ -57,10 +52,6 @@ local function add_mover(key, extra)
 	return mover, config
 end
 
-local function look(name)
-	st.config.profile.theme.name = name
-	st:ThemeChanged()
-end
 
 local function reset()
 	if EM.active then EM:Deactivate() end
@@ -454,6 +445,29 @@ test('a narrow bar gives up the caption, then narrows the face, then drops the f
 	set_screen(width, 600)
 	stub.fire_event('DISPLAY_SIZE_CHANGED')
 	check(EM:LayoutBar() >= 3, 'a narrow one: at least stage 3')
+	reset()
+end)
+
+test('a filter typed at a wide stage is cleared, and the status says so, when the bar narrows until its box is gone', function()
+	local a = add_mover('apple', { label = 'Apple' })
+	local b = add_mover('banana', { label = 'Banana' })
+	EM:Activate()
+	local box = frame_of('filter')
+	box:SetText('app')
+	eq(EM.filterText, 'app', 'a filter is on')
+	check(a.overlay:IsShown() and not b.overlay:IsShown(), 'only Apple shows')
+	set_screen(EM:BarWidthAt(4) + 1, 600)
+	stub.fire_event('DISPLAY_SIZE_CHANGED')
+	eq(EM:LayoutBar(), 4, 'stage 4 keeps the box')
+	eq(EM.filterText, 'app', 'and the filter')
+	set_screen(EM:BarWidthAt(5), 600)
+	stub.fire_event('DISPLAY_SIZE_CHANGED')
+	eq(EM:LayoutBar(), 5, 'stage 5')
+	check(not box:IsShown(), 'the box is gone')
+	eq(EM.filterText, '', 'so the filter is cleared')
+	eq(box:GetText(), '', 'and the box with it')
+	check(b.overlay:IsShown(), 'Banana shows again')
+	check(EM.statusText:GetText():find('Filter cleared', 1, true), 'the status says so')
 	reset()
 end)
 

@@ -28,14 +28,9 @@ end
 
 build()
 
-local function settings() return EM:GetSettings() end
-local function control(key) return EM:BarControl(key) end
-local function frame_of(key) return EM:BarControl(key).frame end
+local EMH = load_test_file('core/editmode_helpers.lua')
+local settings, control, frame_of, set_screen, look = EMH.settings, EMH.control, EMH.frame_of, EMH.set_screen, EMH.look
 
-local function set_screen(width, height)
-	stub.screen_width, stub.screen_height = width, height
-	UIParent:SetScale(768 / height)
-end
 set_screen(1920, 1080)
 local SCALE = UIParent:GetEffectiveScale()
 
@@ -47,10 +42,6 @@ local function fill(texture)
 	return string.format('%.2f,%.2f,%.2f', c[1], c[2], c[3]), c[4]
 end
 
-local function look(name)
-	st.config.profile.theme.name = name
-	st:ThemeChanged()
-end
 
 -- The tooltip's lines as they are added: { text, color } each, title first.
 local lines = {}
@@ -457,7 +448,7 @@ test("a jump's note is about the steps it walked, and a jump that stops part way
 	eq(status(), 'Went back to: Moved P1. Its mover is hidden by Show or the filter.', 'the step that moved is P2, which is hidden')
 	EM:SetFilter('')
 	EM:JumpToStep(2)
-	eq(status(), 'Went back to: Moved P2', 'nothing hidden: no note')
+	eq(status(), 'Went to: Moved P2', 'a jump forward; nothing hidden: no note')
 
 	-- Part way: P2 is moved from outside, then a jump to the start.
 	reset()
@@ -813,6 +804,85 @@ test('the History list scrolls past 12 rows, sets its length, and closes on Esc,
 	stub.in_combat = true
 	stub.fire_event('PLAYER_REGEN_DISABLED')
 	check(not list:IsShown(), 'combat closes it')
+	reset()
+end)
+
+test("the length box is not refreshed while it has the keyboard: 200 typed across two ticks commits 200", function()
+	reset()
+	stub.click(frame_of('history'))
+	local list = EM:GetHistoryList()
+	local edit = list.box.edit
+	edit:SetFocus()
+	edit:SetText('2')
+	stub.fire_script(list, 'OnUpdate', 1.1)
+	eq(edit:GetText(), '2', 'the first tick leaves what is typed')
+	edit:SetText('200')
+	stub.fire_script(list, 'OnUpdate', 1.1)
+	eq(edit:GetText(), '200', 'and the second')
+	EM:RefreshHistoryList()
+	eq(edit:GetText(), '200', 'so does any other refresh')
+	stub.fire_script(edit, 'OnEnterPressed')
+	eq(History.limit, 200, 'Enter commits 200')
+	eq(settings().history_limit, 200, 'the setting too')
+	check(not edit:HasFocus(), 'Enter lets go')
+	edit:SetText('7')
+	stub.fire_script(list, 'OnUpdate', 1.1)
+	eq(edit:GetText(), '200', 'without the keyboard the tick shows what the history keeps')
+	reset()
+end)
+
+test("an arrow pressed while the length box has the keyboard shows its value, and Enter keeps it", function()
+	reset()
+	stub.click(frame_of('history'))
+	local list = EM:GetHistoryList()
+	local box = list.box
+	box.edit:SetFocus()
+	stub.click(box.pair.up)
+	stub.click(box.pair.up)
+	eq(History.limit, 70, 'the arrows set the length')
+	eq(box.edit:GetText(), '70', 'and the box shows it')
+	stub.fire_script(list, 'OnUpdate', 1.1)
+	eq(box.edit:GetText(), '70', 'the tick leaves it')
+	stub.fire_script(box.edit, 'OnEnterPressed')
+	eq(History.limit, 70, 'Enter does not put the old number back')
+	box.edit:SetFocus()
+	box.edit:SetText('9')
+	stub.click(box.pair.down)
+	eq(box.edit:GetText(), '60', 'an arrow after typing shows the new value')
+	reset()
+end)
+
+test("the length box lets go of the keyboard when the list closes, a mover is pressed or dragged, edit mode closes, and in combat", function()
+	local function focused_box()
+		reset()
+		local mover = add_mover('focus_test', 'Focus test')
+		EM:Activate()
+		EM:SetBarFloating(false)
+		stub.click(frame_of('history'))
+		local list = EM:GetHistoryList()
+		list.box.edit:SetFocus()
+		check(list.box.edit:HasFocus(), 'it has focus')
+		return list.box.edit, mover
+	end
+	local edit, mover = focused_box()
+	EM:HideHistoryList()
+	check(not edit:HasFocus(), 'the list closing')
+	edit, mover = focused_box()
+	stub.fire_script(mover.overlay, 'OnMouseDown', 'LeftButton')
+	check(not edit:HasFocus(), 'a mover pressed')
+	edit, mover = focused_box()
+	EM:StartDrag(mover); EM:StopDrag(mover)
+	check(not edit:HasFocus(), 'a drag started')
+	edit = focused_box()
+	EM:Deactivate()
+	check(not edit:HasFocus(), 'edit mode disabled')
+	edit = focused_box()
+	EM:SetBarFloating(true)
+	check(not edit:HasFocus(), 'Detach closes the list')
+	EM:SetBarFloating(false)
+	edit = focused_box()
+	stub.fire_event('PLAYER_REGEN_DISABLED')
+	check(not edit:HasFocus(), 'combat')
 	reset()
 end)
 

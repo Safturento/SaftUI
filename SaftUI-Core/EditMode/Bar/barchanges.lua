@@ -17,7 +17,7 @@ local History = EM.History
 
 	EM:UndoStep(), EM:RedoStep(), EM:JumpToStep(n) and EM:RevertStep(i) run the
 	history's call and say what happened in the status line: 'Undid: <label>',
-	'Redid: <label>', 'Went back to: <label>' or 'Reverted: <label>', or the
+	'Redid: <label>', 'Went back to: <label>' ('Went to:' for a jump forward) or 'Reverted: <label>', or the
 	refusal's message (a step that couldn't be written is put back and the
 	buttons' states don't change). When the step's mover isn't showing (the
 	filter, Show disabled and Show hidden) or its outline is off the screen,
@@ -222,7 +222,7 @@ function EM:JumpToStep(n, owner)
 		if step.target and MoverHidden(step.target) then hidden = true end
 	end
 	if ok then
-		text = 'Went back to: ' .. PointLabel(point)
+		text = (n > from and 'Went to: ' or 'Went back to: ') .. PointLabel(point)
 	elseif now ~= from then
 		text = 'Went back part way, to ' .. PointLabel(History:Steps()[now]) .. ': ' .. (message or "couldn't go on.")
 	else

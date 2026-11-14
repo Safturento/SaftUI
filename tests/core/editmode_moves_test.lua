@@ -19,7 +19,8 @@ EM:Enable()
 
 local SCALE = UIParent:GetEffectiveScale()
 
-local function settings() return EM:GetSettings() end
+local EMH = load_test_file('core/editmode_helpers.lua')
+local settings = EMH.settings
 
 -- A mover on a 100 x 50 frame whose position is config.position; apply places
 -- the frame from it (through SafeReposition, as every real apply does) and
@@ -336,6 +337,32 @@ test('an undo that would anchor a frame to one now anchored to it is refused, dr
 	eq(#History:Steps(), 0, 'the step is gone')
 	check(table.concat(said, '|'):find('Anchor would create a loop', 1, true), 'printed to chat')
 	eq(pconfig.position.frame, 'UIParent', 'the position is as it was')
+end)
+
+test('Reset refuses a default that would anchor a frame to one anchored to it, and writes nothing', function()
+	reset_world()
+	local e, econfig, _, eframe = make('echo', 'Echo')
+	local f, fconfig, _, fframe = make('foxtrot', 'Foxtrot', {
+		defaults = function() return { position = { point = 'LEFT', frame = 'EMMovesecho', rel_point = 'RIGHT', x_off = 7, y_off = 0 } } end,
+	})
+	-- echo is anchored to foxtrot (by the player, in /sui); foxtrot's default anchors to echo.
+	econfig.position = { point = 'RIGHT', frame = 'EMMovesfoxtrot', rel_point = 'LEFT', x_off = -7, y_off = 0 }
+	e.def.apply()
+	fconfig.position.x_off = 30
+	f.def.apply()
+	EM:Activate()
+	EM:Select(f)
+	local ok, why = EM:CanReset(f)
+	eq(ok, false, 'CanReset refuses')
+	eq(why, "Foxtrot can't go back to its default place: Anchor would create a loop.", 'with the reason')
+	local before = fconfig.position.x_off
+	ok = EM:Reset(f)
+	eq(ok, false, 'Reset refuses too')
+	eq(fconfig.position.x_off, before, 'the profile is unchanged')
+	eq(fconfig.position.frame, 'UIParent', 'still anchored where it was')
+	eq(#History:Steps(), 0, 'no step recorded')
+	eq(fframe:GetNumPoints(), 1, 'the frame is still placed')
+	eq(#take_errors(), 0, 'no error')
 end)
 
 test('a mover that no longer exists is skipped, not an error', function()

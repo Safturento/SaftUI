@@ -20,7 +20,7 @@ local History = {}
 EM.History = History
 
 History.MERGE_GAP = 1 -- seconds: a nudge within this of the run's last joins the run
-History.LIMIT_MIN, History.LIMIT_MAX = 1, 1000
+History.LIMIT_MIN, History.LIMIT_MAX = EM.MIN_HISTORY, EM.MAX_HISTORY -- settings.lua, which loads first
 History.limit = 50
 
 local TOLERANCE = 1e-4 -- numbers closer than this are one number
@@ -60,9 +60,11 @@ end
 
 -- handler = { read(where) -> value, write(where, value), finish(wheres)?,
 -- same(a, b)?, place(where)?, check(where, value) -> ok, why ?, name(where),
--- missing(where) -> boolean ? }. read gives a copy of what is stored now; write
+-- missing(where) -> boolean, flush()? }. read gives a copy of what is stored now; write
 -- stores a copy, through the setter a player's change uses; finish runs once
--- after a step's writes with the wheres of this kind; missing says the thing
+-- after a step's writes with the wheres of this kind (it places things, and
+-- while History.batching, in a jump, holds back what it would tell listeners
+-- for flush, which runs once after the jump); missing says the thing
 -- is gone (a module turned off): its part of a step is skipped and reported.
 function History:RegisterKind(name, handler)
 	handlers[name] = handler
@@ -151,7 +153,16 @@ end
 
 ----------------------------------------------------------------- changing
 
-local function Changed() EM:Fire('HistoryChanged') end
+-- While a jump walks several steps every step is written and placed as usual
+-- (a later step's check reads the frames), but what listeners are told is held
+-- back and said once at the end: HistoryChanged here, and each kind's flush.
+-- History.batching is true meanwhile, for a kind's finish to read.
+local batch
+History.batching = false
+
+local function Changed()
+	if batch then batch.changed = true else EM:Fire('HistoryChanged') end
+end
 
 -- Drops the steps past the limit: the oldest applied ones first (what has to
 -- go is the oldest history), then, if the redo steps alone are still over,
@@ -414,11 +425,27 @@ function History:JumpTo(n)
 	if type(n) ~= 'number' or n ~= n or n < 0 or n > #steps or n ~= math.floor(n) then
 		return false, 'No such step.'
 	end
-	while position ~= n do
-		local ok, message = Step(position > n)
-		if not ok then return false, message end
+	-- Every step is written, checked and placed in turn (a stale one stops the
+	-- jump); only what listeners are told waits for the end. An error in a step
+	-- is reported once and ends the jump as a refusal, with the state cleared.
+	local held = {}
+	batch = held
+	History.batching = true
+	local ran, ok, message = xpcall(function()
+		while position ~= n do
+			local stepped, why = Step(position > n)
+			if not stepped then return false, why end
+		end
+		return true
+	end, Report)
+	batch = nil
+	History.batching = false
+	for _, handler in pairs(handlers) do
+		if handler.flush then xpcall(handler.flush, geterrorhandler()) end
 	end
-	return true
+	if held.changed then Changed() end
+	if not ran then return false, "The jump stopped on an error; it is in the error log." end
+	return ok, message
 end
 
 ------------------------------------------------------------------- revert

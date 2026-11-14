@@ -144,6 +144,17 @@ local function Filter(bar)
 		box:SetText('') -- the filter is for this session of edit mode
 	end)
 
+	-- A filter with no box to show it or clear it would hide movers with nothing
+	-- on the bar saying why: at the narrowest stage it is cleared (it is only
+	-- this session's, and typing it again costs a few keys).
+	EM:On('BarLaid', function()
+		if box:IsShown() or box:GetText() == '' then return end
+		box:SetText('')
+		local message = 'Filter cleared: the bar is too narrow for its box.'
+		EM:SetBarStatus(message)
+		st:Print(message) -- the bar has no room for a status line at this stage
+	end)
+
 	return {
 		key = 'filter', frame = box,
 		Lay = function(_, stage, floating)
