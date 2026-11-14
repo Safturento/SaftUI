@@ -4,7 +4,7 @@ local EM = st.EditModeFrames
 -- The alignment grid drawn behind the UI while edit mode is on. Two center
 -- lines (UIParent's center) run vertically and horizontally, and the other
 -- lines repeat outward from them every Grid size, so the center lines are
--- always grid lines. It draws again on 'SettingsChanged' (the bar's Grid and
+-- always grid lines. Dim world, a black layer under the grid, is here too. It draws again on 'SettingsChanged' (the bar's Grid and
 -- Grid size, the Edit mode tab, a profile change). Snapping (snap.lua) uses the same lines through
 -- EM.GridLinePositions and EM:GetGridCenter, so what's drawn is what snaps.
 
@@ -125,7 +125,39 @@ function EM:UpdateGrid()
 	end
 end
 
-EM:On('Enabled', function() EM:UpdateGrid() end)
-EM:On('Disabled', function() EM:UpdateGrid() end)
--- Grid, Grid size or a profile change (settings.lua's 'SettingsChanged').
-EM:On('SettingsChanged', function() EM:UpdateGrid() end)
+------------------------------------------------------------------ Dim world
+
+-- The black layer's alpha: dark enough that outlines and frames stand out, light
+-- enough that the world still reads.
+EM.DIM_ALPHA = 0.5
+
+local dimFrame
+
+-- A black layer over all of UIParent at BACKGROUND strata, a level under the
+-- grid's frame (behind every frame, so they stay readable), taking no mouse.
+local function GetDimFrame()
+	if not dimFrame then
+		dimFrame = st:CreateFrame('Frame', nil, UIParent)
+		dimFrame:SetAllPoints(UIParent)
+		dimFrame:SetFrameStrata('BACKGROUND')
+		dimFrame:SetFrameLevel(math.max(0, GetGridFrame():GetFrameLevel() - 1))
+		dimFrame:EnableMouse(false)
+		local texture = dimFrame:CreateTexture(nil, 'BACKGROUND')
+		texture:SetAllPoints(dimFrame)
+		texture:SetColorTexture(0, 0, 0, EM.DIM_ALPHA)
+		dimFrame:Hide()
+		EM.dimFrame = dimFrame
+	end
+	return dimFrame
+end
+
+-- Shows the dim layer while edit mode is on and Dim world is.
+function EM:UpdateDim()
+	local f = GetDimFrame()
+	f:SetShown(self.active and self:GetSettings().dim == true)
+end
+
+EM:On('Enabled', function() EM:UpdateGrid() EM:UpdateDim() end)
+EM:On('Disabled', function() EM:UpdateGrid() EM:UpdateDim() end)
+-- Grid, Grid size, Dim world or a profile change (settings.lua's 'SettingsChanged').
+EM:On('SettingsChanged', function() EM:UpdateGrid() EM:UpdateDim() end)

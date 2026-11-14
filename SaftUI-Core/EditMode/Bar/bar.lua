@@ -328,6 +328,7 @@ end
 function EM:GetBar()
 	if bar then return bar end
 	bar = st:CreateFrame('Frame', nil, UIParent)
+	EM.bar = bar -- EM:ScreenTop reads whether it is shown
 	bar:SetFrameStrata('FULLSCREEN_DIALOG')
 	bar:SetFrameLevel(BAR.LEVEL)
 	bar:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 0, 0)

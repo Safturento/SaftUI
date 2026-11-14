@@ -99,6 +99,7 @@ local function reset_edit_mode()
 	if EM.active then EM:Deactivate() end
 	for _, key in ipairs({ 'grid', 'snap_grid', 'snap_frames' }) do settings()[key] = false end
 	settings().grid_size = 32
+	settings().dim, settings().coordinates = true, false
 	stub.in_combat = false
 	stub.size_noise = 0
 	H.close_all()
@@ -155,7 +156,7 @@ test('across the top, 40 tall, drawn as a panel in the theme; the bar itself tak
 	check(not bar:IsMouseEnabled(), 'a click between controls reaches the mover under it')
 	check(frame_of('grid'):IsMouseEnabled(), 'the controls take it')
 	eq(bar:GetFrameStrata() .. bar:GetFrameLevel(), 'FULLSCREEN_DIALOG9500', 'over the movers and /sui')
-	for _, key in ipairs({ 'exit', 'grid', 'gridSize', 'snapGrid', 'snapFrames', 'options' }) do
+	for _, key in ipairs({ 'exit', 'grid', 'gridSize', 'snapGrid', 'snapFrames', 'dim', 'coordinates', 'options' }) do
 		local frame = frame_of(key)
 		eq(frame:GetFrameLevel(), 9502, key .. ': two over the bar')
 		eq(frame:GetParent(), bar, key .. ': a child of the bar')
@@ -166,18 +167,18 @@ test('across the top, 40 tall, drawn as a panel in the theme; the bar itself tak
 	reset_edit_mode()
 end)
 
-test('the groups and their controls: exit, then the grid group (grid, size, two snaps), Options on the right', function()
+test('the groups and their controls: exit, then the grid group (grid, size, two snaps, Dim world, Coordinates), Options on the right', function()
 	EM:Activate()
 	local keys = {}
-	for _, key in ipairs({ 'exit', 'grid', 'gridSize', 'snapGrid', 'snapFrames', 'options' }) do
+	for _, key in ipairs({ 'exit', 'grid', 'gridSize', 'snapGrid', 'snapFrames', 'dim', 'coordinates', 'options' }) do
 		local c = EM:BarControl(key)
 		check(c and c.frame and c.Lay, key .. ' is a control with a frame and a Lay')
 		keys[#keys + 1] = ('%s:%s'):format(key, c.section)
 	end
-	eq(table.concat(keys, ' '), 'exit:title grid:grid gridSize:grid snapGrid:grid snapFrames:grid options:changes', "each in its group's section")
+	eq(table.concat(keys, ' '), 'exit:title grid:grid gridSize:grid snapGrid:grid snapFrames:grid dim:grid coordinates:grid options:changes', "each in its group's section")
 	eq(control('options').align, 'right', 'Options aligns right')
 	local xs = {}
-	for _, key in ipairs({ 'exit', 'grid', 'gridSize', 'snapGrid', 'snapFrames', 'options' }) do xs[#xs + 1] = frame_of(key):GetLeft() end
+	for _, key in ipairs({ 'exit', 'grid', 'gridSize', 'snapGrid', 'snapFrames', 'dim', 'coordinates', 'options' }) do xs[#xs + 1] = frame_of(key):GetLeft() end
 	for i = 2, #xs do check(xs[i] > xs[i - 1], 'left to right: ' .. i) end
 	eq(xs[1] - UIParent:GetLeft(), 10, 'Exit 10 in')
 	eq(UIParent:GetRight() - frame_of('options'):GetRight(), 10, 'Options 10 from the right')
@@ -203,6 +204,43 @@ test('Grid, Snap to grid and Snap to frames toggle their settings, show on in th
 		check(settings()[setting] == false and not frame.on, key .. ': off again')
 		if key == 'grid' then check(not EM.gridFrame:IsShown(), 'the grid hides') end
 	end
+	reset_edit_mode()
+end)
+
+test('Dim world and Coordinates toggle their settings, light in the accent, are saved in the profile, and have tooltips', function()
+	EM:Activate()
+	local dim, coordinates = frame_of('dim'), frame_of('coordinates')
+	eq(dim.icon:GetTexture(), st.icons.layers, 'Dim world: the layers icon')
+	eq(coordinates.icon:GetTexture(), st.icons.mapPin, 'Coordinates: the map pin icon')
+	check(dim.on == true and settings().dim == true, 'Dim world is on by default')
+	check(not coordinates.on and settings().coordinates == false, 'Coordinates is off by default')
+	check(EM.dimFrame:IsShown(), 'the world is dimmed')
+	stub.click(dim)
+	check(settings().dim == false and not dim.on and not EM.dimFrame:IsShown(), 'Dim world off: setting, light and layer')
+	eq(st.config.profile.editmode.dim, false, 'saved in the profile')
+	stub.click(dim)
+	check(settings().dim == true and dim.on and EM.dimFrame:IsShown(), 'Dim world on again')
+	stub.click(coordinates)
+	check(settings().coordinates == true and coordinates.on == true, 'Coordinates on')
+	eq(st.config.profile.editmode.coordinates, true, 'saved in the profile')
+	stub.fire_script(coordinates, 'OnLeave', true)
+	eq(rgb(CreateColor(coordinates.icon:GetVertexColor())), rgb(st.config.profile.colors.button.blue), 'its icon in the accent')
+	stub.click(coordinates)
+	check(settings().coordinates == false and not coordinates.on, 'Coordinates off again')
+
+	hover(dim)
+	eq(lines[1].text, 'Dim world', 'title')
+	eq(lines[2].text, 'Darkens the game world behind your frames while edit mode is on.', "the spec's line")
+	stub.fire_script(dim, 'OnLeave', true)
+	hover(coordinates)
+	eq(lines[1].text, 'Coordinates', 'title')
+	eq(lines[2].text, "Shows the selected frame's position by the corner it's anchored by.", "the spec's line")
+	stub.fire_script(coordinates, 'OnLeave', true)
+
+	-- A profile change moves both.
+	st.config.profile.editmode.coordinates = true
+	EM:Fire('SettingsChanged')
+	check(coordinates.on == true, 'a profile change shows Coordinates on')
 	reset_edit_mode()
 end)
 
@@ -367,7 +405,7 @@ test('the bar fades and takes no mouse while a mover is dragged', function()
 	local mover = add_mover('drag_test')
 	local function mouse_on()
 		local n = 0
-		for _, key in ipairs({ 'exit', 'grid', 'gridSize', 'snapGrid', 'snapFrames', 'options' }) do
+		for _, key in ipairs({ 'exit', 'grid', 'gridSize', 'snapGrid', 'snapFrames', 'dim', 'coordinates', 'options' }) do
 			local c = EM:BarControl(key)
 			if c.frame:IsMouseEnabled() then n = n + 1 end
 			if c.frame.edit and c.frame.edit:IsMouseEnabled() then n = n + 1 end
@@ -506,6 +544,10 @@ test('in combat the bar hides with edit mode and its buttons do nothing', functi
 	eq(settings().grid, false, 'Grid unchanged')
 	stub.click(frame_of('snapFrames'))
 	eq(settings().snap_frames, false, 'Snap to frames unchanged')
+	stub.click(frame_of('dim'))
+	eq(settings().dim, true, 'Dim world unchanged')
+	stub.click(frame_of('coordinates'))
+	eq(settings().coordinates, false, 'Coordinates unchanged')
 	settings().grid = true
 	stub.click(frame_of('gridSize').pair.up)
 	eq(settings().grid_size, 32, 'Grid size arrow does nothing')
@@ -673,7 +715,7 @@ test("at a scale that is not SaftUI's the controls still sit whole from the bar,
 	UIParent:SetScale(0.71) -- UIParent's own edges are fractional here: nothing anchored to them can be whole
 	stub.fire_event('UI_SCALE_CHANGED')
 	local width = math.floor(bar:GetWidth() + 0.5)
-	for _, key in ipairs({ 'exit', 'grid', 'gridSize', 'snapGrid', 'snapFrames', 'options' }) do
+	for _, key in ipairs({ 'exit', 'grid', 'gridSize', 'snapGrid', 'snapFrames', 'dim', 'coordinates', 'options' }) do
 		local _, _, _, x, y = frame_of(key):GetPoint(1)
 		eq(x, math.floor(x), key .. ': x whole from the bar')
 		eq(y, math.floor(y), key .. ': y whole from the bar')
@@ -686,7 +728,7 @@ end)
 
 test("hover with the game's motion argument shows each control's tooltip under it", function()
 	EM:Activate()
-	for _, key in ipairs({ 'exit', 'grid', 'gridSize', 'snapGrid', 'snapFrames', 'options' }) do
+	for _, key in ipairs({ 'exit', 'grid', 'gridSize', 'snapGrid', 'snapFrames', 'dim', 'coordinates', 'options' }) do
 		local c = EM:BarControl(key)
 		local target = c.frame.edit or c.frame
 		hover(c.frame, target)
