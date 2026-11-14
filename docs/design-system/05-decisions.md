@@ -16,3 +16,10 @@ Answers the owner has given to the questions and discrepancies. Each stands as a
 10. **Resets are per setting:** a `rotate-ccw` icon beside a control whose value differs from its default; no section or page Reset buttons. Built in the kit as the `default` option field. (Was already a rule; confirmed as general.)
 11. **SaftUI scales with the display:** automatic from the screen's height against 1440, with a "UI size" slider to override; borders in whole pixels. A project, after the tokens are in code. (New; see the repo's followups.)
 12. **The pixel font is likely to go** in favour of a face that reads well small at any scale; candidates are being compared in game (`/suifonts`). (New; undecided which.)
+
+## 2026-11-13, later
+
+13. **The colour control is a field with the swatch at its left and the code beside it** (mockup option C1): as wide as a dropdown, the code in the normal text colour on the field's dark fill, `· NN%` after it for an opacity, a see-through colour shown over a checker in the swatch. Replaces the bar with the code inside it.
+14. **Colours named after a hue get role names.** The Colors page lets the player change "Blue", "Red" and the rest, which can then stop being blue or red. The owner: "maybe we should analyze how those specific entries are being used and consider renaming them accordingly? let the user decide what color truly belongs to that type of text." An analysis of every use is under way; the renames follow from it.
+15. **The edit mode bar:** as mocked (`window-and-editmode-v2.html`), with the module toggles in one multiselect dropdown ("Show") rather than a row of chips. Undo, Redo and a per-mover Reset stay ("I looove the undo/redo/reset buttons").
+16. **The `/sui` window's sizes:** collapsing the sidebar narrows the window by the sidebar and leaves the page as it is; the sidebar's toggle sits at the sidebar's bottom right while it is open and at the footer's left while it is closed; Reload UI moves beside Close so nothing shifts; the sidebar is available at half size too; the mini bar keeps the SaftUI name and is a little taller.
