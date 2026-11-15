@@ -13,21 +13,23 @@ function LT:OnEnable()
 		BossBanner:UnregisterEvent("ENCOUNTER_LOOT_RECEIVED")
 	end
 
--- 	self:InitializeLootFrame()
+	self:InitializeLootFrame()
 	self:InitializeRollFrame()
 	self:InitializeLootFeed()
 end
 
 -- A Colors tab change, or a theme recolor or redraw (st:ColorsChanged): the
--- feed (Feed/feed.lua) and the roll bars (roll.lua) put back the colors they
--- give their own frames.
+-- feed (Feed/feed.lua), the roll bars (roll.lua) and the loot window's skin
+-- (popup.lua) put back the colors they give their own frames.
 function LT:OnColorsChanged(group)
 	if self.ColorFeed then self:ColorFeed(group) end
 	if self.ColorRollBars then self:ColorRollBars(group) end
+	if self.ColorPopup then self:ColorPopup(group) end
 end
 
 -- A profile change: re-applies the rolls' and feed's size, spacing, theme,
--- font and position, and re-filters the feed with the new profile's filters.
+-- font and position, re-filters the feed with the new profile's filters, and
+-- puts the loot window's skin on or off as the profile says.
 -- Also ends test mode. Neither is protected, but in combat one becomes
 -- protected if a protected frame (e.g. a unit frame) is anchored to it or to
 -- something hanging off it; then its update waits for the end of combat.
@@ -50,4 +52,6 @@ function LT:UpdateConfig()
 			self:UpdateFeed()
 		end)
 	end
+	-- The loot window skin follows the new profile's toggle, theme and font.
+	self:UpdatePopup()
 end

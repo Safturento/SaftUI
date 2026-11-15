@@ -50,7 +50,5 @@ Config\load.xml
 
 EditMode\load.xml
 
-taintfix.lua
-
 Utilities\load.xml
 Dev\load.xml

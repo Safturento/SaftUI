@@ -32,7 +32,7 @@ function GN:GetConfigTable()
 	-- The profile keeps the fraction of each edge that's cut (0.065); the
 	-- window shows it as a percent.
 	local zoom = Setting(1, 'Icon zoom', 0, 0.2, 0.005,
-		"How much of each edge SaftUI cuts off the icons it skins, zooming them in so the border drawn into Blizzard's icon art doesn't show: action buttons, bag and currency slots, buffs, unit frame auras and icons, loot rolls and the loot feed, the totem bar, the character frame's gems, and WeakAuras and Hekili icons.",
+		"How much of each edge SaftUI cuts off the icons it skins, zooming them in so the border drawn into Blizzard's icon art doesn't show: action buttons, bag and currency slots, buffs, unit frame auras and icons, loot rolls, the loot feed and the loot window, the totem bar, the character frame's gems, and WeakAuras and Hekili icons.",
 		'misc', 'icon_trim')
 	zoom.isPercent = true
 

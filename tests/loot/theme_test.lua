@@ -7,8 +7,7 @@
 --     in the page's Theme and Background;
 --   - under Blizzard the ring over each icon lies over the icon and under what
 --     the icon carries (the feed's count; Blizzard's roll count is killed);
---   - the disabled loot window's buttons are marked as Blizzard's before they're
---     drawn;
+--   - the loot window's skin has its own test (tests/loot/popup_test.lua);
 --   - a shown mount entry keeps its yellow border and fill through a theme recolor.
 --
 -- Real: SaftUI-Loot's config.lua, init.lua, options.lua, rollbar.lua, roll.lua,
@@ -333,33 +332,3 @@ test("the feed's filter and reset buttons are drawn again in the Feed theme, and
 	LT:UpdateLootFeedConfig()
 end)
 
-test("the loot window's buttons are marked as Blizzard's before they're drawn as slots", function()
-	local order = {}
-	local mark, skin = st.MarkForeign, st.SkinActionButton
-	local marked, skinned
-	st.MarkForeign = function(self, frame)
-		order[#order + 1] = 'mark'
-		marked = frame
-		return mark(self, frame)
-	end
-	st.SkinActionButton = function(self, button, config, kind)
-		order[#order + 1] = 'skin:' .. tostring(kind)
-		skinned = button
-	end
-	local button = CreateFrame('Button', 'LootButton1', UIParent)
-	button:SetID(1)
-	button.icon = button:CreateTexture(nil, 'BACKGROUND')
-	button.Count = button:CreateFontString(nil, 'OVERLAY')
-	_G.LootButton1Text = button:CreateFontString(nil, 'OVERLAY')
-	-- Locked, so any field the skin writes fails. popup.lua:38 writes button.nametext
-	-- (a known write; the popup is disabled, init.lua:17), so that one key is
-	-- given a placeholder first, which a lock lets be assigned.
-	button.nametext = false
-	local locked = load_test_file('lib/locked_widget.lua')
-	locked(button, 'Blizzard loot button')
-	LT:SkinLootButton(button)
-	st.MarkForeign, st.SkinActionButton = mark, skin
-	eq(table.concat(order, ','), 'mark,skin:slot', 'marked, then drawn as a slot')
-	eq(marked, button, 'the button is the one marked')
-	eq(skinned, button, 'and drawn')
-end)
