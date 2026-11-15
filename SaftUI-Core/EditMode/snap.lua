@@ -207,7 +207,7 @@ end
 
 -- While a drag is snapped to a line from Snap to frames (a mover's edge or
 -- middle, or the screen's center), a 1 physical pixel line in the accent
--- (Button > Blue, as the grid's center lines) shows what it snapped to: along
+-- (the accent, as the grid's center lines) shows what it snapped to: along
 -- the snapped line, from the far edge of the dragged outline to the far edge of
 -- the target's (the screen's whole height or width for the center line). One
 -- for each axis. Snap to grid draws none, the grid is on screen. They are
@@ -247,8 +247,7 @@ function EM:UpdateSnapGuides(rect, xHit, yHit, xSources, ySources)
 	local g = GetGuides()
 	local pixel = st:GetPixelSize(guideFrame) or 1
 	local width, height = UIParent:GetWidth(), UIParent:GetHeight()
-	local color = st.config.profile.colors.button.blue
-	local cr, cg, cb = color:GetRGB()
+	local cr, cg, cb = st:Color('accent'):GetRGB()
 	local any = false
 
 	local function On(hit, sources, low, high)

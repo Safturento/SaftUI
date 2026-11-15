@@ -369,17 +369,17 @@ test("under Blizzard a bag slot's pushed and highlight are Blizzard's files", fu
 	local PUSHED, HIGHLIGHT = [[Interface\Buttons\UI-Quickslot-Depress]], [[Interface\Buttons\ButtonHilight-Square]]
 
 	-- The blend SetHighlightTexture gives a texture handed with none, which
-	-- st:SkinActionButton's flat hover keeps: a blue tint, not an opaque square.
+	-- st:SkinActionButton's flat hover keeps: an accent tint, not an opaque square.
 	local probe = CreateFrame('Button')
 	local probeTexture = probe:CreateTexture()
 	probe:SetHighlightTexture(probeTexture)
 	local made = probeTexture:GetBlendMode()
 
-	-- Under Thick: the pushed art is cleared and the hover a flat blue over the icon, as before.
+	-- Under Thick: the pushed art is cleared and the hover a flat accent over the icon, as before.
 	local slot = slots[1]
 	eq(slot:GetPushedTexture():GetTexture(), '', 'Thick: the pushed art is cleared')
 	eq(slot.hover:GetTexture(), st.BLANK_TEX, 'Thick: the hover is the flat texture')
-	eq(T.text(slot.hover:GetVertexColor()), T.text(st.config.profile.colors.button.blue:GetRGB()) .. ',1.00', 'Thick: blue')
+	eq(T.text(slot.hover:GetVertexColor()), T.text(st.config.profile.theme.accent:GetRGB()) .. ',1.00', 'Thick: the accent')
 	eq(slot.hover:GetBlendMode(), made, 'Thick: the blend the setter gave it when the slot was made')
 	-- The client shows a button's highlight only in the HIGHLIGHT layer, under
 	-- the mouse; moved out of it, it shows all the time.
@@ -412,7 +412,7 @@ test("under Blizzard a bag slot's pushed and highlight are Blizzard's files", fu
 	eq(slot:GetPushedTexture():GetTexture(), '', 'Thick again: the pushed art is cleared')
 	eq(slot:GetHighlightTexture():GetTexture(), st.BLANK_TEX, 'Thick again: the flat hover')
 	eq(T.around(slot:GetHighlightTexture(), slot.icon), '0,0,0,0', 'Thick again: over the icon')
-	eq(T.text(slot:GetHighlightTexture():GetVertexColor()), T.text(st.config.profile.colors.button.blue:GetRGB()) .. ',1.00', 'Thick again: blue')
+	eq(T.text(slot:GetHighlightTexture():GetVertexColor()), T.text(st.config.profile.theme.accent:GetRGB()) .. ',1.00', 'Thick again: the accent')
 	eq(slot:GetHighlightTexture():GetBlendMode(), made, 'Thick again: the blend the setter gave it when the slot was made')
 	eq(select(1, slot:GetHighlightTexture():GetDrawLayer()), 'HIGHLIGHT', 'Thick again: the hover shows only under the mouse')
 	eq(#take_errors(), 0, 'no errors')
@@ -642,11 +642,11 @@ local function panel(button)
 	return table.concat(out, ',')
 end
 
-test("the window's view button is pressed under Blizzard, through a recolor, a redraw and a view change, and lit Blue under Thick", function()
+test("the window's view button is pressed under Blizzard, through a recolor, a redraw and a view change, and lit in the accent under Thick", function()
 	local container = bags()
 	INV:CreateViewButtons(container)
 	INV:UpdateConfig('bag')
-	local blue = T.text(st.config.profile.colors.button.blue:GetRGB()) .. ',1.00'
+	local blue = T.text(st.config.profile.theme.accent:GetRGB()) .. ',1.00'
 	local function check_lit(label)
 		local current = INV:GetView('bag')
 		for _, view in ipairs(VIEWS) do
@@ -657,7 +657,7 @@ test("the window's view button is pressed under Blizzard, through a recolor, a r
 			else
 				eq(panel(button), '', label .. ': ' .. view .. ' is no panel button')
 				if view == current then
-					eq(T.edge(button.backdrop), blue, label .. ': ' .. view .. ' (the current view) lit Blue')
+					eq(T.edge(button.backdrop), blue, label .. ': ' .. view .. ' (the current view) lit in the accent')
 				else
 					check(T.edge(button.backdrop) ~= blue, label .. ': ' .. view .. ' not lit')
 				end
@@ -1129,5 +1129,20 @@ test("a typeface on the bags' Icon font and Category titles reaches the slots' i
 	INV:StyleContainerContents(container)
 	eq(slots[1].itemLevel:GetFontObject(), st:GetFont('normal'), 'a value naming nothing draws Text')
 	eq(container.categories.Things.header.text:GetFontObject(), st:GetFont('normal'), 'a title too')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('the loading bar fills in the accent (Question 3)', function()
+	local container = bags('thick')
+	load_saftui('SaftUI-Core/Widgets/statusbar.lua')
+	INV:InitializeLoadingOverlay(container)
+	local bar = _G.SaftUI_SaftUIThemeTestBagLoadingBar
+	check(bar, 'the loading bar is made')
+	eq(T.text(bar:GetStatusBarColor()), T.text(0, 0.68, 0.94) .. ',1.00', 'at the defaults: as it was')
+	local accent = st.config.profile.theme.accent
+	accent:SetRGB(0.9, 0.1, 0.2)
+	INV:InitializeLoadingOverlay(container)
+	eq(T.text(_G.SaftUI_SaftUIThemeTestBagLoadingBar:GetStatusBarColor()), T.text(0.9, 0.1, 0.2) .. ',1.00', 'a changed accent is the next fill')
+	accent:SetRGB(0, 0.68, 0.94)
 	eq(#take_errors(), 0, 'no errors')
 end)

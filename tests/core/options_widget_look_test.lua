@@ -146,7 +146,7 @@ test("/sui under Blizzard: a disabled execute button is -Disabled, and a multise
 	e:SetDisabled(false)
 	eq(row_highlight(m.rows[1]), '', 'Thick: the row draws no hover art')
 	stub.fire_script(m.rows[1], 'OnEnter')
-	eq(rgba(m.rows[1].box:GetBackdropBorderColor()), rgba(st.config.profile.colors.button.blue.r, st.config.profile.colors.button.blue.g, st.config.profile.colors.button.blue.b, 1), 'Thick: hovering the row lights the box blue')
+	eq(rgba(m.rows[1].box:GetBackdropBorderColor()), rgba(st.config.profile.theme.accent.r, st.config.profile.theme.accent.g, st.config.profile.theme.accent.b, 1), 'Thick: hovering the row lights the box blue')
 	stub.fire_script(m.rows[1], 'OnLeave')
 
 	st.config.profile.theme.name = 'blizzard'

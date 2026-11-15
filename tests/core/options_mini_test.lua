@@ -404,7 +404,7 @@ test("the sidebar's brand: Saft in the text colour, UI in the accent, read at ea
 	reset()
 	st.Config:Open('Loot')
 	local F = frames()
-	local blue = st.config.profile.colors.button.blue
+	local blue = st.config.profile.theme.accent
 	local function hex() return ('%02x%02x%02x'):format(math.floor(blue.r * 255 + 0.5), math.floor(blue.g * 255 + 0.5), math.floor(blue.b * 255 + 0.5)) end
 	eq(OW.BrandText(), 'Saft|cff' .. hex() .. 'UI|r', 'the text')
 	eq(F.brandName:GetText(), OW.BrandText(), 'the sidebar draws it')

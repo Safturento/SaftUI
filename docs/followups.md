@@ -522,7 +522,6 @@ Then, with the switch on, the spec's G1 to G12, each with the task that built it
 - 1: the options window's controls' lines follow the theme's, and the in-world close button is drawn in its window's theme. 2: built for the config windows (the `/sui` window, edit mode's bar and History list and the small dialogs follow the theme's Background, with Global settings > Theme > Options windows to turn it off, 2026-11-14; decision 44); what remains of 2 is checking that every other panel follows the theme's Background and nothing is left drawn solid by mistake.
 - 3: every colour-plus-opacity pair becomes one colour control (the pairs still need listing).
 - 4, 19: one button component at one size and font; the close button and the window's small buttons the same height as buttons, icons centred.
-- 7: the accent as a theme colour with its own swatch; "on" drawn in the accent everywhere (the edit mode bar's plan covers its own toggles).
 - 8: `/sui` tooltips' descriptions in the normal text colour, not Blizzard's gold.
 - 14: hue-named colours renamed by role (waiting on the owner's answers on the Colour roles page), with a migration.
 - 21: the docs spell "color".
@@ -1772,7 +1771,7 @@ On both clients:
 - the four view buttons' icon art at title-bar size: legible, centered, not cropped, at the default Title bar height and at the extremes;
 - the header fit in all four windows (bags, bank, warband bank, combined bank), with a 3px gap showing between the view buttons' borders, and to the close button's outline, under Thick and Thin, including a one-column window that widened so its centered title clears the buttons;
 - the scroll bar of a window that scrolls, in every view: inside the window's right edge with the same padding as the content has on the left, and gone from a window that fits everything;
-- the lit button in Buttons → Blue against Thick and Thin borders, and after a theme or color change;
+- the lit button in the accent against Thick and Thin borders, and after a theme or color change;
 - the secure item buttons in each view, in and out of combat: left and right click, use, shift-click, drag, and the tooltip;
 - switching views in combat: the button lights and the view saves at once, and the window lays out when combat ends;
 - the scroll position across a view switch, and across a switch back;
@@ -1785,7 +1784,7 @@ On both clients:
 On retail:
 - the bank tabs' names (`C_Bank` tab names) as Multi bag section titles, in the bank and the warband bank, including a tab the player has renamed.
 
-**Confirmed in game (Forever, 2026-11-10):** the four view buttons' icon art and their spacing (a visible gap between borders, after the polish fix), the lit Blue border under Thick, Multi bag's sections in the bag window, the scroll bar inside the window's right edge when it scrolls, and a special bag's title naming its type ("Shipwright's Satchel · Reagent Bag", the middle dot drawn). Still open: the rest of the list above.
+**Confirmed in game (Forever, 2026-11-10):** the four view buttons' icon art and their spacing (a visible gap between borders, after the polish fix), the lit accent border under Thick, Multi bag's sections in the bag window, the scroll bar inside the window's right edge when it scrolls, and a special bag's title naming its type ("Shipwright's Satchel · Reagent Bag", the middle dot drawn). Still open: the rest of the list above.
 
 **Why noticed:** The bag views project's final task (2026-11-10). Its tests run on stubbed bags and frames (`tests/bags/bag_world.lua`, `container_helpers.lua`), so the icon art, real widths, secure buttons, combat lockdown and retail's tab names were only compile-checked and read through. The user plays Forever, so the retail item needs a retail session.
 
@@ -2132,7 +2131,7 @@ The one route left is to work out the button order without reading the buttons. 
   - `GameTooltip:SetHyperlink` takes the roll's full item link (a held bar's tooltip);
   - does `GetLootRollItemInfo(rollID)` still return the item after you've rolled, until the roll ends? If so, it could end a held roll with no loot history drop when the roll ends. Today such a held roll stays until its time runs out, even once the item is awarded;
   - `/reload` with a roll held drops it: held state isn't saved, and after the reload nothing links the roll to a drop. Decide whether that's acceptable;
-  - visuals: a held bar sits exactly where its roll was, at Blizzard's DIALOG strata; its buttons are Blizzard's roll button art (the `lootroll-toast-icon-*-up` atlases), with only your choice's bordered, in Buttons > Blue, its art inset inside the border; the label sits before the timer; a new roll goes after every bar already up.
+  - visuals: a held bar sits exactly where its roll was, at Blizzard's DIALOG strata; its buttons are Blizzard's roll button art (the `lootroll-toast-icon-*-up` atlases), with only your choice's bordered, in the accent, its art inset inside the border; the label sits before the timer; a new roll goes after every bar already up.
 
 **Why noticed:** The loot rolls plan's final review (2026-11-08) listed these as unverifiable outside the game.
 
@@ -2709,7 +2708,7 @@ Done with the zone level and faction line, in `SaftUI-Misc/Skinning/ZoneText.lua
   - the timer bar and countdown;
   - the four roll buttons with their live counts (`SaftUI-Loot/rollinfo.lua`);
   - the hover tooltip listing everyone's choices so far (`LT:AddRollLines`).
-- **Your choice:** your button stays bright with a lit border (Buttons → Blue) and the other three dim, and a small label in the bar names your choice. No button can be clicked.
+- **Your choice:** your button stays bright with a lit border (the accent) and the other three dim, and a small label in the bar names your choice. No button can be clicked.
 - **When it goes:** when the roll ends: its timer runs out, or the game awards the item (the loot feed already shows the result).
 - **Where it sits:** in the same place in the roll stack. New rolls stack as now.
 - **How it's built:**

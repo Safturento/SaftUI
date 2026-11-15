@@ -73,7 +73,7 @@ local function RestyleBagSlot(slot)
 	-- SkinActionButton; Blizzard overwrites their atlas, size, anchors and blending.
 	local hover = slot:GetHighlightTexture()
 	hover:SetTexture(st.BLANK_TEX)
-	hover:SetVertexColor(st.config.profile.colors.button.blue:GetRGB())
+	hover:SetVertexColor(st:Color('accent'):GetRGB())
 	hover:SetBlendMode('ADD')
 	hover:SetAlpha(1)
 	hover:ClearAllPoints()

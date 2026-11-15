@@ -202,8 +202,7 @@ function EM:UpdateCoordinates()
 		f:SetScript('OnUpdate', nil)
 		return
 	end
-	local blue = st.config.profile.colors.button.blue
-	f.text:SetTextColor(blue:GetRGB())
+	f.text:SetTextColor(st:Color('accent'):GetRGB())
 	f.text:SetText(EM.CoordinatesText(pos, EM.MoverNameOf))
 	-- Whole pixels up, as the kit sizes a label (optionscontrols.lua's LabelWidth:
 	-- ceil of GetStringWidth), so the text is never cut.

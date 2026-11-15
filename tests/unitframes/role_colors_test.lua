@@ -34,17 +34,20 @@ test('the role corner takes Roles: Tank, Healer, and Damage with Show damage dea
 	corner.config.showDps = false
 	update('DAMAGER'); check(not corner:IsShown(), 'a damage dealer hidden without it')
 
-	-- Text > Blue, Green and Red no longer reach any corner.
+	-- The accent, Text > Green and Red do not reach any corner.
 	local saved = {}
-	for _, key in ipairs({ 'blue', 'green', 'red' }) do
+	for _, key in ipairs({ 'green', 'red' }) do
 		saved[key] = { colors.text[key]:GetRGB() }
 		set(colors.text[key], 0, 0, 0)
 	end
+	local accent = { st.config.profile.theme.accent:GetRGB() }
+	set(st.config.profile.theme.accent, 0, 0, 0)
 	corner.config.showDps = true
-	eq(update('TANK'), ROLES.TANK, 'Tank, with Text > Blue changed')
+	eq(update('TANK'), ROLES.TANK, 'Tank, with the accent changed')
 	eq(update('HEALER'), ROLES.HEALER, 'Healer, with Text > Green changed')
 	eq(update('DAMAGER'), ROLES.DAMAGER, 'Damage, with Text > Red changed')
 	for key, rgb in pairs(saved) do set(colors.text[key], unpack(rgb)) end
+	set(st.config.profile.theme.accent, unpack(accent))
 
 	-- A changed Roles color is the next update's.
 	local tank = { colors.roles.TANK:GetRGB() }
@@ -67,10 +70,12 @@ test("the party preview's corners take Roles too", function()
 	UF.testGroups.party = true
 
 	local saved = {}
-	for _, key in ipairs({ 'blue', 'green', 'red' }) do
+	for _, key in ipairs({ 'green', 'red' }) do
 		saved[key] = { colors.text[key]:GetRGB() }
 		set(colors.text[key], 0, 0, 0)
 	end
+	local accent = { st.config.profile.theme.accent:GetRGB() }
+	set(st.config.profile.theme.accent, 0, 0, 0)
 	UF:UpdateGroupPreview('party')
 	local frames = UF.previews.party and UF.previews.party.frames or {}
 	-- The previews' members, in order: a tank, a healer, then damage dealers.
@@ -80,6 +85,7 @@ test("the party preview's corners take Roles too", function()
 		eq(T.rgb(frames[i].GroupRoleIndicator:GetVertexColor()), ROLES[role], 'preview ' .. i .. ': ' .. role)
 	end
 	for key, rgb in pairs(saved) do set(colors.text[key], unpack(rgb)) end
+	set(st.config.profile.theme.accent, unpack(accent))
 
 	set(colors.roles.HEALER, 0.2, 0.3, 0.4)
 	UF:UpdateGroupPreview('party')

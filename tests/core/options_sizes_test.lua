@@ -105,7 +105,7 @@ test('OW.MiniShift: under Blizzard the metal\'s right and top reach, else nothin
 	check(dx > 0 and dy > 0, 'some')
 	dx, dy = OW.MiniShift(OW.LAYOUT.own)
 	eq(dx .. ' ' .. dy, '0 0', 'none under Thick and Thin')
-	local blue = st.config.profile.colors.button.blue
+	local blue = st.config.profile.theme.accent
 	local hex = ('%02x%02x%02x'):format(math.floor(blue.r * 255 + 0.5), math.floor(blue.g * 255 + 0.5), math.floor(blue.b * 255 + 0.5))
 	eq(OW.BrandText(), 'Saft|cff' .. hex .. 'UI|r')
 end)
@@ -449,7 +449,7 @@ test("the arrows: the close X's size, minimize-2 and maximize-2 at 16, grey at r
 	eq(F.shrink:GetRight(), F.close:GetLeft() - 6, '6 left of the close X')
 	eq(vertex(F.shrink.icon), color_of(st.config.profile.colors.text.grey), 'grey at rest')
 	stub.fire_script(F.shrink, 'OnEnter', true)
-	eq(vertex(F.shrink.icon), color_of(st.config.profile.colors.button.blue), 'accent under the mouse')
+	eq(vertex(F.shrink.icon), color_of(st.config.profile.theme.accent), 'accent under the mouse')
 	check(GameTooltip:IsOwned(F.shrink) and GameTooltip:IsShown(), 'its tooltip, owned by it')
 	eq(stub.state(GameTooltip).texts[1], 'Shrink to half', 'shown with its title')
 	eq(tip_text(F.shrink), "Shrink to half | The page in one column. The window's right edge stays.")

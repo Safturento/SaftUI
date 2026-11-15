@@ -369,7 +369,7 @@ local function PaintButton(button)
 	if button.backdrop and button.borderInside ~= (button.inside and true or false) then
 		button.borderInside = button.inside and true or false
 		if button.inside then
-			st:SetBorderColor(button.backdrop, Colors().button.blue:GetRGB())
+			st:SetBorderColor(button.backdrop, st:Color('accent'):GetRGB())
 		else
 			st:SetBorderColor(button.backdrop)
 		end
@@ -406,7 +406,7 @@ local function StyleButton(button, look, size)
 	if button.backdrop then
 		button.backdrop:ClearAllPoints()
 		button.backdrop:SetAllPoints(button)
-		st:SetBorderColor(button.backdrop, Colors().button.blue:GetRGB())
+		st:SetBorderColor(button.backdrop, st:Color('accent'):GetRGB())
 		st:SetBorderColor(button.backdrop)
 	end
 	local inset = st:ThemeInset(config.theme, config.background, 'action') or 0

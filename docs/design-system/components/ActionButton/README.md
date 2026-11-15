@@ -30,7 +30,7 @@ The bar's effective config (`AB:GetBarConfig(id)`): size, spacing, and each text
 | Pressed | black at 10% | `pressed-fill` |
 | Checked (an active ability) | white at 30%, added | `checked-fill` |
 | Flash | Buttons > Red at 40% | `flash-fill` |
-| Equipped item | the border in Buttons > Green | `button-green` |
+| Equipped item | the border in the accent (Theme > Accent) | `accent` |
 | Unusable | the icon darkened to 0.4 | `alpha-disabled` |
 | Faded bar | the whole bar at `alpha-fade` until moused over | `alpha-fade` |
 

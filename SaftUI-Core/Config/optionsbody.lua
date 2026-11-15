@@ -144,7 +144,8 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	draws no window may load this file without it, so each is called only
 	when it's there. An item is 'row' in OB.SHARE_KINDS: its name is its
 	label. The metrics' markX and markShift place the own mark, and
-	OB.OWN_TEXT and OB.DIFF_COLOR are its colors; OB.PlaceLabel puts a label
+	OB.OWN_STRENGTH (the accent's strength on its labels and titles) and
+	OB.DIFF_COLOR are its colors; OB.PlaceLabel puts a label
 	where PlaceRow does, cell.labelX plus x in (PlaceRow's label is labelX
 	narrower too).
 
@@ -223,9 +224,11 @@ OB.HAIRLINE = { 1, 1, 1, 0.07 } -- the lines between rows and between columns: w
 OB.TOP = BODY_TOP + SECTION_PAD -- where the first section's rows start
 OB.TITLE_HEIGHT = TITLE_HEIGHT -- a section title's line
 
--- A shared setting's marks (optionsshare.lua): an own row's label (the
--- mockup's light blue), and the diff icon (its orange).
-OB.OWN_TEXT = { 0.56, 0.85, 1 }
+-- A shared setting's marks (optionsshare.lua): an own row's label and a
+-- title, which are the accent at OB.OWN_STRENGTH (an own mark was a lighter
+-- blue than the accent before; at 1 it is the accent itself), and the diff
+-- icon (its orange).
+OB.OWN_STRENGTH = 1
 OB.DIFF_COLOR = { 0.88, 0.63, 0.25 }
 
 -- A row's label line: its text sits in a band this tall.
@@ -237,8 +240,8 @@ OB.LINE = { 0.18, 0.18, 0.18, 1 } -- #2e2e2e: the lines between parts
 local Colors = OM.Colors
 local function Normal() return Colors().text.normal:GetRGB() end
 local function Grey() return Colors().text.grey:GetRGB() end
-local function Blue() return Colors().button.blue:GetRGB() end
-OB.Colors, OB.Normal, OB.Grey, OB.Blue = Colors, Normal, Grey, Blue -- the window's files take them
+local function Accent() return st:Color('accent'):GetRGB() end
+OB.Colors, OB.Normal, OB.Grey, OB.Accent = Colors, Normal, Grey, Accent -- the window's files take them
 
 ------------------------------------------------------------------ fonts
 
@@ -758,13 +761,13 @@ function OB.PlaceLabel(cell, x)
 	end
 end
 
--- A row's label color (r, g, b): grey while it's disabled; an own row's
--- light blue (cell.ownLabel, optionsshare.lua); an item's grey while its
--- Show is off (widget.value false); else the text color. PlaceRow and a
--- drag's Refresh both read it.
+-- A row's label color (r, g, b, a): grey while it's disabled; an own row's
+-- accent at OB.OWN_STRENGTH (cell.ownLabel, optionsshare.lua); an item's grey
+-- while its Show is off (widget.value false); else the text color. PlaceRow
+-- and a drag's Refresh both read it.
 function OB.LabelColor(cell, disabled)
 	if disabled then return Grey() end
-	if cell.ownLabel then return unpack(OB.OWN_TEXT) end
+	if cell.ownLabel then return st:ColorRGBA('accent', nil, OB.OWN_STRENGTH) end
 	if cell.row.type == 'item' and cell.widget and cell.widget.value == false then return Grey() end
 	return Normal()
 end
@@ -891,8 +894,7 @@ function OB.New(content, root, onChanged, width, opts)
 			button.text = Text(button, 'label')
 			button.text:SetPoint('LEFT', button, 'LEFT', 8, 0)
 			button:SetScript('OnEnter', function(self)
-				local r, g, b = Blue()
-				self.hover:SetColorTexture(r, g, b, 0.25)
+				self.hover:SetColorTexture(st:ColorRGBA('accent', nil, st.TINT_ROW))
 				self.hover:Show()
 			end)
 			button:SetScript('OnLeave', function(self) self.hover:Hide() end)

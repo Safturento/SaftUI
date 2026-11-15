@@ -6,7 +6,9 @@
 --   B  a local bound to colors.text or colors.button, read for a retired key
 --      of that group;
 --   C  an st:Color or st:ColorRGBA call with a literal group or key that has
---      no default, or a key given with 'accent'.
+--      no default, or a key given with 'accent';
+--   E  a retired wrapper or constant, by its hue name in code (Blue, LinkBlue,
+--      OWN_TEXT: the accent is OB.Accent and OB.OWN_STRENGTH).
 -- SaftUI-Core/Media/colors.lua, which holds the retired keys' old values and
 -- the migration, is exempt from every rule but C (it holds strings of the retired keys today, and from Task 4 the one direct read, rule D's, that the accessor makes: don't remove the exemption as dead). Real: the source files, and
 -- Core's defaults (core/config_helpers.lua).
@@ -19,9 +21,12 @@ local EXEMPT = 'SaftUI-Core/Media/colors.lua'
 
 -- Retired keys by group; a task adds its own.
 local RETIRED = {
-	text = { 'purple' },
-	button = { 'yellow' },
+	text = { 'purple', 'blue' },
+	button = { 'yellow', 'blue', 'green' },
 }
+
+-- Rule E's identifiers, word-bounded, in code (comments and strings blanked).
+local HUE_NAMES = { 'Blue', 'LinkBlue', 'OWN_TEXT' }
 
 local function LineText(source, position)
 	local from = (source:sub(1, position):match('.*\n()') or 1)
@@ -90,6 +95,17 @@ local function Scan(path, source, defaults)
 				end
 			end
 		end
+
+		-- E. Hue names in code.
+		for _, name in ipairs(HUE_NAMES) do
+			local from = 1
+			while true do
+				local s, e = mask:find('%f[%w_]' .. name .. '%f[^%w_]', from)
+				if not s then break end
+				Fail(found, path, 'E hue name', mask, s, source)
+				from = e + 1
+			end
+		end
 	end
 
 	-- C. Literal keys.
@@ -140,11 +156,24 @@ test('the rules, on samples: each fails what it names and passes the rest', func
 	eq(scan("local a = colors.text.normal -- text.purple\nlocal b = 'button.yellow'"), '', 'a comment and a string name a retired key')
 	eq(scan('local c = config.text.size'), '', 'an action bar text table is not a color group')
 	eq(scan('local c = colors.text.purples'), '', 'a longer name is not the key')
+	eq(scan('local c = colors.text.blue:GetRGB()'), 'A')
+	eq(scan('local c = colors.button.blue:GetRGB()'), 'A')
+	eq(scan("local c = colors.button['green']"), 'A')
+	eq(scan('local c = colors.text.green:GetRGB()'), '', 'Text > Green stays until Task 4')
+	eq(scan('local c = colors.text.bluegreen'), '', 'a longer name is not the key')
 	-- B
 	eq(scan('local textColors = st.config.profile.colors.text\nlocal c = textColors.purple'), 'B')
 	eq(scan("local Buttons = Colors().button\nlocal c = Buttons['yellow']"), 'B')
+	eq(scan('local textColors = st.config.profile.colors.text\nlocal c = textColors.blue'), 'B')
 	eq(scan('local textColors = st.config.profile.colors.text\nlocal c = textColors.normal'), '')
 	eq(scan('local textColors = st.config.profile.colors.loot\nlocal c = textColors.purple'), '', 'only text and button')
+	-- E
+	eq(scan('local r, g, b = OB.Blue()'), 'E')
+	eq(scan('local function LinkBlue() end'), 'E')
+	eq(scan('label:SetTextColor(unpack(OB.OWN_TEXT))'), 'E')
+	eq(scan('local r, g, b = OB.Accent()\nlocal s = OB.OWN_STRENGTH'), '', 'the new names')
+	eq(scan("-- OB.Blue and OWN_TEXT\nlocal s = 'LinkBlue'"), '', 'a comment and a string')
+	eq(scan('local Blues = 1\nlocal NotBlue = 2'), '', 'a longer name is not the word')
 	-- C
 	eq(scan("local c = st:Color('text', 'normal')"), '')
 	eq(scan("local c = st:Color('text', 'normal2')"), 'C')

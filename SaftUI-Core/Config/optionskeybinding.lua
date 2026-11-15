@@ -151,7 +151,7 @@ define('keybinding', {
 		self.text:SetFontObject(W.GetFont())
 		if self.waiting then
 			self.text:SetText('Press a key')
-			self.text:SetTextColor(Colors().text.blue:GetRGB())
+			self.text:SetTextColor(st:Color('accent'):GetRGB())
 		elseif key and key ~= '' then
 			self.text:SetText(key)
 			self.text:SetTextColor(Colors().text.normal:GetRGB())

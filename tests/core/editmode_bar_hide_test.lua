@@ -139,7 +139,7 @@ test('the toggle is on row two between Options and Detach, with its two icons, a
 	eq(EM:IsBarHideUntilHovered(), true, 'a click turns it on')
 	eq(frame_of('hide').icon:GetTexture(), st.icons.squareDashedMousePointer, 'square-dashed-mouse-pointer')
 	eq(frame_of('hide').on, true, 'lit')
-	eq(rgb(CreateColor(frame_of('hide').icon:GetVertexColor())), rgb(st.config.profile.colors.button.blue), 'the icon in the accent')
+	eq(rgb(CreateColor(frame_of('hide').icon:GetVertexColor())), rgb(st.config.profile.theme.accent), 'the icon in the accent')
 	stub.click(frame_of('hide'))
 	eq(EM:IsBarHideUntilHovered(), false, 'and again: off')
 	eq(frame_of('hide').icon:GetTexture(), st.icons.squareMousePointer, 'the first icon back')
@@ -208,7 +208,16 @@ test('while on, the bar is hidden and a 2 px accent strip as wide as the bar sho
 	eq(strip.line:GetTop(), UIParent:GetTop(), 'at the top edge')
 	eq(strip.line:GetLeft(), bar:GetLeft(), 'where the bar sits')
 	local c = stub.state(strip.line).color_texture
-	eq(string.format('%.2f,%.2f,%.2f', c[1], c[2], c[3]), rgb(st.config.profile.colors.button.blue), 'in the accent')
+	eq(string.format('%.2f,%.2f,%.2f', c[1], c[2], c[3]), rgb(st.config.profile.theme.accent), 'in the accent')
+	do -- a non-default accent reaches the strip on 'accent'
+		local accent = st.config.profile.theme.accent
+		accent:SetRGB(0.9, 0.1, 0.2)
+		st:ColorsChanged('accent')
+		c = stub.state(strip.line).color_texture
+		eq(string.format('%.2f,%.2f,%.2f', c[1], c[2], c[3]), '0.90,0.10,0.20', 'the strip follows the accent')
+		accent:SetRGB(0, 0.68, 0.94)
+		st:ColorsChanged('accent')
+	end
 	check(not strip:IsMouseEnabled(), 'the hot zone takes no clicks: movers under it keep theirs')
 	check(strip:GetHeight() > 2 and strip:GetHeight() <= 8, 'the hot zone is a few pixels tall: ' .. strip:GetHeight())
 	eq(strip:GetWidth(), bar:GetWidth(), 'and as wide as the bar')

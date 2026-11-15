@@ -109,10 +109,15 @@ test('tooltip lines: the category, its place and the block that caught it; a nes
 	local entry = INV:GetCategoryList().byId.Consumables
 	local _, why = INV:GetItemCategory(slot_of(container, 101).info)
 	eq(plain(lines)[2], 'Caught by: ' .. R.Describe(entry.rule, why.path), 'the block that caught it')
-	local blue, grey, yellow = st.config.profile.colors.text.blue, st.config.profile.colors.text.grey,
+	local blue, grey, yellow = st.config.profile.theme.accent, st.config.profile.colors.text.grey,
 		st.config.profile.colors.text.yellow
 	local r, g, b = blue:GetRGB()
-	check(lines[1].r == r and lines[1].g == g and lines[1].b == b, 'line 1 is blue')
+	-- "the Category: line is the accent": a changed accent is the next line's color.
+	blue:SetRGB(0.9, 0.1, 0.2)
+	local changed = INV:CategoryTooltipLines(slot_of(container, 101).info)[1]
+	check(changed.r == 0.9 and changed.g == 0.1 and changed.b == 0.2, 'a changed accent colors the next Category: line')
+	blue:SetRGB(r, g, b)
+	check(lines[1].r == r and lines[1].g == g and lines[1].b == b, 'line 1 is the accent (Question 1)')
 	check(lines[1].text:find(('|cff%02x%02x%02x'):format(grey.r * 255 + 0.5, grey.g * 255 + 0.5, grey.b * 255 + 0.5), 1, true),
 		'its place is grey')
 	check(lines[2].text:find(('|cff%02x%02x%02x'):format(yellow.r * 255 + 0.5, yellow.g * 255 + 0.5, yellow.b * 255 + 0.5), 1, true),

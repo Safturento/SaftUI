@@ -33,14 +33,14 @@ local POS_NAME_WIDTH, POS_SELECT_WIDTH, POS_NAME_HEIGHT = 120, 140, 24
 local POS_OFFSET_WIDTH = POS_AXIS + POS_AXIS_GAP + 46 + POS_NUDGE - 1
 local DOT_GREY = { 0.333, 0.333, 0.333 }
 
--- The dot's look: 4x4 grey, or 8x8 blue when it is the picked one; the text
+-- The dot's look: 4x4 grey, or 8x8 in the accent when it is the picked one; the text
 -- color while the mouse is on it.
 local function PaintDot(dot)
 	local r, g, b
 	if dot.hovered then
 		r, g, b = Colors().text.normal:GetRGB()
 	elseif dot.picked then
-		r, g, b = Colors().button.blue:GetRGB()
+		r, g, b = st:Color('accent'):GetRGB()
 	else
 		r, g, b = unpack(DOT_GREY)
 	end

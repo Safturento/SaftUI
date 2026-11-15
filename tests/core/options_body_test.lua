@@ -813,7 +813,7 @@ test("an execute button shows its row's tooltip while the mouse is on it, under 
 
 		-- The button's edge still lights under Thick.
 		if look == 'thick' then
-			local blue = { st.config.profile.colors.button.blue:GetRGB() }
+			local blue = { st.config.profile.theme.accent:GetRGB() }
 			stub.fire_script(button, 'OnEnter')
 			eq((button:GetBackdropBorderColor()), blue[1], 'the edge lights')
 			stub.fire_script(button, 'OnLeave')

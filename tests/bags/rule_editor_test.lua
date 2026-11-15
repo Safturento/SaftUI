@@ -103,7 +103,10 @@ end
 
 local click = stub.click
 
-local function Color(group, name) return { st.config.profile.colors[group][name]:GetRGB() } end
+local function Color(group, name)
+	if group == 'accent' then return { st:Color('accent'):GetRGB() } end
+	return { st.config.profile.colors[group][name]:GetRGB() }
+end
 local function same_rgb(c, want)
 	return math.abs(c[1] - want[1]) < 1e-6 and math.abs(c[2] - want[2]) < 1e-6 and math.abs(c[3] - want[3]) < 1e-6
 end
@@ -161,7 +164,9 @@ end
 
 ------------------------------------------------------------------ the outline
 
-test('a row per block and group, a badge per group, AND blue and OR orange', function()
+test('a row per block and group, a badge per group, AND the accent and OR orange', function()
+	local pinned = st.config.profile.theme.accent -- a non-default accent: a literal blue fails
+	pinned:SetRGB(0.9, 0.1, 0.2)
 	local rule = grp('and', {
 		blk('class', { class = 7 }),
 		grp('or', { blk('subclass', { class = 7, subclasses = { 7, 9 } }), t('Mote of') }),
@@ -198,11 +203,12 @@ test('a row per block and group, a badge per group, AND blue and OR orange', fun
 	eq(rootBadge.line:GetLeft() - left, 12, "the root's line at 12")
 	eq(orBadge.line:GetLeft() - left, 46, "the nested line at 34 + 12")
 	eq(rootBadge.line:GetWidth(), 2, 'a line is 2 wide')
-	local blue, orange = Color('button', 'blue'), Color('text', 'orange')
-	check(same_rgb(stub.state(rootBadge.line).color_texture, blue), 'AND is blue')
-	check(same_rgb(stub.state(orBadge.line).color_texture, orange), 'OR is orange')
-	check(same_rgb({ rootBadge.text:GetTextColor() }, blue), "AND's badge text is blue")
-	check(same_rgb({ orBadge.text:GetTextColor() }, orange), "OR's badge text is orange")
+	-- Question 2: AND's line, connector and badge are the accent; OR keeps its orange.
+	local blue, orange = Color('accent'), Color('text', 'orange')
+	check(same_rgb(stub.state(rootBadge.line).color_texture, blue), "AND's line is the accent")
+	check(same_rgb(stub.state(orBadge.line).color_texture, orange), "OR's line keeps its orange")
+	check(same_rgb({ rootBadge.text:GetTextColor() }, blue), "AND's badge text is the accent")
+	check(same_rgb({ orBadge.text:GetTextColor() }, orange), "OR's badge text keeps its orange")
 	check(same_rgb({ rootBadge:GetBackdropBorderColor() }, blue), "and its border")
 
 	-- The line runs from its first row's top to its last row's middle, the badge on its middle.
@@ -242,7 +248,7 @@ test('a row per block and group, a badge per group, AND blue and OR orange', fun
 		'an add row: none of them')
 	eq(w.rows[7].fields.addBlock.text:GetText(), '+ Block', '+ Block')
 	eq(w.rows[7].fields.addGroup.text:GetText(), '+ Group', '+ Group')
-	check(same_rgb({ w.rows[7].fields.addBlock.text:GetTextColor() }, Color('text', 'blue')), 'in blue')
+	check(same_rgb({ w.rows[7].fields.addBlock.text:GetTextColor() }, Color('accent')), 'in blue')
 	eq(w.rows[1].remove.icon:GetTexture(), st.icons.x, "the X is Lucide's x")
 	eq(w.rows[1].remove:GetRight(), w.frame:GetRight(), 'at the right')
 	local dots = 0
@@ -253,6 +259,7 @@ test('a row per block and group, a badge per group, AND blue and OR orange', fun
 	eq(w.rows[1].notBox.text:GetText(), 'NOT', 'the NOT box')
 	eq(#take_errors(), 0, 'no errors')
 	w:Release()
+	pinned:SetRGB(0, 0.68, 0.94)
 end)
 
 test('a row too wide for the editor wraps its fields onto more lines, clear of the X', function()
@@ -337,7 +344,7 @@ test('NOT toggles, the X removes, the badge flips', function()
 	local w = ed.w
 	click(w.rows[1].notBox)
 	eq(shape(ed.stored), 'AND(!a,OR(b,c))', 'NOT on a block')
-	check(same_rgb({ w.rows[1].notBox.text:GetTextColor() }, Color('text', 'blue')), 'the NOT box shows it on')
+	check(same_rgb({ w.rows[1].notBox.text:GetTextColor() }, Color('accent')), 'the NOT box shows it on')
 	click(w.rows[1].notBox)
 	eq(shape(ed.stored), 'AND(a,OR(b,c))', 'and off')
 	eq(ed.stored.items[1].negate, nil, 'off is nil')

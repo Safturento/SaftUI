@@ -68,11 +68,11 @@ local function ListFill()
 				SetFieldFont(row.text)
 			end
 			row.text:SetText(entry.label)
-			-- A caption is Text > Grey; the picked entry blue; the rest normal.
+			-- A caption is Text > Grey; the picked entry the accent; the rest normal.
 			if entry.caption then
 				row.text:SetTextColor(Colors().text.grey:GetRGB())
 			elseif entry.key == list.selected then
-				row.text:SetTextColor(Colors().text.blue:GetRGB())
+				row.text:SetTextColor(st:Color('accent'):GetRGB())
 			else
 				row.text:SetTextColor(Colors().text.normal:GetRGB())
 			end
@@ -140,7 +140,7 @@ local function PlaceListRow(row, i)
 end
 
 -- The list in SaftUI's theme now, when it changed. Box, the rows inside its
--- edge (LIST_INSETS), a row under the mouse lit blue at 0.25. Or under
+-- edge (LIST_INSETS), a row under the mouse lit in the accent at 0.25. Or under
 -- Blizzard the Settings menu's (st.ThemeArt.Control('dropdown')): no Box;
 -- c-bg, the menu's own border and shadow, on list.skin, a plain frame of
 -- SaftUI's just under the list (the theme draws nothing on it, so there's no
@@ -174,7 +174,7 @@ local function LookList()
 			row.hover:SetAtlas(look.rowHover)
 			row.hover:SetAlpha(1)
 		else
-			row.hover:SetColorTexture(Colors().button.blue:GetRGB())
+			row.hover:SetColorTexture(st:Color('accent'):GetRGB())
 			row.hover:SetAlpha(0.25)
 		end
 	end
@@ -208,7 +208,7 @@ local function BuildList()
 		row:SetFrameLevel(frame:GetFrameLevel() + 1)
 		row.hover = row:CreateTexture(nil, 'BACKGROUND')
 		row.hover:SetAllPoints()
-		row.hover:SetColorTexture(Colors().button.blue:GetRGB())
+		row.hover:SetColorTexture(st:Color('accent'):GetRGB())
 		row.hover:SetAlpha(0.25)
 		row.hover:Hide()
 		row.text = NewText(row, 'LEFT')
@@ -306,7 +306,7 @@ local function OpenList(owner, entries, selected, onPick, kind, buttons)
 end
 
 -- Opens the list under owner (a frame; above it when there's no room below).
--- entries: { {key, label, font = path} }, the selected key shows blue, and
+-- entries: { {key, label, font = path} }, the selected key shows in the accent, and
 -- onPick(key) runs on a choice. An entry with caption = true is a heading
 -- (its label in Text > Grey, no hover, a click that does nothing, the list
 -- staying open) and one with disabled = true is dim (alpha 0.4), lit by no
@@ -369,7 +369,7 @@ function ToggleCheck(row)
 	if list.onToggle == onToggle and list.catcher:IsShown() then ListFill() end
 end
 
--- A button of the list, made the first time: Box, blue-edged under the mouse,
+-- A button of the list, made the first time: Box, accent-edged under the mouse,
 -- 80 wide and FIELD_HEIGHT tall, its text centred (the Apply list's, and a
 -- check list's). Hidden, until it's placed.
 local function NewListButton()
@@ -425,7 +425,7 @@ end
 
 ------------------------------------------------------------------ the Apply list
 
--- The Apply list's button, made the first time: Box, blue-edged under the
+-- The Apply list's button, made the first time: Box, accent-edged under the
 -- mouse, its text Apply; a click runs list.onApply.
 local function ApplyButton()
 	if not list.apply then

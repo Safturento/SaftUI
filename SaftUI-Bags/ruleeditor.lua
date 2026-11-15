@@ -15,7 +15,7 @@ local INV = st:GetModule('Inventory')
 	starting under its label (its handle, NOT, label and X stay on the
 	first line), so a narrow editor (the Categories tab's 540) never runs a
 	field under the X. A group's rows hang off its
-	line (2 wide, at its indent plus 12; AND blue, OR orange), with its AND or
+	line (2 wide, at its indent plus 12; AND the accent, OR orange), with its AND or
 	OR badge on the line's middle (a click flips it) and an 18 connector from
 	the line to each row. Rows:
 	  - a block: its handle (6 dots), NOT, its grey label, its fields, the X;
@@ -87,10 +87,10 @@ local FIELD_WIDTH, MODE_WIDTH, YES_NO_WIDTH, COUNT_WIDTH = 150, 80, 60, 90
 local D = INV.DragParts
 local Colors, Grey, Text, TextWidth, Inside = D.Colors, D.Grey, D.Text, D.TextWidth, D.Inside
 
--- A group's color: AND blue, OR orange.
+-- A group's color: AND the accent, OR orange (Text > Orange).
 local function OpColor(op)
 	if op == 'or' then return Colors().text.orange:GetRGB() end
-	return Colors().button.blue:GetRGB()
+	return st:Color('accent'):GetRGB()
 end
 
 -- A select's caret: Lucide's chevron-down, as the options' selects have
@@ -385,7 +385,7 @@ local function MakeCheck(f)
 	return check
 end
 
--- + Block and + Group: blue text that runs add.run.
+-- + Block and + Group: accent text that runs add.run.
 local function MakeAdd(f)
 	local add = st:CreateFrame('Button', nil, f)
 	add.text = Text(add)
@@ -494,7 +494,7 @@ function Lay:Check(name, caption, checked, toggle)
 	local check = Take(self.f, 'check', MakeCheck)
 	check.w, check.toggle = self.w, toggle
 	check:SetChecked(checked)
-	check.mark:SetColorTexture(Colors().button.blue:GetRGB())
+	check.mark:SetColorTexture(st:Color('accent'):GetRGB())
 	check.mark:SetShown(checked)
 	check.caption:SetText(caption)
 	check.caption:SetTextColor(Grey())
@@ -526,7 +526,7 @@ function Lay:Add(name, text, run)
 	local add = Take(self.f, 'add', MakeAdd)
 	add.w, add.run = self.w, run
 	add.text:SetText(text)
-	add.text:SetTextColor(Colors().text.blue:GetRGB())
+	add.text:SetTextColor(st:Color('accent'):GetRGB())
 	add.text:SetAlpha(1)
 	local width = TextWidth(add.text)
 	add:SetSize(width, FIELD_HEIGHT)
@@ -709,7 +709,7 @@ end
 local function NotLook(box, on)
 	box.on = on
 	if on then
-		box.text:SetTextColor(Colors().text.blue:GetRGB())
+		box.text:SetTextColor(st:Color('accent'):GetRGB())
 	else
 		box.text:SetTextColor(Grey())
 	end

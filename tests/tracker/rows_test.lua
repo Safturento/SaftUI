@@ -42,7 +42,7 @@ RW.both('zone headers: the current one first with the map pin in the accent, the
 	check(not there.pin:IsShown(), 'and not for the rest')
 	eq(here.pin:GetWidth(), 16, 'the pin is 16')
 	eq(here.pin:GetTexture(), st.icons.mapPin, "Lucide's map-pin")
-	eq(RW.rgb({ r = here.pin:GetVertexColor() , g = select(2, here.pin:GetVertexColor()), b = select(3, here.pin:GetVertexColor()) }), RW.rgb(colors(st).button.blue), 'in the accent')
+	eq(RW.rgb({ r = here.pin:GetVertexColor() , g = select(2, here.pin:GetVertexColor()), b = select(3, here.pin:GetVertexColor()) }), RW.rgb(st.config.profile.theme.accent), 'in the accent')
 	eq(here:GetHeight(), 20, 'a header is 20 tall')
 	eq(here.chevron:GetWidth(), 16, 'the chevron is 16')
 	-- Where things sit: the quests 4 under the header and 10 between groups.
@@ -259,7 +259,7 @@ RW.both("the focused quest: a 2 px accent bar 4 left of its row, its waypoint li
 	eq(bar:GetRight(), TR.scroll:GetLeft() - 4, '4 left of the row')
 	eq(bar:GetTop(), row:GetTop(), 'from the row\'s top')
 	eq(bar:GetHeight(), row:GetHeight(), 'as tall as the row')
-	local blue = colors(st).button.blue
+	local blue = st.config.profile.theme.accent
 	eq(stub.state(bar).color_texture[1] .. stub.state(bar).color_texture[2], blue.r .. blue.g, 'in the accent')
 	local lines = {}
 	for j = 1, row.nparts do if row.parts[j].fs:IsShown() then lines[#lines + 1] = RW.text(row.parts[j].fs) end end
@@ -422,7 +422,7 @@ RW.both('hover fills a quest row with the accent at TINT_ROW, 2 beyond it above 
 	stub.fire_script(row, 'OnEnter', true)
 	check(row.hover:IsShown(), 'a fill under the mouse')
 	local c = stub.state(row.hover).color_texture
-	local blue = colors(st).button.blue
+	local blue = st.config.profile.theme.accent
 	eq(c[1] .. ' ' .. c[2] .. ' ' .. c[3] .. ' ' .. c[4], blue.r .. ' ' .. blue.g .. ' ' .. blue.b .. ' ' .. st.TINT_ROW, 'the accent at TINT_ROW')
 	eq(row.hover:GetTop(), row:GetTop() + 2, '2 above')
 	eq(row.hover:GetBottom(), row:GetBottom() - 2, '2 below')
@@ -454,7 +454,7 @@ RW.both('popups: above the zones, the window expanded while they show, a click s
 	eq(RW.text(first.label), 'Quest discovered', 'an offer says Quest discovered')
 	eq(RW.text(second.label), 'Quest complete', 'a turn-in says Quest complete')
 	eq(RW.text(first.title), 'An offer', 'over the quest\'s title')
-	eq(RW.color(first.label), RW.rgb(colors(st).button.blue), 'in the accent')
+	eq(RW.color(first.label), RW.rgb(st.config.profile.theme.accent), 'in the accent')
 	eq(first.label:GetFontObject(), st:GetFont('heading'), 'in the Header font: Heading by default')
 	eq(first.bar:GetHeight(), 33, 'the accent bar is the whole row')
 	eq(first.bar:GetWidth(), 2, 'a 2 px bar')
@@ -517,7 +517,7 @@ RW.both('empty: hidden with Hide when empty, else the header and "No tracked que
 	end
 end)
 
-RW.both('a Colors tab change recolors the status lines (objectives) and the accent pieces (button), with no new frame, text or measure', function(st, TR)
+RW.both('a Colors tab change recolors the status lines (objectives) and Theme > Accent the accent pieces: the focus bar, row hover, current-zone pin and popup bar follow st:ColorsChanged(accent), with no new frame, text or measure', function(st, TR)
 	stub.real_zone_text = 'A'
 	Q.set({
 		Q.header('A'),
@@ -536,8 +536,8 @@ RW.both('a Colors tab change recolors the status lines (objectives) and the acce
 	eq(RW.color(row.parts[1].fs), '0.10 0.20 0.30', 'a finished objective in the new Completed')
 	eq(RW.color(RW.quest(TR, 2).title), '0.10 0.20 0.30', 'a ready quest\'s title')
 	eq(RW.color(RW.quest(TR, 3).title), '0.40 0.50 0.60', 'a failed quest\'s title in the new Failed')
-	colors(st).button.blue:SetRGB(0.7, 0.8, 0.9)
-	TR:OnColorsChanged('button')
+	st.config.profile.theme.accent:SetRGB(0.7, 0.8, 0.9)
+	TR:OnColorsChanged('accent') -- the module's one handler: every part of the tracker repaints on it
 	local function rgb(t) local c = stub.state(t).color_texture; return ('%.2f %.2f %.2f'):format(c[1], c[2], c[3]) end
 	eq(rgb(TR.focusBar), '0.70 0.80 0.90', 'the focus bar')
 	eq(rgb(row.hover), '0.70 0.80 0.90', 'the hover')

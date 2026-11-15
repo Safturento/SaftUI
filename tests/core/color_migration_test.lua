@@ -47,7 +47,9 @@ test('nothing saved: only the version, every destination at its default, nothing
 	local colors = st.config.profile.colors
 	eq(colors.version, LAST())
 	eq(rgb(colors.loot.pass), RED); eq(rgb(colors.roles.TANK), BLUE); eq(rgb(colors.factions.Neutral), YELLOW)
+	eq(rgb(st.config.profile.theme.accent), BLUE, 'the accent at its default')
 	st.config:SetProfile('Two')
+	eq(SaftUI_DB.profiles.Old.theme, nil, 'and nothing of it saved')
 	eq(SaftUI_DB.profiles.Old.colors.version, LAST())
 	for _, group in ipairs({ 'loot', 'roles', 'factions' }) do eq(SaftUI_DB.profiles.Old.colors[group], nil, group) end
 end)
@@ -153,6 +155,7 @@ local EXPECTED = {
 	['loot.pass'] = RGB(1, 100/255, 100/255), ['loot.mount'] = RGB(0.6, 0.6, 0.4),
 	['roles.TANK'] = RGB(0, 0.1, 0.94), ['roles.HEALER'] = RGB(0.5, 240/255, 60/255), ['roles.DAMAGER'] = RGB(1, 100/255, 100/255),
 	['factions.Alliance'] = RGB(0, 0.1, 0.94), ['factions.Horde'] = RGB(1, 100/255, 100/255), ['factions.Neutral'] = RGB(200/255, 200/255, 0),
+	['accent'] = RGB(0.7, 0.68, 0.94),
 }
 test('a profile saved before any of this runs every step at once, in order', function()
 	fresh(on(OLD_SAVED()))
@@ -171,4 +174,71 @@ test('Text > Grey: a profile that never changed it gets 180; one that customized
 	fresh(on({ colors = { text = { grey = { r = 150/255, g = 150/255, b = 150/255 } } } }))
 	eq(rgb(st.config.profile.colors.text.grey), RGB(150/255, 150/255, 150/255), 'one saved at the old default is a choice and stays')
 	eq(rgb(st:GetModule('Colors').OLD_COLORS['text.grey']), RGB(150/255, 150/255, 150/255), 'the frozen table is never edited')
+end)
+
+-- Step 2: the accent takes Buttons > Blue, never Text > Blue.
+
+test('step 2: the accent takes Buttons > Blue, never Text > Blue; Buttons > Green is dropped', function()
+	fresh(on({ colors = { text = { blue = { r = 0.9 } }, button = { blue = { g = 0.2, a = 0.3 }, green = { r = 1 } } } }))
+	local p = st.config.profile
+	eq(rgb(p.theme.accent), T.rgb(0, 0.2, 0.94)); eq(p.theme.accent.a, 1, "its own opacity (the game's CreateColor), never Buttons > Blue's 0.3"); eq(type(p.theme.accent.GetRGB), 'function')
+	eq(rgb(p.colors.roles.TANK), T.rgb(0.9, 0.68, 0.94), 'Text > Blue went to Tank and Alliance at step 1')
+	eq(rgb(p.colors.factions.Alliance), T.rgb(0.9, 0.68, 0.94))
+	eq(rawget(p.colors.text, 'blue'), nil); eq(rawget(p.colors.button, 'blue'), nil); eq(rawget(p.colors.button, 'green'), nil)
+	st.config:SetProfile('Two')
+	local saved = SaftUI_DB.profiles.Old.theme.accent
+	eq(saved.g, 0.2); eq(saved.r, nil, 'AceDB keeps only the channel that differs'); eq(saved.a, nil)
+end)
+
+test('a profile at version 1 runs step 2 alone', function()
+	local raw = { colors = { version = 1, text = { blue = { r = 0.9 } }, button = { blue = { r = 0.5 } } } }
+	st:MigrateColors(raw)
+	eq(rgb(raw.theme.accent), T.rgb(0.5, 0.68, 0.94)); eq(raw.colors.roles, nil, 'step 1 is not run again'); eq(raw.colors.version, LAST())
+	eq(raw.colors.text.blue, nil, 'Text > Blue retired with no destination'); eq(raw.colors.button.blue, nil)
+end)
+
+test('step 2: a Text > Blue changed after step 1 goes nowhere (not the accent, not Tank)', function()
+	local raw = { colors = { version = 1, roles = { TANK = { r = 0.4 } }, text = { blue = { r = 0.9, g = 0.9 } } } }
+	st:MigrateColors(raw)
+	eq(raw.theme, nil, 'no accent written'); eq(raw.colors.roles.TANK.r, 0.4, 'Tank keeps what step 1 gave it')
+	eq(raw.colors.text.blue, nil)
+end)
+
+test('step 2: an uncustomized Buttons > Blue copies nothing, whatever its opacity', function()
+	local raw = { colors = { button = { blue = { a = 0.3 } } } }
+	st:MigrateColors(raw)
+	eq(raw.theme, nil, 'the bytes are the old ones: not customized, the accent keeps its default')
+	raw = { colors = { button = { blue = { r = 0, g = 0.68 + 0.0001, b = 0.94 } } } }
+	st:MigrateColors(raw); eq(raw.theme, nil, 'equal to the byte')
+	raw = { colors = { button = { blue = { b = 0.5 } } } }
+	st:MigrateColors(raw); eq(rgb(raw.theme.accent), T.rgb(0, 0.68, 0.5))
+end)
+
+test('step 2 on raw data: the accent is written into one that is there, else made with its theme', function()
+	local accent = { r = 0.1, g = 0.1, b = 0.1, a = 0.7 }
+	local raw = { theme = { name = 'thin', accent = accent }, colors = { version = 1, button = { blue = { r = 0.5 } } } }
+	st:MigrateColors(raw)
+	check(raw.theme.accent == accent, 'in place'); eq(accent.r, 0.5); eq(accent.g, 0.68); eq(accent.b, 0.94); eq(accent.a, 0.7, 'never an alpha')
+	eq(raw.theme.name, 'thin')
+	raw = { theme = 'x', colors = { version = 1, button = { blue = { r = 0.5 } } } }
+	st:MigrateColors(raw); eq(rgb(raw.theme.accent), T.rgb(0.5, 0.68, 0.94), 'a theme that is not a table is replaced')
+	raw = { colors = { version = 1, button = { blue = 5, green = 'x' } } }
+	check(pcall(st.MigrateColors, st, raw)); eq(raw.theme, nil); eq(raw.colors.button.blue, nil, 'retired even when it is not a table')
+end)
+
+test('step 2: a profile at the last step, or above it, runs nothing', function()
+	local raw = { colors = { version = LAST(), button = { blue = { r = 0.5 } } } }
+	st:MigrateColors(raw); eq(raw.theme, nil); eq(raw.colors.button.blue.r, 0.5, 'left as it is')
+end)
+
+test('step 2: a switch to, a copy from and a reset of an unmigrated profile carry the accent', function()
+	fresh(on({}))
+	SaftUI_DB.profiles.Two = { colors = { button = { blue = { r = 1 } } } }
+	SaftUI_DB.profiles.Three = { colors = { version = 1, button = { blue = { g = 1 } } } }
+	st.config:SetProfile('Two'); eq(st.config.profile.theme.accent.r, 1); eq(st.config.profile.colors.version, LAST())
+	check(st.config.profile.theme.accent.GetRGB, 'the methods')
+	st.config:SetProfile('Old'); st.config:CopyProfile('Three')
+	eq(rgb(st.config.profile.theme.accent), T.rgb(0, 1, 0.94), 'a copy from a profile at version 1: step 2 alone')
+	st.config.profile.theme.accent.r = 0.5; st.config:ResetProfile()
+	eq(rgb(st.config.profile.theme.accent), BLUE)
 end)

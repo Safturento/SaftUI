@@ -22,7 +22,7 @@ local VISIBLE_GAP = 3
 	the same on both clients: a square, four squares, a dot grid and lines,
 	drawn on a 12 by 12 grid (GLYPHS: x, y, width, height of each piece) whose
 	unit is a whole number of pixels, so the pieces stay sharp at any title bar
-	height. The button for the window's view is lit with Buttons -> Blue, kept
+	height. The button for the window's view is lit in the accent (Theme > Accent), kept
 	with st:KeepOwnColors so a theme recolor and redraw don't take it away;
 	under the Blizzard theme, whose panel buttons they are, it's pressed.
 	The buttons are SaftUI's own plain buttons, so lighting one is fine in
@@ -46,9 +46,9 @@ local GLYPHS = {
 	rows = { { 0, 1, 12, 2 }, { 0, 5, 12, 2 }, { 0, 9, 12, 2 } },
 }
 
--- The lit button's border: Buttons -> Blue.
+-- The lit button's border: the accent (Theme > Accent).
 local function ColorLit(button)
-	st:SetBorderColor(button.backdrop, st.config.profile.colors.button.blue:GetRGB())
+	st:SetBorderColor(button.backdrop, st:Color('accent'):GetRGB())
 end
 
 -- A button's glyph is drawn in Colors -> Text -> Normal.
@@ -223,11 +223,11 @@ function INV:UpdateViewButtons(id)
 end
 
 -- A color the view buttons are drawn in changed (st:ColorsChanged's group):
--- Buttons -> Blue lights the lit buttons, Text -> Normal draws every glyph.
+-- The accent lights the lit buttons, Text -> Normal draws every glyph.
 function INV:ColorViewButtons(group)
 	for _, container in pairs(self.containers) do
 		for _, button in pairs(container.viewButtons or {}) do
-			if group == 'button' and button.viewLit then ColorLit(button) end
+			if group == 'accent' and button.viewLit then ColorLit(button) end
 			if group == 'text' then ColorGlyph(button) end
 		end
 	end

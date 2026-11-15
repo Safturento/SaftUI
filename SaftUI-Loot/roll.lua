@@ -222,7 +222,7 @@ function LT:GroupLootFrame_OnUpdateTimer(timer, elapsed)
 
 	text:SetText(st.StringFormat:ToClock(sec))
 
-	timer:SetStatusBarColor(st.config.profile.colors.button.blue:GetRGB())
+	timer:SetStatusBarColor(st:Color('accent'):GetRGB())
 
 	if sec < 60 then
 		text:SetVertexColor(st.config.profile.colors.text.red:GetRGB())
@@ -590,11 +590,11 @@ end
 -- touched, never GroupLootContainer. Everything here hangs off the anchor, so a
 -- protected frame (e.g. a unit frame) anchored to any of it makes the anchor
 -- protected; in combat the update then waits for the end of combat.
--- A Buttons color change (st:ColorsChanged('button'), through LT:OnColorsChanged):
--- a locked bar's lit border and label take the new blue at once. A theme recolor
--- or redraw keeps the lit border through st:KeepOwnColors.
+-- An accent change (st:ColorsChanged('accent'), through LT:OnColorsChanged):
+-- a locked bar's lit border and label take the new accent at once. A theme
+-- recolor or redraw keeps the lit border through st:KeepOwnColors.
 function LT:ColorRollBars(group)
-	if group ~= 'button' then return end
+	if group ~= 'accent' then return end
 	for _, bar in ipairs(held) do
 		ColorLocked(bar)
 	end

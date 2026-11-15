@@ -61,7 +61,7 @@ test("the list sits on common-dropdown-c-bg, in place of the tooltip border", fu
 	eq(list.frame:GetHeight(), 2 * 22 + 2, 'Thick: two rows and the edge')
 	stub.fire_script(list.rows[1], 'OnEnter')
 	eq(hover:GetAtlas(), nil, 'Thick: no atlas')
-	local r, g, b = st.config.profile.colors.button.blue:GetRGB()
+	local r, g, b = st.config.profile.theme.accent:GetRGB()
 	eq(rgba(unpack(stub.state(hover).color_texture)), rgba(r, g, b, 1), 'Thick: the blue')
 	eq(string.format('%.2f', hover:GetAlpha()), '0.25', 'Thick: at 0.25')
 	stub.fire_script(list.rows[1], 'OnLeave')
@@ -553,7 +553,7 @@ test('a list with captions and disabled entries: a caption takes no click and no
 		local list = W.GetListFrames()
 		local rows = list.rows
 		local grey = string.format('%.2f,%.2f,%.2f', st.config.profile.colors.text.grey.r, st.config.profile.colors.text.grey.g, st.config.profile.colors.text.grey.b)
-		local blue = string.format('%.2f,%.2f,%.2f', st.config.profile.colors.text.blue.r, st.config.profile.colors.text.blue.g, st.config.profile.colors.text.blue.b)
+		local blue = string.format('%.2f,%.2f,%.2f', st.config.profile.theme.accent.r, st.config.profile.theme.accent.g, st.config.profile.theme.accent.b)
 		local function color(r) return string.format('%.2f,%.2f,%.2f', r.text:GetTextColor()) end
 		eq(rows[1].text:GetText(), 'Frames', look .. ': the caption')
 		eq(color(rows[1]), grey, look .. ': a caption is grey'); eq(color(rows[2]), blue, look .. ': the picked entry blue')

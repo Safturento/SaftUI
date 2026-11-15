@@ -470,17 +470,17 @@ test('the guide frame: above the overlays, under the bar, no mouse, in the accen
 	eq(EM.guideFrame:GetFrameLevel(), 9100, 'over the overlays (9000 at most), under the bar (9500)')
 	check(not EM.guideFrame:IsMouseEnabled(), 'it takes no mouse')
 	local r, g, b = unpack(stub.state(EM.snapGuides.x).color_texture)
-	local blue = st.config.profile.colors.button.blue
+	local blue = st.config.profile.theme.accent
 	local br, bg, bb = blue:GetRGB()
-	check(math.abs(r - br) < 1e-3 and math.abs(g - bg) < 1e-3 and math.abs(b - bb) < 1e-3, 'Button > Blue')
+	check(math.abs(r - br) < 1e-3 and math.abs(g - bg) < 1e-3 and math.abs(b - bb) < 1e-3, 'the accent')
 	EM:StopDrag(me)
-	local saved = st.config.profile.colors.button.blue
-	st.config.profile.colors.button.blue = { GetRGB = function() return 0.25, 0.5, 0.75 end }
+	local saved = st.config.profile.theme.accent
+	st.config.profile.theme.accent = { GetRGB = function() return 0.25, 0.5, 0.75 end }
 	drag(me, -310, -226, true)
 	r, g, b = unpack(stub.state(EM.snapGuides.x).color_texture)
 	check(math.abs(r - 0.25) < 1e-3 and math.abs(g - 0.5) < 1e-3 and math.abs(b - 0.75) < 1e-3, 'it follows a change of the accent')
 	EM:StopDrag(me)
-	st.config.profile.colors.button.blue = saved
+	st.config.profile.theme.accent = saved
 	reset()
 end)
 

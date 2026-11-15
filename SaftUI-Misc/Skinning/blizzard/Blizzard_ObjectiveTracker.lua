@@ -43,7 +43,7 @@ local OT = SK:NewModule('Blizzard_ObjectiveTracker')
 	    SaftUI's drawn as an action button, the icon inside its border and
 	    cropped square (and kept cropped: Blizzard's SetItemButtonTexture puts
 	    the whole texture back on every SetUp), Blizzard's round frame, pushed
-	    and highlight art faded, a flat hover in SaftUI's action bars' blue,
+	    and highlight art faded, a flat hover in the accent,
 	    the count in the Skinning font.
 
 	Left as Blizzard's: the tracker's background (NineSlice, Blizzard's Opacity
@@ -431,7 +431,7 @@ local function KeepCrop(icon)
 end
 
 local function ColorItem(entry)
-	entry.hover:SetVertexColor(Profile().colors.button.blue:GetRGB())
+	entry.hover:SetVertexColor(st:Color('accent'):GetRGB())
 end
 
 local function StyleItem(button, active)

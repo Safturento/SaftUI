@@ -146,7 +146,7 @@ test("under Blizzard a mover shows Blizzard's highlight kit, and the selected ki
 	eq(T.inset(backdrop), 2, "SaftUI's line is back")
 	eq(T.edge(backdrop), '1.00,1.00,1.00,1.00', 'white')
 	eq(T.fill(backdrop), '0.00,0.00,0.00,0.30', 'with the dim fill')
-	local blue = T.text(st.config.profile.colors.button.blue:GetRGB())
+	local blue = T.text(st.config.profile.theme.accent:GetRGB())
 	eq(T.edge(other.overlay.backdrop), blue .. ',1.00', 'the selected one: a blue line')
 	eq(T.fill(other.overlay.backdrop), blue .. ',0.15', 'and its blue fill')
 

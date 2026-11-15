@@ -57,8 +57,8 @@ test('the sections and their colors, in order, as small color swatches with tool
 	eq(table.concat(names, ','), 'Text,Buttons,Class,Roles,Reputation,Factions,Power,Item quality,Loot,Status,Threat,Objectives')
 
 	local expected = {
-		text = 'Text,Grey,Red,Orange,Yellow,Green,Blue,Cyan,White',
-		button = 'Normal,Hover,Pushed,Red,Green,Blue,Grey',
+		text = 'Text,Grey,Red,Orange,Yellow,Green,Cyan,White',
+		button = 'Normal,Hover,Pushed,Red,Grey',
 		class = 'Death Knight,Demon Hunter,Druid,Evoker,Hunter,Mage,Monk,Paladin,Priest,Rogue,Shaman,Warlock,Warrior',
 		roles = 'Tank,Healer,Damage',
 		factions = 'Alliance,Horde,Neutral',
@@ -132,8 +132,8 @@ test('a set writes onto the profile color itself and says which group changed', 
 	eq(a, 1, 'class has no alpha: unchanged')
 	eq(got[#got], 'class')
 
-	Section('button').args.blue.set({}, 0.1, 0.1, 0.1, 0.5)
-	eq(st.config.profile.colors.button.blue.a, 0.5, 'Buttons write alpha')
+	Section('button').args.hover.set({}, 0.1, 0.1, 0.1, 0.5)
+	eq(st.config.profile.colors.button.hover.a, 0.5, 'Buttons write alpha')
 
 	local before = st.config.profile.colors.text.red.a
 	Section('text').args.red.set({}, 0.5, 0.5, 0.5, 0.5)
@@ -212,12 +212,12 @@ test("a color's own reset: it differs once changed, puts back its own color (alp
 	eq(st.config.profile.colors.renown.r, st.defaults.colors.renown.r, 'renown is reset')
 	eq(got[#got], 'renown', 'and says renown changed')
 
-	local blue = Section('button').args.blue
-	local b = st.config.profile.colors.button.blue
-	blue.set({}, b.r, b.g, b.b, 0.25)
-	check(blue.default.differs(), 'Buttons: a new opacity alone differs')
-	blue.default.reset()
-	eq(st.config.profile.colors.button.blue.a, st.defaults.colors.button.blue.a, 'and its reset puts the opacity back')
+	local hover = Section('button').args.hover
+	local b = st.config.profile.colors.button.hover
+	hover.set({}, b.r, b.g, b.b, 0.25)
+	check(hover.default.differs(), 'Buttons: a new opacity alone differs')
+	hover.default.reset()
+	eq(st.config.profile.colors.button.hover.a, st.defaults.colors.button.hover.a, 'and its reset puts the opacity back')
 
 	Section('text').args.red.default.reset() -- an earlier case set it
 	local red = st.config.profile.colors.text.red
@@ -246,12 +246,13 @@ test('the class power colors say they are the player frame\'s class power points
 	check(Section('class').args.MAGE.desc:find('tooltip', 1, true), "a class color's tooltip names the unit tooltip")
 end)
 
-test('the roll timer bars are under Buttons Blue, not Item quality, and the difficulty badge covers every instance', function()
-	-- The roll timer's OnUpdate paints it Buttons Blue every frame.
+test('the roll timer bars are not Item quality, Blue is on Theme > Accent, and the difficulty badge covers every instance', function()
+	-- The roll timer's OnUpdate paints it in the accent every frame.
 	local quality = Section('item_quality').args
 	check(not quality['3'].desc:find('timer', 1, true), 'Item quality names no timer bar')
-	check(Section('button').args.blue.desc:find('loot roll timer bars', 1, true), 'Buttons Blue names the roll timer bars')
-	check(Section('button').args.blue.desc:find("loot roll you've chosen on", 1, true), "and a held roll's lit border and label")
+	eq(Section('button').args.blue, nil, 'Buttons has no Blue: it is the accent now')
+	eq(Section('text').args.blue, nil, 'nor Text')
+	eq(Section('button').args.green, nil, 'Buttons > Green went with it')
 	check(quality['1'].desc:find('normal instances', 1, true), 'the badge is shown in raids too')
 	check(Section('text').args.normal.desc:find('summon button', 1, true), "Text names the totem bar summon button's arrow")
 	for _, word in ipairs({ 'Alliance', 'Horde', 'Neutral' }) do

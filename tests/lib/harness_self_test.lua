@@ -106,7 +106,7 @@ test('apply_defaults fills the profile from st.defaults and keeps what is there'
 	apply_defaults()
 	eq(SaftUI.config.profile.editmode.grid_size, 32, 'editmode.grid_size from defaults.lua')
 	check(SaftUI.config.profile.editmode ~= SaftUI.defaults.editmode, 'the profile has its own copy')
-	local r, g, b = SaftUI.config.profile.colors.button.blue:GetRGB()
+	local r, g, b = SaftUI.config.profile.theme.accent:GetRGB()
 	check(r == 0 and g == 0.68 and b == 0.94, 'colors keep their ColorMixin methods')
 end)
 

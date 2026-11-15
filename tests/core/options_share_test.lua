@@ -169,7 +169,7 @@ local function hover(region, x)
 end
 
 local function rgb(r, g, b) return string.format('%.2f,%.2f,%.2f', r, g, b) end
-local OWN = rgb(unpack(OB.OWN_TEXT))
+local OWN = rgb(st:Color('accent'):GetRGB())
 local function text_rgb(fs) return rgb(fs:GetTextColor()) end
 local function normal() return rgb(st.config.profile.colors.text.normal:GetRGB()) end
 local function grey() return rgb(st.config.profile.colors.text.grey:GetRGB()) end
@@ -318,7 +318,7 @@ end)
 
 ------------------------------------------------------------------ marks
 
-test('Thick: an own row has the mark in the padding and a light blue label; a following row has neither', function()
+test('Thick: an own row has the mark in the padding and an accent label; a following row has neither', function()
 	in_look('thick', function()
 		fresh()
 		own.spacing = true
@@ -332,11 +332,19 @@ test('Thick: an own row has the mark in the padding and a light blue label; a fo
 		check(rel == spacing.frame, 'on its row')
 		eq(p .. ' ' .. relPoint .. ' ' .. x .. ',' .. y, 'TOPLEFT TOPLEFT -9,-6', '9 left of the row frame')
 		eq(parts.mark:GetLeft() - content:GetLeft(), 5, 'at 5 in the slot: inside the panel\'s padding')
-		eq(rgb(unpack(stub.state(parts.mark).color_texture)), rgb(st.config.profile.colors.button.blue:GetRGB()), 'in Button > Blue')
-		eq(text_rgb(spacing.label), OWN, 'its label light blue')
+		eq(rgb(unpack(stub.state(parts.mark).color_texture)), rgb(st.config.profile.theme.accent:GetRGB()), 'in the accent')
+		eq(text_rgb(spacing.label), OWN, 'its label in the accent')
 		eq((select(4, point(spacing.label))), 0, 'no shift under Thick')
 		check(not shown(show.frame.share, 'mark'), 'a following row has no mark')
 		eq(text_rgb(show.label), normal(), 'and its label in Text > Normal')
+		do -- a non-default accent: the mark and the label follow it when drawn again
+			local accent = st.config.profile.theme.accent
+			accent:SetRGB(0.9, 0.1, 0.2)
+			local _, again = draw(Page('member'))
+			eq(rgb(unpack(stub.state(again.spacing.frame.share.mark).color_texture)), '0.90,0.10,0.20', 'the mark in the accent')
+			eq(text_rgb(again.spacing.label), '0.90,0.10,0.20', 'the label in the accent')
+			accent:SetRGB(0, 0.68, 0.94)
+		end
 
 		-- A redraw of a page with no share on the same frames leaves nothing behind.
 		body:Release()
@@ -420,10 +428,10 @@ test("the diff icon follows the label's text and lists who differs", function()
 
 		stub.fire_script(diff, 'OnEnter', true)
 		check(tip.owner == diff, 'its own tooltip')
-		-- Two columns, as the mockup draws them: the page on the left, its value on the right in light blue.
+		-- Two columns, as the mockup draws them: the page on the left, its value on the right in the accent.
 		eq(table.concat(tip.lines, '|'), 'Spacing|All bars: 3|Bar 2|Bar 4', 'the name, the source, a line per page')
 		eq(tostring(tip.rights[3]) .. '|' .. tostring(tip.rights[4]), '2|1', 'each value on the right')
-		eq(tostring(tip.rightColors[3]) .. '|' .. tostring(tip.rightColors[4]), OWN .. '|' .. OWN, 'in light blue')
+		eq(tostring(tip.rightColors[3]) .. '|' .. tostring(tip.rightColors[4]), OWN .. '|' .. OWN, 'in the accent')
 		eq(tip.rights[1], nil, 'the title a line of its own')
 		eq(tip.rights[2], nil, "and the source's line")
 		stub.fire_script(diff, 'OnLeave', true)
@@ -469,7 +477,7 @@ test('the hover line: it shows on an offering row and stays while the mouse is o
 		eq(parts.reset.icon:GetTexture(), st.icons.rotateCcw)
 		eq(parts.reset:GetWidth() .. 'x' .. parts.reset:GetHeight(), '14x14')
 		eq(parts.all.text:GetText() .. '|' .. parts.multiple.text:GetText(), 'All|Multiple')
-		eq(rgb(parts.all.text:GetTextColor()), rgb(st.config.profile.colors.text.blue:GetRGB()), 'links in Text > Blue')
+		eq(rgb(parts.all.text:GetTextColor()), rgb(st.config.profile.theme.accent:GetRGB()), 'links in the accent')
 		check(parts.all:IsMouseEnabled() and parts.multiple:IsMouseEnabled() and parts.reset:IsMouseEnabled(), 'links take the mouse')
 		check(parts.all:GetFrameLevel() > c.frame:GetFrameLevel(), 'over the row frame')
 
@@ -576,7 +584,7 @@ test("a section title carries its block's marks and the line beside it", functio
 		local entry = body.shareTitles[1]
 		eq(entry.title:GetText(), 'Position')
 		eq(entry.section.title, 'Position')
-		eq(text_rgb(entry.title), OWN, 'the title light blue')
+		eq(text_rgb(entry.title), OWN, 'the title in the accent')
 		check(shown(by.pos.frame.share, 'mark'), "the block's row has the mark")
 		eq(by.pos.frame.share.mark:GetHeight(), by.pos.height - 12, 'down the block')
 		check(not shown(by.pos.frame.share, 'line'), 'the row itself has no line')
@@ -1019,7 +1027,40 @@ test("the line goes once the mouse leaves the body's view, though its row runs o
 	end)
 end)
 
-test('an own row keeps its light blue across Refresh: disabled then enabled again, or drawn disabled and enabled mid-drag', function()
+-- OB.OWN_STRENGTH is the owner's knob for the own marks: every site that draws
+-- an own label or title takes it, so a lower strength is the label's alpha.
+test('OB.OWN_STRENGTH is the alpha of an own label, across Refresh, of the hover line\'s Own and of an own title', function()
+	local OB = st.OptionsBody
+	local function alpha(fs) return string.format('%.2f', (select(4, fs:GetTextColor()))) end
+	OB.OWN_STRENGTH = 0.5
+	local ok, err = pcall(function()
+		in_look('thick', function()
+			fresh()
+			own.spacing = true
+			local disabled = false
+			local root = Page('member')
+			root.page.args.spacing.disabled = function() return disabled end
+			local body, by = draw(root)
+			eq(alpha(by.spacing.label), '0.50', 'the own label')
+			check(by.spacing.frame.share.ownText ~= nil, "the hover line's Own exists")
+			eq(alpha(by.spacing.frame.share.ownText.text), '0.50', "the hover line's Own")
+			disabled = true
+			body:Refresh()
+			disabled = false
+			body:Refresh()
+			eq(alpha(by.spacing.label), '0.50', 'the label across Refresh')
+			body:Release()
+
+			own.pos = true
+			local titled = draw(Page('member', { pos = { type = 'position', name = 'Position', order = 10, share = true } }))
+			eq(alpha(titled.shareTitles[1].title), '0.50', 'the own title')
+		end)
+	end)
+	OB.OWN_STRENGTH = 1
+	if not ok then error(err, 0) end
+end)
+
+test('an own row keeps its accent label across Refresh: disabled then enabled again, or drawn disabled and enabled mid-drag', function()
 	in_look('thick', function()
 		fresh()
 		own.spacing = true
@@ -1027,13 +1068,13 @@ test('an own row keeps its light blue across Refresh: disabled then enabled agai
 		local root = Page('member')
 		root.page.args.spacing.disabled = function() return disabled end
 		local body, by = draw(root)
-		eq(text_rgb(by.spacing.label), OWN, 'light blue')
+		eq(text_rgb(by.spacing.label), OWN, 'the accent')
 		disabled = true
 		body:Refresh()
 		eq(text_rgb(by.spacing.label), grey(), 'grey while disabled')
 		disabled = false
 		body:Refresh()
-		eq(text_rgb(by.spacing.label), OWN, 'light blue again')
+		eq(text_rgb(by.spacing.label), OWN, 'the accent again')
 		-- Drawn while disabled, then enabled mid-drag.
 		disabled = true
 		by = redraw(body, root)
@@ -1041,7 +1082,7 @@ test('an own row keeps its light blue across Refresh: disabled then enabled agai
 		check(shown(by.spacing.frame.share, 'mark'), 'with its mark')
 		disabled = false
 		body:Refresh()
-		eq(text_rgb(by.spacing.label), OWN, 'enabled mid-drag: light blue, not Text > Normal')
+		eq(text_rgb(by.spacing.label), OWN, 'enabled mid-drag: the accent, not Text > Normal')
 		body:Release()
 	end)
 end)
@@ -1296,26 +1337,26 @@ test("the diff icon's hover shows its row's line too", function()
 	end)
 end)
 
-test("a link's click takes its tooltip away, and leaving a link puts its blue back", function()
+test("a link's click takes its tooltip away, and leaving a link puts its accent back", function()
 	in_look('thick', function(tip)
 		fresh()
 		own.spacing = true
 		local body, by = draw(Page('member'))
 		local parts = by.spacing.frame.share
 		stub.fire_script(by.spacing.frame, 'OnEnter', true)
-		local textBlue = rgb(st.config.profile.colors.text.blue:GetRGB())
-		local buttonBlue = rgb(st.config.profile.colors.button.blue:GetRGB())
+		local textBlue = rgb(st.config.profile.theme.accent:GetRGB())
+		local buttonBlue = rgb(st.config.profile.theme.accent:GetRGB())
 		for _, key in ipairs({ 'all', 'multiple' }) do
 			stub.fire_script(parts[key], 'OnEnter', true)
 			eq(rgb(parts[key].text:GetTextColor()), '1.00,1.00,1.00', key .. ' white under the mouse')
 			stub.fire_script(parts[key], 'OnLeave', true)
-			eq(rgb(parts[key].text:GetTextColor()), textBlue, key .. ' in Text > Blue again')
+			eq(rgb(parts[key].text:GetTextColor()), textBlue, key .. ' in the accent again')
 		end
-		-- The reset icon: Text > Grey at rest, lit in Button > Blue under the mouse.
+		-- The reset icon: Text > Grey at rest, lit in the accent under the mouse.
 		local textGrey = rgb(st.config.profile.colors.text.grey:GetRGB())
 		eq(rgb(parts.reset.icon:GetVertexColor()), textGrey, 'the reset icon Text > Grey at rest')
 		stub.fire_script(parts.reset, 'OnEnter', true)
-		eq(rgb(parts.reset.icon:GetVertexColor()), buttonBlue, 'the reset icon Button > Blue under the mouse')
+		eq(rgb(parts.reset.icon:GetVertexColor()), buttonBlue, 'the reset icon in the accent under the mouse')
 		stub.fire_script(parts.reset, 'OnLeave', true)
 		eq(rgb(parts.reset.icon:GetVertexColor()), textGrey, 'and grey again')
 		for _, key in ipairs({ 'all', 'multiple' }) do

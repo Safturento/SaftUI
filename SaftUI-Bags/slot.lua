@@ -105,8 +105,8 @@ end
 -- theme's border back on every slot (group 'theme'): redraw the borders of the
 -- filled slots and the shown currencies.
 function INV:OnColorsChanged(group)
-	-- Buttons -> Blue lights the view buttons; Text -> Normal draws their icons.
-	if group == 'button' or group == 'text' then self:ColorViewButtons(group) end
+	-- The accent lights the view buttons; Text -> Normal draws their icons.
+	if group == 'accent' or group == 'text' then self:ColorViewButtons(group) end
 	if group ~= 'item_quality' and group ~= 'theme' then return end
 	for _, container in pairs(self.containers) do
 		for _, category in pairs(container.categories) do
@@ -215,7 +215,7 @@ end
 
 --[[
 	The "why is this here" lines for an item's tooltip, { { text, r, g, b }, ... }:
-	  Category: <name> (<nth>)       the category in blue, its place in the list in grey;
+	  Category: <name> (<nth>)       the category in the accent, its place in the list in grey;
 	  Caught by: <what>              "Caught by: " in yellow, then the block of the
 	                                 rule that caught it (INV.Rules.Describe), "pinned
 	                                 to this category", "an equipment set" or "no
@@ -231,7 +231,8 @@ function INV:CategoryTooltipLines(info)
 	local place = self:CategoryPlace(key)
 	local first = 'Category: ' .. name
 	if place then first = first .. ' ' .. ColorEscape(colors.grey) .. '(' .. self.Ordinal(place) .. ')|r' end
-	local lines = { { text = first, r = colors.blue.r, g = colors.blue.g, b = colors.blue.b } }
+	local r, g, b = st:Color('accent'):GetRGB()
+	local lines = { { text = first, r = r, g = g, b = b } }
 
 	local why, words = info.categoryWhy, nil
 	if why then

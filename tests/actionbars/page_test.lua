@@ -1108,7 +1108,7 @@ test('drawn under Thick and Blizzard: the diff icons, marks and resets where the
 		local menu = OB.New(content, menuRoot, function() end, 376, { oneColumn = true })
 		menu:Draw(OM.BuildView(menuRoot, OM.MENU_KEY).sections)
 		eq(#menu.shareTitles, 1, look .. ': the menu draws the Position title marks')
-		eq(rgb(menu.shareTitles[1].title:GetTextColor()), rgb(unpack(OB.OWN_TEXT)), look .. ': Position is own: light blue')
+		eq(rgb(menu.shareTitles[1].title:GetTextColor()), rgb(st:ColorRGBA('accent', nil, OB.OWN_STRENGTH)), look .. ': Position is own: the accent')
 		for _, c in ipairs(menu.cells) do
 			if c.row.key == 'size' then check(not shown(c, 'mark'), look .. ': Size follows: no mark') end
 		end

@@ -170,7 +170,7 @@ test('a zone under the cursor that is not the one the label names gets no line',
 	eq(ZT:HoveredZone('Westfall|cffffff00 (9-18)|r'), nil, 'a label for another zone (a gamepad cursor elsewhere)')
 end)
 
-test('a Factions change shows on the next frame, and a Text > Blue change does not', function()
+test('a Factions change shows on the next frame, and an accent change does not', function()
 	set_maps()
 	hover(ELWYNN)
 	local blue = st.config.profile.colors.factions.Alliance
@@ -179,12 +179,12 @@ test('a Factions change shows on the next frame, and a Text > Blue change does n
 	hover(ELWYNN)
 	eq(line(), '|cff0000ffAlliance|r', 'the new color, without moving the cursor')
 	st.config.profile.colors.factions.Alliance = blue
-	local text = st.config.profile.colors.text.blue
-	st.config.profile.colors.text.blue = CreateColor(0, 0, 1)
+	local text = st.config.profile.theme.accent
+	st.config.profile.theme.accent = CreateColor(0, 0, 1)
 	st:ColorsChanged('text')
 	hover(ELWYNN)
-	eq(line(), H.colored('Alliance'), 'a Text > Blue change reaches no faction')
-	st.config.profile.colors.text.blue = text
+	eq(line(), H.colored('Alliance'), 'an accent change reaches no faction')
+	st.config.profile.theme.accent = text
 end)
 
 test('a world map that loads after SaftUI is hooked when it loads', function()

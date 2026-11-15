@@ -104,7 +104,7 @@ local function Paint(control)
 	end
 	if control.icon then
 		local lit = on or ((control.link or control.hoverIcon) and hovered)
-		local color = lit and Colors().button.blue or Colors().text.grey
+		local color = lit and st:Color('accent') or Colors().text.grey
 		control.icon:SetVertexColor(color:GetRGB())
 	end
 	-- A label's colour is written only to light it (a button with no icon
@@ -115,7 +115,7 @@ local function Paint(control)
 		local lit = (blizzard and on and textOnly) and true or false
 		if lit then
 			if not control.labelLit then control.labelWas = { control.text:GetTextColor() } end
-			control.text:SetTextColor(Colors().button.blue:GetRGB())
+			control.text:SetTextColor(st:Color('accent'):GetRGB())
 		elseif control.labelLit then
 			control.text:SetTextColor(unpack(control.labelWas))
 		end

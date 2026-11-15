@@ -251,6 +251,7 @@ end
 local function RedrawTheme()
 	Safely(function() st:RedrawThemed() end)
 	Safely(function() st:ColorsChanged('theme') end)
+	Safely(function() st:ColorsChanged('accent') end)
 end
 
 -- After a theme recolor or redraw (st:ColorsChanged('theme')): what /sui
@@ -336,7 +337,10 @@ function Config:UpdateConfig()
 	end
 	self:Refresh()
 
-	if redraw then Safely(function() st:ColorsChanged('theme') end) end
+	if redraw then
+		Safely(function() st:ColorsChanged('theme') end)
+		Safely(function() st:ColorsChanged('accent') end)
+	end
 
 	if InCombatLockdown() then
 		st:Print('Profile changed in combat. Frames that are locked in combat (unit frames, action bars, bags, and anything anchored to them) finish updating when combat ends.')

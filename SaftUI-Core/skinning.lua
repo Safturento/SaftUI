@@ -278,7 +278,7 @@ function st:SkinActionButton(button, config, kind)
 			end
 			button.hover:ClearAllPoints()
 			-- button.hover:SetVertexColor(1, 1, 1, .1)
-			button.hover:SetVertexColor(st.config.profile.colors.button.blue:GetRGB())
+			button.hover:SetVertexColor(st:Color('accent'):GetRGB())
 			st:SetInside(button.hover, inset)
 		end
 	end

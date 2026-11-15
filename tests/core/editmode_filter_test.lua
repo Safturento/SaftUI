@@ -272,6 +272,17 @@ test('a selected mover that stops showing is deselected; an Alt pick and snappin
 	stub.fire_script(state.driver, 'OnUpdate', 1)
 	eq(#EM.GetPickerState().stack, 2, 'with Show hidden on, h joins the stack')
 	check(state.list:IsShown(), 'and the list shows')
+	do -- the top line is the accent, rounded to the byte
+		local accent = st.config.profile.theme.accent
+		accent:SetRGB(0.9, 0.1, 0.2)
+		stub.fire_script(state.driver, 'OnUpdate', 1)
+		local shown
+		for _, region in ipairs({ state.list:GetRegions() }) do
+			if region.GetText and region:GetText() then shown = region:GetText() end
+		end
+		check(shown and shown:find('|cffe61a33> ', 1, true), 'the picker\'s top line is the accent: ' .. tostring(shown))
+		accent:SetRGB(0, 0.68, 0.94)
+	end
 	EM:SetSetting('show_hidden', false)
 	stub.fire_script(state.driver, 'OnUpdate', 1)
 	check(not state.list:IsShown(), 'Show hidden off: the list goes')
@@ -465,7 +476,7 @@ test('the Show group and the filter under Blizzard: the Settings dropdown and th
 	check(left > 6 + 10, 'the text starts clear of the glass')
 	local blue = frame_of('showHidden')
 	local r, g, b = blue.icon:GetVertexColor()
-	local accent = st.config.profile.colors.button.blue
+	local accent = st.config.profile.theme.accent
 	local ar, ag, ab = accent:GetRGB()
 	check(math.abs(r - ar) < 1e-3 and math.abs(g - ag) < 1e-3 and math.abs(b - ab) < 1e-3, 'Show hidden is on: its icon is in the accent')
 	look('thick')

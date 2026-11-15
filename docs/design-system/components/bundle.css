@@ -18,7 +18,7 @@ svg { display: block; }
 .sui-white { color: var(--white); }
 .sui-red { color: var(--text-red); }
 .sui-accent { color: var(--accent); }
-.sui-own { color: var(--own); }
+.sui-own { color: var(--accent); }
 .sui-gold { color: var(--tooltip-gold); }
 
 /* a frame drawn in the theme: Thick is outer dark line, border, inner dark line; Thin is the border alone */
@@ -93,9 +93,9 @@ svg { display: block; }
 
 /* shared settings: own mark, hover line, diff, reset */
 .sui-cell.is-own::before { content: ''; position: absolute; left: var(--mark-x); top: var(--mark-inset); bottom: var(--mark-inset); width: var(--mark-width); background: var(--accent); }
-.sui-cell.is-own .sui-label { color: var(--own); }
+.sui-cell.is-own .sui-label { color: var(--accent); }
 .sui-hover { height: var(--hover-line); display: flex; align-items: center; gap: var(--diff-gap); color: var(--text-grey); white-space: nowrap; }
-.sui-hover .is-own-word { color: var(--own); }
+.sui-hover .is-own-word { color: var(--accent); }
 .sui-hover a { color: var(--accent); text-decoration: none; }
 .sui-hover a.is-hover { color: var(--white); }
 .sui-hover .sui-ic-reset { margin: 0 calc(var(--reset-gap) - var(--diff-gap)); }

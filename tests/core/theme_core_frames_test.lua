@@ -147,7 +147,7 @@ test('a profile switch to a profile with another theme redraws what was drawn on
 		apply = function() end,
 	})
 	EM:Select(mover)
-	local blue = text(st.config.profile.colors.button.blue:GetRGB())
+	local blue = text(st.config.profile.theme.accent:GetRGB())
 
 	local function looks(theme, edgeColor, header)
 		local px = theme == 'thin' and 1 or 2
@@ -364,7 +364,7 @@ test('a mover keeps its color through a recolor', function()
 	local plain, picked = register('theme_plain'), register('theme_picked')
 	EM:Select(picked)
 	eq(drawn(plain.overlay), 'theme,solid,control', "the overlay: SaftUI's theme, Solid, a control")
-	local blue = text(st.config.profile.colors.button.blue:GetRGB())
+	local blue = text(st.config.profile.theme.accent:GetRGB())
 
 	local function check_colors(when)
 		local b = plain.overlay.backdrop
@@ -550,7 +550,7 @@ test('a radio group draws its buttons with options.theme and options.background'
 		options.items = { { label = 'A' }, { label = 'B' } }
 		return st:CreateRadioGroup(name, UIParent, options)
 	end
-	local blue = text(st.config.profile.colors.button.blue:GetRGB()) .. ',1.00'
+	local blue = text(st.config.profile.theme.accent:GetRGB()) .. ',1.00'
 
 	local g = group('ThemeTestRadio', { theme = 'thin', background = 'solid' })
 	eq(g.backdrop, nil, 'the group itself draws nothing, as before')
@@ -621,7 +621,7 @@ test("Core widgets keep their own colors through a recolor: a scroll bar thumb's
 	eq(rgb(thumb.backdrop), color(colors.normal), 'let go and left, after a recolor: the button color')
 
 	-- A radio group's picked button keeps its blue border; the others take the theme's.
-	local blue = text(colors.blue:GetRGB()) .. ',1.00'
+	local blue = text(st.config.profile.theme.accent:GetRGB()) .. ',1.00'
 	local g = st:CreateRadioGroup('ThemeTestRadioColors', UIParent, {
 		buttonHeight = 20, buttonWidth = 50, buttonSpacing = 2, theme = 'theme', background = 'theme',
 		items = { { label = 'A' }, { label = 'B' } },
