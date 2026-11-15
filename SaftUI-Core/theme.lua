@@ -555,7 +555,8 @@ function st:SetBackdrop(frame, theme, background, kind)
 		local isTexture = frame:GetObjectType() == 'Texture'
 		local parent = isTexture and frame:GetParent() or frame
 		frame.backdrop = st:CreateFrame('frame', nil, parent)
-		frame.backdrop:SetFrameLevel(max(0, parent:GetFrameLevel() - 1))
+		local level = parent:GetFrameLevel()
+		if not issecretvalue(level) then frame.backdrop:SetFrameLevel(max(0, level - 1)) end
 
 		if isTexture then
 			-- The backdrop lives on the texture, not its parent
@@ -590,7 +591,8 @@ function st:SetBackdropIn(backdrops, frame, theme, background, kind)
 	if not backdrop then
 		if not DrawLook(theme, background, kind) then return end
 		backdrop = st:CreateFrame('frame', nil, frame)
-		backdrop:SetFrameLevel(max(0, frame:GetFrameLevel() - 1))
+		local level = frame:GetFrameLevel()
+		if not issecretvalue(level) then backdrop:SetFrameLevel(max(0, level - 1)) end
 		backdrops[frame] = backdrop
 	end
 
