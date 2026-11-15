@@ -105,7 +105,7 @@ OB.SHARE_KINDS = {
 
 local LINE_HEIGHT = 14 -- the hover line: the small font (13)
 local LINE_LEVEL = 4 -- the line over its row frame, above every part of the control
-local MARK_WIDTH, MARK_INSET = 2, 6
+local MARK_WIDTH, MARK_INSET = OB.MARK_WIDTH, 6
 local DIFF_SIZE, DIFF_GAP = 16, 4
 local RESET_SIZE, RESET_GAP = 14, 6
 local WORD_GAP = 4 -- between the line's words and links

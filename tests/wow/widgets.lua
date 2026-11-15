@@ -1153,6 +1153,19 @@ end
 function Button.SetEnabled(self, s, enabled)
 	if enabled then Button.Enable(self, s) else Button.Disable(self, s) end
 end
+-- Held states: LockHighlight shows the highlight texture as if under the mouse
+-- until UnlockHighlight; SetButtonState('PUSHED', true) shows the pushed look
+-- and, locked, keeps it through the mouse (a SaftUI preview's pieces use both).
+-- GetButtonState is 'NORMAL' until set. stub.state(button).highlight_locked and
+-- .button_state record them.
+function Button.LockHighlight(self, s) s.highlight_locked = true end
+function Button.UnlockHighlight(self, s) s.highlight_locked = false end
+local BUTTON_STATES = { NORMAL = true, PUSHED = true }
+function Button.SetButtonState(self, s, state, locked)
+	if not BUTTON_STATES[state] then usage(s, 'SetButtonState(): state must be NORMAL or PUSHED, got ' .. tostring(state)) end
+	s.button_state, s.button_state_locked = state, locked and true or false
+end
+function Button.GetButtonState(self, s) return s.button_state or 'NORMAL' end
 function Button.SetPushedTextOffset(self, s, x, y) s.pushed_text_offset = { x, y } end
 function Button.GetPushedTextOffset(self, s) return s.pushed_text_offset[1], s.pushed_text_offset[2] end
 

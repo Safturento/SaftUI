@@ -988,6 +988,10 @@ function PlaceKind(kind)
 	if type(note) ~= 'string' then note = nil end
 	F.previewNote:SetText(note or '')
 	F.previewNote:SetShown(note ~= nil)
+	-- The note takes the room right of "Preview" and no more: a wide Text font
+	-- cuts it at the end rather than running over the caption.
+	F.previewNote:SetWordWrap(false)
+	F.previewNote:SetWidth(math.max(1, spec.inner - math.ceil(F.previewCaption:GetStringWidth()) - 8))
 	if def.Layout then
 		if not xpcall(def.Layout, geterrorhandler(), F.previewPieces[kind], spec.inner, PV.HEIGHT, spec.paint) then
 			return false

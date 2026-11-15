@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-15 — The color picker's preview copies other widgets' geometry](#2026-11-15--the-color-pickers-preview-copies-other-widgets-geometry)
   - [2026-11-15 — `/sui` following during a color drag](#2026-11-15--sui-following-during-a-color-drag)
   - [2026-11-15 — The Theme tab's color drag recolors every drawn frame](#2026-11-15--the-theme-tabs-color-drag-recolors-every-drawn-frame)
   - [2026-11-15 — Edit mode: a Theme pass with edit mode on still does the full look and list refresh](#2026-11-15--edit-mode-a-theme-pass-with-edit-mode-on-still-does-the-full-look-and-list-refresh)
@@ -204,6 +205,16 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-15 — The color picker's preview copies other widgets' geometry
+
+**What:** `SaftUI-Core/Config/optionspreview.lua` draws some tiles by copying another widget's geometry, since the kit exports no builder for them: the range's outline, edge, field and fill (`optionsrange.lua`), the sidebar row's tint and 2 wide bar (`optionsnav.lua`'s `item.bar:SetWidth(2)`), the own mark's inset (`optionsshare.lua`), and the edit mode grid's centre-line alpha and faint line color (`EditMode/grid.lua`'s `CENTER_ALPHA` and `LINE_COLOR`). The knob size and the own mark's width are read from the kit (`Kit.KNOB_WIDTH`, `Kit.KNOB_HEIGHT`, `OB.MARK_WIDTH`).
+
+**Why noticed:** Task 10 of the live colors plan (review M3). The UI scaling plan makes the engine's borders whole pixels of the frame; the kit's hand-drawn 1-unit lines (the range's track, the sidebar's bar, the own mark, the preview's copies) stay 1 unit, and the preview will drift from the real widgets unless it changes with them.
+
+**Anchors:** `SaftUI-Core/Config/optionspreview.lua` (the `accent` kind), `SaftUI-Core/Config/optionsrange.lua`, `optionsnav.lua`, `optionsshare.lua`, `SaftUI-Core/EditMode/grid.lua`; the UI scaling plan (`sc-task3`).
+
+**Shape of work:** for the UI scaling plan's later phase (the kit's 1-unit lines): add `optionspreview.lua` to the files it converts, or export the widgets' builders so the preview calls them. Small.
 
 ### 2026-11-15 — `/sui` following during a color drag
 
