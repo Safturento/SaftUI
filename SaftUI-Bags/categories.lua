@@ -134,6 +134,30 @@ end
 
 local IndexOf = INV.IndexOf
 
+-- A default that shows its shipped name beside a category with the same name
+-- (any case) gets "name (2)", "name (3)", ... as RestoreCategory and
+-- ResetCategory number one: a default a later version adds can meet the name
+-- of a category of yours. Only how the list shows it; nothing is saved, so
+-- the shipped name comes back when the other is renamed. The names kept as
+-- they are are your categories' and the defaults you renamed; a default is
+-- numbered against those and the defaults numbered before it.
+local function NumberShippedNames(entries, shipped)
+	local isShipped, taken = {}, {}
+	for _, entry in ipairs(shipped) do isShipped[entry] = true end
+	for _, entry in ipairs(entries) do
+		if not isShipped[entry] then taken[entry.name:lower()] = true end
+	end
+	for _, entry in ipairs(shipped) do
+		local name, n = entry.name, 1
+		while taken[name:lower()] do
+			n = n + 1
+			name = string.format('%s (%d)', entry.name, n)
+		end
+		entry.name = name
+		taken[name:lower()] = true
+	end
+end
+
 --[[
 	The saved order, else the default order, keeping each id once if it
 	exists: a default that isn't deleted (Grays/Auto Vendor, Equipment sets and
@@ -192,13 +216,21 @@ function INV:GetCategoryList()
 	add(self.MISC_CATEGORY)
 
 	local built = { byId = {} }
+	local shipped = {}
 	for place, id in ipairs(ids) do
 		local def = defaultById[id]
 		local entry = def and DefaultEntry(def, store.edits[id]) or CustomEntry(id, store.custom[id])
 		entry.place = place
 		built[place] = entry
 		built.byId[id] = entry
+		-- A default showing its shipped name (no rename of yours), numbered
+		-- below when another category has the name.
+		local edit = store.edits[id]
+		if def and not (type(edit) == 'table' and type(edit.name) == 'string' and edit.name ~= '') then
+			shipped[#shipped + 1] = entry
+		end
 	end
+	NumberShippedNames(built, shipped)
 	list, listStore = built, store
 	return list
 end

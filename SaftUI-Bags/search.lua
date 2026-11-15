@@ -6,8 +6,10 @@ local INV = st:GetModule('Inventory')
 -- slots that don't match it.
 
 function INV:InitializeSearch(container)
-	local search = st:CreateEditBox(container:GetName()..'Search',  container.footer, 'SearchBoxTemplate')
-	st:SkinEditBox(search, 'theme', 'theme')
+	-- st:CreateEditBox skins the box; its third argument would make it
+	-- multi-line. The skin is restyled, not applied a second time.
+	local search = st:CreateEditBox(container:GetName()..'Search', container.footer)
+	st:StyleEditBox(search, 'theme', 'theme')
 	search:SetHeight(20)
 	self:HookScript(search, 'OnTextChanged', 'UpdateSearchFilter')
 	container.search = search
