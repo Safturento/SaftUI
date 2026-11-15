@@ -30,17 +30,15 @@ function MicroMenu:SkinBarButton(button)
     end
     button:SetNormalTexture('')
 
-    local colors = st.config.profile.colors.button
-
     local hover = button:CreateTexture(nil, 'OVERLAY')
     hover:SetTexture(st.BLANK_TEX)
-    hover:SetVertexColor(colors.normal:GetRGB())
+    hover:SetVertexColor(st:ColorRGBA('button', 'normal'))
     hover:SetAllPoints(button)
     button:SetHighlightTexture(hover)
 
     local pushed = button:CreateTexture(nil, 'OVERLAY')
     pushed:SetTexture(st.BLANK_TEX)
-    pushed:SetVertexColor(colors.pushed:GetRGB())
+    pushed:SetVertexColor(st:ColorRGBA('button', 'pushed'))
     pushed:SetAllPoints(button)
     button:SetPushedTexture(pushed)
 
@@ -94,7 +92,7 @@ function MicroMenu:SkinTrackingButton()
 
         local hover = trackingButton:CreateTexture(nil, 'OVERLAY')
         hover:SetTexture(st.BLANK_TEX)
-        hover:SetVertexColor(st.config.profile.colors.button.hover:GetRGB())
+        hover:SetVertexColor(st:ColorRGBA('button', 'hover'))
         hover:SetAllPoints(trackingButton)
         trackingButton:SetHighlightTexture(hover)
     end

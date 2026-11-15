@@ -41,7 +41,7 @@ function MicroMenu:SkinQueueButton()
 
     local hover = button:CreateTexture(nil, 'OVERLAY')
     hover:SetTexture(st.BLANK_TEX)
-    hover:SetVertexColor(st.config.profile.colors.button.hover:GetRGB())
+    hover:SetVertexColor(st:ColorRGBA('button', 'hover'))
     hover:SetAllPoints(button)
     button:SetHighlightTexture(hover)
 

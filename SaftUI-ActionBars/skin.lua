@@ -407,8 +407,7 @@ function AB:StyleButton(button, config, theme, background)
 		skin.pushed:SetVertexColor(0, 0, 0, 0.1)
 		skin.checked:SetVertexColor(1, 1, 1, 0.3)
 		skin.checked:SetBlendMode('ADD')
-		local r, g, b = st:Color('button', 'danger'):GetRGB()
-		button.Flash:SetColorTexture(r, g, b, 0.4)
+		button.Flash:SetColorTexture(st:ColorRGBA('button', 'danger', 0.4))
 	end
 
 	-- LibActionButton set the fonts, anchors and the hotkey's and macro name's

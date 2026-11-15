@@ -29,7 +29,7 @@ The bar's effective config (`AB:GetBarConfig(id)`): size, spacing, and each text
 | Under the mouse | a white square at 15%, added over the icon (faint, so the icon stays readable) | white (`text-strong`'s value, hardcoded) at 0.15 |
 | Pressed | black at 10% | `pressed-fill` |
 | Checked (an active ability) | white at 30%, added | `checked-fill` |
-| Flash | Buttons > Danger at 40% | `flash-fill` |
+| Flash | Buttons > Danger at 40% (times its opacity, 100% by default) | `flash-fill` |
 | Equipped item | the border in the accent (Theme > Accent) | `accent` |
 | Unusable | the icon darkened to 0.4 | `alpha-disabled` |
 | Faded bar | the whole bar at `alpha-fade` until moused over | `alpha-fade` |

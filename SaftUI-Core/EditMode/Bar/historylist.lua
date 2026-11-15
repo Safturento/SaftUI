@@ -194,7 +194,7 @@ local function LookList()
 			row.hover:SetAlpha(1)
 		else
 			row.hover:SetColorTexture(OB.Accent())
-			row.hover:SetAlpha(0.25)
+			row.hover:SetAlpha(st.TINT_ROW)
 		end
 		row.mark:SetColorTexture(OB.Accent())
 		row.line:SetColorTexture(unpack(OB.HAIRLINE))

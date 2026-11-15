@@ -140,7 +140,7 @@ local function PlaceListRow(row, i)
 end
 
 -- The list in SaftUI's theme now, when it changed. Box, the rows inside its
--- edge (LIST_INSETS), a row under the mouse lit in the accent at 0.25. Or under
+-- edge (LIST_INSETS), a row under the mouse lit in the accent at st.TINT_ROW (0.25). Or under
 -- Blizzard the Settings menu's (st.ThemeArt.Control('dropdown')): no Box;
 -- c-bg, the menu's own border and shadow, on list.skin, a plain frame of
 -- SaftUI's just under the list (the theme draws nothing on it, so there's no
@@ -175,7 +175,7 @@ local function LookList()
 			row.hover:SetAlpha(1)
 		else
 			row.hover:SetColorTexture(st:Color('accent'):GetRGB())
-			row.hover:SetAlpha(0.25)
+			row.hover:SetAlpha(st.TINT_ROW)
 		end
 	end
 end
@@ -209,7 +209,7 @@ local function BuildList()
 		row.hover = row:CreateTexture(nil, 'BACKGROUND')
 		row.hover:SetAllPoints()
 		row.hover:SetColorTexture(st:Color('accent'):GetRGB())
-		row.hover:SetAlpha(0.25)
+		row.hover:SetAlpha(st.TINT_ROW)
 		row.hover:Hide()
 		row.text = NewText(row, 'LEFT')
 		row.text:SetPoint('LEFT', row, 'LEFT', 8, 0)

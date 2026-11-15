@@ -648,13 +648,13 @@ test("Global settings' Colors and Theme: no Reset buttons; a changed color's own
 		check(not shown(cell('MAGE')), 'drawn again: none')
 		probe.OnColorsChanged = nil
 
-		-- A Buttons color names its opacity.
+		-- A Buttons color names its opacity when its default is under 100%; the defaults are 100% now.
 		local hover = st.config.profile.colors.button.hover
 		colorCell('button', 'hover').widget:Commit(hover.r, hover.g, hover.b, 0.5)
 		stub.fire_script(icon_of(colorCell('button', 'hover')), 'OnEnter', true)
 		local db = st.defaults.colors.button.hover
 		eq(tip.lines[2], ('Hover goes back to its default: %s.'):format(W.HexText(db.r, db.g, db.b, db.a, true)), 'with its opacity')
-		check(tip.lines[2]:find('%%') ~= nil, 'a percent in it')
+		check(tip.lines[2]:find('%%') == nil, "no percent: the default is Buttons' own 100%")
 		stub.click(icon_of(colorCell('button', 'hover')))
 		eq(hover.a, db.a, 'its opacity back')
 

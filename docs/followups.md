@@ -173,7 +173,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **Anchors:** `SaftUI-Misc/totemoptions.lua:21,24`; `SaftUI-Tracker/options.lua:143-144`; `SaftUI-Unitframes/elements/name.lua:71`; `README.md:43` (both turn red in the last 10 seconds); `docs/design-system/25-colour-roles.md`.
 
-**Shape of work:** a wording pass over five strings; the tests that pin a description's text change with them. The reaction color's own description ("red when hostile") is about the Reputation colors, which are not roles, so it stays.
+**Shape of work:** a wording pass over six strings; the tests that pin a description's text change with them. The reaction color's own description ("red when hostile") is about the Reputation colors, which are not roles, so it stays.
 
 ### 2026-11-15 — Keybind mode's hint line could read Muted
 
@@ -553,7 +553,7 @@ Then, with the switch on, the spec's G1 to G12, each with the task that built it
 
 **Being built or planned elsewhere:** 5, 15, 31 to 33 (the edit mode bar: `docs/superpowers/specs/2026-11-13-saftui-edit-mode-bar-design.md`); 9, 13, 17 (the colour control as a field, Copy from beside the Unit dropdown: branch `fb-kit2`); 11, 12 (scaling and the small-text font: their own followup); 25 (overlapping mover labels: in the edit mode bar's plan).
 
-**Shape of work:** Several small tasks (20, 21, 28, 29, 30, 8, 22 are each small) and two projects (the theme-following options window with the accent and one button; the colour roles rename). Group the small ones into one or two passes.
+**Shape of work:** Several small tasks (20, 21, 28, 29, 30, 8, 22 are each small) and two projects (the theme-following options window with the accent and one button; the colour roles rename, which is built: decisions 7, 14 and 48, color roles Tasks 1 to 5). Group the small ones into one or two passes.
 
 ### 2026-11-13 — Objective tracker skin: in-game checks and what was left out
 

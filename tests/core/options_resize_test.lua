@@ -38,6 +38,24 @@ end
 
 ------------------------------------------------------------------ /sui grows taller
 
+test("the grip's corner is Buttons > Hover at its opacity, at an odd color: 100% is its own strength, 50% half", function()
+	local hover = st.config.profile.colors.button.hover
+	for _, a in ipairs({ 1, 0.5 }) do
+		close_all()
+		theme('thick')
+		hover:SetRGB(0.9, 0.2, 0.6); hover.a = a
+		st.config.global.optionsWindow = nil
+		st.Config:Open('Loot')
+		local F = frames()
+		for _, state in ipairs({ 'Highlight', 'Pushed' }) do
+			local texture = F.grip['Get' .. state .. 'Texture'](F.grip)
+			eq(rgba(texture:GetVertexColor()), rgba(0.9, 0.2, 0.6, a), state .. ' at ' .. a * 100 .. '%')
+		end
+	end
+	close_all()
+	hover:SetRGB(0.3, 0.5, 0.7); hover.a = 1
+end)
+
 test('/sui grows taller by its bottom edge or its grip: its width and top stay, the body takes the height, and it remembers it', function()
 	theme('thick')
 	st.config.global.optionsWindow = nil

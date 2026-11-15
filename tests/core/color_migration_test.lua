@@ -159,11 +159,12 @@ local EXPECTED = {
 	['text.muted'] = RGB(0.4, 180/255, 180/255), -- Text > Grey's default was 180 when step 3 shipped
 	['text.strong'] = RGB(1, 0.9, 1), ['text.danger'] = RGB(1, 100/255, 100/255), ['text.warning'] = RGB(220/255, 0.2, 100/255),
 	['text.caution'] = RGB(200/255, 200/255, 0), ['text.success'] = RGB(0.5, 240/255, 60/255), ['text.shared'] = RGB(120/255, 202/255, 0.2),
-	['button.danger'] = RGB(0.9, 0.1, 0.1),
+	['button.danger'] = RGB(0.9, 0.1, 0.1), ['button.hover'] = RGB(0.6, 0.5, 0.7), -- step 5 keeps a customized Buttons color
 }
 test('a profile saved before any of this runs every step at once, in order', function()
 	fresh(on(OLD_SAVED()))
 	for path, want in pairs(EXPECTED) do eq(rgb(Slot(st.config.profile, path)), want, path) end
+	for _, key in ipairs({ 'normal', 'hover', 'pushed', 'danger' }) do eq(st.config.profile.colors.button[key].a, 1, 'step 5: Buttons > ' .. key .. ' back at 100%') end
 	eq(st.config.profile.colors.version, LAST())
 end)
 
@@ -307,7 +308,7 @@ test('step 3: a customized Buttons > Grey is dropped, and never reaches Muted', 
 	-- Both customized: Text > Grey wins, Buttons > Grey goes.
 	local raw = { colors = { text = { grey = { r = 0.4 } }, button = { grey = { r = 0.9 }, normal = { a = 0.3 } } } }
 	st:MigrateColors(raw)
-	eq(raw.colors.text.muted.r, 0.4); eq(raw.colors.button.grey, nil); eq(raw.colors.button.normal.a, 0.3, 'the rest of Buttons is left alone')
+	eq(raw.colors.text.muted.r, 0.4); eq(raw.colors.button.grey, nil); eq(raw.colors.button.normal.a, 1, 'the rest of Buttons is left alone, but step 5 puts its opacity back to 100%'); eq(raw.colors.button.normal.r, nil, 'and its color')
 	raw = { colors = { button = { grey = 5 }, text = { grey = 'x' } } }
 	check(pcall(st.MigrateColors, st, raw)); eq(raw.colors.button.grey, nil, 'retired even when it is not a table'); eq(raw.colors.text.muted, nil)
 end)
@@ -365,7 +366,7 @@ test('step 4: each state color takes its hue, and Buttons > Danger takes Buttons
 	eq(rgb(c.text.strong), RGB(1, 0.9, 1)); eq(rgb(c.text.danger), RGB(1, 100/255, 100/255))
 	eq(rgb(c.text.warning), RGB(220/255, 0.2, 100/255)); eq(rgb(c.text.caution), RGB(200/255, 200/255, 0))
 	eq(rgb(c.text.success), RGB(0.5, 240/255, 60/255)); eq(rgb(c.text.shared), RGB(120/255, 202/255, 0.2))
-	eq(rgb(c.button.danger), RGB(0.9, 0.1, 0.1)); eq(c.button.danger.a, st.defaults.colors.button.danger.a, "Buttons > Danger's own opacity, not Red's 0.5")
+	eq(rgb(c.button.danger), RGB(0.9, 0.1, 0.1)); eq(c.button.danger.a, st.defaults.colors.button.danger.a, "Buttons > Danger's own opacity (100%), not Red's 0.5")
 	for _, key in ipairs(STATE) do check(c.text[key].GetRGB, key .. ': the methods are kept') end
 	eq(c.loot.pass.r, 1, 'the same source fed step 1'); eq(c.roles.HEALER.r, 0.5)
 	for _, k in ipairs(OLD_STATE) do eq(rawget(c.text, k), nil, k) end
@@ -414,7 +415,7 @@ test('step 4: a partial color has its missing channels filled from the frozen ol
 	eq(rgb(raw.colors.text.strong), RGB(1, 0.5, 1)); eq(raw.colors.text.strong.a, nil)
 	eq(rgb(raw.colors.text.shared), RGB(120/255, 202/255, 0.9), "a channel that isn't a number takes the old default's")
 	eq(rgb(raw.colors.text.warning), RGB(0, 150/255, 100/255))
-	eq(rgb(raw.colors.button.danger), RGB(0.6, 0.4, 0.1)); eq(raw.colors.button.danger.a, nil)
+	eq(rgb(raw.colors.button.danger), RGB(0.6, 0.4, 0.1)); eq(raw.colors.button.danger.a, 1, "Red's 0.1 is never copied: step 5 writes 100%")
 end)
 
 test('step 4: a color still at its old default (an opacity alone, or to the byte) copies nothing', function()
@@ -501,4 +502,123 @@ test('the frozen table holds every retired key, and is unchanged since Task 3', 
 		'button.red', 'button.green', 'button.blue', 'button.yellow', 'button.grey' }
 	for _, key in ipairs(want) do check(old[key], key) end
 	eq(rgb(old['text.cyan']), RGB(120/255, 202/255, 250/255)); eq(rgb(old['button.red']), RGB(0.6, 0.1, 0.1)); eq(old['button.red'].a, 0.8)
+end)
+
+------------------------------------------------------------------ step 5: opacity
+
+local BUTTONS = { 'normal', 'hover', 'pushed', 'danger' }
+
+test('step 5: every saved Buttons opacity goes back to 100%, in place, never nil', function()
+	fresh(on({ colors = { button = { normal = { a = 0.3 }, hover = { r = 0.6, a = 0.1 }, pushed = { a = 0.5 }, danger = { g = 0.4, a = 0.5 } } } }))
+	local b = st.config.profile.colors.button
+	for _, k in ipairs(BUTTONS) do eq(b[k].a, 1, k); check(b[k].GetRGB, k .. ': the methods are kept') end
+	eq(b.hover.r, 0.6, 'its color kept'); eq(b.danger.g, 0.4, "and Danger its own")
+	eq(st.defaults.colors.button.hover.a, 1, 'the default is 100%')
+	local raw = { colors = { version = 4, button = { hover = { a = 0.2 } } } }; st:MigrateColors(raw)
+	eq(raw.colors.button.hover.a, 1); eq(raw.colors.button.normal, nil, 'no table made'); eq(raw.colors.version, LAST())
+	st.config:SetProfile('Two')
+	local saved = SaftUI_DB.profiles.Old.colors.button
+	eq(saved.hover.r, 0.6); eq(saved.hover.a, nil, 'AceDB keeps no opacity that is the default')
+	eq(saved.normal, nil, 'and nothing of a color that only had one')
+end)
+
+test('step 5 is the last step of the migration, and only touches opacity', function()
+	fresh(on({}))
+	local step = st:GetModule('Colors').MIGRATION_STEPS[5]
+	eq(#st:GetModule('Colors').MIGRATION_STEPS, 5)
+	eq(step.copy, nil); eq(step.retire, nil)
+	eq(table.concat(step.opacity, ','), 'button.normal,button.hover,button.pushed,button.danger')
+end)
+
+test('step 5: a partial table keeps its colors and only its opacity changes; a table with no opacity gets 100%', function()
+	local raw = { colors = { version = 4, button = { normal = { r = 0.9 }, hover = { a = 0.1 }, pushed = { r = 0.1, g = 0.2, b = 0.3, a = 0 }, danger = {} } } }
+	st:MigrateColors(raw)
+	local b = raw.colors.button
+	eq(b.normal.r, 0.9); eq(b.normal.a, 1, 'a table with no opacity gets 100% written')
+	eq(b.hover.a, 1); eq(b.hover.r, nil)
+	eq(rgb(b.pushed), RGB(0.1, 0.2, 0.3)); eq(b.pushed.a, 1, 'even 0%')
+	eq(b.danger.a, 1)
+	eq(raw.colors.version, LAST())
+end)
+
+test('step 5: data it does not expect is left alone, and nothing raises', function()
+	for _, bad in ipairs({ 'x', 5, true }) do
+		local raw = { colors = { version = 4, button = bad } }
+		check(pcall(st.MigrateColors, st, raw)); eq(raw.colors.button, bad, 'a Buttons group that is ' .. type(bad))
+		eq(raw.colors.version, LAST())
+	end
+	local raw = { colors = { version = 4, button = { normal = 5, hover = 'x', pushed = true, danger = { a = 'x' } } } }
+	check(pcall(st.MigrateColors, st, raw))
+	eq(raw.colors.button.normal, 5); eq(raw.colors.button.hover, 'x'); eq(raw.colors.button.pushed, true, 'a color that is no table: left as it is')
+	eq(raw.colors.button.danger.a, 1, 'an opacity that is no number is put right')
+	raw = { colors = { version = 4 } }
+	st:MigrateColors(raw); eq(raw.colors.button, nil, 'no Buttons group made'); eq(raw.colors.version, LAST())
+end)
+
+test('step 5: the other Buttons keys and other groups are untouched', function()
+	local raw = { colors = { version = 4, button = { hover = { a = 0.2 }, grey = { a = 0.2 } }, text = { normal = { a = 0.4 } }, class = { MAGE = { a = 0.3 } } } }
+	st:MigrateColors(raw)
+	eq(raw.colors.button.grey.a, 0.2, 'a key that is no Buttons color'); eq(raw.colors.text.normal.a, 0.4); eq(raw.colors.class.MAGE.a, 0.3)
+end)
+
+test('step 5 on a real AceDB at version 0 to 4, run twice, and never run again', function()
+	for version = 0, 4 do
+		fresh(on({ colors = { version = version, button = { hover = { r = 0.2, a = 0.3 }, normal = { a = 0.1 } } } }))
+		local c = st.config.profile.colors
+		eq(c.button.hover.a, 1, 'version ' .. version); eq(c.button.hover.r, 0.2); eq(c.button.normal.a, 1); eq(c.version, LAST())
+		local once = Dump(c)
+		st:MigrateColors(st.config.profile); eq(Dump(st.config.profile.colors), once, 'run twice: no change')
+	end
+	-- Once at the last step, an opacity chosen since stays.
+	fresh(on({ colors = { version = LAST(), button = { hover = { a = 0.4 } } } }))
+	eq(st.config.profile.colors.button.hover.a, 0.4, 'a profile at the last step keeps the opacity it was given after')
+	st:MigrateColors(st.config.profile); eq(st.config.profile.colors.button.hover.a, 0.4, 'and a second run')
+	fresh(on({ colors = { version = LAST() + 3, button = { hover = { a = 0.4 } } } }))
+	eq(st.config.profile.colors.button.hover.a, 0.4); eq(st.config.profile.colors.version, LAST() + 3, 'a version above the last is never lowered')
+end)
+
+test('step 5: an opacity chosen after the migration survives the next login', function()
+	fresh(on({ colors = { button = { hover = { a = 0.3 } } } }))
+	eq(st.config.profile.colors.button.hover.a, 1)
+	st.config.profile.colors.button.hover.a = 0.5 -- as the Colors tab's slider writes it
+	st.config:SetProfile('Two'); st.config:SetProfile('Old')
+	eq(st.config.profile.colors.button.hover.a, 0.5, 'a switch away and back keeps it')
+	st:MigrateColors(st.config.profile)
+	eq(st.config.profile.colors.button.hover.a, 0.5, 'a second run')
+	local saved = SaftUI_DB
+	fresh(saved)
+	eq(st.config.profile.colors.button.hover.a, 0.5, 'and so does the next login')
+end)
+
+test('step 5: a profile created after the upgrade has every Buttons color at 100% and is migrated at once', function()
+	fresh(on({}))
+	st.config:SetProfile('Brand new')
+	local b = st.config.profile.colors.button
+	for _, k in ipairs(BUTTONS) do eq(b[k].a, 1, k) end
+	eq(st.config.profile.colors.version, LAST())
+	eq(rgb(b.hover), RGB(0.3, 0.5, 0.7), 'at their default colors')
+end)
+
+test('step 5: a switch to, a copy from and a reset of an unmigrated profile reset the opacities', function()
+	fresh(on({}))
+	SaftUI_DB.profiles.Two = { colors = { button = { normal = { a = 0.2 }, pushed = { r = 0.4, a = 0.9 } } } }
+	SaftUI_DB.profiles.Three = { colors = { version = 4, button = { hover = { a = 0.2 } } } }
+	st.config:SetProfile('Two')
+	eq(st.config.profile.colors.button.normal.a, 1); eq(st.config.profile.colors.button.pushed.a, 1); eq(st.config.profile.colors.button.pushed.r, 0.4)
+	st.config:SetProfile('Old'); st.config:CopyProfile('Three')
+	eq(st.config.profile.colors.button.hover.a, 1, 'a copy from a profile at version 4: step 5 alone')
+	st.config.profile.colors.button.hover.a = 0.5; st.config:ResetProfile()
+	eq(st.config.profile.colors.button.hover.a, 1, 'a reset puts 100% back')
+end)
+
+test('step 5 in combat: a switch migrates at once', function()
+	fresh(on({})); SaftUI_DB.profiles.Two = { colors = { button = { hover = { a = 0.2 } } } }
+	stub.in_combat = true; st.config:SetProfile('Two')
+	eq(st.config.profile.colors.button.hover.a, 1); eq(#stub.blocked, 0); stub.in_combat = false
+end)
+
+test('step 5 after step 4: the Danger made from Buttons > Red is at 100% too, and its old 0.5 was never copied', function()
+	local raw = { colors = { version = 3, button = { red = { r = 0.9, a = 0.5 } } } }
+	st:MigrateColors(raw)
+	eq(rgb(raw.colors.button.danger), RGB(0.9, 0.1, 0.1)); eq(raw.colors.button.danger.a, 1)
 end)

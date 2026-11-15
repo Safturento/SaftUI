@@ -585,6 +585,14 @@ test('a row under the mouse is filled at 25% accent, or with the dropdown list\'
 	check(row.hover:IsShown(), 'under the mouse: filled')
 	eq(row.hover:GetAlpha(), 0.25, 'at 25%')
 	eq((fill(row.hover)), rgb(st.config.profile.theme.accent), 'in the accent')
+	do -- at the row tint, by its name, not a number of its own
+		local keep = st.TINT_ROW
+		st.TINT_ROW = 0.4
+		look('blizzard'); look('thick')
+		eq(row.hover:GetAlpha(), 0.4, 'at st.TINT_ROW')
+		st.TINT_ROW = keep
+		look('blizzard'); look('thick')
+	end
 	do
 		local accent = st.config.profile.theme.accent
 		accent:SetRGB(0.9, 0.1, 0.2)

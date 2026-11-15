@@ -14,7 +14,7 @@ local floor, max, min = math.floor, math.max, math.min
 
 -- From optionslayout.lua and optionswindow.lua.
 local Margins = S.Margins
-local F, Colors, Schedule, SaveWindow = S.F, S.Colors, S.Schedule, S.SaveWindow
+local F, Schedule, SaveWindow = S.F, S.Schedule, S.SaveWindow
 local SetScroll, SetNavScroll = S.SetScroll, S.SetNavScroll
 
 ------------------------------------------------------------------ growing taller
@@ -146,7 +146,7 @@ end
 
 -- The grip in the look: Blizzard's PanelResizeButtonTemplate
 -- (st.ThemeArt.Control('resizegrip')), or st:EnableResizing's corner, its
--- highlight and pushed tinted the buttons' hover color, the highlight blended.
+-- highlight and pushed tinted the buttons' hover color at its opacity, the highlight blended.
 local function LookGrip()
 	local grip = F.grip
 	local look = S.blizzard and st.ThemeArt.Control('resizegrip')
@@ -160,11 +160,11 @@ local function LookGrip()
 		grip.pushed:SetVertexColor(1, 1, 1, 1)
 		grip.highlight:SetBlendMode(look.highlightBlend)
 	else
-		local r, g, b = Colors().button.hover:GetRGB()
+		local r, g, b, a = st:ColorRGBA('button', 'hover')
 		grip:SetSize(GRIP_SIZE, GRIP_SIZE)
 		for _, texture in ipairs({ grip.normal, grip.highlight, grip.pushed }) do texture:SetTexture(st.textures.cornerbr) end
-		grip.highlight:SetVertexColor(r, g, b, 1)
-		grip.pushed:SetVertexColor(r, g, b, 1)
+		grip.highlight:SetVertexColor(r, g, b, a)
+		grip.pushed:SetVertexColor(r, g, b, a)
 		grip.highlight:SetBlendMode('BLEND')
 	end
 end

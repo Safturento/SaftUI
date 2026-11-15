@@ -1,6 +1,8 @@
 # Colour roles: analysis and proposal
 
-A proposal, not yet decided. The Colors page lets the player change colours that are named after a hue (Blue, Red, Green and so on), which can then stop being that hue. This page lists every use of each one and proposes names that say what the colour is for.
+Built by `docs/superpowers/specs/2026-11-14-saftui-color-roles-design.md` (2026-11-14); this page is the audit it started from.
+
+The Colors page lets the player change colours that are named after a hue (Blue, Red, Green and so on), which can then stop being that hue. This page lists every use of each one and proposes names that say what the colour is for.
 
 ## Questions for the owner
 
