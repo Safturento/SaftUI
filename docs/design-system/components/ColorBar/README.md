@@ -4,11 +4,11 @@ A color option: a field as wide and tall as a dropdown, a swatch at its left and
 
 ## When to use
 
-Every color option (Ace `color`). A click anywhere on the field opens Blizzard's color picker, raised over the window.
+Every color option (Ace `color`). A click anywhere on the field opens SaftUI's own color picker (not Blizzard's), raised over the window beside the field: a square for shade, a hue strip, an opacity strip with `hasAlpha`, the red, green, blue, opacity and hex boxes, Last used, and Okay and Cancel. Every change is live: the field's swatch and code follow it, and Cancel puts the opening color back.
 
 ## What the consumer provides
 
-`get`/`set` of r, g, b (and a), `hasAlpha = true` when opacity matters, `name`, `desc`. A color is never `'small'`: its field is a dropdown's width.
+`get`/`set` of r, g, b (and a), `hasAlpha = true` when opacity matters, `name`, `desc`. A color is never `'small'`: its field is a dropdown's width. Optionally `preview`, SaftUI's own field (never inherited): a kind's name (`'text'`) or `{ kind = 'text', sample = '...' }`, which adds a preview of the color in context under the picker's square. The Colors page's Text, Factions, Loot letters and Objectives rows carry one so far.
 
 ## Sizes and tokens
 
@@ -36,7 +36,11 @@ The box takes its own click and has its own tooltip, which says what unticked me
 
 - Under the mouse: the edge turns `accent`, as an input's.
 - Disabled: `alpha-disabled`, label `text-muted`; it takes no mouse.
-- While Blizzard's picker is open the swatch, the checker and the code follow the picked color live.
+- While the picker is open the swatch, the checker and the code follow the picked color live.
+
+## The picker's preview
+
+With a `preview` the picker is 94 taller (436, not 342) and shows a strip under the square: the caption "Preview" in `text-muted` at 248, then the area, the picker's inner width (370, or 402 with an opacity) by 64, at 266, and Last used 12 under it. The `text` kind is three tiles 118 by 44, on a thick panel, a thin panel and the Options windows background (over a strip of the `world` stand-in so its see-through shows), each with "Text" in `text` beside a sample in the color being picked and its caption (Thick, Thin, Options windows) in `text-muted`. The other kinds (buttons, bars, borders, the accent) come with later work. Without a `preview` the picker is today's, with no strip. There is no Class colors row in the picker; the Colors page edits those.
 
 ## Legibility
 

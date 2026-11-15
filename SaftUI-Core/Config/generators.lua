@@ -157,6 +157,8 @@ local function NumberInputGet(info)
 	return value ~= nil and tostring(value) or ''
 end
 
+generators.NumberInputGet = NumberInputGet -- the reset kit looks through it to the group's get (optionsdefault.lua)
+
 local function NumberInputSet(info, value)
 	local set = InheritedHandler(info, 'set')
 	if type(set) == 'function' then

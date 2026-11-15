@@ -111,7 +111,7 @@ local function GetConfigTable(unit)
 			background = G.background(4.5),
 			alpha = G.alpha(5, 'How solid the power bar is, from see-through to opaque.'),
 			framelevel = G.framelevel(6, 'Draws the bar over the parts of the unit frame with a lower frame level, and under those with a higher one.'),
-			size = UF.GenerateRelativeSizeConfigGroup(8, UF.SavedIn(unit, 'power')),
+			size = UF.GenerateRelativeSizeConfigGroup(8),
 			colors = UF.GenerateColorsConfigGroup(9, unit, 'power',
 				{ 'colorDisconnected', 'colorTapping', 'colorPower', 'colorClass', 'colorClassNPC', 'colorClassPet', 'colorReaction' },
 				function() return UnitConfig().power end, Update),

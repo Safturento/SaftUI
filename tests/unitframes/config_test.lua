@@ -92,10 +92,10 @@ load_saftui('SaftUI-Unitframes/updaters.lua')
 load_saftui('SaftUI-Unitframes/nameplates/nameplates.lua')
 load_saftui('SaftUI-Unitframes/nameplates/threat.lua')
 load_saftui('SaftUI-Unitframes/nameplates/options.lua')
--- elements/elements.xml's order; aurawatch.lua and portrait.lua register nothing.
-for _, file in ipairs({ 'name', 'auras', 'power', 'additionalpower', 'health', 'castbar', 'classpower', 'indicators' }) do
-	load_saftui('SaftUI-Unitframes/elements/' .. file .. '.lua')
-end
+-- Every element file the TOC loads that defines options (lib/options_files.lua's rule), in the TOC's
+-- order: a new element cannot be missed by the walk. (aurawatch.lua and portrait.lua register nothing.)
+local OF = load_test_file('lib/options_files.lua')
+for _, path in ipairs(OF.Files('SaftUI-Unitframes/elements/')) do load_saftui(path) end
 -- The name tag (tags.lua), with LibStringFormat-1.0, which init.lua makes
 -- st.StringFormat.
 UF.oUF = { Tags = { Events = {}, Methods = {} }, colors = { class = st.config.profile.colors.class } }
@@ -127,8 +127,8 @@ function UF:RestoreNameplateCVars() end
 -- Every row of every unit's page has a reset (the kit derives it from where the row is saved), and each
 -- derived one round-trips. First, on the profile as it starts: no case before this changes a value.
 local R = load_test_file('lib/reset_walk.lua')
--- The walk's round trips copy the whole profile twice per derived row, so a walk of every unit
--- at once is far over the harness's limit for one case (about 25 s). One cheap walk of every row
+-- The walk's round trips compare the whole profile with a copy twice per derived row, so a walk of
+-- every unit at once is far over the harness's limit for one case. One cheap walk of every row
 -- (probe = false: each has a source, a default, and is at it on this fresh profile), then the
 -- round trips for a few units, each its own case.
 local function Page(units)
@@ -180,6 +180,7 @@ test('resets on a unit frame profile of another name write that profile, and lea
 	local root = { Unitframes = UF:GetConfigTable() }
 	local row = RowAt(root, { 'Unitframes', 'player', 'Health', 'enable' })
 	local _, defaultValue = st:DefaultAt('unitframes', 'profiles', 'Healer', 'player', 'health', 'enable')
+	eq(select(3, UF.SavedAt('player', 'health', 'enable')({})), 'Healer', "the row's saved path names the profile in use")
 	check(not OM.DefaultDiffers(root, row), 'a fresh Healer profile has the default')
 	local firstValue = profiles[first].player.health.enable
 	healer.player.health.enable = not defaultValue

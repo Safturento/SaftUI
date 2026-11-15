@@ -9,7 +9,6 @@
 -- The pages are synthetic, saved under a profile key of this file's own.
 local H = load_test_file('core/options_window_helpers.lua')
 local st = SaftUI
-load_saftui('SaftUI-Core/Config/optionsdefault.lua')
 local OM, OB, W = st.OptionsModel, st.OptionsBody, st.OptionsWidgets
 local EM = st.EditModeFrames
 local generators = st.Config.generators
@@ -476,6 +475,81 @@ test('asking whether a row differs allocates nothing, ten thousand times, on eve
 		collectgarbage('restart')
 		check(grown < 20, each.type .. ' at its default makes no table per ask (grew ' .. grown .. ' KB)')
 	end
+end)
+
+test("asking a hand default row whether it differs makes no table of its own: the icon asks it on every render", function()
+	local root = setup()
+	local calls, seen = 0, nil
+	root.Page.args.hand = {
+		type = 'toggle', name = 'By hand', order = 9,
+		get = function() return data().toggle end,
+		set = function(_, value) data().toggle = value end,
+		default = {
+			differs = function(info) calls = calls + 1; seen = info; return data().toggle ~= true end,
+			reset = function() data().toggle = true end,
+		},
+	}
+	local row = new_row(root, 'Page', 'hand')
+	eq(OM.DefaultSource(root, row), 'default', 'a hand default')
+	data().toggle = false
+	check(OM.DefaultDiffers(root, row), 'it differs')
+	eq(seen[1], 'Page', 'differs is given an info with the path')
+	eq(seen[2], 'hand', 'to the row')
+	eq(seen.option, root.Page.args.hand, 'and its option')
+	data().toggle = true
+	check(not OM.DefaultDiffers(root, row), 'and not at its default')
+	-- The test's xpcall hands arguments on through a table, as the game's does not: with the plain one
+	-- (and the differs ignoring its info) only the kit's own allocations are left.
+	local game_xpcall = xpcall
+	xpcall = function(f, _, ...) return pcall(f, ...) end
+	root.Page.args.hand.default.differs = function() return false end
+	collectgarbage(); collectgarbage('stop')
+	local before = collectgarbage('count')
+	for _ = 1, 10000 do OM.DefaultDiffers(root, row) end
+	local grown = collectgarbage('count') - before
+	collectgarbage('restart')
+	xpcall = game_xpcall
+	check(grown < 20, 'a hand default makes no table per ask (grew ' .. grown .. ' KB)')
+end)
+
+test("a hand default whose differs errors counts as not differing, and the error goes to the handler", function()
+	local root = setup()
+	root.Page.args.hand = {
+		type = 'toggle', name = 'By hand', order = 9,
+		get = function() return data().toggle end,
+		set = function(_, value) data().toggle = value end,
+		default = { differs = function() error('boom') end, reset = function() end },
+	}
+	local row = new_row(root, 'Page', 'hand')
+	eq(OM.DefaultDiffers(root, row), false, 'an erroring differs shows no icon')
+	local errors = take_errors()
+	eq(#errors, 1, 'and is reported once')
+	check(tostring(errors[1]):find('boom', 1, true), 'with its message')
+end)
+
+test("a Width or Height box's get hands on to its group's: the group's saved reaches it, its own wins, and a get of the page's own is left alone", function()
+	local root = setup()
+	st.defaults.sv_.width, st.defaults.sv_.height = 200, 30
+	data().width, data().height = 200, 30
+	local box = root.Page.args.box
+	box.args.width = generators.width(7, 'Width')
+	box.args.height = generators.height(8, 'Height')
+	local width = new_row(root, 'Page', 'box', 'width')
+	eq(OM.DefaultSource(root, width), 'derived', "the Width box is derived with no saved of its own: the group's reaches it")
+	check(not OM.DefaultDiffers(root, width), 'at its default')
+	check(OM.WriteValue(root, width, '260'), 'a change is written through its own set')
+	eq(data().width, 260, 'a number, in the profile')
+	check(OM.DefaultDiffers(root, width), 'it differs')
+	check(OM.DefaultReset(root, width), 'its reset runs')
+	eq(data().width, 200, 'and puts the default back')
+	-- Its own saved still wins, as a page may give it: the box then reads against that key's default.
+	box.args.height.saved = st.Config.SavedAt('sv_', 'range')
+	local height = new_row(root, 'Page', 'box', 'height')
+	check(OM.DefaultDiffers(root, height), "a box's own saved is the one read (30 against the range's 0.3)")
+	-- A box that says it has no reset (Chat's size, which keeps the hand-on get) is none, not derived from the group.
+	box.args.height.saved = nil
+	box.args.height.noReset = 'no default'
+	eq(OM.DefaultSource(root, height), 'none', 'a noReset box is none')
 end)
 
 ------------------------------------------------------------------ DefaultAt, merged tables (C1)

@@ -124,21 +124,6 @@ function LT:GetFeedOptions()
 	return Section('Feed', 2, general, BuildPosition('feed', LT.feed, apply))
 end
 
--- A popup row's own reset (the options kit's `default` field): the rotate-ccw
--- icon while the setting differs from its default, putting it back and
--- applying it. The Font row's is replaced below with the Fonts module's, which
--- also tells the fonts (st:FontsChanged).
-local function PopupDefault(key, apply)
-	return {
-		differs = function() return LT.config.popup[key] ~= st.defaults.loot.popup[key] end,
-		reset = function()
-			LT.config.popup[key] = st.defaults.loot.popup[key]
-			apply()
-		end,
-		value = function() return st.defaults.loot.popup[key] end,
-	}
-end
-
 -- The Loot window page: Blizzard's loot window (the one that lists what a
 -- corpse or chest holds) in SaftUI's look. There's no Position: the window
 -- opens where Blizzard's own setting says (at the cursor, or Edit Mode's).
@@ -154,17 +139,7 @@ function LT:GetPopupOptions()
 		background = generators.background(3),
 		font = font,
 	}, apply)
-	for key, option in pairs(general.args) do
-		option.default = PopupDefault(key, apply)
-	end
-	-- A font is a shared font's key or a typeface; its reset also tells the fonts.
-	local Fonts = st:GetModule('Fonts', true)
-	if Fonts and Fonts.FontSettingDefault then
-		general.args.font.default = Fonts.FontSettingDefault(
-			function() return LT.config.popup.font end,
-			function(_, value) LT.config.popup.font = value; apply() end,
-			st.defaults.loot.popup.font)
-	end
+	-- Each row's reset is derived from where BuildGeneral saves it (loot.popup).
 	return {
 		name = 'Loot window',
 		type = 'group',

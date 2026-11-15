@@ -19,7 +19,6 @@
 load_test_file('core/config_helpers.lua')
 local st = SaftUI
 load_saftui('SaftUI-Core/Config/optionsmodel.lua')
-load_saftui('SaftUI-Core/Config/optionsdefault.lua')
 local OM = st.OptionsModel
 
 local function Tab() return st.Config:GetOptionsTable().Fonts.args.theme end

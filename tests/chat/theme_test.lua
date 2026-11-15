@@ -33,7 +33,7 @@ test("every value row of the Chat page has a reset", function()
 	NUM_CHAT_WINDOWS = 0 -- no chat windows: the apply loops have nothing to restyle, the rows' own sets still run
 	CHT:RegisterChatMover() -- the Position's reset is its mover's
 	local R = load_test_file('lib/reset_walk.lua')
-	local ok, err = pcall(R.check_page, { Chat = CHT:GetConfigTable() }, 'Chat')
+	local ok, err = pcall(function() R.check_page({ Chat = CHT:GetConfigTable() }, 'Chat') end)
 	NUM_CHAT_WINDOWS = had
 	if not ok then error(err, 0) end
 

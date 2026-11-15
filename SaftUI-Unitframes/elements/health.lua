@@ -194,7 +194,7 @@ local function GetConfigTable(unit)
 			},
 			alpha = G.alpha(6, 'How solid the health bar is, from see-through to opaque.'),
 			framelevel = G.framelevel(7, 'Draws the bar over the parts of the unit frame with a lower frame level, and under those with a higher one.'),
-			size = UF.GenerateRelativeSizeConfigGroup(8, UF.SavedIn(unit, 'health')),
+			size = UF.GenerateRelativeSizeConfigGroup(8),
 			colors = UF.GenerateColorsConfigGroup(9, unit, 'health',
 				{ 'colorDisconnected', 'colorTapping', 'colorClass', 'colorClassNPC', 'colorClassPet', 'colorReaction', 'colorSmooth', 'colorHealth' },
 				function() return UnitConfig().health end, Update),

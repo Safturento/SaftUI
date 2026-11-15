@@ -82,6 +82,7 @@ Settled (decisions 9 and 13) and built: the control is a field, the code beside 
 **17. Section Reset buttons against per-setting reset, and where they sit.**
 Where: Colors' Text, Buttons, Status and Threat Resets float left under the panel; Class, Reaction, Power and Item quality keep theirs on the panel in the right half beside the last colour (`SaftUI-Core/Media/colors.lua:196-218`); Theme's Reset (`Media/theme.lua:145-160`); the cooldown numbers' Reset (`ActionBars/options.lua:237`); Categories' "Reset to default" and "Reset all".
 Standard: the owner's rule: a `ResetIcon` per setting, shown only while it differs; no section or page Reset buttons.
+Built (reset on every setting): every row has its own reset; the Categories editor's button and Reset all are gone.
 
 **18. The Copy from dialog shows internal keys.**
 Where: Unitframes > General > Copy from (`SaftUI-Unitframes/config/config.lua:205-300`): the settings list's labels are profile keys ("additionalpower", "grouproleindicator", "range_alpha"), and the title reads "Clone Player from.." (`:294`).

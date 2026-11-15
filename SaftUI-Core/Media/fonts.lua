@@ -596,23 +596,6 @@ function FN.FieldOptions(read, write, subject, fields)
 	return options
 end
 
--- The default of a row that holds a font setting (a shared font's key or a
--- typeface): it differs while the value is anything but the default (a
--- typeface table always does), a reset writes the default and runs
--- st:FontsChanged(), and the tooltip names it through st:FontLabel. read(info)
--- and write(info, value) are the row's, as an option's get and set are; the
--- caller's write does what a set does short of st:FontsChanged.
-function FN.FontSettingDefault(read, write, default)
-	return {
-		differs = function(info) return read(info) ~= default end,
-		reset = function(info)
-			write(info, default)
-			st:FontsChanged()
-		end,
-		text = st:FontLabel(default),
-	}
-end
-
 -- The Kinds of text section: which font each kind of text uses, as
 -- { row key, profile key, name, desc }. A row reads and writes
 -- st.config.profile[profile key].font. Each kind's texts follow their setting

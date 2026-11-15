@@ -17,6 +17,15 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
   - [2026-11-15 — Two Misc readers break "a pass only colors"](#2026-11-15--two-misc-readers-break-a-pass-only-colors)
   - [2026-11-15 — A roll result line's All passed and winner color are baked in at push](#2026-11-15--a-roll-result-lines-all-passed-and-winner-color-are-baked-in-at-push)
+  - [2026-11-15 — A Position reset runs a unit frame's update once for every part it writes](#2026-11-15--a-position-reset-runs-a-unit-frames-update-once-for-every-part-it-writes)
+  - [2026-11-15 — After a UI scale change, a reset half-pixel Position can show its icon again](#2026-11-15--after-a-ui-scale-change-a-reset-half-pixel-position-can-show-its-icon-again)
+  - [2026-11-15 — Shipped category names shown numbered: no test pins that they show no reset icon](#2026-11-15--shipped-category-names-shown-numbered-no-test-pins-that-they-show-no-reset-icon)
+  - [2026-11-15 — Buffs and debuffs: Size and Outline keep hand defaults a derived one would replace](#2026-11-15--buffs-and-debuffs-size-and-outline-keep-hand-defaults-a-derived-one-would-replace)
+  - [2026-11-15 — Reset walks: the feed's, Minimap's and Micro menu's movers are registered inline, so the tests pin a copy](#2026-11-15--reset-walks-the-feeds-minimaps-and-micro-menus-movers-are-registered-inline-so-the-tests-pin-a-copy)
+  - [2026-11-15 — Reset walk: the profile compare is most of a unit page's cost](#2026-11-15--reset-walk-the-profile-compare-is-most-of-a-unit-pages-cost)
+  - [2026-11-15 — Buffs and debuffs: one helper for the wrap the layout keeps, so the layout and Wrap's default cannot drift](#2026-11-15--buffs-and-debuffs-one-helper-for-the-wrap-the-layout-keeps-so-the-layout-and-wraps-default-cannot-drift)
+  - [2026-11-15 — Buffs and debuffs: Wrap's hand reset copies the General group's set](#2026-11-15--buffs-and-debuffs-wraps-hand-reset-copies-the-general-groups-set)
+  - [2026-11-15 — Blizzard's tracker: the Position reset is tested on Forever only](#2026-11-15--blizzards-tracker-the-position-reset-is-tested-on-forever-only)
   - [2026-11-15 — Forever: Show in > Bank does nothing for the default bank (the combined bank)](#2026-11-15--forever-show-in--bank-does-nothing-for-the-default-bank-the-combined-bank)
   - [2026-11-15 — Auto Vendor counts a fresh purchase in a just-sold slot as a refused sale](#2026-11-15--auto-vendor-counts-a-fresh-purchase-in-a-just-sold-slot-as-a-refused-sale)
   - [2026-11-15 — Auto Vendor's second question overstates the earlier stacks that leave](#2026-11-15--auto-vendors-second-question-overstates-the-earlier-stacks-that-leave)
@@ -37,7 +46,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-15 — Hide full with a secret health: lift the limit with a Step curve into the text's alpha](#2026-11-15--hide-full-with-a-secret-health-lift-the-limit-with-a-step-curve-into-the-texts-alpha)
   - [2026-11-15 — Option descriptions that say "red" or "yellow" for what Danger and Caution color](#2026-11-15--option-descriptions-that-say-red-or-yellow-for-what-danger-and-caution-color)
   - [2026-11-15 — Check box labels: no font setting until a SaftUI check box has a visible label](#2026-11-15--check-box-labels-no-font-setting-until-a-saftui-check-box-has-a-visible-label)
-  - [2026-11-15 — A reset on every font row](#2026-11-15--a-reset-on-every-font-row)
   - [2026-11-15 — A window title font per theme](#2026-11-15--a-window-title-font-per-theme)
   - [2026-11-15 — The tooltip lines take SaftUI's shadow and spacing](#2026-11-15--the-tooltip-lines-take-saftuis-shadow-and-spacing)
   - [2026-11-15 — Title bar height beside Window titles on the Theme tab](#2026-11-15--title-bar-height-beside-window-titles-on-the-theme-tab)
@@ -127,6 +135,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-15 — A reset on every font row](#2026-11-15--a-reset-on-every-font-row)
   - [2026-11-14 — Categories tab at full size: a long "Reset <name> to default" overlaps Delete](#2026-11-14--categories-tab-at-full-size-a-long-reset-name-to-default-overlaps-delete)
   - [2026-11-11 — Grays/Auto Vendor: a finished edit that broadens its rule sells at the next merchant](#2026-11-11--graysauto-vendor-a-finished-edit-that-broadens-its-rule-sells-at-the-next-merchant)
   - [2026-11-11 — The disabled loot popup writes nametext onto Blizzard's LootButton](#2026-11-11--the-disabled-loot-popup-writes-nametext-onto-blizzards-lootbutton)
@@ -320,6 +329,99 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 **Shape of work:** Small: one function moved out of the push, one branch in `ColorFeed`, a test beside `live_colors_test.lua`'s feed cases; saved entries already hold `rolls`, so restored lines follow too.
 
 **Open questions:** Whether the roll tooltip's lines (colored when shown) need a change: they read the color each time they open, so probably not.
+### 2026-11-15 — A Position reset runs a unit frame's update once for every part it writes
+
+**What:** A reset of a unit frame part's Position whose anchor and offsets all differ writes point, rel_point, `relative_to` (twice, for a Global frame) and the offsets, and each part's own `set` calls `UF:UpdateConfig(unit)`: six updates for one click.
+
+**Why noticed:** Review of reset-every-setting Task 3 (nit N1), picked up in Task 8: the kit writes a position through the row's own `set`, one part at a time (`PositionWrites` and `WritePosition` in `SaftUI-Core/Config/optionsdefault.lua`), so the row's `set(info, part, value)` contract is what it is.
+
+**Anchors:** `SaftUI-Core/Config/optionsdefault.lua` (`WritePosition`), `SaftUI-Unitframes/config/position.lua` (`generators.uf_element_position`), the part pages' `set` in `SaftUI-Unitframes/elements/*.lua`.
+
+**What's been considered:** Batching in the kit needs a way to tell the row's `set` to hold its update (a flag the unit frame sets read, or a `set` that takes a "last part" argument), which changes the row's contract. In combat one queued update absorbs them all, and out of combat six updates are cheap, so nothing is wrong on screen.
+
+**Shape of work:** Small if the unit frame `set` learns a batching flag (`OM.batching`), but it touches every part page's set. Worth doing only if a reset of a unit frame Position is ever seen to hitch.
+
+### 2026-11-15 — After a UI scale change, a reset half-pixel Position can show its icon again
+
+**What:** A default whose offset is half a pixel (the player's Power at x 0.5) resets to the rounded value the position set stores. At the scale it was reset at it shows no icon, but after a UI scale change the rounding differs and the icon can come back; one more click clears it.
+
+**Why noticed:** Review of reset-every-setting Task 3 (nit N4); the spec accepts the rounding (R1).
+
+**Anchors:** `SaftUI-Core/Config/optionsdefault.lua` (`Offset`, `SamePart`), `SaftUI-Unitframes/config/default.lua` (the half-pixel offsets).
+
+**What's been considered:** Comparing offsets within half a pixel at the current scale would hide it, but would also hide a real half-pixel move. Changing the default to a whole pixel changes what a fresh profile holds.
+
+**Shape of work:** Small if wanted: decide the tolerance, then a test at two scales.
+
+### 2026-11-15 — Shipped category names shown numbered: no test pins that they show no reset icon
+
+**What:** A default category whose name another category has is shown with a number after it (`Toys (2)`), and with no edit saved the Name row shows no icon. Nothing pins that decision.
+
+**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
+
+**Anchors:** `SaftUI-Bags/categories.lua` (`UniqueName`, the numbering in `GetCategoryList`), `SaftUI-Bags/categoriestab.lua` (`args.name.default.differs`, which reads only a saved edit), `tests/bags/categories_editor_test.lua`.
+
+**Shape of work:** One case: a user category called like a shipped one, the list numbers the shipped one, and its Name icon is absent until the name is edited. Small.
+
+### 2026-11-15 — Buffs and debuffs: Size and Outline keep hand defaults a derived one would replace
+
+**What:** The Duration and Stack count Font rows take their default from where they are saved; their Size and Outline rows still have hand `default` tables over `st.defaults`.
+
+**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
+
+**Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua` (`AP:GetTextOptions`, the `for _, field in ipairs({ 'size', 'outline' })` loop), `tests/misc/buff_text_font_default_test.lua` (the Size and Outline resets case).
+
+**Shape of work:** Delete the loop; the group's `saved` (`SavedIn('auras', key, kind)`) derives both, and a derived reset runs the group's `set` (`Apply`), as the hand one does. The case in `buff_text_font_default_test.lua` moves to the kit's calls.
+
+### 2026-11-15 — Reset walks: the feed's, Minimap's and Micro menu's movers are registered inline, so the tests pin a copy
+
+**What:** The loot feed, the minimap and the micro menu register their movers inside their setup functions, so the walks register copies and a source check pins the key, `configPath` and `defaults` text.
+
+**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
+
+**Anchors:** `SaftUI-Loot/Feed/feed.lua` (`st:RegisterConfigMover(feed, ...)`), `SaftUI-Minimap/minimap.lua`, `SaftUI-Minimap/micromenu.lua`; `tests/loot/theme_test.lua` and `tests/minimap/theme_test.lua` (the `feedSource` and `PinnedTo` checks).
+
+**Shape of work:** Move each registration into a method (`LT:RegisterFeedMover()`, as `LT:RegisterRollMover()` and `CHT:RegisterChatMover()` are) that the world calls. Three small changes and the source checks go.
+
+### 2026-11-15 — Reset walk: the profile compare is most of a unit page's cost
+
+**What:** `tests/unitframes/config_test.lua` takes 12 s: each probed row diffs the whole profile twice, which is almost all of it.
+
+**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
+
+**Anchors:** `tests/lib/reset_walk.lua` (`Changes`, `RoundTrip`, `ctx.base`), `tests/unitframes/config_test.lua`.
+
+**Shape of work:** A cheaper way to see a write outside a row's saved path: a write log on the profile table, or comparing only the saved path's top-level key plus one whole-profile compare at the end of a page.
+
+### 2026-11-15 — Buffs and debuffs: one helper for the wrap the layout keeps, so the layout and Wrap's default cannot drift
+
+**What:** `GetGeometry`, `WrapForGrow`'s last line and `DefaultWrap` each repeat the fallback (`horizontal and 'DOWN' or 'LEFT'`).
+
+**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
+
+**Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua` (lines about 129, 163-170 and 203-209), `tests/misc/options_pages_test.lua` (the Wrap cases).
+
+**Shape of work:** One local `WrapInUse(grow, wrap)` used in all three; the existing Wrap and Grow cases pin it.
+
+### 2026-11-15 — Buffs and debuffs: Wrap's hand reset copies the General group's set
+
+**What:** Wrap's hand `reset` repeats the body of the General group's `set` instead of calling it.
+
+**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
+
+**Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua` (`default` on `args.wrap`), `tests/misc/options_pages_test.lua`.
+
+**Shape of work:** A shared local function for the write and the refresh, called by `set` and by the reset.
+
+### 2026-11-15 — Blizzard's tracker: the Position reset is tested on Forever only
+
+**What:** The default differs by client (`y_off` -275 or -260); the test runs on Forever. A retail run on the scratch check gave -260, which is right.
+
+**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
+
+**Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_ObjectiveTrackerPosition.lua` (`st:DefaultTrackerPosition()`), `tests/misc/objective_tracker_position_test.lua` ("Blizzard's tracker's Position resets to Blizzard's spot").
+
+**Shape of work:** Run that case for both clients, as the walk cases of Action bars and the Tracker now are.
 
 ### 2026-11-15 — Forever: Show in > Bank does nothing for the default bank (the combined bank)
 
@@ -564,20 +666,6 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 **What's been considered:** Hiding the row, or keeping it with a description that says it does nothing: both leave a dead control. Removing it and keeping the setting's reader costs nothing and lets the row come back with the first label.
 
 **Shape of work:** Small: one `TEXT_FONTS` entry and its tests, with the first visible label.
-
-### 2026-11-15 — A reset on every font row
-
-**What:** `generators.font` takes no default, so a font row has a reset icon only where its page builds `default` by hand (`FN.FontSettingDefault`: the Fonts tab's Kinds of text rows, Theme > Window titles, and All bars' texts through the action bars' own `TextDefault`). Every other Font row (the tooltip's, chat's, Skinning's, the bags', the loot's, the tracker's, the unit frame elements') has none. The buffs' Duration and Stack count rows and the totem bar's Timer font row got one in the feedback round (2026-11-15). Give `generators.font` the default, and have it build `default` through the inherited `get` and `set`, as the number inputs do.
-
-**Why noticed:** The fonts design's "Later" list. The rule is a reset per setting (`docs/design-system/10-discrepancies.md`, 17), and a font row is a setting like any other.
-
-**Anchors:** `SaftUI-Core/Config/generators.lua` (`generators.font`, the number inputs' `default`), `SaftUI-Core/Media/fonts.lua` (`FN.FontSettingDefault`), `SaftUI-Core/Config/optionsshare.lua` (`DefaultText`'s `font` branch), and each page's `generators.font(` call (grep it).
-
-**What's been considered:** The row's `differs` is any value but the default (a table always differs), its `reset` writes the default and runs `st:FontsChanged()`, and its `text` is `st:FontLabel(default)`: `FN.FontSettingDefault` already does that. What's missing is each page's default value, which `st.defaults` holds, and a rule for rows that read a copy (the action bars' and buffs' texts, face only).
-
-**Shape of work:** Small to medium: the generator, then each page's call with its default; tests per page that the icon shows only when the value differs. One ticket.
-
-**Open questions:** What the face-only rows (the action bars' and buffs' texts) reset to, which follows the Small text followup above.
 
 ### 2026-11-15 — A window title font per theme
 
@@ -831,7 +919,6 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 - 22: SaftUI's font on every line of item and compare tooltips (find why they show Blizzard's).
 - 24: a written spacing scale, and unexplained values moved onto it.
 - The loot feed's and other hand-drawn glyphs still to become Lucide icons (the audit's list).
-- Remaining section Reset buttons (bags' Categories "Reset ... to default" and "Reset all").
 
 **Being built or planned elsewhere:** 5, 15, 31 to 33 (the edit mode bar: `docs/superpowers/specs/2026-11-13-saftui-edit-mode-bar-design.md`); 9, 13, 17 (the colour control as a field, Copy from beside the Unit dropdown: branch `fb-kit2`); 11, 12 (scaling and the small-text font: their own followup); 25 (overlapping mover labels: in the edit mode bar's plan).
 
@@ -2369,6 +2456,22 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-15 — A reset on every font row
+
+**What:** `generators.font` takes no default, so a font row has a reset icon only where its page builds `default` by hand (`FN.FontSettingDefault`: the Fonts tab's Kinds of text rows, Theme > Window titles, and All bars' texts through the action bars' own `TextDefault`). Every other Font row (the tooltip's, chat's, Skinning's, the bags', the loot's, the tracker's, the unit frame elements') has none. The buffs' Duration and Stack count rows and the totem bar's Timer font row got one in the feedback round (2026-11-15). Give `generators.font` the default, and have it build `default` through the inherited `get` and `set`, as the number inputs do.
+
+**Why noticed:** The fonts design's "Later" list. The rule is a reset per setting (`docs/design-system/10-discrepancies.md`, 17), and a font row is a setting like any other.
+
+**Anchors:** `SaftUI-Core/Config/generators.lua` (`generators.font`, the number inputs' `default`), `SaftUI-Core/Media/fonts.lua` (`FN.FontSettingDefault`), `SaftUI-Core/Config/optionsshare.lua` (`DefaultText`'s `font` branch), and each page's `generators.font(` call (grep it).
+
+**What's been considered:** The row's `differs` is any value but the default (a table always differs), its `reset` writes the default and runs `st:FontsChanged()`, and its `text` is `st:FontLabel(default)`: `FN.FontSettingDefault` already does that. What's missing is each page's default value, which `st.defaults` holds, and a rule for rows that read a copy (the action bars' and buffs' texts, face only).
+
+**Shape of work:** Small to medium: the generator, then each page's call with its default; tests per page that the icon shows only when the value differs. One ticket.
+
+**Open questions:** What the face-only rows (the action bars' and buffs' texts) reset to, which follows the Small text followup above.
+
+**Resolved 2026-11-15:** every font row takes its default from where it is saved (reset-every-setting, Tasks 1 to 7).
 
 ### 2026-11-14 — Categories tab at full size: a long "Reset <name> to default" overlaps Delete
 

@@ -640,7 +640,6 @@ end)
 
 test('the plate pages have a reset on each setting: Friendly plates is saved on the Enemy config and resets through its own set', function()
 	local st, UF = world('forever')
-	load_saftui('SaftUI-Core/Config/optionsdefault.lua')
 	local OM = st.OptionsModel
 	local root = { Unitframes = UF:GetConfigTable() }
 	local function Row(path)

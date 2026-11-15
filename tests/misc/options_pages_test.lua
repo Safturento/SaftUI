@@ -112,9 +112,19 @@ test('Tooltip: Theme, Background and Font read and write the profile, and a Them
 		key = 'tooltip', label = 'Tooltip', config = function() return TT.config end, apply = function() end,
 		configPath = { 'Tooltip', 'general' }, module = 'Misc', defaults = function() return st.defaults.tooltip end,
 	})
+	-- The stand-in's configPath is the real one: the Position row's reset is the mover's only while they match.
+	local source = read_saftui_source('SaftUI-Misc/tooltipposition.lua')
+	check(source:find("configPath = { 'Tooltip', 'general' }", 1, true) ~= nil, "tooltipposition.lua's mover has the configPath the stand-in has")
 	local tree = TT:GetConfigTable()
 	eq(check_page('Tooltip', tree), 1, 'one Position')
-	R.check_page({ Tooltip = tree }, 'Tooltip')
+	-- With a bag window and a loot feed the two snap toggles show, so the walk probes them too.
+	local INV, LT = st:GetModule('Inventory', true) or st:NewModule('Inventory'), st:GetModule('Loot', true) or st:NewModule('Loot')
+	local had = { containers = INV.containers, feed = LT.feed }
+	INV.containers = { bag = CreateFrame('Frame', nil, UIParent) }
+	LT.feed = CreateFrame('Frame', nil, UIParent)
+	local walked = R.check_page({ Tooltip = tree }, 'Tooltip')
+	INV.containers, LT.feed = had.containers, had.feed
+	check(walked >= 6, 'the walk reached the two snap toggles as well as Theme, Background, Font and Position (' .. walked .. ')')
 	reskins, anchors = 0, 0 -- the walk's sets counted
 	local tt_root = { Tooltip = tree }
 	reset_roundtrip(tt_root, "Tooltip's Font", function() return profile.tooltip.font end, st.defaults.tooltip.font,
@@ -148,9 +158,11 @@ test('Tooltip: Theme, Background and Font read and write the profile, and a Them
 end)
 
 test('Totem bar: one small color per element, read and written as the bar reads them, applied at once', function()
-	for _, file in ipairs({ 'totembar', 'totemlayout', 'totemposition', 'totemoptions' }) do
-		load_saftui('SaftUI-Misc/' .. file .. '.lua') -- the TOC's order
-	end
+	-- the TOC's order
+	load_saftui('SaftUI-Misc/totembar.lua')
+	load_saftui('SaftUI-Misc/totemlayout.lua')
+	load_saftui('SaftUI-Misc/totemposition.lua')
+	load_saftui('SaftUI-Misc/totemoptions.lua')
 	local TB = st:GetModule('TotemBar')
 	TB.bar = CreateFrame('Frame', 'ScratchTotemBar', UIParent)
 	TB.holder = CreateFrame('Frame', nil, UIParent)
@@ -231,7 +243,7 @@ end
 
 test('Buffs: the text positions are Position options over the same keys', function()
 	local AP = auras()
-	local real = { UpdateFont = AP.UpdateFont, UpdateText = AP.UpdateText, GetGeometry = AP.GetGeometry,
+	local real = { UpdateFont = AP.UpdateFont, UpdateText = AP.UpdateText,
 		ApplyHolder = AP.ApplyHolder, RestoreUnderMax = AP.RestoreUnderMax, LayoutButtons = AP.LayoutButtons }
 	AP.holders = { buffs = CreateFrame('Frame', nil, UIParent), debuffs = CreateFrame('Frame', nil, UIParent) }
 	AP.maxAuras = { buffs = 32, debuffs = 16 }
@@ -241,11 +253,7 @@ test('Buffs: the text positions are Position options over the same keys', functi
 	function AP:ApplyHolder() end
 	function AP:RestoreUnderMax() end
 	function AP:LayoutButtons() end
-	-- The values in use, as the real one answers them for valid settings (its cache and holders are not needed).
-	function AP:GetGeometry(key)
-		local c = AP.config[key]
-		return { horizontal = c.grow == 'LEFT' or c.grow == 'RIGHT', grow = c.grow, wrap = c.wrap }
-	end
+	-- GetGeometry is the real one (its cache is dropped by every General set, as Refresh does).
 	for _, key in ipairs({ 'buffs', 'debuffs' }) do AP:RegisterAuraMover({ key = key, label = key }) end
 	local updates = 0
 	function AP:UpdateText() updates = updates + 1 end
@@ -269,6 +277,19 @@ test('Buffs: the text positions are Position options over the same keys', functi
 	check(not OM.DefaultDiffers(aroot, wraprow), 'so the icon goes')
 	tree.args.buffs.args.general.set(info_for('grow'), st.defaults.auras.buffs.grow)
 	profile.auras.buffs.wrap = st.defaults.auras.buffs.wrap
+
+	-- Grow's reset from Up: Grow is back to its default but its set moved Wrap to the side the layout keeps,
+	-- so Wrap shows its icon, and one click on it gives a fresh profile.
+	local growrow = row_of(aroot, 'Auras', 'buffs', 'general', 'grow')
+	tree.args.buffs.args.general.set(info_for('grow'), 'UP')
+	check(OM.DefaultDiffers(aroot, growrow), 'Grow Up differs')
+	check(OM.DefaultReset(aroot, growrow), "Grow's reset runs")
+	eq(profile.auras.buffs.grow, st.defaults.auras.buffs.grow, 'Grow is back to its default')
+	check(not OM.DefaultDiffers(aroot, growrow), 'its icon goes')
+	check(OM.DefaultDiffers(aroot, wraprow), 'Wrap still differs: Grow Up left it on the side Up keeps (two clicks to fresh)')
+	check(OM.DefaultReset(aroot, wraprow), "Wrap's reset runs")
+	check(not OM.DefaultDiffers(aroot, wraprow), 'and one Wrap reset gives a fresh profile')
+	eq(profile.auras.buffs.wrap, st.defaults.auras.buffs.wrap, 'Wrap is its default')
 
 	local duration = tree.args.buffs.args.text.args.duration
 	local p = duration.args.position

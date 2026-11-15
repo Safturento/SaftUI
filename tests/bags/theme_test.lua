@@ -62,10 +62,22 @@ local function fresh(client)
 	_G.StackSplitFrameOkay_Click = function() end
 	Enum.AccountCurrencyTransferResult = Enum.AccountCurrencyTransferResult
 		or { MaxQuantity = 1, NoValidSourceCharacter = 2, CannotUseCurrency = 3 }
-	for _, file in ipairs({ 'inventory', 'itemclasses', 'rules', 'currencies', 'categorydefaults', 'categories', 'category', 'views',
-		'container', 'header', 'layout', 'search', 'containers/warbandbank', 'slot', 'movers', 'options' }) do
-		load_saftui('SaftUI-Bags/' .. file .. '.lua')
-	end
+	load_saftui('SaftUI-Bags/inventory.lua')
+	load_saftui('SaftUI-Bags/itemclasses.lua')
+	load_saftui('SaftUI-Bags/rules.lua')
+	load_saftui('SaftUI-Bags/currencies.lua')
+	load_saftui('SaftUI-Bags/categorydefaults.lua')
+	load_saftui('SaftUI-Bags/categories.lua')
+	load_saftui('SaftUI-Bags/category.lua')
+	load_saftui('SaftUI-Bags/views.lua')
+	load_saftui('SaftUI-Bags/container.lua')
+	load_saftui('SaftUI-Bags/header.lua')
+	load_saftui('SaftUI-Bags/layout.lua')
+	load_saftui('SaftUI-Bags/search.lua')
+	load_saftui('SaftUI-Bags/containers/warbandbank.lua')
+	load_saftui('SaftUI-Bags/slot.lua')
+	load_saftui('SaftUI-Bags/movers.lua')
+	load_saftui('SaftUI-Bags/options.lua')
 	INV = st:GetModule('Inventory')
 	st:BindModuleConfig(INV, 'inventory')
 	-- The windows here are made by hand, with the categories this test wants:

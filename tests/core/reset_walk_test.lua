@@ -4,7 +4,6 @@
 -- at start fails. Synthetic pages, on the window's world and optionsdefault.lua.
 load_test_file('core/options_window_helpers.lua')
 local st = SaftUI
-load_saftui('SaftUI-Core/Config/optionsdefault.lua')
 local OM = st.OptionsModel
 local R = load_test_file('lib/reset_walk.lua')
 
@@ -239,3 +238,105 @@ test('a unit frame part whose anchor can\'t be put back fails the walk', functio
 	local problems = R.problems(root, 'Page')
 	check(#problems > 0, 'the walk finds it: ' .. table.concat(problems, '; '))
 end)
+
+test('the walk reads the options model as it is now: a model loaded again after the walk was loaded is the one it walks', function()
+	local old = st.OptionsModel
+	load_saftui('SaftUI-Core/Config/optionsmodel.lua')
+	check(st.OptionsModel ~= old, 'the model is a new table')
+	-- The old one is emptied (a model loaded again is a new table that also has the kit), so a walk that
+	-- still held it would find no function to call.
+	for key in pairs(old) do old[key] = nil end
+	OM = st.OptionsModel
+	world()
+	local root = page(group({
+		saved = st.Config.SavedIn('t_'),
+		args = { a = { type = 'toggle', name = 'Saved', order = 1 } },
+	}))
+	local problems, walked = R.problems(root, 'Page')
+	eq(#problems, 0, 'no problem on the new model: ' .. table.concat(problems, '; '))
+	eq(walked, 1, 'one row walked')
+end)
+
+test('a hand default row is checked on a fresh profile too: one whose icon shows at start fails', function()
+	world()
+	local differs = false
+	local root = page(group({
+		args = {
+			a = {
+				type = 'toggle', name = 'By hand', order = 1,
+				default = { differs = function() return differs end, reset = function() end },
+			},
+		},
+	}))
+	eq(#R.problems(root, 'Page'), 0, 'a hand default that is at its default passes')
+	differs = true
+	local problems = R.problems(root, 'Page')
+	check(has(problems, 'Page.box.a (toggle By hand) differs on a fresh profile'), 'one that differs at start fails: ' .. table.concat(problems, '; '))
+	eq(#R.problems(root, 'Page', { fresh = false }), 0, 'unless the walk is told the profile is not fresh')
+end)
+
+test('the walk compares the profile with one copy kept across rows: a side effect of one row does not blame the next, and a leak still fails', function()
+	world()
+	local leak = false
+	local root = page(group({
+		saved = st.Config.SavedIn('t_'),
+		set = function(info, value)
+			st.config.profile.t_[info[#info]] = value
+			st.config.profile.t_marker = (st.config.profile.t_marker or 0) + 1 -- a side effect no row owns
+		end,
+		args = {
+			a = { type = 'toggle', name = 'First', order = 1 },
+			b = { type = 'toggle', name = 'Second', order = 2 },
+			n = { type = 'range', name = 'Third', order = 3, min = 0, max = 10, step = 1 },
+		},
+	}))
+	local problems = R.problems(root, 'Page', { allow = { ['Page.box.a'] = { 't_marker' }, ['Page.box.b'] = { 't_marker' }, ['Page.box.n'] = { 't_marker' } } })
+	eq(#problems, 0, 'each row allowed its own side effect and none blames the next: ' .. table.concat(problems, '; '))
+	world()
+	problems = R.problems(root, 'Page', { allow = { ['Page.box.a'] = { 't_marker' } } })
+	check(has(problems, 'Page.box.b') and has(problems, 't_marker'), 'a row that leaks without allowing it fails: ' .. table.concat(problems, '; '))
+	check(not has(problems, 'Page.box.a'), "and the allowed one does not")
+end)
+
+test("a pick control's rows are named for their page and group, so a failure says which unit", function()
+	world()
+	local root = page(group({
+		saved = st.Config.SavedIn('t_'),
+		pickerControl = { type = 'group', name = '', args = { profile = { type = 'select', name = 'Profile', order = 1, values = { a = 'A' }, get = function() return 'a' end, set = function() end } } },
+		args = { a = { type = 'toggle', name = 'On', order = 1 } },
+	}))
+	local problems = R.problems(root, 'Page')
+	check(has(problems, 'Page.box.pickerControl.profile'), 'the pick is named with its page and group: ' .. table.concat(problems, '; '))
+end)
+
+test('the walk compares with a copy kept across rows only while rows leave the profile whole: a clean row after one with a side effect is not blamed', function()
+	world()
+	local root = page(group({
+		saved = st.Config.SavedIn('t_'),
+		set = function(info, value) st.config.profile.t_[info[#info]] = value end,
+		args = {
+			a = { type = 'toggle', name = 'Leaks', order = 1,
+				set = function(info, value) st.config.profile.t_.a = value; st.config.profile.t_marker = (st.config.profile.t_marker or 0) + 1 end },
+			b = { type = 'toggle', name = 'Clean', order = 2 },
+		},
+	}))
+	local problems = R.problems(root, 'Page', { allow = { ['Page.box.a'] = { 't_marker' } } })
+	eq(#problems, 0, 'the clean row after the leaking one has no problem: ' .. table.concat(problems, '; '))
+end)
+
+test("the walk reads the live profile with rawget: a key a reset deleted is seen though a metatable would answer it", function()
+	world()
+	-- AceDB's '*' answers a missing key with its default; the walk must still see the key is gone.
+	setmetatable(st.config.profile.t_, { __index = function(_, key) return ({ n = 5 })[key] end })
+	local root = page(group({
+		saved = st.Config.SavedIn('t_'),
+		args = {
+			a = { type = 'toggle', name = 'Deletes', order = 1,
+				set = function(info, value) st.config.profile.t_.a = value; rawset(st.config.profile.t_, 'n', nil) end },
+		},
+	}))
+	local problems = R.problems(root, 'Page')
+	setmetatable(st.config.profile.t_, nil)
+	check(has(problems, 't_.n'), 'a deleted key is a change outside the row: ' .. table.concat(problems, '; '))
+end)
+
