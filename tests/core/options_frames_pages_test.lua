@@ -87,6 +87,7 @@ test('Bags: the new settings read and write their profile keys and apply the way
 	INV.QueueUpdate = count('QueueUpdate')
 	INV.SyncAnchorSize = count('SyncAnchorSize')
 	INV.ApplyPosition = count('ApplyPosition')
+	INV.ApplyFonts = function(_, which) calls[#calls + 1] = 'ApplyFonts:' .. which end
 	function INV:GetAnchor() return CreateFrame('Frame', nil, UIParent) end
 	-- The views' order and words, which the View select lists; the switch is a counter.
 	-- views.lua takes INV.IndexOf at load; inventory.lua's, copied here as that file can't load
@@ -155,9 +156,9 @@ test('Bags: the new settings read and write their profile keys and apply the way
 		eq(config[key], value, key .. ' writes inventory.' .. key)
 		config[key] = 'theme'
 	end
-	eq(set(look, 'titles', 'pixel'), 'UpdateConfig', 'the title font restyles the windows')
+	eq(set(look, 'titles', 'pixel'), 'ApplyFonts:titles', "the title font restyles the titles' texts, never the layout (bags/font_drag_test.lua)")
 	eq(config.fonts.titles, 'pixel', 'Title font writes inventory.fonts.titles')
-	set(look, 'icons', 'normal')
+	eq(set(look, 'icons', 'normal'), 'ApplyFonts:icons', "the icon font restyles the slots' texts")
 	eq(config.fonts.icons, 'normal', 'Icon font writes inventory.fonts.icons')
 
 	-- Each window's View and Empty slots: the same keys in the bag and the bank.

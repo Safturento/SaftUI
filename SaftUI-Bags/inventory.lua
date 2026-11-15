@@ -255,6 +255,54 @@ function INV:StyleContainerContents(container)
 	end
 end
 
+-- Restyles the texts of one bag font setting, 'titles' (the category titles) or
+-- 'icons' (the item level and count on the item and currency slots), and
+-- nothing else. A font changes no size, place, order or border, so the bags
+-- are not packed, sorted or skinned again for it (INV:UpdateConfig does all of
+-- that, and a held Size slider asks for it on every step). The texts are
+-- whatever has been made so far; the ones made later read the setting.
+-- Bag slots are Blizzard item buttons, so in combat it waits for the end of it,
+-- as UpdateConfig does.
+function INV:ApplyFonts(which)
+	if not self.containers.bag then return end
+	if st:QueueAfterCombat('InventoryFonts' .. tostring(which), function() INV:ApplyFonts(which) end) then return end
+	local fonts = self.config.fonts
+	if which == 'titles' then
+		for _, container in pairs(self.containers) do
+			for _, category in pairs(type(container) == 'table' and container.categories or {}) do
+				if category.header and category.header.text then
+					st:ApplyFont(category.header.text, fonts.titles)
+					-- A title is cut to its column at the size it has: cut again
+					-- (a larger font cuts more, a smaller one less), with no sort or
+					-- layout (UpdateCategory made it, in every view).
+					if category.titleText then
+						INV.FitTitle(category.header.text, category.titleText, category.titleRoom)
+					end
+				end
+			end
+		end
+	elseif which == 'icons' then
+		for _, container in pairs(self.containers) do
+			for _, category in pairs(type(container) == 'table' and container.categories or {}) do
+				for _, slot in pairs(category.slots or {}) do
+					-- Only the two texts the bags put on a slot (the count is
+					-- Blizzard's, the item level SaftUI's), not every region and
+					-- font object of the button as SkinSlot does: a drag over
+					-- hundreds of slots (the spare ones too) runs this on every
+					-- step. A font object may bring its own color with it, so the
+					-- item level's is put back.
+					if slot.Count then st:ApplyFont(slot.Count, fonts.icons) end
+					if slot.itemLevel then
+						st:ApplyFont(slot.itemLevel, fonts.icons)
+						self:ColorItemLevel(slot)
+					end
+				end
+			end
+		end
+		self:ApplyCurrencyFonts()
+	end
+end
+
 -- Puts a window's bag slot bar (Bag Slots shows it) above its title bar: its
 -- bottom left on the header's top left, buttonspacing up. Under Thick and
 -- Thin the header's top is the window's, as it always was; under Blizzard

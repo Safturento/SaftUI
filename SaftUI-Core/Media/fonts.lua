@@ -120,8 +120,11 @@ end
 -- Sets a font object to a look (st:FontFields' shape): the face from
 -- LibSharedMedia (its default face when it doesn't list the name), size,
 -- outline, an opaque black shadow, the shadow's offset, line spacing. The one
--- routine for a shared font's object and a typeface's.
-function FN:SetObject(object, fields)
+-- routine for a shared font's object and a typeface's. fresh is true for an
+-- object nothing uses yet (a typeface's first set): it skips the bounce below,
+-- which only makes texts already on the object measure again, and so builds the
+-- face once at its size, not at two (a Size drag makes a new object per step).
+function FN:SetObject(object, fields, fresh)
 	local path = st.LSM:Fetch('font', fields.font_name)
 	local size = fields.font_size
 	-- The saved key NONE is no flags at all; SetFont takes '' for that.
@@ -137,6 +140,7 @@ function FN:SetObject(object, fields)
 	-- spacing changing doesn't measure the texts using it again: a shadow pushed
 	-- right cut their last letters off until a reload. A size change does, so
 	-- the size goes up by one and straight back (checked in game: no flicker).
+	if fresh then return end
 	object:SetFont(path, size + 1, flags)
 	object:SetFont(path, size, flags)
 end
@@ -261,9 +265,9 @@ local function Typeface(value)
 		-- for, so the text still draws (in Text's face). A SetObject that raises
 		-- for another reason falls back the same way.
 		fellBack[key] = nil
-		if not st:FontLoads(path) or not pcall(FN.SetObject, FN, object, fields) then
+		if not st:FontLoads(path) or not pcall(FN.SetObject, FN, object, fields, true) then
 			fields.font_name = FN:FallbackName()
-			FN:SetObject(object, fields)
+			FN:SetObject(object, fields, true)
 			fellBack[key] = true
 		end
 		typefaces[key] = object

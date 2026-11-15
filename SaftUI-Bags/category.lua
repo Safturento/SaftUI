@@ -453,6 +453,7 @@ local function FitTitle(text, title, room)
 	end
 	text:SetText('...' .. tail)
 end
+INV.FitTitle = FitTitle -- INV:ApplyFonts fits a title again when the Title font changes
 
 -- Fills a category frame with its items (made if it isn't), shows it and sizes
 -- it. title is its header's text: by default its name and how many it holds
@@ -523,6 +524,10 @@ function INV:UpdateCategory(id, categoryName, categoryItems, title, lineSlots)
 		-- wider than Text was, so a long name would run into the next column's.
 		local room = width - 2 - (categoryFrame.filterCheckbox and categoryFrame.filterCheckbox:IsShown() and 16 or 0)
 		FitTitle(categoryFrame.header.text, titleText, room)
+		-- What was fitted, for INV:ApplyFonts.
+		categoryFrame.titleText, categoryFrame.titleRoom = titleText, room
+	else
+		categoryFrame.titleText, categoryFrame.titleRoom = nil, nil
 	end
 end
 

@@ -86,6 +86,27 @@ function INV.CreateCurrencySlot(category)
     return slot
 end
 
+-- A currency count's color: shared for an account-wide currency, else strong.
+-- Also put back after the Icon font changes (a font object may bring its own).
+function INV:ColorCurrencyCount(slot)
+    local data = slot.elementData
+    if not data then return end
+    if data.isAccountTransferable or data.isAccountWide then
+        slot.Count:SetTextColor(st:Color('text', 'shared'):GetRGB())
+    else
+        slot.Count:SetTextColor(st:Color('text', 'strong'):GetRGB())
+    end
+end
+
+-- The Icon font on the count of every currency slot made, and nothing else
+-- (INV:ApplyFonts).
+function INV:ApplyCurrencyFonts()
+    for _, slot in ipairs(currencySlots) do
+        st:ApplyFont(slot.Count, self.config.fonts.icons)
+        self:ColorCurrencyCount(slot)
+    end
+end
+
 -- Re-applies the profile's slot size, Slot theme and fonts to every currency
 -- slot, and sizes the currency category's filter button. Runs on profile
 -- changes; skinning a slot again is safe.
@@ -259,11 +280,7 @@ function INV:UpdateCurrencyCategory(forceShow, lineSlots, currencyItems)
         slot.icon:SetTexture(currencyData.iconFileID)
 
         slot.Count:SetText(currencyData.quantity)
-        if currencyData.isAccountTransferable or currencyData.isAccountWide then
-            slot.Count:SetTextColor(st:Color('text', 'shared'):GetRGB())
-        else
-            slot.Count:SetTextColor(st:Color('text', 'strong'):GetRGB())
-        end
+        self:ColorCurrencyCount(slot)
 
         slot:ClearAllPoints()
         slot:Show()

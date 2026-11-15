@@ -71,6 +71,14 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	the small dialog and the menu. While SaftUI's color picker is open it
 	waits, as the window does.
 
+	The menu's frame is anchored to its item's dots, which belong to a pooled
+	widget, so it is taken off them (ClearAllPoints) when it hides, which is
+	what stops the loop reproduced from a font row's menu, and again before each
+	draw of its rows, as defence for a redraw while shown (FollowMenu): those
+	rows are drawn before the menu is anchored again, and a row's widget may be
+	that very widget (a face-only font row), which would anchor a row to a cell
+	that hangs from its own dots, an anchor loop. Each has a test of its own.
+
 	Following its item (S.FollowMenu, on every render after the dialog's): it
 	finds its item's cell again in owner.body's cells by path, asks that
 	cell's widget for its menu again, re-anchors to the cell's dots
@@ -203,6 +211,10 @@ local function Draw(body, row, dots, menu, title)
 	M.title:SetText(type(title) == 'string' and title ~= '' and title or row.name)
 	-- On each draw: Text > Muted can change, or the profile with it.
 	M.title:SetTextColor(Muted())
+	-- Off its old dots first: the rows are drawn before the menu is anchored
+	-- again, and a pooled widget they take may be the one the menu still hangs
+	-- from (a font row's dots), which would anchor a row to its own descendant.
+	M.frame:ClearAllPoints()
 	DrawBody()
 	Anchor(dots)
 end
@@ -300,6 +312,8 @@ local function Build()
 		W.CancelConfirm()
 		M.body:Release()
 		M.owner, M.root, M.dragging = nil, nil, nil
+		-- Off the dots it was on: they belong to a widget that goes back to a pool.
+		frame:ClearAllPoints()
 	end)
 	-- Its sets can reach protected frames, as the dialog's.
 	frame:RegisterEvent('PLAYER_REGEN_DISABLED')
@@ -340,6 +354,13 @@ end
 ------------------------------------------------------------------ the API
 
 function OW:OpenMenu(widget)
+	-- Not guarded: a menu opened from a widget inside the menu itself. Closing
+	-- the open one first releases that widget, and Draw would then anchor to its
+	-- dots (or to its own descendant, if the redraw takes the widget back: the
+	-- loop again). No menu can do it today (a face-only font row hides its dots
+	-- on a typeface and its link only navigates; no menu holds an item row), so
+	-- whoever puts an item or a typeface row in a menu adds
+	-- `if widget.rowBody == M.body then return false end` here.
 	if InCombatLockdown() then return false end
 	if widget and widget.disabled then return false end
 	local row = widget and widget.row

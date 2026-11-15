@@ -131,6 +131,34 @@ local function ButtonsFont() return st.config.profile.buttons.font end
 -- (which sets its own). Kept here, not on the texture.
 local hoverBlends = setmetatable({}, { __mode = 'k' })
 
+-- Puts a font setting on every text of button (its font strings, kept as the
+-- Button text setting where follow is true) and on its normal, highlight and
+-- disabled font objects, and nothing else: what st:SkinActionButton does with
+-- config.font, apart from the rest of the skin, so a module whose font setting
+-- changed restyles its buttons' texts without skinning them again. The font
+-- objects follow a shared object's change, but not a setting moving from one
+-- key to another, so a caller whose setting changes calls this again.
+function st:ApplyButtonFonts(button, font, follow)
+	local font_object = st:FontObject(font)
+
+	for _,region in pairs({button:GetRegions()}) do
+		if region:GetObjectType() == 'FontString' then
+			if follow then
+				st:FollowFont(region, ButtonsFont)
+			else
+				st:ApplyFont(region, font)
+			end
+		end
+	end
+
+	if button.SetNormalFontObject then
+		button:SetNormalFontObject(font_object)
+		button:SetHighlightFontObject(font_object)
+		button:SetDisabledFontObject(font_object)
+		button:SetPushedTextOffset(0, 0)
+	end
+end
+
 -- Skins button with config (the profile's buttons by default): its backdrop in
 -- config.theme and config.background, drawn as kind ('action' by default; a
 -- bag slot is a 'slot'), and config.font and config.trueSize.
@@ -190,17 +218,7 @@ function st:SkinActionButton(button, config, kind)
 	st:Kill(button.CircleMask)
 
 	if config.font then
-		local font_object = st:FontObject(config.font)
-
-		for _,region in pairs({button:GetRegions()}) do
-			if region:GetObjectType() == 'FontString' then
-				if follow then
-					st:FollowFont(region, ButtonsFont)
-				else
-					st:ApplyFont(region, config.font)
-				end
-			end
-		end
+		st:ApplyButtonFonts(button, config.font, follow)
 
 		if cooldown then
 			st:SkinCooldown(button, cooldown)
@@ -226,13 +244,6 @@ function st:SkinActionButton(button, config, kind)
 			hotkey:SetPoint("TOPLEFT", 4, 0)
 			hotkey:SetJustifyH('RIGHT')
 			hotkey:SetJustifyV('TOP')
-		end
-
-		if button.SetNormalFontObject then
-			button:SetNormalFontObject(font_object)
-			button:SetHighlightFontObject(font_object)
-			button:SetDisabledFontObject(font_object)
-			button:SetPushedTextOffset(0, 0)
 		end
 	end
 

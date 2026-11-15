@@ -74,14 +74,17 @@ local function BuildWindow(id, order)
 end
 
 -- A setting of the bag fonts table (fonts.titles, fonts.icons): the key of one
--- of the profile's font objects, like the Font option of the other pages.
+-- of the profile's font objects, like the Font option of the other pages. A
+-- font restyles the texts that use it and nothing else (INV:ApplyFonts), never
+-- the bags' layout (INV:UpdateConfig): the row's Size slider writes on every
+-- step of a drag.
 local function FontOption(order, name, key, desc)
 	local option = generators.font(order, desc)
 	option.name = name
 	option.get = function() return INV.config.fonts[key] end
 	option.set = function(_, value)
 		INV.config.fonts[key] = value
-		INV:UpdateConfig()
+		INV:ApplyFonts(key)
 	end
 	return option
 end

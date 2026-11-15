@@ -68,7 +68,7 @@ local function watch_tooltip()
 	local tip = { lines = {} }
 	local saved = _G.GameTooltip
 	_G.GameTooltip = {
-		SetOwner = function(_, frame) tip.owner = frame end,
+		SetOwner = function(_, frame, anchor) tip.owner, tip.anchor = frame, anchor end,
 		ClearLines = function() tip.lines = {} end,
 		AddLine = function(_, text) tip.lines[#tip.lines + 1] = text end,
 		AddDoubleLine = function(_, left) tip.lines[#tip.lines + 1] = left end,
@@ -1396,4 +1396,267 @@ test('a refused face is tried again when a font row picks a face and when its li
 		eq((st:FontValues(look2)), two, 'opening the list asks again')
 		W.CloseList()
 	end)
+end)
+
+------------------------------------------------------------------ a menu left anchored to a released widget
+
+-- A font row's dots menu anchors the menu's frame to the row's dots, and the
+-- frame keeps that anchor after the menu closes. The row's widget goes back to
+-- its pool when the page changes; a later item menu draws a face-only font row
+-- before it anchors itself again, and gets that very widget, so the row is
+-- placed in a cell that hangs from the menu frame, which hangs from the
+-- widget's own dots: a loop, which the game refuses.
+local STALE = st:NewModule('FontStaleRows')
+function STALE:GetConfigTable()
+	return {
+		name = 'Font stale rows', type = 'group', category = 'Frames',
+		args = {
+			texts = { order = 1, type = 'group', name = 'Texts', args = {
+				header = FontRow('header', 1, nil, { name = 'Header font' }),
+				tip = FontRow('tip', 2, nil, { name = 'Tooltip font' }),
+				chat = FontRow('chat', 3, nil, { name = 'Chat font' }),
+			} },
+			other = { order = 2, type = 'group', name = 'Other', args = {
+				hotkey = {
+					order = 1, type = 'item', name = 'Hotkey', desc = 'The key.', size = 'small',
+					get = function() return true end, set = function() end,
+					menu = { type = 'group', name = 'Hotkey', args = {
+						face = FontRow('face', 1, { faceOnly = true }, { name = 'Face' }),
+					} },
+				},
+			} },
+		},
+	}
+end
+
+test("a font row's dots menu, the page changed, then an item menu with a face-only font row: the row is placed, no loop of anchors (bug 2)", function()
+	for _, look in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		in_look(look, function()
+			fresh()
+			vals.header, vals.tip, vals.chat = colus(), colus(), colus()
+			vals.face = 'Homespun'
+			st.Config:Open('FontStaleRows', 'texts')
+			-- The last row's widget is the one the pool hands out first.
+			local chat = H.cell('chat').widget
+			stub.click(chat.dots)
+			check(OW:IsMenuShown(), look .. ': the typeface menu is open')
+			OW:Navigate('FontStaleRows', { tab = 'other' })
+			check(not OW:IsMenuShown(), 'the page change closed it')
+			stub.click(H.cell('hotkey').widget.dots)
+			check(OW:IsMenuShown(), look .. ": the item's menu opens")
+			local c = mcell('face')
+			check(c ~= nil and c.widget.type == 'font', 'with its face-only font row')
+			eq(c.widget.faceOnly, true)
+			close_dots()
+		end)
+	end
+end)
+
+------------------------------------------------------------------ long names in the list
+
+local LONG_NAMES = { 'AR CrystalzcuheiGBK Demibold', 'AR ZhongkaiGBK Medium (Combat)' }
+
+-- What keeps an entry on its own row: its text never wraps, and what it draws
+-- (a face taller than the row) is cut at the row, so it can't reach the rows
+-- beside it. A font string wraps unless told not to; the stubs lay out one line
+-- either way, so the setting is what is read, and the clip frame's place.
+local function check_rows_hold(list, where)
+	local shown = 0
+	for i, row in ipairs(list.rows) do
+		if row:IsShown() then
+			shown = shown + 1
+			local label = where .. ', row ' .. i
+			eq(row.text:CanWordWrap(), false, label .. ': the text never wraps')
+			check(row.clip ~= nil and row.clip:DoesClipChildren(), label .. ': a frame cuts what the text draws at the row')
+			if row.clip then
+				eq(row.clip:GetParent(), row, label .. ': the clip is the row\'s')
+				eq(row.text:GetParent(), row.clip, label .. ': the text is a region of the clip frame, with no frame between')
+				eq(row.view, nil)
+				eq(row.clip:GetNumPoints(), 2, label .. ': the clip is anchored by two corners')
+				for p = 1, 2 do
+					local _, relative = row.clip:GetPoint(p)
+					eq(relative, row, label .. ': both on the row')
+				end
+			end
+		end
+	end
+	check(shown > 0, where .. ': rows are shown')
+end
+
+test('a font list with names too wide for it: every entry is one line, cut at its row, under Thick, Thin and Blizzard (bug 1)', function()
+	for _, look in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		in_look(look, function()
+			for _, name in ipairs(LONG_NAMES) do st.LSM:Register('font', name, 'Fonts\\ARIALN.TTF') end
+			local w = row_widget('header', 'Text')
+			local list = open(w)
+			-- Scroll to the long names: they sort among the typefaces.
+			local found = {}
+			for i, entry in ipairs(list.entries) do
+				for _, name in ipairs(LONG_NAMES) do
+					if entry.label == name then found[name] = i end
+				end
+			end
+			for _, name in ipairs(LONG_NAMES) do check(found[name] ~= nil, look .. ': ' .. name .. ' is listed') end
+			check_rows_hold(list, look .. ' top')
+			stub.fire_script(list.frame, 'OnMouseWheel', -1)
+			list.offset = found[LONG_NAMES[1]] - 1
+			stub.fire_script(list.frame, 'OnMouseWheel', 0)
+			check_rows_hold(list, look .. ' at the long names')
+			local off = P.off(list.frame)
+			eq(#off, 0, look .. ': whole pixels ' .. P.report(off))
+			W.CloseList()
+		end)
+	end
+end)
+
+test('a plain select list with a long label is one line cut at its row too', function()
+	for _, look in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		in_look(look, function()
+			fresh()
+			vals.pick = 'a'
+			local pick = {
+				order = 1, type = 'select', name = 'Pick', desc = 'Pick one.',
+				values = { a = 'Short', b = 'A label far too long for a list a hundred and seventy wide' },
+				get = function() return vals.pick end, set = function(_, v) vals.pick = v end,
+			}
+			local _, by = draw(Page({ pick = pick }))
+			stub.click(by.pick.widget.frame)
+			local list = W.GetListFrames()
+			check_rows_hold(list, look .. ' select')
+			W.CloseList()
+		end)
+	end
+end)
+
+test('a list row whose text is cut shows the full name in a tooltip, and only then (M4)', function()
+	for _, look in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		in_look(look, function(tip)
+			for _, name in ipairs(LONG_NAMES) do st.LSM:Register('font', name, 'Fonts\\ARIALN.TTF') end
+			local w = row_widget('header', 'Text')
+			local list = open(w)
+			local function row_of(label)
+				for i = 1, #list.entries do
+					if list.entries[i].label == label then
+						list.offset = math.max(0, math.min(#list.entries - 12, i - 1))
+						stub.fire_script(list.frame, 'OnMouseWheel', 0)
+						for _, row in ipairs(list.rows) do
+							if row:IsShown() and row.entry == list.entries[i] then return row end
+						end
+					end
+				end
+			end
+			local long = row_of(LONG_NAMES[1]) -- the rows are shared: the next scroll refills this one
+			check(long, look .. ': the long name is in a row')
+			stub.fire_script(long, 'OnEnter', true)
+			check(tip.shown and tip.owner == long, look .. ': a cut name has a tooltip')
+			eq(tip.lines[1], LONG_NAMES[1], 'the full name')
+			stub.fire_script(long, 'OnLeave', true)
+			check(not tip.shown, look .. ': it goes when the mouse leaves')
+			local short = row_of('Text')
+			check(short, look .. ': a short name is in a row')
+			stub.fire_script(short, 'OnEnter', true)
+			check(not tip.shown, look .. ': a name that fits has none')
+			stub.fire_script(short, 'OnLeave', true)
+			-- A caption has none either.
+			stub.fire_script(list.rows[1], 'OnEnter', true)
+			check(not tip.shown, 'a caption has none')
+			-- It does not outlive the list.
+			long = row_of(LONG_NAMES[1])
+			stub.fire_script(long, 'OnEnter', true)
+			check(tip.shown, 'shown again')
+			W.CloseList()
+			check(not tip.shown, 'closing the list takes it down')
+		end)
+	end
+end)
+
+test("the select face that shows a typeface cuts what it draws at the face (M6)", function()
+	for _, look in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		in_look(look, function()
+			local w = row_widget('header', { font_name = 'Colus', font_size = 15 }, nil, { name = 'Header font' })
+			local face = w.face
+			check(face.clip ~= nil and face.clip:DoesClipChildren(), look .. ': a clip frame')
+			eq(face.text:GetParent(), face.clip, 'the text is on it')
+			eq(face.text:CanWordWrap(), false, 'one line')
+			for p = 1, 2 do
+				local _, relative = face.clip:GetPoint(p)
+				eq(relative, face, 'the clip lies on the face')
+			end
+		end)
+	end
+end)
+
+------------------------------------------------------------------ each ClearAllPoints of the menu (M8)
+
+test("the menu's frame has no points once it hides, whatever draws next (M8: OnHide's clear)", function()
+	in_look('thick', function()
+		open_dots()
+		stub.click(dots_of('header'))
+		check(OW.GetMenuFrames().frame:GetNumPoints() > 0, 'anchored while open')
+		OW:CloseMenu()
+		eq(OW.GetMenuFrames().frame:GetNumPoints(), 0, 'off its dots when it hides')
+		close_dots()
+	end)
+end)
+
+test("the menu's frame is off any old anchor when its rows are drawn (M8: Draw's clear)", function()
+	in_look('thick', function()
+		open_dots()
+		stub.click(dots_of('header'))
+		local M = OW.GetMenuFrames()
+		OW:CloseMenu()
+		-- A stale anchor, as a menu left on a pooled widget would hold.
+		M.frame:SetPoint('TOPLEFT', dots_of('tip'), 'BOTTOMLEFT', 0, 0)
+		local at
+		local body = M.body
+		local draw = body.Draw
+		body.Draw = function(self, ...)
+			at = M.frame:GetNumPoints()
+			return draw(self, ...)
+		end
+		stub.click(dots_of('chat'))
+		body.Draw = draw
+		eq(at, 0, 'no point on the frame when the rows are drawn')
+		close_dots()
+	end)
+end)
+
+test("a scroll of the list takes a cut name's tooltip down, and the tooltip anchors to the right of its row (M-a, M-b)", function()
+	in_look('thick', function(tip)
+		for _, name in ipairs(LONG_NAMES) do st.LSM:Register('font', name, 'Fonts\\ARIALN.TTF') end
+		local list = open(row_widget('header', 'Text'))
+		local at
+		for i, entry in ipairs(list.entries) do
+			if entry.label == LONG_NAMES[1] then at = i end
+		end
+		list.offset = math.max(0, math.min(#list.entries - 12, at - 1))
+		stub.fire_script(list.frame, 'OnMouseWheel', 0)
+		local row
+		for _, r in ipairs(list.rows) do
+			if r:IsShown() and r.entry == list.entries[at] then row = r end
+		end
+		stub.fire_script(row, 'OnEnter', true)
+		check(tip.shown, 'shown')
+		eq(tip.anchor, 'ANCHOR_RIGHT', 'beside the list, not over its rows')
+		stub.fire_script(list.frame, 'OnMouseWheel', 1)
+		check(not tip.shown, 'a scroll takes it down: the row holds another entry now')
+		W.CloseList()
+	end)
+end)
+
+test('the plain select face is one line and cut at the box too (M-c)', function()
+	for _, look in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		in_look(look, function()
+			fresh()
+			vals.pick = 'a'
+			local _, by = draw(Page({ pick = {
+				order = 1, type = 'select', name = 'Pick', desc = 'Pick one.', values = { a = 'A label far too long for the face' },
+				get = function() return vals.pick end, set = function() end,
+			} }))
+			local w = by.pick.widget
+			eq(w.text:CanWordWrap(), false, look .. ': one line')
+			check(w.frame.clip ~= nil and w.frame.clip:DoesClipChildren(), look .. ': cut at the box')
+			eq(w.text:GetParent(), w.frame.clip)
+		end)
+	end
 end)

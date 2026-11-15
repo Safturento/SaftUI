@@ -872,6 +872,15 @@ function FontString.GetUnboundedStringWidth(self, s)
 	if not font or not s.text then return 0 end
 	return #s.text * font[2] / 2
 end
+-- Whether the text is cut at its width (the game ends it with "..."): a font
+-- string that doesn't wrap whose full width is wider than the room its anchors
+-- or its width give it. As the width of a character is a guess here (see
+-- above), so is this; a test sets the label's length to make it so.
+function FontString.IsTruncated(self, s)
+	if s.word_wrap ~= false then return false end
+	local room = width_of(self, s)
+	return room > 0 and FontString.GetUnboundedStringWidth(self, s) > room
+end
 -- Like the modern client, a fixed-width font string that doesn't wrap reports
 -- the truncated width: never more than its width.
 function FontString.GetStringWidth(self, s)

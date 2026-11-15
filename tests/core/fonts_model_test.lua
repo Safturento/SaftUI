@@ -119,7 +119,7 @@ local function SetFontCalls(object, fn)
 	return calls
 end
 
-test('the size nudge, one up and straight back, on a shared update and on a new typeface', function()
+test('the size nudge, one up and straight back, on a shared update; a new typeface is set once', function()
 	local calls = SetFontCalls(FN.font_objects.pixel, function() FN:UpdateFontConfig('pixel') end)
 	check(#calls >= 3, 'SetFont ran for the face, then twice more')
 	local n = #calls
@@ -144,8 +144,9 @@ test('the size nudge, one up and straight back, on a shared update and on a new 
 	local object = st:GetFont({ font_name = 'Colus', font_size = 31 })
 	CreateFont = real
 	eq(object, made, 'the object was made by CreateFont')
-	eq(sizes[#sizes - 1], 32, 'a new typeface goes one up')
-	eq(sizes[#sizes], 31, 'and straight back')
+	-- No bounce for a new object: nothing is on it to measure again (M10).
+	eq(sizes[#sizes], 31, 'a new typeface is set once, at its size')
+	check(sizes[#sizes - 1] ~= 32, 'and does not go one up')
 	eq(select(2, object:GetFont()), 31, 'and stays at its size')
 	eqlist(list(object:GetShadowColor()), { 0, 0, 0, 1 }, 'with an opaque black shadow')
 end)
@@ -780,4 +781,41 @@ test('a shared font on a face the game refuses draws in Text\'s face, whether Se
 		FN:UpdateFontConfig()
 	end
 	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a typeface look made for the first time sets its face once, at its size; a font object already in use is bounced (M10)', function()
+	-- The bounce (size + 1 and back) makes texts already on an object measure
+	-- again; a new object has none. The load probe (st:FontLoads) runs on its own
+	-- object, and once per file.
+	local sizes, made = {}, {}
+	local real = CreateFont
+	CreateFont = function(name)
+		local object = real(name)
+		made[#made + 1] = object
+		local setFont = object.SetFont
+		object.SetFont = function(self, file, size, flags)
+			sizes[#sizes + 1] = name .. ':' .. size
+			return setFont(self, file, size, flags)
+		end
+		return object
+	end
+	local look = { font_name = 'Colus', font_size = 31, font_outline = 'NONE', shadow_offset = { 0, 0 }, spacing = 4 }
+	st:GetFont(look)
+	CreateFont = real
+	local mine = {}
+	for _, entry in ipairs(sizes) do
+		if entry:find('^SaftUI_Typeface') then mine[#mine + 1] = entry end
+	end
+	eq(#mine, 1, 'one SetFont for the new object: ' .. table.concat(mine, ' '))
+	-- A shared font's object is set again in use, so it bounces as it did.
+	local bounced = {}
+	local object = st:GetFont('normal')
+	local setFont = object.SetFont
+	object.SetFont = function(self, file, size, flags)
+		bounced[#bounced + 1] = size
+		return setFont(self, file, size, flags)
+	end
+	FN:UpdateFontConfig('normal')
+	object.SetFont = setFont
+	eq(#bounced, 3, 'size, size + 1, size')
 end)
