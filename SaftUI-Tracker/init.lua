@@ -256,9 +256,18 @@ function TR:OnEvent(event, ...)
 		self:RefreshCooldowns()
 		return
 	end
-	-- Combat starting or ending changes what the list may do at once (the scroll
-	-- lock); the buttons themselves are the queued pass's and the refresh's.
-	if event == 'PLAYER_REGEN_DISABLED' or event == 'PLAYER_REGEN_ENABLED' then
+	-- Combat starting or ending changes what the list may do (the scroll lock),
+	-- which the refresh that follows draws; the buttons themselves are the queued
+	-- pass's and the refresh's. In the game lockdown begins only after this
+	-- event's handlers, so a refresh already waiting runs now, the last moment
+	-- the buttons can still be set (the harness starts lockdown first).
+	if event == 'PLAYER_REGEN_DISABLED' then
+		if self.pending then
+			self.pending = false
+			self:Refresh()
+			return -- (it has just read everything this event would mark)
+		end
+	elseif event == 'PLAYER_REGEN_ENABLED' then
 		self:UpdateScrollLock()
 	end
 	self:MarkDirty(event)
@@ -316,6 +325,9 @@ function TR:MarkDirty(event)
 	end
 	self.pending = true
 	C_Timer.After(delay, function()
+		-- (a refresh that already ran for this mark, at the start of combat, left
+		-- nothing pending)
+		if not self.pending then return end
 		self.pending = false
 		self:Refresh()
 	end)

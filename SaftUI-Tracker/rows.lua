@@ -381,6 +381,10 @@ local function MakeQuestRow(self)
 	slot.icon = slot:CreateTexture(nil, 'ARTWORK')
 	slot.icon:SetAllPoints(slot)
 	slot.mode = 'none'
+	-- Its clicks are the row's (a left click, the menu, Shift-click): the slot only
+	-- shows the item, it uses nothing.
+	slot:RegisterForClicks('LeftButtonUp', 'RightButtonUp')
+	slot:SetScript('OnClick', function(self, button) TR:OnQuestClick(row, button) end)
 	slot:SetScript('OnEnter', function(self)
 		TR:HoverRow(row, true)
 		TR:ShowSlotTooltip(self, row)
@@ -646,9 +650,12 @@ local function DrawItemSlot(self, row, quest, entry, width)
 	Place(slot, row, width - size, 0)
 	Size(slot, size, size)
 	local texture = quest.item.texture
-	if slot.shownTexture ~= texture then
-		slot.shownTexture = texture
+	local trim = st.config.profile.misc.icon_trim
+	if slot.shownTexture ~= texture or slot.shownTrim ~= trim or slot.shownSize ~= size then
+		slot.shownTexture, slot.shownTrim, slot.shownSize = texture, trim, size
 		slot.icon:SetTexture(texture)
+		-- Cropped by Icon zoom, as the button's icon is.
+		slot.icon:SetTexCoord(st:IconTexCoords(trim, size, size))
 	end
 end
 

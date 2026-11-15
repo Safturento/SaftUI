@@ -504,8 +504,22 @@ end
 -- protects what a protected frame is a child of or anchored to; the stubs don't
 -- model that spread (a test checks the anchors instead). The two values are
 -- isProtected and isProtectedExplicitly: a secure template is both.
+-- A region (a texture or a font string) of a protected frame is protected too:
+-- the region functions the docs mark IsProtectedFunction (REGION_PROTECTED
+-- below) are refused on it in combat. SimpleScriptRegionResizingAPIDocumentation
+-- marks SetPoint, SetAllPoints, ClearAllPoints, SetSize, SetWidth, SetHeight and
+-- the rest of the anchor family IsProtectedFunction for every region, and
+-- SimpleRegionAPIDocumentation SetScale and SetIgnoreParentScale (both
+-- branches of Gethe/wow-ui-source, read 2026-11-14); a region's own state is its
+-- frame's, since a region can't be made secure by a template. Making a
+-- region (CreateTexture, CreateFontString) is not marked protected in
+-- SimpleFrameAPIDocumentation, so it isn't refused here; the tracker still builds
+-- every region of a secure button when the button is made, out of combat.
 function ScriptRegion.IsProtected(self, s)
 	local protected = s.protected == true
+	if not protected and not s.groups.Frame and s.parent then
+		protected = states[s.parent].protected == true
+	end
 	return protected, protected
 end
 
@@ -1553,6 +1567,14 @@ local PROTECTED_IN_COMBAT = {
 	game too), and the anchor family rule (in game a SetPoint that would
 	anchor a restricted region to two families errors).
 ]]
+-- The functions of PROTECTED_IN_COMBAT that are also a region's (not only a
+-- frame's): the anchor family and scale, as the region docs mark them.
+local REGION_PROTECTED = {
+	SetPoint = true, SetAllPoints = true, ClearAllPoints = true,
+	SetSize = true, SetWidth = true, SetHeight = true,
+	SetScale = true, SetIgnoreParentScale = true,
+}
+
 local MEASURES_POSITION = {
 	GetPoint = true, GetRect = true, GetLeft = true, GetRight = true, GetTop = true, GetBottom = true,
 	GetCenter = true, IsMouseOver = true,
@@ -1603,7 +1625,7 @@ local function method(group, name, impl)
 			error(('Wrong object type for function %s:%s (called on %s)'):format(group, name, describe(self)), 2)
 		end
 		if measures then refuse_measure(s, name) end
-		if guarded and stub.in_combat and self:IsProtected() then
+		if guarded and stub.in_combat and (s.groups.Frame or REGION_PROTECTED[name]) and self:IsProtected() then
 			stub.blocked[#stub.blocked + 1] = { self, name }
 			return
 		end
@@ -1636,15 +1658,24 @@ local FRAME_TYPES = {
 -- acts on the press when useOnKeyDown is true (its attribute, else the
 -- "cast on key down" setting) and on the release otherwise; a button with no
 -- type does nothing. Only noted (stub.secure_clicks): nothing is used or cast.
-local function secure_action_click(self, mouse, down)
-	local on_key_down = self:GetAttribute('useOnKeyDown')
-	if on_key_down == nil then on_key_down = stub.cast_on_key_down end
+local function secure_action_click(self, mouse, down, is_key_press)
+	-- SecureActionButton_OnClick (SecureTemplates.lua, both branches):
+	-- isSecureMousePress = not isKeyPress and isSecureAction, and a mouse press
+	-- never uses useOnKeyDown, so a mouse click acts on the release; a key press
+	-- (a CLICK binding) acts on the press when useOnKeyDown (the attribute, else
+	-- the ActionButtonUseKeyDown setting) is on, and on the release when not.
+	local on_key_down = false
+	if is_key_press then
+		on_key_down = self:GetAttribute('useOnKeyDown')
+		if on_key_down == nil then on_key_down = stub.cast_on_key_down end
+	end
 	if (down and true or false) ~= (on_key_down and true or false) then return end
 	local kind = self:GetAttribute('type')
 	if not kind then return end
 	stub.secure_clicks[#stub.secure_clicks + 1] = {
 		button = self, type = kind, item = self:GetAttribute('item'),
 		macrotext = self:GetAttribute('macrotext'), mouse = mouse, down = down and true or false,
+		key = is_key_press and true or false,
 	}
 end
 
@@ -1729,28 +1760,40 @@ end
 -- release). stub.click ERRORS then, so a test that clicks a button it forgot to
 -- show fails loudly instead of passing without its click; a test that means to
 -- show a refusal says so with stub.try_click, which returns false for it.
-local function click_refusal(button, mouse)
+local function click_refusal(button, mouse, down)
 	local s = stub.state(button)
 	local which = mouse or 'LeftButton'
 	if not is_visible(s) then return 'it is hidden (or under a hidden frame)' end
 	if s.enabled == false then return 'it is disabled' end
+	-- A press is the Down half of a registration, a release the Up half.
+	local half = down == true and 'Down' or 'Up'
 	for _, name in ipairs(s.click_buttons or { 'LeftButtonUp' }) do
-		if name == which .. 'Up' or name == which .. 'Down' or name == 'AnyUp' or name == 'AnyDown' then return nil end
+		if name == which .. half or name == 'Any' .. half then return nil end
 	end
-	return 'it is not registered for ' .. tostring(which)
+	return 'it is not registered for the ' .. (down == true and 'press' or 'release') .. ' of ' .. tostring(which)
 end
 
-function stub.click(button, mouse, ...)
-	local why = click_refusal(button, mouse)
+function stub.click(button, mouse, down, ...)
+	local why = click_refusal(button, mouse, down)
 	if why then error('stub.click: the game would not deliver this click: ' .. why .. ' (stub.try_click is for a test that means to show that)', 2) end
-	return stub.fire_script(button, 'OnClick', mouse, ...)
+	return stub.fire_script(button, 'OnClick', mouse, down, ...)
+end
+
+-- A key binding's click (CLICK <button>:LeftButton) on a secure button: the
+-- press (down true) or the release, delivered under the same registration as a
+-- mouse click and told apart from one (isKeyPress), so the template acts on the
+-- press when ActionButtonUseKeyDown is on.
+function stub.press_key(button, down)
+	local why = click_refusal(button, 'LeftButton', down)
+	if why then error('stub.press_key: the game would not deliver this click: ' .. why, 2) end
+	return stub.fire_script(button, 'OnClick', 'LeftButton', down and true or false, true)
 end
 
 -- stub.click for a refusal that is the point of the test: false when the game
 -- would not deliver the click, else what stub.click returns.
-function stub.try_click(button, mouse, ...)
-	if click_refusal(button, mouse) then return false end
-	return stub.fire_script(button, 'OnClick', mouse, ...)
+function stub.try_click(button, mouse, down, ...)
+	if click_refusal(button, mouse, down) then return false end
+	return stub.fire_script(button, 'OnClick', mouse, down, ...)
 end
 
 -- The click of the harness before it played the game's rules: OnClick runs

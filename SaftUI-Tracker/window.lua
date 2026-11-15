@@ -404,12 +404,13 @@ function TR:ScrollTo(offset)
 	self:PlaceFocusBar()
 end
 
--- Whether the list is held still (Ruling 17): in combat, with the placement In
--- the row and a quest item button shown in a row. A button doesn't follow its
--- row in combat, so the list mustn't move under it. The wheel and the bar hold,
+-- Whether the list is held still (Ruling 17): in combat, with a quest item
+-- button shown in a row (not the placement setting: a button that is shown
+-- stays shown in combat whatever a profile change says). A button doesn't follow
+-- its row in combat, so the list mustn't move under it. The wheel and the bar hold,
 -- and window.barLock, a SaftUI frame over the bar, takes the mouse there.
 function TR:IsScrollLocked()
-	if not self.built or not InCombatLockdown() or self.config.items.placement ~= 'row' then return false end
+	if not self.built or not InCombatLockdown() then return false end
 	return self:RowButtonShown()
 end
 

@@ -47,14 +47,13 @@ local PlainNumber, PlainString = st.PlainNumber, st.PlainString
 TR.BUTTON_MIN_ALPHA = 0.25
 TR.DIM_ALPHA = 0.4
 TR.MOVE_TOLERANCE = 2
--- The log's most when the game won't say (model.lua's TR.FALLBACK_MAX_QUESTS);
--- the pool's cap is TR.ItemPoolMax(), which reads the game, never this.
-TR.ITEM_POOL_MAX = 35
 TR.RANGE_INTERVAL = 0.2
 
 -- The layer's visibility driver, until Task 12 builds it from the settings.
 TR.ITEM_DRIVER = '[petbattle] hide; show'
 
+-- The pool's cap: the log's most, read from the game (model.lua's TR.MaxQuests,
+-- which falls back to TR.FALLBACK_MAX_QUESTS), never a literal.
 function TR.ItemPoolMax()
 	return TR.MaxQuests()
 end
@@ -115,6 +114,11 @@ local KNOWN_ATTRIBUTES = { 'type', 'item', 'macrotext', 'macro', 'spell' }
 -- of the others. A secure call, so false in combat with nothing changed.
 function TR:SetButtonItem(button, item)
 	if InCombatLockdown() then return false end
+	-- The same item through the same seam: nothing to tell it (a scroll or a
+	-- refresh that changed nothing makes no table and no call).
+	if button.applied and button.appliedLink == (item and item.link) and button.appliedFn == TR.ItemAttributes then
+		return true
+	end
 	local attributes = TR.ItemAttributes(item) or {}
 	local applied = button.applied or {}
 	for key in pairs(applied) do
@@ -131,6 +135,7 @@ function TR:SetButtonItem(button, item)
 		if applied[key] ~= value then button:SetAttribute(key, value) end
 	end
 	button.applied = now
+	button.appliedLink, button.appliedFn = item and item.link, TR.ItemAttributes
 	return true
 end
 
@@ -240,7 +245,11 @@ local function PaintButton(button)
 		end
 	end
 
-	if button.backdrop then
+	-- The border is only drawn again when it changes: under the Blizzard theme
+	-- it is a piece made when the button was styled (out of combat), only shown,
+	-- hidden and colored here.
+	if button.backdrop and button.borderInside ~= (button.inside and true or false) then
+		button.borderInside = button.inside and true or false
 		if button.inside then
 			st:SetBorderColor(button.backdrop, Colors().button.blue:GetRGB())
 		else
@@ -252,14 +261,25 @@ end
 -- The button's size, backdrop and icon from the profile: SaftUI's backdrop drawn
 -- as kind 'action' in the tracker's Theme and Background, the icon inside it
 -- and cropped by Icon zoom. A secure call (the size), so out of combat only;
--- put off to the end of combat otherwise (the key says what was drawn).
-local function StyleButton(button)
+-- put off to the end of combat otherwise. What was drawn is remembered as the
+-- look that resolved (look is st:ResolveTheme's, nil for None), not the
+-- setting's name: a change of SaftUI's theme, which the tracker follows, changes
+-- the look and so the icon's inset. Every region the button can need is made
+-- here: the Blizzard theme's art goes on a frame of SaftUI's, not on the secure
+-- button (st:MarkForeign, MakeButton), and the quest-area border's piece is
+-- made now, by coloring the border and putting it back, so in combat it is only
+-- shown, hidden and colored.
+local function StyleButton(button, look)
 	local config = TR.config
 	local size = config.items.size
 	local trim = st.config.profile.misc.icon_trim
-	local key = ('%s|%s|%d|%s'):format(tostring(config.theme), tostring(config.background), size, tostring(trim))
-	if button.lookKey == key then return end
-	button.lookKey = key
+	local name = look and look.name
+	if button.styleName == name and button.styleSize == size and button.styleTrim == trim
+		and button.styleTheme == config.theme and button.styleBackground == config.background then
+		return
+	end
+	button.styleName, button.styleSize, button.styleTrim = name, size, trim
+	button.styleTheme, button.styleBackground = config.theme, config.background
 	if button.sizeSet ~= size then
 		button.sizeSet = size
 		button:SetSize(size, size)
@@ -268,14 +288,15 @@ local function StyleButton(button)
 	if button.backdrop then
 		button.backdrop:ClearAllPoints()
 		button.backdrop:SetAllPoints(button)
+		st:SetBorderColor(button.backdrop, Colors().button.blue:GetRGB())
+		st:SetBorderColor(button.backdrop)
 	end
 	local inset = st:ThemeInset(config.theme, config.background, 'action') or 0
 	local icon = button.icon
 	icon:ClearAllPoints()
 	st:SetInside(icon, inset)
 	icon:SetTexCoord(st:IconTexCoords(trim, size - 2 * inset, size - 2 * inset))
-	button.tint, button.countTint = nil, nil
-	-- (the border color a redraw took off is put back by the paint)
+	button.tint, button.countTint, button.borderInside = nil, nil, nil
 end
 
 ------------------------------------------------------------------ tooltips
@@ -329,9 +350,15 @@ end
 -- takes no mouse, under a visibility driver (which shows and hides every
 -- button with it, in combat too, with no addon code). Out of combat only; in
 -- combat the pass that makes it is queued as 'tracker_items'. Made once.
+-- The pass queued for the end of combat (one function, so queuing it makes no
+-- closure).
+local function QueuedPass()
+	TR:RefreshItems()
+end
+
 function TR:BuildItemLayer()
 	if self.itemLayer then return self.itemLayer end
-	if st:QueueAfterCombat('tracker_items', function() TR:RefreshItems() end) then return nil end
+	if st:QueueAfterCombat('tracker_items', QueuedPass) then return nil end
 	local layer = CreateFrame('Frame', st.name .. 'TrackerItems', UIParent, 'SecureHandlerStateTemplate')
 	layer:SetFrameStrata('LOW')
 	layer:SetFrameLevel(30)
@@ -346,8 +373,18 @@ end
 local function MakeButton(self)
 	local index = #self.itemButtons + 1
 	local button = CreateFrame('Button', st.name .. 'TrackerItem' .. index, self.itemLayer, 'SecureActionButtonTemplate')
-	button:RegisterForClicks('AnyUp', 'AnyDown')
+	-- AnyUp, as Blizzard's own quest item button registers on both clients
+	-- (QuestObjectiveItemButtonMixin:OnLoad). The template acts on the release for
+	-- every mouse click whatever ActionButtonUseKeyDown says (SecureActionButton_
+	-- OnClick: isSecureMousePress), so a press registration would add nothing.
+	button:RegisterForClicks('AnyUp')
 	button:Hide()
+	-- The Blizzard theme draws a button's ring and its own-color piece as textures
+	-- of the button it sits behind, which for a secure button would be regions of a
+	-- protected frame: made, anchored and sized only out of combat. Marked foreign,
+	-- the pieces go on a frame of SaftUI's under the backdrop instead
+	-- (.agents/taint.md rule 15).
+	st:MarkForeign(button)
 
 	button.icon = button:CreateTexture(nil, 'ARTWORK')
 	button.hover = button:CreateTexture(nil, 'HIGHLIGHT')
@@ -389,20 +426,32 @@ end
 ------------------------------------------------------------------ building
 
 -- The parts of the item layer that are not secure, made with the tracker: the
--- pool's tables and the watcher frame. Called by TR:Build, so with the switch
--- off nothing exists. The layer and the buttons are made by the first pass out
--- of combat.
+-- pool's tables and the watcher frame, which fills UIParent so a change of the
+-- screen's size or the UI scale (the window hangs from one corner, the buttons
+-- from another) places the buttons again, hears the quest-area event, and runs
+-- the range timer. Edit mode's drag moves the holder every frame without a
+-- refresh: its 'PositionChanged' places them again too (edit mode is never open
+-- in combat). Called by TR:Build, so with the switch off nothing exists. The
+-- layer and the buttons are made by the first pass out of combat.
 function TR:BuildItems()
 	self.itemButtons, self.itemByQuest, self.itemWanted = {}, {}, {}
 	local watcher = CreateFrame('Frame', nil, UIParent)
+	watcher:SetAllPoints(UIParent)
 	watcher.waited = 0
 	watcher:SetScript('OnEvent', function(_, event, ...)
 		if event == 'PLAYER_INSIDE_QUEST_BLOB_STATE_CHANGED' then TR:OnBlobChanged(...) end
 	end)
+	watcher:SetScript('OnSizeChanged', function() TR:PlaceItems() end)
 	if not (C_EventUtils and C_EventUtils.IsEventValid and not C_EventUtils.IsEventValid('PLAYER_INSIDE_QUEST_BLOB_STATE_CHANGED')) then
 		watcher:RegisterEvent('PLAYER_INSIDE_QUEST_BLOB_STATE_CHANGED')
 	end
 	self.itemWatcher = watcher
+	local editMode = st.EditModeFrames
+	if editMode and type(editMode.On) == 'function' then
+		editMode:On('PositionChanged', function(mover)
+			if mover and mover.def and mover.def.frame == TR.holder then TR:PlaceItems() end
+		end)
+	end
 end
 
 -- The game says the player is inside a quest's area, or left it.
@@ -473,7 +522,7 @@ end
 function TR:ColorItems()
 	if not self.itemButtons then return end
 	for _, button in ipairs(self.itemButtons) do
-		button.tint, button.countTint = nil, nil
+		button.tint, button.countTint, button.borderInside = nil, nil, nil
 		PaintButton(button)
 	end
 end
@@ -503,6 +552,8 @@ end
 
 -- The quests the layer draws in rows, in the list's order: each quest with an
 -- item and a row, as { quest, row }.
+local NONE = {}
+
 local function Wanted(self)
 	local wanted = self.itemWanted
 	local n = 0
@@ -522,20 +573,41 @@ local function Wanted(self)
 	return wanted
 end
 
+-- The rounding of the layer's offsets: a physical pixel (one function, so no
+-- closure is made per pass).
+local function RoundToPixel(value)
+	return st:RoundToPixel(value, UIParent)
+end
+
 -- The offsets of a row's button, in the layer's pixels, or nil while it isn't
 -- wanted there.
 local function Place(self, row, size)
 	if not row or not row:IsVisible() then return nil end
-	local top, right = row:GetTop(), row:GetRight()
-	local viewTop, viewBottom = self.scroll:GetTop(), self.scroll:GetBottom()
-	return Items.RowPlace(top, right, viewTop, viewBottom, size, function(value)
-		return st:RoundToPixel(value, UIParent)
-	end)
+	return Items.RowPlace(row:GetTop(), row:GetRight(), self.scroll:GetTop(), self.scroll:GetBottom(), size, RoundToPixel)
+end
+
+-- Puts a button at its row's place, or hides it while the row is out of view,
+-- collapsed or gone. Secure calls, so out of combat only, and only on a change.
+local function PlaceButton(self, button, row, size)
+	local left, top = Place(self, row, size)
+	if left then
+		if button.placedLeft ~= left or button.placedTop ~= top then
+			button.placedLeft, button.placedTop = left, top
+			button:ClearAllPoints()
+			button:SetPoint('TOPLEFT', UIParent, 'BOTTOMLEFT', left, top)
+		end
+		button.dimmed = false
+		self:SetItemAlpha(button, 1)
+		PaintButton(button)
+		if not button:IsShown() then button:Show() end
+	elseif button:IsShown() then
+		button:Hide()
+	end
 end
 
 -- Out of combat: the pool is handed out and each button told its item, set up
--- and placed at its row, or hidden while the row is out of view, collapsed or
--- gone. Buttons are made on need, up to the cap.
+-- and placed at its row. Buttons are made on need, up to the cap. This is the
+-- refresh's, not a scroll's: it tells buttons their items and styles them.
 local function AssignItems(self, wanted)
 	local config = self.config
 	local byQuest = self.itemByQuest
@@ -543,28 +615,29 @@ local function AssignItems(self, wanted)
 	if row and not self.itemLayer then self:BuildItemLayer() end
 	if not (row and self.itemLayer) then
 		-- Off, or the layer can't be made now: nothing is wanted of a button.
-		wanted = {}
+		wanted = NONE
 	end
 
-	local keep = {}
-	for _, entry in ipairs(wanted) do keep[entry.quest.id] = true end
 	for questID, button in pairs(byQuest) do
-		if not keep[questID] then
+		local kept = false
+		for _, entry in ipairs(wanted) do
+			if entry.quest.id == questID then kept = true; break end
+		end
+		if not kept then
 			byQuest[questID] = nil
 			button.questID, button.item, button.range, button.cd, button.inside = nil, nil, nil, nil, nil
 		end
 	end
-	local free = {}
-	for _, button in ipairs(self.itemButtons) do
-		if not button.questID then free[#free + 1] = button end
-	end
 
+	local look = st:ResolveTheme(config.theme, config.background, 'action')
 	local size = config.items.size
 	for _, entry in ipairs(wanted) do
 		local quest = entry.quest
 		local button = byQuest[quest.id]
 		if not button and quest.item.link then
-			button = table.remove(free, 1)
+			for _, spare in ipairs(self.itemButtons) do
+				if not spare.questID then button = spare; break end
+			end
 			if not button and #self.itemButtons < TR.ItemPoolMax() then button = MakeButton(self) end
 			if button then
 				byQuest[quest.id] = button
@@ -575,21 +648,8 @@ local function AssignItems(self, wanted)
 			button.item, button.title = quest.item, quest.title
 			button.cd, button.range = quest.item.cooldown, quest.item.range
 			button.inside = ReadInside(quest.id)
-			StyleButton(button)
-			local left, top = Place(self, entry.row, size)
-			if left then
-				if button.placedLeft ~= left or button.placedTop ~= top then
-					button.placedLeft, button.placedTop = left, top
-					button:ClearAllPoints()
-					button:SetPoint('TOPLEFT', UIParent, 'BOTTOMLEFT', left, top)
-				end
-				button.dimmed = false
-				self:SetItemAlpha(button, 1)
-				PaintButton(button)
-				if not button:IsShown() then button:Show() end
-			elseif button:IsShown() then
-				button:Hide()
-			end
+			StyleButton(button, look)
+			PlaceButton(self, button, entry.row, size)
 		end
 	end
 	-- Spare buttons go.
@@ -599,9 +659,9 @@ local function AssignItems(self, wanted)
 end
 
 -- In combat: nothing secure. A button stays where it was; it dims to DIM_ALPHA
--- when its row moved by more than MOVE_TOLERANCE, is out of view or is gone (or
--- its quest no longer has an item), and goes on using its own quest's item. What
--- a drawing may change (the count, the cooldown) follows the quest while its
+-- when its row moved by more than MOVE_TOLERANCE, is out of view or is gone, or
+-- its quest's item is another one now, and goes on using its own quest's item.
+-- What a drawing may change (the count, the cooldown) follows the quest while its
 -- item is the same one.
 local function DimItems(self)
 	local size = self.config.items.size
@@ -609,14 +669,13 @@ local function DimItems(self)
 		if button.questID and button:IsShown() then
 			local row = self:GetQuestRow(button.questID)
 			local quest = row and row.quest
+			local item = quest and quest.item
 			local rowTop
-			if quest and quest.item and row.item == 'row' then
+			if item and row.item == 'row' and item.link == (button.item and button.item.link) then
 				local _, top = Place(self, row, button.sizeSet or size)
 				rowTop = top
-				if quest.item.link == (button.item and button.item.link) then
-					button.item, button.title = quest.item, quest.title
-					button.cd, button.range = quest.item.cooldown, quest.item.range
-				end
+				button.item, button.title = item, quest.title
+				button.cd, button.range = item.cooldown, item.range
 			end
 			local alpha = Items.CombatAlpha(button.placedTop, rowTop)
 			button.dimmed = alpha < 1
@@ -626,20 +685,33 @@ local function DimItems(self)
 	end
 end
 
--- Each quest row's item slot (rows.lua): hidden under a button that sits at its
--- row, a greyed icon in combat while the quest has none there, a plain icon
--- otherwise (Item buttons Off, or no button to be had).
+-- Whether a button could still be had for a quest's item: it has a link, and
+-- the pool is not full of buttons for other quests.
+local function CanHaveButton(self, item)
+	if not item.link then return false end
+	if #self.itemButtons < TR.ItemPoolMax() then return true end
+	for _, button in ipairs(self.itemButtons) do
+		if not button.questID then return true end
+	end
+	return false
+end
+
+-- Each quest row's item slot (rows.lua): hidden where the quest's own button
+-- sits shown (dimmed and displaced or not: it is that quest's), a greyed icon in
+-- combat where the quest has none and one can still come, a plain icon
+-- otherwise (Item buttons Off, or no button to be had: no link, the pool full).
 local function DrawSlots(self, combat)
 	local placement = self.config.items.placement
 	for _, row in ipairs(self.pools.quest.rows) do
 		if row.inUse and row.item == 'row' then
 			local button = self.itemByQuest[row.questID]
+			local item = row.quest and row.quest.item
 			local mode
 			if placement == 'off' then
 				mode = 'icon'
-			elseif button and button:IsShown() and not button.dimmed then
+			elseif button and button:IsShown() and item and button.item and button.item.link == item.link then
 				mode = 'none'
-			elseif combat then
+			elseif combat and item and CanHaveButton(self, item) then
 				mode = 'greyed'
 			else
 				mode = 'icon'
@@ -658,7 +730,7 @@ function TR:RefreshItems()
 	local combat = InCombatLockdown()
 	local wanted = Wanted(self)
 	if combat then
-		st:QueueAfterCombat('tracker_items', function() TR:RefreshItems() end)
+		st:QueueAfterCombat('tracker_items', QueuedPass)
 		DimItems(self)
 	else
 		AssignItems(self, wanted)
@@ -669,8 +741,22 @@ function TR:RefreshItems()
 end
 
 -- The rows moved without a refresh (a scroll, the window collapsing, hiding or
--- being moved): out of combat the buttons follow them, in combat they dim.
+-- being moved, the screen changing size, an edit mode drag): out of combat the
+-- buttons follow them, in combat they dim. Only places: it tells no button its
+-- item and styles none (the refresh does), so a thumb drag's scroll events cost
+-- a few reads and no allocation.
 function TR:PlaceItems()
 	if not self.built or not self.model or not self.itemButtons then return end
-	self:RefreshItems()
+	local combat = InCombatLockdown()
+	if combat then
+		DimItems(self)
+	else
+		local size = self.config.items.size
+		for _, button in ipairs(self.itemButtons) do
+			if button.questID then PlaceButton(self, button, self:GetQuestRow(button.questID), size) end
+		end
+	end
+	DrawSlots(self, combat)
+	self:UpdateScrollLock()
+	self:UpdateRangeWatch()
 end
