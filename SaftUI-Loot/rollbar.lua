@@ -92,11 +92,11 @@ local function SetBarTransmog(bar, transmog)
 	end
 end
 
--- The lit border of a locked bar's chosen button: Buttons > Blue on its icon's
+-- The lit border of a locked bar's chosen button: the accent on its icon's
 -- backdrop. Kept through a theme recolor or redraw (st:KeepOwnColors).
 local function ColorLit(icon)
 	if icon.backdrop then
-		st:SetBorderColor(icon.backdrop, st.config.profile.colors.button.blue:GetRGB())
+		st:SetBorderColor(icon.backdrop, st:Color('accent'):GetRGB())
 	end
 end
 
@@ -112,12 +112,12 @@ local function LockBar(bar, choice)
 	bar.Choice:SetShown(choice ~= nil)
 end
 
--- A locked bar's lit border and label in the current Buttons > Blue.
+-- A locked bar's lit border and label in the current accent.
 local function ColorLocked(bar)
 	for _, button in ipairs(bar.buttons) do
 		if button.choice == bar.choice then ColorLit(button.Icon) end
 	end
-	bar.Choice:SetTextColor(st.config.profile.colors.button.blue:GetRGB())
+	bar.Choice:SetTextColor(st:Color('accent'):GetRGB())
 end
 
 -- The same sizing as UpdateRollFrame, from the live roll config. A locked bar's
@@ -192,7 +192,7 @@ end
 -- skinned bar's.
 local function SetBarTimer(bar, sec)
 	bar.Timer:SetValue(sec)
-	bar.Timer:SetStatusBarColor(st.config.profile.colors.button.blue:GetRGB())
+	bar.Timer:SetStatusBarColor(st:Color('accent'):GetRGB())
 
 	local whole = floor(sec)
 	if bar.shownSecond ~= whole then

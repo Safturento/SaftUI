@@ -125,12 +125,12 @@ test('an icon is tinted as the theme text is, lit blue under the mouse, and foll
 	local colors = profile.colors.text
 	eq(tint(filterButton), rgb(colors.normal:GetRGB()), 'filter: the text color at rest')
 	stub.fire_script(filterButton, 'OnEnter', true)
-	eq(tint(filterButton), rgb(colors.blue:GetRGB()), 'filter: lit blue under the mouse')
+	eq(tint(filterButton), rgb(profile.theme.accent:GetRGB()), 'filter: lit in the accent under the mouse')
 	stub.fire_script(filterButton, 'OnLeave', true)
 	eq(tint(filterButton), rgb(colors.normal:GetRGB()), 'filter: back at rest')
 
 	stub.fire_script(jumpButton, 'OnEnter', true)
-	eq(tint(jumpButton), rgb(colors.blue:GetRGB()), 'jump: lit blue under the mouse')
+	eq(tint(jumpButton), rgb(profile.theme.accent:GetRGB()), 'jump: lit in the accent under the mouse')
 	stub.fire_script(jumpButton, 'OnLeave', true)
 	eq(tint(jumpButton), rgb(colors.normal:GetRGB()), 'jump: back at rest')
 
@@ -141,6 +141,19 @@ test('an icon is tinted as the theme text is, lit blue under the mouse, and foll
 	eq(tint(jumpButton), '0.25,0.50,0.75', 'and the jump icon')
 	colors.normal = saved
 	LT:ColorFeed('text')
+end)
+
+test('a lit feed button follows an accent change at once (Review Focus 4)', function()
+	reset()
+	stub.fire_script(filterButton, 'OnEnter', true)
+	eq(tint(filterButton), rgb(profile.theme.accent:GetRGB()), 'lit in the accent')
+	local accent = profile.theme.accent
+	accent:SetRGB(0.9, 0.1, 0.2)
+	st:ColorsChanged('accent')
+	eq(tint(filterButton), '0.90,0.10,0.20', 'the new accent, at once, through ColorsChanged')
+	stub.fire_script(filterButton, 'OnLeave', true)
+	eq(tint(filterButton), rgb(profile.colors.text.normal:GetRGB()), 'and back to the text color at rest')
+	accent:SetRGB(0, 0.68, 0.94)
 end)
 
 test('each button has a tooltip, above it, put away on leaving', function()

@@ -28,15 +28,14 @@ end
 
 -- The feed's two small buttons (the filter and the jump to the newest entry) are
 -- a Lucide icon on a button drawn in the feed's theme: Colors -> Text -> Normal
--- at rest, Blue under the mouse. The icon is 16 px on the 20 px button: Lucide's
+-- at rest, the accent under the mouse. The icon is 16 px on the 20 px button: Lucide's
 -- funnel fills 20 of its 24 grid, the arrow 14, so 16 leaves the funnel 13 px
 -- wide and each a few px of the button round it.
 local ICON_SIZE = 16
 
 TintButton = function(button)
 	if not button then return end
-	local colors = st.config.profile.colors.text
-	button.icon:SetVertexColor((button.lit and colors.blue or colors.normal):GetRGB())
+	button.icon:SetVertexColor((button.lit and st:Color('accent') or st:Color('text', 'normal')):GetRGB())
 end
 
 -- A feed button with its icon and its tooltip: a title and, for the filter, a line
@@ -163,8 +162,8 @@ end
 -- the shown mount entries take their Loot > Mount color back. From LT:OnColorsChanged (init.lua).
 function LT:ColorFeed(group)
 	if not self.feed then return end
-	-- The buttons' icons are tinted in Colors -> Text.
-	if group == 'text' then
+	-- The buttons' icons are tinted in Colors -> Text and the accent.
+	if group == 'text' or group == 'accent' then
 		TintButton(self.feed.filterButton)
 		TintButton(self.feed.reset_button)
 	end

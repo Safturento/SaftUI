@@ -3,7 +3,7 @@
 -- place, locked on your choice, until the roll ends. Checks that:
 --   - choosing on a roll matched to a loot history drop holds it in the same
 --     place, with its item, timer, counts and tooltip;
---   - your choice's button is lit (Buttons > Blue) and the others dimmed, a
+--   - your choice's button is lit (the accent) and the others dimmed, a
 --     label names it, and the bar is drawn as the previews are (body as a bar,
 --     icon as a slot, the lit button as a small frame), its lit border kept
 --     through a recolor;
@@ -448,7 +448,7 @@ local function tooltip_has(needle)
 end
 
 local function blue()
-	return T.text(st.config.profile.colors.button.blue:GetRGB())
+	return T.text(st.config.profile.theme.accent:GetRGB())
 end
 
 ------------------------------------------------------------------ tests
@@ -514,7 +514,7 @@ test("your choice is lit and the others dimmed, a label names it, and its button
 	local lit = button_of(bar, 'Greed')
 	eq(lit:GetAlpha(), 1, 'your choice stays bright')
 	check(has_border(lit), 'with a border')
-	eq(T.edge_rgb(lit.Icon.backdrop), blue(), 'in Buttons > Blue')
+	eq(T.edge_rgb(lit.Icon.backdrop), blue(), 'in the accent')
 	for _, choice in ipairs({ 'Need', 'Pass' }) do
 		local button = button_of(bar, choice)
 		eq(T.text(button:GetAlpha()), '0.35', choice .. ' is dimmed')
@@ -1296,7 +1296,7 @@ test('Test mode shows one of its preview bars locked', function()
 	check(lit ~= nil and lit:IsShown(), 'its label names a button it shows')
 	eq(lit:GetAlpha(), 1, 'that one bright')
 	check(has_border(lit), 'and lit')
-	eq(T.edge_rgb(lit.Icon.backdrop), blue(), 'in Buttons > Blue')
+	eq(T.edge_rgb(lit.Icon.backdrop), blue(), 'in the accent')
 	for _, button in ipairs(bar.buttons) do
 		if button ~= lit and button:IsShown() then
 			eq(T.text(button:GetAlpha()), '0.35', 'the others dimmed')
@@ -1395,7 +1395,7 @@ test('a roll that ends without a choice is not held', function()
 	eq(#LT:GetHeldRolls(), 0, 'nothing held')
 end)
 
-test("a Buttons > Blue change recolors a held roll's lit border and label, and the locked preview's", function()
+test("an accent change recolors a held roll's lit border and label, and the locked preview's; a Buttons change does not", function()
 	world()
 	LT:SetTestRolls(true)
 	local drop = add_drop('amulet', {})
@@ -1409,14 +1409,34 @@ test("a Buttons > Blue change recolors a held roll's lit border and label, and t
 		if other.Choice:IsShown() then preview = other end
 	end
 
-	local color = st.config.profile.colors.button.blue
+	local color = st.config.profile.theme.accent
 	color.r, color.g, color.b = 0.9, 0.3, 0.1
 	st:ColorsChanged('button')
+	eq(T.edge_rgb(button_of(bar, bar.choice).Icon.backdrop), '0.00,0.68,0.94', "a 'button' change moves nothing (Review Focus 4)")
+	st:ColorsChanged('accent')
 	for what, b in pairs({ held = bar, preview = preview }) do
-		eq(T.edge_rgb(button_of(b, b.choice).Icon.backdrop), '0.90,0.30,0.10', what .. ": the lit border takes the new blue")
+		eq(T.edge_rgb(button_of(b, b.choice).Icon.backdrop), '0.90,0.30,0.10', what .. ": the lit border takes the new accent")
 		local r, g, bl = b.Choice:GetTextColor()
 		eq(T.text(r, g, bl), '0.90,0.30,0.10', what .. ': and the label')
 	end
+end)
+
+test('the roll timer bars fill in the accent, in the skinned frame and in a held bar (Question 3)', function()
+	world()
+	LT:SetTestRolls(true)
+	local drop = add_drop('amulet', {})
+	local roll = start_roll('amulet')
+	tick(1)
+	eq(T.text(frame_of(roll).Timer:GetStatusBarColor()), '0.00,0.68,0.94,1.00', "the skinned frame's timer: the accent at the defaults")
+	local accent = st.config.profile.theme.accent
+	accent:SetRGB(0.9, 0.3, 0.1)
+	tick(1)
+	eq(T.text(frame_of(roll).Timer:GetStatusBarColor()), '0.90,0.30,0.10,1.00', 'a changed accent is the next frame')
+	choose(roll, 'Greed', drop)
+	local bar = held_bar(roll)
+	tick(1)
+	if bar then eq(T.text(bar.Timer:GetStatusBarColor()), '0.90,0.30,0.10,1.00', "and the held bar's timer") end
+	accent:SetRGB(0, 0.68, 0.94)
 end)
 
 test('a Disenchant choice lights the Greed or Transmog button the bar shows', function()
