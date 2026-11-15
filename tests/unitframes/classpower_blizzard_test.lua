@@ -258,3 +258,27 @@ test("a change to the unit frame's height re-sizes the points", function()
 	end
 	eq(#take_errors(), 0, 'no errors')
 end)
+
+test('a point draws as a control where its power type has art, and as a small line where it has none', function()
+	fresh('retail', 'MAGE')
+	local frame = player_frame('blizzard')
+	power(frame, 'ICICLES', 3, 5)
+	eq(drawn(frame.ClassPower[1]), 'theme,theme,small', 'no art: a 1px line')
+	-- The power type changes (a form or spec change): the art is chosen again.
+	st.my_class = 'PALADIN'
+	power(frame, 'HOLY_POWER', 3, 5)
+	eq(drawn(frame.ClassPower[1]), 'theme,theme,control', 'art: a control')
+	st.my_class = 'MAGE'
+	power(frame, 'ICICLES', 3, 5)
+	eq(drawn(frame.ClassPower[1]), 'theme,theme,small', 'and back to the line')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a theme redraw after a power type with no art keeps the small line', function()
+	fresh('retail', 'MAGE')
+	local frame = player_frame('blizzard')
+	power(frame, 'ICICLES', 3, 5)
+	UF:UpdateUnitFrame(frame)
+	eq(drawn(frame.ClassPower[1]), 'theme,theme,small', 'still small after a config update')
+	eq(#take_errors(), 0, 'no errors')
+end)
