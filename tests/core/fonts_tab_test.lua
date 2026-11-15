@@ -16,6 +16,8 @@ local OM = st.OptionsModel
 
 local KINDS_NOTE = 'Window titles change at once. The rest is read when SaftUI builds its frames: reload (Reload UI, bottom right) to see a change everywhere.'
 
+local FN = st:GetModule('Fonts')
+
 local function Tab() return st.Config:GetOptionsTable().Fonts.args.fonts end
 
 local function ByOrder(t)
@@ -49,13 +51,16 @@ local panel = st:CreatePanel('Fonts test', 200, 100)
 
 test("every font has Shadow offset X, Shadow offset Y and Line spacing after its face, size and outline", function()
 	local count = 0
-	for fontKey in pairs(st.config.profile.fonts) do
+	for i, entry in ipairs(FN.FONTS) do
+		local fontKey = entry.key
 		count = count + 1
 		local group = Tab().args[fontKey]
+		eq(group.name, entry.name, fontKey .. ' is named from code')
+		eq(group.order, i + 1, fontKey .. ' is in FN.FONTS order, after Kinds of text')
 		check(group ~= nil, fontKey .. ' has a section')
 		local keys = {}
 		for i, r in ipairs(ByOrder(group.args)) do keys[i] = r.key end
-		eq(table.concat(keys, ','), 'name,font_name,font_size,font_outline,shadow_x,shadow_y,spacing', fontKey)
+		eq(table.concat(keys, ','), 'font_name,font_size,font_outline,shadow_x,shadow_y,spacing', fontKey)
 		local args = group.args
 		eq(args.shadow_x.name .. ',' .. args.shadow_y.name .. ',' .. args.spacing.name,
 			'Shadow offset X,Shadow offset Y,Line spacing', fontKey)
@@ -71,7 +76,7 @@ test("every font has Shadow offset X, Shadow offset Y and Line spacing after its
 		eq(args.shadow_y.min .. '/' .. args.shadow_y.max .. '/' .. args.shadow_y.step, '-5/5/1', 'shadow Y range')
 		eq(args.spacing.min .. '/' .. args.spacing.max .. '/' .. args.spacing.step, '0/20/1', 'spacing range')
 	end
-	eq(count, 7, 'the seven fonts')
+	eq(count, 6, 'the six shared fonts')
 end)
 
 test("Shadow offset X and Y read and write the font's shadow_offset, and its font object takes them at once", function()
@@ -121,7 +126,8 @@ test('a shadow or line spacing change nudges the font size up and back, so its t
 end)
 
 test("every font's shadow is opaque black, so a shadow offset shows", function()
-	for fontKey in pairs(st.config.profile.fonts) do
+	for _, entry in ipairs(FN.FONTS) do
+		local fontKey = entry.key
 		local r, g, b, a = st:GetFont(fontKey):GetShadowColor()
 		eq(table.concat({ r, g, b, a }, ','), '0,0,0,1', fontKey)
 	end
@@ -157,9 +163,12 @@ test('Kinds of text comes first: a font select each for window titles, button te
 		local n = 0
 		for fontKey, name in pairs(values) do
 			n = n + 1
-			eq(name, st.config.profile.fonts[fontKey].name, key .. ' lists ' .. fontKey .. ' by its name')
+			eq(name, FN:Font(fontKey).name, key .. ' lists ' .. fontKey .. ' by its name, from code')
 		end
-		eq(n, 7, key .. ' lists every font')
+		eq(n, 6, key .. ' lists every shared font')
+		local sorting = {}
+		for i, entry in ipairs(FN.FONTS) do sorting[i] = entry.key end
+		eq(table.concat(option.sorting, ','), table.concat(sorting, ','), key .. ' lists them in FN.FONTS order')
 	end
 	check(section.args.window_titles.desc:find("gold and free%-slot"), "Window titles' tooltip names the bags' gold and free-slot text")
 	check(section.args.button_text.desc:find('totem bar', 1, true), "Button text's tooltip names the totem bar")
@@ -176,11 +185,11 @@ test('each kind of text reads and writes its profile font; window titles change 
 	eq(st.config.profile.headers.font, 'pixel', 'the profile')
 	check(panel.title:GetFontObject() == st:GetFont('pixel'), 'the window title, at once')
 
-	Set('kinds', 'button_text', 'normal_med')
-	eq(st.config.profile.buttons.font, 'normal_med')
+	Set('kinds', 'button_text', 'pixel_med')
+	eq(st.config.profile.buttons.font, 'pixel_med')
 	Set('kinds', 'checkbox_labels', 'subtitle')
 	eq(st.config.profile.panels.font, 'subtitle')
-	eq(Get('kinds', 'button_text') .. ',' .. Get('kinds', 'checkbox_labels'), 'normal_med,subtitle', 'both read back')
+	eq(Get('kinds', 'button_text') .. ',' .. Get('kinds', 'checkbox_labels'), 'pixel_med,subtitle', 'both read back')
 
 	Set('kinds', 'window_titles', 'normal')
 	Set('kinds', 'button_text', 'pixel')

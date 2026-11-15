@@ -23,9 +23,11 @@ st.defaults.editmode = {
 	history_limit = 50,    -- how many steps the history keeps (1 to 1000), the oldest dropped first (EditMode/history.lua)
 }
 
+-- The shared fonts (Media/fonts.lua's FN.FONTS: their names and jobs are in
+-- code, so no entry has a name). Only these six are read; a profile that saved
+-- edits to the dropped Pixel Huge or Normal Med keeps them for FN.DROPPED.
 st.defaults.fonts = {
 	pixel = {
-		name = 'Pixel',
 		font_name = 'Homespun',
 		font_size = 10,
 		font_outline = 'MONOCHROMEOUTLINE',
@@ -33,7 +35,6 @@ st.defaults.fonts = {
 		spacing = 4,
 	},
 	normal = {
-		name = 'Normal',
 		font_name = 'AgencyFB Bold',
 		font_size = 16,
 		font_outline = 'OUTLINE',
@@ -41,18 +42,22 @@ st.defaults.fonts = {
 		spacing = 4,
 	},
 	title = {
-		name = 'Colus',
 		font_name = 'Colus',
 		font_size = 72,
 		font_outline = 'OUTLINE',
 		shadow_offset = { 0, 0 },
 		spacing = 4,
 	},
+	heading = {
+		font_name = 'Colus',
+		font_size = 15,
+		font_outline = 'OUTLINE',
+		shadow_offset = { 0, 0 },
+		spacing = 4,
+	},
 }
-st.defaults.fonts.pixel_med = st.tablemerge(st.defaults.fonts.pixel, { name='Pixel Med', font_size = 18 })
-st.defaults.fonts.pixel_huge = st.tablemerge(st.defaults.fonts.pixel, { name='Pixel Huge', font_size = 32 })
-st.defaults.fonts.normal_med = st.tablemerge(st.defaults.fonts.normal, { name='Normal Med', font_size = 24 })
-st.defaults.fonts.subtitle = st.tablemerge(st.defaults.fonts.title, { name='Subtitle', font_size = 24 })
+st.defaults.fonts.pixel_med = st.tablemerge(st.defaults.fonts.pixel, { font_size = 18 })
+st.defaults.fonts.subtitle = st.tablemerge(st.defaults.fonts.title, { font_size = 24 })
 
 st.defaults.headers = {
 	height = 31,

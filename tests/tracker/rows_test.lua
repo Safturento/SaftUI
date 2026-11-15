@@ -829,10 +829,12 @@ RW.both("a Fonts tab change redraws the rows (next frame): the font's size is re
 	local before = row:GetHeight()
 	st.config.profile.fonts.normal.font_size = 24
 	st:GetModule('Fonts'):UpdateFontConfig('normal')
+	st:FontsChanged()
 	RW.later(1)
 	check(row:GetHeight() > before, 'the row grew with the font at once: ' .. before .. ' -> ' .. row:GetHeight())
 	st.config.profile.fonts.normal.font_size = 16
 	st:GetModule('Fonts'):UpdateFontConfig('normal')
+	st:FontsChanged()
 	RW.later(1)
 	eq(row:GetHeight(), before, 'and back')
 end)
@@ -981,7 +983,7 @@ RW.both('a collapsed tracker redraws no rows: its count updates, and the rows ar
 	again.stop()
 end)
 
-RW.both('a profile change redraws the tracker once through the Fonts hook, a Fonts-tab change once', function(st, TR)
+RW.both('a profile change redraws the tracker once through st:FontsChanged, a Fonts-tab change once', function(st, TR)
 	Q.set({ Q.header('A'), Q.quest(1) }, { 1 })
 	TR:Refresh()
 	local counted = 0
@@ -991,6 +993,7 @@ RW.both('a profile change redraws the tracker once through the Fonts hook, a Fon
 		return redraw(self, ...)
 	end
 	st:GetModule('Fonts'):UpdateFontConfig()
+	st:FontsChanged()
 	RW.later(1)
 	check(counted <= 1, 'every font of a profile change: one redraw, not one each: ' .. counted)
 	check(counted >= 1, 'but it does redraw')

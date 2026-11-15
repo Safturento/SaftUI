@@ -1,9 +1,13 @@
 local st = SaftUI
 
+-- The shared fonts' names by key, from code (Media/fonts.lua's FN.FONTS), in
+-- no order: a select over them also takes the keys in FN.FONTS order as its
+-- `sorting`. A profile's saved font tables are never walked: one may hold a
+-- dropped font's edits.
 function st.Config:GetFontObjects()
 	local font_objects = {}
-	for k,v in pairs(st.config.profile.fonts) do
-		font_objects[k] = v.name
+	for _, entry in ipairs(st:GetModule('Fonts').FONTS) do
+		font_objects[entry.key] = entry.name
 	end
 
 	return font_objects
@@ -229,11 +233,14 @@ function generators.background(order, desc)
 end
 
 function generators.font(order, desc)
+	local sorting = {}
+	for i, entry in ipairs(st:GetModule('Fonts').FONTS) do sorting[i] = entry.key end
 	return {
 		name = 'Font',
 		desc = desc,
 		type = 'select',
 		order = order,
 		values = st.Config:GetFontObjects(),
+		sorting = sorting,
 	}
 end
