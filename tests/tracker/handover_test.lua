@@ -44,6 +44,9 @@ local CASES = { -- from, needed, combat, mode, itemsToShow -> to, actions
 	{ 'blizzard', true,  false, 'beside', false, 'both',     'reveal_beside,show_window' },
 }
 
+-- (held, a protected Blizzard tracker that can't move in combat: the sixth argument)
+local HELD = { 'blizzard', true, true, 'beside', true, true }
+
 test('TR.Handover.Next: every row of the design\'s table', function()
 	local _, TR = RW.world({ blizzard = true })
 	local Next = TR.Handover.Next
@@ -53,6 +56,14 @@ test('TR.Handover.Next: every row of the design\'s table', function()
 		eq(state .. ' ' .. table.concat(actions, ','), case[6] .. ' ' .. case[7], label)
 	end
 	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('TR.Handover.Next: a protected tracker held in combat stays blizzard, the window away, until it can move', function()
+	local _, TR = RW.world({ blizzard = true })
+	local state, actions = TR.Handover.Next(unpack(HELD))
+	eq(state .. ' ' .. table.concat(actions, ','), 'blizzard ', 'held: stays')
+	state, actions = TR.Handover.Next('blizzard', true, true, 'beside', true, false)
+	eq(state, 'both', 'not held: both')
 end)
 
 test('TR.Handover.Next: the rest of the grid, as the rules say', function()
@@ -848,14 +859,16 @@ both('the same switch with a tracker the game counts as protected: it stays in p
 	TR.config.blizzard.mode = 'beside'
 	TR:UpdateConfig()
 	settle()
-	eq(TR.handoverState, 'both', 'the state is both')
+	eq(TR.handoverState, 'blizzard', 'the state stays blizzard: SaftUI\'s window must not draw over the unmoved tracker')
+	check(not TR.window:IsShown(), 'the window stays away')
 	eq(OT.tracker:GetRight(), right, 'its place waits for the end of combat: not moved')
 	eq(OT.tracker:GetTop(), top, 'at all')
 	TW.combat(false)
 	settle(1)
 	eq(TR.blizzardEffective, 'beside', 'combat over: beside')
 	check(not near(OT.tracker:GetRight(), TR.holder:GetRight()), 'moved off the holder\'s place')
-	eq(TR.handoverState, 'both', 'still both')
+	eq(TR.handoverState, 'both', 'both once it could move')
+	check(TR.window:IsShown(), 'and SaftUI\'s window is back')
 	clean()
 end)
 
