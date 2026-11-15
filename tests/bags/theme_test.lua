@@ -1149,3 +1149,38 @@ test('the loading bar fills in the accent (Question 3)', function()
 	accent:SetRGB(0, 0.68, 0.94)
 	eq(#take_errors(), 0, 'no errors')
 end)
+
+test('every Bags row has a reset, and each derived one round-trips', function()
+	bags()
+	-- View's set saves the view, then lays the window out (views_switch_test.lua's
+	-- business; this window is made by hand, with no bags).
+	function INV:ApplyView() end
+	function INV:UpdateViewButtons() end
+	local R = load_test_file('lib/reset_walk.lua')
+	R.check_page({ Inventory = INV:GetConfigTable() }, 'Inventory')
+end)
+
+test("retail's four windows and the page with the bags off are walked too", function()
+	bags(nil, 'retail')
+	function INV:ApplyView() end
+	function INV:UpdateViewButtons() end
+	-- Separate bank and warband windows, then the combined bank: all four have movers.
+	INV.config.combinedBank = false
+	INV:RegisterMovers()
+	INV.config.combinedBank = true
+	INV:RegisterMovers()
+	local R = load_test_file('lib/reset_walk.lua')
+	local tree = INV:GetConfigTable()
+	for _, id in ipairs({ 'bag', 'bank', 'warband', 'combinedbank' }) do
+		check(tree.args[id], id .. ' has its section on retail')
+	end
+	R.check_page({ Inventory = tree }, 'Inventory')
+	-- Bags off: the page is General with Enable alone (the profile differs from
+	-- a fresh one by that very setting, so the walk does not ask it to match).
+	INV.config.enable = false
+	local off = INV:GetConfigTable()
+	eq(next(off.args.general.args), 'enable', 'Enable alone')
+	local problems, walked = R.problems({ Inventory = off }, 'Inventory', { fresh = false })
+	eq(#problems, 0, table.concat(problems, '; '))
+	eq(walked, 1, 'one row walked')
+end)

@@ -180,7 +180,6 @@ function TR.ItemsTab()
 		end,
 		function() return TR.nearestHolder end,
 		"Where the nearest quest item button is. Drag it in edit mode, or set it here.")
-	args.nearest_position.default = TR.SettingDefault('items', 'nearest_position')
 	-- The button's holder is protected (a secure child), and protection spreads to
 	-- the frames it is anchored to: refused here is any frame the tracker sizes in
 	-- combat (TR.NearestAnchorRefusal); the reason shows in the footer's status line.

@@ -169,7 +169,7 @@ local function GetConfigTable(unit)
 
 	-- Width, Relative | Height, Relative: the shared line, with the row's own
 	-- words for Width and Height.
-	local size = UF.GenerateRelativeSizeConfigGroup(5)
+	local size = UF.GenerateRelativeSizeConfigGroup(5, UF.SavedIn(unit, 'classpower'))
 	size.args.width.desc = "The whole row's width in pixels, shared out among the points. With Relative on, it's added to the unit frame's width: 0 is as wide as the unit frame."
 	size.args.height.desc = "Each point's height in pixels. With Relative on, it's added to the unit frame's height: 0 is as tall as the unit frame, -4 is 4 shorter."
 
@@ -177,6 +177,7 @@ local function GetConfigTable(unit)
 		order = 4,
 		type = 'group',
 		name = 'Class power',
+		saved = UF.SavedIn(unit, 'classpower'),
 		get = function(info) return Config()[info[#info]] end,
 		set = function(info, value)
 			Config()[info[#info]] = value
@@ -199,7 +200,8 @@ local function GetConfigTable(unit)
 					Update()
 				end,
 				UF:ConfigTarget(unit, 'ClassPower'),
-				"Where the row sits: which of its anchor points goes to which point of what it's attached to, then moved by X and Y."
+				"Where the row sits: which of its anchor points goes to which point of what it's attached to, then moved by X and Y.",
+				nil, UF.SavedAt(unit, 'classpower', 'position')
 			),
 		},
 	}

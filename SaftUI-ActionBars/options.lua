@@ -693,6 +693,7 @@ function AB:GetExtraOptions(id, order)
 				name = 'General',
 				type = 'group',
 				order = 1,
+				saved = st.Config.SavedIn('actionbars', id),
 				get = function(info) return self.config[id][info[#info]] end,
 				set = function(info, value)
 					self.config[id][info[#info]] = value

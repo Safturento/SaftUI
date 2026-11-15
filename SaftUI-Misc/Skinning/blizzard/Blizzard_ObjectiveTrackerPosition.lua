@@ -539,6 +539,7 @@ function OTP:GetConfigTable()
 				name = 'General',
 				type = 'group',
 				order = 1,
+				saved = st.Config.SavedIn('objectivetracker'),
 				get = function(info) return self.config[info[#info]] end,
 				set = function(info, value)
 					self.config[info[#info]] = value

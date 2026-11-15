@@ -218,6 +218,7 @@ function TT:GetConfigTable()
 				name = 'General',
 				type = 'group',
 				order = 1,
+				saved = st.Config.SavedIn('tooltip'),
 				get = function(info) return self.config[info[#info]] end,
 				set = function(info, value)
 					local key = info[#info]

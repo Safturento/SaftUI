@@ -379,6 +379,17 @@ test("a change through Theme > Window titles reaches the picker's title at once;
 	for _, client in ipairs({ 'forever', 'retail' }) do
 		world(client)
 		local row = st:GetModule('Theme'):GetConfigTable().args.window_titles.args.font
+		local function resetTitles()
+			-- This world has no /sui tree: the Theme tab alone, as the page 'Fonts' holds it.
+			local root = { Fonts = { type = 'group', name = 'Fonts', args = { theme = st:GetModule('Theme'):GetConfigTable() } } }
+			for _, section in ipairs(st.OptionsModel.BuildView(root, 'Fonts', { tab = 'theme' }).sections) do
+				for _, r in ipairs(section.rows) do
+					if r.key == 'font' and r.path[#r.path - 1] == 'window_titles' then
+						eq(st.OptionsModel.DefaultReset(root, r), true, client .. ': the derived reset ran')
+					end
+				end
+			end
+		end
 		eq(row.type, 'font', client .. ': the Theme tab has the row')
 		eq(CP.frame.Header.Text:GetFontObject(), st:GetFont('normal'), client .. ': Text to start with')
 		row.set({}, 'subtitle')
@@ -388,14 +399,14 @@ test("a change through Theme > Window titles reaches the picker's title at once;
 		local face = { font_name = 'Homespun', font_size = 13, font_outline = 'OUTLINE', shadow_offset = { 0, 0 }, spacing = 4 }
 		row.set({}, face)
 		eq(CP.frame.Header.Text:GetFontObject(), st:FontObject(face), client .. ': a typeface, at once')
-		row.default.reset({})
+		resetTitles()
 		eq(CP.frame.Header.Text:GetFontObject(), st:GetFont('normal'), client .. ': its reset, at once')
 		-- Skinning off: the picker keeps Blizzard's font whatever the setting says.
 		profile.skinning.color_picker = false
 		SK:UpdateConfig()
 		row.set({}, 'subtitle')
 		check(CP.frame.Header.Text:GetFontObject() ~= st:GetFont('subtitle'), client .. ': a picker not skinned keeps its own title font')
-		row.default.reset({})
+		resetTitles()
 		eq(#take_errors(), 0, client .. ': no errors')
 		clean()
 	end

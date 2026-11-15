@@ -167,7 +167,7 @@ end)
 
 ------------------------------------------------------------------ the editor's footer
 
-test("another row dragged past the selected one leaves the list where it was dropped; the selected row's own drag, and Reset all, bring it into view", function()
+test("another row dragged past the selected one leaves the list where it was dropped; the selected row's own drag, and the order's reset, bring it into view", function()
 	world()
 	local selected = INV:GetCategoryList()[25].id
 	INV.categoryEditor.selected = selected
@@ -212,14 +212,14 @@ test("another row dragged past the selected one leaves the list where it was dro
 	check(in_view(w, row_of(w, selected)), 'and shown whole')
 	eq(row_of(w, selected).frame:GetBottom(), w.listScroll:GetBottom(), 'scrolled the least: at the bottom of the view')
 
-	-- Reset all: the selected default back in its shipped place, shown.
+	-- The order's reset: the selected default back in its shipped place, shown.
 	wheel(w.listScroll, 1, 50)
 	check(not in_view(w, row_of(w, selected)), 'scrolled away from it: cut off at the bottom')
-	click(w.resetButton)
-	yes()
+	check(w.resetOrder:IsShown(), 'the order differs now: its reset shows')
+	click(w.resetOrder)
 	w = tab()
 	eq(INV.categoryEditor.selected, selected, 'still selected')
-	check(in_view(w, row_of(w, selected)), 'Reset all shows the selected row')
+	check(in_view(w, row_of(w, selected)), "the order's reset shows the selected row")
 	eq(#take_errors(), 0, 'no errors')
 	st.Config:Close()
 end)

@@ -59,6 +59,7 @@ local function BuildWindow(id, order)
 				name = 'General',
 				type = 'group',
 				order = 1,
+				saved = st.Config.SavedIn('inventory', id),
 				get = function(info) return INV.config[id][info[#info]] end,
 				set = function(info, value)
 					INV.config[id][info[#info]] = value
@@ -81,6 +82,7 @@ end
 local function FontOption(order, name, key, desc)
 	local option = generators.font(order, desc)
 	option.name = name
+	option.saved = st.Config.SavedAt('inventory', 'fonts', key)
 	option.get = function() return INV.config.fonts[key] end
 	option.set = function(_, value)
 		INV.config.fonts[key] = value
@@ -122,6 +124,7 @@ function INV:GetConfigTable()
 					name = 'General',
 					type = 'group',
 					order = 0,
+					saved = st.Config.SavedIn('inventory'),
 					get = function(info) return INV.config[info[#info]] end,
 					args = { enable = enable },
 				},
@@ -137,6 +140,7 @@ function INV:GetConfigTable()
 			name = 'General',
 			type = 'group',
 			order = 0,
+			saved = st.Config.SavedIn('inventory'),
 			get = function(info) return INV.config[info[#info]] end,
 			set = function(info, value)
 				INV.config[info[#info]] = value
@@ -178,6 +182,7 @@ function INV:GetConfigTable()
 			name = 'Look',
 			type = 'group',
 			order = 1,
+			saved = st.Config.SavedIn('inventory'),
 			get = function(info) return INV.config[info[#info]] end,
 			set = function(info, value)
 				INV.config[info[#info]] = value
@@ -203,6 +208,7 @@ function INV:GetConfigTable()
 			name = 'Icons',
 			type = 'group',
 			order = 2,
+			saved = st.Config.SavedIn('inventory'),
 			get = function(info) return INV.config[info[#info]] end,
 			set = function(info, value)
 				INV.config[info[#info]] = value

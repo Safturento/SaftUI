@@ -211,6 +211,7 @@ end
 
 -- Blizzard's "Show Numbers for Cooldowns" (Options > Gameplay > Action Bars).
 local COUNTDOWN_CVAR = 'countdownForCooldowns'
+AB.COUNTDOWN_CVAR = COUNTDOWN_CVAR -- textoptions.lua reads its default
 
 -- Whether cooldown numbers show: the game's setting, so /sui's Cooldown
 -- numbers and Blizzard's option are one setting.

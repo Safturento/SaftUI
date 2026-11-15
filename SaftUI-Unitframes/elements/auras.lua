@@ -343,6 +343,19 @@ local BORDERS = {
 	Debuffs = { key = 'colorTypes', name = 'Dispel type border', desc = "Colors each debuff's border by its dispel type." },
 }
 
+-- What a fresh profile holds for a border's key under a hostility ('friend' or
+-- 'enemy') of an aura element ('buffs' or 'debuffs') of unit: AceDB's merged
+-- default (st:DefaultAt), false where there is none.
+local function HostilityDefault(unit, element, hostility, key)
+	local found, default = st:DefaultAt('unitframes', 'profiles', UF:GetProfile(), unit, element, hostility, key)
+	return found and default or false
+end
+
+-- The border toggle's default: on while either hostility's default is.
+local function BorderDefault(unit, element, key)
+	return (HostilityDefault(unit, element, 'friend', key) or HostilityDefault(unit, element, 'enemy', key)) and true or false
+end
+
 local function GetConfigTable(unit, aura_type)
 	local generators = st.Config.generators
 	local key = string.lower(aura_type)
@@ -358,12 +371,13 @@ local function GetConfigTable(unit, aura_type)
 	end
 
 	-- The settings in the table getTable returns.
-	local function Section(order, name, getTable, args)
+	local function Section(order, name, getTable, saved, args)
 		return {
 			order = order,
 			name = name,
 			type = 'group',
 			inline = true,
+			saved = saved,
 			get = function(info) return getTable()[info[#info]] end,
 			set = function(info, value)
 				getTable()[info[#info]] = value
@@ -375,7 +389,7 @@ local function GetConfigTable(unit, aura_type)
 
 	-- A spot on each button (its count, its timer), which StyleButton always
 	-- anchors to the button: only the points and offsets are read.
-	local function ButtonPosition(order, getPosition, what, name)
+	local function ButtonPosition(order, getPosition, what, name, saved)
 		return generators.position(order, false,
 			function(index) return getPosition()[index] end,
 			function(index, value)
@@ -384,7 +398,7 @@ local function GetConfigTable(unit, aura_type)
 			end,
 			nil,
 			('Where the %s sits on each button: which of its points goes to which point of the button, then moved by X and Y.'):format(what),
-			name
+			name, saved
 		)
 	end
 
@@ -413,12 +427,27 @@ local function GetConfigTable(unit, aura_type)
 			config.enemy[borderInfo.key] = value
 			Update()
 		end,
+		-- Saved twice, once per hostility: it is on while either is, so it
+		-- differs from the defaults when that changed, and the reset puts each
+		-- hostility's own default back.
+		default = {
+			differs = function() return eitherHostility(Config(), borderInfo.key) ~= BorderDefault(unit, key, borderInfo.key) end,
+			reset = function()
+				local config = Config()
+				for _, hostility in ipairs({ 'friend', 'enemy' }) do
+					config[hostility][borderInfo.key] = HostilityDefault(unit, key, hostility, borderInfo.key)
+				end
+				Update()
+			end,
+			value = function() return BorderDefault(unit, key, borderInfo.key) end,
+		},
 	}
 
 	return {
 		order = aura_type == 'Buffs' and 7 or 8,
 		type = 'group',
 		name = aura_type,
+		saved = UF.SavedIn(unit, key),
 		get = function(info) return Config()[info[#info]] end,
 		set = function(info, value)
 			Config()[info[#info]] = value
@@ -446,7 +475,8 @@ local function GetConfigTable(unit, aura_type)
 							Update()
 						end,
 						UF:ConfigTarget(unit, aura_type),
-						"Where the aura area sits: which of its points goes to which point of what it's attached to, then moved by X and Y."
+						"Where the aura area sits: which of its points goes to which point of what it's attached to, then moved by X and Y.",
+						nil, UF.SavedAt(unit, key, 'position')
 					),
 				},
 			},
@@ -470,20 +500,22 @@ local function GetConfigTable(unit, aura_type)
 					border = NeedsReload(border),
 				},
 			},
-			cooldown = Section(3, 'Cooldown', function() return Config().cooldown end, {
+			cooldown = Section(3, 'Cooldown', function() return Config().cooldown end, UF.SavedIn(unit, key, 'cooldown'), {
 				enable = NeedsReload(generators.toggle(0, 'Show', 'The swipe over each button.', 'small')),
 				reverse = generators.toggle(1, 'Reverse swipe', 'On, the dark part of the swipe shrinks as the aura runs out. Off, it grows.', 'small'),
 				alpha = generators.alpha(2, 'How solid the swipe is, from see-through to opaque. The timer text fades with it.'),
-				timer = Section(3, 'Timer', function() return Config().cooldown.timer end, {
+				timer = Section(3, 'Timer', function() return Config().cooldown.timer end, UF.SavedIn(unit, key, 'cooldown', 'timer'), {
 					enable = generators.toggle(0, 'Enable', 'The time left, as text on each button. Needs the cooldown shown.', 'small'),
 					-- Last in Timer.
-					position = ButtonPosition(1000, function() return Config().cooldown.timer.position end, 'time left', 'Timer position'),
+					position = ButtonPosition(1000, function() return Config().cooldown.timer.position end, 'time left', 'Timer position',
+						UF.SavedAt(unit, key, 'cooldown', 'timer', 'position')),
 				}),
 			}),
-			count = Section(4, 'Count', function() return Config().count end, {
+			count = Section(4, 'Count', function() return Config().count end, UF.SavedIn(unit, key, 'count'), {
 				font = generators.font(1, "The stack count's font."),
 				-- Last in Count.
-				position = ButtonPosition(1000, function() return Config().count.position end, 'stack count', 'Count position'),
+				position = ButtonPosition(1000, function() return Config().count.position end, 'stack count', 'Count position',
+					UF.SavedAt(unit, key, 'count', 'position')),
 			}),
 		},
 	}
