@@ -136,10 +136,17 @@ function TR:BlizzardTarget(where)
 	if spot then top, right, scale = spot:GetTop(), spot:GetRight(), spot:GetEffectiveScale() end
 	local screenY, screenX
 	local point = 'TOPRIGHT'
-	-- The window's top as it was when it was hidden (the handover, handover.lua):
-	-- SaftUI's list goes on changing height behind it, and Blizzard's tracker
-	-- must not move with it.
-	if where == 'place' and self.heldTop and Plain(self.heldTop) then top = self.heldTop end
+	-- With Grow up the window's top is the holder's bottom and the window's height.
+	-- While it is hidden by the handover (handover.lua) SaftUI's list goes on
+	-- changing height behind it and Blizzard's tracker must not move with it, so
+	-- the height is the one it had when it was hidden (TR.heldHeight), on the
+	-- holder's live bottom: a holder that moves (an edit mode drag, a profile) takes
+	-- Blizzard's tracker with it, x and y. Grow down hangs from the holder's top,
+	-- which is the spot's own.
+	if not beside and self.heldHeight and Plain(self.heldHeight) and self.config.grow == 'up' and self.holder then
+		local bottom, holderScale = self.holder:GetBottom(), self.holder:GetEffectiveScale()
+		if Plain(bottom, holderScale) then top, scale = bottom + self.heldHeight, holderScale end
+	end
 	if Plain(top, scale) then screenY = top * scale end
 	if where == 'place' then
 		if not (screenY and Plain(right)) then return end

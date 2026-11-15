@@ -644,6 +644,32 @@ both('in combat the room kept for the item column is the column as it was placed
 	clean()
 end)
 
+both('Grow up: a holder that moves (a /sui edit drag) takes the handed-over tracker with it, x and y, between the mover\'s applies', function(client)
+	local st, TR, OT = world({ client = client, config = function(st)
+		st.config.profile.tracker.grow = 'up'
+		st.config.profile.tracker.height = 300
+		st.config.profile.tracker.position = { point = 'TOPRIGHT', frame = 'UIParent', rel_point = 'TOPRIGHT', x_off = -20, y_off = -50 }
+	end })
+	scenario(true)
+	settle()
+	eq(TR.handoverState, 'blizzard', 'handed over')
+	local right, top = tracker_top_right(OT)
+	-- Edit mode's drag sets the holder's points directly, every frame; an incidental pass
+	-- (a probe pass, a module's layout) then places Blizzard's tracker.
+	TR.holder:ClearAllPoints()
+	TR.holder:SetPoint('TOPRIGHT', UIParent, 'TOPRIGHT', -120, -150)
+	TR:PlaceBlizzard(TR.blizzardWhere)
+	local moved_right, moved_top = tracker_top_right(OT)
+	check(near(moved_right, right - 100), 'x follows the holder: ' .. right .. ' -> ' .. moved_right)
+	check(near(moved_top, top - 100), 'and y follows too, with no apply of the mover between: ' .. top .. ' -> ' .. moved_top)
+	-- And the list changing height behind the hidden window still moves nothing.
+	log({ 1, 2, 3, 4, 5, 6 }, true)
+	stub.fire_event('QUEST_LOG_UPDATE')
+	settle(1)
+	check(near(OT.tracker:GetTop(), moved_top), 'Blizzard\'s top stays at ' .. moved_top .. ', not ' .. OT.tracker:GetTop())
+	clean()
+end)
+
 both('Grow up: the handed-over tracker does not move as SaftUI\'s hidden list changes height', function(client)
 	local st, TR, OT = world({ client = client, config = function(st)
 		st.config.profile.tracker.grow = 'up'
@@ -654,7 +680,7 @@ both('Grow up: the handed-over tracker does not move as SaftUI\'s hidden list ch
 	settle()
 	eq(TR.handoverState, 'blizzard', 'handed over')
 	local top = OT.tracker:GetTop()
-	check(near(top, TR.heldTop and TR.window:GetTop() or top), 'a spot')
+	check(TR.heldHeight ~= nil, 'the window\'s height at the hide is kept, not its top')
 	for _, ids in ipairs({ { 1, 2, 3, 4, 5, 6 }, { 1 }, { 1, 2, 3 } }) do
 		log(ids, true)
 		stub.fire_event('QUEST_LOG_UPDATE')
