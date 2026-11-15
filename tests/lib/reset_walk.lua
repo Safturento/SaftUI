@@ -10,7 +10,7 @@
 -- root is the options tree as the model reads it (OM.BuildView's root: page
 -- keys to groups, as st.Config:GetOptionsTable() gives, or a table of its own),
 -- pageKey the page's key in it. opts: fresh (default true) checks no derived or
--- mover row differs on the profile as it is, which the caller made fresh; probe
+-- mover or hand default row differs on the profile as it is, which the caller made fresh; probe
 -- (default true) round-trips every derived row; skip = { ['<path joined by .>']
 -- = true } leaves a row out of everything, for one a page can't walk (give the
 -- reason in the page's test); allow = { ['<row path joined by .>'] = { '<profile
@@ -27,7 +27,7 @@
 --   1. it has a reset source (OM.DefaultSource: share, default, mover, derived,
 --      or none by a stated, non-empty noReset), else "has no reset: ...";
 --   2. a derived row's saved path has a default (st:DefaultAt);
---   3. on the profile as it is, no derived or mover row differs (a row that
+--   3. on the profile as it is, no derived, mover or hand default row differs (a row that
 --      does is "differs on a fresh profile"; with fresh = false it is left
 --      unprobed instead);
 --   4. a derived row round-trips: a probe value (below) set through the row's
@@ -88,17 +88,19 @@ local function Equivalent(key, a, b)
 	return false
 end
 
--- Every leaf that differs between two plain copies, as a path (a list of
--- keys); loose compares with Equivalent.
+-- Every leaf that differs between two profile-shaped tables, as a path (a list of
+-- keys); loose compares with Equivalent. out.strict is set when anything differs
+-- exactly, which a loose compare lets pass (nil for false, 0.5 for 0.50001).
 local function Changes(a, b, path, out, loose)
 	for key, value in pairs(a) do
-		local other = b[key]
+		local other = rawget(b, key)
 		path[#path + 1] = key
 		if type(value) == 'table' and type(other) == 'table' then
 			Changes(value, other, path, out, loose)
 		elseif type(value) == 'table' and not other and loose and next(value) == nil then
-			-- an empty table against none
+			out.strict = true -- an empty table against none
 		elseif loose then
+			if value ~= other then out.strict = true end
 			if type(value) == 'table' or type(other) == 'table' or not Equivalent(key, value, other) then
 				out[#out + 1] = { unpack(path) }
 			end
@@ -108,7 +110,8 @@ local function Changes(a, b, path, out, loose)
 		path[#path] = nil
 	end
 	for key, value in pairs(b) do
-		if a[key] == nil then
+		if rawget(a, key) == nil then
+			out.strict = true
 			local at = { unpack(path) }
 			at[#at + 1] = key
 			if not (loose and (type(value) ~= 'table' and Equivalent(key, nil, value) or (type(value) == 'table' and next(value) == nil))) then
@@ -236,7 +239,11 @@ local function Probe(root, row, current)
 	return current
 end
 
-local function RoundTrip(root, row, label, allowed, problems)
+-- ctx.base is a copy of the profile as the walk last found it whole, kept while
+-- every row leaves it exactly so; a row that leaves it changed (an allowed side
+-- effect, a nil that became false) or fails drops it and the next row copies again.
+-- The live profile is compared with it in place, twice a row.
+local function RoundTrip(root, row, label, allowed, problems, ctx)
 	local saved = SavedPath(root, row)
 	local function Errors(step)
 		for _, err in ipairs(take_errors()) do
@@ -244,7 +251,8 @@ local function RoundTrip(root, row, label, allowed, problems)
 		end
 	end
 	local before = OM.ValueOf(root, row)
-	local snapshot = Plain(st.config.profile)
+	local snapshot = ctx.base or Plain(st.config.profile)
+	ctx.base = nil -- kept again only by a row that leaves the profile exactly as it was
 	local probe = Probe(root, row, before)
 	local ok, message = OM.WriteValue(root, row, probe)
 	Errors('probe set')
@@ -262,7 +270,7 @@ local function RoundTrip(root, row, label, allowed, problems)
 		problems[#problems + 1] = ('%s: the probe set did not make it differ from its default'):format(label)
 	end
 	if saved then
-		for _, at in ipairs(Changes(snapshot, Plain(st.config.profile), {}, {})) do
+		for _, at in ipairs(Changes(snapshot, st.config.profile, {}, {})) do
 			if not Under(at, saved) and not Allowed(at, allowed) then
 				problems[#problems + 1] = ('%s: the probe changed the profile outside its saved path (%s): %s'):format(
 					label, table.concat(saved, '.'), table.concat(at, '.'))
@@ -282,12 +290,14 @@ local function RoundTrip(root, row, label, allowed, problems)
 			problems[#problems + 1] = ('%s: its reset did not save the default'):format(label)
 		end
 		-- The profile as it was before the probe, key for key.
-		for _, at in ipairs(Changes(snapshot, Plain(st.config.profile), {}, {}, true)) do
+		local after = Changes(snapshot, st.config.profile, {}, {}, true)
+		for _, at in ipairs(after) do
 			if not Allowed(at, allowed) then
 				problems[#problems + 1] = ('%s: after its reset the profile differs from before the probe: %s'):format(
 					label, table.concat(at, '.'))
 			end
 		end
+		if not after.strict then ctx.base = snapshot end
 	end
 	-- Back as it was.
 	OM.WriteValue(root, row, before)
@@ -305,7 +315,7 @@ local function CheckRow(root, row, path, opts, problems)
 		end
 		return
 	end
-	if source ~= 'derived' and source ~= 'mover' then return end
+	if source ~= 'derived' and source ~= 'mover' and source ~= 'default' then return end
 	local hidden = OM.Member(root, row, 'hidden') and true or false
 	if hidden or OM.IsDisabled(root, row) then return end
 	if source == 'derived' then
@@ -323,7 +333,7 @@ local function CheckRow(root, row, path, opts, problems)
 	end
 	-- A row that already differs (fresh = false) is not probed: its probe
 	-- value could be the default.
-	if source == 'derived' and opts.probe ~= false and not differs then RoundTrip(root, row, label, opts.allow and opts.allow[Joined(path)], problems) end
+	if source == 'derived' and opts.probe ~= false and not differs then RoundTrip(root, row, label, opts.allow and opts.allow[Joined(path)], problems, opts.ctx) end
 end
 
 local function IsValueRow(option)
@@ -337,6 +347,7 @@ end
 
 local function Walk(root, pageKey, opts, problems)
 	local walked = 0
+	opts.ctx = {}
 	-- rowRoot and rowPath are what the model reads the row by, labelPath the walk's own.
 	local function Visit(rowRoot, rowPath, option, labelPath)
 		if not IsValueRow(option) then return end

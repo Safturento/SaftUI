@@ -127,8 +127,8 @@ function UF:RestoreNameplateCVars() end
 -- Every row of every unit's page has a reset (the kit derives it from where the row is saved), and each
 -- derived one round-trips. First, on the profile as it starts: no case before this changes a value.
 local R = load_test_file('lib/reset_walk.lua')
--- The walk's round trips copy the whole profile twice per derived row, so a walk of every unit
--- at once is far over the harness's limit for one case (about 25 s). One cheap walk of every row
+-- The walk's round trips compare the whole profile with a copy twice per derived row, so a walk of
+-- every unit at once is far over the harness's limit for one case. One cheap walk of every row
 -- (probe = false: each has a source, a default, and is at it on this fresh profile), then the
 -- round trips for a few units, each its own case.
 local function Page(units)

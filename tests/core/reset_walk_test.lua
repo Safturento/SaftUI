@@ -251,3 +251,44 @@ test('the walk reads the options model as it is now: a model loaded again after 
 	eq(#problems, 0, 'no problem on the new model: ' .. table.concat(problems, '; '))
 	eq(walked, 1, 'one row walked')
 end)
+
+test('a hand default row is checked on a fresh profile too: one whose icon shows at start fails', function()
+	world()
+	local differs = false
+	local root = page(group({
+		args = {
+			a = {
+				type = 'toggle', name = 'By hand', order = 1,
+				default = { differs = function() return differs end, reset = function() end },
+			},
+		},
+	}))
+	eq(#R.problems(root, 'Page'), 0, 'a hand default that is at its default passes')
+	differs = true
+	local problems = R.problems(root, 'Page')
+	check(has(problems, 'Page.box.a (toggle By hand) differs on a fresh profile'), 'one that differs at start fails: ' .. table.concat(problems, '; '))
+	eq(#R.problems(root, 'Page', { fresh = false }), 0, 'unless the walk is told the profile is not fresh')
+end)
+
+test('the walk compares the profile with one copy kept across rows: a side effect of one row does not blame the next, and a leak still fails', function()
+	world()
+	local leak = false
+	local root = page(group({
+		saved = st.Config.SavedIn('t_'),
+		set = function(info, value)
+			st.config.profile.t_[info[#info]] = value
+			st.config.profile.t_marker = (st.config.profile.t_marker or 0) + 1 -- a side effect no row owns
+		end,
+		args = {
+			a = { type = 'toggle', name = 'First', order = 1 },
+			b = { type = 'toggle', name = 'Second', order = 2 },
+			n = { type = 'range', name = 'Third', order = 3, min = 0, max = 10, step = 1 },
+		},
+	}))
+	local problems = R.problems(root, 'Page', { allow = { ['Page.box.a'] = { 't_marker' }, ['Page.box.b'] = { 't_marker' }, ['Page.box.n'] = { 't_marker' } } })
+	eq(#problems, 0, 'each row allowed its own side effect and none blames the next: ' .. table.concat(problems, '; '))
+	world()
+	problems = R.problems(root, 'Page', { allow = { ['Page.box.a'] = { 't_marker' } } })
+	check(has(problems, 'Page.box.b') and has(problems, 't_marker'), 'a row that leaks without allowing it fails: ' .. table.concat(problems, '; '))
+	check(not has(problems, 'Page.box.a'), "and the allowed one does not")
+end)
