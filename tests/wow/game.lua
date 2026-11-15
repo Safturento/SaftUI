@@ -28,6 +28,12 @@ stub = {
 	-- "Protected frames in combat"), in order: { widget, method name }. The
 	-- game fires ADDON_ACTION_BLOCKED for each.
 	blocked = {},
+	-- What a secure action button (SecureActionButtonTemplate, widgets.lua) did
+	-- when it was clicked: { button, type, item, macrotext, mouse, down }, in
+	-- order; and whether the game acts on the press ("cast on key down", the
+	-- ActionButtonUseKeyDown setting, on by default) or on the release.
+	secure_clicks = {},
+	cast_on_key_down = true,
 	cursor_x = 0, -- GetCursorPosition, in screen units (UIParent's units times its scale)
 	cursor_y = 0,
 	time = 0, -- GetTime, in seconds

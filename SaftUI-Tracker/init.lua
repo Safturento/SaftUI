@@ -61,6 +61,7 @@ function TR:Build()
 	self.built = true
 	self:BuildWindow()
 	self:BuildRows()
+	self:BuildItems()
 	self:RegisterEvents()
 	-- Blizzard's tracker goes off screen (blizzard.lua), once the window is there
 	-- for the y it hides at.
@@ -132,6 +133,7 @@ function TR:OnColorsChanged(group)
 	if not self.built then return end
 	self:ColorWindow()
 	self:ColorRows(group)
+	self:ColorItems()
 end
 
 -- What the tracker keeps per character, in st.config.char.tracker: each zone
@@ -251,8 +253,25 @@ function TR:OnEvent(event, ...)
 		if self.knownIds and not self.knownIds[questID] then return end
 	end
 	if event == 'BAG_UPDATE_COOLDOWN' then
-		if self.RefreshCooldowns then self:RefreshCooldowns() end
+		self:RefreshCooldowns()
 		return
+	end
+	-- Combat starting or ending changes what the list may do (the scroll lock),
+	-- which the refresh that follows draws; the buttons themselves are the queued
+	-- pass's and the refresh's. In the game lockdown begins only after this
+	-- event's handlers, so a refresh already waiting runs now, the last moment
+	-- the buttons can still be set (the harness starts lockdown first).
+	if event == 'PLAYER_REGEN_DISABLED' then
+		if self.pending then
+			self.pending = false
+			self:Refresh()
+			-- Nothing runs after lockdown begins unless asked: the next frame draws what
+			-- combat changes (the dimming, the scroll lock's tooltip and bar).
+			C_Timer.After(0, function() self:RefreshItems() end)
+			return -- (it has just read everything this event would mark)
+		end
+	elseif event == 'PLAYER_REGEN_ENABLED' then
+		self:UpdateScrollLock()
 	end
 	self:MarkDirty(event)
 end
@@ -309,6 +328,9 @@ function TR:MarkDirty(event)
 	end
 	self.pending = true
 	C_Timer.After(delay, function()
+		-- (a refresh that already ran for this mark, at the start of combat, left
+		-- nothing pending)
+		if not self.pending then return end
 		self.pending = false
 		self:Refresh()
 	end)
@@ -403,7 +425,7 @@ end
 -- The stages of the later tasks, each once its file defines it (the item
 -- buttons, the probes, the handover, the visibility).
 function TR:RunStages()
-	if self.RefreshItems then self:RefreshItems() end
+	self:RefreshItems()
 	if self.RunProbes then self:RunProbes() end
 	if self.UpdateHandover then self:UpdateHandover() end
 	if self.ApplyVisibility then self:ApplyVisibility() end

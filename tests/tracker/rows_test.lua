@@ -575,8 +575,11 @@ RW.both('a button in the row leaves its room and height; no frame of it is made'
 	check(with:GetHeight() >= 40, 'at 40: 40 tall')
 	st.config.profile.tracker.items.placement = 'off'
 	TR:UpdateConfig()
-	eq(with.item, nil, 'Off: no room kept')
-	eq(without.title:GetWidth(), with.title:GetWidth(), 'the same width')
+	-- Off shows the item as a plain icon in the row (design: "Item buttons: Off"), so
+	-- the room is kept; what Task 5 pinned here, no room, was before that was built.
+	eq(with.item, 'row', 'Off: the room is kept for the plain icon')
+	check(with.slot:IsShown() and not with.slot.icon:IsDesaturated(), 'which shows plain')
+	eq(without.title:GetWidth() - with.title:GetWidth(), 40 + 4, 'the title still leaves its room (the button is 40 now)')
 	eq(TW.counts.secure, 0, 'no secure frame')
 end)
 

@@ -498,8 +498,30 @@ function ScriptRegion.IsMouseMotionFocus(self, s)
 	end
 	return true
 end
--- Stub widgets are never secure frames.
-function ScriptRegion.IsProtected(self, s) return false, false end
+-- A stub widget is protected only when it was made from a secure template
+-- (SecureActionButtonTemplate, SecureHandlerStateTemplate: s.protected, set by
+-- CreateFrame), or a test gives it an IsProtected of its own. The game also
+-- protects what a protected frame is a child of or anchored to; the stubs don't
+-- model that spread (a test checks the anchors instead). The two values are
+-- isProtected and isProtectedExplicitly: a secure template is both.
+-- A region (a texture or a font string) of a protected frame is protected too:
+-- the region functions the docs mark IsProtectedFunction (REGION_PROTECTED
+-- below) are refused on it in combat. SimpleScriptRegionResizingAPIDocumentation
+-- marks SetPoint, SetAllPoints, ClearAllPoints, SetSize, SetWidth, SetHeight and
+-- the rest of the anchor family IsProtectedFunction for every region, and
+-- SimpleRegionAPIDocumentation SetScale and SetIgnoreParentScale (both
+-- branches of Gethe/wow-ui-source, read 2026-11-14); a region's own state is its
+-- frame's, since a region can't be made secure by a template. Making a
+-- region (CreateTexture, CreateFontString) is not marked protected in
+-- SimpleFrameAPIDocumentation, so it isn't refused here; the tracker still builds
+-- every region of a secure button when the button is made, out of combat.
+function ScriptRegion.IsProtected(self, s)
+	local protected = s.protected == true
+	if not protected and not s.groups.Frame and s.parent then
+		protected = states[s.parent].protected == true
+	end
+	return protected, protected
+end
 
 function ScriptRegion.HasScript(self, s, script) return has_script(s, script) end
 function ScriptRegion.GetScript(self, s, script)
@@ -1331,6 +1353,20 @@ function Cooldown.SetDrawEdge(self, s, draw) s.draw_edge = draw and true or fals
 function Cooldown.SetReverse(self, s, reverse) s.reverse = reverse and true or false end
 function Cooldown.SetHideCountdownNumbers(self, s, hide) s.hide_numbers = hide and true or false end
 function Cooldown.GetHideCountdownNumbers(self, s) return s.hide_numbers == true end
+-- SetCooldown(start, duration, modRate) and Clear (FrameAPICooldownDocumentation.lua,
+-- both clients; both are IsProtectedFunction, blocked only on a protected frame,
+-- which a cooldown child of a secure button is not). Nothing is timed or drawn:
+-- the start and duration are kept (cooldown_start, cooldown_duration, nil once
+-- cleared), and a start or duration that isn't a number errors as the game's
+-- argument check does.
+function Cooldown.SetCooldown(self, s, start, duration, modRate)
+	s.cooldown_start = number_arg(s, start, 'start')
+	s.cooldown_duration = number_arg(s, duration, 'duration')
+	s.cooldown_mod_rate = modRate or 1
+end
+function Cooldown.Clear(self, s)
+	s.cooldown_start, s.cooldown_duration = nil, nil
+end
 -- The numbers' font, by a font object's global name.
 function Cooldown.SetCountdownFont(self, s, fontName)
 	local font = type(fontName) == 'string' and _G[fontName]
@@ -1498,6 +1534,19 @@ local PROTECTED_IN_COMBAT = {
 	SetClampedToScreen = true, EnableMouse = true,
 	-- IsProtectedFunction in their documentation, both clients.
 	SetRoundLayoutToNearestPixel = true, SetIgnoreParentScale = true,
+	-- More of SimpleFrameAPIDocumentation's, SimpleScriptRegionAPIDocumentation's,
+	-- SimpleRegionAPIDocumentation's and SimpleButtonAPIDocumentation's
+	-- IsProtectedFunction entries (read on the forever branch of
+	-- Gethe/wow-ui-source, 2026-11-14), the ones the stubs have: a secure button's
+	-- strata and level, its mouse, hit rect, scale, ID, raising, its enabled state
+	-- and the mouse buttons it takes can't change in combat either.
+	-- SimpleScriptRegionAPIDocumentation's, which a region has too.
+	EnableMouseMotion = true, SetPassThroughButtons = true, SetPropagateMouseClicks = true,
+	SetPropagateMouseMotion = true, SetMouseClickEnabled = true, SetMouseMotionEnabled = true,
+	SetCollapsesLayout = true,
+	SetFrameStrata = true, SetFrameLevel = true, EnableMouseWheel = true, SetHitRectInsets = true,
+	SetScale = true, SetID = true, Raise = true, Lower = true, SetToplevel = true,
+	RegisterForClicks = true, Enable = true, Disable = true, SetEnabled = true,
 }
 
 --[[
@@ -1522,6 +1571,19 @@ local PROTECTED_IN_COMBAT = {
 	game too), and the anchor family rule (in game a SetPoint that would
 	anchor a restricted region to two families errors).
 ]]
+-- The functions of PROTECTED_IN_COMBAT that are also a region's (not only a
+-- frame's): the anchor family and scale, as the region docs mark them.
+local REGION_PROTECTED = {
+	-- (the ScriptRegion functions too: SimpleScriptRegionAPIDocumentation marks them
+	-- for every ScriptRegion, and textures are ScriptRegions)
+	SetParent = true, EnableMouse = true, EnableMouseMotion = true, SetPassThroughButtons = true,
+	SetPropagateMouseClicks = true, SetPropagateMouseMotion = true, SetMouseClickEnabled = true,
+	SetMouseMotionEnabled = true, SetCollapsesLayout = true, SetRoundLayoutToNearestPixel = true,
+	SetPoint = true, SetAllPoints = true, ClearAllPoints = true,
+	SetSize = true, SetWidth = true, SetHeight = true,
+	SetScale = true, SetIgnoreParentScale = true,
+}
+
 local MEASURES_POSITION = {
 	GetPoint = true, GetRect = true, GetLeft = true, GetRight = true, GetTop = true, GetBottom = true,
 	GetCenter = true, IsMouseOver = true,
@@ -1572,7 +1634,7 @@ local function method(group, name, impl)
 			error(('Wrong object type for function %s:%s (called on %s)'):format(group, name, describe(self)), 2)
 		end
 		if measures then refuse_measure(s, name) end
-		if guarded and stub.in_combat and self:IsProtected() then
+		if guarded and stub.in_combat and (s.groups.Frame or REGION_PROTECTED[name]) and self:IsProtected() then
 			stub.blocked[#stub.blocked + 1] = { self, name }
 			return
 		end
@@ -1600,6 +1662,42 @@ local FRAME_TYPES = {
 	cooldown = 'Cooldown',
 }
 
+-- What a secure action button does on a click, as SecureActionButton_OnClick
+-- reads the frame's attributes (Blizzard_FrameXMLBase/SecureTemplates.lua):
+-- acts on the press when useOnKeyDown is true (its attribute, else the
+-- "cast on key down" setting) and on the release otherwise; a button with no
+-- type does nothing. Only noted (stub.secure_clicks): nothing is used or cast.
+local function secure_action_click(self, mouse, down, is_key_press, is_secure_action)
+	-- SecureActionButton_OnClick (Blizzard_FrameXML/SecureTemplates.lua, line 802
+	-- on forever and 805 on live):
+	--   isSecureMousePress = not isKeyPress and isSecureAction
+	--   useOnKeyDown = not isSecureMousePress and (ShouldUseOnKeyDown(self) or pressAndHoldAction)
+	--   clickAction = (down and useOnKeyDown) or (not down and not useOnKeyDown)
+	-- ShouldUseOnKeyDown is the useOnKeyDown attribute, else the
+	-- ActionButtonUseKeyDown setting (SecureTemplates.lua, line 792). The template's
+	-- XML (SecureTemplates.xml, both branches) says an addon's button never gets the
+	-- two extra arguments ("for now AddOns won't be able to have isKeyPress or
+	-- isSecureAction set"): Blizzard's own action buttons pass them
+	-- (ActionBarActionButtonMixin:TriggerSecureClick, TryUseActionButton). So for an
+	-- addon's button, a mouse click and a key press alike act on the press when the
+	-- setting is on and on the release when it is off. Only a caller that passes
+	-- isSecureAction without isKeyPress (a Blizzard-style mouse click) acts on the
+	-- release whatever the setting says.
+	local on_key_down = false
+	if not (is_secure_action and not is_key_press) then
+		on_key_down = self:GetAttribute('useOnKeyDown')
+		if on_key_down == nil then on_key_down = stub.cast_on_key_down end
+	end
+	if (down and true or false) ~= (on_key_down and true or false) then return end
+	local kind = self:GetAttribute('type')
+	if not kind then return end
+	stub.secure_clicks[#stub.secure_clicks + 1] = {
+		button = self, type = kind, item = self:GetAttribute('item'),
+		macrotext = self:GetAttribute('macrotext'), mouse = mouse, down = down and true or false,
+		key = is_key_press and true or false,
+	}
+end
+
 -- Templates CreateFrame knows. Each sets up a new frame the way the template
 -- would.
 local TEMPLATES = {
@@ -1612,6 +1710,20 @@ local TEMPLATES = {
 	-- The tooltip's text lines (TextLeft1, ...) aren't made. Add them when a
 	-- test needs them.
 	GameTooltipTemplate = function() end,
+	-- Secure templates (Blizzard_FrameXMLBase/SecureTemplates.xml, both clients):
+	-- the frame is protected, so in combat addon code can't move, size, show,
+	-- hide, reparent or set attributes on it (stub.blocked). The button's click
+	-- is the template's own OnClick; a script set over it replaces it, as in game.
+	SecureActionButtonTemplate = function(frame)
+		states[frame].protected = true
+		frame:SetScript('OnClick', secure_action_click)
+	end,
+	SecureHandlerStateTemplate = function(frame)
+		states[frame].protected = true
+	end,
+	-- Blizzard_FrameXMLBase/Cooldown.xml: the cooldown frame's own art and
+	-- scripts, none of which the stubs draw or time.
+	CooldownFrameTemplate = function() end,
 }
 
 function CreateFrame(frameType, name, parent, template, id)
@@ -1667,28 +1779,40 @@ end
 -- release). stub.click ERRORS then, so a test that clicks a button it forgot to
 -- show fails loudly instead of passing without its click; a test that means to
 -- show a refusal says so with stub.try_click, which returns false for it.
-local function click_refusal(button, mouse)
+local function click_refusal(button, mouse, down)
 	local s = stub.state(button)
 	local which = mouse or 'LeftButton'
 	if not is_visible(s) then return 'it is hidden (or under a hidden frame)' end
 	if s.enabled == false then return 'it is disabled' end
+	-- A press is the Down half of a registration, a release the Up half.
+	local half = down == true and 'Down' or 'Up'
 	for _, name in ipairs(s.click_buttons or { 'LeftButtonUp' }) do
-		if name == which .. 'Up' or name == which .. 'Down' or name == 'AnyUp' or name == 'AnyDown' then return nil end
+		if name == which .. half or name == 'Any' .. half then return nil end
 	end
-	return 'it is not registered for ' .. tostring(which)
+	return 'it is not registered for the ' .. (down == true and 'press' or 'release') .. ' of ' .. tostring(which)
 end
 
-function stub.click(button, mouse, ...)
-	local why = click_refusal(button, mouse)
+function stub.click(button, mouse, down, ...)
+	local why = click_refusal(button, mouse, down)
 	if why then error('stub.click: the game would not deliver this click: ' .. why .. ' (stub.try_click is for a test that means to show that)', 2) end
-	return stub.fire_script(button, 'OnClick', mouse, ...)
+	return stub.fire_script(button, 'OnClick', mouse, down, ...)
+end
+
+-- A key binding's click (CLICK <button>:LeftButton) on a secure button: the
+-- press (down true) or the release, delivered under the same registration as a
+-- mouse click and told apart from one (isKeyPress), so the template acts on the
+-- press when ActionButtonUseKeyDown is on.
+function stub.press_key(button, down)
+	local why = click_refusal(button, 'LeftButton', down)
+	if why then error('stub.press_key: the game would not deliver this click: ' .. why, 2) end
+	return stub.fire_script(button, 'OnClick', 'LeftButton', down and true or false, true, false)
 end
 
 -- stub.click for a refusal that is the point of the test: false when the game
 -- would not deliver the click, else what stub.click returns.
-function stub.try_click(button, mouse, ...)
-	if click_refusal(button, mouse) then return false end
-	return stub.fire_script(button, 'OnClick', mouse, ...)
+function stub.try_click(button, mouse, down, ...)
+	if click_refusal(button, mouse, down) then return false end
+	return stub.fire_script(button, 'OnClick', mouse, down, ...)
 end
 
 -- The click of the harness before it played the game's rules: OnClick runs
