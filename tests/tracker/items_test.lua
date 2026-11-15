@@ -1774,3 +1774,73 @@ test('ColumnWidth counts quests whose item has a link', function()
 	settle()
 	eq(TR:ColumnWidth(), 0, 'an item with no link makes no column')
 end)
+
+------------------------------------------------------------------ fix round 2
+
+test('a row whose button the stack hid keeps the plain icon in combat, not the greyed one', function()
+	local st, TR = beside_world({ 1, 2, 3, 4, 5, 6 }, function(TR)
+		TR.config.items.size = 40
+		TR.config.quests.spacing = 0
+		TR.config.height = 200
+	end)
+	local stacked = {}
+	for _, id in ipairs({ 1, 2, 3, 4, 5, 6 }) do
+		local b, row = button(TR, id), RW.quest(TR, id)
+		if not b:IsShown() and row:IsVisible() and row:GetTop() - 20 >= TR.scroll:GetBottom() then stacked[#stacked + 1] = id end
+	end
+	check(#stacked >= 1, 'some buttons were hidden by the stack')
+	TW.combat(true)
+	TR:Refresh()
+	TR:PlaceItems()
+	for _, id in ipairs(stacked) do
+		local row = RW.quest(TR, id)
+		check(row.slot:IsShown() and not row.slot.icon:IsDesaturated(), id .. ': still the plain icon in combat')
+	end
+	eq(#stub.blocked, 0, 'nothing blocked')
+	TW.combat(false)
+	for _, id in ipairs(stacked) do
+		check(not RW.quest(TR, id).slot.icon:IsDesaturated(), id .. ': plain after combat')
+	end
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a quest with no link between two others leaves the numbering without a gap', function()
+	local st, TR = beside_world({ 1, 2, 3 })
+	stub.quests.log[3].item.link = nil -- quest 2
+	settle()
+	check(button(TR, 2) == nil, 'no button for it')
+	eq(button(TR, 1).numberText:GetText(), '1', 'the first is 1')
+	eq(button(TR, 3).numberText:GetText(), '2', 'the one after it is 2: no gap')
+	eq(RW.quest(TR, 3).tag:GetText(), '2', 'and its row')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('an out-of-view button just above the view does not push the first one in view', function()
+	local st, TR = beside_world({ 1, 2, 3, 4 }, function(TR)
+		TR.config.items.size = 40
+		TR.config.quests.spacing = 0
+		TR.config.height = 160
+	end)
+	TR:ScrollTo(TR.scrollRange)
+	for _, id in ipairs({ 1, 2, 3, 4 }) do
+		local b, row = button(TR, id), RW.quest(TR, id)
+		if b:IsShown() then
+			local first = true
+			for _, other in ipairs({ 1, 2, 3, 4 }) do
+				if other < id and button(TR, other):IsShown() then first = false end
+			end
+			if first then eq(b:GetTop(), row:GetTop(), id .. ': the first in view is level with its title') end
+		end
+	end
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('the number sits centred on the title\'s first line', function()
+	local st, TR = beside_world({ 1 })
+	local row = RW.quest(TR, 1)
+	local _, _, _, _, y = row.tag:GetPoint(1)
+	local line = TR:LineHeight()
+	local expected = math.max(0, math.floor((line - TR.tagHeight) / 2))
+	eq(-y == 0 and 0 or -y, expected, 'its y is half what the line has over the number')
+	check(TR.tagHeight > 0 and TR.tagHeight <= line, 'the number is no taller than the line')
+end)

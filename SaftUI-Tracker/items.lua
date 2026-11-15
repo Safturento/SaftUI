@@ -720,6 +720,14 @@ local function Place(self, row, size)
 	return Items.RowPlace(row:GetTop(), row:GetRight(), self.scroll:GetTop(), self.scroll:GetBottom(), size, RoundToPixel)
 end
 
+-- Remembers whether the stack hid a button whose title is in view (its place is
+-- none though its title shows): out of combat only, so in combat its row keeps the
+-- plain icon rather than promising a button that won't come.
+local function MarkStacked(self, button, index, place)
+	local entry = self.columnEntries[index]
+	button.stackedOut = (not place) and entry ~= nil and entry.inView == true
+end
+
 -- Puts a button at left and top, or hides it while there is none (its row is out of
 -- view, collapsed or gone). Secure calls, so out of combat only, and only on a
 -- change.
@@ -765,6 +773,7 @@ end
 -- on the side nearer the screen's middle, the scroll view as the rows' buttons
 -- use it. The table is the same each call.
 local function ColumnPlaces(self, wanted, size)
+	local scroll = self.scroll
 	local entries = self.columnEntries
 	if not entries then
 		entries = {}
@@ -779,9 +788,13 @@ local function ColumnPlaces(self, wanted, size)
 		local row = slot.row
 		local top = row:IsVisible() and row:GetTop() or nil
 		entry.top = top and RoundToPixel(top) or nil
+		-- Whether the title's button would be in view: a place of none then means the
+		-- stack pushed it out, not the scroll.
+		entry.inView = top ~= nil and scroll:GetTop() ~= nil and scroll:GetBottom() ~= nil
+			and top - size / 2 <= scroll:GetTop() and top - size / 2 >= scroll:GetBottom()
 	end
 	for index = #wanted + 1, #entries do entries[index] = nil end
-	local window, scroll = self.window, self.scroll
+	local window = self.window
 	local holderX, screenX = self.holder:GetCenter(), UIParent:GetCenter()
 	local side = (holderX and screenX) and Items.Side(holderX, screenX) or 'left'
 	self.columnSide = side
@@ -843,6 +856,7 @@ local function AssignItems(self, wanted)
 			SetKind(button, column, entry.number, self.columnSide)
 			if column then
 				local place = places[index]
+				MarkStacked(self, button, index, place)
 				if place then ShowAt(self, button, place.left, place.top) else ShowAt(self, button) end
 			else
 				PlaceButton(self, button, entry.row, size)
@@ -905,10 +919,6 @@ local function CanHaveButton(self, item)
 	return false
 end
 
--- Each quest row's item slot (rows.lua): hidden where the quest's own button
--- sits shown (dimmed and displaced or not: it is that quest's), a greyed icon in
--- combat where the quest has none and one can still come, a plain icon
--- otherwise (Item buttons Off, or no button to be had: no link, the pool full).
 -- The number a beside row shows: its quest's own button's, while that button is
 -- shown and holds the row's item (a button that can't be shown in combat, or a
 -- new item, has none).
@@ -920,6 +930,13 @@ local function BesideNumber(self, row)
 	end
 end
 
+-- Each quest row's item slot (rows.lua): hidden where the quest's own button
+-- sits shown (dimmed and displaced or not: it is that quest's), a greyed icon in
+-- combat where the quest has none and one can still come, a plain icon
+-- otherwise (Item buttons Off, or no button to be had: no link, the pool full).
+-- A beside row's slot is where its number goes: hidden under a number, else the
+-- icon, greyed in combat only while a button is still to come (not for one the
+-- stack hid, which stays plain).
 local function DrawSlots(self, combat)
 	local placement = self.config.items.placement
 	for _, row in ipairs(self.pools.quest.rows) do
@@ -931,7 +948,8 @@ local function DrawSlots(self, combat)
 			if BesideNumber(self, row) then
 				mode = 'none'
 			elseif combat and item and CanHaveButton(self, item) then
-				mode = 'greyed'
+				local button = self.itemByQuest[row.questID]
+				if not (button and button.stackedOut) then mode = 'greyed' end
 			end
 			self:SetSlotMode(row, mode)
 		elseif row.inUse and row.item == 'row' then
@@ -993,6 +1011,7 @@ local function PlaceColumn(self)
 		if button and button.column then
 			SetKind(button, true, slot.number, self.columnSide)
 			local place = places[index]
+			MarkStacked(self, button, index, place)
 			if place then ShowAt(self, button, place.left, place.top) else ShowAt(self, button) end
 		end
 	end
