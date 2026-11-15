@@ -313,6 +313,7 @@ local function HandsOn(group)
 	local G = st.Config and st.Config.generators
 	return group.saved == nil and group.noReset == nil and G ~= nil and group.get == G.NumberInputGet
 end
+OM.HandsOn = HandsOn -- the reset walk finds a row's get node by the same rule
 
 -- Walks the row's path as the model does, filling info for it and giving the
 -- node that gives the row its get (the option itself, else the nearest group
@@ -328,6 +329,9 @@ local function Locate(root, row)
 		if not group then
 			for j = 1, infoSize do info[j] = nil end
 			infoSize = 0
+			-- Nothing of the previous row is left for a differs to read.
+			info.options, info.appName, info[0], info.arg, info.handler, info.option, info.type, info.uiType, info.uiName =
+				nil, nil, nil, nil, nil, nil, nil, nil, nil
 			return nil
 		end
 		info[i] = path[i]

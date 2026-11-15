@@ -95,7 +95,8 @@ function load_saftui(path, ...)
 	end
 	local result = compile(REPO_ROOT .. '/' .. path, path, 2)(addon, addon_namespace(addon))
 	-- A model loaded again drops the reset kit's functions (they are added to it
-	-- by optionsdefault.lua), as the game's TOC loads the kit right after the model.
+	-- by optionsdefault.lua). The game's load.xml loads the kit later (after the widget files
+	-- and generators.lua), but every file looks the kit up when it runs, never at load.
 	if path == 'SaftUI-Core/Config/optionsmodel.lua' then
 		compile(REPO_ROOT .. '/SaftUI-Core/Config/optionsdefault.lua', 'SaftUI-Core/Config/optionsdefault.lua', 2)(addon, addon_namespace(addon))
 	end

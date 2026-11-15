@@ -757,6 +757,9 @@ local function DefaultTip(owner, cell)
 	if not cell then return end
 	local row = cell.row
 	local name = row.type == 'item' and (Possessive(row.name) .. ' Show') or row.name
+	-- A row whose name doesn't read as a subject (a rule's "Catches an item when") says what it is in the default's tipName.
+	local own = row.option.default
+	if type(own) == 'table' and type(own.tipName) == 'string' then name = own.tipName end
 	local text = DefaultText(cell.body, row, OM.DefaultState(cell.body.root, row) or {})
 	Tip(owner, 'Reset', text and format('%s goes back to its default: %s.', name, text)
 		or format('%s goes back to its default.', name))
@@ -817,15 +820,8 @@ function OB.PlaceDefault(cell)
 	if type(share) == 'table' and share.own ~= nil then return end
 	if widget:IsDisabled() then return end
 	-- Whether it differs, and nothing else (no words, no value): asked for
-	-- every row on every render. Without optionsdefault.lua, as before.
-	local differs
-	if OM.DefaultDiffers then
-		differs = OM.DefaultDiffers(body.root, row)
-	else
-		local state = OM.DefaultState(body.root, row)
-		differs = state and state.differs
-	end
-	if not differs then return end
+	-- every row on every render.
+	if not OM.DefaultDiffers(body.root, row) then return end
 
 	local icon = frame.defaultReset
 	if not icon then

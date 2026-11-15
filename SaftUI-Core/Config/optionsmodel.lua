@@ -111,7 +111,8 @@ local st = SaftUI
 	the control while it differs (optionsshare.lua's OB.PlaceDefault); it is
 	the standard for resets, one per setting, in place of a section's or a
 	page's Reset button. Its functions are each called with the option's
-	info:
+	info (differs, which the icon asks on every render, gets a scratch table
+	that is valid only during the call: read what it needs, never keep it):
 	  default = {
 	    differs = function(info) -> bool,  -- the value isn't its default now
 	    reset = function(info),            -- puts the default back (no confirm);
@@ -125,6 +126,9 @@ local st = SaftUI
 	                                       -- select's label, On or Off, ...
 	    text = string | function(info),    -- or the default in words, which
 	                                       -- wins over value
+	    tipName = string,                  -- optional: what the tooltip calls the
+	                                       -- setting, for a row whose name is no
+	                                       -- subject ("Catches an item when")
 	  }
 	OM.DefaultState reads it, OM.DefaultReset runs reset. A row whose share
 	has own (a member page) shows only its share's Reset; a disabled row
@@ -1087,8 +1091,8 @@ function OM.DefaultState(root, row)
 	local default = DefaultOf(row.option)
 	if not default then
 		-- No hand default: a mover's Position, or a default derived from where
-		-- the row is saved (optionsdefault.lua, when loaded).
-		return OM.SourceState and OM.SourceState(root, row) or nil
+		-- the row is saved (optionsdefault.lua).
+		return OM.SourceState(root, row)
 	end
 	local info = BuildInfo(row.option, Options(root), row.path)
 	local state = { differs = ShareAsk(default, 'differs', info) and true or false }
@@ -1115,7 +1119,6 @@ end
 function OM.DefaultReset(root, row)
 	local default = DefaultOf(row.option)
 	if not default then
-		if not OM.SourceReset then return false end
 		local ok, message = OM.SourceReset(root, row)
 		return ok and true or false, message
 	end

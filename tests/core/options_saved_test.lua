@@ -512,6 +512,21 @@ test("asking a hand default row whether it differs makes no table of its own: th
 	check(grown < 20, 'a hand default makes no table per ask (grew ' .. grown .. ' KB)')
 end)
 
+test("a hand default whose differs errors counts as not differing, and the error goes to the handler", function()
+	local root = setup()
+	root.Page.args.hand = {
+		type = 'toggle', name = 'By hand', order = 9,
+		get = function() return data().toggle end,
+		set = function(_, value) data().toggle = value end,
+		default = { differs = function() error('boom') end, reset = function() end },
+	}
+	local row = new_row(root, 'Page', 'hand')
+	eq(OM.DefaultDiffers(root, row), false, 'an erroring differs shows no icon')
+	local errors = take_errors()
+	eq(#errors, 1, 'and is reported once')
+	check(tostring(errors[1]):find('boom', 1, true), 'with its message')
+end)
+
 test("a Width or Height box's get hands on to its group's: the group's saved reaches it, its own wins, and a get of the page's own is left alone", function()
 	local root = setup()
 	st.defaults.sv_.width, st.defaults.sv_.height = 200, 30

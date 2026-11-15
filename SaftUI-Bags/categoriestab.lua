@@ -427,6 +427,7 @@ function INV:CategoryEditorOptions(id, tab, items)
 			args.rule.default = {
 				differs = function() local e = Entry(); return e and not R.Equal(e.rule, shipped.rule) or false end,
 				reset = function() INV:SetCategoryRule(id, R.Copy(shipped.rule)) end,
+				tipName = 'The rule', -- the row's name, "Catches an item when", is no subject
 				text = 'the rule SaftUI ships',
 			}
 		end

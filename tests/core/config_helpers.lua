@@ -12,11 +12,11 @@
 -- InitializeAceConfig listens to it). Fixtures (fixtures/config_libs.lua): the
 -- libraries config.lua uses only for Export and Import.
 --
--- The /sui window (Config/optionsmodel.lua, the widget files
--- load_options_widgets() loads, optionsbody.lua and the window's files
--- load_options_window() loads, which config.lua's Open, Close and GetWindow
--- use) isn't loaded here: a test that opens /sui loads them after this
--- (options_window_helpers.lua).
+-- The /sui window's model (Config/optionsmodel.lua, with the reset kit)
+-- comes with load_core_helpers(); its widget files (load_options_widgets()),
+-- optionsbody.lua and the window's files (load_options_window()), which
+-- config.lua's Open, Close and GetWindow use, are not loaded here: a test that
+-- opens /sui loads them after this (options_window_helpers.lua).
 --
 -- Modules a test wants in the tree (e.g. SaftUI-Misc/experience.lua) load
 -- after this, and the test enables them.

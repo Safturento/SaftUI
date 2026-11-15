@@ -170,7 +170,8 @@ local function GetNode(root, row)
 	local group, node = { args = root }, nil
 	for _, key in ipairs(row.path) do
 		group = OM.SubOption(group, key)
-		if group.get ~= nil and not (group.saved == nil and group.noReset == nil and group.get == st.Config.generators.NumberInputGet) then node = group end
+		if not group then return nil end
+		if group.get ~= nil and not OM.HandsOn(group) then node = group end
 	end
 	return node
 end
@@ -363,7 +364,12 @@ local function Walk(root, pageKey, opts, problems)
 		-- A group's pickerControl: its options, on a tree of their own.
 		if type(option) == 'table' and type(option.pickerControl) == 'table' then
 			local tree = { [OM.PICKER_CONTROL_KEY] = option.pickerControl }
-			each_option({ args = tree }, function(inner, innerPath) Visit(tree, innerPath, inner, innerPath) end)
+			each_option({ args = tree }, function(inner, innerPath)
+				-- Read by its own path on its own tree, but named for the group it belongs to (page and unit).
+				local label = { unpack(path) }
+				for _, key in ipairs(innerPath) do label[#label + 1] = key end
+				Visit(tree, innerPath, inner, label)
+			end)
 		end
 	end)
 	return walked

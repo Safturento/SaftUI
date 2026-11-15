@@ -286,6 +286,11 @@ test("a shipped category's fields each reset alone; there is no Reset button", f
 	local ruleCell = tab():EditorCell('rule')
 	local left = select(4, ruleCell.frame.defaultReset:GetPoint(1))
 	eq(left, math.ceil(ruleCell.label:GetUnboundedStringWidth()) + 6, "the rule's icon sits 6 after 'Catches an item when'")
+	-- Its tooltip is a sentence: the row's name is no subject.
+	local rule_icon = reset_icon('rule')
+	stub.fire_script(rule_icon, 'OnEnter')
+	eq(stub.state(GameTooltip).texts[2], 'The rule goes back to its default: the rule SaftUI ships.', "the rule's reset words")
+	stub.fire_script(rule_icon, 'OnLeave')
 
 	-- Each one puts back its own and leaves the others.
 	click(reset_icon('name'))
