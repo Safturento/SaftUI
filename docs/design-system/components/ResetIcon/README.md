@@ -29,7 +29,7 @@ A relative of this icon: a row of the edit mode bar's History list ends in a 14p
 
 ## Status
 
-The kit can give every value row in `/sui` a reset (decision 50): a derived default, a mover Position's, or a hand one; with the icon where the control draws, in an item's menu and beside a titled row's title (6 after its text). A row has one once its page says where it is saved (or a hand default, or why it has none); pages are converted one task at a time (`tests/core/reset_coverage_test.lua` lists the pages not yet walked).
+The kit can give every value row in `/sui` a reset (decision 50): a derived default, a mover Position's, or a hand one; with the icon where the control draws, in an item's menu and beside a titled row's title (6 after its text). Every value row has one: its page says where it is saved (or gives a hand default, or says why it has none), and `tests/core/reset_coverage_test.lua` fails for a page whose walk (`tests/lib/reset_walk.lua`) is missing. The rows with none by design: Chat's Width and Height (Blizzard's chat frame's size has no default), the Test modes, the Profile select, and a Position whose mover has no default (the durability figure's, the totem bar's).
 
 ## Blizzard theme
 
