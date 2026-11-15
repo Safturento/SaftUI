@@ -70,6 +70,12 @@ function INV:GetButtonWidth()
 	return st:RoundToPixel(max(size, 1) * BUTTON_ASPECT)
 end
 
+-- The selected bank window's border in the accent. Kept through a theme recolor
+-- or redraw (st:KeepOwnColors), and put back by UpdateConfig and an accent change.
+local function ColorSelected(container)
+	if container.backdrop then st:SetBorderColor(container.backdrop, st:Color('accent'):GetRGB()) end
+end
+
 function INV:SelectBankCategory(clickedHeader)
 	local selectedContainer = clickedHeader:GetParent()
     if selectedContainer.id == 'warband' then
@@ -86,18 +92,17 @@ function INV:SelectBankCategory(clickedHeader)
             if container.backdrop then
                 st:SetBorderColor(container.backdrop, st:Color('accent'):GetRGB())
             end
+            st:KeepOwnColors(container, ColorSelected)
         else
+            st:KeepOwnColors(container, nil)
             st:SetBackdrop(container, self.config.theme, self.config.background, 'window')
         end
     end
 end
 
--- The accent changed: the selected bank window's border in it, nothing drawn again.
 function INV:ColorSelectedBank()
 	local container = self.selectedBank and self.containers[self.selectedBank]
-	if container and container.backdrop then
-		st:SetBorderColor(container.backdrop, st:Color('accent'):GetRGB())
-	end
+	if container then ColorSelected(container) end
 end
 
 -- The filter tables bag updates index, and the category store and pins
@@ -227,6 +232,7 @@ function INV:UpdateConfig(id)
 	end
 
 	st:SetBackdrop(container, self.config.theme, self.config.background, 'window')
+	if self.selectedBank == id then self:ColorSelectedBank() end
 	-- The bags' own Theme can put the window in Blizzard's metal or take it
 	-- out with no theme redraw, so the close button follows it into the
 	-- socket or out here, and the header into the metal's title bar or out

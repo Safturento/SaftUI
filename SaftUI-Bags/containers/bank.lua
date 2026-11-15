@@ -182,10 +182,9 @@ end
 -- A color the bank's bag bar draws changed (key nil: any of the group):
 -- Buttons > Danger tints the slots not bought yet, Text > Danger or Strong
 -- draws the price of the next tab. Only the colors are set.
-function INV:ColorBankBars(group, key)
-	local container = self.containers.bank
-	local bar = container and container.bagSlotContainer
-	if not bar then return end
+local BANK_BAR_WINDOWS = { 'bank', 'combinedbank' } -- as INV:UpdateBagSlotBars walks them
+
+local function ColorBankBar(bar, group, key)
 	if group == 'button' then
 		if key ~= nil and key ~= 'danger' then return end
 		for _, slot in pairs(bar.slots) do
@@ -197,6 +196,14 @@ function INV:ColorBankBars(group, key)
 		if priceKey and (key == nil or key == priceKey) then
 			purchase.text:SetTextColor(st:Color('text', priceKey):GetRGB())
 		end
+	end
+end
+
+function INV:ColorBankBars(group, key)
+	for _, id in ipairs(BANK_BAR_WINDOWS) do
+		local container = self.containers[id]
+		local bar = container and container.bagSlotContainer
+		if bar then ColorBankBar(bar, group, key) end
 	end
 end
 

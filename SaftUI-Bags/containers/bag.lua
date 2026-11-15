@@ -222,7 +222,6 @@ local function RestyleBagSlot(slot)
 	local hover = slot:GetHighlightTexture()
 	hover:SetTexture(st.BLANK_TEX)
 	hover:SetVertexColor(st:Color('accent'):GetRGB())
-	st:FollowColor(slot, 'accent', nil, PaintBagSlotHover)
 	hover:SetBlendMode('ADD')
 	hover:SetAlpha(1)
 	hover:ClearAllPoints()
@@ -291,6 +290,8 @@ function INV:InitializePlayerBagSlots()
 			self:SecureHook(slot, 'UpdateTextures', RestyleBagSlot)
 		end
 		RestyleBagSlot(slot)
+		-- Once, not on every UpdateTextures: the hover follows the accent.
+		st:FollowColor(slot, 'accent', nil, PaintBagSlotHover)
 
 		-- With the bar collapsed Blizzard hides the slots; ours should always show.
 		if slot.SetBarExpanded then
@@ -333,10 +334,7 @@ local function SetFooter(container)
 	local counts = container.slotCounts
 	local text = ('%d/%d '):format(counts[1], counts[2])
 	if counts[4] > 0 then
-		text = text .. st.StringFormat:ColorString(
-				(('%d/%d '):format(counts[3], counts[4])),
-				st:Color('text', 'success'):GetRGB()
-		)
+		text = text .. INV.TintText(('%d/%d '):format(counts[3], counts[4]), 'success')
 	end
 	container.footer.slots:SetText(text)
 end

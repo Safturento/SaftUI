@@ -129,10 +129,7 @@ local function SetFooter(container)
 	local counts = container.slotCounts
 	local text = ('%d/%d '):format(counts[1], counts[2])
 	if counts[4] > 0 then
-		text = text .. st.StringFormat:ColorString(
-				(('%d/%d'):format(counts[3], counts[4])),
-				st:Color('text', 'shared'):GetRGB()
-		)
+		text = text .. INV.TintText(('%d/%d'):format(counts[3], counts[4]), 'shared')
 	end
 	container.footer.slots:SetText(text)
 end

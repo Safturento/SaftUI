@@ -196,15 +196,20 @@ local function BagTitle(info)
 end
 
 -- Text > Muted changed: the shown special bags' titles set again with the new
--- grey (BagTitle), cut to the room they were laid out in. Nothing is laid out.
+-- grey, cut to the room they were laid out in. The title's parts are the
+-- layout's (only the color code after the name is swapped: no bag is asked, no
+-- table made, and a count a bag changed since is not shown by a color pass).
+-- Nothing is laid out.
 function INV:RetitleSections()
+	local r, g, b = st:Color('text', 'muted'):GetRGB()
+	local grey = ('|cff%02x%02x%02x'):format(math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5), math.floor(b * 255 + 0.5))
 	for _, container in pairs(self.containers) do
 		for name, frame in pairs(container.categories or {}) do
 			local titleText = frame.titleText
 			local id = type(name) == 'string' and name:match('^view:bag(-?%d+)$')
 			-- Only a title with the grey part ("name · type (n / m)") has anything to recolor.
 			if id and titleText and titleText:find('\194\183', 1, true) and frame:IsShown() then
-				local title = BagTitle(self:GetBagInfo(tonumber(id)))
+				local title = titleText:gsub('|cff%x%x%x%x%x%x(\194\183)', grey .. '%1', 1)
 				frame.titleText = title
 				self.FitTitle(frame.header.text, title, frame.titleRoom, true)
 			end

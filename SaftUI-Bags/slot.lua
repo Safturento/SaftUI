@@ -147,6 +147,13 @@ function INV:OnColorsChanged(group, key)
 	end
 end
 
+-- text in a Text color, built as one string: '|cffrrggbb' text '|r'. A channel
+-- is cut to its byte (what st.StringFormat:ColorString does, without its table).
+function INV.TintText(text, key)
+	local r, g, b = st:Color('text', key):GetRGB()
+	return ('|cff%02x%02x%02x%s|r'):format(r * 255, g * 255, b * 255, text)
+end
+
 -- The key of the Text color an item level is drawn in, for a piece of gear:
 -- Warbound shared, Bind on Equip success, else strong.
 function INV.ItemLevelKey(info)
@@ -170,9 +177,12 @@ end
 
 -- The state colors on a slot's texts: its item level by its key and the
 -- reagent marker (Success). With a key, only what that Text color draws.
-function INV:ColorSlotTexts(slot, key)
-	if slot.reagentMarker and (key == nil or key == 'success') then
-		slot.reagentMarker:SetVertexColor(st:Color('text', 'success'):GetRGB())
+-- r, g, b, if given, are Success already read (a walk reads it once);
+-- shownOnly colors only a marker that is shown.
+function INV:ColorSlotTexts(slot, key, r, g, b, shownOnly)
+	local marker = slot.reagentMarker
+	if marker and (key == nil or key == 'success') and not (shownOnly and not marker:IsShown()) then
+		if r then marker:SetVertexColor(r, g, b) else marker:SetVertexColor(st:Color('text', 'success'):GetRGB()) end
 	end
 	local info = slot.info
 	if IsGear(info) and (key == nil or self.ItemLevelKey(info) == key) then
@@ -183,9 +193,14 @@ end
 -- A Text color changed: what each window draws in it, by key (nil is any).
 function INV:ColorTexts(key)
 	if key == nil or key == 'strong' or key == 'success' or key == 'shared' then
+		-- Success is read once. During an edit (a drag) a Success pass colors only the markers shown (the
+		-- reagent bag's); the edit's end runs the whole pass, which colors every one, shown or not.
+		local r, g, b
+		if key == nil or key == 'success' then r, g, b = st:Color('text', 'success'):GetRGB() end
+		local shownOnly = key == 'success' and st:InColorEdit()
 		for _, container in pairs(self.containers) do
 			for _, category in pairs(container.categories) do
-				for _, slot in pairs(category.slots) do self:ColorSlotTexts(slot, key) end
+				for _, slot in pairs(category.slots) do self:ColorSlotTexts(slot, key, r, g, b, shownOnly) end
 			end
 		end
 		self:ColorCurrencyCounts(key)

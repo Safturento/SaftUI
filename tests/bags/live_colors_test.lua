@@ -2,6 +2,8 @@
 -- followers): a changed color repaints only what it reaches and nothing else,
 -- with nothing laid out, sorted, filed or made, in combat too.
 --
+-- (The world holds 1272 slots, 912 of them filled; the names say what each case measures.)
+--
 -- Real: bags/container_helpers.lua's views world (the module's real files, the
 -- real slots, categories and windows) with containers/bag.lua, bank.lua and
 -- combinedbank.lua; the bag window, the bank and the warband bank hold the
@@ -57,8 +59,8 @@ local function fill()
 	return g
 end
 
-local function world()
-	INV, W = H.views_world('retail')
+local function world(client)
+	INV, W = H.views_world(client or 'retail')
 	st = SaftUI
 	if not _G.GameTooltip then CreateFrame('GameTooltip', 'GameTooltip', UIParent, 'GameTooltipTemplate') end
 	load_string_format()
@@ -120,7 +122,7 @@ local function spy()
 	end
 	for _, key in ipairs({ 'UpdateConfig', 'QueueUpdate', 'CategoriesChanged', 'UpdateContainer', 'UpdateContainerLayout',
 		'ApplyView', 'StyleSlot', 'SkinSlot', 'AssignSlot', 'SortByPriority', 'UpdateCategory', 'UpdateVisibleContainers',
-		'ReleaseLayout', 'GetViewSections', 'ReadBags' }) do
+		'ReleaseLayout', 'GetViewSections', 'ReadBags', 'GetBagInfo' }) do
 		watch(INV, key)
 	end
 	watch(st, 'SetBorderColor')
@@ -131,7 +133,7 @@ local function count(name) return watched[name] or 0 end
 local function quiet()
 	for _, key in ipairs({ 'UpdateConfig', 'QueueUpdate', 'CategoriesChanged', 'UpdateContainer', 'UpdateContainerLayout',
 		'ApplyView', 'StyleSlot', 'SkinSlot', 'AssignSlot', 'SortByPriority', 'UpdateCategory', 'UpdateVisibleContainers',
-		'ReleaseLayout', 'GetViewSections', 'ReadBags' }) do
+		'ReleaseLayout', 'GetViewSections', 'ReadBags', 'GetBagInfo' }) do
 		eq(count(key), 0, key .. ' is not called')
 	end
 end
@@ -149,12 +151,12 @@ end
 local function setters(m, name) return m.calls.by[name] or 0 end
 
 -- The bank window's bag bar, as state_colors_test.lua makes it, on the bank window.
-local function bank_bar()
+local function bank_bar(id, afford)
 	_G.C_Bank = {
 		FetchMaxNumBankTabs = function() return 4 end,
 		FetchNumPurchasedBankTabs = function() return 2 end,
 		FetchPurchasedBankTabData = function() return { [1] = {}, [2] = {} } end,
-		FetchNextPurchasableBankTabData = function() return { tabCost = 1000, canAfford = false } end,
+		FetchNextPurchasableBankTabData = function() return { tabCost = 1000, canAfford = afford } end,
 	}
 	Enum.BankType = { Character = 0, Account = 2 }
 	_G.ItemLocation = { CreateFromBagAndSlot = function(_, bag, slot) return { bag = bag, slot = slot } end, }
@@ -163,7 +165,7 @@ local function bank_bar()
 	bar.slots, bar.purchaseButton = {}, CreateFrame('Button', nil, bar)
 	bar.purchaseButton.text = bar.purchaseButton:CreateFontString(nil, 'OVERLAY')
 	INV:UpdateBankBagSlots(bar)
-	INV.containers.bank.bagSlotContainer = bar
+	INV.containers[id or 'bank'].bagSlotContainer = bar
 	return bar
 end
 
@@ -224,6 +226,7 @@ test("the Accent: the bag bar's slots, the loading bars, the selected bank windo
 	bar.icon = bar:CreateTexture(nil, 'BORDER')
 	bar:SetNormalTexture(st.BLANK_TEX); bar:SetHighlightTexture(st.BLANK_TEX); bar:SetPushedTexture(st.BLANK_TEX)
 	up(INV.InitializePlayerBagSlots, 'RestyleBagSlot')(bar)
+	st:FollowColor(bar, 'accent', nil, up(INV.InitializePlayerBagSlots, 'PaintBagSlotHover'))
 	local accent = st.config.profile.theme.accent
 	accent:SetRGB(0.9, 0.2, 0.4)
 	local m = pass('accent', nil)
@@ -238,7 +241,11 @@ test("the Accent: the bag bar's slots, the loading bars, the selected bank windo
 	accent:SetRGB(0, 0.68, 0.94)
 end)
 
-test('100 Accent passes over 700 slots allocate under 4 KB; in combat the same (Review Focus 4)', function()
+test('100 Accent passes over every slot of the world allocate under 4 KB; in combat the same (Review Focus 4)', function()
+	-- TODO after Task 2 (Core's widgets) merges: st:SkinActionButton then follows the Accent on every
+	-- item, currency and bank bar slot's hover (about 1300 SetVertexColor calls in this world). Count
+	-- them here (setters(m, 'SetVertexColor') >= the slots made), keep the 4 KB check, and add the
+	-- brief's "every item slot's hover once" assertion.
 	world()
 	INV:SelectBankCategory(INV.containers.bank.header)
 	local accent = st.config.profile.theme.accent
@@ -256,7 +263,7 @@ test('100 Accent passes over 700 slots allocate under 4 KB; in combat the same (
 	eq(accent ~= nil, true)
 end)
 
-test('100 Epic passes over 700 slots: nothing made or forbidden, under 4 KB', function()
+test('100 Epic passes over every slot of the world: nothing made or forbidden, under 4 KB', function()
 	world()
 	st:ColorChanged('item_quality', EPIC)
 	local m = pass('item_quality', EPIC, 100)
@@ -303,7 +310,7 @@ test('Text > Strong, Success, Shared: item levels by their key, reagent markers,
 	eq(#take_errors(), 0, 'no errors')
 end)
 
-test('100 passes of each Text color over 700 slots: nothing made or forbidden, in combat too', function()
+test('100 passes of each Text color over every slot of the world: nothing made or forbidden, in combat too', function()
 	world()
 	for _, combat in ipairs({ false, true }) do
 		stub.in_combat = combat
@@ -414,7 +421,7 @@ end)
 
 test("Buttons > Danger: the bank's unbought slots, at their region's 0.3", function()
 	world()
-	local bar = bank_bar()
+	local bar = bank_bar('bank', false)
 	local unbought = 0
 	for _, slot in pairs(bar.slots) do if slot.locked:IsShown() then unbought = unbought + 1 end end
 	check(unbought > 0, 'some slots are for sale')
@@ -426,13 +433,13 @@ test("Buttons > Danger: the bank's unbought slots, at their region's 0.3", funct
 	end
 	quiet()
 	eq(m.forbidden.total, 0, 'nothing forbidden')
-	m = pass('button', 'primary')
+	m = pass('button', 'hover')
 	eq(setters(m, 'SetVertexColor'), 0, 'another Buttons color: nothing')
 end)
 
 test("Text > Danger and Strong: the bank's price of a tab follows the one it is drawn in", function()
 	world()
-	local bar = bank_bar()
+	local bar = bank_bar('bank', false)
 	local text = bar.purchaseButton.text
 	eq(rgb(text:GetTextColor()), rgb(st.config.profile.colors.text.danger:GetRGB()), "too expensive: Danger")
 	st.config.profile.colors.text.danger:SetRGB(0.9, 0.3, 0.1)
@@ -476,4 +483,174 @@ test('a profile switch (the whole pass) reaches the same readers with no error',
 		st:ColorsChanged(group)
 	end
 	eq(#take_errors(), 0, 'no errors')
+end)
+
+------------------------------------------------------------------ fix round 1
+
+test("the combined bank's bag bar (the default layout): unbought tabs and the price follow a pick and the whole pass", function()
+	world('forever')
+	H.window('combinedbank')
+	local bar = bank_bar('combinedbank', false)
+	local colors = st.config.profile.colors
+	check(bar.slots[3], 'a tab for sale')
+	colors.button.danger:SetRGB(0.9, 0.9, 0.1)
+	st:ColorChanged('button', 'danger')
+	eq(rgb(bar.slots[3].locked:GetVertexColor()), rgb(0.9, 0.9, 0.1), 'the tint, after a pick')
+	colors.button.danger:SetRGB(0.3, 0.9, 0.1)
+	st:ColorsChanged('button')
+	eq(rgb(bar.slots[3].locked:GetVertexColor()), rgb(0.3, 0.9, 0.1), 'the tint, after the whole pass')
+	eq(string.format('%.2f', bar.slots[3].locked:GetAlpha()), '0.30', "the region's 0.3")
+	colors.text.danger:SetRGB(0.8, 0.2, 0.2)
+	st:ColorChanged('text', 'danger')
+	eq(rgb(bar.purchaseButton.text:GetTextColor()), rgb(0.8, 0.2, 0.2), 'the price too dear, after a pick')
+	bar = bank_bar('combinedbank', true)
+	colors.text.strong:SetRGB(0.1, 0.9, 0.9)
+	st:ColorsChanged('text')
+	eq(rgb(bar.purchaseButton.text:GetTextColor()), rgb(0.1, 0.9, 0.9), 'the price you can pay, after the whole pass')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("Muted: the retitle keeps the layout's parts: no GetBagInfo, nothing allocated, the count is the layout's", function()
+	world()
+	local bag = INV.containers.bag
+	INV.config.bag.view = 'multibag'
+	W.bag_item(5, 'Reagent Bag')
+	INV:ApplyView('bag')
+	local frame = bag.categories['view:bag5']
+	check(frame and frame.titleText, 'the reagent bag has a title')
+	if not frame then return end
+	local count = frame.titleText:match('%\((.-)%\)$')
+	-- A bag changes after the layout: its slots are laid out for the old count.
+	W.put(5, 50, W.item(9999, 'Late', 'Miscellaneous', 1))
+	st.config.profile.colors.text.muted:SetRGB(0.9, 0.1, 0.2)
+	st:ColorChanged('text', 'muted')
+	eq(frame.titleText:match('%\((.-)%\)$'), count, "the title's count is the layout's, whatever the bag holds now")
+	check(frame.titleText:find('|cffe61a33', 1, true), 'in the new grey')
+	local m = pass('text', 'muted', 100)
+	check(m.kb < 4, 'garbage over 100 Muted passes: ' .. m.kb .. ' KB')
+	eq(watched.GetBagInfo or 0, 0, 'no GetBagInfo')
+	quiet()
+end)
+
+test('the footers: 100 Success and Shared passes under 4 KB with the counts set, the text what it was', function()
+	world()
+	local bag = INV.containers.bag
+	INV.GetNumContainerSlots = function() return 2, 10 end
+	up(INV.InitializePlayerBags, 'UpdateContainerSlots')(bag)
+	local combined = H.window('combinedbank')
+	up(INV.InitializeCombinedBank, 'UpdateContainerSlots')(combined)
+	check(bag.slotCounts and combined.slotCounts, 'the counts are set, so the footer code runs')
+	local c = st.config.profile.colors.text
+	c.success:SetRGB(0.9, 0.5, 0.1); c.shared:SetRGB(0.2, 0.9, 0.9)
+	st:ColorChanged('text', 'success'); st:ColorChanged('text', 'shared')
+	local sx, sh = st.StringFormat:ToHex(0.9, 0.5, 0.1), st.StringFormat:ToHex(0.2, 0.9, 0.9)
+	eq(bag.footer.slots:GetText(), '8/10 |cff' .. sx .. '8/10 |r', 'the bag footer, byte for byte')
+	eq(combined.footer.slots:GetText(), '8/10 |cff' .. sh .. '8/10|r', 'the combined footer, byte for byte')
+	for _, key in ipairs({ 'success', 'shared' }) do
+		local m = pass('text', key, 100)
+		check(m.kb < 4, key .. ': ' .. m.kb .. ' KB over 100 passes')
+		eq(m.forbidden.total, 0, key .. ': nothing forbidden')
+	end
+end)
+
+-- The markers' color on the slots, shown and not, of every window.
+local function markers(fn)
+	each_slot(function(slot) if slot.reagentMarker then fn(slot.reagentMarker) end end)
+end
+
+test('Success during an edit colors only the markers shown; the edit end colors the rest, and a marker shown later has it', function()
+	world()
+	local c = st.config.profile.colors.text
+	c.success:SetRGB(0.9, 0.5, 0.1)
+	local shown, all = 0, 0
+	markers(function(marker) all = all + 1; if marker:IsShown() then shown = shown + 1 end end)
+	check(shown > 0 and shown < all, 'some markers shown, most not: ' .. shown .. ' of ' .. all)
+	st:BeginColorEdit()
+	st:ColorChanged('text', 'success')
+	local m = C.measure(function() C.step(st) end)
+	eq(setters(m, 'SetVertexColor'), shown, 'only the shown markers were colored')
+	markers(function(marker)
+		if marker:IsShown() then eq(rgb(marker:GetVertexColor()), rgb(0.9, 0.5, 0.1), 'a shown marker') end
+	end)
+	st:EndColorEdit()
+	markers(function(marker) eq(rgb(marker:GetVertexColor()), rgb(0.9, 0.5, 0.1), 'after the edit, every marker') end)
+	-- Outside an edit a Success pass colors them all.
+	c.success:SetRGB(0.3, 0.6, 0.2)
+	m = pass('text', 'success')
+	eq(setters(m, 'SetVertexColor'), all, 'outside an edit: every marker')
+end)
+
+test("a closed window's markers have the new Success when it opens, and its slots when they are assigned", function()
+	world()
+	local bank = INV.containers.bank
+	bank:Hide()
+	st.config.profile.colors.text.success:SetRGB(0.9, 0.5, 0.1)
+	st:ColorChanged('text', 'success')
+	bank:Show()
+	local n = 0
+	for _, category in pairs(bank.categories) do
+		for _, slot in pairs(category.slots) do
+			n = n + 1
+			eq(rgb(slot.reagentMarker:GetVertexColor()), rgb(0.9, 0.5, 0.1), 'a marker of the closed window')
+		end
+	end
+	check(n > 0, 'the window has slots')
+	INV:UpdateContainer('bank', true, true)
+	for _, category in pairs(bank.categories) do
+		for _, slot in pairs(category.slots) do
+			eq(rgb(slot.reagentMarker:GetVertexColor()), rgb(0.9, 0.5, 0.1), 'and after an update')
+		end
+	end
+end)
+
+test('a currency slot handed to a currency of another quality follows the new quality', function()
+	world()
+	CURRENCY_QUALITY[1] = 1
+	INV:UpdateCurrencyCategory(true, 6, INV:GetCurrencies())
+	spy()
+	st:ColorChanged('item_quality', EPIC)
+	local after = count('SetBorderColor')
+	unspy()
+	eq(after, 40 + 2, 'two epic currencies are left')
+	spy()
+	st:ColorChanged('item_quality', 1)
+	local rest = count('SetBorderColor')
+	unspy()
+	check(rest >= 18, 'the slot reused for quality 1 follows quality 1: ' .. rest)
+end)
+
+test('every group: the whole pass and the price pass lay out, sort and file nothing', function()
+	world()
+	bank_bar('bank', false)
+	for _, group in ipairs({ 'item_quality', 'accent', 'text', 'button', 'theme' }) do
+		spy()
+		st:ColorsChanged(group)
+		quiet()
+		unspy()
+	end
+	spy()
+	st:ColorChanged('text', 'danger')
+	quiet()
+	unspy()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("the selected bank window keeps its accent border through a Theme tab color change and a Bags option change", function()
+	world()
+	st.config.profile.theme.name = 'thin'
+	st:RedrawThemed()
+	local accent = st.config.profile.theme.accent
+	accent:SetRGB(0.9, 0.2, 0.4)
+	local bank = INV.containers.bank
+	INV:SelectBankCategory(bank.header)
+	local want = T.text(0.9, 0.2, 0.4)
+	eq(T.edge_rgb(bank.backdrop), want, 'picked')
+	st.config.profile.templates.thin.bordercolor = { 0.1, 0.8, 0.8, 1 }
+	st:RecolorThemed()
+	eq(T.edge_rgb(bank.backdrop), want, 'after a Theme tab color change')
+	INV:UpdateConfig('bank')
+	eq(T.edge_rgb(bank.backdrop), want, 'after a Bags option change')
+	INV:SelectBankCategory(INV.containers.warband.header)
+	check(T.edge_rgb(bank.backdrop) ~= want, 'a window no longer selected goes back to the theme')
+	accent:SetRGB(0, 0.68, 0.94)
 end)
