@@ -261,6 +261,15 @@ function Config:OnColorsChanged(group)
 	if group == 'theme' and OW then OW:PaintSidebar() end
 end
 
+-- After a font setting or a shared font changed (st:FontsChanged): /sui's own
+-- font objects take Heading's and Text's faces and outlines again, as
+-- OW:UpdateFonts does on a profile change. It asks the body, not the window,
+-- so a world with the body and no window follows too.
+function Config:OnFontsChanged()
+	local OB = st.OptionsBody
+	if OB then OB.UpdateFonts() end
+end
+
 -- Runs on every profile change, copy or reset, and on a change of the theme or
 -- going solid or see-through (st:ThemeChanged, Media/theme.lua).
 function Config:UpdateConfig()

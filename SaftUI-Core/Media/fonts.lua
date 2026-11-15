@@ -7,11 +7,14 @@ FN.font_objects = {}
 FN.outlines = {
 	NONE = 'None',
 	OUTLINE = 'Outline',
-	THICKOUTLINE = 'Thick Outline',
+	THICKOUTLINE = 'Thick outline',
 	MONOCHROME = 'Monochrome',
-	MONOCHROMEOUTLINE = 'Monochrome Outline',
-	MONOCHROMETHICKOUTLINE = 'Monochrome Thick Outline',
+	MONOCHROMEOUTLINE = 'Monochrome outline',
+	MONOCHROMETHICKOUTLINE = 'Monochrome thick outline',
 }
+
+-- The outlines in the order every list of them shows (a select's sorting).
+local OUTLINE_ORDER = { 'NONE', 'OUTLINE', 'THICKOUTLINE', 'MONOCHROME', 'MONOCHROMEOUTLINE', 'MONOCHROMETHICKOUTLINE' }
 
 -- The font flag for a saved outline key (an FN.outlines key): 'NONE' and nil
 -- are no flags, so SetFont takes the result; any other key is its own flag.
@@ -354,34 +357,105 @@ function st:FontsChanged()
 	end
 end
 
--- Shadow offset X (index 1) or Y (index 2) of the font whose section the row
--- is in: one of the two numbers in its shadow_offset. The font object takes it
--- at once, and so does every text set to it that doesn't set its own.
-local function ShadowOffset(order, index, name, desc)
-	local option = st.Config.generators.range(order, name, -5, 5, 1, desc)
-	option.get = function(info)
-		return st.config.profile.fonts[info[#info-1]].shadow_offset[index]
+-- The rows of one font's look, as the Fonts tab shows them and as the dots menu
+-- of a font row will: Size, Outline, Shadow offset X and Y, Line spacing.
+FN.FIELDS = { 'font_size', 'font_outline', 'shadow_x', 'shadow_y', 'spacing' }
+
+-- Per field: its name and its desc for each subject. A 'shared' desc is the
+-- Fonts tab's (it says every text that uses the font); a 'text' desc is the
+-- dots menu's, for one text.
+local FIELD_TEXT = {
+	font_size = { name = 'Size',
+		shared = 'How big every text that uses this font is.',
+		text = 'How big this text is.' },
+	font_outline = { name = 'Outline',
+		shared = 'The outline around the letters of every text that uses this font.',
+		text = 'The outline around its letters.' },
+	shadow_x = { name = 'Shadow offset X',
+		shared = 'How far right of the letters the shadow of every text that uses this font falls, in pixels; below 0, to the left. With X and Y both 0 the shadow sits behind the letters.',
+		text = 'How far right of the letters its shadow falls, in pixels; below 0, to the left.' },
+	shadow_y = { name = 'Shadow offset Y',
+		shared = 'How far above the letters the shadow of every text that uses this font falls, in pixels; below 0, below them.',
+		text = 'How far above the letters its shadow falls, in pixels; below 0, below them.' },
+	spacing = { name = 'Line spacing',
+		shared = 'The gap, in pixels, between the lines of every text that uses this font, when it runs to more than one line.',
+		text = 'The gap between its lines, in pixels, when it runs to more than one line.' },
+}
+
+-- The options for a font's size, outline, shadow and spacing, built once for
+-- the Fonts tab and the dots menu: { [field] = option }, at orders 2 to 6 (the
+-- Typeface row, which the menu has no use for, is order 1 on the tab).
+--   read(field) -> value, write(field, value): the caller's, by the field's
+--     name; shadow_x and shadow_y are the two numbers of shadow_offset.
+--   subject: 'shared' (the tab: every text that uses this font) or 'text'
+--     (the menu: one text).
+--   fields: which of FN.FIELDS to make (nil: all five).
+-- The options have no default (a reset): the tab adds its own, and the menu's
+-- rows have none.
+function FN.FieldOptions(read, write, subject, fields)
+	local wanted
+	if fields then
+		wanted = {}
+		for _, field in ipairs(fields) do wanted[field] = true end
 	end
-	option.set = function(info, value)
-		local font_key = info[#info-1]
-		st.config.profile.fonts[font_key].shadow_offset[index] = value
-		FN:UpdateFontConfig(font_key)
-		st:FontsChanged()
+	local generators = st.Config.generators
+	local options = {}
+	for i, field in ipairs(FN.FIELDS) do
+		if not wanted or wanted[field] then
+			local text = FIELD_TEXT[field]
+			local option
+			if field == 'font_size' then
+				option = generators.range(i + 1, text.name, 1, 100, 1, text[subject])
+			elseif field == 'font_outline' then
+				option = {
+					order = i + 1,
+					type = 'select',
+					name = text.name,
+					desc = text[subject],
+					values = FN.outlines,
+					sorting = { unpack(OUTLINE_ORDER) },
+				}
+			elseif field == 'spacing' then
+				option = generators.range(i + 1, text.name, 0, 20, 1, text[subject])
+			else
+				option = generators.range(i + 1, text.name, -5, 5, 1, text[subject])
+			end
+			option.get = function() return read(field) end
+			option.set = function(_, value) write(field, value) end
+			options[field] = option
+		end
 	end
-	return option
+	return options
+end
+
+-- The default of a row that holds a font setting (a shared font's key or a
+-- typeface): it differs while the value is anything but the default (a
+-- typeface table always does), a reset writes the default and runs
+-- st:FontsChanged(), and the tooltip names it through st:FontLabel. read(info)
+-- and write(info, value) are the row's, as an option's get and set are; the
+-- caller's write does what a set does short of st:FontsChanged.
+function FN.FontSettingDefault(read, write, default)
+	return {
+		differs = function(info) return read(info) ~= default end,
+		reset = function(info)
+			write(info, default)
+			st:FontsChanged()
+		end,
+		text = st:FontLabel(default),
+	}
 end
 
 -- The Kinds of text section: which font each kind of text uses, as
--- { row key, profile key, name, desc, apply }. A row reads and writes
+-- { row key, profile key, name, default, desc, apply }. A row reads and writes
 -- st.config.profile[profile key].font. Only window titles can be re-applied
 -- (st:UpdateHeader); the others are set when their frames are built.
 local TEXT_FONTS = {
-	{ 'window_titles', 'headers', 'Window titles',
+	{ 'window_titles', 'headers', 'Window titles', 'normal',
 		"The titles of SaftUI's windows (the bags and bank), which change at once, and the bags' gold and free-slot text along their bottom, which changes on a reload.",
 		function() st:UpdateHeader() end },
-	{ 'button_text', 'buttons', 'Button text',
-		"The text on the totem bar's buttons (key bindings, counts and names) and its totem timers." },
-	{ 'checkbox_labels', 'panels', 'Check box labels',
+	{ 'button_text', 'buttons', 'Button text', 'pixel',
+		"The text on the totem bar's buttons (key bindings, counts and names) and its totem timers, and on the bag slot bars and the bank's bag slots." },
+	{ 'checkbox_labels', 'panels', 'Check box labels', 'normal',
 		"The labels of SaftUI's check boxes, such as the bags' filters." },
 }
 
@@ -390,23 +464,92 @@ local TEXT_FONTS_NOTE = 'Window titles change at once. The rest is read when Saf
 local function TextFontsGroup()
 	local args = {}
 	for i, entry in ipairs(TEXT_FONTS) do
-		local key, profile_key, name, desc, apply = unpack(entry)
+		local key, profile_key, name, default, desc, apply = unpack(entry)
 		local option = st.Config.generators.font(i, desc)
 		option.name = name
-		option.get = function() return st.config.profile[profile_key].font end
-		option.set = function(_, value)
+		local function read() return st.config.profile[profile_key].font end
+		local function write(_, value)
 			st.config.profile[profile_key].font = value
 			if apply then apply() end
+		end
+		option.get = read
+		option.set = function(info, value)
+			write(info, value)
 			st:FontsChanged()
 		end
+		option.default = FN.FontSettingDefault(read, write, default)
 		args[key] = option
 	end
 	return {
 		type = 'group',
 		inline = true,
-		order = 1,
+		order = #FN.FONTS + 1,
 		name = 'Kinds of text',
 		desc = TEXT_FONTS_NOTE,
+		args = args,
+	}
+end
+
+local INTRO = "SaftUI's shared fonts. Every Font row in SaftUI lists these first, and a change here changes every text that uses the font, at once. A Font row can take a typeface of its own instead, with its size and outline in its dots."
+
+-- The look of a shared font at its default, for the row's reset: one field of
+-- st.defaults.fonts[key] (an index of shadow_offset for X and Y).
+local function DefaultField(key, field)
+	local default = st.defaults.fonts[key]
+	if field == 'shadow_x' then return default.shadow_offset[1] end
+	if field == 'shadow_y' then return default.shadow_offset[2] end
+	return default[field]
+end
+
+-- One shared font's section: its Typeface row and FN.FieldOptions' five, each
+-- reading and writing the profile at call time. Every set and every reset
+-- applies to the font's object, then runs st:FontsChanged().
+local function FontSection(entry, order)
+	local key = entry.key
+	local function read(field)
+		local fields = st:FontFields(key)
+		if field == 'shadow_x' then return fields.shadow_offset[1] end
+		if field == 'shadow_y' then return fields.shadow_offset[2] end
+		return fields[field]
+	end
+	local function write(field, value)
+		local saved = st.config.profile.fonts[key]
+		if field == 'shadow_x' or field == 'shadow_y' then
+			if type(saved.shadow_offset) ~= 'table' then
+				saved.shadow_offset = { DefaultField(key, 'shadow_x'), DefaultField(key, 'shadow_y') }
+			end
+			saved.shadow_offset[field == 'shadow_x' and 1 or 2] = value
+		else
+			saved[field] = value
+		end
+		FN:UpdateFontConfig(key)
+		st:FontsChanged()
+	end
+
+	local args = FN.FieldOptions(read, write, 'shared')
+	args.font_name = {
+		order = 1,
+		type = 'select',
+		dialogControl = 'LSM30_Font',
+		name = 'Typeface',
+		desc = 'The typeface of every text that uses this font.',
+		values = st.LSM:HashTable('font'),
+		get = function() return read('font_name') end,
+		set = function(_, value) write('font_name', value) end,
+	}
+	for field, option in pairs(args) do
+		option.default = {
+			differs = function() return read(field) ~= DefaultField(key, field) end,
+			reset = function() write(field, DefaultField(key, field)) end,
+			value = function() return DefaultField(key, field) end,
+		}
+	end
+	return {
+		name = entry.name,
+		desc = entry.job,
+		order = order,
+		type = 'group',
+		inline = true,
 		args = args,
 	}
 end
@@ -417,54 +560,16 @@ function FN:GetConfigTable()
 		type = 'group',
 		name = 'Fonts',
 		-- childGroups = 'select',
-		set = function(info, value)
-			st.config.profile.fonts[info[#info-1]][info[#info]] = value
-			self:UpdateFontConfig(info[#info-1])
-			st:FontsChanged()
-		end,
-		get = function(info)
-			return st.config.profile.fonts[info[#info-1]][info[#info]]
-		end,
 		args = {
+			intro = { order = 0, type = 'description', name = INTRO },
 			kinds = TextFontsGroup(),
 		}
 	}
 
-
-	-- One section per shared font, in FN.FONTS order (after the Kinds of text
-	-- section's order 1), named from code.
+	-- One section per shared font, in FN.FONTS order, named from code, with its
+	-- job as the section's note.
 	for i, entry in ipairs(self.FONTS) do
-		config.args[entry.key] = {
-			name = entry.name,
-			order = i + 1,
-			type = 'group',
-			inline = true,
-			args = {
-				font_name = {
-					order = 2,
-					type = 'select',
-					dialogControl = 'LSM30_Font',
-					name = 'Font Name',
-					desc = 'The typeface of every text that uses this font.',
-					values = st.LSM:HashTable("font"),
-				},
-				font_size = st.Config.generators.range(3, 'Font Size', 1, 100, 1,
-					'How big every text that uses this font is.'),
-				font_outline = {
-					order = 4,
-					type = 'select',
-					name = 'Font Outline',
-					desc = 'The outline around the letters of every text that uses this font.',
-					values = FN.outlines,
-				},
-				shadow_x = ShadowOffset(5, 1, 'Shadow offset X',
-					'How far right of the letters the shadow of every text that uses this font falls, in pixels; below 0, to the left. With X and Y both 0 the shadow sits behind the letters.'),
-				shadow_y = ShadowOffset(6, 2, 'Shadow offset Y',
-					'How far above the letters the shadow of every text that uses this font falls, in pixels; below 0, below them.'),
-				spacing = st.Config.generators.range(7, 'Line spacing', 0, 20, 1,
-					'The gap, in pixels, between the lines of every text that uses this font, when it runs to more than one line.'),
-			},
-		}
+		config.args[entry.key] = FontSection(entry, i)
 	end
 
 	return config

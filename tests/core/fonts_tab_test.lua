@@ -1,19 +1,27 @@
--- The Fonts tab of Global settings (SaftUI-Core/Media/fonts.lua): each font's
--- Shadow offset X, Shadow offset Y and Line spacing, which its font object
--- takes at once, and the Kinds of text section, which says which font window
--- titles, button text and check box labels use. Every row reads and writes the
--- profile at call time, so a profile switch reaches the new profile.
+-- The Fonts tab of Global settings (SaftUI-Core/Media/fonts.lua): the line at
+-- its top, a section per shared font in FN.FONTS order with its job as the
+-- note, each font's Typeface, Size, Outline, Shadow offset X and Y and Line
+-- spacing (which its font object takes at once) with a reset by each row, and
+-- the Kinds of text section last, which says which font window titles, button
+-- text and check box labels use. Also /sui's own titles, which take Heading's
+-- face and outline (SaftUI-Core/Config/optionsbody.lua's FONTS). Every row
+-- reads and writes the profile at call time, so a profile switch reaches the
+-- new profile.
 --
 -- Real: Core's Config/config.lua on a real AceDB-3.0 (config_helpers.lua: the
 -- Fonts module, enabled, so the fonts have their font objects), the options
--- model the window reads rows with (optionsmodel.lua), and panels.lua's
+-- model the window reads rows with (optionsmodel.lua), the widget files and the
+-- body (optionsbody.lua, for /sui's own font objects), and panels.lua's
 -- header on a panel from st:CreatePanel.
 
 load_test_file('core/config_helpers.lua')
 local st = SaftUI
 load_saftui('SaftUI-Core/Config/optionsmodel.lua')
-local OM = st.OptionsModel
+load_options_widgets()
+load_saftui('SaftUI-Core/Config/optionsbody.lua')
+local OM, OB, W = st.OptionsModel, st.OptionsBody, st.OptionsWidgets
 
+local INTRO = "SaftUI's shared fonts. Every Font row in SaftUI lists these first, and a change here changes every text that uses the font, at once. A Font row can take a typeface of its own instead, with its size and outline in its dots."
 local KINDS_NOTE = 'Window titles change at once. The rest is read when SaftUI builds its frames: reload (Reload UI, bottom right) to see a change everywhere.'
 
 local FN = st:GetModule('Fonts')
@@ -47,36 +55,222 @@ local function Shadow(fontKey)
 	return x .. ',' .. y
 end
 
+local function path(name) return st.LSM:Fetch('font', name) end
+
+local function Sections() return OM.BuildView(st.Config:GetOptionsTable(), 'Fonts', { tab = 'fonts' }).sections end
+
+-- A module that counts what st:FontsChanged tells it.
+local changes = 0
+local Probe = st:NewModule('FontsTabProbe')
+function Probe:OnFontsChanged() changes = changes + 1 end
+
 local panel = st:CreatePanel('Fonts test', 200, 100)
 
-test("every font has Shadow offset X, Shadow offset Y and Line spacing after its face, size and outline", function()
+test('the tab: the line at the top, the six fonts in FN.FONTS order with their jobs as notes, Kinds of text last', function()
+	local sections = Sections()
+	local titles = {}
+	for i, section in ipairs(sections) do titles[i] = section.title or '' end
+	eq(table.concat(titles, '|'), '|Text|Small text|Large numbers|Heading|Huge title|Subtitle|Kinds of text')
+	local intro = sections[1].rows
+	eq(#intro, 1, 'the line is one row')
+	eq(intro[1].type, 'description')
+	eq(intro[1].name, INTRO, "the spec's line")
+	for i, entry in ipairs(FN.FONTS) do
+		eq(sections[i + 1].note, entry.job, entry.key .. "'s job is its note")
+	end
+	eq(sections[8].note, KINDS_NOTE, "Kinds of text keeps its note until a later task")
+	local tab = Tab()
+	eq(tab.args.intro.order, 0, 'the line is first')
+	eq(tab.args.kinds.order, #FN.FONTS + 1, 'Kinds of text is last')
+end)
+
+test("each font's rows: Typeface, Size, Outline, Shadow offset X, Shadow offset Y, Line spacing; no Name", function()
 	local count = 0
 	for i, entry in ipairs(FN.FONTS) do
 		local fontKey = entry.key
 		count = count + 1
 		local group = Tab().args[fontKey]
-		eq(group.name, entry.name, fontKey .. ' is named from code')
-		eq(group.order, i + 1, fontKey .. ' is in FN.FONTS order, after Kinds of text')
 		check(group ~= nil, fontKey .. ' has a section')
-		local keys = {}
-		for i, r in ipairs(ByOrder(group.args)) do keys[i] = r.key end
+		eq(group.name, entry.name, fontKey .. ' is named from code')
+		eq(group.order, i, fontKey .. ' is in FN.FONTS order')
+		eq(group.inline, true, fontKey .. ' is a section, not a tab')
+		eq(group.desc, entry.job, fontKey .. "'s job is its note")
+		local keys, names = {}, {}
+		for j, r in ipairs(ByOrder(group.args)) do keys[j] = r.key; names[j] = r.v.name end
 		eq(table.concat(keys, ','), 'font_name,font_size,font_outline,shadow_x,shadow_y,spacing', fontKey)
+		eq(table.concat(names, ','), 'Typeface,Size,Outline,Shadow offset X,Shadow offset Y,Line spacing', fontKey)
 		local args = group.args
-		eq(args.shadow_x.name .. ',' .. args.shadow_y.name .. ',' .. args.spacing.name,
-			'Shadow offset X,Shadow offset Y,Line spacing', fontKey)
-		for _, key in ipairs({ 'shadow_x', 'shadow_y', 'spacing' }) do
+		eq(args.font_name.type, 'select')
+		eq(args.font_name.dialogControl, 'LSM30_Font', 'every face in its own face')
+		eq(args.font_name.desc, 'The typeface of every text that uses this font.')
+		eq(args.font_size.type, 'range')
+		eq(args.font_outline.type, 'select')
+		for _, key in ipairs({ 'font_size', 'font_outline', 'shadow_x', 'shadow_y', 'spacing' }) do
 			local option = args[key]
-			eq(option.type, 'range', fontKey .. ' ' .. key)
 			check(type(option.desc) == 'string' and #option.desc > 30, fontKey .. ' ' .. key .. ' has a desc')
+			check(option.desc:find('every text that uses this font', 1, true), key .. ": the tab's desc says every text")
 			eq(option.width, nil, key .. ' has no Ace width')
 			-- A slider can't be small in SaftUI's window; it takes a half.
 			eq(option.size, nil, key .. ' takes the normal size')
+			eq(type(option.default), 'table', fontKey .. ' ' .. key .. ' resets by itself')
 		end
+		eq(args.font_size.min .. '/' .. args.font_size.max .. '/' .. args.font_size.step, '1/100/1', 'size range')
 		eq(args.shadow_x.min .. '/' .. args.shadow_x.max .. '/' .. args.shadow_x.step, '-5/5/1', 'shadow X range')
 		eq(args.shadow_y.min .. '/' .. args.shadow_y.max .. '/' .. args.shadow_y.step, '-5/5/1', 'shadow Y range')
 		eq(args.spacing.min .. '/' .. args.spacing.max .. '/' .. args.spacing.step, '0/20/1', 'spacing range')
 	end
 	eq(count, 6, 'the six shared fonts')
+end)
+
+test('FN.FIELDS and FN.FieldOptions: five options at orders 2 to 6, a subset on request, descs by subject, reads and writes by field name', function()
+	eq(table.concat(FN.FIELDS, ','), 'font_size,font_outline,shadow_x,shadow_y,spacing')
+	local log = {}
+	local function read(field) log[#log + 1] = 'read ' .. field; return field end
+	local function write(field, value) log[#log + 1] = 'write ' .. field .. '=' .. tostring(value) end
+	local shared = FN.FieldOptions(read, write, 'shared')
+	local ORDERS = { font_size = 2, font_outline = 3, shadow_x = 4, shadow_y = 5, spacing = 6 }
+	local NAMES = { font_size = 'Size', font_outline = 'Outline', shadow_x = 'Shadow offset X', shadow_y = 'Shadow offset Y', spacing = 'Line spacing' }
+	for field, order in pairs(ORDERS) do
+		eq(shared[field].order, order, field .. ' order')
+		eq(shared[field].name, NAMES[field], field .. ' name')
+		eq(shared[field].default, nil, field .. ': FieldOptions gives no reset (the tab adds it, the menu has none)')
+	end
+	for field in pairs(shared) do check(ORDERS[field], 'no option but the five: ' .. field) end
+	eq(shared.font_size.type, 'range')
+	eq(shared.font_size.min .. '/' .. shared.font_size.max .. '/' .. shared.font_size.step, '1/100/1')
+	eq(shared.shadow_x.min .. '/' .. shared.shadow_x.max, '-5/5')
+	eq(shared.shadow_y.min .. '/' .. shared.shadow_y.max, '-5/5')
+	eq(shared.spacing.min .. '/' .. shared.spacing.max, '0/20')
+	eq(shared.font_outline.type, 'select')
+	eq(shared.font_outline.values, FN.outlines)
+	eq(table.concat(shared.font_outline.sorting, ','), 'NONE,OUTLINE,THICKOUTLINE,MONOCHROME,MONOCHROMEOUTLINE,MONOCHROMETHICKOUTLINE', 'in the list order')
+
+	eq(shared.shadow_y.get({ 'x' }), 'shadow_y', 'get reads by field name')
+	shared.shadow_x.set({ 'x' }, 3)
+	shared.font_size.set({ 'x' }, 20)
+	eq(table.concat(log, ';'), 'read shadow_y;write shadow_x=3;write font_size=20')
+
+	local text = FN.FieldOptions(read, write, 'text')
+	eq(text.font_size.desc, 'How big this text is.')
+	eq(text.font_outline.desc, 'The outline around its letters.')
+	eq(text.shadow_x.desc, 'How far right of the letters its shadow falls, in pixels; below 0, to the left.')
+	eq(text.shadow_y.desc, 'How far above the letters its shadow falls, in pixels; below 0, below them.')
+	eq(text.spacing.desc, 'The gap between its lines, in pixels, when it runs to more than one line.')
+	check(shared.font_size.desc ~= text.font_size.desc, 'the tab and the menu word their descs apart')
+
+	local some = FN.FieldOptions(read, write, 'text', { 'font_size', 'font_outline' })
+	local n = 0
+	for field in pairs(some) do n = n + 1 end
+	eq(n, 2, 'fields leaves out the rest')
+	eq(some.font_size.order, 2, 'and keeps the orders')
+	eq(some.font_outline.order, 3)
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('FN.FontSettingDefault: differs is any value but the default (a table always does); reset writes the default and runs FontsChanged', function()
+	local value
+	local function read(info) return value end
+	local function write(info, v) value = v end
+	local default = FN.FontSettingDefault(read, write, 'pixel')
+	value = 'pixel'
+	eq(default.differs({}), false, 'the default itself')
+	value = 'normal'
+	eq(default.differs({}), true, 'another shared font')
+	value = { font_name = 'Colus', font_size = 15 }
+	eq(default.differs({}), true, 'a typeface')
+	value = nil
+	eq(default.differs({}), true, 'nothing saved but a default')
+	eq(default.text, 'Small text', 'the default in words')
+	value = 'normal'
+	changes = 0
+	default.reset({})
+	eq(value, 'pixel', 'reset wrote the default')
+	eq(changes, 1, 'and ran FontsChanged once')
+	check(FN.FontSettingDefault(read, write, 'normal').text == 'Text', 'a shared font by name')
+	check(FN.FontSettingDefault(read, write, { font_name = 'Colus', font_size = 15, font_outline = 'OUTLINE' }).text == 'Colus 15, outline', 'a typeface by its label')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('the outline names in sentence case, in the list order None ... Monochrome thick outline', function()
+	eq(FN.outlines.NONE, 'None')
+	eq(FN.outlines.OUTLINE, 'Outline')
+	eq(FN.outlines.THICKOUTLINE, 'Thick outline')
+	eq(FN.outlines.MONOCHROME, 'Monochrome')
+	eq(FN.outlines.MONOCHROMEOUTLINE, 'Monochrome outline')
+	eq(FN.outlines.MONOCHROMETHICKOUTLINE, 'Monochrome thick outline')
+	local root, row = Row('pixel', 'font_outline')
+	local names = {}
+	for i, entry in ipairs(OM.Values(root, row)) do names[i] = entry.name end
+	eq(table.concat(names, ','), 'None,Outline,Thick outline,Monochrome,Monochrome outline,Monochrome thick outline', "the row lists them in the list's order")
+end)
+
+-- A value that differs from each font's default, per field, and what it is
+-- written as.
+local OTHER = { font_name = 'Righteous', font_size = 13, font_outline = 'NONE', shadow_x = 1, shadow_y = 1, spacing = 5 }
+local function Default(fontKey, field)
+	local d = st.defaults.fonts[fontKey]
+	if field == 'shadow_x' then return d.shadow_offset[1] end
+	if field == 'shadow_y' then return d.shadow_offset[2] end
+	return d[field]
+end
+local function Saved(fontKey, field)
+	local f = st.config.profile.fonts[fontKey]
+	if field == 'shadow_x' then return f.shadow_offset[1] end
+	if field == 'shadow_y' then return f.shadow_offset[2] end
+	return f[field]
+end
+
+test("every row resets by itself while it differs from st.defaults.fonts, putting the default on its object at once", function()
+	for _, entry in ipairs(FN.FONTS) do
+		for _, field in ipairs({ 'font_name', 'font_size', 'font_outline', 'shadow_x', 'shadow_y', 'spacing' }) do
+			local fontKey = entry.key
+			local label = fontKey .. '.' .. field
+			local root, row = Row(fontKey, field)
+			eq(OM.DefaultState(root, row).differs, false, label .. ' at its default')
+			Set(fontKey, field, OTHER[field])
+			root, row = Row(fontKey, field)
+			local state = OM.DefaultState(root, row)
+			eq(state.differs, true, label .. ' differs once changed')
+			eq(state.value[1], Default(fontKey, field), label .. ' names its default')
+			changes = 0
+			eq(OM.DefaultReset(root, row), true, label .. ' resets')
+			eq(changes, 1, label .. ': the reset ran FontsChanged once')
+			eq(Saved(fontKey, field), Default(fontKey, field), label .. ' is back in the profile')
+			eq(OM.DefaultState(root, row).differs, false, label .. ' no longer differs')
+			local path_, size, flags = st:GetFont(fontKey):GetFont()
+			eq(select(2, st:GetFont(fontKey):GetFont()), st.defaults.fonts[fontKey].font_size, label .. ': the object has the default size')
+			eq(path_, path(st.defaults.fonts[fontKey].font_name), label .. ': and face')
+			eq(flags, st.OutlineFlag(st.defaults.fonts[fontKey].font_outline), label .. ': and outline')
+		end
+	end
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("a reset names its default: the size as a number, an outline by its label; X differs while Y does not", function()
+	Set('pixel', 'shadow_x', 2)
+	local root, row = Row('pixel', 'shadow_x')
+	eq(OM.DefaultState(root, row).differs, true, 'X differs')
+	local _, yrow = Row('pixel', 'shadow_y')
+	eq(OM.DefaultState(root, yrow).differs, false, 'Y does not')
+	Set('pixel', 'font_size', 12)
+	root, row = Row('pixel', 'font_size')
+	eq(OM.DefaultState(root, row).value[1], 10, "Small text's default size, as 'Size goes back to its default: 10.'")
+	Set('pixel', 'font_outline', 'NONE')
+	root, row = Row('pixel', 'font_outline')
+	local state = OM.DefaultState(root, row)
+	eq(state.value[1], 'MONOCHROMEOUTLINE')
+	local label
+	for _, entry in ipairs(OM.Values(root, row)) do
+		if entry.key == state.value[1] then label = entry.name end
+	end
+	eq(label, 'Monochrome outline', 'which the tooltip writes by the row\'s list')
+	for _, field in ipairs({ 'shadow_x', 'font_size', 'font_outline' }) do
+		local r, rw = Row('pixel', field)
+		OM.DefaultReset(r, rw)
+	end
+	eq(Saved('pixel', 'shadow_x'), 0)
+	eq(Saved('pixel', 'font_size'), 10)
+	eq(#take_errors(), 0, 'no errors')
 end)
 
 test("Shadow offset X and Y read and write the font's shadow_offset, and its font object takes them at once", function()
@@ -142,14 +336,13 @@ test("Line spacing reads and writes the font's spacing, and its font object take
 	Set('normal', 'spacing', 4)
 end)
 
-test('Kinds of text comes first: a font select each for window titles, button text and check box labels', function()
+test("Kinds of text: Window titles, Button text, Check box labels, each with its reset; Button text's desc names the bag slot bars and the bank's bag slots", function()
 	local section = Tab().args.kinds
 	eq(section.type, 'group')
 	eq(section.inline, true, 'a section, not a tab')
 	eq(section.name, 'Kinds of text')
 	eq(section.desc, KINDS_NOTE, 'its note')
-	local sections = OM.BuildView(st.Config:GetOptionsTable(), 'Fonts', { tab = 'fonts' }).sections
-	eq(sections[1].title, 'Kinds of text', 'first on the tab')
+	eq(Sections()[8].title, 'Kinds of text', 'last on the tab')
 
 	local rows = {}
 	for i, r in ipairs(ByOrder(section.args)) do rows[i] = r.key .. '=' .. r.v.name end
@@ -159,6 +352,7 @@ test('Kinds of text comes first: a font select each for window titles, button te
 		check(type(option.desc) == 'string' and #option.desc > 30, key .. ' has a desc')
 		eq(option.width, nil, key .. ' has no Ace width')
 		eq(option.size, nil, key .. ' takes the normal size')
+		eq(type(option.default), 'table', key .. ' resets by itself')
 		local values = type(option.values) == 'function' and option.values() or option.values
 		local n = 0
 		for fontKey, name in pairs(values) do
@@ -172,7 +366,30 @@ test('Kinds of text comes first: a font select each for window titles, button te
 	end
 	check(section.args.window_titles.desc:find("gold and free%-slot"), "Window titles' tooltip names the bags' gold and free-slot text")
 	check(section.args.button_text.desc:find('totem bar', 1, true), "Button text's tooltip names the totem bar")
+	check(section.args.button_text.desc:find('bag slot bars', 1, true), "and the bag slot bars")
+	check(section.args.button_text.desc:find("bank's bag slots", 1, true), "and the bank's bag slots")
 	check(section.args.checkbox_labels.desc:find('check box', 1, true), "Check box labels' tooltip names check boxes")
+
+	-- Each resets to its default: Text, Small text, Text.
+	local DEFAULTS = { window_titles = { 'headers', 'normal', 'Text' }, button_text = { 'buttons', 'pixel', 'Small text' },
+		checkbox_labels = { 'panels', 'normal', 'Text' } }
+	for key, case in pairs(DEFAULTS) do
+		local profileKey, default, label = unpack(case)
+		local root, row = Row('kinds', key)
+		eq(OM.DefaultState(root, row).differs, false, key .. ' at its default')
+		Set('kinds', key, 'subtitle')
+		root, row = Row('kinds', key)
+		local state = OM.DefaultState(root, row)
+		eq(state.differs, true, key .. ' differs')
+		eq(state.text, label, key .. ' names its default in words')
+		changes = 0
+		eq(OM.DefaultReset(root, row), true, key .. ' resets')
+		eq(changes, 1, key .. ': FontsChanged once')
+		eq(st.config.profile[profileKey].font, default, key .. ' is back in the profile')
+		eq(OM.DefaultState(root, row).differs, false, key .. ' no longer differs')
+	end
+	check(panel.title:GetFontObject() == st:GetFont('normal'), "Window titles' reset reaches the title at once")
+	eq(#take_errors(), 0, 'no errors')
 end)
 
 test('each kind of text reads and writes its profile font; window titles change at once', function()
@@ -232,12 +449,6 @@ test('after a profile switch, the rows reach the new profile, and the font objec
 	eq(#take_errors(), 0, 'no errors')
 end)
 
-test("the outline values name None as None, and spell Monochrome Thick Outline", function()
-	local values = Tab().args.pixel.args.font_outline.values
-	eq(values.NONE, 'None')
-	eq(values.MONOCHROMETHICKOUTLINE, 'Monochrome Thick Outline')
-end)
-
 test("a font saved with the outline NONE reaches SetFont with no flags", function()
 	local font = st:GetFont('pixel')
 	local saved = st.config.profile.fonts.pixel.font_outline
@@ -255,11 +466,6 @@ test("a font saved with the outline NONE reaches SetFont with no flags", functio
 	check(#flags > 0, 'SetFont ran')
 	for i, f in ipairs(flags) do eq(f, '', 'SetFont call ' .. i) end
 end)
-
--- A module that counts what st:FontsChanged tells it.
-local changes = 0
-local Probe = st:NewModule('FontsTabProbe')
-function Probe:OnFontsChanged() changes = changes + 1 end
 
 test('every set on the Fonts tab runs st:FontsChanged once: a shared font row, Shadow offset, each Kinds of text row', function()
 	local cases = {
@@ -294,7 +500,7 @@ test('a profile with a saved fonts.pixel_huge and a saved name: no section for i
 	eq(tab.args.normal.name, 'Text', 'the section is named from code, not from the saved name')
 	local count = 0
 	for key, v in pairs(tab.args) do
-		if key ~= 'kinds' then count = count + 1 end
+		if key ~= 'kinds' and key ~= 'intro' then count = count + 1 end
 	end
 	eq(count, 6, 'six sections')
 	for key, option in pairs(tab.args.kinds.args) do
@@ -306,4 +512,76 @@ test('a profile with a saved fonts.pixel_huge and a saved name: no section for i
 	eq(#take_errors(), 0, 'no errors')
 	fonts.pixel_huge = nil
 	fonts.normal.name = nil
+end)
+
+------------------------------------------------------------------ /sui's own titles
+
+test("/sui's titles take Heading's face and outline at their own sizes; tabs, labels and the small line Text's", function()
+	local SIZES = { title = 34, brand = 26, section = 15, group = 13, caption = 11, mini = 18 }
+	for key, size in pairs(SIZES) do
+		local p, s, f = OB.Font(key):GetFont()
+		eq(p, path('Colus'), key .. ': Heading\'s face')
+		eq(s, size, key .. ': its own size')
+		eq(f, 'OUTLINE', key .. ': Heading\'s outline')
+	end
+	for key, size in pairs({ tab = 17, label = 16, small = 13 }) do
+		local p, s, f = OB.Font(key):GetFont()
+		eq(p, path('AgencyFB Bold'), key .. ": Text's face")
+		eq(s, size, key .. ': its own size')
+		eq(f, 'OUTLINE', key .. ": Text's outline")
+	end
+	local p, s, f = W.GetFont():GetFont()
+	eq(p, path('AgencyFB Bold'), "the field font is Text's face")
+	eq(s, 15, 'at 15')
+	eq(f, 'OUTLINE')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("Heading's face changed on the tab reaches /sui's titles at once; its size doesn't, nor does Huge title", function()
+	Set('heading', 'font_name', 'Bebas Neue')
+	for key, size in pairs({ title = 34, brand = 26, section = 15, group = 13, caption = 11, mini = 18 }) do
+		local p, s = OB.Font(key):GetFont()
+		eq(p, path('Bebas Neue'), key .. ': the new face, at once')
+		eq(s, size, key .. ': at its own size')
+	end
+	eq(select(1, OB.Font('label'):GetFont()), path('AgencyFB Bold'), "a label keeps Text's face")
+	Set('heading', 'font_outline', 'THICKOUTLINE')
+	eq(select(3, OB.Font('section'):GetFont()), 'THICKOUTLINE', "Heading's outline reaches them too")
+	Set('heading', 'font_size', 24)
+	eq(select(2, OB.Font('section'):GetFont()), 15, "Heading's size leaves the section title as it is")
+	eq(select(2, OB.Font('title'):GetFont()), 34, 'and the page title')
+	Set('title', 'font_name', 'Righteous')
+	eq(select(1, OB.Font('title'):GetFont()), path('Bebas Neue'), "Huge title's face is no longer /sui's")
+	Set('title', 'font_name', 'Colus')
+
+	-- Text's face reaches the field font and the labels, as before.
+	Set('normal', 'font_name', 'Righteous')
+	eq(select(1, W.GetFont():GetFont()), path('Righteous'), 'the field font follows Text')
+	eq(select(1, OB.Font('label'):GetFont()), path('Righteous'), 'and a label')
+	eq(select(2, W.GetFont():GetFont()), 15, 'at 15')
+	Set('normal', 'font_size', 20)
+	eq(select(2, W.GetFont():GetFont()), 15, "Text's size leaves the field font at 15")
+
+	for _, field in ipairs({ 'font_name', 'font_outline', 'font_size' }) do
+		local r, rw = Row('heading', field)
+		OM.DefaultReset(r, rw)
+	end
+	for _, field in ipairs({ 'font_name', 'font_size' }) do
+		local r, rw = Row('normal', field)
+		OM.DefaultReset(r, rw)
+	end
+	eq(select(1, OB.Font('title'):GetFont()), path('Colus'), 'back to Colus')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("a profile switch redraws /sui's titles from the new profile's Heading", function()
+	local first = st.config:GetCurrentProfile()
+	Set('heading', 'font_name', 'Bebas Neue')
+	st.config:SetProfile('FontsTestThree')
+	eq(select(1, OB.Font('title'):GetFont()), path('Colus'), "the new profile's Heading")
+	st.config:SetProfile(first)
+	eq(select(1, OB.Font('title'):GetFont()), path('Bebas Neue'), "and the first profile's again")
+	local r, rw = Row('heading', 'font_name')
+	OM.DefaultReset(r, rw)
+	eq(#take_errors(), 0, 'no errors')
 end)

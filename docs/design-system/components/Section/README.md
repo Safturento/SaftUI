@@ -8,7 +8,7 @@ Every group of options on a page or in a dialog. An Ace inline group (`inline = 
 
 ## What the consumer provides
 
-- `name`: the title (write it in sentence case; Colus shows it in capitals).
+- `name`: the title (write it in sentence case; Colus, Heading's face by default, shows it in capitals).
 - `desc`: the note, a sentence saying what the section's settings do together, or what waits for a reload.
 - Its options in `order`, each with a `size`: `'small'` (a quarter, toggles, buttons and inputs only), none (a half), `'wide'` (a line). Description and position rows always take a line.
 
@@ -17,7 +17,7 @@ Every group of options on a page or in a dialog. An Ace inline group (`inline = 
 | Part | Value | Tokens |
 | --- | --- | --- |
 | Gap before the title | 16 | `section-pad` |
-| Title | Colus 15 in `text-grey`, 15 tall | `section-title`, `text-grey` |
+| Title | Heading's face, 15, in `text-grey`, 15 tall | `section-title`, `text-grey` |
 | Note | 13 in `text-grey`, 4 under the title | `small`, `note-gap` |
 | Title to panel | 6 | `title-gap` |
 | Panel | black at 28% over the window, as wide as the body | `panel-fill`, `content-width` |

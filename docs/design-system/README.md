@@ -36,12 +36,12 @@ SaftUI replaces World of Warcraft's interface with flat, dark frames that sit qu
 
 | Role | Style | Face | Where |
 | --- | --- | --- | --- |
-| Page title | `page-title` 34 | Colus | the `/sui` page's name |
-| Brand, dialog title | `brand` 26 | Colus | sidebar brand, small dialog |
-| Bar brand | `brand-mini` 18 | Colus | the mini bar's name: Saft in the text colour, UI in the accent |
-| Section title | `section-title` 15 | Colus | over each panel, in `text-grey` |
-| Group title | `group-title` 13 | Colus | sidebar groups, a menu's title |
-| Caption | `caption` 11 | Colus | position block parts |
+| Page title | `page-title` 34 | Heading's face (Colus) | the `/sui` page's name |
+| Brand, dialog title | `brand` 26 | Heading's face (Colus) | sidebar brand, small dialog |
+| Bar brand | `brand-mini` 18 | Heading's face (Colus) | the mini bar's name: Saft in the text colour, UI in the accent |
+| Section title | `section-title` 15 | Heading's face (Colus) | over each panel, in `text-grey` |
+| Group title | `group-title` 13 | Heading's face (Colus) | sidebar groups, a menu's title |
+| Caption | `caption` 11 | Heading's face (Colus) | position block parts |
 | Tab | `tab` 17 | AgencyFB Bold | tabs |
 | Label | `label` 16 | AgencyFB Bold | row labels, sidebar entries |
 | Field | `field` 15 | AgencyFB Bold | values, list rows, buttons, page description |
