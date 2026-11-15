@@ -407,6 +407,11 @@ end
 test('a hotkey switched Small text, then Colus, then Small text draws each, with the library setting its own font and SaftUI none (G2)', function()
 	fresh()
 	local b = bar('bar1', button('CooldownTestHotkey'))
+	-- The template's macro name inherits a 1, -1 shadow from its XML; the stubs
+	-- give a text no shadow from a font object, so it is given here, and the 0, 0
+	-- checks below can fail if StyleButton stops setting the value's shadow.
+	b.Name:SetShadowOffset(1, -1)
+	eq(T.text(b.Name:GetShadowOffset()), '1.00,-1.00', "the macro name starts with the template's shadow")
 	local calls, restore = count_setfonts()
 	local function drawn()
 		local config = AB:GetBarConfig('bar1').text.hotkey
