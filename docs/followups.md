@@ -44,7 +44,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-14 — The options kit's keybinding widget doesn't know META or Blizzard's ignored keys](#2026-11-14--the-options-kits-keybinding-widget-doesnt-know-meta-or-blizzards-ignored-keys)
   - [2026-11-14 — A first-run setup dialog: UI size, theme, unit frame layout](#2026-11-14--a-first-run-setup-dialog-ui-size-theme-unit-frame-layout)
   - [2026-11-14 — /sui at half with the sidebar collapsed: a validation error is cut or hidden in the footer](#2026-11-14--sui-at-half-with-the-sidebar-collapsed-a-validation-error-is-cut-or-hidden-in-the-footer)
-  - [2026-11-14 — Categories tab at full size: a long "Reset <name> to default" overlaps Delete](#2026-11-14--categories-tab-at-full-size-a-long-reset-name-to-default-overlaps-delete)
   - [2026-11-13 — Design decisions waiting to be built](#2026-11-13--design-decisions-waiting-to-be-built)
   - [2026-11-13 — Objective tracker skin: in-game checks and what was left out](#2026-11-13--objective-tracker-skin-in-game-checks-and-what-was-left-out)
   - [2026-11-13 — Scale SaftUI across resolutions and stay pixel perfect](#2026-11-13--scale-saftui-across-resolutions-and-stay-pixel-perfect)
@@ -117,6 +116,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-14 — Categories tab at full size: a long "Reset <name> to default" overlaps Delete](#2026-11-14--categories-tab-at-full-size-a-long-reset-name-to-default-overlaps-delete)
   - [2026-11-11 — Grays/Auto Vendor: a finished edit that broadens its rule sells at the next merchant](#2026-11-11--graysauto-vendor-a-finished-edit-that-broadens-its-rule-sells-at-the-next-merchant)
   - [2026-11-11 — The disabled loot popup writes nametext onto Blizzard's LootButton](#2026-11-11--the-disabled-loot-popup-writes-nametext-onto-blizzards-lootbutton)
   - [2026-11-09 — st:CreateHeader writes title and close_button onto the Blizzard panels it skins](#2026-11-09--stcreateheader-writes-title-and-close_button-onto-the-blizzard-panels-it-skins)
@@ -662,20 +662,6 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 **Shape of work:** A small design pass on where an error shows when the region is short (a tooltip on the field is the smallest), then a change in `PlaceFooter` or the field plus a test at W4 with the real command set and with one more icon command.
 
 **Open questions:** Where should the message show when the footer has no room: the field's tooltip, a line over the footer, or both? An in-game check at W4 with Keybind mode only (54 wide) decides how often it matters.
-
-### 2026-11-14 — Categories tab at full size: a long "Reset <name> to default" overlaps Delete
-
-**What:** In the bags' Categories editor, the Reset button's label is `Reset <category name> to default`. For a long name the button is wider than its half-line slot and overlaps Delete beside it. The shipped default "Death Knight/Warlock/Demon Hunter" does it, and so does any default the player renames to a long name (renaming keeps the Reset row).
-
-**Why noticed:** Review of the Categories tab at half width (window sizes work, Task 8). At half the label was shortened to "Reset to default" (the button above the editor names the category), but full size was left as it was, to keep it unchanged. Measured at full: under Thick the label is 375 wide in a 264 slot and spills about 55 px over Delete (which spans 276..540); under Blizzard the 403 wide button sits over Delete (290..370). The parent commit of that task (`7cc5acb`) behaves the same, so it isn't a regression.
-
-**Anchors:** `SaftUI-Bags/categoriestab.lua` (`INV:CategoryEditorOptions`, `args.reset`), `SaftUI-Core/Config/optionsbody.lua` (a floating line's buttons fill their slots, `Body:ButtonSlotRect`), `tests/bags/categories_half_test.lua` (the half-width case).
-
-**What's been considered:** Use the same short label at full (the editor's Name box above already shows the category). Or let the body cap a shared-slot button's label to its slot with an ellipsis. Either changes full size, so it is the owner's call.
-
-**Shape of work:** One-line label change plus a test, or a small body change for the cap.
-
-**Open questions:** Short label at full too, or keep the name and truncate?
 
 ### 2026-11-13 — Design decisions waiting to be built
 
@@ -2233,6 +2219,22 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-14 — Categories tab at full size: a long "Reset <name> to default" overlaps Delete
+
+**What:** In the bags' Categories editor, the Reset button's label is `Reset <category name> to default`. For a long name the button is wider than its half-line slot and overlaps Delete beside it. The shipped default "Death Knight/Warlock/Demon Hunter" does it, and so does any default the player renames to a long name (renaming keeps the Reset row).
+
+**Why noticed:** Review of the Categories tab at half width (window sizes work, Task 8). At half the label was shortened to "Reset to default" (the button above the editor names the category), but full size was left as it was, to keep it unchanged. Measured at full: under Thick the label is 375 wide in a 264 slot and spills about 55 px over Delete (which spans 276..540); under Blizzard the 403 wide button sits over Delete (290..370). The parent commit of that task (`7cc5acb`) behaves the same, so it isn't a regression.
+
+**Anchors:** `SaftUI-Bags/categoriestab.lua` (`INV:CategoryEditorOptions`, `args.reset`), `SaftUI-Core/Config/optionsbody.lua` (a floating line's buttons fill their slots, `Body:ButtonSlotRect`), `tests/bags/categories_half_test.lua` (the half-width case).
+
+**What's been considered:** Use the same short label at full (the editor's Name box above already shows the category). Or let the body cap a shared-slot button's label to its slot with an ellipsis. Either changes full size, so it is the owner's call.
+
+**Shape of work:** One-line label change plus a test, or a small body change for the cap.
+
+**Open questions:** Short label at full too, or keep the name and truncate?
+
+**Resolved 2026-11-15:** the button is gone; each field has its own reset (reset-every-setting, Task 5).
 
 ### 2026-11-11 — Grays/Auto Vendor: a finished edit that broadens its rule sells at the next merchant
 

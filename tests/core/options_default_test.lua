@@ -171,6 +171,25 @@ test('OM.DefaultState and OM.DefaultReset read and run the default field, with i
 	eq(#take_errors(), 2, 'both reported')
 end)
 
+test('a hand reset that returns false and a message refuses: false and the message; nothing else it returns counts', function()
+	fresh()
+	local root = Page(Args())
+	local view = OM.BuildView(root, 'page')
+	local row
+	for _, section in ipairs(view.sections) do
+		for _, each in ipairs(section.rows) do if each.key == 'range' then row = each end end
+	end
+	row.option.default = { differs = function() return true end, reset = function() return false, 'Not now.' end }
+	local ok, message = OM.DefaultReset(root, row)
+	eq(ok, false, 'refused')
+	eq(message, 'Not now.', 'with its message')
+	row.option.default.reset = function() return 'done', 'x' end
+	eq(OM.DefaultReset(root, row), true, 'any other answer is done')
+	row.option.default.reset = function() end
+	eq(OM.DefaultReset(root, row), true, 'so is none')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
 ------------------------------------------------------------------ drawn
 
 test('the reset icon shows by a control only while its setting differs, on every built-in type with a value', function()

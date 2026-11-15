@@ -1,6 +1,6 @@
 -- The category editor in /sui > Bags > Categories (SaftUI-Bags/categoriestab.lua
 -- and ruleeditor.lua, INV:CategoryEditorOptions, the bagitems widget): its rows,
--- Name, Delete, Reset to default, Caught now and Pinned items with their
+-- Name, Delete, the fields' own resets, Caught now and Pinned items with their
 -- tooltips beside the window, and the rule editor fitting its pane.
 --
 -- Real: bags/container_helpers.lua's views world (bag_world.lua's stubbed bags
@@ -68,7 +68,7 @@ test('the editor has its rows, each with a desc', function()
 		check(type(option.desc) == 'string' and option.desc ~= '', key .. ' has a desc')
 	end)
 	eq(table.concat(seen, ' '),
-		'caught:bagitems delete:execute enabled:toggle name:input pins:bagitems reset:execute rule:bagrule show:multiselect',
+		'caught:bagitems delete:execute enabled:toggle name:input pins:bagitems rule:bagrule show:multiselect',
 		'its rows')
 	local args = group.args
 	eq(args.name.name, 'Name', 'Name')
@@ -91,15 +91,14 @@ test('the editor has its rows, each with a desc', function()
 	eq(args.caught.size, 'wide', 'wide')
 	eq(args.caught.desc, 'The items in your bags this category catches now. Hover one to see which block caught it.', 'its desc')
 	eq(type(args.caught.onHover), 'function', 'caught items can be hovered')
-	eq(args.reset.name, 'Reset Trade Goods to default', 'Reset')
-	eq(args.reset.desc, 'Put this category back as SaftUI ships it: its name, on or off, Show in and rule. Its pinned items stay.', 'its desc')
+	eq(args.reset, nil, 'no Reset button: each field has its own reset')
 	eq(args.delete.name, 'Delete', 'Delete')
 	eq(args.delete.desc, 'Delete this category. Its items go to the next category that catches them.', 'its desc')
 
 	-- In this order.
-	eq(editor_rows('Trade Goods'), 'name,enabled,show,rule,pins,caught,reset,delete', 'in order')
+	eq(editor_rows('Trade Goods'), 'name,enabled,show,rule,pins,caught,delete', 'in order')
 	INV:UnpinItem(301)
-	eq(editor_rows('Trade Goods'), 'name,enabled,show,rule,caught,reset,delete', 'Pinned items only when there are some')
+	eq(editor_rows('Trade Goods'), 'name,enabled,show,rule,caught,delete', 'Pinned items only when there are some')
 
 	-- Reading and setting.
 	local _, rows = editor_rows('Trade Goods')
@@ -139,32 +138,24 @@ test('Equipment sets and Miscellaneous have no rule; Miscellaneous has no On or 
 	world()
 	local mine = INV:AddUserCategory()
 	local keys, rows = editor_rows(SETS)
-	eq(keys, 'name,enabled,show,note,caught,reset', 'Equipment sets: a note in place of a rule, no Delete')
+	eq(keys, 'name,enabled,show,note,caught', 'Equipment sets: a note in place of a rule, no Delete')
 	eq(rows.note.type, 'description', 'the note is text')
 	eq(rows.note.name, 'Makes a category for each equipment set, "Set: <name>", for the armor and weapons in it. It has no rule.', 'its words')
 	keys, rows = editor_rows(MISC)
-	eq(keys, 'name,show,note,caught,reset', 'Miscellaneous: no On, no rule, no Delete')
+	eq(keys, 'name,show,note,caught', 'Miscellaneous: no On, no rule, no Delete')
 	eq(rows.note.name, 'Catches every item no category above it catches. It is always last.', 'its words')
 	keys, rows = editor_rows(SELL)
-	eq(keys, 'name,enabled,show,rule,caught,reset', 'Grays/Auto Vendor: no Delete')
+	eq(keys, 'name,enabled,show,rule,caught', 'Grays/Auto Vendor: no Delete')
 	eq(rows.enabled.desc, 'Turned off, the items it would catch go to the next category that catches them. Turned off, auto vendor sells nothing.',
 		'its On says what turning it off does')
 	keys = editor_rows(mine)
-	eq(keys, 'name,enabled,show,rule,caught,delete', 'yours: no Reset')
-
-	-- Reset is for an edited default.
-	_, rows = editor_rows('Armor')
-	eq(rows.reset.disabled, true, 'Reset is off for a default as shipped')
-	INV:RenameCategory('Armor', 'Plate')
-	_, rows = editor_rows('Armor')
-	eq(rows.reset.disabled, false, 'and on once it is edited')
-	eq(rows.reset.name, 'Reset Plate to default', 'named by its name')
+	eq(keys, 'name,enabled,show,rule,caught,delete', 'yours')
 
 	-- Drawn in the tab.
 	INV.categoryEditor.selected = MISC
 	open()
 	local w = tab()
-	eq(editor_keys(w), 'name,show,note,reset', "Miscellaneous's editor in the tab")
+	eq(editor_keys(w), 'name,show,note', "Miscellaneous's editor in the tab")
 	check(inside(w:EditorCell('caught').frame, w.footer), 'Caught now in its footer')
 	eq(w:EditorCell('note').widget.text:GetText(), 'Catches every item no category above it catches. It is always last.', 'the note')
 	eq(#take_errors(), 0, 'no errors')
@@ -209,7 +200,7 @@ test('Delete asks first; the selection moves to the next category', function()
 	local place = list.byId.Toys.place
 	local after = list[place + 1].id
 	click(tab():EditorCell('delete').widget.frame)
-	eq(W.ConfirmText(), 'Delete Toys? You can bring it back with + New category > Restore a default..., or Reset all.', 'it asks')
+	eq(W.ConfirmText(), 'Delete Toys? You can bring it back with + New category > Restore a default...', 'it asks')
 	no()
 	check(INV:GetCategoryList().byId.Toys ~= nil, 'No keeps it')
 	click(tab():EditorCell('delete').widget.frame)
@@ -235,15 +226,15 @@ test('Delete asks first; the selection moves to the next category', function()
 	st.Config:Close()
 end)
 
--- Reset and Delete float under the editor's panel. The game reads a button's
--- height back a hair over its 26 (stub.size_noise plays it), and a plain ceil
--- made their line 27 tall: Reset sat half a unit down it, between two pixels,
--- its border blurred (the user's screenshot: Reset Grays/Auto Vendor to
--- default). The editor, its rows and buttons, and its panels and lines sit on
--- whole pixels, with the hair either way, a lone Reset or with Delete.
+-- Delete floats under the editor's panel. The game reads a button's height
+-- back a hair over its 26 (stub.size_noise plays it), and a plain ceil made a
+-- line of such buttons 27 tall, a button half a unit down it, between two
+-- pixels, its border blurred. The editor, its rows and buttons, and its
+-- panels and lines sit on whole pixels, with the hair either way, with
+-- Delete and without it.
 local P = load_test_file('lib/pixels.lua')
 
-test("the editor's Reset and Delete, and everything in the editor, sit on whole pixels", function()
+test("the editor's Delete, and everything in the editor, sit on whole pixels", function()
 	for _, look in ipairs({ 'thick', 'blizzard' }) do
 		for _, noise in ipairs({ 0, 2 ^ -14, -2 ^ -14 }) do
 			for _, id in ipairs({ 'Armor', 'Grays/Auto Vendor' }) do
@@ -257,7 +248,7 @@ test("the editor's Reset and Delete, and everything in the editor, sit on whole 
 				open()
 				local w = tab()
 				local where = ('%s, noise %s, %s'):format(look, noise, id)
-				check(w:EditorCell('reset') ~= nil, where .. ': Reset drawn')
+				check(w:EditorCell('name') ~= nil, where .. ': the editor drawn')
 				for _, part in ipairs({ { 'the editor', w.pane }, { 'its footer', w.footerPane } }) do
 					local off = P.off(part[2])
 					eq(#off, 0, where .. ', ' .. part[1] .. ': ' .. P.report(off))
@@ -270,40 +261,89 @@ test("the editor's Reset and Delete, and everything in the editor, sit on whole 
 	end
 end)
 
-test('Reset <name> to default clears the edit and keeps the pins; the edited marker goes', function()
+-- The reset icon a drawn editor row shows, or nil.
+local function reset_icon(key)
+	local icon = tab():EditorCell(key).frame.defaultReset
+	return icon and icon:IsShown() and icon or nil
+end
+
+test("a shipped category's fields each reset alone; there is no Reset button", function()
 	world()
-	INV:RenameCategory('Armor', 'Plate')
-	INV:SetCategoryEnabled('Armor', false)
-	INV:SetCategoryHidden('bank', 'Armor', true)
-	INV:PinItem(301, 'Armor')
-	INV.categoryEditor.selected = 'Armor'
+	INV:RenameCategory('Toys', 'Fun')
+	INV:SetCategoryEnabled('Toys', false)
+	INV:SetCategoryHidden('bank', 'Toys', true)
+	local rule = R.Copy(INV:GetDefaultCategory('Toys').rule)
+	rule.items[#rule.items + 1] = { op = 'and', items = {} }
+	INV:SetCategoryRule('Toys', rule)
+	INV:PinItem(301, 'Toys')
+	INV.categoryEditor.selected = 'Toys'
 	open()
-	local reset = tab():EditorCell('reset')
-	eq(reset.widget.text:GetText(), 'Reset Plate to default', 'named by its name')
-	-- Reset and Delete end the editor's section: they float 24 under its panel, off its padding.
-	local delete, rule = tab():EditorCell('delete'), tab():EditorCell('rule')
-	eq(reset.y, delete.y, 'Reset and Delete on one line')
-	eq(reset.y, rule.y + rule.height + 24, 'Thick: 24 under the panel, which ends with the rule')
-	eq(reset.height, reset.widget:GetHeight(), 'their line as tall as the buttons')
-	eq((select(4, reset.frame:GetPoint(1))), 0, "Reset at the pane's left edge, off the padding")
-	check(not reset.widget:IsDisabled(), 'on for an edited default')
-	eq(row_of(tab(), 'Armor').marker:GetText(), 'edited', 'marked edited')
-	click(reset.widget.frame)
-	eq(W.ConfirmText(), nil, 'it asks nothing')
-	eq(INV:CategoryStore().edits.Armor, nil, 'the edit is cleared')
-	eq(INV:CategoryName('Armor'), 'Armor', 'its shipped name')
-	eq(INV:GetCategoryList().byId.Armor.enabled, true, 'on')
-	eq(INV:IsCategoryHidden('bank', 'Armor'), false, 'Show in as shipped')
-	eq(INV:GetPin(301), 'Armor', 'its pins stay')
-	local w = tab()
-	local row = row_of(w, 'Armor')
-	check(not row.marker:IsShown(), 'the edited marker is gone')
-	eq(row.name:GetText(), 'Armor', 'the list shows the shipped name')
-	check(not row.strike:IsShown(), 'and it is on')
-	reset = w:EditorCell('reset')
-	eq(reset.widget.text:GetText(), 'Reset Armor to default', 'Reset takes the name back')
-	check(reset.widget:IsDisabled(), 'and is off: nothing to reset')
-	eq(icon_ids(w:EditorCell('pins').widget), '301', 'the pin still shows')
+	eq(tab():EditorCell('reset'), nil, 'no Reset button')
+	for _, key in ipairs({ 'name', 'enabled', 'show', 'rule' }) do
+		check(reset_icon(key), key .. ' shows its reset')
+	end
+	-- The rule's sits 6 after the title's text, as the kit puts a titled row's.
+	local ruleCell = tab():EditorCell('rule')
+	local left = select(4, ruleCell.frame.defaultReset:GetPoint(1))
+	eq(left, math.ceil(ruleCell.label:GetUnboundedStringWidth()) + 6, "the rule's icon sits 6 after 'Catches an item when'")
+
+	-- Each one puts back its own and leaves the others.
+	click(reset_icon('name'))
+	eq(INV:CategoryName('Toys'), 'Toys', "the Name's reset brings the shipped name back")
+	eq(INV:GetCategoryList().byId.Toys.enabled, false, 'and leaves it off')
+	eq(INV:IsCategoryHidden('bank', 'Toys'), true, 'hidden in the bank')
+	check(not reset_icon('name'), "the Name's icon goes")
+	check(reset_icon('enabled') and reset_icon('show') and reset_icon('rule'), 'the others stay')
+	click(reset_icon('enabled'))
+	eq(INV:GetCategoryList().byId.Toys.enabled, true, "On's reset")
+	click(reset_icon('show'))
+	eq(INV:IsCategoryHidden('bank', 'Toys'), false, "Show in's reset")
+	check(reset_icon('rule'), 'the rule still differs')
+	click(reset_icon('rule'))
+	check(R.Equal(INV:GetCategoryList().byId.Toys.rule, INV:GetDefaultCategory('Toys').rule), "the rule's reset puts the shipped rule back")
+	eq(INV:CategoryStore().edits.Toys, nil, 'nothing of the edit is left')
+	for _, key in ipairs({ 'name', 'enabled', 'show', 'rule' }) do
+		check(not reset_icon(key), key .. ' shows none now')
+	end
+	eq(INV:GetPin(301), 'Toys', 'its pins stay')
+	eq(#take_errors(), 0, 'no errors')
+	st.Config:Close()
+end)
+
+test('a name reset another category blocks', function()
+	world()
+	INV:RenameCategory('Toys', 'Fun')
+	INV:SetCategoryEnabled('Toys', false)
+	INV:SetCategoryHidden('bank', 'Toys', true)
+	local mine = INV:AddUserCategory()
+	INV:RenameCategory(mine, 'Toys')
+	INV.categoryEditor.selected = 'Toys'
+	open()
+	click(reset_icon('name'))
+	eq(INV:CategoryName('Toys'), 'Fun', "the name stays: another category has the shipped one")
+	eq(OW.GetFrames().status:GetText(), 'Another category is already called Toys.', 'the status line says why')
+	check(reset_icon('name'), 'the icon stays')
+	eq(INV:GetCategoryList().byId.Toys.enabled, false, 'On is untouched')
+	eq(INV:IsCategoryHidden('bank', 'Toys'), true, 'and Show in')
+	eq(#take_errors(), 0, 'no errors')
+	st.Config:Close()
+end)
+
+test('a category of your own has no field resets', function()
+	world()
+	local mine = INV:AddUserCategory()
+	INV:RenameCategory(mine, 'Mine')
+	INV:SetCategoryEnabled(mine, false)
+	INV:SetCategoryHidden('bank', mine, true)
+	INV.categoryEditor.selected = mine
+	open()
+	for _, key in ipairs({ 'name', 'enabled', 'show', 'rule' }) do
+		check(not reset_icon(key), key .. ' shows no reset')
+	end
+	local _, rows = editor_rows(mine)
+	for _, key in ipairs({ 'name', 'enabled', 'show', 'rule' }) do
+		eq(rows[key].option.noReset, 'Your own category has no shipped version.', key .. ' says why')
+	end
 	eq(#take_errors(), 0, 'no errors')
 	st.Config:Close()
 end)

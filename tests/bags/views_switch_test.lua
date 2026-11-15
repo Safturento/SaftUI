@@ -37,6 +37,8 @@ local function world(client, core)
 	for i = 1, 12 do W.put(0, i, W.item(100 + i, 'Tonic ' .. i, 'Consumable', 40 - i)) end
 	W.put(1, 1, W.item(201, 'Axe', 'Weapon', 70))
 	INV.config.stackItems = false
+	if not SaftUI.OptionsModel then load_saftui('SaftUI-Core/Config/optionsmodel.lua') end
+	if not SaftUI.Config.SavedIn then load_saftui('SaftUI-Core/Config/optionsdefault.lua') end
 	load_saftui('SaftUI-Bags/options.lua')
 	-- What the page waits for: every window with a mover, and its anchor frame.
 	for _, id in ipairs(INV.windowIds) do INV.moverIds[id] = true end

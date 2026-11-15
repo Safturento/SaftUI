@@ -21,7 +21,8 @@ local INV = st:GetModule('Inventory')
 	the bag window's Compact header shows: INV:CountCategories). A category
 	that is off is Muted, with a 1px line through its name. The selected row is
 	tinted in the accent, with a 3px accent bar at its left. Under the list, + New
-	category and Reset all, in the accent. A click on a row selects it. Dragging a
+	category in the accent, and the order's reset icon after it while the shipped
+	categories are out of their order (INV:ResetCategoryOrder). A click on a row selects it. Dragging a
 	handle moves the category (INV:MoveCategory) above the row under the
 	cursor, or below it from its lower half, but never below Miscellaneous;
 	the drag holds the window's render as the rule editor's does, and the drop
@@ -53,13 +54,13 @@ local INV = st:GetModule('Inventory')
 	it). Under Blizzard each is Blizzard's minimal scroll bar instead, whose
 	arrows, track and thumb scroll it too: the list's narrow, 4 to its right,
 	the editor's and the footer's 12 to their right, inside the body's clip.
-	The list's view stops short of its footer, so + New category and Reset
-	all stay under it, right under the last row when every row fits. Each
+	The list's view stops short of its footer, so + New category and the order's
+	reset stay under it, right under the last row when every row fits. Each
 	keeps its scroll while the tab is drawn again, and when the tab grows or
 	shrinks (SetHeight); the editor and its footer start at their top for
 	another category, and the list brings the selected row into view when
 	another is selected (a click, + New category, Restore a default), the
-	selected one is dragged, or after Reset all; never when another row
+	selected one is dragged, or after the order's reset; never when another row
 	dragged past it moves it.
 
 	  INV.categoryEditor.selected       the selected id, for the session. One
@@ -79,7 +80,8 @@ local INV = st:GetModule('Inventory')
 	                                    selected ('Set: ...' selects the sets entry)
 
 	  widget.rows[i] = { frame, id, entry, handle, name, marker, count, strike, tint, bar }
-	  widget.addButton, widget.resetButton (each with .text; in the menu at half), widget.list
+	  widget.addButton (with .text), widget.resetOrder (the order's reset icon, with .icon; shown while
+	  INV:CategoryOrderDiffers(); both in the menu at half), widget.list
 	  (the rows, the scroll child of widget.listScroll), widget.listBar,
 	  widget.pane (the editor's rows, the scroll child of widget.editorScroll),
 	  widget.editorBar, widget.body (the editor's body), widget.footer (its
@@ -102,12 +104,12 @@ local INV = st:GetModule('Inventory')
 	it on a click outside, and Esc through W.Kit.CatchKeys), 4 under the
 	button, captioned 'Categories: drag to reorder', holding w.listPane (the
 	same rows, counts, handles, ghost, drop line and bar, and + New category and
-	Reset all under them), its view at most 14 rows. The code of the list is the
+	the order's reset under them), its view at most 14 rows. The code of the list is the
 	same in the menu as beside the editor; only the pane's parent and its view's
 	height change (ApplyMode, Fit). A drag in the menu scrolls it at its edges as
 	the list does. The menu closes on a pick, + New category, a click outside,
 	Esc, the window closing or leaving half, and INV:EditCategory; it stays open
-	through a drop, Reset all and a bag update, which draw the tab again:
+	through a drop, the order's reset and a bag update, which draw the tab again:
 	INV.categoryEditor.menuOpen is kept across that, and Layout closes it when
 	the tab is drawn in a later render than it was released in (another page or
 	tab). A close with a drag on ends the drag with no move (D.StopDrag), and the
@@ -137,6 +139,7 @@ local INV = st:GetModule('Inventory')
 local W, OB, OM, OW = st.OptionsWidgets, st.OptionsBody, st.OptionsModel, st.OptionsWindow
 -- What the rule editor drags with too (dragparts.lua): text helpers and the drag.
 local D = INV.DragParts
+local R = INV.Rules
 local Muted, Text, TextWidth, Inside = D.Muted, D.Text, D.TextWidth, D.Inside
 
 local floor, ceil, max, min = math.floor, math.ceil, math.max, math.min
@@ -151,11 +154,12 @@ local LIST_WIDTH = 210
 local EDITOR_X, EDITOR_WIDTH = 234, 540
 local DIVIDER_X = 222 -- in the middle of the gap between the panes
 local ROW_HEIGHT = 22
+local RESET_SIZE = 14 -- the order's reset icon (the kit's size)
 local PAD = 8 -- a row's contents from its edges
 local GAP = 6
 local BAR_WIDTH = 3
 local FOOTER_GAP = 8
-local FOOTER_HEIGHT = FOOTER_GAP + ROW_HEIGHT -- + New category and Reset all, under the list
+local FOOTER_HEIGHT = FOOTER_GAP + ROW_HEIGHT -- + New category and the order's reset, under the list
 local LIST_BAR_GAP = 4 -- the list's scroll bar, between it and the divider
 local LIST_STEP = 3 * ROW_HEIGHT -- a turn of the wheel over the list
 local MIN_HEIGHT = 10 * ROW_HEIGHT + FOOTER_HEIGHT -- the tab's least: ten rows and the footer
@@ -276,8 +280,10 @@ end
 
 --[[
 	The editor of the list category id: a group of its options (the Name, On,
-	Show in, its rule or a note, Pinned items, Caught now, Reset and Delete
-	rows), each reading the store at call time and writing through its setters.
+	Show in, its rule or a note, Pinned items, Caught now and Delete
+	rows), each reading the store at call time and writing through its setters;
+	a shipped category's Name, On, Show in and rule each carry a reset to what
+	SaftUI ships, a category of your own a noReset.
 	Which rows there are follows the category as it is now: the tab builds it
 	again on every draw. tab, when given, is the bagcategories widget whose
 	rule editor a Caught now hover highlights in, and items the bag window's
@@ -380,17 +386,61 @@ function INV:CategoryEditorOptions(id, tab, items)
 		args.note = { order = 10, type = 'description', name = NOTES[entry.kind] }
 	end
 
-	if entry.default then
-		args.reset = {
-			order = 40,
-			type = 'execute',
-			-- At half the button above the editor names the category, and a long name
-			-- would run the button past the editor.
-			name = (tab and tab.compact) and 'Reset to default' or format('Reset %s to default', entry.name),
-			desc = 'Put this category back as SaftUI ships it: its name, on or off, Show in and rule. Its pinned items stay.',
-			disabled = function() local e = Entry(); return not (e and e.edited) end,
-			func = function() INV:ResetCategory(id) end,
+	-- Each field resets alone, to what SaftUI ships (INV:GetDefaultCategory),
+	-- through the setter the row already uses. A category of your own has no
+	-- shipped version. Pinned items are not a field: they stay.
+	local NO_SHIPPED = 'Your own category has no shipped version.'
+	local shipped = entry.default and INV:GetDefaultCategory(id)
+	if shipped then
+		local function Edit() return INV:CategoryStore().edits[id] end
+		args.name.default = {
+			differs = function()
+				local edit = Edit()
+				return type(edit) == 'table' and type(edit.name) == 'string' and edit.name ~= ''
+			end,
+			-- A name another category has now is refused, with the reason.
+			reset = function()
+				local valid = ValidName(id, shipped.name)
+				if valid ~= true then return false, valid end
+				INV:RenameCategory(id, shipped.name)
+			end,
+			value = function() return shipped.name end,
 		}
+		args.show.default = {
+			differs = function()
+				local e = Entry()
+				for _, window in ipairs(sorting) do
+					if e and e.hide[window] then return true end
+				end
+				return false
+			end,
+			reset = function()
+				local e = Entry()
+				for _, window in ipairs(sorting) do
+					if e and e.hide[window] then INV:SetCategoryHidden(window, id, false) end
+				end
+			end,
+			text = 'shown in every window',
+		}
+		if args.enabled then
+			args.enabled.default = {
+				differs = function() local e = Entry(); return e and e.enabled ~= shipped.enabled or false end,
+				reset = function() INV:SetCategoryEnabled(id, shipped.enabled) end,
+				value = function() return shipped.enabled end,
+			}
+		end
+		if entry.kind == 'rule' then
+			args.rule.default = {
+				differs = function() local e = Entry(); return e and not R.Equal(e.rule, shipped.rule) or false end,
+				reset = function() INV:SetCategoryRule(id, R.Copy(shipped.rule)) end,
+				text = "SaftUI's rule",
+			}
+		end
+	else
+		args.name.noReset = NO_SHIPPED
+		args.show.noReset = NO_SHIPPED
+		if args.enabled then args.enabled.noReset = NO_SHIPPED end
+		if args.rule then args.rule.noReset = NO_SHIPPED end
 	end
 
 	-- Not Miscellaneous, the sets entry or Grays/Auto Vendor, which the bags need.
@@ -404,7 +454,7 @@ function INV:CategoryEditorOptions(id, tab, items)
 				local e = Entry()
 				local name = e and e.name or id
 				if e and e.default then
-					return format('Delete %s? You can bring it back with + New category > Restore a default..., or Reset all.', name)
+					return format('Delete %s? You can bring it back with + New category > Restore a default...', name)
 				end
 				return format('Delete %s? Items pinned to it go back to the rules.', name)
 			end,
@@ -489,7 +539,7 @@ local function Selected(list)
 	return id
 end
 
--- + New category and Reset all: accent text that runs run(button).
+-- + New category: accent text that runs run(button).
 local function Action(parent, text, run)
 	local button = CreateFrame('Button', nil, parent)
 	button.text = Text(button, W.GetFont())
@@ -514,7 +564,7 @@ end
 
 -- The menu over the editor holds the list. It is shown while the tab is
 -- compact and INV.categoryEditor.menuOpen is true, which only the button, a
--- pick and the other things that close it change; a draw (a drop, Reset all, a
+-- pick and the other things that close it change; a draw (a drop, the order's reset, a
 -- bag update) leaves it as it was.
 
 local function HideMenu(w)
@@ -690,7 +740,7 @@ local function LayListRow(w, i, entry, count, selected)
 	}
 end
 
------------------------------------------------------------------- the tab: + New category, Reset all
+------------------------------------------------------------------ the tab: + New category
 
 local function Added(w, id)
 	if id then INV.categoryEditor.selected = id end
@@ -717,13 +767,43 @@ local function NewCategory(w, button)
 	end)
 end
 
-local function ResetAll(w)
+-- The order's reset: the shipped categories back in SaftUI's order, yours
+-- right after the one they follow.
+local function ResetOrder(w)
 	if not w.row or w.drag then return end
-	W.Confirm("Reset all categories to SaftUI's defaults? Your own categories are deleted. Pinned and Protected items are kept.", function()
-		INV:ResetAllCategories()
+	if INV:ResetCategoryOrder() then
 		INV.categoryEditor.reveal = true -- the selected row may be in another place now
 		Changed(w)
+	end
+end
+
+-- The reset icon of the list's footer: the kit's own look (a 14x14 Lucide
+-- rotate-ccw, Text > Muted at rest, the accent under the mouse, each read as
+-- it is painted), with the order's tooltip.
+local function OrderResetIcon(parent, run)
+	local button = CreateFrame('Button', nil, parent)
+	button:SetSize(RESET_SIZE, RESET_SIZE)
+	button:EnableMouse(true)
+	button.icon = button:CreateTexture(nil, 'ARTWORK')
+	button.icon:SetAllPoints(button)
+	button.icon:SetTexture(st.icons.rotateCcw)
+	button.icon:SetVertexColor(Muted())
+	button:SetScript('OnEnter', function(self)
+		GameTooltip:SetOwner(self, 'ANCHOR_TOPLEFT')
+		GameTooltip:AddLine('Reset', 1, 1, 1)
+		GameTooltip:AddLine("Order goes back to its default: SaftUI's order, with your own categories where they are.", nil, nil, nil, true)
+		GameTooltip:Show()
+		self.icon:SetVertexColor(st:Color('accent'):GetRGB())
 	end)
+	button:SetScript('OnLeave', function(self)
+		if GameTooltip:IsOwned(self) then GameTooltip:Hide() end
+		self.icon:SetVertexColor(Muted())
+	end)
+	button:SetScript('OnClick', function(self)
+		if GameTooltip:IsOwned(self) then GameTooltip:Hide() end
+		run(self)
+	end)
+	return button
 end
 
 ------------------------------------------------------------------ the tab: scrolling
@@ -1033,17 +1113,23 @@ local function Layout(w, relayout)
 
 	-- Under the list's view (Fit sizes it).
 	local x = PAD
-	for _, button in ipairs({ w.addButton, w.resetButton }) do
-		button.text:SetTextColor(st:Color('accent'):GetRGB())
-		button.text:SetAlpha(1)
-		button:SetSize(TextWidth(button.text), ROW_HEIGHT)
-		button:ClearAllPoints()
-		button:SetPoint('TOPLEFT', w.listScroll, 'BOTTOMLEFT', x, -FOOTER_GAP)
-		x = x + button:GetWidth() + 12
-	end
+	local add = w.addButton
+	add.text:SetTextColor(st:Color('accent'):GetRGB())
+	add.text:SetAlpha(1)
+	add:SetSize(TextWidth(add.text), ROW_HEIGHT)
+	add:ClearAllPoints()
+	add:SetPoint('TOPLEFT', w.listScroll, 'BOTTOMLEFT', x, -FOOTER_GAP)
+	x = x + add:GetWidth() + 12
+	-- The order's reset, after it: while the shipped categories are out of
+	-- their order.
+	local reset = w.resetOrder
+	reset.icon:SetVertexColor(Muted())
+	reset:ClearAllPoints()
+	reset:SetPoint('TOPLEFT', w.listScroll, 'BOTTOMLEFT', x, -(FOOTER_GAP + floor((ROW_HEIGHT - RESET_SIZE) / 2)))
+	reset:SetShown(INV:CategoryOrderDiffers())
 
 	-- The list brings the selected row into view when another is selected,
-	-- or when asked (state.reveal): the selected one dragged, Reset all,
+	-- or when asked (state.reveal): the selected one dragged, the order's reset,
 	-- EditCategory. A draw that did neither leaves the list where it is: a
 	-- bag update, or another row dragged past the selected one.
 	-- (A draw again for another width keeps what the first one found.)
@@ -1180,7 +1266,7 @@ W.Define('bagcategories', {
 			if w.row then ScrollList(w, offset) end
 		end, { narrow = true, step = LIST_STEP })
 		w.addButton = Action(w.listPane, '+ New category', function(button) NewCategory(w, button) end)
-		w.resetButton = Action(w.listPane, 'Reset all', function() ResetAll(w) end)
+		w.resetOrder = OrderResetIcon(w.listPane, function() ResetOrder(w) end)
 
 		w.divider = frame:CreateTexture(nil, 'ARTWORK')
 		w.divider:SetColorTexture(unpack(OB.LINE))

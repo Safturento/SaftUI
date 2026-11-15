@@ -64,6 +64,10 @@ local function fresh(client)
 		or { MaxQuantity = 1, NoValidSourceCharacter = 2, CannotUseCurrency = 3 }
 	for _, file in ipairs({ 'inventory', 'itemclasses', 'rules', 'currencies', 'categorydefaults', 'categories', 'category', 'views',
 		'container', 'header', 'layout', 'search', 'containers/warbandbank', 'slot', 'movers', 'options' }) do
+		if file == 'options' then
+			if not SaftUI.OptionsModel then load_saftui('SaftUI-Core/Config/optionsmodel.lua') end
+			if not SaftUI.Config.SavedIn then load_saftui('SaftUI-Core/Config/optionsdefault.lua') end
+		end
 		load_saftui('SaftUI-Bags/' .. file .. '.lua')
 	end
 	INV = st:GetModule('Inventory')
@@ -1148,4 +1152,14 @@ test('the loading bar fills in the accent (Question 3)', function()
 	eq(T.text(_G.SaftUI_SaftUIThemeTestBagLoadingBar:GetStatusBarColor()), T.text(0.9, 0.1, 0.2) .. ',1.00', 'a changed accent is the next fill')
 	accent:SetRGB(0, 0.68, 0.94)
 	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('every Bags row has a reset, and each derived one round-trips', function()
+	bags()
+	-- View's set saves the view, then lays the window out (views_switch_test.lua's
+	-- business; this window is made by hand, with no bags).
+	function INV:ApplyView() end
+	function INV:UpdateViewButtons() end
+	local R = load_test_file('lib/reset_walk.lua')
+	R.check_page({ Inventory = INV:GetConfigTable() }, 'Inventory')
 end)

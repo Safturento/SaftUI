@@ -27,6 +27,10 @@ local function fresh(client)
 		or { MaxQuantity = 1, NoValidSourceCharacter = 2, CannotUseCurrency = 3 }
 	for _, file in ipairs({ 'inventory', 'itemclasses', 'rules', 'currencies', 'categorydefaults', 'categories', 'category', 'views',
 		'container', 'header', 'layout', 'search', 'containers/warbandbank', 'slot', 'movers', 'options' }) do
+		if file == 'options' then
+			if not SaftUI.OptionsModel then load_saftui('SaftUI-Core/Config/optionsmodel.lua') end
+			if not SaftUI.Config.SavedIn then load_saftui('SaftUI-Core/Config/optionsdefault.lua') end
+		end
 		load_saftui('SaftUI-Bags/' .. file .. '.lua')
 	end
 	INV = st:GetModule('Inventory')
