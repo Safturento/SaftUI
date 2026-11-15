@@ -120,10 +120,10 @@ function generators.uf_element_position(order, get, set, target, desc, name)
 		-- A plate's parts are checked against that page's config, not the
 		-- config of the plate that happens to be on screen (UF.PlatePartAnchors):
 		-- set for the check only, and cleared whether it errors or not.
-		local UF = st:GetModule('Unitframes')
-		UF.anchorPage = page
+		local UF = st:GetModule('Unitframes', true)
+		if UF then UF.anchorPage = page end
 		local called, ok, err = pcall(st.ValidateAnchor, st, frame, relative)
-		UF.anchorPage = nil
+		if UF then UF.anchorPage = nil end
 		if not called then error(ok, 0) end
 		return ok or err
 	end
