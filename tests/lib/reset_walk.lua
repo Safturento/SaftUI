@@ -47,8 +47,8 @@
 -- 'pixel'), a keybinding 'CTRL-F12'. The row is put back as it was.
 
 local st = SaftUI
-local OM = st.OptionsModel
-if not OM.DefaultSource then load_saftui('SaftUI-Core/Config/optionsdefault.lua') end
+-- The model as it is now, read on each use: a test may load the model again after this file.
+local OM = setmetatable({}, { __index = function(_, key) return SaftUI.OptionsModel[key] end })
 if not each_option then load_test_file('lib/options_walk.lua') end
 
 local R = {}

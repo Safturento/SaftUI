@@ -53,7 +53,6 @@ local function fresh()
 	apply_defaults()
 	for _, file in ipairs(FILES) do load_saftui(file) end
 	load_saftui('SaftUI-Core/Config/optionsmodel.lua')
-	load_saftui('SaftUI-Core/Config/optionsdefault.lua') -- st.Config.SavedIn, the reset sources
 	load_test_file('lib/options_walk.lua')
 	OM = st.OptionsModel
 	AB = st:GetModule('ActionBars')

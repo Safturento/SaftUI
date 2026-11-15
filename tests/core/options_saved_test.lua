@@ -9,7 +9,6 @@
 -- The pages are synthetic, saved under a profile key of this file's own.
 local H = load_test_file('core/options_window_helpers.lua')
 local st = SaftUI
-load_saftui('SaftUI-Core/Config/optionsdefault.lua')
 local OM, OB, W = st.OptionsModel, st.OptionsBody, st.OptionsWidgets
 local EM = st.EditModeFrames
 local generators = st.Config.generators

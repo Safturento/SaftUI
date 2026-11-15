@@ -16,7 +16,6 @@ local H = load_test_file('core/options_window_helpers.lua')
 local st = SaftUI
 -- With the derived defaults loaded, as in the game: every case below must pass
 -- as it did without them (the hand defaults, the shares).
-load_saftui('SaftUI-Core/Config/optionsdefault.lua')
 local OM, W, OB, OW = st.OptionsModel, st.OptionsWidgets, st.OptionsBody, st.OptionsWindow
 local click, cell, close_all = H.click, H.cell, H.close_all
 

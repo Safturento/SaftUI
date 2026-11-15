@@ -21,7 +21,6 @@ local function world(on)
 	local st, TR = TW.world({ on = on })
 	load_test_file('lib/options_walk.lua')
 	load_saftui('SaftUI-Core/Config/optionsmodel.lua')
-	load_saftui('SaftUI-Core/Config/optionsdefault.lua') -- the model was just loaded again
 	load_options_widgets()
 	return st, TR
 end

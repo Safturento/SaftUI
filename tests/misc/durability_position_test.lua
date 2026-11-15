@@ -32,7 +32,6 @@ local function world(client, build, opts)
 	load_core_helpers()
 	load_editmode()
 	load_saftui('SaftUI-Core/Config/optionsmodel.lua') -- the page's saved fields (st.Config.SavedIn)
-	load_saftui('SaftUI-Core/Config/optionsdefault.lua')
 	UIParent:SetScale(768 / 600)
 	st = SaftUI
 	load_saftui('SaftUI-Misc/config.lua')

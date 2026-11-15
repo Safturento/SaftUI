@@ -19,8 +19,6 @@ apply_defaults()
 load_test_file('lib/options_walk.lua')
 local T = load_test_file('lib/theme_helpers.lua')
 load_saftui('SaftUI-Core/Config/optionsmodel.lua')
-load_saftui('SaftUI-Core/Config/optionsdefault.lua')
-assert(SaftUI.OptionsModel.DefaultSource, 'derived defaults are on the options model')
 load_saftui('SaftUI-Core/Config/optionsbody.lua')
 local st = SaftUI
 local OM, OB = st.OptionsModel, st.OptionsBody

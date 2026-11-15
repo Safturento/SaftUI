@@ -4,7 +4,6 @@
 -- at start fails. Synthetic pages, on the window's world and optionsdefault.lua.
 load_test_file('core/options_window_helpers.lua')
 local st = SaftUI
-load_saftui('SaftUI-Core/Config/optionsdefault.lua')
 local OM = st.OptionsModel
 local R = load_test_file('lib/reset_walk.lua')
 
@@ -238,4 +237,17 @@ test('a unit frame part whose anchor can\'t be put back fails the walk', functio
 	end
 	local problems = R.problems(root, 'Page')
 	check(#problems > 0, 'the walk finds it: ' .. table.concat(problems, '; '))
+end)
+
+test('the walk reads the options model as it is now: a model loaded again after the walk was loaded is the one it walks', function()
+	load_saftui('SaftUI-Core/Config/optionsmodel.lua')
+	check(st.OptionsModel ~= OM, 'the model is a new table')
+	world()
+	local root = page(group({
+		saved = st.Config.SavedIn('t_'),
+		args = { a = { type = 'toggle', name = 'Saved', order = 1 } },
+	}))
+	local problems, walked = R.problems(root, 'Page')
+	eq(#problems, 0, 'no problem on the new model: ' .. table.concat(problems, '; '))
+	eq(walked, 1, 'one row walked')
 end)
