@@ -118,7 +118,7 @@ test('a change of the Skinning font reaches the text without a reload', function
 			eq(text:GetFontObject(), st:GetFont('pixel_med'), name .. ' follows the font')
 			local r, g, b = text:GetTextColor()
 			local wr, wg, wb = profile.colors.text.strong:GetRGB()
-			eq(r .. ',' .. g .. ',' .. b, wr .. ',' .. wg .. ',' .. wb, name .. ' stays white')
+			eq(r .. ',' .. g .. ',' .. b, wr .. ',' .. wg .. ',' .. wb, name .. ' stays Text > Strong')
 		end
 	end)
 	profile.skinning.font = 'pixel'

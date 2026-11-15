@@ -91,8 +91,13 @@ end
 test('it opens on the color: title, boxes, the two color blocks, and no change is told', function()
 	theme('thick')
 	reset()
+	local normal = st.config.profile.colors.text.normal
+	local keep_normal = { normal:GetRGB() }
+	normal:SetRGB(0.1, 0.6, 0.3) -- not the default, so a literal text color fails
 	local told, F = open()
 	check(told.opened, 'opens')
+	eq(string.format('%.2f,%.2f,%.2f', F.red.label:GetTextColor()), '0.10,0.60,0.30', 'the edit labels are Text > Normal')
+	normal:SetRGB(unpack(keep_normal))
 	check(W.ColorPickerShown(), 'shown')
 	check(F.frame:IsShown(), 'the panel is shown')
 	eq(F.title:GetText(), 'Color', 'its title')

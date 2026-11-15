@@ -265,12 +265,10 @@ local function Piece(host, line, key, frameType)
 		local state = host.shareState
 		Tip(self, TIPS[key](state, SettingName(state, host.shareCell.row.name), host.share))
 		if self.text and self.lit then self.text:SetTextColor(st:Color('text', 'strong'):GetRGB()) end
-		if self.icon then self.icon:SetVertexColor(st:Color('text', 'strong'):GetRGB()) end
 	end)
 	piece:SetScript('OnLeave', function(self)
 		Untip(self)
 		if self.text and self.lit then self.text:SetTextColor(OB.Accent()) end
-		if self.icon then self.icon:SetVertexColor(st:Color('accent'):GetRGB()) end
 	end)
 	return piece
 end

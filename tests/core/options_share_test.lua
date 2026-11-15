@@ -1376,7 +1376,7 @@ test("a link's click takes its tooltip away, and leaving a link puts its accent 
 		strong:SetRGB(1, 1, 1)
 		for _, key in ipairs({ 'all', 'multiple' }) do
 			stub.fire_script(parts[key], 'OnEnter', true)
-			eq(rgb(parts[key].text:GetTextColor()), '1.00,1.00,1.00', key .. ' white at the default')
+			eq(rgb(parts[key].text:GetTextColor()), '1.00,1.00,1.00', key .. ' Strong at its default (white)')
 			stub.fire_script(parts[key], 'OnLeave', true)
 		end
 		-- The reset icon: Text > Muted at rest, lit in the accent under the mouse.

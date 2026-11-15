@@ -168,6 +168,7 @@ end
 test('a row per block and group, a badge per group, AND the accent and OR orange', function()
 	local pinned = st.config.profile.theme.accent -- a non-default accent: a literal blue fails
 	pinned:SetRGB(0.9, 0.1, 0.2)
+	st.config.profile.colors.text.warning:SetRGB(0.8, 0.4, 0.1) -- OR's Warning at a value that is not the default, so a hardcoded orange fails
 	local rule = grp('and', {
 		blk('class', { class = 7 }),
 		grp('or', { blk('subclass', { class = 7, subclasses = { 7, 9 } }), t('Mote of') }),
@@ -785,6 +786,7 @@ end)
 ------------------------------------------------------------------ the highlight
 
 test('SetHighlight tints the row at a path', function()
+	st.config.profile.colors.text.warning:SetRGB(0.8, 0.4, 0.1) -- not the default, so a hardcoded orange fails
 	local ed = editor(grp('and', { t('a'), grp('or', { t('b'), t('c') }) }))
 	local w = ed.w
 	local function tinted()

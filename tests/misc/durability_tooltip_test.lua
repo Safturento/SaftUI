@@ -49,6 +49,10 @@ local function world(client, opts)
 	load_saftui('SaftUI-Misc/config.lua')
 	apply_defaults()
 	profile = st.config.profile
+	-- Success, Warning and Danger at values that are not their defaults, so a band drawn in a color of its own fails.
+	profile.colors.text.success:SetRGB(0.1, 0.8, 0.3)
+	profile.colors.text.warning:SetRGB(0.8, 0.4, 0.1)
+	profile.colors.text.danger:SetRGB(0.9, 0.2, 0.3)
 	if opts.tooltip_details == false then profile.durability.tooltip_details = false end
 	worn = opts.worn or inventory()
 	-- Each API is a global the game has; a case without one removes it.

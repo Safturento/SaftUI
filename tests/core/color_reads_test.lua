@@ -137,6 +137,58 @@ local function Scan(path, source, defaults)
 			end
 		end
 
+		-- D, aliases: a local bound to the whole colors table (colors, Colors() or
+		-- profile.colors), read for a role group; a local bound to the theme
+		-- table, read for the accent; and the ['colors'] and rawget forms.
+		local whole = {}
+		position = 1
+		for line in (mask .. '\n'):gmatch('(.-)\n') do
+			local name, expression = line:match('^%s*local%s+([%w_]+)%s*=%s*(.-)%s*;?%s*$')
+			if name then
+				if expression:match('%f[%w_][Cc]olors$') or expression:match('%f[%w_]Colors%s*%(%s*%)$') then
+					whole[#whole + 1] = { name = name, kind = 'colors', from = position + #line }
+				elseif expression:match('%f[%w_]theme$') or expression:match('%f[%w_]Theme%s*%(%s*%)$') then
+					whole[#whole + 1] = { name = name, kind = 'theme', from = position + #line }
+				end
+			end
+			position = position + #line + 1
+		end
+		for _, binding in ipairs(whole) do
+			local keys = binding.kind == 'theme' and { 'accent' } or DIRECT_GROUPS
+			for _, key in ipairs(keys) do
+				local from = binding.from
+				while true do
+					local s, e = mask:find('%f[%w_]' .. binding.name .. '%s*%.%s*' .. key .. '%f[^%w_]', from)
+					if not s then break end
+					Fail(found, path, 'D direct read', mask, s, source)
+					from = e + 1
+				end
+				from = binding.from
+				while true do
+					local s, e = code:find('%f[%w_]' .. binding.name .. '%s*%[%s*[\'"]' .. key .. '[\'"]', from)
+					if not s then break end
+					Fail(found, path, 'D direct read', mask, s, source)
+					from = e + 1
+				end
+			end
+		end
+		for _, group in ipairs(DIRECT_GROUPS) do
+			local from = 1
+			while true do
+				local s, e = code:find('%[%s*[\'"]colors[\'"]%s*%]%s*%.%s*' .. group .. '%f[^%w_]', from)
+				if not s then break end
+				if mask:sub(s, s) == '[' then Fail(found, path, 'D direct read', mask, s, source) end -- not inside a string
+				from = e + 1
+			end
+			from = 1
+			while true do
+				local s, e = code:find('rawget%s*%([^,%)]*[cC]olors%s*,%s*[\'"]' .. group .. '[\'"]', from)
+				if not s then break end
+				if mask:sub(s, s + 5) == 'rawget' then Fail(found, path, 'D direct read', mask, s, source) end -- not inside a string
+				from = e + 1
+			end
+		end
+
 		-- E. Hue names in code.
 		for _, name in ipairs(HUE_NAMES) do
 			local from = 1
@@ -275,6 +327,17 @@ test('the rules, on samples: each fails what it names and passes the rest', func
 	eq(scanD('local textColors = st.config.profile.colors.text\nlocal c = textColors.normal'), 'D', 'a binding of text fails itself')
 	eq(scanD('local c = colors.text.reddish'), 'D', 'a longer key is still a direct read')
 	eq(scanD('local c = colors.texture\nlocal d = Colors().texts'), '', 'a longer name is not the group')
+	-- D, aliases of the whole table
+	eq(scanD('local c = st.config.profile.colors\nreturn c.text.danger'), 'D', 'an alias of profile.colors')
+	eq(scanD('local c = Colors()\nreturn c.text.danger'), 'D', 'an alias of Colors()')
+	eq(scanD("local c = Colors()\nreturn c['loot'].pass"), 'D', 'by a string key')
+	eq(scanD('local t = st.config.profile.theme\nreturn t.accent'), 'D', 'an alias of the theme')
+	eq(scanD('local t = Theme()\nreturn t.accent'), 'D', 'an alias of Theme()')
+	eq(scanD("return st.config.profile['colors'].text"), 'D', "the ['colors'] form")
+	eq(scanD("return rawget(st.config.profile.colors, 'text')"), 'D', 'rawget on the table')
+	eq(scanD('local colors = st.config.profile.colors\nreturn colors.threat.bad, colors.class.MAGE, colors.button.hover'), '', 'game-named groups and Buttons through an alias')
+	eq(scanD('local t = st.config.profile.theme\nreturn t.name'), '', 'the theme alias read for something else')
+	eq(scanD("-- local c = Colors(); c.text.danger\nlocal s = 'rawget(colors, \"text\")'"), '', 'a comment and a string')
 	-- C
 	eq(scan("local c = st:Color('text', 'normal')"), '')
 	eq(scan("local c = st:Color('text', 'normal2')"), 'C')

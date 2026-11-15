@@ -111,7 +111,7 @@ end
 function CF:UpdateConfig()
 	for _, slot in pairs(slots) do
 		st:ApplyFont(slot.itemLevel, st.config.profile.skinning.font)
-		-- A font object can reset an explicit colour, and the profile's white may differ.
+		-- A font object can reset an explicit colour, and the profile's Text > Strong may differ.
 		slot.itemLevel:SetTextColor(st:Color('text', 'strong'):GetRGB())
 	end
 end

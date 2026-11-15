@@ -704,7 +704,7 @@ local function hover(frame)
 	stub.cursor_y = (frame:GetTop() + frame:GetBottom()) / 2 * scale
 end
 
-test("a disabled row's tooltip shows its disabledDesc under its desc, in Text > Red; the mouse on its box reaches the row", function()
+test("a disabled row's tooltip shows its disabledDesc under its desc, in Text > Danger; the mouse on its box reaches the row", function()
 	local lock = true
 	local function toggle(name, order, fields)
 		local option = { type = 'toggle', name = name, order = order, get = function() return true end, set = function() end }
@@ -752,7 +752,7 @@ test("a disabled row's tooltip shows its disabledDesc under its desc, in Text > 
 	stub.fire_script(locked.frame, 'OnEnter', true)
 	check(tip.owner == locked.frame, 'the tooltip shows for the row')
 	eq(table.concat(tip.lines, '|'), 'Locked|What it does.|Uncheck Other first.', 'its name, desc, then why')
-	eq(tip.colors[3], red, 'why in Text > Red')
+	eq(tip.colors[3], red, 'why in Text > Danger')
 	stub.fire_script(locked.frame, 'OnLeave', true)
 	check(tip.owner == nil, 'and goes')
 
@@ -837,7 +837,7 @@ test("an execute button shows its row's tooltip while the mouse is on it, under 
 		eq(by.reset.widget.frame:IsMouseEnabled(), false, look .. ': a disabled button takes no mouse')
 		stub.fire_script(by.reset.frame, 'OnEnter')
 		eq(table.concat(tip.lines, '|'), 'Reset|Puts it back.|Nothing to reset.', look .. ': name, desc, then why')
-		eq(tip.colors[3], red, look .. ': why in Text > Red')
+		eq(tip.colors[3], red, look .. ': why in Text > Danger')
 		stub.fire_script(by.reset.frame, 'OnLeave')
 		body:Release()
 	end

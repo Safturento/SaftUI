@@ -103,6 +103,7 @@ end
 test('tooltip lines: the category, its place and the block that caught it; a nested block names its groups', function()
 	local container = world()
 	-- Consumables catches the tonic by a block of its rule.
+	st.config.profile.colors.text.caution:SetRGB(0.7, 0.7, 0.2) -- not the default, so a hardcoded yellow fails
 	local lines = INV:CategoryTooltipLines(slot_of(container, 101).info)
 	eq(#lines, 2, 'two lines')
 	local place = INV:CategoryPlace('Consumables')

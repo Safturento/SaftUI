@@ -688,7 +688,7 @@ end
 ------------------------------------------------------------------ rows
 
 -- A row's tooltip: its name, its desc, and while it's disabled why
--- (row.disabledDesc, the model's), in Text > Red. Of frame's row, owned by
+-- (row.disabledDesc, the model's), in Text > Danger. Of frame's row, owned by
 -- owner (the frame itself when nil: an execute button owns its own).
 local function ShowTip(frame, owner)
 	local row = frame.row

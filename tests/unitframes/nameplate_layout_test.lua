@@ -196,7 +196,7 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		st.config.profile.colors.text.danger:SetRGB(0.9, 0.2, 0.2) -- not the default, so a hardcoded red fails
 		local red = st.StringFormat:ToHex(st.config.profile.colors.text.danger:GetRGB())
 		eq(UF.oUF.Tags.Methods['st:name']('nameplate1', nil, 'nameplate'), '|cff' .. red .. 'Kobold|r',
-			'the name in red, nothing before it')
+			'the name in Danger, nothing before it')
 		eq(#take_errors(), 0, 'no error')
 	end)
 end

@@ -358,12 +358,12 @@ function st:CreateCloseButton(frame)
 			-- The fill is the close template's (no option sets it); the edge and
 			-- the cross are Text > Danger.
 			close:SetBackdropColor(unpack(self.config.profile.templates.close.backdropcolor))
-			close:SetBackdropBorderColor(self:Color('text', 'danger'):GetRGB())
-			x:SetVertexColor(self:Color('text', 'danger'):GetRGB())
+			close:SetBackdropBorderColor(st:Color('text', 'danger'):GetRGB())
+			x:SetVertexColor(st:Color('text', 'danger'):GetRGB())
 		else
 			close:SetBackdropColor(unpack(self.BOX_COLORS.field))
 			close:SetBackdropBorderColor(unpack(self.BOX_COLORS.edge))
-			x:SetVertexColor(self:Color('text', 'muted'):GetRGB())
+			x:SetVertexColor(st:Color('text', 'muted'):GetRGB())
 		end
 	end
 	Look(false)

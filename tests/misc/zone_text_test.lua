@@ -286,7 +286,7 @@ test('with no line, or no zone name shown, the subzone name goes under the zone 
 	eq(ZT.DifficultyTextString:GetText(), '', 'and no difficulty outside an instance')
 end)
 
-test('a Factions change recolors a line still on screen, and a Text > Red change does not', function()
+test('a Factions change recolors a line still on screen, and a Text > Danger change reaches no faction (Horde included)', function()
 	place(1429, 'friendly', 'Alliance')
 	H.enter('Elwynn Forest')
 	local blue = st.config.profile.colors.factions.Alliance
@@ -305,4 +305,21 @@ test('a Factions change recolors a line still on screen, and a Text > Red change
 	st:ColorsChanged('text')
 	check(ZT.ZoneLineString:GetText():find('|cff00adf0Alliance|r', 1, true), 'Alliance keeps its own: ' .. ZT.ZoneLineString:GetText())
 	st.config.profile.colors.text.danger = red
+
+	-- Horde was Text > Danger's old Red until step 1 split it off: a changed Danger leaves it alone.
+	place(9100, 'hostile', 'Horde')
+	H.enter('Elwynn Forest')
+	local danger = st.config.profile.colors.text.danger
+	danger:SetRGB(0, 1, 0)
+	st:ColorsChanged('text')
+	check(ZT.ZoneLineString:GetText():find('|cffdc6464Horde|r', 1, true), 'Horde keeps Factions > Horde: ' .. ZT.ZoneLineString:GetText())
+	danger:SetRGB(220/255, 100/255, 100/255)
+
+	-- The rest of the line is Text > Normal, at a value that is not the default.
+	local normal = st.config.profile.colors.text.normal
+	normal:SetRGB(0.2, 0.6, 0.4)
+	H.enter('Elwynn Forest')
+	local nr2, ng2, nb2 = ZT.ZoneLineString:GetTextColor()
+	check(math.abs(nr2 - 0.2) < 1e-6 and math.abs(ng2 - 0.6) < 1e-6 and math.abs(nb2 - 0.4) < 1e-6, 'the zone line is Text > Normal')
+	normal:SetRGB(0.9, 0.9, 0.8)
 end)

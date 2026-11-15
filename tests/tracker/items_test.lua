@@ -590,7 +590,7 @@ test('the look: icon crop, kind action in the tracker\'s pair, cooldown, count, 
 	local function icon_color(b) return ('%.2f %.2f %.2f'):format(b.icon:GetVertexColor()) end
 	check(icon_color(two) ~= red, 'not read before the interval')
 	stub.fire_script(watcher, 'OnUpdate', 0.15)
-	eq(icon_color(two), red, 'out of range: Text > Red')
+	eq(icon_color(two), red, 'out of range: Text > Danger')
 	eq(RW.color(two.count), red, 'the count too')
 	check(icon_color(one) ~= red, 'in range: not red')
 	stub.quests.log[3].item.range = 1
@@ -600,7 +600,7 @@ test('the look: icon crop, kind action in the tracker\'s pair, cooldown, count, 
 	TR:UpdateConfig()
 	stub.quests.log[3].item.range = 0
 	stub.fire_script(watcher, 'OnUpdate', 0.3)
-	check(icon_color(two) ~= red, 'Out of range in red off: never red')
+	check(icon_color(two) ~= red, 'Out of range in red off: never Danger')
 	TR.config.items.range = true
 	-- The accent border inside the quest's area.
 	local accent = ('%.2f,%.2f,%.2f'):format(st.config.profile.theme.accent:GetRGB())

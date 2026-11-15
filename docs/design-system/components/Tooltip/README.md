@@ -21,7 +21,7 @@ The game's tooltip in SaftUI's theme: a `tooltip`-kind frame holding a white tit
 | --- | --- | --- |
 | Frame | GameTooltip drawn as the `tooltip` kind by Misc's skin (`st:SetBackdropIn`), see-through at 0.9 | `backdrop`, `border`, `alpha-theme` |
 | Lines | the Normal font object on every line (AgencyFB Bold 16, OUTLINE) | `normal` |
-| Title | white | `text-strong` |
+| Title | white (`text-strong`'s value; the game's title, hardcoded) | `text-strong` |
 | Desc | GameTooltip's default line colour, Blizzard's gold, because the kit passes none | `tooltip-gold` |
 | Why it's disabled | Text > Danger | `text-danger` |
 | Diff tooltip | the name, "All bars: value", then two columns: member names, then their values in the accent | `accent` |

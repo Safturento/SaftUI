@@ -27,7 +27,7 @@ local History = EM.History
 	The status line, EM:SetBarStatus(message, owner, refusal). The docked bar is
 	two rows with no spare width, so it has no line: the message is the tooltip
 	under owner, the control that was pressed (under the bar when none is given;
-	red for a refusal), and EM.statusCut says so. In the floating window
+	Text > Danger for a refusal), and EM.statusCut says so. In the floating window
 	(barwindow.lua) it is a line of small, Text > Muted text under the Changes
 	section instead, from the left and wrapped to the window's inside width,
 	never cut. It takes no mouse. It clears after EM.STATUS_SECONDS, when a new
@@ -102,7 +102,7 @@ end
 -- Says text in the bar's status line; nil or '' clears it. On the docked bar,
 -- which has no line, the message is the GameTooltip owned by the bar (so no
 -- control's OnLeave takes it), under owner, the control that was pressed (under
--- the bar with none), for EM.STATUS_SECONDS whatever the mouse does (red for a
+-- the bar with none), for EM.STATUS_SECONDS whatever the mouse does (Text > Danger for a
 -- refusal), never in combat; EM.statusCut says the bar has no line for it.
 function EM:SetBarStatus(message, owner, refusal)
 	statusToken = statusToken + 1

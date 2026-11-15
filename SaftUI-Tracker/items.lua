@@ -76,10 +76,6 @@ local function Round(value)
 	return math.floor(value + 0.5)
 end
 
-local function Colors()
-	return st.config.profile.colors
-end
-
 ------------------------------------------------------------------ the pure parts
 
 local Items = {}
@@ -315,7 +311,7 @@ local function DrawCooldown(button)
 end
 
 -- Everything a button draws from its state, none of it secure, so it runs in
--- combat too: the icon and its tint (red out of range, dim while waiting),
+-- combat too: the icon and its tint (Text > Danger out of range, dim while waiting),
 -- the count, the cooldown, the accent border inside the quest's area.
 local function PaintButton(button)
 	local config = TR.config.items
@@ -328,11 +324,11 @@ local function PaintButton(button)
 
 	local out = config.range and button.range == 0
 	local waiting = button.cd and button.cd.duration > 0 and button.cd.enable == 0
-	local tint = 'white'
-	if out then tint = 'red' elseif waiting then tint = 'dim' end
+	local tint = 'plain' -- the icon as it is, with no tint
+	if out then tint = 'danger' elseif waiting then tint = 'dim' end
 	if button.tint ~= tint then
 		button.tint = tint
-		if tint == 'red' then
+		if tint == 'danger' then
 			button.icon:SetVertexColor(st:Color('text', 'danger'):GetRGB())
 		elseif tint == 'dim' then
 			button.icon:SetVertexColor(0.4, 0.4, 0.4)

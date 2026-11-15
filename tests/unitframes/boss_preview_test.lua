@@ -148,7 +148,7 @@ test('a preview shows a boss: a name, full health in the hostile reaction color,
 	P.boss.name.color_hostile = true
 	UF:UpdateGroupPreview('boss')
 	local red = st.StringFormat:ToHex(profile_colors.text.danger:GetRGB())
-	check(previews()[1].Name:GetText():find('|cff' .. red, 1, true), 'a hostile name in red: ' .. previews()[1].Name:GetText())
+	check(previews()[1].Name:GetText():find('|cff' .. red, 1, true), 'a hostile name in Danger: ' .. previews()[1].Name:GetText())
 	P.boss.name.color_hostile = false
 
 	-- Boss percent adds the percent after the health, as on a skull-level unit.

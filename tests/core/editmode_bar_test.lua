@@ -270,7 +270,7 @@ test('Grid size: the arrows step by 4 within 8 to 128, any whole size can be typ
 	check(GameTooltip:IsOwned(box), 'its tooltip shows')
 	eq(lines[1].text, 'Grid size', 'titled')
 	eq(lines[#lines].text, 'Turn on Grid or Snap to grid to use it.', 'the last line says why')
-	eq(lines[#lines].color, rgb(st.config.profile.colors.text.danger), 'in red')
+	eq(lines[#lines].color, rgb(st.config.profile.colors.text.danger), 'in Danger')
 	stub.click(box.pair.up)
 	eq(settings().grid_size, 128, 'the arrows do nothing')
 	stub.fire_script(box.edit, 'OnLeave', true)

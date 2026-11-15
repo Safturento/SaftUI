@@ -34,7 +34,7 @@ test('the role corner takes Roles: Tank, Healer, and Damage with Show damage dea
 	corner.config.showDps = false
 	update('DAMAGER'); check(not corner:IsShown(), 'a damage dealer hidden without it')
 
-	-- The accent, Text > Green and Red do not reach any corner.
+	-- The accent, Text > Success and Danger do not reach any corner.
 	local saved = {}
 	for _, key in ipairs({ 'success', 'danger' }) do
 		saved[key] = { colors.text[key]:GetRGB() }
@@ -44,8 +44,8 @@ test('the role corner takes Roles: Tank, Healer, and Damage with Show damage dea
 	set(st.config.profile.theme.accent, 0, 0, 0)
 	corner.config.showDps = true
 	eq(update('TANK'), ROLES.TANK, 'Tank, with the accent changed')
-	eq(update('HEALER'), ROLES.HEALER, 'Healer, with Text > Green changed')
-	eq(update('DAMAGER'), ROLES.DAMAGER, 'Damage, with Text > Red changed')
+	eq(update('HEALER'), ROLES.HEALER, 'Healer, with Text > Success changed')
+	eq(update('DAMAGER'), ROLES.DAMAGER, 'Damage, with Text > Danger changed')
 	for key, rgb in pairs(saved) do set(colors.text[key], unpack(rgb)) end
 	set(st.config.profile.theme.accent, unpack(accent))
 

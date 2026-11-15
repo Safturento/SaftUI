@@ -87,7 +87,7 @@ local FIELD_WIDTH, MODE_WIDTH, YES_NO_WIDTH, COUNT_WIDTH = 150, 80, 60, 90
 local D = INV.DragParts
 local Muted, Text, TextWidth, Inside = D.Muted, D.Text, D.TextWidth, D.Inside
 
--- A group's color: AND the accent, OR orange (Text > Orange).
+-- A group's color: AND the accent, OR Warning (Text > Warning).
 local function OpColor(op)
 	if op == 'or' then return st:Color('text', 'warning'):GetRGB() end
 	return st:Color('accent'):GetRGB()

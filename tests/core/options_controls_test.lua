@@ -103,7 +103,7 @@ test('W.IconButton: a 26 square with its 16 icon in the middle, grey; it needs i
 	eq(stub.state(GameTooltip).anchor, 'ANCHOR_BOTTOM', 'under it')
 	eq(lines[1].text .. '|' .. lines[1].color, 'Exit|1.00,1.00,1.00', 'the title white')
 	eq(lines[2].text .. '|' .. lines[2].color, 'Leaves edit mode.|' .. NORMAL(), 'a line in Text > Normal')
-	eq(lines[3].text .. '|' .. lines[3].color, 'Unsaved.|' .. color_of(colors().text.danger), 'a red line in Text > Red')
+	eq(lines[3].text .. '|' .. lines[3].color, 'Unsaved.|' .. color_of(colors().text.danger), 'a danger line in Text > Danger')
 	eq(edge_of(b), BLUE(), 'accent under the mouse')
 	stub.fire_script(b, 'OnLeave', true)
 	check(not GameTooltip:IsShown(), 'gone when it leaves')

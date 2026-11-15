@@ -3,7 +3,7 @@
 --   - each roll button's letter, the paired counts and the feed's roll tooltip
 --     (rollbar.lua, roll.lua, rollinfo.lua, Feed/rolls.lua);
 --   - a mount's entry in the feed (Feed/feed.lua).
--- A changed Text > Red, Yellow or White reaches none of them.
+-- A changed Text > Danger, Caution or Strong reaches none of them.
 --
 -- Real: SaftUI-Loot's config.lua, init.lua, rollbar.lua, roll.lua, rolltest.lua,
 -- rollinfo.lua and Feed/history.lua, parse.lua, feed.lua, loothistory.lua and
@@ -96,8 +96,8 @@ test('each roll letter takes its Loot color, and a changed Text color reaches no
 	for key in pairs(text) do set(colors.text[key], 0, 0, 0) end
 	local frame = roll_frame(); LT:SkinRollFrame(frame)
 	l = letters(frame)
-	eq(l.Pass, RED, 'Pass, with Text > Red changed'); eq(l.Greed, YELLOW, 'Greed, with Text > Yellow changed')
-	eq(l.Need, WHITE, 'Need, with Text > White changed')
+	eq(l.Pass, RED, 'Pass, with Text > Danger changed'); eq(l.Greed, YELLOW, 'Greed, with Text > Caution changed')
+	eq(l.Need, WHITE, 'Need, with Text > Strong changed')
 	for key, rgb in pairs(text) do set(colors.text[key], unpack(rgb)) end
 
 	local pass = { colors.loot.pass:GetRGB() }
@@ -166,16 +166,16 @@ test("the paired counts and the feed's roll tooltip read Loot: All passed and Pa
 	for _, line in ipairs(lines) do
 		if line.text:find('Pass: ', 1, true) then passed = line.text end
 	end
-	check(passed and passed:find('^|cffdc6464Pass: |r'), 'Pass: in Loot > Pass, not the changed Text > Red: ' .. tostring(passed))
+	check(passed and passed:find('^|cffdc6464Pass: |r'), 'Pass: in Loot > Pass, not the changed Text > Danger: ' .. tostring(passed))
 
-	-- The winner's line stays Text > Green (not a Loot color).
+	-- The winner's line stays Text > Success (not a Loot color).
 	local doubles = {}
 	tooltip.AddDoubleLine = function(_, _, _, _, _, _, r, g, b) doubles[#doubles + 1] = T.rgb(r, g, b) end
 	local green = { colors.text.success:GetRGB() }
 	set(colors.text.success, 0.1, 0.2, 0.3)
 	local winning = { { name = 'Aa', state = S.NeedMainSpec, roll = 50 } }
 	LT:AddRollLines(tooltip, { list = winning, winner = 1 }, false)
-	eq(doubles[1], T.rgb(0.1, 0.2, 0.3), "the winner's roll in Text > Green")
+	eq(doubles[1], T.rgb(0.1, 0.2, 0.3), "the winner's roll in Text > Success")
 	set(colors.text.success, unpack(green))
 
 	set(colors.text.danger, unpack(text))

@@ -50,6 +50,7 @@ function INV:CreateCategory()
 	category.slotPool = pool
 	return category
 end
+st.config.profile.colors.text.normal:SetRGB(0.1, 0.6, 0.3) -- not the default, so a literal text color fails
 INV:InitializeCurrencyCategory()
 local button = category.filterButton
 
