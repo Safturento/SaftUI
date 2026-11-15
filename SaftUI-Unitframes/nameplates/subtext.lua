@@ -149,6 +149,7 @@ local function GetConfigTable(unit)
 		name = 'Subtext',
 		-- Right after Name's tab (5), before Castbar's (6).
 		order = 5.5,
+		saved = UF.SavedIn(unit, 'subtext'),
 		get = function(info) return Config()[info[#info]] end,
 		set = function(info, value)
 			Config()[info[#info]] = value
@@ -164,6 +165,7 @@ local function GetConfigTable(unit)
 				desc = "The subtext's color.",
 				type = 'color',
 				size = 'small',
+				saved = UF.SavedAt(unit, 'subtext', 'color'),
 				get = function()
 					local color = Config().color
 					return color.r, color.g, color.b
@@ -184,7 +186,8 @@ local function GetConfigTable(unit)
 					Update()
 				end,
 				UF:ConfigTarget(unit, 'Subtext'),
-				"Where the subtext sits: which of its points goes to which point of what it's attached to, then moved by X and Y."
+				"Where the subtext sits: which of its points goes to which point of what it's attached to, then moved by X and Y.",
+				nil, UF.SavedAt(unit, 'subtext', 'position')
 			),
 		},
 	}

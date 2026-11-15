@@ -190,12 +190,16 @@ local function NameplateGeneral()
 		width = G.width(5, "Enemy nameplates' width: the health bar and the area you click. The game stacks every nameplate at this size."),
 		height = G.height(6, "Enemy nameplates' height: the health bar and the area you click. The game stacks every nameplate at this size."),
 	}
+	-- Width and Height have a get of their own, which hands on to the group's.
+	args.width.saved = UF.SavedIn('nameplate')
+	args.height.saved = UF.SavedIn('nameplate')
 	HideWhileChecked('nameplate', args, PLATE_PAGES.nameplate.keptGeneral)
 
 	return {
 		order = 0,
 		name = 'General',
 		type = 'group',
+		saved = UF.SavedIn('nameplate'),
 		get = function(info) return Config()[info[#info]] end,
 		set = function(info, value)
 			Config()[info[#info]] = value
@@ -219,6 +223,8 @@ local function FriendlyNameplateGeneral()
 
 	local friendly = G.toggle(1, 'Friendly plates',
 		"Shows nameplates over friendly players and NPCs: SaftUI's outside instances, Blizzard's inside them. Off, friendly units have none.", 'small')
+	-- Read and written on the Enemy page's config, so saved there.
+	friendly.saved = UF.SavedAt('nameplate', 'friendly')
 	friendly.get = function() return UF:GetProfileConfig().nameplate.friendly end
 	friendly.set = function(_, value)
 		UF:GetProfileConfig().nameplate.friendly = value
@@ -237,12 +243,15 @@ local function FriendlyNameplateGeneral()
 		width = G.width(5, "Friendly nameplates' width, centred on the plate: the area you click. While enemy nameplates use this page, the game stacks every nameplate at this size."),
 		height = G.height(6, "Friendly nameplates' height, centred on the plate: the area you click. While enemy nameplates use this page, the game stacks every nameplate at this size."),
 	}
+	args.width.saved = UF.SavedIn('friendlynameplate')
+	args.height.saved = UF.SavedIn('friendlynameplate')
 	HideWhileChecked('friendlynameplate', args, PLATE_PAGES.friendlynameplate.keptGeneral)
 
 	return {
 		order = 0,
 		name = 'General',
 		type = 'group',
+		saved = UF.SavedIn('friendlynameplate'),
 		get = function(info) return Config()[info[#info]] end,
 		set = function(info, value)
 			Config()[info[#info]] = value

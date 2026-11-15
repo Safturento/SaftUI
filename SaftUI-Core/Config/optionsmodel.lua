@@ -114,7 +114,9 @@ local st = SaftUI
 	info:
 	  default = {
 	    differs = function(info) -> bool,  -- the value isn't its default now
-	    reset = function(info),            -- puts the default back (no confirm)
+	    reset = function(info),            -- puts the default back (no confirm);
+	                                       -- return false, message to refuse it
+	                                       -- (the status line shows the message)
 	    value = function(info) -> ...,     -- the default as get gives it (a
 	                                       -- color's r, g, b[, a]), which the
 	                                       -- icon's tooltip names by the row's
@@ -1111,7 +1113,8 @@ function OM.HandDiffers(root, row)
 end
 
 -- Puts the row's default back: its hand default.reset(info) through safecall
--- (true when it ran, false when it errored: the error goes to the handler),
+-- (true when it ran, false when it errored: the error goes to the handler, or
+-- when it returned false and a message, which comes back as the message),
 -- else, for a mover's Position or a derived default, optionsdefault.lua's
 -- OM.SourceReset (ok, and the message of a failed one). false when there is
 -- no reset.
@@ -1125,7 +1128,12 @@ function OM.DefaultReset(root, row)
 	local func = default.reset
 	if type(func) ~= 'function' then return false end
 	local info = BuildInfo(row.option, Options(root), row.path)
-	return (safecall(func, info)) and true or false
+	-- A reset that returns false and a message (a validation it refused) fails
+	-- with it; anything else it returns counts as done.
+	local ran, refused, message = safecall(func, info)
+	if not ran then return false end
+	if refused == false then return false, message end
+	return true
 end
 
 -- The color option's toggle (SaftUI's field, read raw: never inherited), or nil.

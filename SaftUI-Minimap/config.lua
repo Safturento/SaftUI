@@ -91,6 +91,7 @@ function MM:GetConfigTable()
 				type = 'group',
 				order = 1,
 				get = function(info) return self.config[info[#info]] end,
+				saved = st.Config.SavedIn('minimap'),
 				set = function(info, value) self.config[info[#info]] = value; self:UpdateConfig() end,
 				args = {
 					theme = st.Config.generators.theme(1, "The minimap's border and background."),

@@ -15,6 +15,7 @@
 -- feed.lua, filter.lua and progress.lua, Core's helpers, the
 -- theme engine and Core's Utilities (the feed's item quality overlay).
 load_core_helpers()
+load_editmode()
 local T = load_test_file('lib/theme_helpers.lua')
 local drawn = T.watch()
 load_saftui('SaftUI-Core/Utilities/utilities.lua')
@@ -55,6 +56,45 @@ test('loot defaults look as they did', function()
 	for key, old in pairs(OLD) do
 		T.check_default(profile.loot[key], old, 'loot.' .. key)
 	end
+end)
+
+test('every value row of the Loot page has a reset', function()
+	-- Rolls and Feed rows, each Position through its mover; the updates the sets run are not under test.
+	LT.rollAnchor = CreateFrame('Frame', nil, UIParent)
+	LT.rollAnchor:SetSize(200, 40)
+	LT.rollAnchor:SetPoint('CENTER')
+	LT.feed = CreateFrame('Frame', nil, UIParent)
+	LT.feed:SetSize(200, 40)
+	LT.feed:SetPoint('CENTER')
+	local updateRolls, updateFeed, updatePopup = LT.UpdateGroupLootConfig, LT.UpdateLootFeedConfig, LT.UpdatePopup
+	function LT:UpdateGroupLootConfig() end
+	local fed = 0
+	function LT:UpdateLootFeedConfig() fed = fed + 1 end
+	function LT:UpdatePopup() end
+	LT:RegisterRollMover()
+	st:RegisterConfigMover(LT.feed, {
+		key = 'lootfeed', label = 'Loot Feed', config = function() return LT.config.feed end,
+		apply = function() end, configPath = { 'Loot', 'feed', 'general' }, module = 'Loot',
+		defaults = function() return st.defaults.loot.feed end,
+	})
+	local R = load_test_file('lib/reset_walk.lua')
+	local ok, err = pcall(R.check_page, { Loot = LT:GetConfigTable() }, 'Loot')
+	if ok then
+		-- A reset applies on screen: the feed's Spacing goes through the page's set, which updates the feed.
+		local root = { Loot = LT:GetConfigTable() }
+		local row = { option = root.Loot.args.feed.args.general.args.spacing, path = { 'Loot', 'feed', 'general', 'spacing' },
+			type = 'range', key = 'spacing' }
+		profile.loot.feed.spacing = st.defaults.loot.feed.spacing + 4
+		fed = 0
+		ok, err = pcall(function()
+			check(st.OptionsModel.DefaultReset(root, row), 'the reset ran')
+			eq(profile.loot.feed.spacing, st.defaults.loot.feed.spacing, "the feed's Spacing is back at its default")
+			eq(fed, 1, 'and the feed was updated')
+		end)
+	end
+	LT.UpdateGroupLootConfig, LT.UpdateLootFeedConfig, LT.UpdatePopup = updateRolls, updateFeed, updatePopup
+	LT.rollAnchor, LT.feed = nil, nil
+	if not ok then error(err, 0) end
 end)
 
 test('each page offers Theme and Background, not Template', function()

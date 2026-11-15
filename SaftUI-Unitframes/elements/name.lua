@@ -82,7 +82,8 @@ local function GetConfigTable(unit)
 				UF:UpdateConfig(unit, 'Name')
 			end,
 			UF:ConfigTarget(unit, 'Name'),
-			"Where the name sits: which of its points goes to which point of what it's attached to, then moved by X and Y."
+			"Where the name sits: which of its points goes to which point of what it's attached to, then moved by X and Y.",
+			nil, UF.SavedAt(unit, 'name', 'position')
 		),
 	}
 	-- The st:name tag (tags.lua) marks rare, elite and world boss units, and
@@ -102,6 +103,7 @@ local function GetConfigTable(unit)
 		type = 'group',
 		name = 'Name',
 		order = 5,
+		saved = UF.SavedIn(unit, 'name'),
 		get = function(info)
 			return UnitConfig().name[info[#info]]
 		end,

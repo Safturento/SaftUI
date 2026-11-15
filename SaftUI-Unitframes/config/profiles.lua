@@ -186,6 +186,7 @@ function UF.GenerateProfileConfigGroup()
 				name = 'Profile',
 				desc = 'The unit frame profile being edited. Every unit frame uses it.',
 				size = 'wide',
+				noReset = 'Chooses the unit frame profile in use.',
 				values = get_profiles,
 				get = function(info)
 					st.Config:Refresh()
