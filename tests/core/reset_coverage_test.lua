@@ -122,3 +122,98 @@ test('every page is walked', function()
 		check(Walks(source, entry.page), ('%s (page %s) is not walked: call R.check_page(root, %q) in %s'):format(path, entry.page, entry.page, entry.test))
 	end
 end)
+
+------------------------------------------------------------------ the world builds the whole page
+
+-- A walk checks the rows its world builds. A file that defines options and is not loaded by the world
+-- is a part of a page nobody walks (the plate pages' Subtext tab was missed that way). So every file
+-- the TOCs load that defines options (lib/options_files.lua states the rule) is either a page above, a
+-- part of a page (PARTS: the file and the test whose world must load it), or an exception with its
+-- reason (OF.EXCEPTIONS); and the world of its test names it.
+local OF = load_test_file('lib/options_files.lua')
+
+-- Files that define a part of a page, not a page: the test that walks that page.
+local PARTS = {
+	['SaftUI-Unitframes/elements/'] = 'unitframes/config_test.lua', -- a folder: every element file
+	['SaftUI-Unitframes/config/position.lua'] = 'unitframes/config_test.lua',
+	['SaftUI-Unitframes/config/groupoptions.lua'] = 'unitframes/config_test.lua',
+	['SaftUI-Unitframes/nameplates/threat.lua'] = 'unitframes/config_test.lua',
+	['SaftUI-Unitframes/nameplates/subtext.lua'] = 'unitframes/config_test.lua',
+	['SaftUI-Unitframes/nameplates/options.lua'] = 'unitframes/config_test.lua',
+	['SaftUI-ActionBars/textoptions.lua'] = 'actionbars/page_test.lua',
+	['SaftUI-Bags/categoriestab.lua'] = 'bags/categories_editor_test.lua',
+}
+
+-- The text of a test world: the test, the helper files it loads (load_test_file, to two levels) and
+-- the core shell's loader (load_core_helpers).
+local function WorldText(testPath)
+	local seen, parts = {}, {}
+	local function Add(path, depth)
+		if seen[path] then return end
+		seen[path] = true
+		local source = read_test_source(path)
+		if not source then return end
+		parts[#parts + 1] = source
+		if depth < 3 then
+			local _, code = L.Lex(source)
+			for helper in source:gmatch("load_test_file%('([^']+)'%)") do Add(helper, depth + 1) end
+		end
+	end
+	Add(testPath, 1)
+	parts[#parts + 1] = read_test_source('lib/shell.lua') or ''
+	return table.concat(parts, '\n')
+end
+
+-- Worlds that load an addon's whole TOC by a helper of their own: the helper call, and the folder it loads.
+local WHOLE_TOC = { ['TW.toc_files()'] = 'SaftUI-Tracker/' }
+
+-- Whether a world's text loads path: it names the path, loads every option file under a folder with
+-- OF.Files, or calls a helper that loads the addon's whole TOC.
+local function Loads(world, path)
+	if world:find("'" .. path .. "'", 1, true) then return true end
+	for call, prefix in pairs(WHOLE_TOC) do
+		if path:sub(1, #prefix) == prefix and world:find(call, 1, true) then return true end
+	end
+	for prefix in world:gmatch("OF%.Files%('([^']*)'%)") do
+		if path:sub(1, #prefix) == prefix then return true end
+	end
+	return false
+end
+
+test('every file that defines options is a page, a part of a page or an exception, and its test world loads it', function()
+	local worlds = {}
+	local function World(testPath)
+		worlds[testPath] = worlds[testPath] or WorldText(testPath)
+		return worlds[testPath]
+	end
+	local files = OF.Files()
+	check(#files > 20, 'the rule finds the option files (' .. #files .. ')')
+	for _, path in ipairs(files) do
+		local test = PAGES[path] and PAGES[path].test or PARTS[path]
+		for prefix, partTest in pairs(PARTS) do
+			if prefix:sub(-1) == '/' and path:sub(1, #prefix) == prefix then test = partTest end
+		end
+		if not test then
+			check(false, path .. ' defines options (lib/options_files.lua): add it to PAGES, to PARTS with the test that walks its page, or to OF.EXCEPTIONS with a reason')
+		else
+			check(Loads(World(test), path), ('%s defines options but %s does not load it: the walk would never meet its rows'):format(path, test))
+		end
+	end
+	for path in pairs(OF.EXCEPTIONS) do
+		check(read_saftui_source(path) ~= nil, path .. ' is in OF.EXCEPTIONS but is not there')
+	end
+	for path, test in pairs(PARTS) do
+		check(read_test_source(test) ~= nil, path .. "'s test file " .. test .. ' is not there')
+		check(not PAGES[path], path .. ' is a page and a part')
+		check(path:sub(-1) == '/' or read_saftui_source(path) ~= nil, path .. ' is in PARTS but is not there')
+	end
+end)
+
+test('the rule that finds option files', function()
+	check(OF.Defines('local o = st.Config.generators.toggle(1)'), 'a generator call')
+	check(OF.Defines('function UF:GetConfigTable() end'), 'a page')
+	check(OF.Defines('saved = UF.SavedIn(unit)'), 'a saved field')
+	check(not OF.Defines('-- generators are in Core\nlocal x = "SavedIn"'), 'not a comment or a string')
+	check(not OF.Defines('local x = 1'), 'not a plain file')
+end)
+

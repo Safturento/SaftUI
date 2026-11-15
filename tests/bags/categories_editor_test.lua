@@ -664,3 +664,16 @@ test('the rule editor fits its pane: a long row wraps, every field clear of the 
 	eq(#take_errors(), 0, 'no errors')
 	st.Config:Close()
 end)
+
+-- The reset walk over the editor's own options (a body of its own, not a page of the options tree): a
+-- field added with no reset fails here. Each kind of category has its own rows.
+test("every value row of the Categories editor has a reset, for a shipped category, the sets entry, Miscellaneous and your own", function()
+	world()
+	local RW = load_test_file('lib/reset_walk.lua')
+	local mine = INV:AddUserCategory()
+	local walked = 0
+	for _, id in ipairs({ 'Trade Goods', SETS, MISC, SELL, mine }) do
+		walked = walked + RW.check_page({ category = INV:CategoryEditorOptions(id) }, 'category')
+	end
+	check(walked >= 12, 'the walk met the editors\' rows (' .. walked .. ')')
+end)

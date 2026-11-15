@@ -158,9 +158,11 @@ test('Tooltip: Theme, Background and Font read and write the profile, and a Them
 end)
 
 test('Totem bar: one small color per element, read and written as the bar reads them, applied at once', function()
-	for _, file in ipairs({ 'totembar', 'totemlayout', 'totemposition', 'totemoptions' }) do
-		load_saftui('SaftUI-Misc/' .. file .. '.lua') -- the TOC's order
-	end
+	-- the TOC's order
+	load_saftui('SaftUI-Misc/totembar.lua')
+	load_saftui('SaftUI-Misc/totemlayout.lua')
+	load_saftui('SaftUI-Misc/totemposition.lua')
+	load_saftui('SaftUI-Misc/totemoptions.lua')
 	local TB = st:GetModule('TotemBar')
 	TB.bar = CreateFrame('Frame', 'ScratchTotemBar', UIParent)
 	TB.holder = CreateFrame('Frame', nil, UIParent)

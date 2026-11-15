@@ -92,10 +92,10 @@ load_saftui('SaftUI-Unitframes/updaters.lua')
 load_saftui('SaftUI-Unitframes/nameplates/nameplates.lua')
 load_saftui('SaftUI-Unitframes/nameplates/threat.lua')
 load_saftui('SaftUI-Unitframes/nameplates/options.lua')
--- elements/elements.xml's order; aurawatch.lua and portrait.lua register nothing.
-for _, file in ipairs({ 'name', 'auras', 'power', 'additionalpower', 'health', 'castbar', 'classpower', 'indicators' }) do
-	load_saftui('SaftUI-Unitframes/elements/' .. file .. '.lua')
-end
+-- Every element file the TOC loads that defines options (lib/options_files.lua's rule), in the TOC's
+-- order: a new element cannot be missed by the walk. (aurawatch.lua and portrait.lua register nothing.)
+local OF = load_test_file('lib/options_files.lua')
+for _, path in ipairs(OF.Files('SaftUI-Unitframes/elements/')) do load_saftui(path) end
 -- The name tag (tags.lua), with LibStringFormat-1.0, which init.lua makes
 -- st.StringFormat.
 UF.oUF = { Tags = { Events = {}, Methods = {} }, colors = { class = st.config.profile.colors.class } }
