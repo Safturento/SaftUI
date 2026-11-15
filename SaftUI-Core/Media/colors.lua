@@ -66,7 +66,12 @@ local function Resolve(group, key, level)
 	end
 	-- Every color AceDB fills has the methods; a bare table (a hand edit, or a
 	-- migration's write into a group that wasn't a table) reads as the default.
-	if type(saved) == 'table' and saved.GetRGB then return saved end
+	-- A channel that is no number (only a hand edit of the saved file makes
+	-- one) reads as the default, so no reader meets it.
+	if type(saved) == 'table' and saved.GetRGB and type(saved.r) == 'number' and type(saved.g) == 'number'
+		and type(saved.b) == 'number' and (saved.a == nil or type(saved.a) == 'number') then
+		return saved
+	end
 	return default
 end
 
