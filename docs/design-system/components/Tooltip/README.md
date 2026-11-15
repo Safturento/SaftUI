@@ -6,7 +6,7 @@ The game's tooltip in SaftUI's theme: a `tooltip`-kind frame holding a white tit
 
 - Every option row: its `desc` is its label's tooltip.
 - Every icon that stands in for a word (reset, diff, links, close, the loot feed's buttons): the tooltip says what it does.
-- A disabled row: the tooltip adds why, in red.
+- A disabled row: the tooltip adds why, in Text > Danger.
 - In the world: units, items, buttons, as Blizzard shows them, in SaftUI's frame.
 
 ## What the consumer provides
@@ -21,12 +21,12 @@ The game's tooltip in SaftUI's theme: a `tooltip`-kind frame holding a white tit
 | --- | --- | --- |
 | Frame | GameTooltip drawn as the `tooltip` kind by Misc's skin (`st:SetBackdropIn`), see-through at 0.9 | `backdrop`, `border`, `alpha-theme` |
 | Lines | the Normal font object on every line (AgencyFB Bold 16, OUTLINE) | `normal` |
-| Title | white | `white` |
+| Title | white | `text-strong` |
 | Desc | GameTooltip's default line colour, Blizzard's gold, because the kit passes none | `tooltip-gold` |
-| Why it's disabled | Text > Red | `text-red` |
+| Why it's disabled | Text > Danger | `text-danger` |
 | Diff tooltip | the name, "All bars: value", then two columns: member names, then their values in the accent | `accent` |
 | Unit tooltips | the border and status bar in the unit's class or reaction colour | `class-*`, `reaction-*` |
-| Item tooltips | the border in the item's quality colour; the Bags add "Category:" in blue and "Caught by:" in yellow | `quality-*`, `accent`, `text-yellow` |
+| Item tooltips | the border in the item's quality colour; the Bags add "Category:" in blue and "Caught by:" in yellow | `quality-*`, `accent`, `text-caution` |
 
 Padding and line spacing are Blizzard's.
 

@@ -14,7 +14,7 @@ The frame (or holder) with a real size, a `label` (the frame's name as the sideb
 
 | Part | Value | Tokens |
 | --- | --- | --- |
-| Outline | 1px `white`, outside the frame's rect by the theme's inset (2 under Thick, between the dark lines; 1 under Thin) | `white`, `line-width` |
+| Outline | 1px `text-strong`, outside the frame's rect by the theme's inset (2 under Thick, between the dark lines; 1 under Thin) | `text-strong`, `line-width` |
 | Fill | black at 30% | `mover-fill` |
 | Label | `pixel`, white, centred | `pixel` |
 | Selected | outline `accent`, fill `accent-tint` (accent at 15%), label `accent` | `accent`, `accent-tint` |

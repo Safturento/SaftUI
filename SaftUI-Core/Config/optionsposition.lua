@@ -13,7 +13,7 @@ local floor = math.floor
 local Box, Edge, BlizzardLook, DropdownStates = W.Box, W.Edge, W.BlizzardLook, W.DropdownStates
 local LookDropdown = W.LookDropdown
 local Base, builders, define, BUILT_IN = Kit.Base, Kit.builders, Kit.define, Kit.BUILT_IN
-local Colors, SetFieldFont, NewText = Kit.Colors, Kit.SetFieldFont, Kit.NewText
+local SetFieldFont, NewText = Kit.SetFieldFont, Kit.NewText
 local LookInput, LookLine, PaintFace = Kit.LookInput, Kit.LookLine, Kit.PaintFace
 local Caret, ListEntries = Kit.Caret, Kit.ListEntries
 
@@ -38,7 +38,7 @@ local DOT_GREY = { 0.333, 0.333, 0.333 }
 local function PaintDot(dot)
 	local r, g, b
 	if dot.hovered then
-		r, g, b = Colors().text.normal:GetRGB()
+		r, g, b = st:Color('text', 'normal'):GetRGB()
 	elseif dot.picked then
 		r, g, b = st:Color('accent'):GetRGB()
 	else
@@ -248,7 +248,7 @@ define('position', {
 			fs:ClearAllPoints()
 			fs:SetPoint('TOPLEFT', frame, 'TOPLEFT', x, 0)
 			fs:SetWidth(width)
-			fs:SetTextColor(Colors().text.muted:GetRGB())
+			fs:SetTextColor(st:Color('text', 'muted'):GetRGB())
 			fs:Show()
 			captions[#captions + 1] = fs
 			local at = x
@@ -281,7 +281,7 @@ define('position', {
 			axis[2]:ClearAllPoints()
 			axis[2]:SetPoint('TOPLEFT', frame, 'TOPLEFT', offsetAt + POS_AXIS + POS_AXIS_GAP, y)
 			SetFieldFont(axis[1])
-			axis[1]:SetTextColor(Colors().text.normal:GetRGB())
+			axis[1]:SetTextColor(st:Color('text', 'normal'):GetRGB())
 		end
 		wipe(self.captions)
 		for i, fs in ipairs(captions) do self.captions[i] = fs end

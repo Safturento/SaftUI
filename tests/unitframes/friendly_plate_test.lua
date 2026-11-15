@@ -102,7 +102,8 @@ local function check_enemy(st, UF, frame, label)
 	eq(frame.Name:IsShown(), true, label .. ': the name shown')
 	eq(select(2, frame.Name:GetPoint(1)), frame.Health, label .. ': the name on the bar')
 	eq(NP.ouf.tags[frame.Name], '[st:name(nameplate)]', label .. ": the name's tag reads Enemy nameplates")
-	eq(name_text(UF, frame), hex(st, st.config.profile.colors.text.red) .. frame.__unit .. '|r', label .. ': the name in the hostile colour')
+	st.config.profile.colors.text.danger:SetRGB(0.9, 0.2, 0.2) -- not the default, so a hardcoded red fails
+	eq(name_text(UF, frame), hex(st, st.config.profile.colors.text.danger) .. frame.__unit .. '|r', label .. ': the name in the hostile colour')
 	for _, name in ipairs({ 'Castbar', 'QuestIndicator' }) do
 		eq(frame:IsElementEnabled(name), true, label .. ': ' .. name .. ' enabled in oUF')
 		eq(frame[name]:IsShown(), true, label .. ': ' .. name .. ' left to oUF')

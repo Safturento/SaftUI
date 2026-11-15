@@ -114,18 +114,18 @@ end
 ------------------------------------------------------------------ colors
 
 -- The color of a state of a text: Text > Normal, the two Objectives colors,
--- Text > Muted, white, the accent (Theme > Accent), or the quest's difficulty
+-- Text > Muted, Text > Strong, the accent (Theme > Accent), or the quest's difficulty
 -- color. Read at draw time and never kept, so a Colors tab change is seen by
 -- the next draw and by TR:ColorRows.
 local function StateColor(state, difficulty)
 	local colors = Colors()
 	if state == 'completed' then return colors.objectives.completed:GetRGB() end
 	if state == 'failed' then return colors.objectives.failed:GetRGB() end
-	if state == 'muted' then return colors.text.muted:GetRGB() end
-	if state == 'white' then return 1, 1, 1 end
+	if state == 'muted' then return st:Color('text', 'muted'):GetRGB() end
+	if state == 'strong' then return st:Color('text', 'strong'):GetRGB() end
 	if state == 'accent' then return st:Color('accent'):GetRGB() end
 	if state == 'difficulty' and difficulty then return difficulty.r, difficulty.g, difficulty.b end
-	return colors.text.normal:GetRGB()
+	return st:Color('text', 'normal'):GetRGB()
 end
 
 local function Paint(fs, state, difficulty)
@@ -771,7 +771,7 @@ local function DrawQuest(self, row, entry, p, width)
 				bar.fill:SetShown(fill > 0)
 			end
 			TR.SetText(bar.label, line.text)
-			Paint(bar.label, 'white')
+			Paint(bar.label, 'strong')
 		else
 			if part.bar then Shown(part.bar, false) end
 			Shown(part.fs, true)

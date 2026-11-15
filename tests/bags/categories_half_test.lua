@@ -23,12 +23,12 @@ local open, half, tab, row_of, ids, wheel = CW.open, CW.half, CW.tab, CW.row_of,
 local click, tick, yes, cursor_on, drag_frame = CW.click, CW.tick, CW.yes, CW.cursor_on, CW.drag_frame
 local SELL, MISC = CW.SELL, CW.MISC
 
--- The tip a kit button gives, as 'title | line | red:line'.
+-- The tip a kit button gives, as 'title | line | danger:line'.
 local function tip_text(button)
 	local title, lines = button.tip(button)
 	local out = { title }
 	for _, line in ipairs(lines or {}) do
-		out[#out + 1] = type(line) == 'table' and ((line.red and 'red:' or '') .. line.text) or line
+		out[#out + 1] = type(line) == 'table' and ((line.danger and 'danger:' or '') .. line.text) or line
 	end
 	return table.concat(out, ' | ')
 end
@@ -309,7 +309,7 @@ test('previous and next step through the categories, each disabled at its end', 
 	local list = INV:GetCategoryList()
 	local w = tab()
 	check(w.prevButton.disabled, 'no previous at the first')
-	eq(tip_text(w.prevButton), 'Previous category | red:This is the first category.')
+	eq(tip_text(w.prevButton), 'Previous category | danger:This is the first category.')
 	eq(tip_text(w.nextButton), 'Next category')
 	check(not w.nextButton.disabled)
 	click(w.prevButton)
@@ -332,7 +332,7 @@ test('previous and next step through the categories, each disabled at its end', 
 	eq(INV.categoryEditor.selected, MISC, 'the last is Miscellaneous')
 	eq(w.menuButton.place:GetText(), #list .. ' of ' .. #list)
 	check(w.nextButton.disabled, 'no next at the last')
-	eq(tip_text(w.nextButton), 'Next category | red:This is the last category.')
+	eq(tip_text(w.nextButton), 'Next category | danger:This is the last category.')
 	click(w.nextButton)
 	eq(INV.categoryEditor.selected, MISC, 'not wrapping round')
 	-- The list shows the selected row when the menu opens.

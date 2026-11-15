@@ -157,6 +157,9 @@ local EXPECTED = {
 	['factions.Alliance'] = RGB(0, 0.1, 0.94), ['factions.Horde'] = RGB(1, 100/255, 100/255), ['factions.Neutral'] = RGB(200/255, 200/255, 0),
 	['accent'] = RGB(0.7, 0.68, 0.94),
 	['text.muted'] = RGB(0.4, 180/255, 180/255), -- Text > Grey's default was 180 when step 3 shipped
+	['text.strong'] = RGB(1, 0.9, 1), ['text.danger'] = RGB(1, 100/255, 100/255), ['text.warning'] = RGB(220/255, 0.2, 100/255),
+	['text.caution'] = RGB(200/255, 200/255, 0), ['text.success'] = RGB(0.5, 240/255, 60/255), ['text.shared'] = RGB(120/255, 202/255, 0.2),
+	['button.danger'] = RGB(0.9, 0.1, 0.1),
 }
 test('a profile saved before any of this runs every step at once, in order', function()
 	fresh(on(OLD_SAVED()))
@@ -346,4 +349,156 @@ test('step 3: a grey changed after the step ran is Muted now, and a switch to an
 	eq(rgb(st.config.profile.colors.text.muted), RGB(180/255, 180/255, 0.1), 'a copy carries it')
 	st.config.profile.colors.text.muted:SetRGB(0.1, 0.1, 0.1); st.config:ResetProfile()
 	eq(rgb(st.config.profile.colors.text.muted), GREY180, 'a reset puts the default back')
+end)
+
+
+-- Step 4: the state colors take their roles' names. It runs after step 1 read
+-- text.white, yellow, red and green for Loot, Roles and Factions.
+
+local STATE = { 'strong', 'danger', 'warning', 'caution', 'success', 'shared' }
+local OLD_STATE = { 'white', 'red', 'orange', 'yellow', 'green', 'cyan' }
+
+test('step 4: each state color takes its hue, and Buttons > Danger takes Buttons > Red, never its alpha', function()
+	fresh(on({ colors = { text = { white = { g = 0.9 }, red = { r = 1 }, orange = { g = 0.2 }, yellow = { b = 0 },
+		green = { r = 0.5 }, cyan = { b = 0.2 } }, button = { red = { r = 0.9, a = 0.5 } } } }))
+	local c = st.config.profile.colors
+	eq(rgb(c.text.strong), RGB(1, 0.9, 1)); eq(rgb(c.text.danger), RGB(1, 100/255, 100/255))
+	eq(rgb(c.text.warning), RGB(220/255, 0.2, 100/255)); eq(rgb(c.text.caution), RGB(200/255, 200/255, 0))
+	eq(rgb(c.text.success), RGB(0.5, 240/255, 60/255)); eq(rgb(c.text.shared), RGB(120/255, 202/255, 0.2))
+	eq(rgb(c.button.danger), RGB(0.9, 0.1, 0.1)); eq(c.button.danger.a, st.defaults.colors.button.danger.a, "Buttons > Danger's own opacity, not Red's 0.5")
+	for _, key in ipairs(STATE) do check(c.text[key].GetRGB, key .. ': the methods are kept') end
+	eq(c.loot.pass.r, 1, 'the same source fed step 1'); eq(c.roles.HEALER.r, 0.5)
+	for _, k in ipairs(OLD_STATE) do eq(rawget(c.text, k), nil, k) end
+	eq(rawget(c.button, 'red'), nil)
+	st.config:SetProfile('Two')
+	local saved = SaftUI_DB.profiles.Old.colors
+	eq(saved.text.danger.r, 1); eq(saved.text.danger.g, nil, 'AceDB keeps only the channel that differs')
+	eq(saved.button.danger.r, 0.9); eq(saved.button.danger.a, nil)
+end)
+
+test('step 4: step by step across builds (Review Focus 5)', function()
+	local raw = { colors = { version = 1, loot = { pass = { r = 0.3 } }, text = { red = { g = 0.5 } } } }
+	st:MigrateColors(raw)
+	eq(rgb(raw.colors.text.danger), RGB(220/255, 0.5, 100/255))
+	eq(raw.colors.loot.pass.r, 0.3); eq(raw.colors.loot.pass.g, nil, 'step 1 is not run again: Pass keeps what step 1 gave it')
+	eq(raw.colors.roles, nil, 'and no role is made'); eq(raw.colors.version, LAST())
+	raw = { colors = { version = 3, text = { red = { r = 1 }, green = { g = 0.1 } }, loot = {} } }
+	st:MigrateColors(raw)
+	eq(raw.colors.text.danger.r, 1); eq(rgb(raw.colors.text.success), RGB(60/255, 0.1, 60/255)); eq(raw.theme, nil, 'steps 1 to 3 are not run again')
+	eq(raw.colors.loot.pass, nil)
+end)
+
+test('step 4: a version-0 profile feeds Pass, Damage and Horde and Danger from the same Text > Red', function()
+	local raw = { colors = { text = { red = { r = 1 } } } }
+	st:MigrateColors(raw)
+	for _, path in ipairs({ 'loot.pass', 'roles.DAMAGER', 'factions.Horde', 'text.danger' }) do
+		eq(rgb(Slot(raw, path)), RGB(1, 100/255, 100/255), path)
+	end
+	eq(raw.colors.text.red, nil)
+end)
+
+test('step 4: untouched, nothing is written and nothing is saved', function()
+	fresh(on({}))
+	for _, key in ipairs(STATE) do eq(rgb(st.config.profile.colors.text[key]), rgb(st.defaults.colors.text[key]), key) end
+	eq(rgb(st.config.profile.colors.button.danger), RGB(0.6, 0.1, 0.1))
+	st.config:SetProfile('Two')
+	eq(SaftUI_DB.profiles.Old.colors.text, nil, 'no Text group saved'); eq(SaftUI_DB.profiles.Old.colors.button, nil)
+	local raw = { colors = {} }
+	st:MigrateColors(raw); eq(raw.colors.text, nil, 'no group made'); eq(raw.colors.button, nil); eq(raw.colors.version, LAST())
+end)
+
+test('step 4: a partial color has its missing channels filled from the frozen old default, never an alpha', function()
+	local raw = { colors = { version = 3, text = { white = { g = 0.5, a = 0.2 }, cyan = { r = 'x', b = 0.9 }, orange = { r = 0 } },
+		button = { red = { g = 0.4, a = 0.1 } } } }
+	st:MigrateColors(raw)
+	eq(rgb(raw.colors.text.strong), RGB(1, 0.5, 1)); eq(raw.colors.text.strong.a, nil)
+	eq(rgb(raw.colors.text.shared), RGB(120/255, 202/255, 0.9), "a channel that isn't a number takes the old default's")
+	eq(rgb(raw.colors.text.warning), RGB(0, 150/255, 100/255))
+	eq(rgb(raw.colors.button.danger), RGB(0.6, 0.4, 0.1)); eq(raw.colors.button.danger.a, nil)
+end)
+
+test('step 4: a color still at its old default (an opacity alone, or to the byte) copies nothing', function()
+	for _, grey in ipairs({ { a = 0.3 }, {}, { r = 1 }, { r = 1 - 0.001 } }) do
+		local raw = { colors = { version = 3, text = { white = grey } } }
+		st:MigrateColors(raw)
+		eq(raw.colors.text.strong, nil, 'no Strong written'); eq(raw.colors.text.white, nil, 'but White is retired')
+	end
+	local raw = { colors = { version = 3, text = { red = { r = 220/255 + 0.001 } }, button = { red = { a = 0.3 } } } }
+	st:MigrateColors(raw)
+	eq(raw.colors.text.danger, nil); eq(raw.colors.button.danger, nil, "Buttons > Red's opacity alone copies nothing")
+end)
+
+test('step 4: a color written into one that is there, else made with its group', function()
+	local danger = { r = 0.1, g = 0.1, b = 0.1, a = 0.7 }
+	local raw = { colors = { version = 3, text = { danger = danger, red = { r = 0.5 } } } }
+	st:MigrateColors(raw)
+	check(raw.colors.text.danger == danger, 'in place'); eq(danger.r, 0.5); eq(danger.g, 100/255); eq(danger.a, 0.7, 'never an alpha')
+	raw = { colors = { version = 3, text = 'x', button = { red = { r = 0.5 } } } }
+	st:MigrateColors(raw)
+	eq(rgb(raw.colors.button.danger), RGB(0.5, 0.1, 0.1), 'Buttons > Danger made'); eq(raw.colors.text, 'x', 'a Text that is not a table is left alone')
+end)
+
+test('step 4: dead keys are retired even when they are not tables, and nothing raises', function()
+	local raw = { colors = { version = 3, text = { white = 5, red = 'x', orange = true, yellow = {}, green = 0, cyan = 'y' }, button = { red = 5 } } }
+	check(pcall(st.MigrateColors, st, raw))
+	for _, k in ipairs(OLD_STATE) do eq(raw.colors.text[k], nil, k) end
+	eq(raw.colors.button.red, nil)
+	for _, key in ipairs(STATE) do eq(raw.colors.text[key], nil, key .. ': nothing copied from a value that is no color') end
+end)
+
+test('step 4 by version: 0 runs every step, 1 to 3 run from the next one, the last step runs nothing', function()
+	local function profile(version)
+		return { colors = { version = version, text = { red = { r = 1 }, white = { g = 0.9 }, grey = { r = 0.4 } }, button = { blue = { r = 0.5 }, red = { r = 0.9 } } } }
+	end
+	local raw = profile(0); st:MigrateColors(raw)
+	eq(raw.colors.loot.pass.r, 1, 'step 1'); eq(raw.theme.accent.r, 0.5, 'step 2'); eq(raw.colors.text.muted.r, 0.4, 'step 3')
+	eq(raw.colors.text.danger.r, 1, 'step 4'); eq(raw.colors.text.strong.g, 0.9); eq(raw.colors.button.danger.r, 0.9); eq(raw.colors.version, LAST())
+	raw = profile(2); st:MigrateColors(raw)
+	eq(raw.colors.loot, nil); eq(raw.theme, nil); eq(raw.colors.text.muted.r, 0.4, 'step 3 runs'); eq(raw.colors.text.danger.r, 1, 'step 4 runs')
+	raw = profile(3); st:MigrateColors(raw)
+	eq(raw.colors.text.muted, nil, 'step 3 is not run again'); eq(raw.colors.text.grey.r, 0.4); eq(raw.colors.text.danger.r, 1, 'step 4 runs'); eq(raw.colors.button.red, nil)
+	raw = profile(LAST()); st:MigrateColors(raw)
+	eq(raw.colors.text.danger, nil, 'at the last step nothing runs'); eq(raw.colors.text.red.r, 1, 'and the old keys are left as they are'); eq(raw.colors.version, LAST())
+	raw = profile(LAST() + 5); st:MigrateColors(raw)
+	eq(raw.colors.version, LAST() + 5, 'a version above the last is never lowered'); eq(raw.colors.text.danger, nil)
+end)
+
+test('step 4 on a real AceDB at version 0 to 3, and run twice', function()
+	for version = 0, 3 do
+		fresh(on({ colors = { version = version, text = { red = { r = 0.3 }, cyan = { g = 0.1 } }, button = { red = { b = 0.9 } } } }))
+		local c = st.config.profile.colors
+		eq(c.text.danger.r, 0.3, 'version ' .. version); eq(rgb(c.text.shared), RGB(120/255, 0.1, 250/255)); eq(c.button.danger.b, 0.9)
+		eq(c.version, LAST())
+		local once = Dump(c)
+		st:MigrateColors(st.config.profile); eq(Dump(st.config.profile.colors), once, 'run twice: no change')
+	end
+	local raw = { colors = { text = { red = { r = 0.3 }, white = { r = 0.5 } }, button = { red = { r = 0.9 } } } }
+	st:MigrateColors(raw); local once = Dump(raw)
+	st:MigrateColors(raw); eq(Dump(raw), once, 'raw data, run twice')
+end)
+
+test('step 4: a switch to, a copy from and a reset of an unmigrated profile carry the state colors', function()
+	fresh(on({}))
+	SaftUI_DB.profiles.Two = { colors = { text = { orange = { r = 1 } }, button = { red = { g = 0.9 } } } }
+	SaftUI_DB.profiles.Three = { colors = { version = 3, text = { yellow = { b = 0.1 } } } }
+	st.config:SetProfile('Two')
+	eq(st.config.profile.colors.text.warning.r, 1); eq(st.config.profile.colors.button.danger.g, 0.9); eq(st.config.profile.colors.version, LAST())
+	st.config:SetProfile('Old'); st.config:CopyProfile('Three')
+	eq(rgb(st.config.profile.colors.text.caution), RGB(200/255, 200/255, 0.1), 'a copy from a profile at version 3: step 4 alone')
+	st.config.profile.colors.text.caution:SetRGB(0.1, 0.1, 0.1); st.config:ResetProfile()
+	eq(rgb(st.config.profile.colors.text.caution), YELLOW, 'a reset puts the default back')
+end)
+
+test('step 4 in combat: a switch migrates at once', function()
+	fresh(on({})); SaftUI_DB.profiles.Two = { colors = { text = { red = { r = 1 } } } }
+	stub.in_combat = true; st.config:SetProfile('Two')
+	eq(st.config.profile.colors.text.danger.r, 1); eq(#stub.blocked, 0); stub.in_combat = false
+end)
+
+test('the frozen table holds every retired key, and is unchanged since Task 3', function()
+	local old = st:GetModule('Colors').OLD_COLORS
+	local want = { 'text.grey', 'text.white', 'text.red', 'text.orange', 'text.yellow', 'text.green', 'text.blue', 'text.purple', 'text.cyan',
+		'button.red', 'button.green', 'button.blue', 'button.yellow', 'button.grey' }
+	for _, key in ipairs(want) do check(old[key], key) end
+	eq(rgb(old['text.cyan']), RGB(120/255, 202/255, 250/255)); eq(rgb(old['button.red']), RGB(0.6, 0.1, 0.1)); eq(old['button.red'].a, 0.8)
 end)

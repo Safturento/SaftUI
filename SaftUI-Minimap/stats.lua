@@ -4,10 +4,9 @@ local MicroMenu = st:GetModule('MicroMenu')
 local BUTTON_WIDTH = 48
 
 local function getColorGradient(percent, inverted)
-    local colors = st.config.profile.colors.text
-    local badR, badG, badB = colors.orange:GetRGB()
-    local okayR, okayG, okayB = colors.yellow:GetRGB()
-    local goodR, goodG, goodB = colors.green:GetRGB()
+    local badR, badG, badB = st:Color('text', 'warning'):GetRGB()
+    local okayR, okayG, okayB = st:Color('text', 'caution'):GetRGB()
+    local goodR, goodG, goodB = st:Color('text', 'success'):GetRGB()
 
     if inverted then
         return st:ColorGradient(percent,

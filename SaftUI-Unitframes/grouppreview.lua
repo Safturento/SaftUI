@@ -170,7 +170,6 @@ end
 local function FillPreviewFrame(frame, member)
 	local colors = UF.oUF.colors
 	local classColor = AsColor(colors.class[member.class])
-	local textColors = st.config.profile.colors.text
 
 	local health = frame.Health
 	local healthConfig = health.config
@@ -276,7 +275,7 @@ local function FillPreviewFrame(frame, member)
 				text = st.StringFormat:ColorString(text, classColor:GetRGB())
 			end
 		elseif nameConfig.color_hostile and member.reaction < 5 then
-			local hostile = member.reaction < 3 and textColors.red or textColors.yellow
+			local hostile = st:Color('text', member.reaction < 3 and 'danger' or 'caution')
 			text = st.StringFormat:ColorString(text, hostile:GetRGB())
 		end
 		name:SetText(text)

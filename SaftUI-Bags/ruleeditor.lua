@@ -85,11 +85,11 @@ local FIELD_WIDTH, MODE_WIDTH, YES_NO_WIDTH, COUNT_WIDTH = 150, 80, 60, 90
 -- INV.DragParts (dragparts.lua): what the rule editor and the Categories tab
 -- both draw and drag with.
 local D = INV.DragParts
-local Colors, Muted, Text, TextWidth, Inside = D.Colors, D.Muted, D.Text, D.TextWidth, D.Inside
+local Muted, Text, TextWidth, Inside = D.Muted, D.Text, D.TextWidth, D.Inside
 
 -- A group's color: AND the accent, OR orange (Text > Orange).
 local function OpColor(op)
-	if op == 'or' then return Colors().text.orange:GetRGB() end
+	if op == 'or' then return st:Color('text', 'warning'):GetRGB() end
 	return st:Color('accent'):GetRGB()
 end
 
@@ -779,7 +779,7 @@ local function RowFrame(w, i)
 	remove.icon:SetTexture(st.icons.x)
 	remove.icon:SetSize(20, 20) -- a 10 px cross in the middle
 	remove.icon:SetPoint('CENTER', remove, 'CENTER', 0, 0)
-	remove:SetScript('OnEnter', function(self) self.icon:SetVertexColor(Colors().text.red:GetRGB()) end)
+	remove:SetScript('OnEnter', function(self) self.icon:SetVertexColor(st:Color('text', 'danger'):GetRGB()) end)
 	remove:SetScript('OnLeave', function(self) self.icon:SetVertexColor(Muted()) end)
 	remove:SetScript('OnClick', function()
 		local record = w.rows[i]
@@ -821,7 +821,7 @@ local function LayRow(w, i, row, top)
 	f.connector:ClearAllPoints()
 	f.connector:SetPoint('TOPLEFT', f, 'TOPLEFT', lineX, -(ROW_HEIGHT - LINE_WIDTH) / 2)
 	f.tint:SetPoint('TOPLEFT', f, 'TOPLEFT', x - 4, 0)
-	local r, g, b = Colors().text.orange:GetRGB()
+	local r, g, b = st:Color('text', 'warning'):GetRGB()
 	f.tint:SetColorTexture(r, g, b, st.TINT_ROW)
 
 	local known = row.kind == 'group' or (row.kind == 'block' and KnownBlock(row.node))

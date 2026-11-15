@@ -13,7 +13,7 @@ local format = string.format
 
 local Box, Edge, HoverEdge, BlizzardLook = W.Box, W.Edge, W.HoverEdge, W.BlizzardLook
 local FIELD_HEIGHT, Base, builders, define = Kit.FIELD_HEIGHT, Kit.Base, Kit.builders, Kit.define
-local BG, Colors, FIELD_FONT_SIZE, SetFieldFont = Kit.BG, Kit.Colors, Kit.FIELD_FONT_SIZE, Kit.SetFieldFont
+local BG, FIELD_FONT_SIZE, SetFieldFont = Kit.BG, Kit.FIELD_FONT_SIZE, Kit.SetFieldFont
 local NewText, Art, Changes, Piece, HidePieces = Kit.NewText, Kit.Art, Kit.Changes, Kit.Piece, Kit.HidePieces
 local ShowBox, LookInput, CheckBox = Kit.ShowBox, Kit.LookInput, Kit.CheckBox
 local LookCheckBox, SetCheck = Kit.LookCheckBox, Kit.SetCheck
@@ -376,10 +376,10 @@ define('color', {
 			self.text:SetPoint('LEFT', self.frame, 'LEFT', self.startX, 0)
 			self.text:SetPoint('RIGHT', self.frame, 'RIGHT', -CODE_GAP, 0)
 			self.text:SetText(state.offText)
-			self.text:SetTextColor(Colors().text.muted:GetRGB())
+			self.text:SetTextColor(st:Color('text', 'muted'):GetRGB())
 		else
 			self.text:SetText(HexText(self.r, self.g, self.b, self.a, self.hasAlpha))
-			self.text:SetTextColor(Colors().text.normal:GetRGB())
+			self.text:SetTextColor(st:Color('text', 'normal'):GetRGB())
 		end
 	end,
 
@@ -653,7 +653,7 @@ define('description', {
 		end
 		self.fullText = text
 		self.text:SetText(text)
-		self.text:SetTextColor(Colors().text.normal:GetRGB())
+		self.text:SetTextColor(st:Color('text', 'normal'):GetRGB())
 		local justify = OM.Member(self.root, self.row, 'justifyH')
 		self.text:SetJustifyH(JUSTIFY_H[justify] and justify or 'LEFT')
 		self:ShowImage()

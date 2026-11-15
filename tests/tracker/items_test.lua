@@ -586,7 +586,7 @@ test('the look: icon crop, kind action in the tracker\'s pair, cooldown, count, 
 	check(watcher:GetScript('OnUpdate') ~= nil, 'the range timer runs while a button shows')
 	stub.quests.log[3].item.range = 0 -- quest 2 walks out of range (its entry is log[3]: the header is first)
 	stub.fire_script(watcher, 'OnUpdate', 0.1)
-	local red = ('%.2f %.2f %.2f'):format(st.config.profile.colors.text.red:GetRGB())
+	local red = ('%.2f %.2f %.2f'):format(st.config.profile.colors.text.danger:GetRGB())
 	local function icon_color(b) return ('%.2f %.2f %.2f'):format(b.icon:GetVertexColor()) end
 	check(icon_color(two) ~= red, 'not read before the interval')
 	stub.fire_script(watcher, 'OnUpdate', 0.15)
@@ -1881,7 +1881,7 @@ for _, placement in ipairs({ 'row', 'beside' }) do
 		stub.fire_script(TR.itemWatcher, 'OnUpdate', 1)
 		eq(stub.state(b.cooldown).cooldown_duration, 30, 'the swipe is drawn from its own read')
 		eq(b.range, 0, 'and the range from the watcher')
-		local red = ('%.2f %.2f %.2f'):format(st.config.profile.colors.text.red:GetRGB())
+		local red = ('%.2f %.2f %.2f'):format(st.config.profile.colors.text.danger:GetRGB())
 		eq(('%.2f %.2f %.2f'):format(b.icon:GetVertexColor()), red, 'out of range: red')
 		-- A scroll, a collapse and a size change all place the items again.
 		TR:PlaceItems()

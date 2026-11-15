@@ -54,7 +54,7 @@ end
 -- A button's glyph is drawn in Colors -> Text -> Normal.
 local function ColorGlyph(button)
 	for _, piece in ipairs(button.glyph) do
-		piece:SetColorTexture(st.config.profile.colors.text.normal:GetRGB())
+		piece:SetColorTexture(st:Color('text', 'normal'):GetRGB())
 	end
 end
 

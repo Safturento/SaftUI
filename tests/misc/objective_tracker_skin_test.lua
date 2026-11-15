@@ -47,6 +47,7 @@ local function world(client, opts)
 	apply_defaults()
 	profile = st.config.profile
 	profile.colors.text.muted:SetRGB(0.2, 0.4, 0.6) -- not the default, so a reader that draws a grey of its own fails
+	profile.colors.text.strong:SetRGB(0.8, 0.3, 0.6) -- the same for a white (the chevron under the mouse)
 	if opts.off then profile.skinning.objective_tracker = false end
 	if opts.late then stub.installed_addons.Blizzard_ObjectiveTracker = true end
 	load_saftui('SaftUI-Misc/Skinning/skinning.lua')
@@ -149,7 +150,7 @@ local function check_header(header, where)
 	local tints = {}
 	for _, icon in ipairs(icons) do tints[T.rgb(icon:GetVertexColor())] = true end
 	check(tints['0.20,0.40,0.60'], where .. ': the chevron at rest is Text > Muted')
-	check(tints['1.00,1.00,1.00'], where .. ': and its hover is white')
+	check(tints['0.80,0.30,0.60'], where .. ': and its hover is Text > Strong')
 end
 
 local function check_header_blizzard(header, where)

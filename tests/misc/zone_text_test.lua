@@ -300,9 +300,9 @@ test('a Factions change recolors a line still on screen, and a Text > Red change
 
 	-- A Text change still reaches the zone line (its ordinary text), and no
 	-- faction takes it.
-	local red = st.config.profile.colors.text.red
-	st.config.profile.colors.text.red = CreateColor(0, 1, 0)
+	local red = st.config.profile.colors.text.danger
+	st.config.profile.colors.text.danger = CreateColor(0, 1, 0)
 	st:ColorsChanged('text')
 	check(ZT.ZoneLineString:GetText():find('|cff00adf0Alliance|r', 1, true), 'Alliance keeps its own: ' .. ZT.ZoneLineString:GetText())
-	st.config.profile.colors.text.red = red
+	st.config.profile.colors.text.danger = red
 end)

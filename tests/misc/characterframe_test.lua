@@ -65,12 +65,14 @@ local function parts(button)
 	return text, back
 end
 
-test("an equipment slot's item level is in the Skinning font, white, on a dark backing", function()
+test("an equipment slot's item level is in the Skinning font, Text > Strong, on a dark backing", function()
+	profile.colors.text.strong:SetRGB(0.4, 0.8, 0.2) -- not the default, so a hardcoded white fails
+	SK:UpdateConfig()
 	local text, back = parts(buttons.Head)
 	check(text ~= nil and back ~= nil, 'a text and a backing were added')
 	eq(text:GetFontObject(), st:GetFont(profile.skinning.font), 'the Skinning font, not Blizzard\'s')
 	local r, g, b = text:GetTextColor()
-	local wr, wg, wb = profile.colors.text.white:GetRGB()
+	local wr, wg, wb = profile.colors.text.strong:GetRGB()
 	eq(r .. ',' .. g .. ',' .. b, wr .. ',' .. wg .. ',' .. wb, 'white')
 	eq(back:GetAlpha(), 0.8, 'the backing is 0.8 alpha')
 	eq(table.concat({ back:GetVertexColor() }, ','), '0,0,0,1', 'and black')
@@ -115,7 +117,7 @@ test('a change of the Skinning font reaches the text without a reload', function
 			local text = parts(buttons[name])
 			eq(text:GetFontObject(), st:GetFont('pixel_med'), name .. ' follows the font')
 			local r, g, b = text:GetTextColor()
-			local wr, wg, wb = profile.colors.text.white:GetRGB()
+			local wr, wg, wb = profile.colors.text.strong:GetRGB()
 			eq(r .. ',' .. g .. ',' .. b, wr .. ',' .. wg .. ',' .. wb, name .. ' stays white')
 		end
 	end)

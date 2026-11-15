@@ -143,10 +143,11 @@ test('a preview shows a boss: a name, full health in the hostile reaction color,
 	check(npc_class, 'NPC class gives an NPC class color: ' .. color)
 	P.boss.health.colorClassNPC = false
 
-	-- Color hostile reds a hostile name, as the name tag does.
+	-- Color hostile reds a hostile name, as the name tag does (Danger, at a value that is not the default, so a hardcoded red fails).
+	profile_colors.text.danger:SetRGB(0.9, 0.2, 0.2)
 	P.boss.name.color_hostile = true
 	UF:UpdateGroupPreview('boss')
-	local red = st.StringFormat:ToHex(profile_colors.text.red:GetRGB())
+	local red = st.StringFormat:ToHex(profile_colors.text.danger:GetRGB())
 	check(previews()[1].Name:GetText():find('|cff' .. red, 1, true), 'a hostile name in red: ' .. previews()[1].Name:GetText())
 	P.boss.name.color_hostile = false
 

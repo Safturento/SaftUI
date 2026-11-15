@@ -136,11 +136,11 @@ function INV:AssignSlot(container, slot, slotInfo)
 
 	if (slot.info.class == 'Armor' or slot.info.class == 'Weapon') then
 		if slot.info.isWarbound then
-			slot.itemLevel:SetTextColor(st.config.profile.colors.text.cyan:GetRGB())
+			slot.itemLevel:SetTextColor(st:Color('text', 'shared'):GetRGB())
 		elseif slot.info.isBoE then
-			slot.itemLevel:SetTextColor(st.config.profile.colors.text.green:GetRGB())
+			slot.itemLevel:SetTextColor(st:Color('text', 'success'):GetRGB())
 		else
-			slot.itemLevel:SetTextColor(st.config.profile.colors.text.white:GetRGB())
+			slot.itemLevel:SetTextColor(st:Color('text', 'strong'):GetRGB())
 		end
 
 		slot.itemLevel:SetFormattedText('%s',slot.info.ilvl)
@@ -226,11 +226,10 @@ end
 function INV:CategoryTooltipLines(info)
 	if type(info) ~= 'table' or info.empty or info.loading or info.category == nil then return {} end
 	local key = info.category
-	local colors = st.config.profile.colors.text
 	local name = tostring(self:CategoryName(key)):gsub('|', '||')
 	local place = self:CategoryPlace(key)
 	local first = 'Category: ' .. name
-	if place then first = first .. ' ' .. ColorEscape(colors.muted) .. '(' .. self.Ordinal(place) .. ')|r' end
+	if place then first = first .. ' ' .. ColorEscape(st:Color('text', 'muted')) .. '(' .. self.Ordinal(place) .. ')|r' end
 	local r, g, b = st:Color('accent'):GetRGB()
 	local lines = { { text = first, r = r, g = g, b = b } }
 
@@ -251,7 +250,7 @@ function INV:CategoryTooltipLines(info)
 	if words then
 		-- The words hold the user's typed text: a | in it is shown, not read as an escape.
 		words = words:gsub('|', '||')
-		lines[2] = { text = ColorEscape(colors.yellow) .. 'Caught by: |r' .. words, r = 1, g = 1, b = 1 }
+		lines[2] = { text = ColorEscape(st:Color('text', 'caution')) .. 'Caught by: |r' .. words, r = 1, g = 1, b = 1 }
 	end
 	return lines
 end
@@ -481,7 +480,7 @@ function INV:CreateSlot(container, categoryName)
 	reagentMarker:SetTexCoord(0, 1, 1, 0)
 	reagentMarker:SetPoint('TOPRIGHT', slot.icon, 'TOPRIGHT', 0, 0)
 	reagentMarker:SetSize(st:RoundToPixel(14), st:RoundToPixel(14))
-	reagentMarker:SetVertexColor(st.config.profile.colors.text.green:GetRGB())
+	reagentMarker:SetVertexColor(st:Color('text', 'success'):GetRGB())
 	reagentMarker:Hide()
 	slot.reagentMarker = reagentMarker
 
@@ -504,7 +503,7 @@ function INV:StyleSlot(slot, categoryFrame, container, lineSlots)
 	self:SetSlotPosition(slot, categoryFrame, container, lineSlots)
 	slot:SetSize(self:GetButtonWidth(), self:GetButtonHeight())
 	st:ApplyFont(slot.itemLevel, self.config.fonts.icons)
-	slot.reagentMarker:SetVertexColor(st.config.profile.colors.text.green:GetRGB())
+	slot.reagentMarker:SetVertexColor(st:Color('text', 'success'):GetRGB())
 	self:SkinSlot(slot)
 end
 

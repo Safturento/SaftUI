@@ -169,7 +169,7 @@ function INV:InitializeCurrencyCategory()
     local icon = filterButton:CreateTexture(nil, 'OVERLAY', nil, 7)
     icon:SetTexture(st.textures.filter)
     icon:SetAllPoints(filterButton)
-    icon:SetVertexColor(st.config.profile.colors.text.normal:GetRGB())
+    icon:SetVertexColor(st:Color('text', 'normal'):GetRGB())
     filterButton.icon = icon
 
     filterButton:SetScript('OnEnter', function(button)
@@ -260,9 +260,9 @@ function INV:UpdateCurrencyCategory(forceShow, lineSlots, currencyItems)
 
         slot.Count:SetText(currencyData.quantity)
         if currencyData.isAccountTransferable or currencyData.isAccountWide then
-            slot.Count:SetTextColor(st.config.profile.colors.text.cyan:GetRGB())
+            slot.Count:SetTextColor(st:Color('text', 'shared'):GetRGB())
         else
-            slot.Count:SetTextColor(st.config.profile.colors.text.white:GetRGB())
+            slot.Count:SetTextColor(st:Color('text', 'strong'):GetRGB())
         end
 
         slot:ClearAllPoints()

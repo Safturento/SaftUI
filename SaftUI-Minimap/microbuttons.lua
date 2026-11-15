@@ -136,7 +136,7 @@ local function StyleArt(button)
             flash:SetAtlas(micro.flashBorder)
             flash:SetDrawLayer('OVERLAY', 0)
         else
-            local r, g, b = st.config.profile.colors.text.yellow:GetRGB()
+            local r, g, b = st:Color('text', 'caution'):GetRGB()
             flash:SetColorTexture(r, g, b, ALERT_ALPHA)
             if not button.Portrait then
                 flash:SetDrawLayer('BACKGROUND', 1)

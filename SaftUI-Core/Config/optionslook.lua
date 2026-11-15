@@ -34,7 +34,7 @@ function W.UpdateFonts()
 	if not fieldFont then return end
 	local path, _, flags = st:FontValues('normal')
 	fieldFont:SetFont(path, FIELD_FONT_SIZE, flags)
-	fieldFont:SetTextColor(Colors().text.normal:GetRGB())
+	fieldFont:SetTextColor(st:Color('text', 'normal'):GetRGB())
 end
 
 -- Gives fs the field font, or path at size with flags (each defaulting to the

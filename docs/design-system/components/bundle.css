@@ -15,8 +15,8 @@ svg { display: block; }
 /* text */
 .sui-outline { text-shadow: var(--line-width) 0 0 var(--text-outline), calc(var(--line-width) * -1) 0 0 var(--text-outline), 0 var(--line-width) 0 var(--text-outline), 0 calc(var(--line-width) * -1) 0 var(--text-outline); }
 .sui-muted { color: var(--text-muted); }
-.sui-white { color: var(--white); }
-.sui-red { color: var(--text-red); }
+.sui-strong { color: var(--text-strong); }
+.sui-danger { color: var(--text-danger); }
 .sui-accent { color: var(--accent); }
 .sui-own { color: var(--accent); }
 .sui-gold { color: var(--tooltip-gold); }
@@ -38,8 +38,8 @@ svg { display: block; }
 /* icons: Lucide on a 24 grid, stroke 2, round caps and joins, no fill */
 .sui-ic { fill: none; stroke: var(--text-muted); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 .sui-ic.is-accent { stroke: var(--accent); }
-.sui-ic.is-white { stroke: var(--white); }
-.sui-ic.is-red { stroke: var(--text-red); }
+.sui-ic.is-strong { stroke: var(--text-strong); }
+.sui-ic.is-danger { stroke: var(--text-danger); }
 .sui-ic.is-diff { stroke: var(--text-muted); }
 .sui-ic.is-text { stroke: var(--text); }
 .sui-ic-close { width: var(--icon-close); height: var(--icon-close); }
@@ -60,7 +60,7 @@ svg { display: block; }
 .sui-track { position: relative; width: var(--range-track); height: var(--range-track-height); background: var(--kit-field); border: var(--line-width) solid var(--kit-edge); box-shadow: 0 0 0 var(--line-width) var(--kit-alt); flex: none; }
 .sui-track > i { position: absolute; left: 0; top: 0; bottom: 0; width: var(--p); background: var(--accent); }
 .sui-track > b { position: absolute; left: var(--p); top: 50%; width: var(--knob-width); height: var(--knob-height); margin: calc(var(--knob-height) / -2) 0 0 calc(var(--knob-width) / -2); background: var(--text); }
-.sui-track.is-hover > b { background: var(--white); }
+.sui-track.is-hover > b { background: var(--text-strong); }
 .sui-value { width: var(--range-value); height: var(--field-height); display: flex; align-items: center; justify-content: center; }
 
 /* color field: as wide as a dropdown, drawn as an input (Box): a swatch at its left, then the hex code in text */
@@ -97,11 +97,11 @@ svg { display: block; }
 .sui-hover { height: var(--hover-line); display: flex; align-items: center; gap: var(--diff-gap); color: var(--text-muted); white-space: nowrap; }
 .sui-hover .is-own-word { color: var(--accent); }
 .sui-hover a { color: var(--accent); text-decoration: none; }
-.sui-hover a.is-hover { color: var(--white); }
+.sui-hover a.is-hover { color: var(--text-strong); }
 .sui-hover .sui-ic-reset { margin: 0 calc(var(--reset-gap) - var(--diff-gap)); }
 
 /* the theme's tooltip (GameTooltip under Misc's skin) */
-.sui-tooltip { padding: var(--frame-padding); display: inline-flex; flex-direction: column; color: var(--white); }
+.sui-tooltip { padding: var(--frame-padding); display: inline-flex; flex-direction: column; color: var(--text-strong); }
 
 /* lists (an open dropdown, the check list, the Apply list) */
 .sui-list { width: var(--control-width); padding: var(--line-width); }
@@ -115,4 +115,4 @@ svg { display: block; }
 .sui-iconbtn { position: relative; flex: none; }
 /* the icon sits inside the border and Thick's inner dark line (Thick's inset of 2; Thin's is 1) */
 .sui-iconbtn > .sui-art { position: absolute; inset: var(--line-width); }
-.sui-pixeltext { position: absolute; color: var(--white); line-height: 1; }
+.sui-pixeltext { position: absolute; color: var(--text-strong); line-height: 1; }

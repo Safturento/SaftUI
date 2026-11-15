@@ -36,7 +36,7 @@ test('the role corner takes Roles: Tank, Healer, and Damage with Show damage dea
 
 	-- The accent, Text > Green and Red do not reach any corner.
 	local saved = {}
-	for _, key in ipairs({ 'green', 'red' }) do
+	for _, key in ipairs({ 'success', 'danger' }) do
 		saved[key] = { colors.text[key]:GetRGB() }
 		set(colors.text[key], 0, 0, 0)
 	end
@@ -70,7 +70,7 @@ test("the party preview's corners take Roles too", function()
 	UF.testGroups.party = true
 
 	local saved = {}
-	for _, key in ipairs({ 'green', 'red' }) do
+	for _, key in ipairs({ 'success', 'danger' }) do
 		saved[key] = { colors.text[key]:GetRGB() }
 		set(colors.text[key], 0, 0, 0)
 	end

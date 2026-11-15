@@ -111,8 +111,7 @@ local RESET_SIZE, RESET_GAP = 14, 6
 local WORD_GAP = 4 -- between the line's words and links
 local TITLE_GAP = 8 -- a title's line after its text or icon
 
-local Colors = OB.Colors
-local function Muted() return Colors().text.muted:GetRGB() end
+local function Muted() return st:Color('text', 'muted'):GetRGB() end
 
 ------------------------------------------------------------------ tooltips
 
@@ -265,8 +264,8 @@ local function Piece(host, line, key, frameType)
 	piece:SetScript('OnEnter', function(self)
 		local state = host.shareState
 		Tip(self, TIPS[key](state, SettingName(state, host.shareCell.row.name), host.share))
-		if self.text and self.lit then self.text:SetTextColor(1, 1, 1) end
-		if self.icon then self.icon:SetVertexColor(1, 1, 1) end
+		if self.text and self.lit then self.text:SetTextColor(st:Color('text', 'strong'):GetRGB()) end
+		if self.icon then self.icon:SetVertexColor(st:Color('text', 'strong'):GetRGB()) end
 	end)
 	piece:SetScript('OnLeave', function(self)
 		Untip(self)

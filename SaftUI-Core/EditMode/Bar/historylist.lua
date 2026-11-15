@@ -148,7 +148,7 @@ local function NewRow(i)
 
 	row.revert = W.IconLink(row, st.icons.rotateCcw, REVERT, function(link)
 		if link.disabled then
-			return 'Revert', { { text = link.why or "This can't be reverted.", red = true } }
+			return 'Revert', { { text = link.why or "This can't be reverted.", danger = true } }
 		end
 		return 'Revert', { 'Puts this change back on its own, as a new step. The ones after it stay.' }
 	end)

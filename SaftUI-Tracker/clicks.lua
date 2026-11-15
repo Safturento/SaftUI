@@ -414,7 +414,7 @@ function TR:ShowRowTooltip(row)
 	elseif Call(QuestUtil, 'CanRemoveQuestWatch') == false then
 		shift = 'none'
 	end
-	local r, g, b = st.config.profile.colors.text.muted:GetRGB()
+	local r, g, b = st:Color('text', 'muted'):GetRGB()
 	GameTooltip:AddLine(TR.ClickHint(TR.LeftClick(), TR.ShowOnMapAllowed(), shift), r, g, b, true)
 	GameTooltip:Show()
 end

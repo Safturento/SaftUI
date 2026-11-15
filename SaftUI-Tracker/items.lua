@@ -333,7 +333,7 @@ local function PaintButton(button)
 	if button.tint ~= tint then
 		button.tint = tint
 		if tint == 'red' then
-			button.icon:SetVertexColor(Colors().text.red:GetRGB())
+			button.icon:SetVertexColor(st:Color('text', 'danger'):GetRGB())
 		elseif tint == 'dim' then
 			button.icon:SetVertexColor(0.4, 0.4, 0.4)
 		else
@@ -357,7 +357,7 @@ local function PaintButton(button)
 	if button.countTint ~= out then
 		button.countTint = out
 		if out then
-			button.count:SetTextColor(Colors().text.red:GetRGB())
+			button.count:SetTextColor(st:Color('text', 'danger'):GetRGB())
 		else
 			button.count:SetTextColor(1, 1, 1)
 		end
@@ -464,7 +464,7 @@ function TR:ShowSlotTooltip(slot, row)
 	if slot.mode == 'greyed' then
 		PlaceTip(slot, row)
 		GameTooltip:AddLine(quest.title, 1, 1, 1)
-		local r, g, b = Colors().text.muted:GetRGB()
+		local r, g, b = st:Color('text', 'muted'):GetRGB()
 		GameTooltip:AddLine('Its button comes when combat ends.', r, g, b, true)
 		GameTooltip:Show()
 	else

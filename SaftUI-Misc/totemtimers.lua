@@ -142,7 +142,7 @@ end
 local function ElementColor(slot)
 	local r, g, b = TB:GetElementColor(slot)
 	if r then return r, g, b end
-	return st.config.profile.colors.text.normal:GetRGB()
+	return st:Color('text', 'normal'):GetRGB()
 end
 
 -- Whole seconds rounded up, as m:ss from a minute up and plain seconds below.
@@ -225,7 +225,7 @@ end
 local function WarningCurve(r, g, b)
 	local curve = C_CurveUtil.CreateColorCurve()
 	curve:SetType(Enum.LuaCurveType.Step)
-	curve:AddPoint(0, st.config.profile.colors.text.red)
+	curve:AddPoint(0, st:Color('text', 'danger'))
 	curve:AddPoint(WARNING_SECONDS + 0.001, CreateColor(r, g, b))
 	return curve
 end
@@ -235,7 +235,7 @@ end
 local textCurve
 
 local function TextCurve()
-	textCurve = textCurve or WarningCurve(st.config.profile.colors.text.normal:GetRGB())
+	textCurve = textCurve or WarningCurve(st:Color('text', 'normal'):GetRGB())
 	return textCurve
 end
 
@@ -303,12 +303,11 @@ end
 -- The bar and text in the warning colour, or the bar in its element's colour and the
 -- text in the text colour.
 local function ColorTimer(timer, warning)
-	local colors = st.config.profile.colors.text
 	if warning then
-		timer.text:SetTextColor(colors.red:GetRGB())
-		timer.bar:SetStatusBarColor(colors.red:GetRGB())
+		timer.text:SetTextColor(st:Color('text', 'danger'):GetRGB())
+		timer.bar:SetStatusBarColor(st:Color('text', 'danger'):GetRGB())
 	else
-		timer.text:SetTextColor(colors.normal:GetRGB())
+		timer.text:SetTextColor(st:Color('text', 'normal'):GetRGB())
 		timer.bar:SetStatusBarColor(ElementColor(timer.slot))
 	end
 end

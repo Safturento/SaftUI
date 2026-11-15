@@ -107,7 +107,7 @@ test('the name tag wraps a secret name in its hostile colour with C_StringUtil.W
 	stub.units.target = { name = name, level = 22, reaction = 2 }
 	local text = tag('target', 'target', 'target')
 	check(type(text) == 'table' and text.wrapped == name, 'WrapString got the name')
-	eq(text.prefix, '|cff' .. st.StringFormat:ToHex(st.config.profile.colors.text.red:GetRGB()), 'red before it')
+	eq(text.prefix, '|cff' .. st.StringFormat:ToHex(st.config.profile.colors.text.danger:GetRGB()), 'red before it')
 	eq(text.suffix, '|r', 'and the colour closed after it')
 end)
 test('the name tag leaves out a secret level, reaction or classification, with no error', function()
@@ -130,7 +130,7 @@ test('a secret name keeps the plain level part before it, and a class colour aro
 	name.allCaps, name.showLevel, name.color_hostile, name.colorClass = false, true, false, true
 	stub.units.target = { name = S.secret('NAME'), level = 22, class = 'MAGE', player = true, classification = 'elite', reaction = 5 }
 	local text = tag('target', 'target', 'target')
-	local yellow = st.StringFormat:ToHex(st.config.profile.colors.text.yellow:GetRGB()) -- 22 against the player's 20
+	local yellow = st.StringFormat:ToHex(st.config.profile.colors.text.caution:GetRGB()) -- 22 against the player's 20
 	local mage = st.StringFormat:ToHex(st.config.profile.colors.class.MAGE:GetRGB())
 	check(type(text) == 'table', 'wrapped by the game')
 	eq(text.prefix, '|cff' .. yellow .. '22+|r |cff' .. mage, 'the level and its mark, then the class colour')
@@ -147,8 +147,8 @@ test('a plain name is built as before: the level part, then the name in its host
 	local name = P.target.name
 	name.allCaps, name.showLevel, name.color_hostile, name.colorClass = false, true, true, false
 	stub.units.target = { name = 'Kobold Miner', level = 22, classification = 'rare', reaction = 2 }
-	local yellow = st.StringFormat:ToHex(st.config.profile.colors.text.yellow:GetRGB())
-	local red = st.StringFormat:ToHex(st.config.profile.colors.text.red:GetRGB())
+	local yellow = st.StringFormat:ToHex(st.config.profile.colors.text.caution:GetRGB())
+	local red = st.StringFormat:ToHex(st.config.profile.colors.text.danger:GetRGB())
 	eq(tag('target', 'target', 'target'), '|cff' .. yellow .. '22R|r |cff' .. red .. 'Kobold Miner|r')
 	name.allCaps = true
 	eq(tag('target', 'target', 'target'), '|cff' .. yellow .. '22R|r |cff' .. red .. 'KOBOLD MINER|r', 'All caps')
@@ -172,6 +172,29 @@ test('a level far below the player is Text > Muted (it was Grey), at a Muted tha
 	muted:SetRGB(0.2, 0.4, 0.6)
 	eq(tag('target', 'target', 'target'), '|cff336699' .. '5|r Mob', 'the level in Muted')
 	muted:SetRGB(unpack(keep))
+	stub.units.target = nil
+end)
+
+test('a level tag takes its role by the difference from the player (20): Danger, Warning, Caution, Success, Muted, at odd values', function()
+	local name = P.target.name
+	name.allCaps, name.showLevel, name.color_hostile, name.colorClass = false, true, false, false
+	local text = st.config.profile.colors.text
+	local odd = { danger = { 0.9, 0.2, 0.2 }, warning = { 0.8, 0.4, 0.1 }, caution = { 0.7, 0.7, 0.2 }, success = { 0.2, 0.9, 0.3 }, muted = { 0.3, 0.3, 0.9 } }
+	local keep = {}
+	for key, c in pairs(odd) do keep[key] = { text[key]:GetRGB() }; text[key]:SetRGB(unpack(c)) end
+	local function level_hex(level)
+		stub.units.target = { name = 'Mob', level = level, classification = 'normal', reaction = 5 }
+		return tag('target', 'target', 'target')
+	end
+	local function paint(key, level) return '|cff' .. st.StringFormat:ToHex(unpack(odd[key])) .. level .. '|r Mob' end
+	eq(level_hex(25), paint('danger', 25), 'five or more above: Danger')
+	eq(level_hex(23), paint('warning', 23), 'three or four above: Warning')
+	eq(level_hex(21), paint('caution', 21), 'near your level: Caution')
+	eq(level_hex(17), paint('caution', 17), 'three below is still near')
+	eq(level_hex(16), paint('success', 16), 'a lower level: Success')
+	eq(level_hex(10), paint('success', 10), 'ten below')
+	eq(level_hex(9), paint('muted', 9), 'far below: Muted')
+	for key, c in pairs(keep) do text[key]:SetRGB(unpack(c)) end
 	stub.units.target = nil
 end)
 

@@ -151,7 +151,7 @@ local function UpdateThreatText(frame, state, force)
 		return
 	end
 	local colors = st.config.profile.colors
-	local color = TINTED[state] and colors.threat[state] or colors.text.normal
+	local color = TINTED[state] and colors.threat[state] or st:Color('text', 'normal')
 	local shown = shownText[text]
 	if not force and not secret and shown and shown.state == state and shown.percent == percent
 			and shown.r == color.r and shown.g == color.g and shown.b == color.b then

@@ -196,7 +196,7 @@ local function UpdateContainerSlots(container)
 	if total > 0 then
 		text = text .. st.StringFormat:ColorString(
 				(('%d/%d '):format(total - empty, total)),
-				st.config.profile.colors.text.green:GetRGB()
+				st:Color('text', 'success'):GetRGB()
 		)
 	end
 

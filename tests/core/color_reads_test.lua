@@ -4,13 +4,20 @@
 --   A  a retired key (text.purple, text.grey, button.yellow): read as `group.key` or
 --      `group['key']`;
 --   B  a local bound to colors.text or colors.button, read for a retired key
---      of that group;
+--      of that group (a binding of colors.text fails rule D itself);
 --   C  an st:Color or st:ColorRGBA call with a literal group or key that has
 --      no default, or a key given with 'accent';
+--   D  a direct read of a role color: `colors.text`, `colors.roles`,
+--      `colors.factions`, `colors.loot`, `Colors().text` and the like, or
+--      `theme.accent`. Every Text, Roles, Factions, Loot and accent read goes
+--      through st:Color or st:ColorRGBA (Buttons follow in Task 5). Groups
+--      named for game concepts (class, reaction, power, item quality, status,
+--      threat, objectives) keep their own reads;
 --   E  a retired wrapper or constant, by its hue name in code (Blue, LinkBlue,
 --      OWN_TEXT: the accent is OB.Accent and OB.OWN_STRENGTH; Grey, GreyRGB,
 --      DIFF_COLOR: Text > Muted is OB.Muted, and the diff icon is Muted at
---      OB.DIFF_STRENGTH).
+--      OB.DIFF_STRENGTH), and the tip line's field `red = true` (it is
+--      `danger = true`).
 -- SaftUI-Core/Media/colors.lua, which holds the retired keys' old values and
 -- the migration, is exempt from every rule but C (it holds strings of the retired keys today, and from Task 4 the one direct read, rule D's, that the accessor makes: don't remove the exemption as dead). Real: the source files, and
 -- Core's defaults (core/config_helpers.lua).
@@ -23,12 +30,15 @@ local EXEMPT = 'SaftUI-Core/Media/colors.lua'
 
 -- Retired keys by group; a task adds its own.
 local RETIRED = {
-	text = { 'purple', 'blue', 'grey' },
-	button = { 'yellow', 'blue', 'green', 'grey' },
+	text = { 'purple', 'blue', 'grey', 'white', 'red', 'orange', 'yellow', 'green', 'cyan' },
+	button = { 'yellow', 'blue', 'green', 'grey', 'red' },
 }
 
 -- Rule E's identifiers, word-bounded, in code (comments and strings blanked).
 local HUE_NAMES = { 'Blue', 'LinkBlue', 'OWN_TEXT', 'Grey', 'GreyRGB', 'DIFF_COLOR' }
+
+-- Rule D: the groups whose every read goes through the accessor.
+local DIRECT_GROUPS = { 'text', 'roles', 'factions', 'loot' }
 
 local function LineText(source, position)
 	local from = (source:sub(1, position):match('.*\n()') or 1)
@@ -98,6 +108,35 @@ local function Scan(path, source, defaults)
 			end
 		end
 
+		-- D. Direct reads of a role color.
+		for _, group in ipairs(DIRECT_GROUPS) do
+			for _, pattern in ipairs({ 'colors%s*%.%s*' .. group .. '%f[^%w_]', 'Colors%s*%(%s*%)%s*%.%s*' .. group .. '%f[^%w_]' }) do
+				local from = 1
+				while true do
+					local s, e = mask:find(pattern, from)
+					if not s then break end
+					Fail(found, path, 'D direct read', mask, s, source)
+					from = e + 1
+				end
+			end
+			local from = 1
+			while true do
+				local s, e = code:find('colors%s*%[%s*[\'"]' .. group .. '[\'"]', from)
+				if not s then break end
+				Fail(found, path, 'D direct read', mask, s, source)
+				from = e + 1
+			end
+		end
+		for _, pattern in ipairs({ 'theme%s*%.%s*accent%f[^%w_]', 'Theme%s*%(%s*%)%s*%.%s*accent%f[^%w_]' }) do
+			local from = 1
+			while true do
+				local s, e = mask:find(pattern, from)
+				if not s then break end
+				Fail(found, path, 'D direct read', mask, s, source)
+				from = e + 1
+			end
+		end
+
 		-- E. Hue names in code.
 		for _, name in ipairs(HUE_NAMES) do
 			local from = 1
@@ -107,6 +146,14 @@ local function Scan(path, source, defaults)
 				Fail(found, path, 'E hue name', mask, s, source)
 				from = e + 1
 			end
+		end
+		-- E. The tip line's old field.
+		local from = 1
+		while true do
+			local s, e = mask:find('%f[%w_]red%s*=%s*true%f[^%w_]', from)
+			if not s then break end
+			Fail(found, path, 'E hue name', mask, s, source)
+			from = e + 1
 		end
 	end
 
@@ -151,7 +198,16 @@ end
 
 test('the rules, on samples: each fails what it names and passes the rest', function()
 	local d = { text = { normal = 1 }, loot = { pass = 1 } }
-	local function scan(src) return Rules(Scan('sample.lua', src, d)) end
+	-- Rule D has its own samples below; the others' samples read `colors.text` freely.
+	local function without(src, keep)
+		local out = {}
+		for _, f in ipairs(Scan('sample.lua', src, d)) do
+			if (f:match(': ([A-F]) ') == 'D') == keep then out[#out + 1] = f end
+		end
+		return Rules(out)
+	end
+	local function scan(src) return without(src, false) end
+	local function scanD(src) return without(src, true) end
 	-- A
 	eq(scan('local c = st.config.profile.colors.text.purple:GetRGB()'), 'A')
 	eq(scan("local c = colors.button['yellow']"), 'A')
@@ -161,7 +217,15 @@ test('the rules, on samples: each fails what it names and passes the rest', func
 	eq(scan('local c = colors.text.blue:GetRGB()'), 'A')
 	eq(scan('local c = colors.button.blue:GetRGB()'), 'A')
 	eq(scan("local c = colors.button['green']"), 'A')
-	eq(scan('local c = colors.text.green:GetRGB()'), '', 'Text > Green stays until Task 4')
+	eq(scan('local c = colors.text.green:GetRGB()'), 'A', 'Text > Green is Success now')
+	for _, key in ipairs({ 'white', 'red', 'orange', 'yellow', 'cyan' }) do
+		eq(scan('local c = colors.text.' .. key .. ':GetRGB()'), 'A', key)
+	end
+	eq(scan("local c = st.config.profile.colors.text['red']"), 'A')
+	eq(scan('local c = colors.button.red:GetRGB()'), 'A', 'Buttons > Red is Buttons > Danger')
+	eq(scan("local c = colors.button['red']"), 'A')
+	eq(scan('local c = colors.text.reddish'), '', 'a longer name is not the key')
+	eq(Rules(Scan('sample.lua', "local c = st:Color('text', 'danger')\nlocal b = st:Color('button', 'danger')", { text = { danger = 1 }, button = { danger = 1 } })), '', 'the new keys')
 	eq(scan('local c = colors.text.bluegreen'), '', 'a longer name is not the key')
 	eq(scan('local c = colors.text.grey:GetRGB()'), 'A')
 	eq(scan("local c = colors.button['grey']"), 'A')
@@ -173,7 +237,9 @@ test('the rules, on samples: each fails what it names and passes the rest', func
 	eq(scan('local textColors = st.config.profile.colors.text\nlocal c = textColors.blue'), 'B')
 	eq(scan('local textColors = st.config.profile.colors.text\nlocal c = textColors.grey'), 'B')
 	eq(scan("local Buttons = Colors().button\nlocal c = Buttons['grey']"), 'B')
-	eq(scan('local textColors = st.config.profile.colors.text\nlocal c = textColors.normal'), '')
+	eq(scan('local textColors = st.config.profile.colors.text\nlocal c = textColors.normal'), '', 'its own rule is D, below')
+	eq(scan('local textColors = st.config.profile.colors.text\nlocal c = textColors.red'), 'B', 'its retired key too')
+	eq(scan("local Buttons = Colors().button\nlocal c = Buttons['red']"), 'B')
 	eq(scan('local textColors = st.config.profile.colors.loot\nlocal c = textColors.purple'), '', 'only text and button')
 	-- E
 	eq(scan('local r, g, b = OB.Blue()'), 'E')
@@ -189,6 +255,26 @@ test('the rules, on samples: each fails what it names and passes the rest', func
 	eq(scan('local r, g, b = OB.Muted()\nlocal s = OB.DIFF_STRENGTH'), '', 'the new names')
 	eq(scan("-- OB.Grey and DIFF_COLOR\nlocal s = 'GreyRGB'"), '', 'a comment and a string')
 	eq(scan('local DOT_GREY = 1\nlocal Greyed = 2'), '', 'a longer name is not the word')
+	eq(scan('local f = { text = x, red = true }'), 'E', 'the tip line field')
+	eq(scan('local f = { text = x, danger = true }'), '', 'its new name')
+	eq(scan("-- red = true\nlocal s = 'red = true'\nlocal red = 1\nlocal unred = true"), '', 'a comment, a string, a longer or different name')
+	-- D
+	for _, group in ipairs({ 'text', 'roles', 'factions', 'loot' }) do
+		eq(scanD('local c = st.config.profile.colors.' .. group .. '.x'), 'D', group)
+		eq(scanD('local c = Colors().' .. group .. '.x'), 'D', 'Colors() ' .. group)
+		eq(scanD("local c = st.config.profile.colors['" .. group .. "']"), 'D', group .. ' by a string')
+		eq(scanD('local c = colors . ' .. group), 'D', group .. ' with spaces')
+	end
+	eq(scanD('local c = profile.theme.accent'), 'D', 'the accent')
+	eq(scanD('local c = Theme().accent'), 'D', 'the accent through Theme()')
+	eq(scanD('local c = defaults.theme.accent'), 'D', 'the shipped accent too')
+	eq(scanD("local c = st:Color('accent')\nlocal t = st:Color('text', 'normal')\nlocal l = st:Color('loot', 'pass')"), '', 'the accessor')
+	eq(scanD('local c = colors.class.MAGE\nlocal d = colors.threat.bad\nlocal e = colors.button.hover\nlocal f = colors.objectives.failed'), '', 'game-named groups and Buttons keep their reads')
+	eq(scanD("-- colors.text.normal and theme.accent\nlocal s = 'colors.loot'"), '', 'a comment and a string')
+	eq(scanD('local c = config.text.size\nlocal d = self.theme.accents\nlocal e = colors.texture'), '', 'a longer name is not the group')
+	eq(scanD('local textColors = st.config.profile.colors.text\nlocal c = textColors.normal'), 'D', 'a binding of text fails itself')
+	eq(scanD('local c = colors.text.reddish'), 'D', 'a longer key is still a direct read')
+	eq(scanD('local c = colors.texture\nlocal d = Colors().texts'), '', 'a longer name is not the group')
 	-- C
 	eq(scan("local c = st:Color('text', 'normal')"), '')
 	eq(scan("local c = st:Color('text', 'normal2')"), 'C')

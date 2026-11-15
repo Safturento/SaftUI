@@ -377,7 +377,7 @@ test('in combat the count, the cooldown and the range follow the quest while its
 	eq(stub.state(b.cooldown).cooldown_duration, 30, 'and the cooldown')
 	stub.quests.log[3].item.range = 0 -- quest 2's entry
 	stub.fire_script(TR.nearestWatcher, 'OnUpdate', 0.3)
-	local red = ('%.2f %.2f %.2f'):format(st.config.profile.colors.text.red:GetRGB())
+	local red = ('%.2f %.2f %.2f'):format(st.config.profile.colors.text.danger:GetRGB())
 	eq(('%.2f %.2f %.2f'):format(b.icon:GetVertexColor()), red, 'out of range: red, read every 0.2 s')
 	eq(#stub.blocked, 0, 'nothing blocked')
 	TW.combat(false)
@@ -803,7 +803,7 @@ test('the tick keeps the cooldown and the range the button read itself, never th
 	eq(b.range, 0, 'out of range, read live')
 	stub.fire_script(watcher, 'OnUpdate', 0.75)
 	eq(b.range, 0, 'and the choice does not put the model\'s value back')
-	local red = ('%.2f %.2f %.2f'):format(st.config.profile.colors.text.red:GetRGB())
+	local red = ('%.2f %.2f %.2f'):format(st.config.profile.colors.text.danger:GetRGB())
 	eq(('%.2f %.2f %.2f'):format(b.icon:GetVertexColor()), red, 'still red')
 	eq(#take_errors(), 0, 'no errors')
 end)

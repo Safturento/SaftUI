@@ -165,7 +165,7 @@ local function MakeDivider(frame)
 end
 
 local function MutedRGB()
-	return st.config.profile.colors.text.muted:GetRGB()
+	return st:Color('text', 'muted'):GetRGB()
 end
 
 -- SaftUI's header strip fill.

@@ -39,7 +39,7 @@ local floor, max, min, ceil = math.floor, math.max, math.min, math.ceil
 local Box, Edge, DropdownStates = W.Box, W.Edge, W.DropdownStates
 local LookButton, LookDropdown = W.LookButton, W.LookDropdown
 local FIELD_HEIGHT, EDGE, BG = Kit.FIELD_HEIGHT, Kit.EDGE, Kit.BG
-local Colors, NewText = Kit.Colors, Kit.NewText
+local NewText = Kit.NewText
 local arts, Art, Changes, Piece, HidePieces = Kit.arts, Kit.Art, Kit.Changes, Kit.Piece, Kit.HidePieces
 local ShowBox, LookInput = Kit.ShowBox, Kit.LookInput
 local Caret = Kit.Caret
@@ -52,17 +52,17 @@ local NUDGE_WIDTH, NUDGE_BOX, CHEVRON = 14, 22, 12
 ------------------------------------------------------------------ the tooltip
 
 -- Shows a tooltip over owner: title in white, then each line in Text >
--- Normal, or Text > Red for a line given as { text = ..., red = true }
+-- Normal, or Text > Danger for a line given as { text = ..., danger = true }
 -- (design decision 8). anchor is ANCHOR_BOTTOM unless given.
 function W.ShowTip(owner, title, lines, anchor)
 	GameTooltip:SetOwner(owner, anchor or 'ANCHOR_BOTTOM')
 	GameTooltip:ClearLines()
 	GameTooltip:AddLine(title, 1, 1, 1)
 	for _, line in ipairs(lines or {}) do
-		local text, color = line, Colors().text.normal
+		local text, color = line, st:Color('text', 'normal')
 		if type(line) == 'table' then
 			text = line.text
-			if line.red then color = Colors().text.red end
+			if line.danger then color = st:Color('text', 'danger') end
 		end
 		local r, g, b = color:GetRGB()
 		GameTooltip:AddLine(text, r, g, b, true)
@@ -104,7 +104,7 @@ local function Paint(control)
 	end
 	if control.icon then
 		local lit = on or ((control.link or control.hoverIcon) and hovered)
-		local color = lit and st:Color('accent') or Colors().text.muted
+		local color = lit and st:Color('accent') or st:Color('text', 'muted')
 		control.icon:SetVertexColor(color:GetRGB())
 	end
 	-- A label's colour is written only to light it (a button with no icon
@@ -179,7 +179,7 @@ local function NewIcon(button, path, size)
 	local icon = button:CreateTexture(nil, 'OVERLAY')
 	icon:SetTexture(path)
 	icon:SetSize(size or ICON, size or ICON)
-	icon:SetVertexColor(Colors().text.muted:GetRGB())
+	icon:SetVertexColor(st:Color('text', 'muted'):GetRGB())
 	return icon
 end
 
@@ -303,7 +303,7 @@ function W.IconLink(parent, icon, size, tip, extra)
 	link.icon = link:CreateTexture(nil, 'OVERLAY')
 	link.icon:SetTexture(icon)
 	link.icon:SetAllPoints(link)
-	link.icon:SetVertexColor(Colors().text.muted:GetRGB())
+	link.icon:SetVertexColor(st:Color('text', 'muted'):GetRGB())
 	Wire(link)
 	Paint(link)
 	return link
@@ -373,18 +373,18 @@ local function NudgeButton(owner, parent, up, onClick)
 	arrow:SetTexture(up and st.icons.chevronUp or st.icons.chevronDown)
 	arrow:SetSize(CHEVRON, CHEVRON)
 	arrow:SetPoint('TOP', button, 'TOP', 0, 1)
-	arrow:SetVertexColor(Colors().text.muted:GetRGB())
+	arrow:SetVertexColor(st:Color('text', 'muted'):GetRGB())
 	button.arrow = arrow
 	button:SetScript('OnClick', function()
 		if owner.disabled then return end
 		onClick()
 	end)
 	button:SetScript('OnEnter', function(self)
-		if not owner.disabled then self.arrow:SetVertexColor(Colors().text.normal:GetRGB()) end
+		if not owner.disabled then self.arrow:SetVertexColor(st:Color('text', 'normal'):GetRGB()) end
 		owner:Tip(true)
 	end)
 	button:SetScript('OnLeave', function(self)
-		self.arrow:SetVertexColor(Colors().text.muted:GetRGB())
+		self.arrow:SetVertexColor(st:Color('text', 'muted'):GetRGB())
 		owner:Tip(false)
 	end)
 	-- Under Blizzard its stepper art follows the mouse (PaintNudge).

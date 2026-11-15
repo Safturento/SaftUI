@@ -391,11 +391,11 @@ local function ToggleTip()
 	if collapsed then title, line = 'Show the sidebar', 'Shows the page list again.' end
 	local lines = { line }
 	if S.ColorPickerShown() then
-		lines[#lines + 1] = { text = 'Close the color picker first.', red = true }
+		lines[#lines + 1] = { text = 'Close the color picker first.', danger = true }
 	end
 	if collapsed and S.size ~= 'mini' and not OW.Fits(S.layout, S.size, true) then
 		lines[#lines + 1] = { text = S.size == 'full' and 'The screen is too narrow for the sidebar at full size. Shrink to half first.'
-			or 'The screen is too narrow for the sidebar.', red = true }
+			or 'The screen is too narrow for the sidebar.', danger = true }
 	end
 	return title, lines
 end

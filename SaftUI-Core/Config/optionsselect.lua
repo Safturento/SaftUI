@@ -12,7 +12,7 @@ local max, ceil = math.max, math.ceil
 local Box, Edge, HoverEdge, BlizzardLook = W.Box, W.Edge, W.HoverEdge, W.BlizzardLook
 local DropdownStates, LookDropdown = W.DropdownStates, W.LookDropdown
 local FIELD_HEIGHT, Base, builders, define = Kit.FIELD_HEIGHT, Kit.Base, Kit.builders, Kit.define
-local Colors, FIELD_FONT_SIZE, SetFieldFont = Kit.Colors, Kit.FIELD_FONT_SIZE, Kit.SetFieldFont
+local FIELD_FONT_SIZE, SetFieldFont = Kit.FIELD_FONT_SIZE, Kit.SetFieldFont
 local NewText, arts, Art, LookLine, PaintFace = Kit.NewText, Kit.arts, Kit.Art, Kit.LookLine, Kit.PaintFace
 local CheckBox, PlaceCheckArt, LookCheckBox = Kit.CheckBox, Kit.PlaceCheckArt, Kit.LookCheckBox
 local SetCheck = Kit.SetCheck
@@ -27,7 +27,7 @@ local SetCheck = Kit.SetCheck
 local function Caret(parent)
 	local t = parent:CreateTexture(nil, 'OVERLAY')
 	t:SetTexture(st.icons.chevronDown)
-	t:SetVertexColor(Colors().text.muted:GetRGB())
+	t:SetVertexColor(st:Color('text', 'muted'):GetRGB())
 	t:SetSize(16, 16)
 	t:SetPoint('CENTER', parent, 'RIGHT', -12, 0)
 	return { t }

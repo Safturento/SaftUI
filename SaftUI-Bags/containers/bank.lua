@@ -53,7 +53,7 @@ local function CreateBankBagSlot(bar, tab)
 	-- Tints a slot that hasn't been bought yet
 	slot.locked = slot:CreateTexture(nil, 'OVERLAY')
 	slot.locked:SetTexture(st.BLANK_TEX)
-	slot.locked:SetVertexColor(st.config.profile.colors.button.red:GetRGB())
+	slot.locked:SetVertexColor(st:Color('button', 'danger'):GetRGB())
 	slot.locked:SetAlpha(0.3)
 	slot.locked:SetAllPoints()
 
@@ -81,7 +81,7 @@ local function BankBagPurchase_OnEnter(button)
 	end
 
 	if InCombatLockdown() then
-		GameTooltip:AddLine("Can't buy bank slots in combat.", st.config.profile.colors.text.red:GetRGB())
+		GameTooltip:AddLine("Can't buy bank slots in combat.", st:Color('text', 'danger'):GetRGB())
 	end
 	GameTooltip:Show()
 end
@@ -162,7 +162,7 @@ function INV:UpdateBankBagSlots(bar)
 		local tabData = C_Bank.FetchNextPurchasableBankTabData(bankType)
 		local canAfford = tabData and tabData.canAfford
 		local tooExpensive = canAfford ~= nil and not issecretvalue(canAfford) and not canAfford
-		purchase.text:SetTextColor(st.config.profile.colors.text[tooExpensive and 'red' or 'white']:GetRGB())
+		purchase.text:SetTextColor(st:Color('text', tooExpensive and 'danger' or 'strong'):GetRGB())
 	else
 		purchase:Hide()
 	end

@@ -265,7 +265,7 @@ end)
 test('CreateCloseButton: hover turns red, pressed moves the X down 1px, a click hides the frame', function()
 	local frame = st:CreateFrame('Frame', nil, UIParent)
 	local close = st:CreateCloseButton(frame)
-	local red = st.config.profile.colors.text.red
+	local red = st.config.profile.colors.text.danger
 
 	stub.fire_script(close, 'OnEnter')
 	local br, bg, bb = close:GetBackdropBorderColor()

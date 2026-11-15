@@ -11,7 +11,7 @@ local HANDLE_WIDTH = 10
 --[[
 	INV.DragParts: what the rule editor (ruleeditor.lua) and the Categories
 	tab (categoriestab.lua), which load after this file, both draw and drag with.
-	  Colors(), Muted()                the profile's colors; Text > Muted's r, g, b
+	  Muted()                          Text > Muted's r, g, b
 	  Text(parent, font, justify)     a font string that doesn't wrap (the
 	                                  options window's field font by default)
 	  TextWidth(fs)                   its whole text's width, rounded up
@@ -40,8 +40,7 @@ local HANDLE_WIDTH = 10
 local D = {}
 INV.DragParts = D
 
-function D.Colors() return st.config.profile.colors end
-function D.Muted() return D.Colors().text.muted:GetRGB() end
+function D.Muted() return st:Color('text', 'muted'):GetRGB() end
 
 function D.Text(parent, font, justify)
 	local fs = parent:CreateFontString(nil, 'OVERLAY')

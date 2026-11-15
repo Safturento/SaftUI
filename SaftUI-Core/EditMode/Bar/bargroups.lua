@@ -145,7 +145,7 @@ local function GridSize(bar)
 		tip = function()
 			local lines = { ("The gap between the grid's lines, in pixels. The arrows step it by %d."):format(EM.GRID_STEP) }
 			if box.disabled then
-				lines[#lines + 1] = { text = 'Turn on Grid or Snap to grid to use it.', red = true }
+				lines[#lines + 1] = { text = 'Turn on Grid or Snap to grid to use it.', danger = true }
 			end
 			return 'Grid size', lines
 		end,

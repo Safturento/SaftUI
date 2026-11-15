@@ -57,8 +57,8 @@ test('the sections and their colors, in order, as small color swatches with tool
 	eq(table.concat(names, ','), 'Text,Buttons,Class,Roles,Reputation,Factions,Power,Item quality,Loot,Status,Threat,Objectives')
 
 	local expected = {
-		text = 'Text,Muted,Red,Orange,Yellow,Green,Cyan,White',
-		button = 'Normal,Hover,Pushed,Red',
+		text = 'Text,Muted,Strong,Danger,Warning,Caution,Success,Shared',
+		button = 'Normal,Hover,Pushed,Danger',
 		class = 'Death Knight,Demon Hunter,Druid,Evoker,Hunter,Mage,Monk,Paladin,Priest,Rogue,Shaman,Warlock,Warrior',
 		roles = 'Tank,Healer,Damage',
 		factions = 'Alliance,Horde,Neutral',
@@ -135,9 +135,9 @@ test('a set writes onto the profile color itself and says which group changed', 
 	Section('button').args.hover.set({}, 0.1, 0.1, 0.1, 0.5)
 	eq(st.config.profile.colors.button.hover.a, 0.5, 'Buttons write alpha')
 
-	local before = st.config.profile.colors.text.red.a
-	Section('text').args.red.set({}, 0.5, 0.5, 0.5, 0.5)
-	eq(st.config.profile.colors.text.red.a, before, 'Text leaves alpha alone')
+	local before = st.config.profile.colors.text.danger.a
+	Section('text').args.danger.set({}, 0.5, 0.5, 0.5, 0.5)
+	eq(st.config.profile.colors.text.danger.a, before, 'Text leaves alpha alone')
 
 	local renown = st.config.profile.colors.renown
 	Section('reaction').args.renown.set({}, 0.2, 0.3, 0.4)
@@ -219,14 +219,14 @@ test("a color's own reset: it differs once changed, puts back its own color (alp
 	hover.default.reset()
 	eq(st.config.profile.colors.button.hover.a, st.defaults.colors.button.hover.a, 'and its reset puts the opacity back')
 
-	Section('text').args.red.default.reset() -- an earlier case set it
-	local red = st.config.profile.colors.text.red
+	Section('text').args.danger.default.reset() -- an earlier case set it
+	local red = st.config.profile.colors.text.danger
 	local alpha = red.a
 	red.a = 0.3
-	check(not Section('text').args.red.default.differs(), "Text: an alpha the tab can't show is no difference")
+	check(not Section('text').args.danger.default.differs(), "Text: an alpha the tab can't show is no difference")
 	red.r = 0.123
-	Section('text').args.red.default.reset()
-	eq(red.a, st.defaults.colors.text.red.a, 'its reset puts the alpha back with the rest, as the section Reset did')
+	Section('text').args.danger.default.reset()
+	eq(red.a, st.defaults.colors.text.danger.a, 'its reset puts the alpha back with the rest, as the section Reset did')
 	red.a = alpha
 	restore()
 end)
@@ -261,4 +261,29 @@ test('the roll timer bars are not Item quality, Blue is on Theme > Accent, and t
 			check(not row.desc:find(word .. ' on the zone text', 1, true), 'Text ' .. key .. ' no longer names ' .. word)
 		end
 	end
+end)
+
+test('no Text, Buttons, Roles, Factions or Loot row or description names a hue as the name of a color', function()
+	local HUES = { 'red', 'orange', 'yellow', 'green', 'cyan', 'white', 'blue', 'purple', 'grey', 'gray' }
+	for _, key in ipairs({ 'text', 'button', 'roles', 'factions', 'loot' }) do
+		for rowKey, row in pairs(Section(key).args) do
+			local words = (row.name .. ' ' .. row.desc):lower()
+			for _, hue in ipairs(HUES) do
+				check(not words:find('%f[%a]' .. hue .. '%f[%A]'), key .. ' ' .. rowKey .. ' names ' .. hue .. ': ' .. row.desc)
+			end
+		end
+	end
+end)
+
+test('the state colors are the profile objects, each at its old default, and Buttons > Danger keeps its own opacity', function()
+	local text = st.config.profile.colors.text
+	local want = { strong = { 1, 1, 1 }, danger = { 220/255, 100/255, 100/255 }, warning = { 220/255, 150/255, 100/255 },
+		caution = { 200/255, 200/255, 100/255 }, success = { 60/255, 240/255, 60/255 }, shared = { 120/255, 202/255, 250/255 } }
+	for key, c in pairs(want) do
+		eq(text[key].r .. ',' .. text[key].g .. ',' .. text[key].b, c[1] .. ',' .. c[2] .. ',' .. c[3], key)
+	end
+	local danger = st.config.profile.colors.button.danger
+	eq(danger.r .. ',' .. danger.g .. ',' .. danger.b .. ',' .. danger.a, '0.6,0.1,0.1,0.8', 'Buttons > Danger')
+	for _, old in ipairs({ 'white', 'red', 'orange', 'yellow', 'green', 'cyan' }) do eq(rawget(st.defaults.colors.text, old), nil, old .. ' has no default') end
+	eq(rawget(st.defaults.colors.button, 'red'), nil, 'nor Buttons > Red')
 end)

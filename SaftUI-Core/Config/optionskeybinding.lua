@@ -9,7 +9,7 @@ local Kit = W.Kit
 
 local Box, Edge, HoverEdge, BlizzardLook = W.Box, W.Edge, W.HoverEdge, W.BlizzardLook
 local FIELD_HEIGHT, Base, builders, define = Kit.FIELD_HEIGHT, Kit.Base, Kit.builders, Kit.define
-local Colors, NewText, arts, Art, Changes = Kit.Colors, Kit.NewText, Kit.arts, Kit.Art, Kit.Changes
+local NewText, arts, Art, Changes = Kit.NewText, Kit.arts, Kit.Art, Kit.Changes
 local Piece, HidePieces, ShowBox = Kit.Piece, Kit.HidePieces, Kit.ShowBox
 
 ------------------------------------------------------------------ keybinding
@@ -154,10 +154,10 @@ define('keybinding', {
 			self.text:SetTextColor(st:Color('accent'):GetRGB())
 		elseif key and key ~= '' then
 			self.text:SetText(key)
-			self.text:SetTextColor(Colors().text.normal:GetRGB())
+			self.text:SetTextColor(st:Color('text', 'normal'):GetRGB())
 		else
 			self.text:SetText('Not bound')
-			self.text:SetTextColor(Colors().text.muted:GetRGB())
+			self.text:SetTextColor(st:Color('text', 'muted'):GetRGB())
 		end
 	end,
 

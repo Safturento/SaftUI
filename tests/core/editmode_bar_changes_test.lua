@@ -184,17 +184,17 @@ test('Undo, Redo and Reset are enabled by what they can do, and their tooltips n
 	hover(undo)
 	eq(lines[1].text, 'Undo', 'Undo titled')
 	eq(lines[2].text, 'Nothing to undo.', 'and says why')
-	eq(lines[2].color, rgb(colors().text.red), 'in red')
+	eq(lines[2].color, rgb(colors().text.danger), 'in red')
 	unhover(undo)
 	hover(redo)
 	eq(lines[1].text, 'Redo', 'Redo titled')
 	eq(lines[2].text, 'Nothing to redo.', 'and says why')
-	eq(lines[2].color, rgb(colors().text.red), 'in red')
+	eq(lines[2].color, rgb(colors().text.danger), 'in red')
 	unhover(redo)
 	hover(rst)
 	eq(lines[1].text, 'Reset', 'Reset titled')
 	eq(lines[2].text, 'Select a frame first.', 'with no selection')
-	eq(lines[2].color, rgb(colors().text.red), 'in red')
+	eq(lines[2].color, rgb(colors().text.danger), 'in red')
 	unhover(rst)
 
 	drag(player, 40, 0)
@@ -219,7 +219,7 @@ test('Undo, Redo and Reset are enabled by what they can do, and their tooltips n
 	check(rst.disabled, 'Player is at its default again: Reset is off')
 	hover(rst)
 	eq(lines[2].text, 'Player is already in its default place.', 'and says so')
-	eq(lines[2].color, rgb(colors().text.red), 'in red')
+	eq(lines[2].color, rgb(colors().text.danger), 'in red')
 	unhover(rst)
 
 	-- A step with no mover to name says what it is.
@@ -637,7 +637,7 @@ test("a row's revert shows on applied steps, enabled only when nothing later tou
 	check(older.revert.disabled, "disabled: Player moved again later")
 	hover(older.revert)
 	eq(lines[2].text, 'Changed again later: go back to this point instead.', 'its tooltip says why')
-	eq(lines[2].color, rgb(colors().text.red), 'in red')
+	eq(lines[2].color, rgb(colors().text.danger), 'in red')
 	unhover(older.revert)
 	stub.click(older.revert)
 	eq(#History:Steps(), 4, 'a disabled revert does nothing')
@@ -989,7 +989,7 @@ test('a message is shown in full as a tooltip under the control that was pressed
 		local text = {}
 		for _, line in ipairs(lines) do text[#text + 1] = line.text end
 		check(table.concat(text, '|'):find(message, 1, true), size[1] .. ': with the whole message')
-		eq(lines[#lines].color, rgb(colors().text.red), size[1] .. ': a refusal in red')
+		eq(lines[#lines].color, rgb(colors().text.danger), size[1] .. ': a refusal in red')
 		stub.time = stub.time + 5
 		stub.run_timers()
 		check(EM:IsStatusTipShown(), 'still there at 5 seconds')

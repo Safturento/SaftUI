@@ -111,7 +111,7 @@ test('tooltip lines: the category, its place and the block that caught it; a nes
 	local _, why = INV:GetItemCategory(slot_of(container, 101).info)
 	eq(plain(lines)[2], 'Caught by: ' .. R.Describe(entry.rule, why.path), 'the block that caught it')
 	local blue, grey, yellow = st.config.profile.theme.accent, st.config.profile.colors.text.muted,
-		st.config.profile.colors.text.yellow
+		st.config.profile.colors.text.caution
 	local r, g, b = blue:GetRGB()
 	-- "the Category: line is the accent": a changed accent is the next line's color.
 	blue:SetRGB(0.9, 0.1, 0.2)

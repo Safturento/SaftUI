@@ -225,9 +225,9 @@ function LT:GroupLootFrame_OnUpdateTimer(timer, elapsed)
 	timer:SetStatusBarColor(st:Color('accent'):GetRGB())
 
 	if sec < 60 then
-		text:SetVertexColor(st.config.profile.colors.text.red:GetRGB())
+		text:SetVertexColor(st:Color('text', 'danger'):GetRGB())
 	else
-		text:SetVertexColor(1, 1, 1)
+		text:SetVertexColor(st:Color('text', 'strong'):GetRGB())
 	end
 end
 

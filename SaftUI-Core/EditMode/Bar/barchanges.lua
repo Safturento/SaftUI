@@ -118,11 +118,10 @@ function EM:SetBarStatus(message, owner, refusal)
 	PlaceStatus()
 	local under = owner or (EM.bar and EM.bar:IsShown() and EM.bar) or nil
 	if EM.statusCut and under and not InCombatLockdown() then
-		local colors = st.config.profile.colors.text
 		GameTooltip:SetOwner(EM.bar, 'ANCHOR_NONE')
 		GameTooltip:ClearLines()
 		GameTooltip:AddLine(refusal and "It didn't work" or 'Done', 1, 1, 1)
-		local r, g, b = (refusal and colors.red or colors.normal):GetRGB()
+		local r, g, b = st:Color('text', refusal and 'danger' or 'normal'):GetRGB()
 		GameTooltip:AddLine(message, r, g, b, true)
 		GameTooltip:ClearAllPoints()
 		GameTooltip:SetPoint('TOP', under, 'BOTTOM', 0, -4)
@@ -250,7 +249,7 @@ end
 
 local function Undo(bar)
 	local button = W.IconButton(bar, st.icons.undo2, function()
-		if not History:CanUndo() then return 'Undo', { { text = 'Nothing to undo.', red = true } } end
+		if not History:CanUndo() then return 'Undo', { { text = 'Nothing to undo.', danger = true } } end
 		local step = History:Steps()[History:Position()]
 		local name = StepMover(step)
 		return 'Undo', { name and ('Puts %s back where it was before.'):format(name)
@@ -269,7 +268,7 @@ end
 
 local function Redo(bar)
 	local button = W.IconButton(bar, st.icons.redo2, function()
-		if not History:CanRedo() then return 'Redo', { { text = 'Nothing to redo.', red = true } } end
+		if not History:CanRedo() then return 'Redo', { { text = 'Nothing to redo.', danger = true } } end
 		local step = History:Steps()[History:Position() + 1]
 		local name = StepMover(step)
 		return 'Redo', { name and ('Moves %s again.'):format(name)
@@ -302,7 +301,7 @@ local function Reset(bar)
 	local button = W.IconButton(bar, st.icons.rotateCcw, function()
 		local mover = EM.selected
 		local ok, why = EM:CanReset(mover)
-		if not ok then return 'Reset', { { text = why, red = true } } end
+		if not ok then return 'Reset', { { text = why, danger = true } } end
 		return 'Reset', { ('%s goes back to its default place.'):format(EM.MoverName(mover)) }
 	end)
 	button.onClick = Guard(function(self)

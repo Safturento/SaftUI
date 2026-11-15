@@ -27,7 +27,7 @@ Two dialogs float over the `/sui` window: the small dialog, a titled panel of ro
 
 ## States
 
-- The small dialog's status line (a failed validate) shows at its foot in `text-red`, and the foot grows to 30.
+- The small dialog's status line (a failed validate) shows at its foot in `text-danger`, and the foot grows to 30.
 - Esc, the close X, closing the window and entering combat close the small dialog; it refuses to open in combat.
 - A confirm button under the mouse takes the `accent` edge.
 

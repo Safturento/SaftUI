@@ -739,7 +739,7 @@ test("a disabled row's tooltip shows its disabledDesc under its desc, in Text > 
 		check(primed[c.widget.frame], c.row.key .. ': a box that took the mouse, reused')
 	end
 	local tip, restore = watch_tooltip()
-	local red = string.format('%.2f,%.2f,%.2f', st.config.profile.colors.text.red:GetRGB())
+	local red = string.format('%.2f,%.2f,%.2f', st.config.profile.colors.text.danger:GetRGB())
 
 	-- The mouse on a disabled box: the box takes none, so the row is under it.
 	local locked = by.locked
@@ -791,7 +791,7 @@ test("an execute button shows its row's tooltip while the mouse is on it, under 
 		bare = { type = 'execute', name = 'Plain', order = 2, func = function() end },
 	} } }
 	local tip, restore = watch_tooltip()
-	local red = string.format('%.2f,%.2f,%.2f', st.config.profile.colors.text.red:GetRGB())
+	local red = string.format('%.2f,%.2f,%.2f', st.config.profile.colors.text.danger:GetRGB())
 	for _, look in ipairs({ 'thick', 'blizzard' }) do
 		st.config.profile.theme.name = look
 		local content = CreateFrame('Frame', nil, UIParent)

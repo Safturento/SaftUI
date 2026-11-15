@@ -17,7 +17,7 @@ What "default" is for the setting (AceDB's default, or the shared value), the re
 | Icon | `rotate-ccw` drawn 14, `text-muted` at rest; `accent` under the mouse | `icon-reset`, `text-muted`, `accent` |
 | Beside a control | 6 before the control; on a `MenuItem`, right against its dots (their button has room round the glyph), so the name gives up only the icon and 4 | `reset-gap` |
 | In the hover line | after "Own", 6 either side | `reset-gap` |
-| Tooltip | title "Reset" in `white`, the line under it | `white` |
+| Tooltip | title "Reset" in `text-strong`, the line under it | `text-strong` |
 
 ## States
 
@@ -25,7 +25,7 @@ Hidden at the default; shown in `text-muted` once the value differs; `accent` un
 
 ## The History list's revert
 
-A relative of this icon: a row of the edit mode bar's History list ends in a 14px `rotate-ccw` that puts that one step's change back on its own, as a new step. It is grey at rest and `accent` under the mouse (the icon's usual hover is `white`; here the accent matches the list's row fill), and it is dim and disabled, with its reason in red in the tooltip, when a later step touched the same frame ("Changed again later: go back to this point instead.") or the step was a bulk copy. It shows only for a step that is applied. It is the same per-change idea as a setting's reset, not a section Reset.
+A relative of this icon: a row of the edit mode bar's History list ends in a 14px `rotate-ccw` that puts that one step's change back on its own, as a new step. It is grey at rest and `accent` under the mouse (the icon's usual hover is `text-strong`; here the accent matches the list's row fill), and it is dim and disabled, with its reason in red in the tooltip, when a later step touched the same frame ("Changed again later: go back to this point instead.") or the step was a bulk copy. It shows only for a step that is applied. It is the same per-change idea as a setting's reset, not a section Reset.
 
 ## Status
 

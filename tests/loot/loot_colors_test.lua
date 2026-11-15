@@ -92,7 +92,7 @@ test('each roll letter takes its Loot color, and a changed Text color reaches no
 	local l = letters((function() local f = roll_frame(); LT:SkinRollFrame(f); return f end)())
 	eq(l.Pass, RED, 'Pass'); eq(l.Greed, YELLOW, 'Greed'); eq(l.Transmog, PURPLE, 'Transmog'); eq(l.Need, WHITE, 'Need')
 
-	local text = { red = { colors.text.red:GetRGB() }, yellow = { colors.text.yellow:GetRGB() }, white = { colors.text.white:GetRGB() } }
+	local text = { danger = { colors.text.danger:GetRGB() }, caution = { colors.text.caution:GetRGB() }, strong = { colors.text.strong:GetRGB() } }
 	for key in pairs(text) do set(colors.text[key], 0, 0, 0) end
 	local frame = roll_frame(); LT:SkinRollFrame(frame)
 	l = letters(frame)
@@ -127,14 +127,14 @@ test("the paired counts and the feed's roll tooltip read Loot: All passed and Pa
 	local rolls = { list = { { name = 'Aa', state = S.Greed }, { name = 'Bb', state = S.Transmog } } }
 
 	-- Greed's bar also counts Transmog's picks, in Transmog's color, and the other way round.
-	set(colors.text.yellow, 0, 0, 0)
+	set(colors.text.caution, 0, 0, 0)
 	local greed = counts_for('Greed')
 	LT:SetRollCounts(greed, rolls)
 	eq(T.rgb(paired_color(greed):GetTextColor()), PURPLE, "Greed's bar: Transmog's count in Loot > Transmog")
 	local transmog = counts_for('Transmog')
 	LT:SetRollCounts(transmog, rolls)
 	eq(T.rgb(paired_color(transmog):GetTextColor()), YELLOW, "Transmog's bar: Greed's count in Loot > Greed, not Text > Yellow")
-	set(colors.text.yellow, 200/255, 200/255, 100/255)
+	set(colors.text.caution, 200/255, 200/255, 100/255)
 
 	-- The tooltip: the headers in their Loot colors, All passed and Pass: in Pass.
 	local lines = {}
@@ -142,8 +142,8 @@ test("the paired counts and the feed's roll tooltip read Loot: All passed and Pa
 		AddLine = function(_, text, r, g, b) lines[#lines + 1] = { text = text, r = r, g = g, b = b } end,
 		AddDoubleLine = function() end,
 	}
-	local text = { colors.text.red:GetRGB() }
-	set(colors.text.red, 0, 0, 0)
+	local text = { colors.text.danger:GetRGB() }
+	set(colors.text.danger, 0, 0, 0)
 
 	-- The feed line's right side, "All passed", in Loot > Pass too.
 	C_Item = { GetItemInfo = function() end, GetItemInfoInstant = function() return 1, 'Armor', 'Cloth', nil, 134400 end }
@@ -171,14 +171,14 @@ test("the paired counts and the feed's roll tooltip read Loot: All passed and Pa
 	-- The winner's line stays Text > Green (not a Loot color).
 	local doubles = {}
 	tooltip.AddDoubleLine = function(_, _, _, _, _, _, r, g, b) doubles[#doubles + 1] = T.rgb(r, g, b) end
-	local green = { colors.text.green:GetRGB() }
-	set(colors.text.green, 0.1, 0.2, 0.3)
+	local green = { colors.text.success:GetRGB() }
+	set(colors.text.success, 0.1, 0.2, 0.3)
 	local winning = { { name = 'Aa', state = S.NeedMainSpec, roll = 50 } }
 	LT:AddRollLines(tooltip, { list = winning, winner = 1 }, false)
 	eq(doubles[1], T.rgb(0.1, 0.2, 0.3), "the winner's roll in Text > Green")
-	set(colors.text.green, unpack(green))
+	set(colors.text.success, unpack(green))
 
-	set(colors.text.red, unpack(text))
+	set(colors.text.danger, unpack(text))
 	local pass = { colors.loot.pass:GetRGB() }
 	set(colors.loot.pass, 0, 1, 0)
 	lines = {}

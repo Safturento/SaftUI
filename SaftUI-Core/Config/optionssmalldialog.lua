@@ -20,7 +20,7 @@ local Text, Line, ScrollTo = OB.Text, OB.Line, OB.ScrollTo
 local ROW_HEIGHT, SCROLL_STEP = OB.ROW_HEIGHT, OB.SCROLL_STEP
 
 -- From optionswindow.lua.
-local F, Colors, Inside = S.F, S.Colors, S.Inside
+local F, Inside = S.F, S.Inside
 local ColorPickerShown, EscapeKeys = S.ColorPickerShown, S.EscapeKeys
 
 ------------------------------------------------------------------ a small dialog
@@ -187,7 +187,7 @@ local function BuildDialog()
 	D.status = Text(frame, 'field')
 	D.status:SetPoint('BOTTOMLEFT', frame, 'BOTTOMLEFT', DIALOG_PAD, 10)
 	D.status:SetWidth(DIALOG_CONTENT)
-	D.status:SetTextColor(Colors().text.red:GetRGB())
+	D.status:SetTextColor(st:Color('text', 'danger'):GetRGB())
 
 	-- Esc, only while the dialog is shown, and not while an item's menu is
 	-- (its own keys close it).

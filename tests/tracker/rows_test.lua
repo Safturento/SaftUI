@@ -207,6 +207,7 @@ RW.both("progress bars in Blizzard's blue with the percent centred in the Pixel 
 	check(bar and bar:IsShown(), 'the objective is a bar')
 	check(not row.parts[1].fs:IsShown(), 'in place of its line')
 	eq(RW.text(bar.label), '45%', 'the percent')
+	eq(RW.color(bar.label), RW.rgb(colors(st).text.strong), 'in Text > Strong (the state \'strong\')')
 	eq(bar.label:GetFontObject(), st:GetFont('pixel'), 'in the Pixel font')
 	eq(bar.label:GetJustifyH(), 'CENTER', 'centred')
 	local filled = stub.state(bar.fill)

@@ -291,7 +291,7 @@ test("SaftUI's close button under Blizzard: Blizzard's four atlases at the clien
 		T.theme('thick')
 		ownLook(st, close, client .. ', Thick again')
 		stub.fire_script(close, 'OnEnter')
-		eq(T.edge(close), text(st.config.profile.colors.text.red:GetRGB()) .. ',1.00', client .. ': hovered under Thick, its red border')
+		eq(T.edge(close), text(st.config.profile.colors.text.danger:GetRGB()) .. ',1.00', client .. ': hovered under Thick, its red border')
 		stub.fire_script(close, 'OnLeave')
 		eq(T.edge(close), text(unpack(st.BOX_COLORS.edge)), client .. ': and back')
 
