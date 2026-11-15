@@ -118,9 +118,9 @@ test('Bags: the new settings read and write their profile keys and apply the way
 	end
 	for _, key in ipairs({ 'titles', 'icons' }) do
 		local option = look.args[key]
-		eq(option.type, 'select', key .. ' is a select')
+		eq(option.type, 'font', key .. ' is a font row')
 		eq(option.get(), config.fonts[key], key .. ' reads inventory.fonts.' .. key)
-		check(option.values[config.fonts[key]] ~= nil, "its value is one of the select's font object keys")
+		check(st:IsSharedFont(config.fonts[key]), "its value is a shared font's key")
 	end
 
 	-- Setting each writes its profile key.

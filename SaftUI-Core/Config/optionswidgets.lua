@@ -23,13 +23,15 @@ local OM = st.OptionsModel
 	the window doesn't rebuild the slider under the user's mouse.
 
 	Types: toggle, range, select, multiselect, input, color, execute,
-	keybinding, item, description, position. Widths: toggle 18, range 168 (a 116 track, a gap
+	keybinding, item, font, description, position. Widths: toggle 18, range 168 (a 116 track, a gap
 	of 6 and a 46 value box), select, multiselect, input, keybinding and color 170.
 	An item (its Show box, its name and its menu's dots) spans its cell: the
 	body gives it the cell's width (W.WIDTH.item is 0) and draws its name.
 	An execute button is as wide as its name needs (80 at least), or as its
 	slot when the body gives it one (widget:SetWidth: a floating line of
 	buttons that share it), and a description is as wide as the window sets it (400 until it does). A
+	font row (optionsfont.lua) is 190 wide, 194 under Blizzard (a select's face and
+	a 16 wide slot). A
 	position block is as wide as its parts (200, 332 with a name target, 352
 	with a select target) and 65 high; its get/set/validate take the part first (point,
 	rel_point, x_off, y_off, frame, relative_to), so a change is
@@ -68,7 +70,7 @@ local OM = st.OptionsModel
 	optionslist.lua (the select list and the check list), optionstypes.lua
 	(toggle, input, color, execute, description), optionsrange.lua,
 	optionsselect.lua (select, multiselect), optionskeybinding.lua,
-	optionsitem.lua (the item), optionscontrols.lua (the standalone controls) and optionsposition.lua. W.Kit (below) holds
+	optionsitem.lua (the item), optionscontrols.lua (the standalone controls), optionscolorpicker.lua, optionsfont.lua (the font row) and optionsposition.lua. W.Kit (below) holds
 	what they share.
 
 	widget.rowBody is the body (optionsbody.lua) that drew the widget, set

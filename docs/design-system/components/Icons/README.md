@@ -8,7 +8,7 @@ Wherever an icon fits (the owner's rule, from 2026-11-13 on): close, dropdown ca
 
 ## What the consumer provides
 
-The icon's name from `st.icons` (`x`, `chevronDown`, `chevronUp`, `rotateCcw`, `diff`, `ellipsis`, `ellipsisVertical`, `settings`, `funnel`, `arrowDownToLine`, and for the edit mode bar `logOut`, `grid3x3`, `magnet`, `alignStartVertical`, `layers`, `mapPin`, `eye`, `powerOff`, `search`, `undo2`, `redo2`, `history`, `pictureInPicture2`, `panelTop`, `squareMousePointer`, `squareDashedMousePointer`), its size, its colour, and a tooltip naming what it does.
+The icon's name from `st.icons` (`x`, `chevronDown`, `chevronUp`, `rotateCcw`, `diff`, `ellipsis`, `ellipsisVertical`, `settings`, `funnel`, `arrowDownToLine`, and for the edit mode bar `logOut`, `grid3x3`, `magnet`, `alignStartVertical`, `layers`, `mapPin`, `eye`, `powerOff`, `search`, `undo2`, `redo2`, `history`, `pictureInPicture2`, `panelTop`, `squareMousePointer`, `squareDashedMousePointer`, `link`), its size, its colour, and a tooltip naming what it does.
 
 ## Rules
 
@@ -37,6 +37,7 @@ The icon's name from `st.icons` (`x`, `chevronDown`, `chevronUp`, `rotateCcw`, `
 | `list` | the Categories tab's category button (registered; used by the window's sizes work) | 16 | `text-grey`, `accent` |
 | `map-pin` | SaftUI's tracker: after the current zone's name on its zone header | 16 (an 8 px glyph) | `accent` |
 | `chevron-up`, `chevron-down` | SaftUI's tracker: the header's collapse button and each zone header's (up while it shows, down while collapsed; a 16 square button, hover white) | 16 (an 8 px glyph) | `text-grey`, `white` under the mouse |
+| `link` | the font row's link to a shared font's section of Global settings > Fonts, in the slot at the row's right edge (the item's dots use the same slot); its tooltip names the font and says where it goes | 16 | `text-grey`, `accent` |
 | `ellipsis`, `settings` | registered, unused | | |
 
 ## To replace with Lucide

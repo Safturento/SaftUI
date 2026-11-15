@@ -8,7 +8,7 @@ A choice of three or more (Ace `select`), the page picker, the position block's 
 
 ## What the consumer provides
 
-`values` (key to shown name, or a function), `sorting` if the order matters, `get`/`set`, `name`, `desc`. `dialogControl = 'LSM30_Font'` lists each font in its own face.
+`values` (key to shown name, or a function), `sorting` if the order matters, `get`/`set`, `name`, `desc`. `dialogControl = 'LSM30_Font'` lists each font in its own face (a list entry's `font` is the face it is drawn in, at 15 with no outline; an entry with none is in the field font). A font setting that holds a shared font or a typeface is a Font row, below.
 
 ## Sizes and tokens
 
@@ -27,7 +27,7 @@ A choice of three or more (Ace `select`), the page picker, the position block's 
 - Under the mouse: the box's edge turns `accent`.
 - Disabled: the box at `alpha-disabled`, label `text-grey`.
 - Open: a click outside or Esc closes it; a pick sets and closes.
-- Caption entry (`caption = true`, a heading such as the page list's groups): its label in `text-grey` in the headings' style (the sidebar's group font), no row under the mouse, a click does nothing and the list stays open.
+- Caption entry (`caption = true`, a heading such as the page list's groups or the font list's "SaftUI fonts" and "Typefaces"): its label in `text-grey` in the headings' style (the sidebar's group font, set on the row outright so a face drawn in that row before never shows), no row under the mouse, a click does nothing and the list stays open. A list that opens on a picked entry under a caption scrolls to show the caption too.
 - Disabled entry (`disabled = true`): the row at `alpha-disabled`, no row under the mouse, not to be picked; the list stays open.
 
 ## Blizzard theme
@@ -40,3 +40,20 @@ The Settings dropdown (WowStyle2): its face follows the mouse, press, open and d
 - Do use the picker select only for "which thing is this page about" (Unit, Bar).
 - Don't use a triangle or any other arrow: the caret is `chevron-down`.
 - Don't copy the caret code: the bags' rule editor has its own copy today (see Discrepancies).
+
+## Font row
+
+A font setting (`generators.font`, type `font`; `SaftUI-Core/Config/optionsfont.lua`) holds a shared font's key or a typeface (a table of a shared font's fields). Its control is a select face with one slot after it:
+
+| Part | Value | Tokens |
+| --- | --- | --- |
+| Face | the Select box, 170 x 24, showing the font's name drawn in its own face at 15, no outline | `control-width`, `field-height` |
+| Slot | 16 x 24 at the row's right edge, a 16 icon in the middle: the `link` for a shared font, empty (its room kept) for a typeface until its own menu comes | `text-grey`, `accent` (white under Blizzard) |
+| Gap | the face ends 4 before the slot (8 under Blizzard, whose dropdown art reaches 7 past the face); the control is 190 wide (194 under Blizzard) | |
+
+- **The list** has two parts: a caption "SaftUI fonts" over the six shared fonts, each in its own face, then a caption "Typefaces" over every face LibSharedMedia lists, each in its own face. The picked entry is `accent`: the shared font, or the typeface by its face.
+- **Picking** a shared font saves its key. Picking a typeface saves a table filled from what the row showed (a shared font's look, or the typeface's own fields) with the new face, so a face swap keeps the typeface's size and outline.
+- **The link**'s tooltip names the font, says it is a shared font set on Global settings > Fonts and changes every text that uses it, and says "Click to go there." A click opens that font's Typeface row, its label in `accent`.
+- **A face-only row** (`faceOnly = true`, used inside an item's menu) has the same list, saves a typeface as its face's name alone, and never has a menu icon.
+- A face LibSharedMedia no longer lists reads in the field font, with no entry picked.
+- A reset by the row names the default by its font's name ("Header font goes back to its default: Heading."), never a file path.

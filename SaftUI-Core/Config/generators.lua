@@ -1,18 +1,5 @@
 local st = SaftUI
 
--- The shared fonts' names by key, from code (Media/fonts.lua's FN.FONTS), in
--- no order: a select over them also takes the keys in FN.FONTS order as its
--- `sorting`. A profile's saved font tables are never walked: one may hold a
--- dropped font's edits.
-function st.Config:GetFontObjects()
-	local font_objects = {}
-	for _, entry in ipairs(st:GetModule('Fonts').FONTS) do
-		font_objects[entry.key] = entry.name
-	end
-
-	return font_objects
-end
-
 --[[
 	Generators for SaftUI's option tables. Each returns a fresh option. desc is
 	its tooltip; size ('small' or 'wide', where a generator takes one) is how
@@ -232,15 +219,21 @@ function generators.background(order, desc)
 	return OrderedSelect(order, 'Background', desc or BACKGROUND_DESC, BACKGROUND_VALUES)
 end
 
-function generators.font(order, desc)
-	local sorting = {}
-	for i, entry in ipairs(st:GetModule('Fonts').FONTS) do sorting[i] = entry.key end
+-- A font setting's row (SaftUI's own type 'font', Config/optionsfont.lua): its
+-- value is a shared font's key or a typeface table, and its list is SaftUI's
+-- fonts, then every typeface. opts, optional, each field optional too:
+-- faceOnly (a menu's row: a typeface saves its face's name alone, a text of
+-- the action bars or buffs that has its size and outline apart) and fields (the
+-- fields of a typeface's own menu, from FN.FIELDS, that its reader applies:
+-- every one when nil).
+function generators.font(order, desc, opts)
+	opts = opts or {}
 	return {
 		name = 'Font',
 		desc = desc,
-		type = 'select',
+		type = 'font',
 		order = order,
-		values = st.Config:GetFontObjects(),
-		sorting = sorting,
+		faceOnly = opts.faceOnly,
+		fontFields = opts.fields,
 	}
 end

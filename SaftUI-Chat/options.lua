@@ -49,7 +49,8 @@ function CHT:GetConfigTable()
 		return validateForHolder(info, part, value)
 	end
 
-	local font = generators.font(4, 'The font of the chat text and the edit box.')
+	local font = generators.font(4, 'The font of the chat text and the edit box.',
+		{ fields = { 'font_size', 'font_outline', 'shadow_x', 'shadow_y' } }) -- chat keeps Blizzard's line spacing
 
 	return {
 		name = 'Chat',

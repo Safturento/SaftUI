@@ -37,6 +37,8 @@ local Kit = W.Kit
 	  w:ShiftBox(x)      the box x right of the cell's left: the body moves
 	                     it under the own mark (markShift) with the label
 	A disabled item's box and dots take no mouse.
+	The dots are a slot (Kit.NewSlot, Kit.PaintSlot, below), which the font
+	row (optionsfont.lua) uses too, for its link, so the two look alike.
 ]]
 
 local BlizzardLook, HoverEdge = W.BlizzardLook, W.HoverEdge
@@ -48,17 +50,57 @@ local BOX_ROW = 22 -- the Blizzard check box's art is drawn for a row this tall 
 local LABEL_X = 26 -- the name after the box: its 18 and 8
 local DOTS_WIDTH, DOTS_HEIGHT, DOTS_ICON = 16, 24, 16
 
--- The dots' color: Text > Grey, or under the mouse Text > Blue (white under
--- Blizzard, as its Settings panel lights what's under the mouse).
-local function PaintDots(w, over)
-	local icon = w.dots.icon
+-- A slot's color: Text > Grey, or under the mouse Text > Blue (white under
+-- Blizzard, as its Settings panel lights what's under the mouse). The slot is
+-- the item's dots and the font row's link: one look, so they change together.
+local function PaintSlot(button, over)
+	local icon = button.icon
 	if not over then
 		icon:SetVertexColor(Colors().text.grey:GetRGB())
-	elseif w.blizzard then
+	elseif button.blizzard then
 		icon:SetVertexColor(1, 1, 1)
 	else
 		icon:SetVertexColor(Colors().text.blue:GetRGB())
 	end
+end
+
+-- The item's dots: its slot's look.
+local function PaintDots(w, over)
+	PaintSlot(w.dots, over)
+end
+
+-- A slot: a 16 x 24 button for parent holding a 16 x 16 icon (a texture path)
+-- in its middle, in Text > Grey. It reads button.onClick (the click), button.tip
+-- (function(button) -> title, lines, shown with W.ShowTip under the mouse)
+-- and button.blizzard (the look PaintSlot reads), and does nothing while
+-- button.disabled. Its scripts take (self) only: the game gives OnEnter and
+-- OnLeave a second argument (motion). The caller places it and says when it
+-- is disabled or shown.
+local function NewSlot(parent, icon)
+	local button = CreateFrame('Button', nil, parent)
+	button:SetSize(DOTS_WIDTH, DOTS_HEIGHT)
+	button:EnableMouse(true)
+	button.icon = button:CreateTexture(nil, 'ARTWORK')
+	button.icon:SetSize(DOTS_ICON, DOTS_ICON)
+	button.icon:SetPoint('CENTER', button, 'CENTER', 0, 0)
+	button.icon:SetTexture(icon)
+	PaintSlot(button, false)
+	button:SetScript('OnEnter', function(self)
+		PaintSlot(self, true)
+		if self.tip and not self.disabled then
+			local title, lines = self.tip(self)
+			W.ShowTip(self, title, lines)
+		end
+	end)
+	button:SetScript('OnLeave', function(self)
+		PaintSlot(self, false)
+		if self.tip then W.HideTip(self) end
+	end)
+	button:SetScript('OnClick', function(self)
+		if self.disabled then return end
+		if self.onClick then self.onClick(self) end
+	end)
+	return button
 end
 
 builders.item = function(w)
@@ -76,18 +118,9 @@ builders.item = function(w)
 	end)
 	w.box = box
 
-	local dots = CreateFrame('Button', nil, frame)
-	dots:SetSize(DOTS_WIDTH, DOTS_HEIGHT)
-	dots:EnableMouse(true)
+	local dots = NewSlot(frame, st.icons.ellipsisVertical)
 	dots:SetPoint('RIGHT', frame, 'RIGHT', 0, 0)
-	dots.icon = dots:CreateTexture(nil, 'ARTWORK')
-	dots.icon:SetSize(DOTS_ICON, DOTS_ICON)
-	dots.icon:SetPoint('CENTER', dots, 'CENTER', 0, 0)
-	dots.icon:SetTexture(st.icons.ellipsisVertical)
-	-- Wrapped: the game passes OnEnter and OnLeave a second argument (motion).
-	dots:SetScript('OnEnter', function() PaintDots(w, true) end)
-	dots:SetScript('OnLeave', function() PaintDots(w, false) end)
-	dots:SetScript('OnClick', function() w:ToggleMenu() end)
+	dots.onClick = function() w:ToggleMenu() end
 	w.dots = dots
 end
 
@@ -97,6 +130,7 @@ define('item', {
 	Bind = function(self, ...)
 		local blizzard = BlizzardLook()
 		self.blizzard = blizzard
+		self.dots.blizzard = blizzard
 		LookCheckBox(self.box, blizzard, BOX_ROW, 'LEFT')
 		if blizzard then
 			local width, height = W.CheckArtSize(BOX_ROW)
@@ -164,3 +198,5 @@ define('item', {
 		PaintDots(self, false)
 	end,
 })
+
+Kit.NewSlot, Kit.PaintSlot = NewSlot, PaintSlot

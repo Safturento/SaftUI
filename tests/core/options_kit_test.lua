@@ -436,7 +436,7 @@ test("ace_ready leaves out SaftUI's own types", function()
 	local names = {}
 	for rowType in pairs(SAFTUI_TYPES) do names[#names + 1] = rowType end
 	table.sort(names)
-	eq(table.concat(names, ','), 'bagcategories,bagitems,bagrule,item,position', 'SAFTUI_TYPES')
+	eq(table.concat(names, ','), 'bagcategories,bagitems,bagrule,font,item,position', 'SAFTUI_TYPES')
 
 	local function Validate(page)
 		return pcall(AceConfigRegistry.ValidateOptionsTable, AceConfigRegistry,

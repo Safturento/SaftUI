@@ -56,7 +56,13 @@ local function ListFill()
 		local entry = entries[offset + i]
 		if entry then
 			row.entry = entry
-			if list.fontMode then
+			-- Each row's font is set outright (a pooled row had another entry's
+			-- face): a caption is a heading, as the sidebar's groups, in the group
+			-- font; an entry with a font is drawn in it at 15, no outline; any
+			-- other in the field font.
+			if entry.caption then
+				SetFieldFont(row.text, nil, nil, nil, st.OptionsBody.Font('group'))
+			elseif entry.font then
 				SetFieldFont(row.text, entry.font, FIELD_FONT_SIZE, '')
 			else
 				SetFieldFont(row.text)
@@ -64,7 +70,6 @@ local function ListFill()
 			row.text:SetText(entry.label)
 			-- A caption is Text > Grey; the picked entry blue; the rest normal.
 			if entry.caption then
-				row.text:SetFontObject(st.OptionsBody.Font('group')) -- a heading, as the sidebar's groups
 				row.text:SetTextColor(Colors().text.grey:GetRGB())
 			elseif entry.key == list.selected then
 				row.text:SetTextColor(Colors().text.blue:GetRGB())
@@ -252,11 +257,11 @@ end
 -- (padded, taller by its button's room). buttons, for a check list's, are
 -- its { label, onClick }: the list is as tall as the Apply list's and at
 -- least as wide as they are in a row (BUTTONS_GAP apart), plus its insets.
-local function OpenList(owner, entries, selected, onPick, fontMode, kind, buttons)
+local function OpenList(owner, entries, selected, onPick, kind, buttons)
 	if not list then BuildList() end
 	W.CloseList()
 	if #entries == 0 then return end
-	list.owner, list.entries, list.selected, list.onPick, list.fontMode = owner, entries, selected, onPick, fontMode
+	list.owner, list.entries, list.selected, list.onPick = owner, entries, selected, onPick
 	LookList()
 	SetListInsets(kind ~= nil)
 
@@ -282,7 +287,9 @@ local function OpenList(owner, entries, selected, onPick, fontMode, kind, button
 	list.offset = 0
 	for i, entry in ipairs(entries) do
 		if entry.key ~= nil and entry.key == selected then -- a caption has no key, and no selection is nil too
-			list.offset = max(0, min(#entries - LIST_MAX_ROWS, i - 1))
+			-- The caption above it comes into view too: Text opens under SaftUI fonts.
+			local caption = entries[i - 1] and entries[i - 1].caption and 1 or 0
+			list.offset = max(0, min(#entries - LIST_MAX_ROWS, i - 1 - caption))
 			break
 		end
 	end
@@ -296,10 +303,11 @@ end
 -- onPick(key) runs on a choice. An entry with caption = true is a heading
 -- (its label in Text > Grey, no hover, a click that does nothing, the list
 -- staying open) and one with disabled = true is dim (alpha 0.4), lit by no
--- mouse and not to be picked. fontMode draws each label in its own face
--- (entry.font). An empty list doesn't open.
-function W.OpenList(owner, entries, selected, onPick, fontMode)
-	OpenList(owner, entries, selected, onPick, fontMode)
+-- mouse and not to be picked. An entry with font (a path) is drawn in that
+-- face at 15 with no outline; any other in the field font. An empty list
+-- doesn't open.
+function W.OpenList(owner, entries, selected, onPick)
+	OpenList(owner, entries, selected, onPick)
 end
 
 -- The list's frames { catcher, frame, rows, skin, menu, insets, apply, ... }
@@ -380,7 +388,7 @@ end
 -- the marks again; the list stays open. The list is as wide as they are in a
 -- row, and its insets, at least.
 function W.OpenCheckList(owner, entries, isChecked, onToggle, buttons)
-	OpenList(owner, entries, nil, nil, nil, 'check', buttons)
+	OpenList(owner, entries, nil, nil, 'check', buttons)
 	if W.ListOwner() ~= owner then return end
 	list.isChecked, list.onToggle = isChecked, onToggle
 	ListFill()
@@ -433,7 +441,7 @@ end
 -- owner while it's open. An empty list doesn't open. Under Blizzard the
 -- button is the panel button (W.LookButton), as the confirm dialog's.
 function W.OpenApplyList(owner, entries, onApply)
-	OpenList(owner, entries, nil, nil, nil, 'apply')
+	OpenList(owner, entries, nil, nil, 'apply')
 	if W.ListOwner() ~= owner then return end
 	local checked = {}
 	list.isChecked = function(key) return checked[key] end

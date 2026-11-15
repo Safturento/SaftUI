@@ -1650,6 +1650,16 @@ function OW:Navigate(pageKey, selection)
 	self:Render()
 end
 
+-- Opens the page and tab that hold the option at path (a list of option keys,
+-- as OW:Open takes: { 'Fonts', 'fonts', 'heading', 'font_name' }) with its row
+-- brought into view and its label in Text > Blue by the next render, as a
+-- search result's click does: the font row's link to a shared font's section
+-- of Global settings > Fonts. As OW:Navigate it leaves search and closes an
+-- open item's menu. Nothing for a path the tree doesn't hold.
+function OW:Reveal(path)
+	GoTo(path)
+end
+
 -- Draws the page (or search results) again from the model, and an open
 -- dialog with it (optionssmalldialog.lua): what changed the tree may be its.
 -- Then an open item's menu follows its item (optionsmenu.lua).

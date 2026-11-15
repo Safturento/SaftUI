@@ -360,21 +360,22 @@ test("Kinds of text: Window titles, Button text, Check box labels, each with its
 	for i, r in ipairs(ByOrder(section.args)) do rows[i] = r.key .. '=' .. r.v.name end
 	eq(table.concat(rows, ','), 'window_titles=Window titles,button_text=Button text,checkbox_labels=Check box labels')
 	for key, option in pairs(section.args) do
-		eq(option.type, 'select', key)
+		eq(option.type, 'font', key)
 		check(type(option.desc) == 'string' and #option.desc > 30, key .. ' has a desc')
 		eq(option.width, nil, key .. ' has no Ace width')
 		eq(option.size, nil, key .. ' takes the normal size')
 		eq(type(option.default), 'table', key .. ' resets by itself')
-		local values = type(option.values) == 'function' and option.values() or option.values
-		local n = 0
-		for fontKey, name in pairs(values) do
-			n = n + 1
-			eq(name, FN:Font(fontKey).name, key .. ' lists ' .. fontKey .. ' by its name, from code')
+		eq(option.values, nil, key .. ' lists no values: the font row builds its own list')
+		-- Its list: the shared fonts by name, from code, in FN.FONTS order.
+		local entries = W.FontEntries(nil, false)
+		local keys = {}
+		for i, entry in ipairs(FN.FONTS) do
+			local e = entries[i + 1]
+			eq(e.key, entry.key, key .. ' lists ' .. entry.key .. ' in FN.FONTS order')
+			eq(e.label, FN:Font(entry.key).name, key .. ' by its name, from code')
+			keys[i] = e.key
 		end
-		eq(n, 6, key .. ' lists every shared font')
-		local sorting = {}
-		for i, entry in ipairs(FN.FONTS) do sorting[i] = entry.key end
-		eq(table.concat(option.sorting, ','), table.concat(sorting, ','), key .. ' lists them in FN.FONTS order')
+		eq(#keys, 6, key .. ' lists every shared font')
 	end
 	check(section.args.window_titles.desc:find("gold and free%-slot"), "Window titles' tooltip names the bags' gold and free-slot text")
 	check(section.args.button_text.desc:find('totem bar', 1, true), "Button text's tooltip names the totem bar")
@@ -515,9 +516,8 @@ test('a profile with a saved fonts.pixel_huge and a saved name: no section for i
 		if key ~= 'kinds' and key ~= 'intro' then count = count + 1 end
 	end
 	eq(count, 6, 'six sections')
-	for key, option in pairs(tab.args.kinds.args) do
-		local values = type(option.values) == 'function' and option.values() or option.values
-		eq(values.pixel_huge, nil, key .. " does not list the dropped font")
+	for _, entry in ipairs(W.FontEntries(nil, false)) do
+		check(entry.key ~= 'pixel_huge' and entry.key ~= 'normal_med', "the font list does not list the dropped font " .. tostring(entry.key))
 	end
 	FN:UpdateFontConfig()
 	eq(FN.font_objects.pixel_huge, nil, 'and no object')

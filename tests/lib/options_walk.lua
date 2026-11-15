@@ -14,7 +14,7 @@
 --                          (category, size, target, nameKey, pickerLabel,
 --                          align, disabledDesc, justifyH, fill, footer,
 --                          share, menu, menuTitle, default, pickerControl,
---                          reserveBox, toggle) are left off
+--                          reserveBox, toggle, faceOnly, fontFields) are left off
 --                          every option, and the options of SaftUI's own types
 --                          (SAFTUI_TYPES) are left out. AceConfig knows neither, so
 --                          its validator rejects them; everything else in the
@@ -23,17 +23,18 @@
 --                          down; other members (values, handlers, functions)
 --                          are shared, and tree itself is untouched.
 --   SAFTUI_TYPES           SaftUI's own option types, which only its options
---                          window draws: position, item (optionsitem.lua), and
---                          the types the bags define with W.Define
+--                          window draws: position, item (optionsitem.lua), font
+--                          (optionsfont.lua), and the types the bags define with W.Define
 --                          (optionswidgets.lua).
 
 local SAFTUI_FIELDS = {
 	category = true, size = true, target = true, nameKey = true, pickerLabel = true, align = true,
 	disabledDesc = true, justifyH = true, fill = true, footer = true, share = true, menu = true, menuTitle = true,
 	default = true, pickerControl = true, reserveBox = true, searchText = true, toggle = true,
+	faceOnly = true, fontFields = true,
 }
 
-SAFTUI_TYPES = { position = true, item = true, bagcategories = true, bagrule = true, bagitems = true }
+SAFTUI_TYPES = { position = true, item = true, font = true, bagcategories = true, bagrule = true, bagitems = true }
 
 local function SortedKeys(args)
 	local keys = {}

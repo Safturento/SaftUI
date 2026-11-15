@@ -231,7 +231,8 @@ function TT:GetConfigTable()
 				args = {
 					theme = generators.theme(1, "The tooltips' border and background."),
 					background = generators.background(1.5),
-					font = generators.font(2, 'The font of the text in tooltips. Tooltips already open keep their font until they show again.'),
+					font = generators.font(2, 'The font of the text in tooltips. Tooltips already open keep their font until they show again.',
+						{ fields = { 'font_size', 'font_outline' } }), -- the tooltip takes the face, size and outline
 					attach_to_bags = Toggle(3, 'Next to the bag window',
 						'While the bag window is open, the tooltip shows to its left.', HasBags),
 					attach_to_feed = Toggle(4, 'Next to the loot feed',

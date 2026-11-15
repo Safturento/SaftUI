@@ -40,7 +40,7 @@ local function IsFontList(row)
 end
 
 -- The entries for a row's values: { {key, label, font} }. A font list is
--- labeled by the name and drawn in the file's face.
+-- labeled by the name and carries the file, which the list draws it in.
 local function ListEntries(root, row)
 	local fontMode = IsFontList(row)
 	local entries = {}
@@ -51,7 +51,7 @@ local function ListEntries(root, row)
 			entries[i] = { key = value.key, label = tostring(value.name) }
 		end
 	end
-	return entries, fontMode
+	return entries
 end
 
 --[[
@@ -313,8 +313,7 @@ define('select', {
 	-- depend on other settings.
 	Open = function(self)
 		if self.disabled or not self.row then return end
-		local entries, fontMode = ListEntries(self.root, self.row)
-		W.OpenList(self.frame, entries, self:Value(), function(key) self:Commit(key) end, fontMode)
+		W.OpenList(self.frame, ListEntries(self.root, self.row), self:Value(), function(key) self:Commit(key) end)
 	end,
 
 	OnDisabled = function(self, disabled)

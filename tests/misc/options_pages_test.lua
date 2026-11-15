@@ -89,7 +89,7 @@ test('Tooltip: Theme, Background and Font read and write the profile, and a Them
 	local general = tree.args.general
 	eq(general.args.theme.type, 'select', 'Theme is a select')
 	eq(general.args.background.type, 'select', 'Background is a select')
-	eq(general.args.font.type, 'select', 'Font is a select')
+	eq(general.args.font.type, 'font', 'Font is a font row')
 	eq(general.get(info_for('theme')), profile.tooltip.theme, 'Theme reads tooltip.theme')
 	eq(general.get(info_for('background')), profile.tooltip.background, 'Background reads tooltip.background')
 	eq(general.get(info_for('font')), profile.tooltip.font, 'Font reads tooltip.font')
@@ -240,7 +240,7 @@ test('Skinning: a page with the shared Theme, Background and font, which re-appl
 	local general = tree.args.general
 	eq(general.args.theme.type, 'select', 'Theme is a select')
 	eq(general.args.background.type, 'select', 'Background is a select')
-	eq(general.args.font.type, 'select', 'Font is a select')
+	eq(general.args.font.type, 'font', 'Font is a font row')
 	eq(general.get(info_for('theme')), profile.skinning.theme, 'Theme reads skinning.theme')
 	eq(general.get(info_for('background')), profile.skinning.background, 'Background reads skinning.background')
 	eq(general.get(info_for('font')), profile.skinning.font, 'Font reads skinning.font')

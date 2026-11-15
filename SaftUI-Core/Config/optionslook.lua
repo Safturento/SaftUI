@@ -38,11 +38,14 @@ function W.UpdateFonts()
 end
 
 -- Gives fs the field font, or path at size with flags (each defaulting to the
--- field font's). Always set outright: in game SetFontObject doesn't undo an
--- earlier SetFont, so a pooled font string would keep a font list's face or a
--- large description's size. A profile change re-renders, which sets it again.
-local function SetFieldFont(fs, path, size, flags)
-	local font = W.GetFont()
+-- field font's). object, optional, stands in for the field font: the font
+-- object fs keeps and the face, size and flags the defaults come from (a
+-- list's caption, drawn in the group font). Always set outright: in game
+-- SetFontObject doesn't undo an earlier SetFont, so a pooled font string would
+-- keep a font list's face or a large description's size. A profile change
+-- re-renders, which sets it again.
+local function SetFieldFont(fs, path, size, flags, object)
+	local font = object or W.GetFont()
 	local fieldPath, fieldSize, fieldFlags = font:GetFont()
 	fs:SetFontObject(font)
 	fs:SetFont(path or fieldPath, size or fieldSize, flags or fieldFlags)
