@@ -10,6 +10,7 @@
 local H = load_test_file('core/options_window_helpers.lua')
 local P = load_test_file('lib/pixels.lua')
 local st = SaftUI
+st.config.profile.colors.text.muted:SetRGB(0.2, 0.4, 0.6) -- not the default, so a reader that draws a grey of its own fails
 local OW, W = st.OptionsWindow, st.OptionsWidgets
 local theme, close_all, frames, click, tick = H.theme, H.close_all, H.frames, H.click, H.tick
 if not _G.GameTooltip then CreateFrame('GameTooltip', 'GameTooltip', UIParent) end
@@ -525,7 +526,7 @@ test('the title opens the page list, grouped as the sidebar is, while the sideba
 	local function color(r) return string.format('%.2f,%.2f,%.2f', r.text:GetTextColor()) end
 	eq(color(row('Loot')), blue, 'the open page is blue')
 	local frames_row = row('Frames')
-	local grey = string.format('%.2f,%.2f,%.2f', st.config.profile.colors.text.grey.r, st.config.profile.colors.text.grey.g, st.config.profile.colors.text.grey.b)
+	local grey = string.format('%.2f,%.2f,%.2f', st.config.profile.colors.text.muted.r, st.config.profile.colors.text.muted.g, st.config.profile.colors.text.muted.b)
 	eq(color(frames_row), grey, 'a caption is grey')
 	check(color(row('Zeta')) ~= grey, 'a page is not')
 	frames_row = row('Frames')

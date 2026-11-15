@@ -248,7 +248,7 @@ define('position', {
 			fs:ClearAllPoints()
 			fs:SetPoint('TOPLEFT', frame, 'TOPLEFT', x, 0)
 			fs:SetWidth(width)
-			fs:SetTextColor(Colors().text.grey:GetRGB())
+			fs:SetTextColor(Colors().text.muted:GetRGB())
 			fs:Show()
 			captions[#captions + 1] = fs
 			local at = x

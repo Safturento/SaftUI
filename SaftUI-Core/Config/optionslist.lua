@@ -68,9 +68,9 @@ local function ListFill()
 				SetFieldFont(row.text)
 			end
 			row.text:SetText(entry.label)
-			-- A caption is Text > Grey; the picked entry the accent; the rest normal.
+			-- A caption is Text > Muted; the picked entry the accent; the rest normal.
 			if entry.caption then
-				row.text:SetTextColor(Colors().text.grey:GetRGB())
+				row.text:SetTextColor(Colors().text.muted:GetRGB())
 			elseif entry.key == list.selected then
 				row.text:SetTextColor(st:Color('accent'):GetRGB())
 			else
@@ -308,7 +308,7 @@ end
 -- Opens the list under owner (a frame; above it when there's no room below).
 -- entries: { {key, label, font = path} }, the selected key shows in the accent, and
 -- onPick(key) runs on a choice. An entry with caption = true is a heading
--- (its label in Text > Grey, no hover, a click that does nothing, the list
+-- (its label in Text > Muted, no hover, a click that does nothing, the list
 -- staying open) and one with disabled = true is dim (alpha 0.4), lit by no
 -- mouse and not to be picked. An entry with font (a path) is drawn in that
 -- face at 15 with no outline; any other in the field font. An empty list

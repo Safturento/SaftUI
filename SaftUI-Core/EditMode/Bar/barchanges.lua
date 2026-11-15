@@ -28,7 +28,7 @@ local History = EM.History
 	two rows with no spare width, so it has no line: the message is the tooltip
 	under owner, the control that was pressed (under the bar when none is given;
 	red for a refusal), and EM.statusCut says so. In the floating window
-	(barwindow.lua) it is a line of small, Text > Grey text under the Changes
+	(barwindow.lua) it is a line of small, Text > Muted text under the Changes
 	section instead, from the left and wrapped to the window's inside width,
 	never cut. It takes no mouse. It clears after EM.STATUS_SECONDS, when a new
 	status replaces it (each with its own clock) and when edit mode turns off.
@@ -93,7 +93,7 @@ end
 local function StatusText()
 	if EM.statusText then return EM.statusText end
 	local text = OB.Text(EM:GetBar(), 'small', 'RIGHT')
-	text:SetTextColor(OB.Grey())
+	text:SetTextColor(OB.Muted())
 	text:Hide()
 	EM.statusText = text
 	return text
@@ -141,7 +141,7 @@ EM:On('Disabled', function()
 	ClearStatus()
 end)
 EM:On('ColorsChanged', function()
-	if EM.statusText then EM.statusText:SetTextColor(OB.Grey()) end
+	if EM.statusText then EM.statusText:SetTextColor(OB.Muted()) end
 end)
 
 ------------------------------------------------------------------ the steps

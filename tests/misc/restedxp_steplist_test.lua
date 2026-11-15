@@ -26,7 +26,7 @@ test('list_frames_skinned', function()
 		check(font(f.text, 'normal', 9, 'OUTLINE'), 'list_frames_skinned: text font ' .. i)
 		check(font(f.number.text, 'normal', 8, 'OUTLINE'), 'list_frames_skinned: number font ' .. i)
 		local r, g, b = f.number.text:GetTextColor()
-		check(H.is_grey(r, g, b), 'list_frames_skinned: number grey ' .. i)
+		check(H.is_muted(r, g, b), 'list_frames_skinned: number grey ' .. i)
 	end
 end)
 
@@ -110,7 +110,7 @@ test('scrollbar_flat', function()
 	check(thumb:GetTexture() == SaftUI.BLANK_TEX, 'scrollbar_flat: blank thumb')
 	check(thumb:GetWidth() == 4 and thumb:GetHeight() == 32, 'scrollbar_flat: thumb 4x32')
 	local r, g, b = thumb:GetVertexColor()
-	check(H.is_grey(r, g, b), 'scrollbar_flat: thumb grey')
+	check(H.is_muted(r, g, b), 'scrollbar_flat: thumb grey')
 	local track
 	for _, t in ipairs({ bar:GetRegions() }) do
 		if t ~= thumb and H.color_of(t) and t:GetDrawLayer() == 'BACKGROUND' then track = t end

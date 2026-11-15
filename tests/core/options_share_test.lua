@@ -14,6 +14,7 @@
 -- frames' scripts, OnEnter and OnLeave with true as the game passes them.
 load_test_file('core/options_window_helpers.lua')
 local st = SaftUI
+st.config.profile.colors.text.muted:SetRGB(0.2, 0.4, 0.6) -- not the default, so a reader that draws a grey of its own fails
 local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 
 ------------------------------------------------------------------ the synthetic pages
@@ -120,11 +121,14 @@ end
 -- left text in lines, its right in rights and the right's color (as rgb text)
 -- in rightColors, by line.
 local function watch_tooltip()
-	local tip = { lines = {}, rights = {}, rightColors = {} }
+	local tip = { lines = {}, rights = {}, rightColors = {}, colors = {} }
 	local saved = _G.GameTooltip
 	_G.GameTooltip = {
-		SetOwner = function(_, frame) tip.owner = frame; tip.lines, tip.rights, tip.rightColors = {}, {}, {} end,
-		AddLine = function(_, text) tip.lines[#tip.lines + 1] = text end,
+		SetOwner = function(_, frame) tip.owner = frame; tip.lines, tip.rights, tip.rightColors, tip.colors = {}, {}, {}, {} end,
+		AddLine = function(_, text, r, g, b)
+			tip.lines[#tip.lines + 1] = text
+			tip.colors[#tip.lines] = r and string.format('%.2f,%.2f,%.2f', r, g, b) or nil
+		end,
 		AddDoubleLine = function(_, left, right, _, _, _, r, g, b)
 			tip.lines[#tip.lines + 1] = left
 			tip.rights[#tip.lines] = right
@@ -172,7 +176,7 @@ local function rgb(r, g, b) return string.format('%.2f,%.2f,%.2f', r, g, b) end
 local OWN = rgb(st:Color('accent'):GetRGB())
 local function text_rgb(fs) return rgb(fs:GetTextColor()) end
 local function normal() return rgb(st.config.profile.colors.text.normal:GetRGB()) end
-local function grey() return rgb(st.config.profile.colors.text.grey:GetRGB()) end
+local function grey() return rgb(st.config.profile.colors.text.muted:GetRGB()) end
 
 local function shown(parts, key) return parts ~= nil and parts[key]:IsShown() end
 
@@ -398,7 +402,7 @@ test('a disabled own row keeps its mark, its label grey, and offers no line', fu
 		local body, by = draw(root)
 		local c = by.spacing
 		check(shown(c.frame.share, 'mark'), 'the mark')
-		eq(text_rgb(c.label), grey(), 'its label in Text > Grey')
+		eq(text_rgb(c.label), grey(), 'its label in Text > Muted')
 		stub.fire_script(c.frame, 'OnEnter', true)
 		check(not shown(c.frame.share, 'line'), 'no line')
 		eq((point(c.label)), 'LEFT', 'the label stays')
@@ -417,7 +421,7 @@ test("the diff icon follows the label's text and lists who differs", function()
 		check(diff:IsShown(), 'the diff icon shows')
 		eq(diff.icon:GetTexture(), st.icons.diff, "Lucide's diff")
 		eq(diff:GetWidth() .. 'x' .. diff:GetHeight(), '16x16')
-		eq(rgb(diff.icon:GetVertexColor()), rgb(unpack(OB.DIFF_COLOR)), 'orange')
+		eq(rgb(diff.icon:GetVertexColor()), grey(), 'Text > Muted (it was orange before)')
 		check(diff:IsMouseEnabled(), 'it takes the mouse')
 		local p, rel, relPoint, x = point(diff)
 		check(rel == c.label, 'after the label')
@@ -434,6 +438,7 @@ test("the diff icon follows the label's text and lists who differs", function()
 		eq(tostring(tip.rightColors[3]) .. '|' .. tostring(tip.rightColors[4]), OWN .. '|' .. OWN, 'in the accent')
 		eq(tip.rights[1], nil, 'the title a line of its own')
 		eq(tip.rights[2], nil, "and the source's line")
+		eq(tip.colors[2], grey(), "the source's line is Text > Muted")
 		stub.fire_script(diff, 'OnLeave', true)
 		check(tip.owner == nil, 'gone on leaving')
 
@@ -620,6 +625,19 @@ test("a section title carries its block's marks and the line beside it", functio
 		entry = body.shareTitles[1]
 		eq(text_rgb(entry.title), grey(), 'a title nothing owns stays grey')
 		check(entry.parts.diff:IsShown(), 'the diff icon')
+		eq(rgb(entry.parts.diff.icon:GetVertexColor()), grey(), "the title's diff icon is Text > Muted (it was orange)")
+		do -- at OB.DIFF_STRENGTH
+			local keep = OB.DIFF_STRENGTH
+			OB.DIFF_STRENGTH = 0.5
+			local ok, err = pcall(function()
+				redraw(body, Page('source', { pos = { type = 'position', name = 'Position', order = 10, share = true } }))
+				eq(string.format('%.2f', select(4, body.shareTitles[1].parts.diff.icon:GetVertexColor())), '0.50', "the title's diff icon follows OB.DIFF_STRENGTH")
+			end)
+			OB.DIFF_STRENGTH = keep
+			if not ok then error(err, 0) end
+			redraw(body, Page('source', { pos = { type = 'position', name = 'Position', order = 10, share = true } }))
+			entry = body.shareTitles[1]
+		end
 		eq(entry.parts.diff:GetLeft() - entry.title:GetLeft(), titleWidth + 4, "4 after the title's text")
 		stub.fire_script(entry.hover, 'OnEnter', true)
 		eq(entry.parts.line:GetLeft() - entry.title:GetLeft(), titleWidth + 4 + 16 + 8, '8 after the icon')
@@ -1352,9 +1370,9 @@ test("a link's click takes its tooltip away, and leaving a link puts its accent 
 			stub.fire_script(parts[key], 'OnLeave', true)
 			eq(rgb(parts[key].text:GetTextColor()), textBlue, key .. ' in the accent again')
 		end
-		-- The reset icon: Text > Grey at rest, lit in the accent under the mouse.
-		local textGrey = rgb(st.config.profile.colors.text.grey:GetRGB())
-		eq(rgb(parts.reset.icon:GetVertexColor()), textGrey, 'the reset icon Text > Grey at rest')
+		-- The reset icon: Text > Muted at rest, lit in the accent under the mouse.
+		local textGrey = rgb(st.config.profile.colors.text.muted:GetRGB())
+		eq(rgb(parts.reset.icon:GetVertexColor()), textGrey, 'the reset icon Text > Muted at rest')
 		stub.fire_script(parts.reset, 'OnEnter', true)
 		eq(rgb(parts.reset.icon:GetVertexColor()), buttonBlue, 'the reset icon in the accent under the mouse')
 		stub.fire_script(parts.reset, 'OnLeave', true)

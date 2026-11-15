@@ -24,7 +24,7 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	    markShift right (under Blizzard 6, inside the cell). A marked row's
 	    label is the accent at OB.OWN_STRENGTH while the row isn't disabled (cell.ownLabel, so
 	    the body's Refresh keeps it once the row is enabled mid-drag).
-	  - the diff icon (state.differs): st.icons.diff, 16x16, OB.DIFF_COLOR, 4
+	  - the diff icon (state.differs): st.icons.diff, 16x16, Text > Muted at OB.DIFF_STRENGTH, 4
 	    after the label's text (its string width, at most the label's
 	    width; the label leaves the icon its room), on a frame that takes
 	    the mouse. Its tooltip: the row's name, '<source>: <shared>' (not
@@ -33,7 +33,7 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	  - the hover line (state.offers, on a row that isn't disabled): the
 	    small font under the label. On a member page Own (its tooltip: the
 	    name and '<source>: <shared>'), the reset icon (st.icons.rotateCcw,
-	    14x14, grey, lit in the accent under the mouse; its tooltip says what it
+	    14x14, Text > Muted, lit in the accent under the mouse; its tooltip says what it
 	    drops), then '· Apply to: All
 	    | Multiple'; on the source page 'Apply to: All | Multiple'. The links
 	    are frames that take the mouse (the accent, white under it), the
@@ -112,7 +112,7 @@ local WORD_GAP = 4 -- between the line's words and links
 local TITLE_GAP = 8 -- a title's line after its text or icon
 
 local Colors = OB.Colors
-local function Grey() return Colors().text.grey:GetRGB() end
+local function Muted() return Colors().text.muted:GetRGB() end
 
 ------------------------------------------------------------------ tooltips
 
@@ -133,11 +133,11 @@ end
 
 -- The reset icon, which a shared row's hover line (Reset) and a setting's
 -- own reset (OB.PlaceDefault) both draw: a 14x14 button holding Lucide's
--- rotate-ccw (st.icons.rotateCcw), Text > Grey at rest, lit in the accent
+-- rotate-ccw (st.icons.rotateCcw), Text > Muted at rest, lit in the accent
 -- (the accent) under the mouse; each read as it's painted, so a color
 -- change shows on its next place or hover. tip(self) shows its tooltip; a
 -- click hides that, then runs onClick(self).
-local function ResetAtRest(button) button.icon:SetVertexColor(Grey()) end
+local function ResetAtRest(button) button.icon:SetVertexColor(Muted()) end
 local function ResetIcon(parent, tip, onClick)
 	local button = CreateFrame('Button', nil, parent)
 	button:SetSize(RESET_SIZE, RESET_SIZE)
@@ -184,7 +184,7 @@ local function DiffTip(host, owner)
 	local state, name = host.shareState, host.shareCell.row.name
 	GameTooltip:SetOwner(owner, 'ANCHOR_TOPLEFT')
 	GameTooltip:AddLine(name, 1, 1, 1)
-	if not state.item then GameTooltip:AddLine(SourceLine(state), Grey()) end
+	if not state.item then GameTooltip:AddLine(SourceLine(state), Muted()) end
 	for _, entry in ipairs(state.differs) do
 		GameTooltip:AddDoubleLine(entry.name, entry.value, nil, nil, nil, st:Color('accent'):GetRGB())
 	end
@@ -409,8 +409,8 @@ local function FillLine(parts, state, room)
 		link.text:SetTextColor(OB.Accent())
 		link:SetWidth(TextWidth(link.text))
 	end
-	parts.sep:SetTextColor(Grey())
-	parts.pipe:SetTextColor(Grey())
+	parts.sep:SetTextColor(Muted())
+	parts.pipe:SetTextColor(Muted())
 	-- Too long for its room: Own goes first (the mark and the label say it;
 	-- Reset's tooltip takes its line), then the words before All (their
 	-- links' tooltips say them). The cut below is the last resort.
@@ -559,7 +559,7 @@ function OB.PlaceShare(cell)
 	OB.PlaceLabel(cell, shift)
 	frame.shareShift = shift
 	if diffs then
-		parts.diff.icon:SetVertexColor(unpack(OB.DIFF_COLOR))
+		parts.diff.icon:SetVertexColor(st:ColorRGBA('text', 'muted', OB.DIFF_STRENGTH))
 		PlaceDiff(cell, parts)
 		parts.diff:Show()
 	end
@@ -639,7 +639,7 @@ function OB.PlaceShareTitle(body, entry, title)
 	local x = shift + min(TextWidth(title), floor(title:GetWidth()))
 	if #state.differs > 0 then
 		local diff = parts.diff
-		diff.icon:SetVertexColor(unpack(OB.DIFF_COLOR))
+		diff.icon:SetVertexColor(st:ColorRGBA('text', 'muted', OB.DIFF_STRENGTH))
 		diff:ClearAllPoints()
 		diff:SetPoint('TOPLEFT', hover, 'TOPLEFT', x + DIFF_GAP, -floor((OB.TITLE_HEIGHT - DIFF_SIZE) / 2))
 		diff:Show()

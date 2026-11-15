@@ -17,6 +17,7 @@
 local H = load_test_file('core/options_window_helpers.lua')
 local P = load_test_file('lib/pixels.lua')
 local st = SaftUI
+st.config.profile.colors.text.muted:SetRGB(0.2, 0.4, 0.6) -- not the default, so a reader that draws a grey of its own fails
 local OM, W, OB, OW = st.OptionsModel, st.OptionsWidgets, st.OptionsBody, st.OptionsWindow
 local FN = st:GetModule('Fonts')
 local generators = st.Config.generators
@@ -248,7 +249,7 @@ test('the list: SaftUI fonts, the six in order each in its face, Typefaces, then
 		eq(list.rows[1].text:GetText(), 'SaftUI fonts')
 		eq(face_of(list.rows[1].text), (group:GetFont()), "the caption in the group font's face")
 		eq(list.rows[1].text:GetFontObject(), group)
-		eq(text_rgb(list.rows[1].text), rgb(st.config.profile.colors.text.grey:GetRGB()), 'in Text > Grey')
+		eq(text_rgb(list.rows[1].text), rgb(st.config.profile.colors.text.muted:GetRGB()), 'in Text > Muted')
 		for i = 2, 7 do
 			local row = list.rows[i]
 			eq(row.text:GetText(), labels[i - 1])
@@ -433,7 +434,7 @@ test('the link: its tooltip', function()
 		eq(rgb(w.dots.icon:GetVertexColor()), blue(), 'the icon is lit under the mouse')
 		stub.fire_script(w.dots, 'OnLeave', true)
 		check(not tip.shown, 'and goes when the mouse leaves')
-		eq(rgb(w.dots.icon:GetVertexColor()), rgb(st.config.profile.colors.text.grey:GetRGB()), 'back to Text > Grey')
+		eq(rgb(w.dots.icon:GetVertexColor()), rgb(st.config.profile.colors.text.muted:GetRGB()), 'back to Text > Muted')
 		-- Text for a value that names nothing.
 		w = row_widget('header', nil)
 		stub.fire_script(w.dots, 'OnEnter', true)
@@ -882,7 +883,7 @@ test('a typeface picked: the dots in the slot, grey, lit under the mouse (white 
 			check(w.dots:IsShown(), look .. ': the dots show')
 			eq(w.dots.icon:GetTexture(), st.icons.ellipsisVertical, 'the ellipsis, not the link')
 			eq(w.dots:GetWidth() .. 'x' .. w.dots:GetHeight(), '16x24')
-			eq(rgb(w.dots.icon:GetVertexColor()), rgb(st.config.profile.colors.text.grey:GetRGB()), 'Text > Grey')
+			eq(rgb(w.dots.icon:GetVertexColor()), rgb(st.config.profile.colors.text.muted:GetRGB()), 'Text > Muted')
 			stub.fire_script(w.dots, 'OnEnter', true)
 			eq(rgb(w.dots.icon:GetVertexColor()), look == 'blizzard' and rgb(1, 1, 1) or blue(), 'lit under the mouse')
 			eq(tip.owner, w.dots)

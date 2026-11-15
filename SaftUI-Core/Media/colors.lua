@@ -85,9 +85,16 @@ end
 
 -- Today's shipped value of every retired key, frozen (AceDB saves only the
 -- channels that differ from a default; once a default is gone, the rest come
--- from here). Never edited after it lands.
+-- from here). Never edited after it lands: the one edit made since is
+-- text.grey, below. A key's value here is the default in effect when its step
+-- ships and the key retires.
 CO.OLD_COLORS = {
-	['text.grey'] = { r = 150/255, g = 150/255, b = 150/255 },
+	-- 180, not the 150 Text > Grey first shipped with: its default became
+	-- #b4b4b4 (decision 49) after this table was written and before step 3
+	-- (the step that retires it) shipped, so 180 is the default a profile that
+	-- never changed it had been drawing. This one edit is allowed because step 3
+	-- had not shipped. A grey saved at exactly 150 is a customized color.
+	['text.grey'] = { r = 180/255, g = 180/255, b = 180/255 },
 	['text.white'] = { r = 1, g = 1, b = 1 },
 	['text.red'] = { r = 220/255, g = 100/255, b = 100/255 },
 	['text.orange'] = { r = 220/255, g = 150/255, b = 100/255 },
@@ -127,6 +134,14 @@ CO.MIGRATION_STEPS = {
 		-- Alliance at step 1; a change made after it goes nowhere).
 		copy = { { 'button.blue', 'accent' } },
 		retire = { 'button.blue', 'text.blue', 'button.green' },
+	},
+	{
+		-- Text > Grey becomes Text > Muted, and Buttons > Grey (the combined
+		-- bank's visibility toggle and the edit mode picker's hint line, the
+		-- same grey) folds into it: a customized Buttons > Grey is dropped, as
+		-- Text > Grey is the one color that was Muted already.
+		copy = { { 'text.grey', 'text.muted' } },
+		retire = { 'text.grey', 'button.grey' },
 	},
 }
 
@@ -243,7 +258,7 @@ CO.SECTIONS = {
 		key = 'text', name = 'Text', note = RELOAD_NOTE,
 		colors = Colors('text', {
 			{ 'normal', 'Text', "Ordinary text: the options window, totem timers, the flyout arrow on the totem bar's summon button, and an enemy nameplate's threat text while your threat on it is fine." },
-			{ 'grey', 'Grey', "Dimmed text: the options window's hints and disabled controls, and a unit frame's level tag for a far lower level." },
+			{ 'muted', 'Muted', "Dimmed text and icons: the options window's hints, captions, section titles and disabled controls, and the diff icon beside a setting that differs; edit mode's hint lines; the bag categories' counts and their edited and yours marker, and the combined bank's visibility toggle; SaftUI's objective tracker's zone headers, counts and chevrons; and a unit frame's level tag for a far lower level." },
 			{ 'red', 'Red', "Warnings: loot roll timers under a minute, a unit frame's level tag for a much higher level and expiring totem timers. Also a durability under 20% in the durability figure's tooltip." },
 			{ 'orange', 'Orange', "A unit frame's level tag for a somewhat higher level, and the poor end of the micro menu's stats. Also a durability from 20% to 49% in the durability figure's tooltip." },
 			{ 'yellow', 'Yellow', "A unit frame's level tag near your level, unfriendly names, and the micro menu's alert flash and the middle of its stats." },
@@ -259,7 +274,6 @@ CO.SECTIONS = {
 			{ 'hover', 'Hover', "A checked check box, a hovered scroll bar thumb, the minimap tracking button's hover, micro menu button highlights and resize handles." },
 			{ 'pushed', 'Pushed', 'A pressed SaftUI button, scroll bar thumb or micro menu button.' },
 			{ 'red', 'Red', "Locked bank slots, and the flash on an action bar or totem button." },
-			{ 'grey', 'Grey', "The combined bank's visibility toggle and the edit mode picker's hint line." },
 		}),
 	},
 	{

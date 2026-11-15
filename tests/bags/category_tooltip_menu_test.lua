@@ -22,6 +22,7 @@ local SELL, SETS, MISC = 'Grays/Auto Vendor', 'Equipment sets', 'Miscellaneous'
 local function world()
 	INV, B = H.views_world('forever', function() load_test_file('core/config_helpers.lua') end)
 	st = SaftUI
+	st.config.profile.colors.text.muted:SetRGB(0.2, 0.4, 0.6) -- not the default, so a reader that draws a grey of its own fails
 	load_saftui('SaftUI-Core/Config/optionsmodel.lua')
 	load_options_widgets()
 	load_saftui('SaftUI-Core/Config/optionsbody.lua')
@@ -109,7 +110,7 @@ test('tooltip lines: the category, its place and the block that caught it; a nes
 	local entry = INV:GetCategoryList().byId.Consumables
 	local _, why = INV:GetItemCategory(slot_of(container, 101).info)
 	eq(plain(lines)[2], 'Caught by: ' .. R.Describe(entry.rule, why.path), 'the block that caught it')
-	local blue, grey, yellow = st.config.profile.theme.accent, st.config.profile.colors.text.grey,
+	local blue, grey, yellow = st.config.profile.theme.accent, st.config.profile.colors.text.muted,
 		st.config.profile.colors.text.yellow
 	local r, g, b = blue:GetRGB()
 	-- "the Category: line is the accent": a changed accent is the next line's color.

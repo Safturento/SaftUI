@@ -187,7 +187,7 @@ local function LineColor()
 end
 
 local function ColorCollapse(entry)
-	entry.icon:SetVertexColor(Profile().colors.text.grey:GetRGB())
+	entry.icon:SetVertexColor(Profile().colors.text.muted:GetRGB())
 	entry.hover:SetVertexColor(1, 1, 1, 1)
 end
 

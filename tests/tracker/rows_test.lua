@@ -35,8 +35,8 @@ RW.both('zone headers: the current one first with the map pin in the accent, the
 	eq(RW.text(here.count), '2', 'the number of its quests')
 	eq(RW.text(there.count), '1', 'the other has one')
 	eq(RW.color(here.title), RW.rgb(colors(st).text.normal), 'the current zone in Text > Normal')
-	eq(RW.color(there.title), RW.rgb(colors(st).text.grey), 'the rest in Text > Grey')
-	eq(RW.color(here.count), RW.rgb(colors(st).text.grey), 'the count in Text > Grey')
+	eq(RW.color(there.title), RW.rgb(colors(st).text.muted), 'the rest in Text > Muted')
+	eq(RW.color(here.count), RW.rgb(colors(st).text.muted), 'the count in Text > Muted')
 	eq(here.title:GetFontObject(), st:GetFont('heading'), 'the Header font: Heading by default')
 	check(here.pin:IsShown(), 'the pin shows for the current zone')
 	check(not there.pin:IsShown(), 'and not for the rest')
@@ -497,7 +497,7 @@ RW.both('empty: hidden with Hide when empty, else the header and "No tracked que
 	local line = RW.rows(TR, 'empty')[1]
 	check(line ~= nil, 'the empty line')
 	eq(RW.text(line.title), 'No tracked quests.', 'its words')
-	eq(RW.color(line.title), RW.rgb(colors(st).text.grey), 'in Text > Grey')
+	eq(RW.color(line.title), RW.rgb(colors(st).text.muted), 'in Text > Muted')
 	eq(TR.header:IsShown(), true, 'under the header')
 	-- A quest comes: the line goes, the window shows (Hide when empty on again).
 	st.config.profile.tracker.hide_empty = true
@@ -545,10 +545,10 @@ RW.both('a Colors tab change recolors the status lines (objectives) and Theme > 
 		local r, g, b = RW.zone(TR, 'A').pin:GetVertexColor()
 		eq(('%.2f %.2f %.2f'):format(r, g, b), '0.70 0.80 0.90', 'the pin')
 	end
-	colors(st).text.grey:SetRGB(0.3, 0.3, 0.3)
+	colors(st).text.muted:SetRGB(0.3, 0.3, 0.3)
 	colors(st).text.normal:SetRGB(0.9, 0.9, 0.9)
 	TR:OnColorsChanged('text')
-	eq(RW.color(RW.zone(TR, 'A').count), '0.30 0.30 0.30', 'the zone count in Text > Grey')
+	eq(RW.color(RW.zone(TR, 'A').count), '0.30 0.30 0.30', 'the zone count in Text > Muted')
 	eq(RW.color(RW.zone(TR, 'A').title), '0.90 0.90 0.90', 'the current zone in Text > Normal')
 	eq(counter.frames, 0, 'no frame')
 	eq(counter.texts, 0, 'no text set')

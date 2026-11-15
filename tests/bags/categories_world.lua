@@ -28,6 +28,7 @@ local SELL, SETS, MISC = 'Grays/Auto Vendor', 'Equipment sets', 'Miscellaneous'
 local function world(client)
 	INV, B = H.views_world(client or 'forever', function() load_test_file('core/config_helpers.lua') end)
 	st = SaftUI
+	st.config.profile.colors.text.muted:SetRGB(0.2, 0.4, 0.6) -- not the default, so a reader that draws a grey of its own fails
 	load_saftui('SaftUI-Core/Config/optionsmodel.lua')
 	load_options_widgets()
 	load_saftui('SaftUI-Core/Config/optionsbody.lua')

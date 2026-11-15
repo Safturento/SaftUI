@@ -16,7 +16,7 @@ local function LevelColor(levelDiff)
 	elseif levelDiff >= -10 then
 		return colors.green
 	end
-	return colors.grey
+	return colors.muted
 end
 
 -- What goes before the name: the level and the classification mark, in the

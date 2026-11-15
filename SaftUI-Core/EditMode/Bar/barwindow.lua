@@ -335,7 +335,7 @@ function EM:LookBarWindow(blizzard)
 	if not window then return end
 	W.LookControl(window.dock, blizzard)
 	window.heading:SetTextColor(OB.Normal())
-	for _, caption in pairs(window.captions) do caption:SetTextColor(OB.Grey()) end
+	for _, caption in pairs(window.captions) do caption:SetTextColor(OB.Muted()) end
 	for _, line in ipairs(window.rules) do line:SetColorTexture(unpack(OB.LINE)) end
 end
 

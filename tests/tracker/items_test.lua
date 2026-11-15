@@ -429,6 +429,8 @@ test('a /reload in combat', function()
 		stub.fire_script(row.slot, 'OnEnter', true)
 		local texts = stub.state(GameTooltip).texts
 		eq(texts[#texts], 'Its button comes when combat ends.', id .. ': its tooltip')
+		local color = stub.state(GameTooltip).colors[#texts]
+		eq(('%.2f,%.2f,%.2f'):format(color[1], color[2], color[3]), ('%.2f,%.2f,%.2f'):format(st.config.profile.colors.text.muted:GetRGB()), id .. ': in Text > Muted')
 		stub.fire_script(row.slot, 'OnLeave', true)
 	end
 	eq(#stub.blocked, 0, 'nothing blocked')

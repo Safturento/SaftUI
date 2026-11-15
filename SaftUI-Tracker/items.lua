@@ -464,7 +464,7 @@ function TR:ShowSlotTooltip(slot, row)
 	if slot.mode == 'greyed' then
 		PlaceTip(slot, row)
 		GameTooltip:AddLine(quest.title, 1, 1, 1)
-		local r, g, b = Colors().text.grey:GetRGB()
+		local r, g, b = Colors().text.muted:GetRGB()
 		GameTooltip:AddLine('Its button comes when combat ends.', r, g, b, true)
 		GameTooltip:Show()
 	else

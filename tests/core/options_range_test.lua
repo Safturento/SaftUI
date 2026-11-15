@@ -11,6 +11,7 @@
 -- options_widgets_helpers.lua's.
 local H = load_test_file('core/options_widgets_helpers.lua')
 local st = SaftUI
+st.config.profile.colors.text.muted:SetRGB(0.2, 0.4, 0.6) -- not the default, so a reader that draws a grey of its own fails
 local W = st.OptionsWidgets
 local range, bind, opt, check_no_box, shown_textures = H.range, H.bind, H.opt, H.check_no_box, H.shown_textures
 local check_box, parent, rebind, art_inside, theme = H.check_box, H.parent, H.rebind, H.art_inside, H.theme
@@ -75,19 +76,19 @@ end)
 -- the mouse, an open list or the select being disabled.
 test("select: the caret stays grey at rest, hovered, open and disabled", function()
 	local w = bind('select', 'pick', opt('select', 'Pick', { values = { a = 'Alpha' }, get = function() return 'a' end, set = function() end }))
-	local grey = st.config.profile.colors.text.grey
+	local grey = st.config.profile.colors.text.muted
 	local caret = w.frame.caret[1]
-	local function is_grey(state)
+	local function is_muted(state)
 		local r, g, b = caret:GetVertexColor()
 		eq(r, grey.r, state .. ': r'); eq(g, grey.g, state .. ': g'); eq(b, grey.b, state .. ': b')
 		check(caret:IsShown(), state .. ': shown')
 	end
-	is_grey('rest')
-	stub.fire_script(w.frame, 'OnEnter'); is_grey('hover')
+	is_muted('rest')
+	stub.fire_script(w.frame, 'OnEnter'); is_muted('hover')
 	stub.fire_script(w.frame, 'OnLeave')
-	click(w.frame); eq(W.ListOwner(), w.frame, 'the list is open'); is_grey('open')
+	click(w.frame); eq(W.ListOwner(), w.frame, 'the list is open'); is_muted('open')
 	W.CloseList()
-	w:SetDisabled(true); is_grey('disabled')
+	w:SetDisabled(true); is_muted('disabled')
 	w:SetDisabled(false)
 end)
 

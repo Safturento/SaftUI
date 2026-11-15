@@ -20,7 +20,7 @@ local Kit = W.Kit
 	            top left), the box taking the mouse over the art
 	  w.dots    a 16 x 24 button at the cell's right edge, Lucide's
 	            ellipsis-vertical (st.icons.ellipsisVertical) at 16x16 on it,
-	            Text > Grey; under the mouse the accent, or white under
+	            Text > Muted; under the mouse the accent, or white under
 	            Blizzard. A click opens the menu, or closes it when it's this
 	            item's. Shown only when the option has a menu (a table):
 	            w.hasMenu, which the body reads to end the label at the
@@ -50,13 +50,13 @@ local BOX_ROW = 22 -- the Blizzard check box's art is drawn for a row this tall 
 local LABEL_X = 26 -- the name after the box: its 18 and 8
 local DOTS_WIDTH, DOTS_HEIGHT, DOTS_ICON = 16, 24, 16
 
--- A slot's color: Text > Grey, or under the mouse the accent (white under
+-- A slot's color: Text > Muted, or under the mouse the accent (white under
 -- Blizzard, as its Settings panel lights what's under the mouse). The slot is
 -- the item's dots and the font row's link: one look, so they change together.
 local function PaintSlot(button, over)
 	local icon = button.icon
 	if not over then
-		icon:SetVertexColor(Colors().text.grey:GetRGB())
+		icon:SetVertexColor(Colors().text.muted:GetRGB())
 	elseif button.blizzard then
 		icon:SetVertexColor(1, 1, 1)
 	else
@@ -70,7 +70,7 @@ local function PaintDots(w, over)
 end
 
 -- A slot: a 16 x 24 button for parent holding a 16 x 16 icon (a texture path)
--- in its middle, in Text > Grey. It reads button.onClick (the click), button.tip
+-- in its middle, in Text > Muted. It reads button.onClick (the click), button.tip
 -- (function(button) -> title, lines, shown with W.ShowTip under the mouse)
 -- and button.blizzard (the look PaintSlot reads), and does nothing while
 -- button.disabled. Its scripts take (self) only: the game gives OnEnter and

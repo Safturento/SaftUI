@@ -13,6 +13,7 @@
 -- stub.cursor_y.
 load_test_file('core/options_window_helpers.lua')
 local st = SaftUI
+st.config.profile.colors.text.muted:SetRGB(0.2, 0.4, 0.6) -- not the default, so a reader that draws a grey of its own fails
 local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 
 ------------------------------------------------------------------ the synthetic pages
@@ -202,11 +203,11 @@ test('an item: its Show box, its name, its dots', function()
 		eq(dots:GetWidth() .. 'x' .. dots:GetHeight(), '16x24', 'a 16 x 24 button')
 		eq(dots.icon:GetTexture(), st.icons.ellipsisVertical, "Lucide's ellipsis-vertical")
 		eq(dots.icon:GetWidth() .. 'x' .. dots.icon:GetHeight(), '16x16', 'at 16x16')
-		eq(vertex(dots.icon), color('text', 'grey'), 'Text > Grey')
+		eq(vertex(dots.icon), color('text', 'muted'), 'Text > Muted')
 		stub.fire_script(dots, 'OnEnter', true)
 		eq(vertex(dots.icon), rgb(st:Color('accent'):GetRGB()), 'the accent under the mouse')
 		stub.fire_script(dots, 'OnLeave', true)
-		eq(vertex(dots.icon), color('text', 'grey'), 'grey again')
+		eq(vertex(dots.icon), color('text', 'muted'), 'grey again')
 
 		eq(w.rowBody, body, 'widget.rowBody: the body that drew it')
 		eq(by.count.widget.rowBody, body, 'every widget')
@@ -259,8 +260,8 @@ test("an item's label is grey while its Show is off, and while it's disabled", f
 		args.count.disabled = true
 		local body, by = draw(Page(args))
 		eq(text_rgb(by.hotkey.label), color('text', 'normal'), 'shown: the text color')
-		eq(text_rgb(by.macro.label), color('text', 'grey'), 'its Show off: grey')
-		eq(text_rgb(by.count.label), color('text', 'grey'), 'disabled: grey')
+		eq(text_rgb(by.macro.label), color('text', 'muted'), 'its Show off: grey')
+		eq(text_rgb(by.count.label), color('text', 'muted'), 'disabled: grey')
 		check(not by.count.widget.box:IsMouseEnabled(), "a disabled item's box takes no mouse")
 		check(not by.count.widget.dots:IsMouseEnabled(), 'nor its dots')
 		body:Release()
@@ -331,7 +332,7 @@ test('Blizzard: the box is the Settings check box at the row size, the dots whit
 		eq(art:GetLeft() - box:GetLeft(), 0, "from the box's left")
 		eq(art:GetTop() - box:GetTop(), 2, 'and 2 over its top')
 		check(not box.mark:IsShown(), 'no blue square')
-		eq(vertex(c.widget.dots.icon), color('text', 'grey'), 'the dots grey')
+		eq(vertex(c.widget.dots.icon), color('text', 'muted'), 'the dots grey')
 		stub.fire_script(c.widget.dots, 'OnEnter', true)
 		eq(vertex(c.widget.dots.icon), '1.00,1.00,1.00', 'white under the mouse')
 		stub.fire_script(c.widget.dots, 'OnLeave', true)
@@ -411,12 +412,12 @@ test("an item's box takes the mouse over Blizzard's art under Blizzard, and on i
 	end)
 end)
 
-test("an item's dots take Text > Grey as each draw binds them; an item with no menu has none", function()
+test("an item's dots take Text > Muted as each draw binds them; an item with no menu has none", function()
 	in_look('thick', function()
 		fresh()
 		local body, by = draw(Page(FourItems()))
 		body:Release()
-		local grey = st.config.profile.colors.text.grey
+		local grey = st.config.profile.colors.text.muted
 		local r, g, b = grey.r, grey.g, grey.b
 		grey.r, grey.g, grey.b = 0.2, 0.4, 0.6
 		body, by = draw(Page(FourItems()))
@@ -458,22 +459,22 @@ test("an item's label through a drag: enabled by a dragged slider it stays grey 
 		end)
 		local macro = by.macro
 		check(macro.widget.disabled, 'Macro name disabled at 3')
-		eq(text_rgb(macro.label), color('text', 'grey'), 'grey')
+		eq(text_rgb(macro.label), color('text', 'muted'), 'grey')
 		local slider = by.level.widget
 		stub.mouse_buttons.LeftButton = true
 		slider.dragging = true
 		slider:Commit(6)
 		check(not macro.widget.disabled, 'enabled mid-drag')
-		eq(text_rgb(macro.label), color('text', 'grey'), 'its label stays grey: its Show is off')
+		eq(text_rgb(macro.label), color('text', 'muted'), 'its label stays grey: its Show is off')
 		shows.macro = true -- its Show turned on meanwhile
 		slider:Commit(7)
 		eq(text_rgb(macro.label), color('text', 'normal'), 'its Show on: the text color')
 		shows.macro = false
 		slider:Commit(6)
-		eq(text_rgb(macro.label), color('text', 'grey'), 'off again: grey')
+		eq(text_rgb(macro.label), color('text', 'muted'), 'off again: grey')
 		slider:Commit(4)
 		check(macro.widget.disabled, 'disabled again')
-		eq(text_rgb(macro.label), color('text', 'grey'))
+		eq(text_rgb(macro.label), color('text', 'muted'))
 		stub.mouse_buttons.LeftButton = nil
 		slider.dragging = nil
 		body:Release()

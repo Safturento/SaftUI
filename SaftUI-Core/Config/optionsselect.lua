@@ -20,14 +20,14 @@ local SetCheck = Kit.SetCheck
 ------------------------------------------------------------------ select
 
 -- A box that shows its choice and opens the list. The caret is Lucide's
--- chevron-down, grey in every state (a list that opens doesn't flip it): a
+-- chevron-down, Muted in every state (a list that opens doesn't flip it): a
 -- 16 px texture holding an 8 x 4 chevron, centred 12 from the box's right edge
 -- (an even size on a whole-pixel centre, so its edges are whole pixels).
 -- Returns it in a list (hidden under Blizzard, LookDropdown).
 local function Caret(parent)
 	local t = parent:CreateTexture(nil, 'OVERLAY')
 	t:SetTexture(st.icons.chevronDown)
-	t:SetVertexColor(Colors().text.grey:GetRGB())
+	t:SetVertexColor(Colors().text.muted:GetRGB())
 	t:SetSize(16, 16)
 	t:SetPoint('CENTER', parent, 'RIGHT', -12, 0)
 	return { t }

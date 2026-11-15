@@ -21,7 +21,7 @@ Any on/off option (Ace `toggle`), the Show box of a `MenuItem`, and the rows of 
 
 - Off: the empty box. On: the mark.
 - Under the mouse (the box itself): the edge turns `accent` (`HoverEdge`).
-- Disabled: the box at `alpha-disabled`, the label `text-grey`; the box takes no mouse, so the row's tooltip shows and says why.
+- Disabled: the box at `alpha-disabled`, the label `text-muted`; the box takes no mouse, so the row's tooltip shows and says why.
 - Click toggles; there is no pressed look.
 
 ## Blizzard theme

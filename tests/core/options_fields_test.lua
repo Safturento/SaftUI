@@ -11,6 +11,7 @@
 -- options_widgets_helpers.lua's.
 local H = load_test_file('core/options_widgets_helpers.lua')
 local st = SaftUI
+st.config.profile.colors.text.muted:SetRGB(0.2, 0.4, 0.6) -- not the default, so a reader that draws a grey of its own fails
 local W = st.OptionsWidgets
 local bind, opt, range, click, no = H.bind, H.opt, H.range, H.click, H.no
 local yes, text_of, check_no_box, check_box, parent = H.yes, H.text_of, H.check_no_box, H.check_box, H.parent
@@ -555,7 +556,7 @@ local function toggled_color(fields)
 	return w, told, log, root, row
 end
 
-local function grey_rgb() return string.format('%.2f,%.2f,%.2f', st.config.profile.colors.text.grey:GetRGB()) end
+local function grey_rgb() return string.format('%.2f,%.2f,%.2f', st.config.profile.colors.text.muted:GetRGB()) end
 
 test('color with a toggle: a check box at the left of the field, 18 square on whole pixels, then the swatch and the code', function()
 	theme('thick')
@@ -581,7 +582,7 @@ test('color with a toggle: off, a grey word the option gives takes the swatch an
 	check(not w.swatch:IsShown() and not w.inner:IsShown() and not w.line:IsShown() and not w.checkerBack:IsShown(),
 		'no swatch, line or checker')
 	eq(w.text:GetText(), 'Class color', 'the word')
-	eq(ink_of(w.text), grey_rgb(), 'in the grey of Text > Grey')
+	eq(ink_of(w.text), grey_rgb(), 'in the grey of Text > Muted')
 	eq(#log.toggles, 0, 'nothing was set by showing it')
 	w:Release()
 end)
@@ -894,6 +895,7 @@ test('keybinding: a click waits, the next key (with modifiers) is set, Esc clear
 	stub.fire_script(w.frame, 'OnKeyDown', 'ESCAPE')
 	eq(sets[2], '', 'Esc clears the binding')
 	eq(text_of(w.text), 'Not bound', 'shown as unbound')
+	eq(ink_of(w.text), grey_rgb(), 'Not bound is Text > Muted')
 
 	click(w.frame)
 	stub.fire_script(w.frame, 'OnMouseDown', 'MiddleButton')

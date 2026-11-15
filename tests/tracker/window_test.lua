@@ -194,10 +194,10 @@ test('Grow changes no saved position, and in combat the window sizes and moves',
 	eq(#take_errors(), 0, 'no errors')
 end)
 
-test('the header: Objectives, the count 6 left of the chevron in Text > Grey, a line at 50%; Header off and Count off', function()
+test('the header: Objectives, the count 6 left of the chevron in Text > Muted, a line at 50%; Header off and Count off', function()
 	local st, TR = world()
 	local header = TR.header
-	local grey = st.config.profile.colors.text.grey
+	local grey = st.config.profile.colors.text.muted
 	eq(header.title:GetText(), 'Objectives', 'the title')
 	eq(header.title:GetFontObject(), st:GetFont(TR.config.header_font), 'in the Header font')
 	eq(header:GetHeight(), 24, 'the header is 24 tall')
@@ -207,7 +207,7 @@ test('the header: Objectives, the count 6 left of the chevron in Text > Grey, a 
 
 	TR:UpdateHeader({ counts = COUNTS })
 	eq(header.count:GetText(), '12/40', 'the count: in the log over the most')
-	eq(T.rgb(header.count:GetTextColor()), T.rgb(grey:GetRGB()), 'Text > Grey')
+	eq(T.rgb(header.count:GetTextColor()), T.rgb(grey:GetRGB()), 'Text > Muted')
 	local p, rel, relPoint, x = point(header.count)
 	eq(p .. relPoint .. x, 'RIGHTLEFT-6', 'right-aligned 6 left of the chevron')
 	eq(rel, header.collapse, 'anchored to the chevron')
@@ -216,7 +216,7 @@ test('the header: Objectives, the count 6 left of the chevron in Text > Grey, a 
 	eq(header.collapse:GetWidth() .. 'x' .. header.collapse:GetHeight(), '16x16', 'the chevron is 16 square')
 	eq(header.collapse.icon:GetTexture(), st.icons.chevronUp, 'up while the list shows')
 	eq(header.collapse.icon:GetWidth(), 16, 'drawn 16')
-	eq(T.rgb(header.collapse.icon:GetVertexColor()), T.rgb(grey:GetRGB()), 'Text > Grey at rest')
+	eq(T.rgb(header.collapse.icon:GetVertexColor()), T.rgb(grey:GetRGB()), 'Text > Muted at rest')
 	mouse_on(header.collapse)
 	stub.fire_script(header.collapse, 'OnEnter', true)
 	eq(T.rgb(header.collapse.icon:GetVertexColor()), '1.00,1.00,1.00', 'white under the mouse')

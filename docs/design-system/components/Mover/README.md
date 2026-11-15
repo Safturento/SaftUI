@@ -19,7 +19,7 @@ The frame (or holder) with a real size, a `label` (the frame's name as the sideb
 | Label | `pixel`, white, centred | `pixel` |
 | Selected | outline `accent`, fill `accent-tint` (accent at 15%), label `accent` | `accent`, `accent-tint` |
 | Others under the picker | at 0.4 | `alpha-disabled` |
-| Picker list | by the cursor where movers overlap: `tooltip` kind, `pixel`, 6 in; the one a click gets as "> name" in the accent (Theme > Accent), "Alt: next" in Buttons > Grey | `accent`, `text-grey` |
+| Picker list | by the cursor where movers overlap: `tooltip` kind, `pixel`, 6 in; the one a click gets as "> name" in the accent (Theme > Accent), "Alt: next" in Text > Muted | `accent`, `text-muted` |
 | Grid | 1px white at 12% every grid size (32 by default), two centre lines in accent at 90%, at `strata-grid` | `grid-line`, `grid-centre`, `grid-size` |
 | Layer | `strata-options`, levels from 10 in steps of 2 | `level-mover` |
 

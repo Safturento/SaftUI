@@ -28,14 +28,14 @@ A color option can carry a `toggle` (`get(info)`, `set(info, value)`, `offText`,
 | State | The field shows |
 | --- | --- |
 | Ticked | box ticked, swatch and code as above; a click on the swatch or code opens the picker |
-| Unticked | box empty; the swatch and code gone, `offText` in `text-grey` from where the swatch began (what the setting falls back to: "Class", "White"); a click on the field ticks the box and opens nothing |
+| Unticked | box empty; the swatch and code gone, `offText` in `text-muted` from where the swatch began (what the setting falls back to: "Class", "White"); a click on the field ticks the box and opens nothing |
 
 The box takes its own click and has its own tooltip, which says what unticked means. The per-setting `ResetIcon` covers both the toggle and the color: it shows when either differs, and puts both back.
 
 ## States
 
 - Under the mouse: the edge turns `accent`, as an input's.
-- Disabled: `alpha-disabled`, label `text-grey`; it takes no mouse.
+- Disabled: `alpha-disabled`, label `text-muted`; it takes no mouse.
 - While Blizzard's picker is open the swatch, the checker and the code follow the picked color live.
 
 ## Legibility

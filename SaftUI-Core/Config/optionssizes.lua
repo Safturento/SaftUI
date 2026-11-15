@@ -30,7 +30,7 @@ local W = st.OptionsWidgets
 	      next size.
 
 	The size buttons (F.shrink, F.grow): W.IconButton the close X's size, with
-	a 16 Lucide icon in Text > Grey and the accent under the mouse (shrink
+	a 16 Lucide icon in Text > Muted and the accent under the mouse (shrink
 	wears minimize-2, grow maximize-2), each with its tooltip in the mockup's
 	words and, while it is disabled, the reason in red (the color picker is
 	open; the screen is too narrow). Shrink is at the left of the pair and
@@ -53,7 +53,7 @@ local W = st.OptionsWidgets
 	column, footer, grip, edge, inner frame and title bar hidden. Left to
 	right: F.miniBrand, "SaftUI" (OW.BrandText: Saft in the text colour, UI in
 	the accent) in the mini font; F.miniPage, the page's name in group, Text >
-	Grey; F.miniTab, the tab's name in field, Text > Grey (empty for a page
+	Muted; F.miniTab, the tab's name in field, Text > Muted (empty for a page
 	with one tab; for a search the page is Search and the tab the text in
 	quotes); F.miniGrow, the grow arrow ("Grow to half"); F.close, moved in, 8
 	from the right. F.miniNames is a button over the page's and the tab's names:
@@ -73,7 +73,7 @@ local floor, ceil, max = math.floor, math.ceil, math.max
 local F, SaveWindow = S.F, S.SaveWindow
 local CLOSE_RIGHT, MINI_PAD = S.CLOSE_RIGHT, S.MINI_PAD
 local Draggable = S.Draggable
-local Text, Grey = OB.Text, S.Grey
+local Text, Muted = OB.Text, S.Muted
 
 local MINI_GAP = 8 -- between the bar's parts
 local MINI_LEFT = 12 -- the name, in from the bar's left
@@ -383,8 +383,8 @@ function S.BuildMini(window)
 	F.miniBrand = Text(mini, 'mini')
 	F.miniPage = Text(mini, 'group')
 	F.miniTab = Text(mini, 'field')
-	F.miniPage:SetTextColor(Grey())
-	F.miniTab:SetTextColor(Grey())
+	F.miniPage:SetTextColor(Muted())
+	F.miniTab:SetTextColor(Muted())
 
 	-- Over the page's and the tab's names: a click grows the bar to half, a
 	-- drag moves the window and is no click (as edit mode's movers: the game can
@@ -423,6 +423,8 @@ function S.DrawMini(page, tab, path)
 	F.miniBrand:SetText(OW.BrandText())
 	F.miniPage:SetText(page)
 	F.miniTab:SetText(tab)
+	F.miniPage:SetTextColor(Muted())
+	F.miniTab:SetTextColor(Muted())
 	-- ceil, though widths are rounded elsewhere: a text's own width rounded down
 	-- would cut its last letter to an ellipsis (as the tab row does).
 	local pageWidth, tabWidth = ceil(F.miniPage:GetUnboundedStringWidth()), ceil(F.miniTab:GetUnboundedStringWidth())

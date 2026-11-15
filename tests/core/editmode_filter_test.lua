@@ -283,6 +283,24 @@ test('a selected mover that stops showing is deselected; an Alt pick and snappin
 		check(shown and shown:find('|cffe61a33> ', 1, true), 'the picker\'s top line is the accent: ' .. tostring(shown))
 		accent:SetRGB(0, 0.68, 0.94)
 	end
+	do -- the hint line is Text > Muted (it was Buttons > Grey, #969696; Muted's default is lighter), rounded to the byte
+		local muted = st.config.profile.colors.text.muted
+		local keep = { muted:GetRGB() }
+		stub.fire_script(state.driver, 'OnUpdate', 1)
+		local at_default
+		for _, region in ipairs({ state.list:GetRegions() }) do
+			if region.GetText and region:GetText() then at_default = region:GetText() end
+		end
+		check(at_default and at_default:find('|cffb4b4b4Alt: next|r', 1, true), "at the defaults the hint is #b4b4b4, lighter than the Buttons > Grey #969696 it replaced (a listed change): " .. tostring(at_default))
+		muted:SetRGB(0.2, 0.4, 0.6)
+		stub.fire_script(state.driver, 'OnUpdate', 1)
+		local shown
+		for _, region in ipairs({ state.list:GetRegions() }) do
+			if region.GetText and region:GetText() then shown = region:GetText() end
+		end
+		check(shown and shown:find('|cff336699Alt: next|r', 1, true), "the picker's hint line is Muted: " .. tostring(shown))
+		muted:SetRGB(unpack(keep))
+	end
 	EM:SetSetting('show_hidden', false)
 	stub.fire_script(state.driver, 'OnUpdate', 1)
 	check(not state.list:IsShown(), 'Show hidden off: the list goes')

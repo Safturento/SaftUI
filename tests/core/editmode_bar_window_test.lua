@@ -24,6 +24,7 @@ local function build()
 	H = load_test_file('core/options_window_helpers.lua')
 	load_editmode_bar()
 	st = SaftUI
+	st.config.profile.colors.text.muted:SetRGB(0.2, 0.4, 0.6) -- not the default, so a reader that draws a grey of its own fails
 	EM, W = st.EditModeFrames, st.OptionsWidgets
 	History = EM.History
 	EM:Enable()
@@ -136,6 +137,15 @@ test('Detach turns the bar into a window holding the same controls in sections; 
 	for i, section in ipairs(EM.WINDOW_SECTIONS) do captions[i] = window.captions[section.key]:GetText() end
 	eq(table.concat(captions, '|'), 'Grid and snap|Show|Changes', 'Grid and snap, Show, Changes')
 	eq(control('caption'), nil, 'there is no Show caption control: the section has one')
+	for _, section in ipairs(EM.WINDOW_SECTIONS) do
+		local r, g, b = window.captions[section.key]:GetTextColor()
+		eq(T.rgb(r, g, b), T.rgb(st.config.profile.colors.text.muted:GetRGB()), section.key .. "'s caption is Text > Muted")
+	end
+	do -- the filter box's glass and hint
+		local box = frame_of('filter')
+		eq(T.rgb(box.icon:GetVertexColor()), T.rgb(st.config.profile.colors.text.muted:GetRGB()), "the filter's icon is Text > Muted")
+		eq(T.rgb(box.hint:GetTextColor()), T.rgb(st.config.profile.colors.text.muted:GetRGB()), 'and its hint')
+	end
 	eq(top_of(frame_of('grid')), top_of(frame_of('coordinates')), 'Grid and snap on one line')
 	eq(top_of(frame_of('showDisabled')), top_of(frame_of('showHidden')), 'the two Show toggles on one line')
 	eq(top_of(frame_of('modules')), top_of(frame_of('filter')), 'the face and the filter on the next')

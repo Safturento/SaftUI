@@ -48,7 +48,7 @@ function INV:InitializeBankCategorySelection()
 				INV:UpdateContainerBagIds(button.config.bagType, checked)
 			end)
 
-			local r,g,b = st.config.profile.colors.button.grey:GetRGB()
+			local r,g,b = st.config.profile.colors.text.muted:GetRGB()
 			visibility:GetCheckedTexture():SetVertexColor(r, g, b, 1)
 			visibility:GetCheckedTexture():SetTexture(st.textures.eyeOpen)
 			unchecked:SetVertexColor(r, g, b, 0.3)

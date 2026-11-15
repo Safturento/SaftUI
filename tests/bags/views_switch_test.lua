@@ -599,3 +599,36 @@ test('View and Empty slots have descs, the size a select takes, and no width', f
 		end
 	end
 end)
+
+-- The combined bank's visibility toggle (eye) on each of the selector's two
+-- buttons: open in Text > Muted (it was Buttons > Grey, #969696; Muted's default, #b4b4b4, is lighter).
+test("the combined bank's eye toggle is Muted, at a Muted that is not the default too", function()
+	world('retail')
+	local st = SaftUI
+	Enum.BankType = Enum.BankType or { Character = 0, Account = 2 }
+	_G.BankFrame = _G.BankFrame or { characterBankTabID = 1, accountBankTabID = 2 }
+	INV.containers.combinedbank = H.window('combinedbank')
+	load_saftui('SaftUI-Bags/containers/combinedbank.lua')
+	if not st.CreateRadioGroup then load_saftui('SaftUI-Core/Widgets/radiogroup.lua') end
+	if not st.CreateCheckButton then load_saftui('SaftUI-Core/Widgets/checkbutton.lua') end
+	local muted = st.config.profile.colors.text.muted
+	local keep = { muted:GetRGB() }
+	local function eyes()
+		INV:InitializeBankCategorySelection()
+		local out = {}
+		for _, button in ipairs(_G.SaftUIBankCategorySelector.buttons) do
+			local check = _G[button:GetName() .. 'VisibilityCheckbox']
+			out[#out + 1] = T.rgb(check:GetCheckedTexture():GetVertexColor())
+		end
+		return out
+	end
+	local at_default = eyes()
+	eq(#at_default, 2, 'both buttons')
+	for _, rgb in ipairs(at_default) do eq(rgb, T.rgb(180/255, 180/255, 180/255), 'Muted at the default: #b4b4b4, lighter than the Buttons > Grey #969696 it replaced (a listed change)') end
+	muted:SetRGB(0.2, 0.4, 0.6)
+	local changed = eyes()
+	eq(#changed, 2, 'both buttons')
+	for _, rgb in ipairs(changed) do eq(rgb, '0.20,0.40,0.60', 'a changed Muted reaches it') end
+	muted:SetRGB(unpack(keep))
+	eq(#take_errors(), 0)
+end)

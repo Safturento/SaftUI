@@ -14,6 +14,7 @@
 -- options_widgets_helpers.lua's.
 local H = load_test_file('core/options_widgets_helpers.lua')
 local st = SaftUI
+st.config.profile.colors.text.muted:SetRGB(0.2, 0.4, 0.6) -- not the default, so a reader that draws a grey of its own fails
 local W = st.OptionsWidgets
 local click, bind, opt, no, yes = H.click, H.bind, H.opt, H.no, H.yes
 local parent, make, text_of = H.parent, H.make, H.text_of
@@ -242,9 +243,9 @@ test('CreateCloseButton: the look', function()
 	eq(st.textures.close, nil, 'and the old texture')
 	local colors = st.config.profile.colors
 	local gr, gg, gb = close.icon:GetVertexColor()
-	eq(gr, colors.text.grey.r, 'the X is grey')
-	eq(gg, colors.text.grey.g, 'grey g')
-	eq(gb, colors.text.grey.b, 'grey b')
+	eq(gr, colors.text.muted.r, 'the X is grey')
+	eq(gg, colors.text.muted.g, 'grey g')
+	eq(gb, colors.text.muted.b, 'grey b')
 	local br, bg, bb = close:GetBackdropBorderColor()
 	eq(br, 0.3, 'the edge border')
 	local fr = close:GetBackdropColor()
@@ -289,7 +290,7 @@ test('CreateCloseButton: hover turns red, pressed moves the X down 1px, a click 
 	stub.fire_script(close, 'OnLeave')
 	eq((close:GetBackdropBorderColor()), 0.3, 'the border is back')
 	local gr = close.icon:GetVertexColor()
-	eq(gr, st.config.profile.colors.text.grey.r, 'the X is grey again')
+	eq(gr, st.config.profile.colors.text.muted.r, 'the X is grey again')
 
 	check(frame:IsShown(), 'shown before the click')
 	click(close, 'LeftButton')

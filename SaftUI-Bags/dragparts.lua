@@ -11,13 +11,13 @@ local HANDLE_WIDTH = 10
 --[[
 	INV.DragParts: what the rule editor (ruleeditor.lua) and the Categories
 	tab (categoriestab.lua), which load after this file, both draw and drag with.
-	  Colors(), Grey()                the profile's colors; grey text's r, g, b
+	  Colors(), Muted()                the profile's colors; Text > Muted's r, g, b
 	  Text(parent, font, justify)     a font string that doesn't wrap (the
 	                                  options window's field font by default)
 	  TextWidth(fs)                   its whole text's width, rounded up
 	  Inside(frame, ancestor)         frame is ancestor or inside it
 	  HANDLE_WIDTH, Handle(parent, height)
-	                                  a drag handle: 6 grey dots, two across
+	                                  a drag handle: 6 Muted dots, two across
 	                                  and three down, 2 apart
 	  InView(frame)                   the cursor is inside every scroll frame
 	                                  frame is drawn in (the window's body, the
@@ -41,7 +41,7 @@ local D = {}
 INV.DragParts = D
 
 function D.Colors() return st.config.profile.colors end
-function D.Grey() return D.Colors().text.grey:GetRGB() end
+function D.Muted() return D.Colors().text.muted:GetRGB() end
 
 function D.Text(parent, font, justify)
 	local fs = parent:CreateFontString(nil, 'OVERLAY')
@@ -69,7 +69,7 @@ function D.Handle(parent, height)
 	for row = 0, 2 do
 		for col = 0, 1 do
 			local dot = handle:CreateTexture(nil, 'OVERLAY')
-			dot:SetColorTexture(D.Grey())
+			dot:SetColorTexture(D.Muted())
 			dot:SetSize(2, 2)
 			dot:SetPoint('TOPLEFT', handle, 'TOPLEFT', 2 + col * 4, -(6 + row * 4))
 		end

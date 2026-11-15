@@ -21,7 +21,7 @@ local Text, Acquire, ReleaseAll = OB.Text, OB.Acquire, OB.ReleaseAll
 
 -- From optionswindow.lua.
 local F, state, pools = S.F, S.state, S.pools
-local Normal, Grey, Accent, Button = S.Normal, S.Grey, S.Accent, S.Button
+local Normal, Muted, Accent, Button = S.Normal, S.Muted, S.Accent, S.Button
 local SetNavScroll, Select = S.SetNavScroll, S.Select
 local PAD, FIELD_HEIGHT, TAB_HEIGHT = S.PAD, S.FIELD_HEIGHT, S.TAB_HEIGHT
 local ACTION_PAD, ACTION_HEIGHT, NAV_ITEM = S.ACTION_PAD, S.ACTION_HEIGHT, S.NAV_ITEM
@@ -200,7 +200,7 @@ local function DrawSidebar(entries)
 				frame.banner:Hide()
 				frame:SetHeight(NAV_GROUP)
 				frame.text:SetPoint('TOPLEFT', frame, 'TOPLEFT', 18, -12)
-				frame.text:SetTextColor(Grey())
+				frame.text:SetTextColor(Muted())
 			end
 		else
 			frame = Acquire(pools.nav)
@@ -230,6 +230,7 @@ local function DrawSidebar(entries)
 	local r, g, b = Normal()
 	F.profile:SetText(format('Profile: |cff%02x%02x%02x%s|r', floor(r * 255), floor(g * 255), floor(b * 255),
 		tostring(st.config:GetCurrentProfile())))
+	F.profile:SetTextColor(Muted()) -- read again at each draw: Muted can change
 end
 
 ------------------------------------------------------------------ tabs and the picker
@@ -247,7 +248,7 @@ local function MakeTab()
 		if not (self.active or self.disabled) then self.text:SetTextColor(Normal()) end
 	end)
 	tab:SetScript('OnLeave', function(self)
-		if not self.active then self.text:SetTextColor(Grey()) end
+		if not self.active then self.text:SetTextColor(Muted()) end
 	end)
 	tab:SetScript('OnClick', function(self)
 		if not self.disabled then Select(self.slot, self.key) end
@@ -286,7 +287,7 @@ local function DrawTabRow(pool, list, active, top, slot)
 		end
 		tab:SetSize(width, TAB_HEIGHT)
 		tab:SetPoint('TOPLEFT', F.main, 'TOPLEFT', PAD + x, -y)
-		if tab.active then tab.text:SetTextColor(Normal()) else tab.text:SetTextColor(Grey()) end
+		if tab.active then tab.text:SetTextColor(Normal()) else tab.text:SetTextColor(Muted()) end
 		if tab.active and not S.blizzard then tab.underline:SetColorTexture(Accent()) end
 		tab.underline:SetShown(tab.active and not S.blizzard)
 		LookTab(tab, look)
@@ -533,7 +534,7 @@ end
 	    catcher: the click is the catcher's, so a click on the icon only
 	    closes it), and the search stays. The box goes back to the sidebar when that shows.
 	  - F.titleButton over the page's title and F.titleArrow (chevronDown, 16,
-	    Text > Grey, accent under the mouse) 8 after the title's text: the
+	    Text > Muted, accent under the mouse) 8 after the title's text: the
 	    button opens the sidebar's pages as W.OpenList's list, groups as
 	    captions (OW.PageMenuEntries), and a pick goes where a click in the
 	    sidebar does (OW:Navigate). Hidden while the sidebar shows.
@@ -707,7 +708,7 @@ function S.PlaceTitle()
 	F.titleButton:SetSize(width + TITLE_ARROW_GAP + TITLE_ARROW, height)
 	F.titleArrow:ClearAllPoints()
 	F.titleArrow:SetPoint('TOPLEFT', F.titleButton, 'TOPLEFT', width + TITLE_ARROW_GAP, -floor((height - TITLE_ARROW) / 2))
-	local r, g, b = Grey()
+	local r, g, b = Muted()
 	F.titleArrow:SetVertexColor(r, g, b)
 end
 
@@ -744,16 +745,16 @@ function S.BuildCollapsed()
 	local arrow = button:CreateTexture(nil, 'OVERLAY')
 	arrow:SetTexture(st.icons.chevronDown)
 	arrow:SetSize(TITLE_ARROW, TITLE_ARROW)
-	arrow:SetVertexColor(Grey())
+	arrow:SetVertexColor(Muted())
 	button:SetScript('OnEnter', function(self)
 		arrow:SetVertexColor(Accent())
 		W.ShowTip(self, 'Choose a page')
 	end)
 	button:SetScript('OnLeave', function(self)
-		arrow:SetVertexColor(Grey())
+		arrow:SetVertexColor(Muted())
 		W.HideTip(self)
 	end)
-	button:SetScript('OnHide', function() arrow:SetVertexColor(Grey()) end)
+	button:SetScript('OnHide', function() arrow:SetVertexColor(Muted()) end)
 	S.Draggable(button) -- a drag on the title moves the window, a click opens the list
 	-- A drag is no click (the game can send a click at the end of a drag), as
 	-- the bar's names and a mover.

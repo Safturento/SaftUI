@@ -239,6 +239,8 @@ At SaftUI's defaults, after the update:
   values: light blue (0.56, 0.85, 1) to the accent (answer 4).
 - The diff icon: orange (0.88, 0.63, 0.25) to Muted grey (answer 4). The bag category's "edited" and
   "yours" marker: orange to Muted (**call**).
+- The combined bank's eye toggle and edit mode's "Alt: next" picker line: Buttons > Grey (#969696) to
+  Muted (#b4b4b4), a little lighter (2026-11-15 note, below).
 - The equipped item's border on action buttons: green to the accent (answer 5).
 - The chat's Error prefix: pure red to Danger (**call**, discrepancy 26's "text-red for every error").
 - The chat's SaftUI prefix: #00adef to #00adf0 (one step of blue, not visible).
@@ -655,3 +657,8 @@ override anything above that they contradict.
 6. **Every call** under "Calls made while writing this" (1 to 22) stands as written.
 7. **"if any feel off we can adjust":** a call that looks wrong in game is changed then, with a dated note
    added here.
+8. **2026-11-15, the controller's ruling for the owner to check (color roles, Task 3):** Buttons > Grey and
+   Text > Grey are one role, Muted, and Muted's default is #b4b4b4 (decision 49: the owner chose the lighter
+   grey for Text). The combined bank's eye toggle and edit mode's "Alt: next" picker line, which read
+   Buttons > Grey (#969696), therefore read #b4b4b4 and look a little lighter. A customized Buttons > Grey is
+   dropped. If the lighter look is wrong in game, say so and Muted or those two readers change.

@@ -13,6 +13,7 @@
 local H = load_test_file('core/options_widgets_helpers.lua')
 local P = load_test_file('lib/pixels.lua')
 local st = SaftUI
+st.config.profile.colors.text.muted:SetRGB(0.2, 0.4, 0.6) -- not the default, so a reader that draws a grey of its own fails
 local W = st.OptionsWidgets
 local M = W.ColorMath
 local click, theme = H.click, H.theme
@@ -731,9 +732,9 @@ test('the title, captions and chips: Class colors and Last used, Shade, Hue and 
 	eq(F.alphaCaption:GetText(), 'Opacity', 'Opacity')
 	eq(F.classCaption:GetText(), 'Class colors', 'Class colors')
 	eq(F.recentCaption:GetText(), 'Last used', 'Last used')
-	local r, g, b = st.config.profile.colors.text.grey:GetRGB()
+	local r, g, b = st.config.profile.colors.text.muted:GetRGB()
 	local cr, cg, cb = F.shadeCaption:GetTextColor()
-	eq(cr, r, 'captions are Text > Grey')
+	eq(cr, r, 'captions are Text > Muted')
 	reset()
 end)
 
@@ -761,9 +762,9 @@ test('the two blocks are equal and even, a chevron-right centred in the gap betw
 		local after = F.new:GetLeft() - (arrow:GetLeft() + arrow:GetWidth())
 		eq(before, after, where .. 'centred in the gap')
 		check(before >= 2, where .. 'room either side')
-		local tr, tg, tb = st.config.profile.colors.text.grey:GetRGB()
+		local tr, tg, tb = st.config.profile.colors.text.muted:GetRGB()
 		local vr, vg, vb = arrow:GetVertexColor()
-		eq(vr .. ',' .. vg .. ',' .. vb, tr .. ',' .. tg .. ',' .. tb, where .. 'Text > Grey')
+		eq(vr .. ',' .. vg .. ',' .. vb, tr .. ',' .. tg .. ',' .. tb, where .. 'Text > Muted')
 		eq((F.was:GetHeight() - arrow:GetHeight()) % 2, 0, where .. 'centred on the blocks')
 		eq(arrow:GetTop() - F.was:GetTop(), -(F.was:GetHeight() - arrow:GetHeight()) / 2, where .. 'vertically centred')
 	end

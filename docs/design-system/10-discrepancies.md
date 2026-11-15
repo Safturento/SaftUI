@@ -42,7 +42,7 @@ Standard: SaftUI's list look (`Select`'s open list) for SaftUI's own menus; leav
 
 **9. Chat tabs have no selected or hover look.**
 Where: `SaftUI-Chat/chatframe.lua:88-91`: textures stripped, Pixel text in Blizzard's tab colours (yellow in the screenshots).
-Standard: the tab's text in `text` when current and `text-grey` otherwise, with a 2px `accent` underline, as `/sui`'s tabs.
+Standard: the tab's text in `text` when current and `text-muted` otherwise, with a 2px `accent` underline, as `/sui`'s tabs.
 
 **10. Disabled and dim have three values.**
 Where: alpha 0.4 (kit, picker), 0.35 (locked roll buttons, `SaftUI-Loot/rollbar.lua:27`), a black 40% overlay (`Widgets/button.lua:273`, `skinning.lua:298`, `micromenuitems.lua:49`).
@@ -60,7 +60,7 @@ Standard: unsettled; see unknown 9.
 ## Seen in /sui, every time it opens
 
 **13. Grey and red text miss contrast under Thin.**
-Where: `text-red` on Thin's `backdrop` (#333333) is 3.6:1: the page description, section titles and notes outside the panels, and the status line. On `panel-fill` red is still short (4.4:1). `text-grey` (#b4b4b4 since 2026-11-14, decision 49) now passes on both (8.0:1 Thick, 6.1:1 Thin, 7.4:1 on `panel-fill`).
+Where: `text-red` on Thin's `backdrop` (#333333) is 3.6:1: the page description, section titles and notes outside the panels, and the status line. On `panel-fill` red is still short (4.4:1). `text-muted` (#b4b4b4 since 2026-11-14, decision 49) now passes on both (8.0:1 Thick, 6.1:1 Thin, 7.4:1 on `panel-fill`).
 Two ways: the colours were chosen against Thick's #1f1f1f (4.8:1 for red).
 Standard: keep the colours exact (they are the profile's); if the owner wants Thin's red readable, lighten Thin's backdrop a step or let small red text sit on panels only.
 
@@ -74,7 +74,7 @@ Where: the footer with edit mode on: Grid and Snap as Core buttons (Pixel 10, 22
 Standard: `Button` at `button-height` in `/sui`; one button component with an in-world size (Code changes 4).
 
 **16. The colour bar's white code is hard to read on light colours.**
-Where: Global settings > Colors: Text > Normal (#E6E6CC), White, Grey; any light class or quality colour. White on those fills is 1.3:1 to 3:1; only the black outline carries it.
+Where: Global settings > Colors: Text > Normal (#E6E6CC), White, Muted; any light class or quality colour. White on those fills is 1.3:1 to 3:1; only the black outline carries it.
 Two ways: the code is always white (`optionstypes.lua:171-174`, `.agents/edit-mode.md`); a followup paragraph says it turns black or white by brightness (`docs/followups.md:285`), which the code never did.
 Standard: unsettled (unknown 10). Fix the followup paragraph either way.
 Settled (decisions 9 and 13) and built: the control is a field, the code beside the swatch in `text` on `kit-field` (`ColorBar`).
@@ -117,9 +117,9 @@ Standard: a written spacing scale (Code changes 10); until then use the tokens a
 Where: `OB.FLOAT_GAP` = 6, the title's gap (`optionsbody.lua:133`); the small dialog then ends 24 under them (`optionssmalldialog.lua:39-40`).
 Standard: the owner's rule, `float-gap` 24 above and below.
 
-**26. Two oranges, five reds. (The two light blues and the two blues are one accent now: color roles, Task 2.)**
-Where: diff #e0a040 (`optionsbody.lua:157`) against Text > Orange #dc9664 (rule editor OR, Categories "edited") and the Cooldown Manager's #ff8040 (`Blizzard_CooldownViewer.lua:86`); own #8fd8ff against Text > Cyan #78cafa; red as Text > Red, Buttons > Red, threat bad, the close fill and `|cFFFF0000` (`api.lua:129`); blue as the profile's 0/0.68/0.94 and the chat prefix `|cff00adef` (`api.lua:122`). None of the kit's own colours is on the Colors tab or follows the theme.
-Standard: `diff` only for the diff icon, own values in the `accent` (the old `own` light blue is gone), `accent` read from the profile everywhere (the chat prefix included), `text-red` for every error.
+**26. Two oranges, five reds. (The two light blues and the two blues are one accent now: color roles, Task 2. The diff orange and the Categories "edited" marker's orange are Muted now: Task 3, `OB.DIFF_STRENGTH`.)**
+Where: Text > Orange #dc9664 (rule editor OR) against the Cooldown Manager's #ff8040 (`Blizzard_CooldownViewer.lua:86`); own #8fd8ff against Text > Cyan #78cafa; red as Text > Red, Buttons > Red, threat bad, the close fill and `|cFFFF0000` (`api.lua:129`); blue as the profile's 0/0.68/0.94 and the chat prefix `|cff00adef` (`api.lua:122`). None of the kit's own colours is on the Colors tab or follows the theme.
+Standard: the diff icon in `text-muted` (the old `diff` orange token is gone), own values in the `accent` (the old `own` light blue is gone), `accent` read from the profile everywhere (the chat prefix included), `text-red` for every error.
 
 **27. Two divider colours on one Thick page.**
 Where: `line` #2e2e2e for the tab rule, sidebar edge, footer and dialog lines (`optionsbody.lua:163,217`); `hairline` (white 7%) inside panels (`:150`); the position nudge divider in `kit-edge` (`optionsposition.lua:147`).
@@ -171,7 +171,7 @@ These are the code's colours and stay as they are here; the owner decides whethe
 
 | Pair | Thick | Thin | Floor |
 | --- | --- | --- | --- |
-| `text-grey` on `backdrop` | 8.0:1 | 6.1:1 | 4.5:1 |
+| `text-muted` on `backdrop` | 8.0:1 | 6.1:1 | 4.5:1 |
 | `text-red` on `backdrop` | 4.8:1 | 3.6:1 | 4.5:1 |
 | `border` against `backdrop` | 1.9:1 | 1.7:1 | 3:1 for a line that carries meaning |
 | `kit-edge` against `kit-field` | 2.2:1 | 2.2:1 | 3:1 for a control border |

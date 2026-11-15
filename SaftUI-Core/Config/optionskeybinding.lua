@@ -157,7 +157,7 @@ define('keybinding', {
 			self.text:SetTextColor(Colors().text.normal:GetRGB())
 		else
 			self.text:SetText('Not bound')
-			self.text:SetTextColor(Colors().text.grey:GetRGB())
+			self.text:SetTextColor(Colors().text.muted:GetRGB())
 		end
 	end,
 

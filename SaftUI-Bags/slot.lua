@@ -215,7 +215,7 @@ end
 
 --[[
 	The "why is this here" lines for an item's tooltip, { { text, r, g, b }, ... }:
-	  Category: <name> (<nth>)       the category in the accent, its place in the list in grey;
+	  Category: <name> (<nth>)       the category in the accent, its place in the list in Text > Muted;
 	  Caught by: <what>              "Caught by: " in yellow, then the block of the
 	                                 rule that caught it (INV.Rules.Describe), "pinned
 	                                 to this category", "an equipment set" or "no
@@ -230,7 +230,7 @@ function INV:CategoryTooltipLines(info)
 	local name = tostring(self:CategoryName(key)):gsub('|', '||')
 	local place = self:CategoryPlace(key)
 	local first = 'Category: ' .. name
-	if place then first = first .. ' ' .. ColorEscape(colors.grey) .. '(' .. self.Ordinal(place) .. ')|r' end
+	if place then first = first .. ' ' .. ColorEscape(colors.muted) .. '(' .. self.Ordinal(place) .. ')|r' end
 	local r, g, b = st:Color('accent'):GetRGB()
 	local lines = { { text = first, r = r, g = g, b = b } }
 

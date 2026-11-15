@@ -17,6 +17,7 @@
 
 load_test_file('core/config_helpers.lua')
 local st = SaftUI
+st.config.profile.colors.text.muted:SetRGB(0.2, 0.4, 0.6) -- not the default, so a reader that draws a grey of its own fails
 load_saftui('SaftUI-Core/skinning.lua')
 load_saftui('SaftUI-Core/Config/optionsmodel.lua')
 load_options_widgets()
@@ -238,8 +239,9 @@ test('a row per block and group, a badge per group, AND the accent and OR orange
 
 	-- What a row shows.
 	eq(w.rows[1].label:GetText(), 'Class is', "a block's label")
-	check(same_rgb({ w.rows[1].label:GetTextColor() }, Color('text', 'grey')), 'in grey')
+	check(same_rgb({ w.rows[1].label:GetTextColor() }, Color('text', 'muted')), 'in grey')
 	eq(w.rows[2].label:GetText(), 'group', "a group title's")
+	check(same_rgb({ w.rows[2].label:GetTextColor() }, Color('text', 'muted')), "a group title's label is Muted too")
 	check(w.rows[1].handle:IsShown() and w.rows[1].notBox:IsShown() and w.rows[1].remove:IsShown(),
 		'a block: handle, NOT and X')
 	check(w.rows[2].handle:IsShown() and w.rows[2].notBox:IsShown() and w.rows[2].remove:IsShown(),
@@ -250,6 +252,11 @@ test('a row per block and group, a badge per group, AND the accent and OR orange
 	eq(w.rows[7].fields.addGroup.text:GetText(), '+ Group', '+ Group')
 	check(same_rgb({ w.rows[7].fields.addBlock.text:GetTextColor() }, Color('accent')), 'in blue')
 	eq(w.rows[1].remove.icon:GetTexture(), st.icons.x, "the X is Lucide's x")
+	check(same_rgb({ w.rows[1].remove.icon:GetVertexColor() }, Color('text', 'muted')), 'the X is Muted at rest')
+	stub.fire_script(w.rows[1].remove, 'OnEnter')
+	check(not same_rgb({ w.rows[1].remove.icon:GetVertexColor() }, Color('text', 'muted')), 'and lit under the mouse')
+	stub.fire_script(w.rows[1].remove, 'OnLeave')
+	check(same_rgb({ w.rows[1].remove.icon:GetVertexColor() }, Color('text', 'muted')), 'Muted again')
 	eq(w.rows[1].remove:GetRight(), w.frame:GetRight(), 'at the right')
 	local dots = 0
 	for _, region in ipairs({ w.rows[1].handle:GetRegions() }) do
@@ -257,6 +264,7 @@ test('a row per block and group, a badge per group, AND the accent and OR orange
 	end
 	eq(dots, 6, 'the handle is 6 dots')
 	eq(w.rows[1].notBox.text:GetText(), 'NOT', 'the NOT box')
+	check(same_rgb({ w.rows[1].notBox.text:GetTextColor() }, Color('text', 'muted')), 'NOT, off, is Muted')
 	eq(#take_errors(), 0, 'no errors')
 	w:Release()
 	pinned:SetRGB(0, 0.68, 0.94)
@@ -404,6 +412,7 @@ test("each block type's fields set its params", function()
 		enter(f.text, 'Curio')
 		eq(ed.stored.items[1].text, 'Curio', id .. ': Enter sets the text')
 		eq(row.fields.word.caption:GetText(), 'whole word', id .. ': the check box is labeled')
+		check(same_rgb({ row.fields.word.caption:GetTextColor() }, Color('text', 'muted')), id .. ': its caption is Muted')
 		click(ed.w.rows[1].fields.word)
 		eq(ed.stored.items[1].word, true, id .. ': whole word on')
 		check(ed.w.rows[1].fields.word.mark:IsShown(), id .. ': and checked')
@@ -546,7 +555,10 @@ test("each block type's fields set its params", function()
 	eq(f.share:GetText(), '90', 'oldgear: the share as a percent')
 	eq(f.levels:GetWidth(), 40, 'oldgear: 40 boxes')
 	local captions = {}
-	for i, caption in ipairs(row.captions) do captions[i] = caption:GetText() end
+	for i, caption in ipairs(row.captions) do
+		captions[i] = caption:GetText()
+		check(same_rgb({ caption:GetTextColor() }, Color('text', 'muted')), 'oldgear: caption ' .. i .. ' is Muted')
+	end
 	eq(table.concat(captions, ','), 'levels below me,expansion up to,% of my item level', 'oldgear: the captions')
 	enter(f.share, '85')
 	eq(ed.stored.items[1].share, 0.85, 'oldgear: a percent typed is stored as the share')
@@ -558,7 +570,7 @@ test("each block type's fields set its params", function()
 	-- Protected: a note.
 	ed, row, f = one(blk('protected'))
 	eq(f.note:GetText(), 'items marked Protected', 'protected: the note')
-	check(same_rgb({ f.note:GetTextColor() }, Color('text', 'grey')), 'protected: in grey')
+	check(same_rgb({ f.note:GetTextColor() }, Color('text', 'muted')), 'protected: in grey')
 	done(ed)
 
 	st.Config.Refresh = realRefresh
@@ -916,6 +928,7 @@ test("under Blizzard a rule's value fields are compact Settings dropdowns; under
 	check(field.backdropInfo ~= nil and field.outline:IsShown(), "Thick: W.Box's backdrop")
 	eq(#field.caret, 1, 'its caret is kept')
 	eq(field.caret[1]:GetTexture(), st.icons.chevronDown, "Lucide's chevron-down")
+	check(same_rgb({ field.caret[1]:GetVertexColor() }, Color('text', 'muted')), 'the caret is Muted')
 	for _, row in ipairs(field.caret) do check(row:IsShown(), 'Thick: the caret') end
 	eq(atlases_of(field), '', 'Thick: no Blizzard art')
 	eq(text_insets(field), '6,20', 'Thick: its text clear of the caret')

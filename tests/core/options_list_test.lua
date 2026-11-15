@@ -13,6 +13,7 @@
 -- options_widgets_helpers.lua's.
 local H = load_test_file('core/options_widgets_helpers.lua')
 local st = SaftUI
+st.config.profile.colors.text.muted:SetRGB(0.2, 0.4, 0.6) -- not the default, so a reader that draws a grey of its own fails
 local W = st.OptionsWidgets
 local check_no_box, check_box, click, parent, around = H.check_no_box, H.check_box, H.click, H.parent, H.around
 local BG_RGBA, atlas_exact, anchor, rgba, theme = H.BG_RGBA, H.atlas_exact, H.anchor, H.rgba, H.theme
@@ -552,7 +553,7 @@ test('a list with captions and disabled entries: a caption takes no click and no
 		}, 'a', function(key) picked[#picked + 1] = key end)
 		local list = W.GetListFrames()
 		local rows = list.rows
-		local grey = string.format('%.2f,%.2f,%.2f', st.config.profile.colors.text.grey.r, st.config.profile.colors.text.grey.g, st.config.profile.colors.text.grey.b)
+		local grey = string.format('%.2f,%.2f,%.2f', st.config.profile.colors.text.muted.r, st.config.profile.colors.text.muted.g, st.config.profile.colors.text.muted.b)
 		local blue = string.format('%.2f,%.2f,%.2f', st.config.profile.theme.accent.r, st.config.profile.theme.accent.g, st.config.profile.theme.accent.b)
 		local function color(r) return string.format('%.2f,%.2f,%.2f', r.text:GetTextColor()) end
 		eq(rows[1].text:GetText(), 'Frames', look .. ': the caption')

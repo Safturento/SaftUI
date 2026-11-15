@@ -127,7 +127,7 @@ define('input', {
 	field's left, CHECK_SIZE square on its line, the kit's (Blizzard's art under
 	Blizzard), and the swatch and code after it, TOGGLE_LEAD further in. Ticked,
 	the field is as without a toggle. Unticked, the swatch and the code give
-	way to offText in Text > Grey, from where the swatch began, and a click on
+	way to offText in Text > Muted, from where the swatch began, and a click on
 	the field ticks the box and opens no picker. The box takes its own click and
 	shows its own tooltip, which says what unticked means.
 ]]
@@ -376,7 +376,7 @@ define('color', {
 			self.text:SetPoint('LEFT', self.frame, 'LEFT', self.startX, 0)
 			self.text:SetPoint('RIGHT', self.frame, 'RIGHT', -CODE_GAP, 0)
 			self.text:SetText(state.offText)
-			self.text:SetTextColor(Colors().text.grey:GetRGB())
+			self.text:SetTextColor(Colors().text.muted:GetRGB())
 		else
 			self.text:SetText(HexText(self.r, self.g, self.b, self.a, self.hasAlpha))
 			self.text:SetTextColor(Colors().text.normal:GetRGB())
