@@ -230,6 +230,7 @@ test("Buffs > Duration's Font lists the shared fonts; Small text picked hides Si
 			local group = tree.args[frame].args.text.args[kind]
 			eq(group.args.font.type, 'font', frame .. ' ' .. kind .. ": Font is Core's font row")
 			eq(group.args.font.faceOnly, true, 'in its face-only mode')
+			eq(table.concat(group.args.outline.sorting or {}, ','), table.concat(st:GetModule('Fonts').OUTLINE_ORDER, ','), 'Outline lists None first')
 			eq(group.args.size.hidden(), false, 'a face: Size shows')
 			eq(group.args.outline.hidden(), false, 'and Outline')
 		end

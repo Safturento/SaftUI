@@ -665,6 +665,7 @@ function AP:GetTextOptions(key, kind, name, order)
 				desc = ('The outline around the %s text.'):format(what),
 				type = 'select',
 				values = fontsModule and fontsModule.outlines or { NONE = 'None', OUTLINE = 'Outline' },
+				sorting = fontsModule and { unpack(fontsModule.OUTLINE_ORDER) } or nil,
 			},
 			position = generators.position(1000, false,
 				function(part) return self.config[key][kind][part] end,

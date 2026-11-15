@@ -276,6 +276,14 @@ end
 	Returns whether it wrote.
 ]]
 function AB:SetFromPage(id, key, value, part)
+	if id == 'all' and key == 'countdown.font' then
+		-- All bars' unset cooldown font shows the shared font by size, and picking
+		-- that entry again writes nothing (it would fix it for every bar, whatever
+		-- their size).
+		local text = self:GetSetting('all', 'countdown.font') == nil and self:GetSetting('all', 'countdown.size') == nil
+			and self:GetSetting('all', 'countdown.outline') == nil
+		if text and value == (self:GetCountdownFont(self:GetBarConfig('all'))) then return false end
+	end
 	if id ~= 'all' and not self:IsOwn(id, key) then
 		local shown
 		local field = key:match('^countdown%.(%a+)$')

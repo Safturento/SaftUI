@@ -478,9 +478,9 @@ test("the cooldown numbers: Show is Blizzard's setting on All bars, none on a ba
 	OM.Set(barRoot, barSize, 14)
 	r = root()
 	eq(OM.ShareState(r, row(r, 'bar3', 'countdown')).marked, true, "Bar 3's Cooldown is marked by its menu")
-	-- All bars' Size is hidden while its Font is the shared font by button size, and the
-	-- model's diff skips a hidden option, so All bars' Cooldown names nothing here.
-	eq(differs(OM.ShareState(r, row(r, 'all', 'countdown'))), '', "All bars' Cooldown, its Size hidden, names no difference")
+	-- All bars' Size stays shown while a bar owns it, though its Font is the shared font by
+	-- button size, so the diff names Bar 3.
+	eq(differs(OM.ShareState(r, row(r, 'all', 'countdown'))), 'Bar 3: Size', "All bars' Cooldown names Bar 3's Size")
 	eq(OM.ShareState(r, row(r, 'all', 'countdown')).offers, false, 'with no line: its Show is no shared setting')
 	calls = {}
 	barRoot, barSize = menu_setting(row(r, 'bar3', 'countdown'), 'size')
@@ -942,6 +942,56 @@ test("the cooldown numbers' unset Font shows Large numbers on 45 px buttons and 
 	menu:Release()
 	menu, by = draw_menu('pet', 'countdown')
 	eq(by.font.widget.face.text:GetText(), pixel.font_name, "Small text's face on 30 px")
+	menu:Release()
+	no_errors()
+end)
+
+test("on All bars a text's Size and Outline stay shown while any bar owns them, so the diff icon and Apply to name that bar", function()
+	font_world()
+	-- A shared font on All bars: nothing is owned, so both are hidden.
+	AB:SetSetting('all', 'hotkey.font', 'pixel')
+	eq(menu_keys(row(root(), 'all', 'hotkey')), 'font,position', 'no owner: Size and Outline hidden')
+	-- Bar 3 owns an Outline alone: All bars shows Outline (and not Size), and names the bar.
+	AB:SetSetting('bar3', 'hotkey.outline', 'THICKOUTLINE')
+	local r = root()
+	eq(menu_keys(row(r, 'all', 'hotkey')), 'font,outline,position', 'an owner of Outline: Outline shown, Size still hidden')
+	local menuRoot, outline = menu_row(row(r, 'all', 'hotkey'), 'outline')
+	eq(differs(OM.ShareState(menuRoot, outline)), 'Bar 3: Thick outline', "the diff icon names Bar 3's Outline")
+	eq(labels(OM.ShareTargets(menuRoot, outline)), 'Bar 3', 'Apply to lists Bar 3')
+	eq(differs(OM.ShareState(r, row(r, 'all', 'hotkey'))), 'Bar 3: Outline', "the item's icon names it")
+	-- Bar 3's own page hides both while its font is shared.
+	eq(menu_keys(row(r, 'bar3', 'hotkey')), 'font,position', "Bar 3's own page hides them while its font is shared")
+	-- Apply to All clears it, and the row hides again.
+	OM.ShareCall(menuRoot, outline, 'applyAll')
+	eq(menu_keys(row(root(), 'all', 'hotkey')), 'font,position', 'nobody owns it: hidden again')
+	-- The cooldown numbers: a bar owning a Size alone.
+	AB:SetSetting('bar3', 'countdown.size', 14)
+	eq(menu_keys(row(root(), 'all', 'countdown')), 'font,size,position', 'Size shown while Bar 3 owns it')
+	AB:ResetSetting('bar3', 'countdown.size')
+	eq(menu_keys(row(root(), 'all', 'countdown')), 'font,position', 'and hidden again once it follows')
+	no_errors()
+end)
+
+test("the texts' Outline rows list None first, as every other outline list", function()
+	font_world()
+	local want = table.concat(st:GetModule('Fonts').OUTLINE_ORDER, ',')
+	for _, kind in ipairs({ 'hotkey', 'count', 'macro', 'countdown' }) do
+		local sorting = row(root(), 'all', kind).option.menu.args.outline.sorting
+		eq(type(sorting) == 'table' and table.concat(sorting, ','), want, kind .. ': Outline sorted as the Fonts tab')
+	end
+end)
+
+test('re-picking the cooldown font already shown on All bars writes nothing; picking the other one does', function()
+	font_world()
+	local menu, by = draw_menu('all', 'countdown')
+	local w = by.font.widget
+	eq(w.value, 'pixel_med', 'All bars shows Large numbers (45 px)')
+	calls = {}
+	w:Pick('pixel_med')
+	eq(AB:GetSetting('all', 'countdown.font'), nil, 'the shown entry writes nothing')
+	eq(#calls, 0, 'and updates nothing')
+	w:Pick('pixel')
+	eq(AB:GetSetting('all', 'countdown.font'), 'pixel', 'another one is written')
 	menu:Release()
 	no_errors()
 end)

@@ -13,7 +13,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-15 — The tooltip lines take SaftUI's shadow and spacing](#2026-11-15--the-tooltip-lines-take-saftuis-shadow-and-spacing)
   - [2026-11-15 — Title bar height beside Window titles on the Theme tab](#2026-11-15--title-bar-height-beside-window-titles-on-the-theme-tab)
   - [2026-11-15 — Search into the dots menus](#2026-11-15--search-into-the-dots-menus)
-  - [2026-11-15 — All bars' Cooldown diff icon misses a bar that owns a size or outline alone](#2026-11-15--all-bars-cooldown-diff-icon-misses-a-bar-that-owns-a-size-or-outline-alone)
   - [2026-11-15 — SaftUI's tracker: experiments and in-game checks before the switch turns on](#2026-11-15--saftuis-tracker-experiments-and-in-game-checks-before-the-switch-turns-on)
   - [2026-11-15 — SaftUI's tracker phase 2: task quests (bonus objectives and world quests)](#2026-11-15--saftuis-tracker-phase-2-task-quests-bonus-objectives-and-world-quests)
   - [2026-11-15 — SaftUI's tracker phase 3: scenarios and dungeons](#2026-11-15--saftuis-tracker-phase-3-scenarios-and-dungeons)
@@ -127,6 +126,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-15 — All bars' Cooldown diff icon misses a bar that owns a size or outline alone](#2026-11-15--all-bars-cooldown-diff-icon-misses-a-bar-that-owns-a-size-or-outline-alone)
   - [2026-11-10 — Fonts: separate the fonts users pick per kind of text from SaftUI's internal font objects](#2026-11-10--fonts-separate-the-fonts-users-pick-per-kind-of-text-from-saftuis-internal-font-objects)
   - [2026-11-13 — Theme change errors in the theme engine: can't measure restricted regions](#2026-11-13--theme-change-errors-in-the-theme-engine-cant-measure-restricted-regions)
   - [2026-11-13 — Action bars: shared settings for all bars, and Cooldown numbers as an Enable box](#2026-11-13--action-bars-shared-settings-for-all-bars-and-cooldown-numbers-as-an-enable-box)
@@ -249,20 +249,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 **Shape of work:** Needs a design pass on what a hit is (the row, or the menu open on it), then a small model change and tests.
 
 **Open questions:** Whether a hit on a row whose value is a shared font should still list the typeface fields.
-
-### 2026-11-15 — All bars' Cooldown diff icon misses a bar that owns a size or outline alone
-
-**What:** On All bars, the Cooldown item's diff icon and its Apply to list come from the menu's Size and Outline rows. While All bars' cooldown font is the shared font by button size, those two rows are hidden, and the model skips a hidden option, so a bar that set its own cooldown Size or Outline (which makes that bar draw a typeface) is not named on All bars' Cooldown.
-
-**Why noticed:** Found while moving the action bars' text menus onto the font row (fonts plan, Task 8): `tests/actionbars/page_test.lua` ("the cooldown numbers: Show is Blizzard's setting...") used to expect "Bar 3: Size" and now expects no difference.
-
-**Anchors:** `SaftUI-ActionBars/textoptions.lua` (`SharedFont`, which hides Size and Outline), `SaftUI-Core/Config/optionsmodel.lua` (`OM.ShareState`, which skips a hidden `inner` at the `share and not IsHidden` test), `AB:OwnersOf` in `SaftUI-ActionBars/shared.lua`.
-
-**What's been considered:** The same happens to a hotkey, count or macro name on All bars while All bars' font is a shared font and a bar owns its own size or outline. Fixing it in the model (an item's diff counts hidden options that carry a share) is a Core change that touches every page's items; fixing it in the action bars (keep the rows visible and disable them) changes what the player sees.
-
-**Shape of work:** Small in the model, with a test per page that hides a shared option; or a decision to accept it.
-
-**Open questions:** Which side fixes it, and whether a hidden option's own mark and diff should still count.
 
 ### 2026-11-15 — SaftUI's tracker: experiments and in-game checks before the switch turns on
 
@@ -2376,6 +2362,22 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-15 — All bars' Cooldown diff icon misses a bar that owns a size or outline alone
+
+**What:** On All bars, the Cooldown item's diff icon and its Apply to list come from the menu's Size and Outline rows. While All bars' cooldown font is the shared font by button size, those two rows are hidden, and the model skips a hidden option, so a bar that set its own cooldown Size or Outline (which makes that bar draw a typeface) is not named on All bars' Cooldown.
+
+**Why noticed:** Found while moving the action bars' text menus onto the font row (fonts plan, Task 8): `tests/actionbars/page_test.lua` ("the cooldown numbers: Show is Blizzard's setting...") used to expect "Bar 3: Size" and now expects no difference.
+
+**Anchors:** `SaftUI-ActionBars/textoptions.lua` (`SharedFont`, which hides Size and Outline), `SaftUI-Core/Config/optionsmodel.lua` (`OM.ShareState`, which skips a hidden `inner` at the `share and not IsHidden` test), `AB:OwnersOf` in `SaftUI-ActionBars/shared.lua`.
+
+**What's been considered:** The same happens to a hotkey, count or macro name on All bars while All bars' font is a shared font and a bar owns its own size or outline. Fixing it in the model (an item's diff counts hidden options that carry a share) is a Core change that touches every page's items; fixing it in the action bars (keep the rows visible and disable them) changes what the player sees.
+
+**Shape of work:** Small in the model, with a test per page that hides a shared option; or a decision to accept it.
+
+**Open questions:** Which side fixes it, and whether a hidden option's own mark and diff should still count.
+
+**Resolved 2026-11-15:** on All bars a text's Size and Outline stay shown while any bar owns one (`SaftUI-ActionBars/textoptions.lua`, `Hidden`), so the diff icon and Apply to name that bar; a bar's own page still hides them while its font is shared. Tests in `tests/actionbars/page_test.lua`.
 
 ### 2026-11-10 — Fonts: separate the fonts users pick per kind of text from SaftUI's internal font objects
 

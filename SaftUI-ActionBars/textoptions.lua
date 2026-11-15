@@ -158,13 +158,22 @@ local function TextMenu(self, id, kind, update)
 		if countdown and field ~= 'position' then option.desc = option.desc .. CountdownUnset(field) end
 	end
 	-- A shared font brings its own size and outline, so the text's Size and
-	-- Outline show only while its font is a typeface.
+	-- Outline show only while its font is a typeface. On All bars they stay shown
+	-- while any bar owns one, so the diff icon and Apply to name that bar (the
+	-- model leaves a hidden option out of them) and All bars can make it follow.
 	local function SharedFont()
 		if countdown then return st:IsSharedFont((self:GetCountdownFont(self:GetBarConfig(id)))) end
 		return st:IsSharedFont(self:GetSetting(id, kind .. '.font'))
 	end
-	args.size.hidden = SharedFont
-	args.outline.hidden = SharedFont
+	local function Hidden(field)
+		return function()
+			if not SharedFont() then return false end
+			return id ~= 'all' or #self:OwnersOf(kind .. '.' .. field) == 0
+		end
+	end
+	args.size.hidden = Hidden('size')
+	args.outline.hidden = Hidden('outline')
+	args.outline.sorting = { unpack(st:GetModule('Fonts').OUTLINE_ORDER) }
 
 	local get = function(info) return self:GetSetting(id, kind .. '.' .. info[#info]) end
 	if countdown then

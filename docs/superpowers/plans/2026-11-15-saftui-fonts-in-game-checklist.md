@@ -14,10 +14,10 @@ These six depend on how the game behaves, and each has a fallback written down.
    - With Text unchanged, chat looks the same after the upgrade. Then change Text's size on the Fonts tab before the upgrade on a spare profile, and look again.
    - Judge the line gaps. If they are off, say so: the fix is chat's `fields` or taking Text's spacing (the plan's Ruling 7).
    - After login, is chat at SaftUI's size or at Blizzard's chat-cache size? Does a Fonts tab change that leaves chat's font alone keep a size picked from the chat tab's own Font Size menu?
-2. **A typeface registered by another addon, picked right after login (G1).** Before opening any font list or the Fonts tab, have (or pick) a typeface another addon registers on a unit frame's name, or in chat. It must draw in its own face, not Text's. Open a font list and change any font setting: it must still draw in its own face.
+2. **A typeface registered by another addon, picked right after login (G1).** Before opening any font list or the Fonts tab, have (or pick) a typeface another addon registers on a unit frame's name, or in chat. It must draw in its own face, not Text's. Open a font list, pick the face again and change any font setting: it must still draw in its own face (a refusal is retried on each of those).
    - If it shows Text's face until the first font change, the load probe misjudges that file: report which addon's face.
    - If a typeface that no text has used yet does not draw when picked mid-session, the fix is preloading every face LibSharedMedia lists, at load and on its register callback (the spec's G1 fallback). Raise it as a followup then; none is written, because SaftUI's own faces are preloaded and this check is what decides it.
-3. **Macro names on bars 1 to 8 keep their old shadow.** After the upgrade, an untouched profile's hotkeys, stack counts and macro names must look exactly as before: no shadow on the hotkey and count, and the macro name's old shadow kept (these texts are typefaces, so `AB:StyleButton` sets their shadow to 0, 0, as the forced one was). Then, with `/run`:
+3. **Macro names on bars 1 to 8 keep their old shadow.** After the upgrade, an untouched profile's hotkeys, stack counts and macro names must look exactly as before: no shadow on the hotkey and count, and no shadow on any of the three, as before (these texts are typefaces, so `AB:StyleButton` sets their shadow to 0, 0, as the old forced one did, not the template's 1, -1). Then, with `/run`:
    - `local AB=SaftUI:GetModule('ActionBars') AB:SetSetting('bar1','hotkey.font','pixel') AB:UpdateBar('bar1')`, then `/run local b=SaftUI_ActionBar1Button1 print(b.Name:GetShadowOffset(), b.Name:GetFontObject():GetName())` on a button whose macro has a name.
    - Also try it from the text's menu (section G).
 4. **Totem texts set in combat, with the taint log.** `/console taintLog 1`, the totem bar showing, then change Button text (a typeface) from a profile switch in combat if you can. Nothing is blocked. The one inferred point is `SetFontObject` on the secure buttons' regions in combat. Do the same with chat and tooltips showing while changing a Fonts tab setting.
@@ -47,6 +47,10 @@ These six depend on how the game behaves, and each has a fallback written down.
 - Pick a typeface: the row shows the face, and a different face keeps its size and outline. Pick a shared font again: the link is back.
 - G1, first part: a typeface no text used yet, picked mid-session for a unit frame's name, draws at once, and its list entry is in its face.
 - A face whose file the game refuses: `/run LibStub("LibSharedMedia-3.0"):Register("font","Broken","Interface\\x.ttf")`, then pick it on a unit frame's name and in the list. Nothing errors, and the text draws in Text's face at the size and outline picked. Chat, the tooltip, RestedXP's texts and timers and the buff timers do the same.
+- Text on a face SaftUI does not preload (Friz Quadrata TT, on the Fonts tab): a unit frame's name set to a typeface in Friz Quadrata TT at another size draws in Friz, not in AgencyFB Bold. Put Text back afterwards.
+- Text's own face refused (register "Broken" as above and pick it for Text): nothing errors, Text draws in SaftUI's default Text face, and a typeface in another face still draws in it.
+- A shared font on a refused face: register "Broken", pick it for Small text on the Fonts tab: texts on Small text draw in the fallback face with no errors, and the other shared fonts are unaffected. Then pick a good face: it draws at once.
+- A refused face retried: register a face right after login, pick it on a row, and if it drew in Text's face, open the list again or pick it again: it now draws in its own face.
 - Under Blizzard the face and slot gap look right (a 194 wide row). A disabled row's face and slot take no click.
 
 ## E. The dots and their menu (Task 4)
@@ -73,8 +77,10 @@ These six depend on how the game behaves, and each has a fallback written down.
 - A hotkey on Small text follows a Small text change on the Fonts tab (size, outline, shadow) within a frame. Out of combat only: in combat the restyle waits for the end of it.
 - A fresh profile's texts look exactly as before (they ship a face, so their Font rows read "Homespun" and show Size and Outline). The reset arrow on All bars' text Font row says "default: Homespun" until Small text is made the default (a followup).
 - All bars' Apply to with a shared font reaches the chosen bars: set Bar 3's hotkey to Heading, Apply to > Multiple > Bar 5, and Bar 5 shows Heading. The orange diff icon on All bars' Hotkey names a bar that owns a font by its name ("Bar 3: Heading").
-- Cooldown numbers: on a 45 px bar the Font row shows "Large numbers" with the link, on the 30 px pet bar "Small text", and Size and Outline are hidden. Set the Size alone: the row shows the face drawn and Size and Outline appear. Reset it: back to the shared font. The numbers look as before on 30, 36 and 45 px buttons, with a custom size or font on a bar and back to none.
-- Hotkeys, counts and macro names show no shadow unless Small text has one (see section A, 3).
+- Cooldown numbers: on a 45 px bar the Font row shows "Large numbers" with the link, on the 30 px pet bar "Small text", and Size and Outline are hidden. To reach a size alone, pick a typeface in the Font row, set Size, then reset Font (All bars' reset arrow, or a bar's share Reset): the row then shows the face drawn, with Size and Outline shown, and resetting Size too puts the shared font back. On All bars Size and Outline stay shown while any bar owns one, so a bar that owns only a size or outline is named by the orange icon and can be made to follow with Apply to. The numbers look as before on 30, 36 and 45 px buttons, with a custom size or font on a bar and back to none.
+- Hotkeys, counts and macro names show no shadow while they are typefaces (the shipped copy): Small text's shadow shows only on a text that picked Small text (see section A, 3).
+- Re-click the entry the cooldown Font row already shows on All bars (Large numbers): nothing changes, and no reset arrow appears; the 30 px pet and stance bars stay on Small text.
+- The Outline rows list None first, as the Fonts tab does.
 - **Buffs:** `/sui` > Buffs and debuffs (the Auras page) > Text: Duration's and Stack count's Font lists the shared fonts. Pick Small text: Size and Outline hide, and the timers on the buff and debuff icons draw in Small text and follow a Small text change on the Fonts tab. Pick a face: Size and Outline return and apply.
 
 ## H. Theme > Window titles (Task 7)
@@ -101,6 +107,7 @@ These six depend on how the game behaves, and each has a fallback written down.
 - A profile that changed Window titles keeps its titles, but its bags' gold and free-slot texts now take Text. A profile whose Title font was Small text or a typeface has its bag search box in Text.
 - A profile that changed Huge title's outline (not its face) sees `/sui`'s titles and RestedXP's guide title take Heading's outline.
 - Hotkeys, counts, macro names and the buff timers: nothing, until a shared font is picked.
+- A profile that set a bar's cooldown font, size or outline, and whose Small text or Large numbers has an edited shadow or line spacing, loses that shadow and spacing on those numbers: they are a typeface with Text's default shadow (0, 0) and spacing (4) (Task 6, Ruling 18).
 
 ## L. For the owner's decision: what the controller ruled
 
@@ -111,10 +118,11 @@ Each of these is a call made while building, and the tests pin it as it stands. 
 3. **The tracker's header heights come from the font.** The header line is at least 24 tall and a zone row at least 20, growing to about 1.25 times the Header font's size, kept even so the chevrons sit on whole pixels. Heading at 40 gives a 54 header and 50 zone rows.
 4. **Action bars restyle on a shared font change.** A text on a shared font follows the Fonts tab through `AB:OnFontsChanged`: one restyle per frame at most (a Size drag restyles on each step's frame), and once after combat. Bars on faces are not touched. Bars 1 to 8 keep LibActionButton's own `SetFont`, fed from the same look.
 5. **The upgrade is one way.** A profile that has run the new build must not be loaded by the old code (section J). Heading's face step is one time (`fonts.version`).
-6. **A face the game refuses draws in Text's face.** The texts keep the size and outline picked. A refusal lasts until the next font change, so a face fixed later is tried again; a good face is remembered for the session.
+6. **A face the game refuses draws in the fallback face.** That is the profile's Text when it loads, else SaftUI's default Text face, for value readers, typeface objects and the six shared fonts alike. The texts keep the size and outline picked. A refusal lasts until the next font change, a font row's pick or a font list opening, so a face fixed later is tried again; a good face is remembered for the session.
 7. **Chat keeps Blizzard's line spacing.** Chat takes the face, size, outline and shadow and leaves the spacing at Blizzard's 0 (Text's is 4), so chat's dots list four rows and the tooltip's two (section A, 1).
-8. **Size and Outline hide while a shared font is picked.** On the action bars' and buffs' texts. Because a hidden option is left out of a view, a search and an item's diff icon, All bars' Cooldown item does not name a bar that owns only a size while All bars' cooldown font is the shared one (a followup).
-9. **A shared font in a text's Font row replaces the text's own size and outline** (they stay saved and come back with a face). The defaults stay a copy of Small text's look until the owner decides on the followup.
+8. **Size and Outline hide while a shared font is picked.** On the action bars' and buffs' texts, and on a bar's own page. On All bars they stay shown while any bar owns one, so the diff icon and Apply to name that bar.
+9. **The Fonts tab's top line** keeps its Task 2 wording ("Font rows throughout SaftUI choose from these") where the spec says "Every Font row in SaftUI lists these first"; it also says a typeface's size and outline are in its dots, or beside the row on the action bars' and buffs' texts.
+10. **A shared font in a text's Font row replaces the text's own size and outline** (they stay saved and come back with a face). The defaults stay a copy of Small text's look until the owner decides on the followup.
 
 ## M. Design System
 
