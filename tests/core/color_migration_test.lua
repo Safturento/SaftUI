@@ -159,3 +159,16 @@ test('a profile saved before any of this runs every step at once, in order', fun
 	for path, want in pairs(EXPECTED) do eq(rgb(Slot(st.config.profile, path)), want, path) end
 	eq(st.config.profile.colors.version, LAST())
 end)
+
+-- Text > Grey's default is #b4b4b4 (180), brighter than the #969696 it shipped
+-- with. CO.OLD_COLORS keeps the old 150 frozen, but no step reads text.grey
+-- (it is not a source), so it only serves a profile that predates a step.
+test('Text > Grey: a profile that never changed it gets 180; one that customized it keeps its own', function()
+	fresh(on({}))
+	eq(rgb(st.config.profile.colors.text.grey), RGB(180/255, 180/255, 180/255), 'the new default')
+	fresh(on({ colors = { text = { grey = { r = 0.4, g = 0.5, b = 0.6 } } } }))
+	eq(rgb(st.config.profile.colors.text.grey), RGB(0.4, 0.5, 0.6), 'a customized grey is its own')
+	fresh(on({ colors = { text = { grey = { r = 150/255, g = 150/255, b = 150/255 } } } }))
+	eq(rgb(st.config.profile.colors.text.grey), RGB(150/255, 150/255, 150/255), 'one saved at the old default is a choice and stays')
+	eq(rgb(st:GetModule('Colors').OLD_COLORS['text.grey']), RGB(150/255, 150/255, 150/255), 'the frozen table is never edited')
+end)
