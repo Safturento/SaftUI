@@ -98,21 +98,27 @@ local function SlotKey(info)
 	return info.bagID .. ':' .. info.slotID .. ':' .. info.itemID
 end
 
--- Counts the stacks last pass sold: one that is gone from its slot (or has
--- changed there) was sold; one still there was not, and is returned.
+-- Counts the stacks asked of the game: one that is gone from its slot (or has
+-- changed there) was sold, and leaves the question's named list (a stack
+-- bought back into its slot is a new stack). One still there and locked is a
+-- sale in flight: it stays in v.attempted, counted in the budget and the tail
+-- until it lands. One still there and not locked was refused. Every one still
+-- there is returned.
 local function Account(v)
-	local left = {}
+	local left, pending = {}, {}
 	for _, entry in ipairs(v.attempted) do
 		local now = C_Container.GetContainerItemInfo(entry.bagID, entry.slotID)
 		if not now or now.itemID ~= entry.itemID or now.stackCount ~= entry.count then
 			v.sold = v.sold + 1
 			v.money = v.money + entry.price
 			if entry.tail then v.tailSold = v.tailSold + 1 end
+			if v.asked then v.asked[entry.bagID .. ':' .. entry.slotID .. ':' .. entry.itemID] = nil end
 		else
 			left[#left + 1] = entry
+			if now.locked then pending[#pending + 1] = entry end
 		end
 	end
-	v.attempted = {}
+	v.attempted = pending
 	return left
 end
 
@@ -123,7 +129,7 @@ end
 local function Summary(v)
 	local text = ''
 	if v.sold > 0 then
-		text = ('Sold %d item%s for %s.'):format(v.sold, v.sold == 1 and '' or 's', Gold(v.money))
+		text = ('Sold %d stack%s for %s.'):format(v.sold, v.sold == 1 and '' or 's', Gold(v.money))
 	end
 	-- The stacks the merchant would not take, still in their slots.
 	local names = {}
@@ -169,13 +175,18 @@ end
 -- The question before a sale that would push a non-gray out of the buyback
 -- list: how many stacks, what they fetch at a vendor, the few most valuable
 -- as links (their quality color shows).
-local function QuestionText(stacks)
+local function QuestionText(v, stacks, pendingTail)
 	local total = 0
 	local byValue = {}
+	local junk = false
 	for i, info in ipairs(stacks) do
 		total = total + info.stackPrice
 		byValue[i] = info
+		if info.quality == 0 then junk = true end
 	end
+	-- Stacks sold earlier this visit without asking that these would push out
+	-- of the buyback list.
+	local pushed = math.min(v.tailSold + pendingTail, math.max(0, v.tailSold + pendingTail + #stacks - INV:BuybackSize()))
 	table.sort(byValue, function(a, b)
 		if a.stackPrice ~= b.stackPrice then return a.stackPrice > b.stackPrice end
 		if a.bagID ~= b.bagID then return a.bagID < b.bagID end
@@ -187,12 +198,13 @@ local function QuestionText(stacks)
 		names[i] = Name(info) .. ((info.count or 1) > 1 and (' x' .. info.count) or '')
 	end
 	local more = #byValue - #names
-	return ("Auto Vendor would sell %d stacks that aren't junk, worth %s at a vendor, and a merchant's buyback holds only the last %d you sell. Most valuable by vendor price: %s%s. Sell them, or keep them in your bags this visit?")
-		:format(#stacks, Gold(total), INV:BuybackSize(), table.concat(names, ', '),
-			more > 0 and (' and ' .. more .. ' more') or '')
+	return ("Auto Vendor would sell %d stacks%s, worth %s at a vendor, and a merchant's buyback holds only the last %d you sell%s. Most valuable by vendor price: %s%s. Sell them, or keep them in your bags this visit?")
+		:format(#stacks, junk and '' or " that aren't junk", Gold(total), INV:BuybackSize(),
+			pushed > 0 and (' (and %d stack%s sold earlier this visit will leave the buyback)'):format(pushed, pushed == 1 and '' or 's') or '',
+			table.concat(names, ', '), more > 0 and (' and ' .. more .. ' more') or '')
 end
 
-local function Ask(v, stacks)
+local function Ask(v, stacks, pendingTail)
 	local W = st.OptionsWidgets
 	if not (W and W.Confirm) then
 		v.decision = 'keep'
@@ -204,7 +216,7 @@ local function Ask(v, stacks)
 	v.question = token
 	v.asked = {}
 	for _, info in ipairs(stacks) do v.asked[SlotKey(info)] = info.count end
-	v.questionText = QuestionText(stacks)
+	v.questionText = QuestionText(v, stacks, pendingTail)
 	-- Enter answers nothing: a stray Enter must not sell what can't all be
 	-- bought back. Only a click answers, and Esc is Keep them.
 	W.Confirm(v.questionText,
@@ -274,6 +286,13 @@ function INV:VendorPass()
 		end
 	end
 
+	-- Sales still in flight: counted until they land (a gray in flight keeps
+	-- the non-grays waiting).
+	local pendingTail, pendingGray = 0, 0
+	for _, entry in ipairs(v.attempted) do
+		if entry.tail then pendingTail = pendingTail + 1 else pendingGray = pendingGray + 1 end
+	end
+
 	local acted = false
 	if not v.tailStarted then
 		for _, info in ipairs(grays) do
@@ -288,12 +307,12 @@ function INV:VendorPass()
 		for _, info in ipairs(grays) do tinsert(stacks, info) end
 		for _, info in ipairs(rest) do tinsert(stacks, info) end
 	end
-	local grayFirst = not v.tailStarted and #grays > 0 -- the grays go before any of the others
+	local grayFirst = not v.tailStarted and (#grays > 0 or pendingGray > 0) -- the grays go before any of the others
 
 	-- With no answer to go by: sell what fits the buyback list, or ask.
 	local function Decide(list)
-		if v.tailSold + #list > self:BuybackSize() then
-			Ask(v, list)
+		if v.tailSold + pendingTail + #list > self:BuybackSize() then
+			Ask(v, list, pendingTail)
 			waiting = true
 		elseif grayFirst then
 			waiting = true

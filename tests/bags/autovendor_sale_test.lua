@@ -67,15 +67,21 @@ local function world(grays, others)
 	W.refused = {}
 	-- W.slow holds the sales until W.flush() (a slow server).
 	W.slow, W.queue = false, {}
-	W.flush = function()
-		for _, sale in ipairs(W.queue) do W.bags[sale.bag].items[sale.slot] = nil end
-		W.queue = {}
+	-- A sale in flight leaves its stack locked in its slot, as the game does.
+	W.flush = function(count)
+		local rest = {}
+		for i, sale in ipairs(W.queue) do
+			if not count or i <= count then W.bags[sale.bag].items[sale.slot] = nil else rest[#rest + 1] = sale end
+		end
+		W.queue = rest
 	end
 	C_Container.UseContainerItem = function(bagID, slotID)
 		local item = W.bags[bagID].items[slotID]
 		used[#used + 1] = { bag = bagID, slot = slotID, id = item and item.itemID }
 		if item and MerchantFrame:IsShown() and not W.refused[item.itemID] then
-			if W.slow then W.queue[#W.queue + 1] = { bag = bagID, slot = slotID }
+			if W.slow then
+				W.queue[#W.queue + 1] = { bag = bagID, slot = slotID }
+				item.locked = true
 			else W.bags[bagID].items[slotID] = nil end
 		end
 	end
@@ -274,7 +280,7 @@ test('Keep them sells nothing more at this visit, however long it stays', functi
 	eq(#used, 1, 'only the gray was ever sold')
 	eq(prompt, nil, 'and it does not ask again')
 	local summary = prints[#prints]
-	check(summary and summary:find('1 item', 1, true), 'the summary counts the one: ' .. tostring(summary))
+	check(summary and summary:find('1 stack', 1, true), 'the summary counts the one: ' .. tostring(summary))
 end)
 
 test('Esc or a click outside the dialog (the dialog answers No) keeps them', function()
@@ -325,7 +331,7 @@ test('a merchant closed mid-sale stops the loop and says what was sold so far', 
 	step()
 	close_merchant()
 	eq(step(), false, 'the loop is gone')
-	check(prints[#prints] and prints[#prints]:find('Sold 4 items', 1, true), 'summary: ' .. tostring(prints[#prints]))
+	check(prints[#prints] and prints[#prints]:find('Sold 4 stacks', 1, true), 'summary: ' .. tostring(prints[#prints]))
 end)
 
 test('a merchant closed while the prompt is up takes the prompt away and sells nothing', function()
@@ -393,7 +399,7 @@ test('an item the merchant refuses is not in the summary, and the sale does not 
 	stub.time = stub.time + 1 -- the summary waits a second for sales still on their way
 	stub.run_timers()
 	local summary = prints[#prints]
-	check(summary and summary:find('Sold 1 item ', 1, true), 'one item: ' .. tostring(summary))
+	check(summary and summary:find('Sold 1 stack ', 1, true), 'one item: ' .. tostring(summary))
 	check(summary:find('gold 20', 1, true), 'for what it fetched: ' .. summary)
 end)
 
@@ -404,7 +410,7 @@ test('the summary has the count and the gold of what was sold, and none when not
 	step()
 	step()
 	local summary = prints[#prints]
-	check(summary:find('Sold 4 items', 1, true), summary)
+	check(summary:find('Sold 4 stacks', 1, true), summary)
 	local expect = 20 + 5 + 5 * ((1 * 7) % 13 + 1) + 5 * ((2 * 7) % 13 + 1)
 	check(summary:find('gold ' .. expect, 1, true), 'gold ' .. expect .. ' in ' .. summary)
 	-- A visit with nothing to sell says nothing.
@@ -652,7 +658,7 @@ test('M-4: a stack given up on is named in the summary, after exactly 3 tries, a
 	eq(#used, 4, 'the other once and the refused three times')
 	eq(count_prints('Sold'), 1, 'one summary')
 	local line = prints[#prints]
-	check(line:find('Sold 1 item ', 1, true), 'what sold: ' .. line)
+	check(line:find('Sold 1 stack ', 1, true), 'what sold: ' .. line)
 	check(line:find('Gray 601', 1, true), 'the stack left is named: ' .. line)
 end)
 
@@ -666,7 +672,7 @@ test('M-4: a merchant that closes right after a pass still gets every sale count
 	W.flush() -- the server answers after the window closed
 	stub.time = stub.time + 1
 	stub.run_timers()
-	eq(count_prints('Sold 3 items'), 1, 'counted once, all three: ' .. tostring(prints[#prints]))
+	eq(count_prints('Sold 3 stacks'), 1, 'counted once, all three: ' .. tostring(prints[#prints]))
 end)
 
 test('M-5: turning Auto Vendor off stops a visit already running', function()
@@ -694,4 +700,109 @@ test('the once-only summary: a visit of many passes prints one line', function()
 	answer(true)
 	for _ = 1, 6 do step() end
 	eq(count_prints('Sold'), 1, 'one line')
+end)
+
+------------------------------------------------------------------ fix round 2
+
+test('N-1: a sale still in flight counts, so a stack that appears meanwhile cannot sell unasked past 12', function()
+	world({}, 12)
+	W.slow = true
+	open_merchant()
+	step() -- twelve asked of the game, each locked in its slot
+	W.flush(11) -- the server has answered eleven; one is still in flight
+	add_pinned(799, 999)
+	W.slow = false
+	step()
+	eq(#used, 12, 'the 13th is not sold')
+	check(prompt ~= nil, 'it asks')
+	W.flush()
+	step()
+	eq(#used, 12, 'and still not, once the last one lands')
+end)
+
+test('N-1: a gray still in flight keeps the non-grays waiting', function()
+	world({ { 601, 10 } }, 3)
+	W.slow = true
+	open_merchant()
+	step() -- the gray is in flight, locked
+	W.slow = false
+	step()
+	eq(#used, 1, 'no non-gray sold while a gray is on its way')
+	W.flush()
+	step()
+	eq(#used, 4, 'sold once it landed')
+end)
+
+test('N-2: a second question says how many stacks sold earlier this visit it would push out', function()
+	world({}, 5)
+	open_merchant()
+	step()
+	for i = 1, 10 do add_pinned(800 + i, 5, 1, i) end
+	step()
+	check(prompt ~= nil, 'asked')
+	check(prompt.text:find('3 stacks sold earlier this visit will leave the buyback', 1, true), prompt.text)
+end)
+
+test('N-2: with nothing to push out the question does not say so', function()
+	world({}, 13)
+	open_merchant()
+	step()
+	check(not prompt.text:find('earlier', 1, true), prompt.text)
+end)
+
+test("m-1: a question that holds a late gray does not call its stacks 'not junk'", function()
+	world({}, 12)
+	open_merchant()
+	step()
+	W.put(1, 21, W.item(698, 'Late Gray', 'Miscellaneous', 1, { quality = 0, vendorPrice = 10 }))
+	step()
+	check(prompt ~= nil, 'asked')
+	check(not prompt.text:find("aren't junk", 1, true), prompt.text)
+	check(prompt.text:find('1 stack sold earlier this visit will leave', 1, true), prompt.text)
+end)
+
+test('m-2: a stack bought back into its own slot is a new stack: it needs a new question', function()
+	world({}, 13)
+	W.refused[713] = true -- keeps the visit going
+	open_merchant()
+	step()
+	answer(true)
+	step()
+	step() -- the sales are counted, and leave the named list
+	W.bags[0].items[1] = W.item(701, 'Thing 701', 'Miscellaneous', 1, { quality = 1, vendorPrice = 40 })
+	local before = #used
+	step()
+	step() -- the refused stack is given up on: the bought-back one is all that is left
+	for i = before + 1, #used do check(used[i].id ~= 701, 'not sold again under the old answer') end
+	eq(asked, 2, 'it asks again')
+end)
+
+test('m-4: a named slot that now holds the same item in another count is not sold', function()
+	world({}, 13)
+	open_merchant()
+	step()
+	W.bags[0].items[3].count = 2
+	answer(true)
+	step()
+	for _, id in ipairs(sold_ids()) do check(id ~= 703, 'the changed stack is not sold under the answer') end
+	eq(#used, 12, 'the other twelve are')
+end)
+
+test('m-4: Sell them while a gray is still being retried waits for the gray', function()
+	world({ { 601, 10 } }, 13)
+	W.refused[601] = true
+	open_merchant()
+	step()
+	answer(true)
+	step()
+	for _, id in ipairs(sold_ids()) do check(id < 700, 'no named stack sold while the gray is retried') end
+	W.refused[601] = nil
+	step()
+	step()
+	local order = sold_ids()
+	local last_gray, first_other
+	for i, id in ipairs(order) do
+		if id < 700 then last_gray = i elseif not first_other then first_other = i end
+	end
+	check(last_gray and first_other and last_gray < first_other, 'the gray sells before the named stacks: ' .. csv(order))
 end)
