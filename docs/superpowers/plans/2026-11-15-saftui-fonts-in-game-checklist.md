@@ -34,7 +34,7 @@ These six depend on how the game behaves, and each has a fallback written down.
 
 ## C. Global settings > Fonts (Tasks 1, 2)
 
-- The top line, then Text, Small text, Large numbers, Heading, Huge title and Subtitle in that order with a note each, Kinds of text last (Button text and Check box labels only). No Pixel Huge, Normal Med or Name rows. Rows are Typeface, Size, Outline, Shadow offset X and Y, Line spacing; outline names in sentence case.
+- The top line, then Text, Small text, Large numbers, Heading, Huge title and Subtitle in that order with a note each, Kinds of text last (Button text only). No Pixel Huge, Normal Med or Name rows. Rows are Typeface, Size, Outline, Shadow offset X and Y, Line spacing; outline names in sentence case.
 - Change Small text's size: its reset icon shows ("Size goes back to its default: 10."); click it and the size and every text on it return at once. Same for Shadow offset X (Y alone shows no icon) and Outline ("... default: Monochrome outline."). The Typeface reset tooltip names the face ("... default: Homespun.").
 - Hotkeys and counts that are on Small text follow at once; the totem timers and the tracker re-lay out at once. Drag Text's Size on the Fonts tab and watch for a stutter.
 - G4: change Heading's Typeface: `/sui`'s page title, section and group titles change at once, nothing clipped, under Thick, Thin and Blizzard. Change Heading's Size: they stay. Change Huge title's face: `/sui` does not change. Change Text's Typeface: labels, tabs and fields follow, and a profile switch redraws them.
@@ -137,7 +137,7 @@ Kinds of text does what its rows say:
 
 The totem timers' font (Totem bar page > Timer font):
 
-- A fresh profile: the countdown over each element button looks exactly as it did (Small text: Homespun 10, monochrome outline, no shadow). The Timer font row sits under Show timer bar and Show timer text, beside Text position, with its reset arrow absent; Text X offset and Text Y offset stay a pair.
+- A fresh profile: the countdown over each element button looks exactly as it did (Small text: Homespun 10, monochrome outline, no shadow). The Timer font row sits beside Timer bar height, just after Text position, with its reset arrow absent; Text X offset and Text Y offset stay a pair.
 - Pick Large numbers, then a typeface with its dots (Size, Outline, Shadow offset X and Y, Line spacing): the countdowns change at once, the bar under or behind them gets taller or shorter with the text, and the flyout arrow moves with it. Reset puts Small text back (its tooltip says "Small text").
 - A profile that had changed Button text before this build: the totem timers now draw Small text (Button text no longer reaches them; they used to follow it). Pick the font again on the Timer font row if it is wanted. The key bindings, counts and names on the totem buttons still follow Button text.
 - Totem bar in combat: change the Timer font from a profile switch if you can: nothing is blocked (only fonts on regions of SaftUI's own timer frames, which are children of the secure slot buttons).

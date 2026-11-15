@@ -93,7 +93,8 @@ local function Repaint(button)
 	if skin and skin.blizzard then st:ShowPanelButton(button, true, Checked) end
 end
 
--- The profile's Check box labels font, read when a label is drawn or follows.
+-- The profile's panels font (`panels.font`: it has no row on the Fonts tab, since no
+-- check box label is visible), read when a label is drawn or follows.
 local function PanelsFont() return st.config.profile.panels.font end
 
 function st:SkinCheckButton(button, style)
@@ -122,8 +123,8 @@ function st:SkinCheckButton(button, style)
 	local name = button:GetName()
 	local text = button.Text or button.Label or name and _G[name..'Text']
 	if text then
-		-- Check box labels (Global settings > Fonts): the label follows the font
-		-- setting, until a caller gives it a font of its own with SetTextFont.
+		-- The panels font (no Fonts tab row): the label follows the font setting,
+		-- until a caller gives it a font of its own with SetTextFont.
 		st:FollowFont(text, PanelsFont)
 		text:SetDrawLayer('OVERLAY', 7)
 		button.text = text

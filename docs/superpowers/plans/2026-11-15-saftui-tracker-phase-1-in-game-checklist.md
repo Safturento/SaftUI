@@ -122,7 +122,7 @@ Taint log on for all of Part 4. Do the steps on `[F]`, then `[R]`.
 
 ### A. First look and the window (Task 4; G6, G10) `[F+R]`
 
-1. An empty-looking window if you have no tracked quests ("No tracked quests." or hidden, by Hide when empty). It sits where Blizzard's tracker was, or where you had moved the skin's tracker (the first position; a skin position saved from a non-top point is converted so the spot you saw is kept).
+1. An empty-looking window if you have no tracked quests ("No tracked quests." or hidden, by Hide when empty). It sits where you had moved the skin's tracker, else where you had moved Blizzard's tracker in Blizzard's Edit Mode (read from the Edit Mode layout, for any anchor point; a preset layout, an undragged tracker or one anchored to another frame than the screen gives Blizzard's usual spot), on a profile with no tracker position (the first position; a skin position saved from a non-top point is converted so the spot you saw is kept). A `/reload` leaves a saved position where it is.
 2. `/sui edit`: a "Tracker" outline covers **Width by Max height** (260 by 560 to start). Drag it, `/reload`: it stays. Reset goes to Blizzard's default spot.
 3. Width, Max height and Grow change the outline and the window at once; **Grow up** keeps the bottom edge put.
 4. The header's chevron collapses the whole tracker to the header (40 tall); its tooltip says Collapse and Expand; it survives a reload. With **Header** off the header and its collapse go; **Count** off hides the count.

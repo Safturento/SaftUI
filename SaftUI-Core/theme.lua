@@ -375,10 +375,11 @@ end
 local foreign = setmetatable({}, { __mode = 'k' })
 
 -- Marks frame as not SaftUI's, for a caller that draws behind it with
--- st:SetBackdrop or st:SkinActionButton all the same (the bags bar's Blizzard
--- bag slots, Hekili's buttons): the Blizzard theme makes none of its art on
--- it, as for st:SetBackdropIn's frames. Mark it before its first draw. Writes
--- nothing onto frame.
+-- st:SetBackdrop or st:SkinActionButton all the same (a frame drawn so that isn't
+-- SaftUI's; the bags bar's slots, Hekili's and WeakAuras' frames now draw
+-- through st:SetBackdropIn and keep the mark only for the record): the Blizzard
+-- theme makes none of its art on it, as for st:SetBackdropIn's frames. Mark it
+-- before its first draw. Writes nothing onto frame.
 function st:MarkForeign(frame)
 	foreign[frame] = true
 end
