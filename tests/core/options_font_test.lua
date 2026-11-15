@@ -267,8 +267,26 @@ test('the list: SaftUI fonts, the six in order each in its face, Typefaces, then
 		vals.header = { font_name = names[#names] }
 		w:Refresh()
 		list = open(w)
-		eq(entry_row(list, 'face:' .. names[#names]) == list.rows[1], false, 'the picked face is scrolled into view, not the top row, when it is near the end')
+		local pick = entry_row(list, 'face:' .. names[#names])
+		check(pick ~= nil and pick:IsShown(), 'the picked face is in view')
+		eq(list.offset, #list.entries - 12, 'the list is scrolled as far as it goes for a face at its end')
 		W.CloseList()
+		-- A face under the Typefaces caption: the caption is in view with it.
+		vals.header = { font_name = names[6] }
+		w:Refresh()
+		list = open(w)
+		eq(list.offset, 7, 'the Typefaces caption is the top row')
+		eq(list.rows[1].text:GetText(), 'Typefaces')
+		W.CloseList()
+		-- A face further down than the rows reach from its caption: it is the top row.
+		vals.header = { font_name = names[14] }
+		w:Refresh()
+		list = open(w)
+		eq(list.offset, math.min(#list.entries - 12, 8 + 14 - 1), 'the list opens on it')
+		check(entry_row(list, 'face:' .. names[14]):IsShown(), 'in view')
+		W.CloseList()
+		vals.header = { font_name = names[#names] }
+		w:Refresh()
 		vals.header = nil
 		w:Refresh()
 		list = open(w)
@@ -459,11 +477,25 @@ test("the link's click: Global settings > Fonts at that font with its Typeface l
 		st.Config:Open('FontLinkRows', 'texts')
 		local w = H.cell('header').widget
 		local before = OW.GetRenderCount()
-		-- Open the item's menu, then click the link.
+		-- Open the item's menu, then click the link of its face-only row, as the
+		-- game delivers it (the menu's catcher takes a click outside it).
 		stub.click(H.cell('hotkey').widget.dots)
 		check(OW:IsMenuShown(), 'the item menu is open')
-		stub.click(w.dots)
+		vals.face = 'pixel'
+		OW:Render()
+		local menuRow
+		for _, c in ipairs(OW.GetMenuFrames().body.cells) do
+			if c.row.key == 'face' then menuRow = c end
+		end
+		check(menuRow ~= nil and menuRow.widget.dots:IsShown(), "the menu's face-only row shows its link")
+		stub.click(menuRow.widget.dots)
 		check(not OW:IsMenuShown(), 'the click closed the menu')
+		eq(text_rgb(cell_at({ 'Fonts', 'fonts', 'pixel', 'font_name' }).label), blue(), "Small text's Typeface label is lit")
+		st.Config:Close(); H.close_all()
+		st.Config:Open('FontLinkRows', 'texts')
+		w = H.cell('header').widget
+		before = OW.GetRenderCount()
+		stub.click(w.dots)
 		local state = OW:GetState()
 		eq(state.page, 'Fonts', 'Global settings')
 		eq(state.tab, 'fonts', 'the Fonts tab')
@@ -471,6 +503,7 @@ test("the link's click: Global settings > Fonts at that font with its Typeface l
 		local lit = cell_at({ 'Fonts', 'fonts', 'heading', 'font_name' })
 		check(lit ~= nil, "Heading's Typeface row is drawn")
 		eq(text_rgb(lit.label), blue(), 'its label is lit')
+		check(OW.S.scrollOffset <= lit.sectionY, "the font's section title is in view, not clipped at the top")
 		local other = cell_at({ 'Fonts', 'fonts', 'normal', 'font_name' })
 		if other then check(text_rgb(other.label) ~= blue(), "Text's is not") end
 		st.Config:Close()
@@ -511,9 +544,16 @@ test('a disabled row: neither the face nor the slot takes a click', function()
 		eq(W.ListOwner(), nil, 'a click on the face opens no list')
 		w:Open()
 		eq(W.ListOwner(), nil, 'nor does Open')
-		local navigated = OW:GetState().page
+		local saved, calls = OW.Reveal, 0
+		OW.Reveal = function() calls = calls + 1 end
 		stub.click_unchecked(w.dots)
-		eq(OW:GetState().page, navigated, 'a click on the slot goes nowhere')
+		eq(calls, 0, 'a click on the slot goes nowhere')
+		check(w.face:GetAlpha() == 1, 'the face is not dimmed twice')
+		w:SetDisabled(false)
+		stub.click(w.dots)
+		eq(calls, 1, 'enabled, the same click reveals')
+		OW.Reveal = saved
+		w:SetDisabled(true)
 		w:Pick('pixel')
 		eq(#sets, 0, 'and a pick saves nothing')
 		-- Enabled again: both take the mouse.
@@ -663,4 +703,100 @@ test('whole pixels under Thick, Thin and Blizzard, size noise up, down and off',
 		end
 	end
 	stub.size_noise = 0
+end)
+
+------------------------------------------------------------------ fix round 1
+
+test('a list opened on any shared font shows SaftUI fonts and the fonts above the pick', function()
+	in_look('thick', function()
+		for _, key in ipairs({ 'heading', 'title', 'subtitle', 'normal' }) do
+			local w = row_widget('header', key)
+			local list = open(w)
+			eq(list.offset, 0, key .. ': the list opens at the top')
+			eq(list.rows[1].text:GetText(), 'SaftUI fonts', key .. ': the caption is in view')
+			W.CloseList()
+		end
+		-- The first typeface shows the Typefaces caption over it.
+		local names = st.LSM:List('font')
+		local w = row_widget('header', { font_name = names[1] })
+		local list = open(w)
+		eq(list.rows[1].text:GetText(), 'Typefaces')
+		W.CloseList()
+	end)
+end)
+
+test('a face registered after a list was opened is in the next one', function()
+	in_look('thick', function()
+		local w = row_widget('header', 'heading')
+		local before = #W.FontEntries('heading', false)
+		st.LSM:Register('font', 'Late face', path('Colus'))
+		local entries = W.FontEntries('heading', false)
+		eq(#entries, before + 1)
+		local found
+		for _, e in ipairs(entries) do if e.key == 'face:Late face' then found = e end end
+		check(found ~= nil and found.font == path('Colus'), 'the late face is listed in its own face')
+		local list = open(w)
+		local n = 0
+		for _, e in ipairs(list.entries) do if e.key == 'face:Late face' then n = n + 1 end end
+		eq(n, 1, 'and in the list the row opens')
+		W.CloseList()
+	end)
+end)
+
+test('under Blizzard the link lights white and a disabled row shows the disabled dropdown art', function()
+	in_look('blizzard', function(tip)
+		local w = row_widget('header', 'heading')
+		stub.fire_script(w.dots, 'OnEnter', true)
+		eq(rgb(w.dots.icon:GetVertexColor()), rgb(1, 1, 1), 'white under the mouse')
+		stub.fire_script(w.dots, 'OnLeave', true)
+		w = row_widget('header', 'heading', nil, { disabled = function() return true end })
+		eq(w.face.disabled, true)
+		check(w.face:GetAlpha() == 1, 'no second dimming')
+		local found = false
+		for _, region in ipairs({ w.face:GetRegions() }) do
+			if region.GetAtlas and region:GetAtlas() == 'common-dropdown-c-button-disabled' then found = true end
+		end
+		check(found, 'the face wears the disabled art')
+	end)
+end)
+
+test('a malformed table on the row reads as Text and a pick writes a valid table', function()
+	in_look('thick', function()
+		for _, bad in ipairs({ { font_name = 5 }, { font_size = '12' }, {} }) do
+			local w = row_widget('header', bad)
+			eq(w.kind, 'typeface')
+			eq(w.face.text:GetText(), st.defaults.fonts.normal.font_name, "the face reads Text's")
+			w:Pick('face:Colus')
+			local t = sets[1]
+			eq(t.font_name, 'Colus')
+			eq(type(t.font_size), 'number')
+			eq(t.font_outline, st.defaults.fonts.normal.font_outline)
+		end
+	end)
+end)
+
+test('the link from a small dialog closes the dialog first', function()
+	in_look('thick', function()
+		fresh()
+		st.Config:Open('FontLinkRows', 'texts')
+		OW:OpenDialog('Fonts here', { type = 'group', name = 'Dialog', args = { header = FontRow('header', 1, nil, { name = 'Header font' }) } })
+		check(OW:IsDialogShown(), 'the dialog is open')
+		OW:Reveal({ 'Fonts', 'fonts', 'heading', 'font_name' })
+		check(not OW:IsDialogShown(), 'Reveal closed it')
+		eq(OW:GetState().page, 'Fonts')
+		H.close_all()
+	end)
+end)
+
+test('OW:Reveal from the bar grows the window to half before revealing', function()
+	in_look('thick', function()
+		st.Config:Open('FontLinkRows', 'texts')
+		OW:SetWindowSize('half')
+		OW:SetWindowSize('mini')
+		eq(OW:GetWindowSize(), 'mini')
+		OW:Reveal({ 'Fonts', 'fonts', 'heading', 'font_name' })
+		eq(OW:GetWindowSize(), 'half')
+		eq(OW:GetState().page, 'Fonts')
+		H.close_all()
+	end)
 end)

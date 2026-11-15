@@ -27,7 +27,7 @@ A choice of three or more (Ace `select`), the page picker, the position block's 
 - Under the mouse: the box's edge turns `accent`.
 - Disabled: the box at `alpha-disabled`, label `text-grey`.
 - Open: a click outside or Esc closes it; a pick sets and closes.
-- Caption entry (`caption = true`, a heading such as the page list's groups or the font list's "SaftUI fonts" and "Typefaces"): its label in `text-grey` in the headings' style (the sidebar's group font, set on the row outright so a face drawn in that row before never shows), no row under the mouse, a click does nothing and the list stays open. A list that opens on a picked entry under a caption scrolls to show the caption too.
+- Caption entry (`caption = true`, a heading such as the page list's groups or the font list's "SaftUI fonts" and "Typefaces"): its label in `text-grey` in the headings' style (the sidebar's group font, set on the row outright so a face drawn in that row before never shows), no row under the mouse, a click does nothing and the list stays open. A list opens on its picked entry, or on the nearest caption above it when both fit the rows, so a shared font opens under "SaftUI fonts" with the fonts above it.
 - Disabled entry (`disabled = true`): the row at `alpha-disabled`, no row under the mouse, not to be picked; the list stays open.
 
 ## Blizzard theme

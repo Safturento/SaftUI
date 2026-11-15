@@ -48,7 +48,10 @@ local function SetFieldFont(fs, path, size, flags, object)
 	local font = object or W.GetFont()
 	local fieldPath, fieldSize, fieldFlags = font:GetFont()
 	fs:SetFontObject(font)
-	fs:SetFont(path or fieldPath, size or fieldSize, flags or fieldFlags)
+	-- A face whose file fails to load (SetFont says false) leaves the field font.
+	if fs:SetFont(path or fieldPath, size or fieldSize, flags or fieldFlags) == false then
+		fs:SetFont(fieldPath, size or fieldSize, flags or fieldFlags)
+	end
 end
 
 local function NewText(parent, justify)

@@ -287,9 +287,16 @@ local function OpenList(owner, entries, selected, onPick, kind, buttons)
 	list.offset = 0
 	for i, entry in ipairs(entries) do
 		if entry.key ~= nil and entry.key == selected then -- a caption has no key, and no selection is nil too
-			-- The caption above it comes into view too: Text opens under SaftUI fonts.
-			local caption = entries[i - 1] and entries[i - 1].caption and 1 or 0
-			list.offset = max(0, min(#entries - LIST_MAX_ROWS, i - 1 - caption))
+			-- The nearest caption above it comes into view too when both fit the
+			-- rows: a shared font opens under SaftUI fonts, with the fonts above it.
+			local top = i
+			for j = i - 1, 1, -1 do
+				if entries[j].caption then
+					if i - j < LIST_MAX_ROWS then top = j end
+					break
+				end
+			end
+			list.offset = max(0, min(#entries - LIST_MAX_ROWS, top - 1))
 			break
 		end
 	end

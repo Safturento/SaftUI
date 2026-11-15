@@ -516,6 +516,9 @@ test('a profile with a saved fonts.pixel_huge and a saved name: no section for i
 		if key ~= 'kinds' and key ~= 'intro' then count = count + 1 end
 	end
 	eq(count, 6, 'six sections')
+	for key, option in pairs(tab.args.kinds.args) do
+		check(option.faceOnly ~= true, key .. ' is not face only')
+	end
 	for _, entry in ipairs(W.FontEntries(nil, false)) do
 		check(entry.key ~= 'pixel_huge' and entry.key ~= 'normal_med', "the font list does not list the dropped font " .. tostring(entry.key))
 	end

@@ -1236,6 +1236,9 @@ function Body:DrawSections(sections, makeCell, sizeOf, fillHeight)
 		for _, p in ipairs(entry.placed) do
 			local cell = byRow[p.row]
 			cell.y = entry.rowsY + p.y
+			-- Where its section's title starts, for the first row of a titled
+			-- section (a reveal scrolls the title into view too).
+			cell.sectionY = (entry.titleY and p.y == entry.placed[1].y) and entry.titleY or nil
 			if p.floats then
 				cell.height = p.floatHeight -- as tall as its line's buttons, which fill it
 				onPanel = nil
