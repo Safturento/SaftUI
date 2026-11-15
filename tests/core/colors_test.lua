@@ -257,6 +257,11 @@ test('the roll timer bars are not Item quality, Blue is on Theme > Accent, and t
 	eq(Section('button').args.blue, nil, 'Buttons has no Blue: it is the accent now')
 	eq(Section('text').args.blue, nil, 'nor Text')
 	eq(Section('button').args.green, nil, 'Buttons > Green went with it')
+	-- Each Buttons row says which highlight it is (opacity works now: the owner lowers one and watches what fades).
+	local normal, hover = Section('button').args.normal.desc, Section('button').args.hover.desc
+	check(normal:find('zone text', 1, true) and normal:find('addon compartment', 1, true) and normal:find("micro menu bar's own items", 1, true), 'Normal names the bar items: ' .. normal)
+	check(not normal:find('micro menu button', 1, true), 'and not the micro buttons')
+	check(hover:find("micro buttons' highlight", 1, true) and hover:find('tracking, queue and expansion', 1, true), 'Hover names the micro buttons and the three minimap buttons: ' .. hover)
 	check(quality['1'].desc:find('normal instances', 1, true), 'the badge is shown in raids too')
 	check(Section('text').args.normal.desc:find('summon button', 1, true), "Text names the totem bar summon button's arrow")
 	for _, word in ipairs({ 'Alliance', 'Horde', 'Neutral' }) do

@@ -319,8 +319,8 @@ CO.SECTIONS = {
 	{
 		key = 'button', name = 'Buttons', note = RELOAD_NOTE .. " Opacity sets how strongly each is drawn: 100% is SaftUI's own.", hasAlpha = true,
 		colors = Colors('button', {
-			{ 'normal', 'Normal', "A SaftUI button's or check box's highlight, a scroll bar thumb at rest, and the micro menu's button highlight." },
-			{ 'hover', 'Hover', "A checked check box, a hovered scroll bar thumb, the minimap tracking button's hover, micro menu button highlights and resize handles." },
+			{ 'normal', 'Normal', "A SaftUI button's or check box's highlight, a scroll bar thumb at rest, and the highlight of the micro menu bar's own items (the zone text and the addon compartment)." },
+			{ 'hover', 'Hover', "A checked check box, a hovered scroll bar thumb, the micro buttons' highlight, the minimap's tracking, queue and expansion buttons under the mouse, and resize corners." },
 			{ 'pushed', 'Pushed', 'A pressed SaftUI button, scroll bar thumb or micro menu button.' },
 			{ 'danger', 'Danger', "Locked bank slots, and the flash on an action bar or totem button." },
 		}),
