@@ -11,6 +11,15 @@ local MicroMenu = st:GetModule('MicroMenu')
 -- itself stores those (and a backdrop) on the button as fields, so it's only
 -- for SaftUI's own buttons. The bar draws the backdrop.
 local skinned = setmetatable({}, { __mode = 'k' })
+
+-- The textures follow their colors (st:FollowColor), through paints made once
+-- that read their own color: a paint never closes over its texture.
+local function PaintBarHover(texture) texture:SetVertexColor(st:ColorRGBA('button', 'normal')) end
+local function PaintBarPushed(texture) texture:SetVertexColor(st:ColorRGBA('button', 'pushed')) end
+local function PaintHover(texture) texture:SetVertexColor(st:ColorRGBA('button', 'hover')) end
+-- Shared with the queue and expansion buttons' files
+MicroMenu.PaintHover = PaintHover
+
 function MicroMenu:SkinBarButton(button)
     if skinned[button] then return end
     skinned[button] = true
@@ -35,12 +44,14 @@ function MicroMenu:SkinBarButton(button)
     hover:SetVertexColor(st:ColorRGBA('button', 'normal'))
     hover:SetAllPoints(button)
     button:SetHighlightTexture(hover)
+    st:FollowColor(hover, 'button', 'normal', PaintBarHover)
 
     local pushed = button:CreateTexture(nil, 'OVERLAY')
     pushed:SetTexture(st.BLANK_TEX)
     pushed:SetVertexColor(st:ColorRGBA('button', 'pushed'))
     pushed:SetAllPoints(button)
     button:SetPushedTexture(pushed)
+    st:FollowColor(pushed, 'button', 'pushed', PaintBarPushed)
 
     local disabled = button:CreateTexture(nil, 'OVERLAY')
     disabled:SetTexture(st.BLANK_TEX)
@@ -95,6 +106,7 @@ function MicroMenu:SkinTrackingButton()
         hover:SetVertexColor(st:ColorRGBA('button', 'hover'))
         hover:SetAllPoints(trackingButton)
         trackingButton:SetHighlightTexture(hover)
+        st:FollowColor(hover, 'button', 'hover', PaintHover)
     end
 
     -- Under Blizzard it stands on Blizzard's tracking button (micromenuart.lua's UpdateArt).

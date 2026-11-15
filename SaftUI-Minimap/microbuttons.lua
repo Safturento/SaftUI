@@ -197,6 +197,38 @@ local function StyleTextures(button)
     end
 end
 
+-- A color changed (MicroMenu:OnColorsChanged): the highlight (Buttons > Hover at
+-- HOVER_ALPHA), the pushed fill (Buttons > Pushed at PUSHED_ALPHA) and the alert
+-- flash (Text > Caution at ALERT_ALPHA) take it, on the buttons drawn flat
+-- (Thick and Thin), where SaftUI colored those regions. key is 'hover',
+-- 'pushed' or 'caution', nil for all three. Only the regions' colors: nothing
+-- is laid out, so it runs in combat too.
+function MicroMenu:ColorMicroButtons(key)
+    for _, button in ipairs(buttons) do
+        if arts[button] == false then
+            if key == nil or key == 'hover' then
+                local highlight = button:GetHighlightTexture()
+                if highlight then
+                    highlight:SetColorTexture(st:ColorRGBA('button', 'hover', HOVER_ALPHA))
+                end
+            end
+            if key == nil or key == 'pushed' then
+                local pushed = button.PushedBackground
+                if pushed then
+                    pushed:SetColorTexture(st:ColorRGBA('button', 'pushed', PUSHED_ALPHA))
+                end
+            end
+            if key == nil or key == 'caution' then
+                local flash = button.FlashBorder
+                if flash then
+                    local r, g, b = st:Color('text', 'caution'):GetRGB()
+                    flash:SetColorTexture(r, g, b, ALERT_ALPHA)
+                end
+            end
+        end
+    end
+end
+
 -- Keeps the backdrop (a child of the button) drawing under the button's own art
 local function UpdateSkinLevel(button)
     local level = button:GetFrameLevel()

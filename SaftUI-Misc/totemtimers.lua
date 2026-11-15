@@ -282,6 +282,12 @@ end
 -- compared or tested: each value goes into a widget setter, which takes secret values,
 -- and a colour curve's result only gives its fields back through GetRGB.
 -- SetAlphaFromBoolean's own defaults are opaque for true and clear for false.
+local function ColorSecret(timer)
+	local duration = timer.duration
+	timer.text:SetTextColor(duration:EvaluateRemainingDuration(TextCurve()):GetRGB())
+	timer.bar:SetStatusBarColor(duration:EvaluateRemainingDuration(BarCurve(timer)):GetRGB())
+end
+
 local function RefreshSecret(timer)
 	local duration = timer.duration
 	timer.frame:SetAlphaFromBoolean(duration:IsActive())
@@ -292,8 +298,7 @@ local function RefreshSecret(timer)
 	else
 		timer.text:SetText('')
 	end
-	timer.text:SetTextColor(duration:EvaluateRemainingDuration(TextCurve()):GetRGB())
-	timer.bar:SetStatusBarColor(duration:EvaluateRemainingDuration(BarCurve(timer)):GetRGB())
+	ColorSecret(timer)
 end
 
 ------------------------------------
@@ -309,6 +314,25 @@ local function ColorTimer(timer, warning)
 	else
 		timer.text:SetTextColor(st:Color('text', 'normal'):GetRGB())
 		timer.bar:SetStatusBarColor(ElementColor(timer.slot))
+	end
+end
+
+-- Text > Normal or Text > Danger changed (TB:OnColorsChanged): the curves are made
+-- again from the new colors, and every shown timer is colored again by its state.
+-- Only colors: nothing is laid out (that is TB:ApplyTimerLayout), so it runs in
+-- combat too. A timer that is not shown takes its colors when it next shows.
+function TB:ColorTimers()
+	if not timersReady then return end
+	textCurve = nil
+	for _, timer in pairs(timers) do
+		timer.barCurve = nil
+		if timer.frame:IsShown() then
+			if not timer.secret then
+				if timer.warning ~= nil then ColorTimer(timer, timer.warning) end
+			elseif not secretFailed and timer.duration then
+				pcall(ColorSecret, timer)
+			end
+		end
 	end
 end
 
