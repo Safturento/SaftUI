@@ -172,7 +172,7 @@ test("Blizzard's slot buttons get no field and no script from the item update, o
 	CF:UpdateEquipSlot(button) -- the locked button errors on a field written onto it
 	links[INVSLOT_CHEST] = nil
 	CF:UpdateEquipSlot(button)
-	check(#quality_calls == 2, 'the quality helpers ran for the set and the clear')
+	check(#quality_calls == 3, 'the quality helpers ran: clear and set for the item, clear for the empty slot')
 	for _, call in ipairs(quality_calls) do
 		check(call.frame ~= button, 'the helper was handed SaftUI\'s overlay, not Blizzard\'s button')
 		eq(call.frame:GetParent(), button, "the overlay is the slot's child")
@@ -196,5 +196,27 @@ test('every slot has its own overlay, over the whole slot, and the helpers use i
 		seen[overlay] = true
 		local point, relativeTo = overlay:GetPoint(1)
 		eq(relativeTo, button, name .. ': anchored to its slot')
+		eq(overlay:GetNumPoints(), 2, name .. ': both corners on its slot')
+		for i = 1, 2 do
+			local _, rel = overlay:GetPoint(i)
+			eq(rel, button, name .. ': point ' .. i .. ' on its slot')
+		end
+		-- Today's order: the slot's own regions, then SaftUI's pip, then the slot's cooldown
+		-- (a child at the slot's level + 1), so the swipe darkens the pip as it did.
+		local cooldown = CreateFrame('Frame', nil, button)
+		eq(overlay:GetFrameLevel(), button:GetFrameLevel(), name .. ': at the slot\'s level')
+		check(overlay:GetFrameLevel() < cooldown:GetFrameLevel(), name .. ': under the slot\'s cooldown frame')
 	end
+end)
+
+test('a new item over an old one clears the old tier and text before setting its own', function()
+	local button = buttons.Chest
+	links[INVSLOT_CHEST] = 'item:1'
+	CF:UpdateEquipSlot(button)
+	quality_calls = {}
+	links[INVSLOT_CHEST] = 'item:2'
+	CF:UpdateEquipSlot(button)
+	links[INVSLOT_CHEST] = nil
+	check(#quality_calls >= 2 and quality_calls[1].clear, 'a clear comes first')
+	check(quality_calls[2].link == 'item:2' and not quality_calls[2].clear, 'then the set')
 end)

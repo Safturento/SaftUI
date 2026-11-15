@@ -55,7 +55,7 @@ local SLOT_POSITIONS = {
 
 -- Our per-slot additions, keyed by Blizzard's slot button. Kept in a private
 -- table so nothing is written onto Blizzard's frames.
-local slots = {}
+local slots = setmetatable({}, { __mode = 'k' })
 
 local function SetupSlot(slotId, slotName)
 	local button = _G[format('Character%sSlot', slotName)]
@@ -82,9 +82,13 @@ local function SetupSlot(slotId, slotName)
 	-- The upgrade tier icon, its level text and the crafting quality pip. Util's helpers
 	-- write fields onto the frame they are given and run Blizzard's overlay functions
 	-- on it, so they are given this frame of SaftUI's, a child over the whole slot that
-	-- takes no mouse (a plain frame doesn't), never the secure slot button.
+	-- takes no mouse (a plain frame doesn't), never Blizzard's slot button (Blizzard's own
+	-- update reads those fields). Its level is the slot's own, not the child's usual
+	-- one over it: the tier and quality were regions of the slot, drawn under the
+	-- slot's cooldown frame (a child at the slot's level + 1), and stay under it.
 	local overlay = CreateFrame('Frame', nil, button)
 	overlay:SetAllPoints(button)
+	overlay:SetFrameLevel(button:GetFrameLevel())
 
 	slots[button] = {
 		overlay = overlay,
@@ -104,6 +108,8 @@ function CF:UpdateEquipSlot(button)
 		local level = C_Item.GetDetailedItemLevelInfo(itemLink)
 		slot.itemLevel:SetText(level or '')
 		slot.itemLevelBG:SetShown(level ~= nil)
+		-- A new item over an old one: the old tier and its text must not outlive it.
+		Util:ClearItemQuality(slot.overlay)
 		Util:SetItemQuality(slot.overlay, itemLink)
 	else
 		slot.itemLevel:SetText('')
