@@ -1397,3 +1397,57 @@ test('a refused face is tried again when a font row picks a face and when its li
 		W.CloseList()
 	end)
 end)
+
+------------------------------------------------------------------ a menu left anchored to a released widget
+
+-- A font row's dots menu anchors the menu's frame to the row's dots, and the
+-- frame keeps that anchor after the menu closes. The row's widget goes back to
+-- its pool when the page changes; a later item menu draws a face-only font row
+-- before it anchors itself again, and gets that very widget, so the row is
+-- placed in a cell that hangs from the menu frame, which hangs from the
+-- widget's own dots: a loop, which the game refuses.
+local STALE = st:NewModule('FontStaleRows')
+function STALE:GetConfigTable()
+	return {
+		name = 'Font stale rows', type = 'group', category = 'Frames',
+		args = {
+			texts = { order = 1, type = 'group', name = 'Texts', args = {
+				header = FontRow('header', 1, nil, { name = 'Header font' }),
+				tip = FontRow('tip', 2, nil, { name = 'Tooltip font' }),
+				chat = FontRow('chat', 3, nil, { name = 'Chat font' }),
+			} },
+			other = { order = 2, type = 'group', name = 'Other', args = {
+				hotkey = {
+					order = 1, type = 'item', name = 'Hotkey', desc = 'The key.', size = 'small',
+					get = function() return true end, set = function() end,
+					menu = { type = 'group', name = 'Hotkey', args = {
+						face = FontRow('face', 1, { faceOnly = true }, { name = 'Face' }),
+					} },
+				},
+			} },
+		},
+	}
+end
+
+test("a font row's dots menu, the page changed, then an item menu with a face-only font row: the row is placed, no loop of anchors (bug 2)", function()
+	for _, look in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		in_look(look, function()
+			fresh()
+			vals.header, vals.tip, vals.chat = colus(), colus(), colus()
+			vals.face = 'Homespun'
+			st.Config:Open('FontStaleRows', 'texts')
+			-- The last row's widget is the one the pool hands out first.
+			local chat = H.cell('chat').widget
+			stub.click(chat.dots)
+			check(OW:IsMenuShown(), look .. ': the typeface menu is open')
+			OW:Navigate('FontStaleRows', { tab = 'other' })
+			check(not OW:IsMenuShown(), 'the page change closed it')
+			stub.click(H.cell('hotkey').widget.dots)
+			check(OW:IsMenuShown(), look .. ": the item's menu opens")
+			local c = mcell('face')
+			check(c ~= nil and c.widget.type == 'font', 'with its face-only font row')
+			eq(c.widget.faceOnly, true)
+			close_dots()
+		end)
+	end
+end)

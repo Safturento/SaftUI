@@ -71,6 +71,12 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	the small dialog and the menu. While SaftUI's color picker is open it
 	waits, as the window does.
 
+	The menu's frame is anchored to its item's dots, which belong to a pooled
+	widget, so it is taken off them (ClearAllPoints) when it hides and before
+	each draw of its rows: those are drawn before it is anchored again, and a
+	row's widget may be that very widget (a face-only font row), which would
+	anchor a row to a cell that hangs from its own dots, an anchor loop.
+
 	Following its item (S.FollowMenu, on every render after the dialog's): it
 	finds its item's cell again in owner.body's cells by path, asks that
 	cell's widget for its menu again, re-anchors to the cell's dots
@@ -203,6 +209,10 @@ local function Draw(body, row, dots, menu, title)
 	M.title:SetText(type(title) == 'string' and title ~= '' and title or row.name)
 	-- On each draw: Text > Muted can change, or the profile with it.
 	M.title:SetTextColor(Muted())
+	-- Off its old dots first: the rows are drawn before the menu is anchored
+	-- again, and a pooled widget they take may be the one the menu still hangs
+	-- from (a font row's dots), which would anchor a row to its own descendant.
+	M.frame:ClearAllPoints()
 	DrawBody()
 	Anchor(dots)
 end
@@ -300,6 +310,8 @@ local function Build()
 		W.CancelConfirm()
 		M.body:Release()
 		M.owner, M.root, M.dragging = nil, nil, nil
+		-- Off the dots it was on: they belong to a widget that goes back to a pool.
+		frame:ClearAllPoints()
 	end)
 	-- Its sets can reach protected frames, as the dialog's.
 	frame:RegisterEvent('PLAYER_REGEN_DISABLED')
