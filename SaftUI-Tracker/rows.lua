@@ -556,14 +556,17 @@ function TR:SetTag(row, number)
 	Shown(tag, true)
 end
 
--- The room a number takes at the end of a title beside the tracker: the width of
--- "00" in the Pixel font (the log holds 40 quests at most) and the gap before it.
+-- The room a number (or the item's icon, one line high) takes at the end of a
+-- title beside the tracker: the wider of "00" in the Pixel font (the log holds 40
+-- quests at most) and a line, and the gap before it.
 function TR:TagRoom()
 	if self.tagStamp ~= self.fontStamp then
 		local scratch = self.tagScratch
 		TR.SetText(scratch, '00')
 		local unbounded = scratch.GetUnboundedStringWidth or scratch.GetStringWidth
-		self.tagValue = math.ceil(PlainNumber(unbounded(scratch)) or 0) + L.ITEM_GAP
+		-- Wide enough for two digits, or for the item's icon one line high.
+		self.tagValue = math.max(math.ceil(PlainNumber(unbounded(scratch)) or 0), self:LineHeight()) + L.ITEM_GAP
+		self.tagHeight = PlainNumber(scratch:GetStringHeight()) or 0
 		self.tagStamp = self.fontStamp
 	end
 	return self.tagValue
@@ -687,15 +690,7 @@ end
 -- The item slot's place (the row's top right, itemSize square) and icon, for a
 -- quest whose item sits in its row; hidden for one with no item there. What it
 -- shows is TR:SetSlotMode's, from the item stage (items.lua).
-local function DrawItemSlot(self, row, quest, entry, width)
-	local slot = row.slot
-	if entry.item ~= 'row' or not quest.item then
-		self:SetSlotMode(row, 'none')
-		return
-	end
-	local size = row.itemSize
-	Place(slot, row, width - size, 0)
-	Size(slot, size, size)
+local function SlotIcon(slot, quest, size)
 	local texture = quest.item.texture
 	local trim = st.config.profile.misc.icon_trim
 	if slot.shownTexture ~= texture or slot.shownTrim ~= trim or slot.shownSize ~= size then
@@ -704,6 +699,19 @@ local function DrawItemSlot(self, row, quest, entry, width)
 		-- Cropped by Icon zoom, as the button's icon is.
 		slot.icon:SetTexCoord(st:IconTexCoords(trim, size, size))
 	end
+end
+
+local function DrawItemSlot(self, row, quest, entry, width)
+	local slot = row.slot
+	if entry.item == 'beside' and quest.item then return end -- DrawQuest's, by the title
+	if entry.item ~= 'row' or not quest.item then
+		self:SetSlotMode(row, 'none')
+		return
+	end
+	local size = row.itemSize
+	Place(slot, row, width - size, 0)
+	Size(slot, size, size)
+	SlotIcon(slot, quest, size)
 end
 
 local function DrawQuest(self, row, entry, p, width)
@@ -721,9 +729,20 @@ local function DrawQuest(self, row, entry, p, width)
 	if entry.item == 'beside' then
 		-- The number follows the title's last letter, as the zone pin does, up to the
 		-- room the layout left for it. What it says is the item stage's (TR:SetTag).
-		local unbounded = row.title.GetUnboundedStringWidth or row.title.GetStringWidth
-		local reach = math.min(math.ceil(PlainNumber(unbounded(row.title)) or 0), p.titleWidth)
-		Place(row.tag, row, titleX + reach + L.ITEM_GAP, 0)
+		-- A secret title is never measured: the number goes at the title's width.
+		local reach = p.titleWidth
+		if not issecretvalue(entry.first) then
+			local unbounded = row.title.GetUnboundedStringWidth or row.title.GetStringWidth
+			reach = math.min(math.ceil(PlainNumber(unbounded(row.title)) or reach), reach)
+		end
+		local x = titleX + reach + L.ITEM_GAP
+		-- Centred on the title's first line, as the icon is; the item's icon (one line
+		-- high) takes the same place while the quest has no number.
+		local line = self:LineHeight()
+		Place(row.tag, row, x, math.max(0, math.floor((line - self.tagHeight) / 2)))
+		Place(row.slot, row, x, 0)
+		Size(row.slot, line, line)
+		SlotIcon(row.slot, quest, line)
 	else
 		self:SetTag(row, nil)
 	end

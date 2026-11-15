@@ -115,8 +115,10 @@ end
 -- entry in list order. Each entry is { top = the title's top or nil }, y up (nil:
 -- no row to follow: collapsed, hidden or gone). left is 4 outside the window on
 -- side ('left' or 'right'); top is the title's, or 2 under the place above when
--- the button would overlap it; nil while the title's button would have its centre
--- outside the scroll view (viewTop and viewBottom). Numbers run 1 to n in list
+-- it would be closer than 2 to it; nil while the title's button would have its
+-- centre outside the scroll view (viewTop and viewBottom), and for a button that
+-- stacking pushed so far down that its centre is under the view's bottom (the
+-- column never runs past the window). Numbers run 1 to n in list
 -- order, counting the entries out of view, so a number never changes as the list
 -- scrolls. round is the caller's rounding (default a unit), out a table of an
 -- earlier call to fill again, so a scroll makes none.
@@ -143,14 +145,18 @@ function Items.Column(entries, size, side, windowLeft, windowRight, viewTop, vie
 			local centre = top - size / 2
 			if centre <= viewTop and centre >= viewBottom then
 				top = round(top)
-				if bottom ~= nil and top > bottom then top = bottom - L.COLUMN_STACK end
-				place = spare[index]
-				if not place then
-					place = {}
-					spare[index] = place
-				end
-				place.left, place.top, place.number = left, top, index
+				if bottom ~= nil and top > bottom - L.COLUMN_STACK then top = bottom - L.COLUMN_STACK end
 				bottom = top - size
+				-- A stack that ran on past the view's bottom has no room for this button:
+				-- it hides (it would hang under the window), and so does what follows.
+				if top - size / 2 >= viewBottom then
+					place = spare[index]
+					if not place then
+						place = {}
+						spare[index] = place
+					end
+					place.left, place.top, place.number = left, top, index
+				end
 			end
 		end
 		places[index] = place
@@ -165,7 +171,11 @@ end
 -- quest has an item), else 0. Its 4 gap is the caller's.
 function TR:ColumnWidth()
 	if not self:ItemsToShow() or self.config.items.placement ~= 'beside' then return 0 end
-	return self.config.items.size
+	-- A quest whose item has no link has no button, so it makes no column.
+	for _, quest in ipairs(self.model.quests) do
+		if quest.item and quest.item.link then return self.config.items.size end
+	end
+	return 0
 end
 
 ------------------------------------------------------------------ P3: what a button uses
@@ -393,7 +403,7 @@ local function PlaceTip(owner, row)
 end
 
 -- The game's tooltip for the quest's item, with the quest's title under it while
--- the button is dimmed (it names the quest the button belongs to). Obeys the
+-- the button is dimmed or in the column (it names the quest the button belongs to). Obeys the
 -- Tooltips setting.
 function TR:ShowItemTooltip(owner, questID, title, dimmed)
 	if not self.config.quests.tooltips then return end
@@ -504,7 +514,7 @@ local function MakeButton(self)
 	button:SetScript('OnEnter', function(self)
 		local row = self.questID and TR:GetQuestRow(self.questID)
 		if row then TR:HoverRow(row, true) end
-		TR:ShowItemTooltip(self, self.questID, self.title, self.dimmed)
+		TR:ShowItemTooltip(self, self.questID, self.title, self.dimmed or self.column)
 	end)
 	button:SetScript('OnLeave', function(self)
 		local row = self.questID and TR:GetQuestRow(self.questID)
@@ -649,7 +659,7 @@ end
 -- as itself: TR:IsHovered, window.lua).
 function TR:IsColumnHovered()
 	for _, button in ipairs(self.itemButtons or {}) do
-		if button.column and button.questID and button:IsShown() and button:IsMouseOver() then return true end
+		if button.column and button.questID and button:IsVisible() and button:IsMouseOver() then return true end
 	end
 	return false
 end
@@ -899,10 +909,32 @@ end
 -- sits shown (dimmed and displaced or not: it is that quest's), a greyed icon in
 -- combat where the quest has none and one can still come, a plain icon
 -- otherwise (Item buttons Off, or no button to be had: no link, the pool full).
+-- The number a beside row shows: its quest's own button's, while that button is
+-- shown and holds the row's item (a button that can't be shown in combat, or a
+-- new item, has none).
+local function BesideNumber(self, row)
+	local button = self.itemByQuest[row.questID]
+	local item = row.quest and row.quest.item
+	if button and button.column and button.number and button:IsShown() and item and button.item and button.item.link == item.link then
+		return button.number
+	end
+end
+
 local function DrawSlots(self, combat)
 	local placement = self.config.items.placement
 	for _, row in ipairs(self.pools.quest.rows) do
-		if row.inUse and row.item == 'row' then
+		if row.inUse and row.item == 'beside' then
+			-- Beside the tracker the slot is where the number goes: hidden under a number,
+			-- else the item's icon (greyed while its button is to come in combat).
+			local item = row.quest and row.quest.item
+			local mode = 'icon'
+			if BesideNumber(self, row) then
+				mode = 'none'
+			elseif combat and item and CanHaveButton(self, item) then
+				mode = 'greyed'
+			end
+			self:SetSlotMode(row, mode)
+		elseif row.inUse and row.item == 'row' then
 			local button = self.itemByQuest[row.questID]
 			local item = row.quest and row.quest.item
 			local mode
@@ -921,19 +953,13 @@ local function DrawSlots(self, combat)
 end
 
 -- Each beside quest row's tag: the number of its quest's own button while that
--- button is for the row's item, else none (a new quest has no button until combat
--- ends, and one whose item changed is not what the button holds). Text only, so it
+-- button is shown and for the row's item, else none (a new quest has no button
+-- until combat ends, and one whose item changed is not what the button holds). Text only, so it
 -- runs in combat too.
 local function DrawTags(self)
 	for _, row in ipairs(self.pools.quest.rows) do
 		if row.inUse and row.item == 'beside' then
-			local button = self.itemByQuest[row.questID]
-			local item = row.quest and row.quest.item
-			local number
-			if button and button.column and button.number and item and button.item and button.item.link == item.link then
-				number = button.number
-			end
-			self:SetTag(row, number)
+			self:SetTag(row, BesideNumber(self, row))
 		end
 	end
 end
