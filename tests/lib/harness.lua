@@ -93,7 +93,14 @@ function load_saftui(path, ...)
 	if not addon then
 		error(format('load_saftui loads files from the SaftUI-* addon folders, not %s', path), 2)
 	end
-	return compile(REPO_ROOT .. '/' .. path, path, 2)(addon, addon_namespace(addon))
+	local result = compile(REPO_ROOT .. '/' .. path, path, 2)(addon, addon_namespace(addon))
+	-- A model loaded again drops the reset kit's functions (they are added to it
+	-- by optionsdefault.lua). The game's load.xml loads the kit later (after the widget files
+	-- and generators.lua), but every file looks the kit up when it runs, never at load.
+	if path == 'SaftUI-Core/Config/optionsmodel.lua' then
+		compile(REPO_ROOT .. '/SaftUI-Core/Config/optionsdefault.lua', 'SaftUI-Core/Config/optionsdefault.lua', 2)(addon, addon_namespace(addon))
+	end
+	return result
 end
 
 -- The text of a file in a SaftUI addon folder, by its path from the repo root

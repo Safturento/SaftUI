@@ -200,7 +200,7 @@ local function GetConfigTable(unit)
 					framelevel = generators.framelevel(3, FRAME_LEVEL),
 					normal = Color(4, 'Color', 'normal', "The bar's color while the cast can be interrupted. Shown from the next cast."),
 					nointerrupt = Color(5, "Can't interrupt", 'nointerrupt', "The bar's color while the cast can't be interrupted. Shown from the next cast."),
-					size = UF.GenerateRelativeSizeConfigGroup(6, UF.SavedIn(unit, 'castbar')),
+					size = UF.GenerateRelativeSizeConfigGroup(6),
 					-- Last in Bar.
 					position = Position(1000, nil, nil, 'castbar'),
 				},
@@ -212,7 +212,7 @@ local function GetConfigTable(unit)
 				theme = generators.theme(1, "The icon's border and background."),
 				background = generators.background(1.5),
 				framelevel = generators.framelevel(2, FRAME_LEVEL),
-				size = UF.GenerateRelativeSizeConfigGroup(3, UF.SavedIn(unit, 'castbar', 'icon')),
+				size = UF.GenerateRelativeSizeConfigGroup(3),
 				-- Last in Icon.
 				position = Position(1000, 'icon', 'Icon', 'icon', 'Icon position'),
 			}),

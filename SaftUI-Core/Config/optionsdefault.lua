@@ -16,7 +16,9 @@ local st = SaftUI
 
 	saved is read from the node that gives the row its get (the option itself
 	when it has one, else the nearest group above it with one), never from
-	another node. noReset is read raw from the option.
+	another node; a Width or Height box's get (generators.NumberInputGet) only
+	hands on to the group's, so it is looked through unless the box carries its
+	own saved or a noReset. noReset is read raw from the option.
 
 	A row's reset source, in order (OM.DefaultSource):
 	  'share'    a member page's share (share.own): its hover line's Reset
@@ -303,9 +305,20 @@ local function OptionsFor(root)
 	return options
 end
 
+-- Whether a get only hands on to the group's (a Width or Height box's
+-- generators.NumberInputGet, which turns the group's number into text): the
+-- group above is what gives the row its value, and its saved reaches the row
+-- unless the box carries one of its own, or says it has no reset (Chat's size).
+local function HandsOn(group)
+	local G = st.Config and st.Config.generators
+	return group.saved == nil and group.noReset == nil and G ~= nil and group.get == G.NumberInputGet
+end
+OM.HandsOn = HandsOn -- the reset walk finds a row's get node by the same rule
+
 -- Walks the row's path as the model does, filling info for it and giving the
 -- node that gives the row its get (the option itself, else the nearest group
--- above with one) and the nearest handler. Nil for a path that isn't there.
+-- above with one; a get that only hands on, HandsOn, is looked through) and the
+-- nearest handler. Nil for a path that isn't there.
 local function Locate(root, row)
 	local options = OptionsFor(root)
 	local path = row.path
@@ -316,10 +329,13 @@ local function Locate(root, row)
 		if not group then
 			for j = 1, infoSize do info[j] = nil end
 			infoSize = 0
+			-- Nothing of the previous row is left for a differs to read.
+			info.options, info.appName, info[0], info.arg, info.handler, info.option, info.type, info.uiType, info.uiName =
+				nil, nil, nil, nil, nil, nil, nil, nil, nil
 			return nil
 		end
 		info[i] = path[i]
-		if group.get ~= nil then node = group end
+		if group.get ~= nil and not HandsOn(group) then node = group end
 		handler = group.handler or handler
 	end
 	for i = size + 1, infoSize do info[i] = nil end
@@ -729,6 +745,20 @@ local function DerivedDiffers(root, row, node, handler)
 	end
 	-- Anything else: a table, merged when more than one table gives it.
 	return LeafDiffers(rowType, node, handler, count == 1 and list[1] or Merge(list, count))
+end
+
+--[[
+	Whether the row's hand default says its value differs now, and nothing else
+	(no words, no value): the icon asks it for every row on every render, so it
+	reads the row with the scratch info (Locate) and makes no table. A differs
+	that errors goes to the error handler and counts as false.
+]]
+function OM.HandDiffers(root, row)
+	local default = row.option.default
+	if type(default) ~= 'table' or type(default.differs) ~= 'function' then return false end
+	Locate(root, row)
+	local ok, answer = xpcall(default.differs, geterrorhandler(), info)
+	return ok and answer and true or false
 end
 
 --[[

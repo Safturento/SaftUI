@@ -941,6 +941,18 @@ test("remove_shell_config takes the shell's Config module out, so the real confi
 	check(SaftUI.Config ~= nil and SaftUI.Config ~= config, 'reset_world brings the shell\'s back')
 end)
 
+test('loading the options model always brings the reset kit with it, as the TOC loads it', function()
+	reset_world()
+	load_core_helpers()
+	local OM = SaftUI.OptionsModel
+	check(OM.DefaultSource ~= nil, 'the kit is on the model the shell made')
+	-- A model loaded again is a new table: the kit would be gone if a test had to remember to load it.
+	load_saftui('SaftUI-Core/Config/optionsmodel.lua')
+	local again = SaftUI.OptionsModel
+	check(again.DefaultSource ~= nil and again.DefaultDiffers ~= nil and again.SourceReset ~= nil, 'the kit is on a model loaded again')
+	check(SaftUI.Config.SavedIn ~= nil, 'and st.Config.SavedIn')
+end)
+
 test("load_options_widgets and load_options_window load the files Core's Config/load.xml lists, in its order", function()
 	local xml = assert(read_saftui_source('SaftUI-Core/Config/load.xml')):gsub('<!%-%-.-%-%->', '')
 	local listed, from, to = {}, nil, nil

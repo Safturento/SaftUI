@@ -17,11 +17,10 @@ local VALUE_TYPES = { toggle = true, range = true, select = true, color = true, 
 local NO_DESC = { group = true, description = true, header = true }
 
 -- A fresh world with the real Config on top of the tracker's.
-local function world(on)
-	local st, TR = TW.world({ on = on })
+local function world(on, client)
+	local st, TR = TW.world({ on = on, client = client })
 	load_test_file('lib/options_walk.lua')
 	load_saftui('SaftUI-Core/Config/optionsmodel.lua')
-	load_saftui('SaftUI-Core/Config/optionsdefault.lua') -- the model was just loaded again
 	load_options_widgets()
 	return st, TR
 end
@@ -204,12 +203,14 @@ test('the Quests tab: every setting, in order, saving into tracker.quests and dr
 	eq(#take_errors(), 0, 'no errors')
 end)
 
-test('every value row of the Tracker page has a reset', function()
-	local st, TR = world(true)
-	local R = load_test_file('lib/reset_walk.lua')
-	R.check_page({ Tracker = TR:GetConfigTable() }, 'Tracker')
-	eq(#take_errors(), 0, 'no errors')
-end)
+for _, client in ipairs({ 'forever', 'retail' }) do
+	test('every value row of the Tracker page has a reset, on ' .. client, function()
+		local st, TR = world(true, client)
+		local R = load_test_file('lib/reset_walk.lua')
+		R.check_page({ Tracker = TR:GetConfigTable() }, 'Tracker')
+		eq(#take_errors(), 0, 'no errors')
+	end)
+end
 
 test("both of the tracker's Positions reset through their movers from the /sui row, and Undo takes each back", function()
 	local st, TR = world(true)

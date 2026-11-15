@@ -12,7 +12,6 @@ load_test_file('core/config_helpers.lua')
 load_test_file('lib/options_walk.lua')
 local st = SaftUI
 load_saftui('SaftUI-Core/Config/optionsmodel.lua')
-load_saftui('SaftUI-Core/Config/optionsdefault.lua') -- a reload of the model drops the kit's hooks
 local R = load_test_file('lib/reset_walk.lua')
 
 CreateFrame('Frame', 'Minimap', UIParent) -- Blizzard's, which experience.lua and the minimap's files find
@@ -122,9 +121,9 @@ test('Global settings: every value row has a reset, and each derived one round-t
 	local minimap = st:GetModule('Minimap')
 	local update = rawget(minimap, 'UpdateConfig')
 	minimap.UpdateConfig = function() end
-	local ok, err = pcall(R.check_page, st.Config:GetOptionsTable(), 'Fonts', {
-		allow = { ['Fonts.theme.theme'] = { 'fonts.version' } },
-	})
+	local ok, err = pcall(function()
+		R.check_page(st.Config:GetOptionsTable(), 'Fonts', { allow = { ['Fonts.theme.theme'] = { 'fonts.version' } } })
+	end)
 	minimap.UpdateConfig = update
 	if not ok then error(err, 0) end
 end)

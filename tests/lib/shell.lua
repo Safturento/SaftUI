@@ -409,9 +409,8 @@ function load_core_helpers()
 	load_saftui('SaftUI-Core/Media/theme.lua')
 	load_saftui('SaftUI-Core/Config/defaults.lua')
 	load_saftui('SaftUI-Core/Config/generators.lua')
-	-- The model and its saved fields (st.Config.SavedIn), which every page's table calls, as the TOC loads them before the modules.
+	-- The model and its saved fields (st.Config.SavedIn), which every page's table calls (the game's TOC loads them before the modules; load_saftui brings the kit with the model).
 	load_saftui('SaftUI-Core/Config/optionsmodel.lua')
-	load_saftui('SaftUI-Core/Config/optionsdefault.lua')
 	load_saftui('SaftUI-Core/Config/general.lua')
 	apply_defaults()
 	st:GetModule('Fonts'):Enable()

@@ -286,6 +286,11 @@ test("a shipped category's fields each reset alone; there is no Reset button", f
 	local ruleCell = tab():EditorCell('rule')
 	local left = select(4, ruleCell.frame.defaultReset:GetPoint(1))
 	eq(left, math.ceil(ruleCell.label:GetUnboundedStringWidth()) + 6, "the rule's icon sits 6 after 'Catches an item when'")
+	-- Its tooltip is a sentence: the row's name is no subject.
+	local rule_icon = reset_icon('rule')
+	stub.fire_script(rule_icon, 'OnEnter')
+	eq(stub.state(GameTooltip).texts[2], 'The rule goes back to its default: the rule SaftUI ships.', "the rule's reset words")
+	stub.fire_script(rule_icon, 'OnLeave')
 
 	-- Each one puts back its own and leaves the others.
 	click(reset_icon('name'))
@@ -658,4 +663,17 @@ test('the rule editor fits its pane: a long row wraps, every field clear of the 
 	eq(editor.frame:GetHeight(), top - editor.rows[#editor.rows].frame:GetBottom(), 'the editor is as tall as its rows')
 	eq(#take_errors(), 0, 'no errors')
 	st.Config:Close()
+end)
+
+-- The reset walk over the editor's own options (a body of its own, not a page of the options tree): a
+-- field added with no reset fails here. Each kind of category has its own rows.
+test("every value row of the Categories editor has a reset, for a shipped category, the sets entry, Miscellaneous and your own", function()
+	world()
+	local RW = load_test_file('lib/reset_walk.lua')
+	local mine = INV:AddUserCategory()
+	local walked = 0
+	for _, id in ipairs({ 'Trade Goods', SETS, MISC, SELL, mine }) do
+		walked = walked + RW.check_page({ category = INV:CategoryEditorOptions(id) }, 'category')
+	end
+	check(walked >= 12, 'the walk met the editors\' rows (' .. walked .. ')')
 end)
