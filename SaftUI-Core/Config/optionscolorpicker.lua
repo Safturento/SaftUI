@@ -633,6 +633,11 @@ local function Classes()
 	return out
 end
 
+-- A class chip in its class's color.
+local function PaintChip(chip, color)
+	chip:Paint(color.r, color.g, color.b, 1)
+end
+
 local function FillClassChips()
 	local row, n = F.classes, 0
 	for _, class in ipairs(Classes()) do
@@ -641,7 +646,7 @@ local function FillClassChips()
 			n = n + 1
 			local chip = Chip(row, n)
 			chip.class = class.token
-			chip:Paint(color.r, color.g, color.b, 1)
+			PaintChip(chip, color)
 			chip.tip = function() return class.name end
 			chip.pick = function() SetRGBA(color.r, color.g, color.b) end
 			chip:Show()
@@ -664,7 +669,7 @@ local function PaintClassChips(_, key)
 		local token = chip.class
 		if token and (key == nil or key == token) then
 			local color = classes[token]
-			if color then chip:Paint(color.r, color.g, color.b, 1) end
+			if color then PaintChip(chip, color) end
 		end
 	end
 end
@@ -959,7 +964,6 @@ function W.OpenColorPicker(owner, options)
 		r = options.r or 0, g = options.g or 0, b = options.b or 0, a = options.a or 1,
 		onChange = options.onChange, onCancel = options.onCancel, stale = options.stale,
 	}
-	st:BeginColorEdit() -- changes now pass once a frame; closing runs each touched group's whole pass
 	S.r, S.g, S.b, S.a = spec.r, spec.g, spec.b, hasAlpha and spec.a or 1
 	S.h, S.s, S.v = M.RGBToHSV(S.r, S.g, S.b, 0)
 	Layout(hasAlpha)
@@ -970,6 +974,9 @@ function W.OpenColorPicker(owner, options)
 	frame:SetFrameStrata('FULLSCREEN_DIALOG')
 	frame:SetFrameLevel(LEVEL)
 	PlaceBeside(owner)
+	-- Last before it shows, so a failure above leaves no edit on: changes now
+	-- pass once a frame, and closing runs each touched group's whole pass.
+	st:BeginColorEdit()
 	frame:Show()
 	Paint()
 	return true

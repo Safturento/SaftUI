@@ -277,7 +277,7 @@ function Config:OnColorsChanged(group, key)
 	if group == 'theme' and OW then OW:PaintSidebar() end
 	if group == 'text' and (key == nil or key == 'normal') then
 		local OB = st.OptionsBody
-		if OB then OB.UpdateFonts() end
+		if OB then OB.ColorFonts() end
 	end
 end
 

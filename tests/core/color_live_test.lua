@@ -203,6 +203,7 @@ test('a profile switch during an edit (Review Focus 1)', function()
 	reset()
 	local original = st.config:GetCurrentProfile()
 	local d = st.defaults.colors.text.danger
+	st.config.profile.colors.text.danger:SetRGB(0.3, 0.4, 0.5) -- not B's default, so a restore written into B shows
 	local w = danger_field()
 	click(w.frame)
 	local F = W.GetColorPickerFrames()
@@ -292,7 +293,7 @@ test('the guard: a pass over 8 ms makes the next wait a frame per 8 ms, three at
 	reset()
 	check(CO.PASS_BUDGET_MS == 8 and CO.MAX_WAIT == 3, 'the numbers')
 	with_clock(function(move)
-		for _, case in ipairs({ { 20, 2 }, { 40, 3 }, { 5, 0 } }) do
+		for _, case in ipairs({ { 20, 2 }, { 40, 3 }, { 5, 0 }, { 8, 0 }, { 8.5, 1 }, { 16, 2 } }) do
 			local cost, waits = case[1], case[2]
 			local o, count = Obj(), 0
 			st:FollowColor(o, 'text', 'danger', function() count = count + 1; move(cost) end)
@@ -302,12 +303,13 @@ test('the guard: a pass over 8 ms makes the next wait a frame per 8 ms, three at
 			eq(count, 1, cost .. ' ms: the pass ran')
 			local stats = CO.EditStats()
 			eq(stats.passes, 1); eq(stats.slowest, cost); eq(stats.slowestGroup, 'text'); eq(stats.slowestKey, 'danger')
-			eq(stats.waited, waits, cost .. ' ms waits ' .. waits)
+			eq(stats.waited, 0, 'nothing has waited yet')
 			st:ColorChanged('text', 'danger')
 			for step = 1, waits do
 				C.step(st)
 				eq(count, 1, 'step ' .. step .. ': still waiting')
 			end
+			eq(stats.waited, waits, cost .. ' ms waits ' .. waits .. ' frames')
 			C.step(st)
 			eq(count, 2, 'then it runs')
 			st:EndColorEdit()
@@ -403,18 +405,17 @@ end)
 test('a pass makes nothing and allocates nothing: 1000 followers, 100 passes', function()
 	reset()
 	local objects = {}
-	-- A paint that only counts: the stub's color setters keep a table per call,
-	-- which is the stub's garbage, not the pass's.
-	local function paint(object) object.n = object.n + 1 end
+	local function paint(object) object.texture:SetVertexColor(st:ColorRGBA('text', 'danger')) end
 	for i = 1, 1000 do
-		objects[i] = { n = 0 }
+		objects[i] = { texture = UIParent:CreateTexture(nil, 'ARTWORK') }
+		objects[i].texture:SetVertexColor(1, 1, 1) -- the stub makes its color table at the first call, once
 		st:FollowColor(objects[i], 'text', 'danger', paint)
 	end
 	local m
 	alone(function() m = C.measure(function() st:ColorChanged('text', 'danger') end, 100) end)
 	eq(m.made, 0, 'nothing made')
 	eq(m.forbidden.total, 0, 'nothing shown, hidden, placed or sized')
-	eq(objects[1].n .. ',' .. objects[1000].n, '100,100', 'every follower painted, every pass')
+	eq(m.calls.by.SetVertexColor, 100000, 'every follower colored, every pass')
 	check(m.kb < 4, 'garbage over 100 passes: ' .. m.kb .. ' KB')
 	C.print('1000 followers', m)
 
@@ -483,20 +484,164 @@ end)
 
 test("Config:OnColorsChanged('text', 'normal') gives the kit's font objects Text's color; ('text', 'danger') does not", function()
 	reset()
+	local OB = st.OptionsBody
+	local heading = OB.Font('label')
 	local normal = st.config.profile.colors.text.normal
 	local keep = { normal:GetRGB() }
-	local function color() return string.format('%.2f,%.2f,%.2f', W.GetFont():GetTextColor()) end
+	local function color(font) return string.format('%.2f,%.2f,%.2f', font:GetTextColor()) end
 	normal:SetRGB(0.1, 0.6, 0.3)
 	W.GetFont():SetTextColor(0.5, 0.5, 0.5)
+	heading:SetTextColor(0.5, 0.5, 0.5)
 	st.Config:OnColorsChanged('text', 'danger')
-	eq(color(), '0.50,0.50,0.50', 'Danger is not Normal')
+	eq(color(W.GetFont()) .. color(heading), '0.50,0.50,0.500.50,0.50,0.50', 'Danger is not Normal')
 	st.Config:OnColorsChanged('class', 'MAGE')
-	eq(color(), '0.50,0.50,0.50', 'nor is another group')
+	eq(color(W.GetFont()), '0.50,0.50,0.50', 'nor is another group')
 	st.Config:OnColorsChanged('text', 'normal')
-	eq(color(), '0.10,0.60,0.30', 'Normal is')
+	eq(color(W.GetFont()), '0.10,0.60,0.30', 'Normal is: the field font')
+	eq(color(heading), '0.10,0.60,0.30', "and each of /sui's font objects")
 	W.GetFont():SetTextColor(0.5, 0.5, 0.5)
 	st.Config:OnColorsChanged('text')
-	eq(color(), '0.10,0.60,0.30', 'and a whole pass of Text')
+	eq(color(W.GetFont()), '0.10,0.60,0.30', 'and a whole pass of Text')
+	-- Only the color: a pass sets no font (SetFont is a re-skin).
+	local m
+	m = C.measure(function() st.Config:OnColorsChanged('text'); st.Config:OnColorsChanged('text', 'normal') end)
+	eq(m.forbidden.by.SetFont, nil, 'no SetFont in a Text pass')
+	eq(m.forbidden.total, 0, 'nothing forbidden')
+	check(m.calls.by.SetTextColor and m.calls.by.SetTextColor >= 2, 'the font objects take the color')
 	normal:SetRGB(unpack(keep))
 	st.Config:OnColorsChanged('text')
+end)
+
+------------------------------------------------------------------ edges (the review of Task 1)
+
+test('a follower runs before the modules in a pass', function()
+	reset()
+	local o = Obj()
+	st:FollowColor(o, 'text', 'danger', function() seen[#seen + 1] = 'follower' end)
+	st:ColorChanged('text', 'danger')
+	eq(told(), 'follower,text:danger')
+	st:UnfollowColor(o)
+end)
+
+test('an unfollow, a paint-nil forget and a follow made during a pass, and a follow made during a whole pass', function()
+	reset()
+	local late, gone, b = Obj(), Obj(), Obj()
+	local a = Obj()
+	st:FollowColor(gone, 'text', 'danger', P)
+	st:FollowColor(a, 'text', 'danger', function()
+		st:FollowColor(late, 'text', 'danger', P)
+		st:UnfollowColor(late) -- forgotten before it was ever applied
+		st:FollowColor(gone, 'text', 'danger', nil) -- a paint nil, during the pass
+	end)
+	st:ColorChanged('text', 'danger')
+	st:ColorChanged('text', 'danger')
+	eq(painted(late), '', 'a pending follow unfollowed in the same pass never paints')
+	check(#gone.painted <= 1, 'a paint-nil forget made in a pass takes effect after it')
+	st:UnfollowColor(a); st:UnfollowColor(gone)
+	local whole = Obj()
+	local c = Obj()
+	local made = false
+	st:FollowColor(c, 'text', nil, function() if not made then made = true; st:FollowColor(whole, 'text', nil, P) end end)
+	st:ColorsChanged('text')
+	st:ColorsChanged('text')
+	eq(painted(whole), 'nil', 'a follow made in a whole pass paints in the next whole pass')
+	st:UnfollowColor(c); st:UnfollowColor(whole)
+end)
+
+test('followers are held weakly: a dropped object is never painted again', function()
+	reset()
+	local n = 0
+	local function paint() n = n + 1 end
+	do
+		local o = {}
+		st:FollowColor(o, 'text', 'danger', paint)
+	end
+	collectgarbage(); collectgarbage()
+	st:ColorChanged('text', 'danger')
+	eq(n, 0)
+end)
+
+test('EndColorEdit outside an edit does nothing', function()
+	reset()
+	st:BeginColorEdit()
+	st:ColorChanged('text', 'danger')
+	st:EndColorEdit()
+	forget()
+	st:EndColorEdit()
+	eq(told(), '', 'no pass')
+end)
+
+test('an edit begun during the whole passes of an edit end keeps its own touched groups', function()
+	reset()
+	local o, begun = Obj(), false
+	st:FollowColor(o, 'text', nil, function()
+		if not begun then
+			begun = true
+			st:BeginColorEdit()
+			st:ColorChanged('class', 'MAGE')
+		end
+	end)
+	st:BeginColorEdit()
+	st:ColorChanged('text', 'danger')
+	st:EndColorEdit()
+	check(st:InColorEdit(), 'the new edit is on')
+	forget()
+	st:EndColorEdit()
+	eq(told(), 'class:nil', "the second edit's end runs Class's whole pass")
+	st:UnfollowColor(o)
+end)
+
+test('a color changed again in the same frame after its pass ran runs next frame', function()
+	reset()
+	local o, again = Obj(), false
+	st:FollowColor(o, 'class', 'MAGE', function()
+		if not again then again = true; st:ColorChanged('text', 'danger') end
+	end)
+	st:BeginColorEdit()
+	st:ColorChanged('text', 'danger')
+	st:ColorChanged('class', 'MAGE')
+	C.step(st)
+	eq(told(), 'text:danger,class:MAGE')
+	check(CO.ticker:IsShown(), 'a pass is due again')
+	C.step(st)
+	eq(told(), 'text:danger,class:MAGE,text:danger', 'next frame')
+	check(not CO.ticker:IsShown(), 'and nothing after')
+	st:EndColorEdit()
+	st:UnfollowColor(o)
+end)
+
+test('an edit that ends inside a due pass leaves nothing counted, waiting or due', function()
+	reset()
+	local o = Obj()
+	st:FollowColor(o, 'text', 'danger', function() st:EndColorEdit() end)
+	st:BeginColorEdit()
+	st:ColorChanged('text', 'danger')
+	st:ColorChanged('class', 'MAGE')
+	C.step(st)
+	check(not told():find('class:MAGE', 1, true), 'the rest of the due passes is dropped: ' .. told())
+	eq(CO.EditStats().passes, 0, 'nothing counted after the end')
+	eq(CO.wait, 0, 'nothing waits'); check(not CO.ticker:IsShown(), 'nothing is due')
+	st:UnfollowColor(o)
+end)
+
+test('the picker does not leave an edit on when it fails to open', function()
+	reset()
+	local broken = { GetLeft = function() error('no place') end, GetRight = function() end, GetTop = function() end,
+		GetBottom = function() end, IsVisible = function() return true end, GetEffectiveScale = function() return 1 end }
+	local ok = pcall(W.OpenColorPicker, broken, { r = 1, g = 0, b = 0, onChange = function() end })
+	check(not ok, 'it failed')
+	check(not st:InColorEdit(), 'and no edit is on')
+	W.CloseColorPicker()
+end)
+
+test('FollowColor refuses a group or a key that does not exist', function()
+	reset()
+	local o = Obj()
+	for _, bad in ipairs({ { 'buttons' }, { 'text', 'Normal' }, { 'accent', 'x' }, { 'renown', 'x' }, { 'class', 'MAGEs' } }) do
+		check(not pcall(st.FollowColor, st, o, bad[1], bad[2], P), 'refused: ' .. bad[1] .. ' ' .. tostring(bad[2]))
+	end
+	for _, good in ipairs({ { 'text' }, { 'text', 'normal' }, { 'reaction', 3 }, { 'item_quality', 0 }, { 'accent' }, { 'renown' }, { 'theme' } }) do
+		check(pcall(st.FollowColor, st, o, good[1], good[2], P), 'accepted: ' .. good[1] .. ' ' .. tostring(good[2]))
+	end
+	st:UnfollowColor(o)
 end)

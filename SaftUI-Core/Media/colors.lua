@@ -35,6 +35,8 @@ CO.MAX_WAIT = 3 -- frames, at most
 CO.wait = 0 -- frames the ticker still waits before the due pass
 
 local ALL = '*' -- a follower's key when it follows every color of the group
+local KNOWN_GROUP = { theme = true }
+for _, group in ipairs(st.COLOR_GROUPS) do KNOWN_GROUP[group] = true end
 
 -- followers[group][key or ALL] = { [object] = paint }, weak on the object, made
 -- when a first one registers.
@@ -71,6 +73,16 @@ end
 -- it; paint nil forgets this registration.
 function st:FollowColor(object, group, key, paint)
 	if object == nil or group == nil then error('SaftUI: FollowColor needs an object and a group', 2) end
+	-- A typo registers nothing that ever paints, so it is refused: the group is
+	-- one of st.COLOR_GROUPS (or 'theme'), the key one the group has (the
+	-- default decides, as st:Color does); 'accent' and 'renown' take none.
+	if not KNOWN_GROUP[group] then error('SaftUI: FollowColor: no color group ' .. tostring(group), 2) end
+	if key ~= nil then
+		local from = st.defaults and st.defaults.colors and st.defaults.colors[group]
+		if group == 'accent' or group == 'renown' or group == 'theme' or (type(from) == 'table' and from[key] == nil) then
+			error('SaftUI: FollowColor: no color ' .. tostring(group) .. '.' .. tostring(key), 2)
+		end
+	end
 	if paint ~= nil and type(paint) ~= 'function' then error('SaftUI: FollowColor paint is not a function', 2) end
 	if pass > 0 then
 		pending = pending + 1
@@ -159,6 +171,7 @@ local markGroup, markKey, marked = {}, {}, 0
 local markSet = {}
 for _, group in ipairs(st.COLOR_GROUPS) do markSet[group] = {} end
 local touchedList, touchedSet, touched = {}, {}, 0 -- the groups this edit marked, in the order first marked
+local endList, endTop = {}, 0 -- the groups an edit's end is running the whole passes of
 local editing = false
 
 -- The edit's numbers, one table reset in place at st:BeginColorEdit.
@@ -187,28 +200,32 @@ function CO.Timed(group, key, fn, ...)
 	return Timed(group, key, debugprofilestop(), fn(...))
 end
 
--- The due passes, one per marked color in the order marked, each timed. The
--- frame's whole cost decides how long the next waits.
+-- The due passes, one per color marked when the frame began, in the order
+-- marked, each timed; a color marked again while they run is due next frame.
+-- The frame's whole cost decides how long the next waits: more than the budget
+-- makes it wait a frame for each budget it took, at most MAX_WAIT. An edit
+-- that ends inside a pass drops the rest and counts nothing more.
 local function RunDue()
 	local t0 = debugprofilestop()
-	local i = 1
-	while i <= marked do
+	local n = marked
+	for i = 1, n do
+		if not editing then return end
 		local group, key = markGroup[i], markKey[i]
+		markSet[group][key == nil and ALL or key] = nil
 		local start = debugprofilestop()
 		RunPass(group, key)
+		if not editing then return end
 		Record(group, key, debugprofilestop() - start)
-		i = i + 1
 	end
-	for j = 1, marked do
-		local key = markKey[j]
-		markSet[markGroup[j]][key == nil and ALL or key] = nil
-		markGroup[j], markKey[j] = nil, nil
+	local rest = marked - n
+	for j = 1, rest do
+		markGroup[j], markKey[j] = markGroup[n + j], markKey[n + j]
 	end
-	marked = 0
-	local wait = math.min(CO.MAX_WAIT, math.floor((debugprofilestop() - t0) / CO.PASS_BUDGET_MS))
-	CO.wait = wait
-	stats.waited = stats.waited + wait
-	CO.ticker:Hide()
+	for j = rest + 1, marked do markGroup[j], markKey[j] = nil, nil end
+	marked = rest
+	local cost = debugprofilestop() - t0
+	CO.wait = cost > CO.PASS_BUDGET_MS and math.min(CO.MAX_WAIT, math.floor(cost / CO.PASS_BUDGET_MS)) or 0
+	if marked == 0 then CO.ticker:Hide() end
 end
 
 CO.ticker = CreateFrame('Frame')
@@ -216,6 +233,7 @@ CO.ticker:Hide()
 CO.ticker:SetScript('OnUpdate', function(self)
 	if CO.wait > 0 then
 		CO.wait = CO.wait - 1
+		stats.waited = stats.waited + 1
 		return
 	end
 	self:Hide()
@@ -272,13 +290,21 @@ function st:EndColorEdit()
 		markGroup[i], markKey[i] = nil, nil
 	end
 	marked = 0
-	local n = touched
-	for i = 1, n do st:ColorsChanged(touchedList[i]) end
+	-- The touched groups are taken out first, into a scratch stretch of
+	-- endList, so an edit a handler begins meanwhile keeps its own (and an end
+	-- inside this one uses the stretch after).
+	local n, base = touched, endTop
 	for i = 1, n do
-		touchedSet[touchedList[i]] = nil
+		local group = touchedList[i]
+		endList[base + i] = group
+		touchedSet[group] = nil
 		touchedList[i] = nil
 	end
 	touched = 0
+	endTop = base + n
+	for i = 1, n do st:ColorsChanged(endList[base + i]) end
+	for i = 1, n do endList[base + i] = nil end
+	endTop = base
 	if st.DEBUG and stats.passes > 0 then
 		local name = stats.slowestKey == nil and stats.slowestGroup or (stats.slowestGroup .. ' ' .. tostring(stats.slowestKey))
 		st:Debug('Colors', ('%d passes, slowest %.1f ms (%s), mean %.1f ms, %d frames waited.'):format(

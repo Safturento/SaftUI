@@ -29,12 +29,19 @@ function W.GetFont()
 	return fieldFont
 end
 
+-- Text > Normal on the font, and only that: a change of the color (a color
+-- pass sets no font).
+function W.ColorFonts()
+	if not fieldFont then return end
+	fieldFont:SetTextColor(st:Color('text', 'normal'):GetRGB())
+end
+
 -- Applies Text's face and outline to the font (a font or profile change).
 function W.UpdateFonts()
 	if not fieldFont then return end
 	local path, _, flags = st:FontValues('normal')
 	fieldFont:SetFont(path, FIELD_FONT_SIZE, flags)
-	fieldFont:SetTextColor(st:Color('text', 'normal'):GetRGB())
+	W.ColorFonts()
 end
 
 -- Gives fs the field font, or path at size with flags (each defaulting to the
