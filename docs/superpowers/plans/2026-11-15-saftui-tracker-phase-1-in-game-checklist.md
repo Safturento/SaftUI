@@ -297,3 +297,15 @@ Short list. Each was decided while building, and each is easy to change; say if 
 | G10 | A steps 1 and 2 | 4 |
 | G11 | Part 1 step 4, B step 8, J | 2 |
 | G12 | A step 6 | 4 |
+
+---
+
+## Results so far (the owner's pass on Forever, 2026-11-15)
+
+- **P1: passed.** The item was used in combat and the line printed `true true` (the third value, `nil`, is "tainted by nobody").
+- **P2: not settled by the script.** The paste-in conceal did not move the tracker (today's mover most likely put it straight back). With SaftUI's tracker switched on, the G2 line printed `true true true`, so the real concealment left Blizzard's tracker secure in that session. Still to confirm by eye: Blizzard's tracker is off screen while SaftUI's is on. Seen along the way: a quest item button of Blizzard's that first appears during combat is disabled until combat ends, then works in and out of combat.
+- **P3: passed.** Click and key, in combat, with the key-down setting both ways.
+- **P4, open world: only `QuestObjectiveTracker` had content.** Every other module (scenario, widgets, campaign, adventure, achievement, monthly activities, initiative tasks, recipes, bonus, world quests) was empty, with no scenario, popups, tasks, world quest watches or widgets. So nothing hands over in the open world on Forever with only quests tracked, and `TR.SectionHandsOver` needs no change for it. Quest headers are zone names. `GetDistanceSqToQuest` answers for some quests and gives nil for others; `C_Minimap.IsInsideQuestBlob` answers (true for the quest 30 yards away); `GetQuestTagInfo` gave no tag names. `TR.ChooseNearest` needs no change. Still to run: inside a dungeon and a battleground, and with an achievement or recipe tracked.
+- **P5: nothing from SaftUI was blocked.** No `Logs/taint.log` was written (the file had not appeared by the end of the session), so this rests on BugGrabber: its only blocked action that session named another addon's quest log, not SaftUI.
+- **P6 and P7: skipped by the owner.** The seams stay as built: watch changes out of combat only; popup clicks allowed in combat.
+- **G2 with the tracker on: `true true true`.** The refresh's time and allocation were "basically nothing"; the allocation followup can be closed as accepted.
