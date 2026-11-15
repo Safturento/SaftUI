@@ -38,8 +38,10 @@ local function shownLines()
 end
 
 -- The color a line was given with SetColorTexture, which has no getter.
+-- A copy: the stub writes a set into the table it has, so the table itself
+-- would follow the line.
 local function colorOf(line)
-	return stub.state(line).color_texture
+	return { unpack(stub.state(line).color_texture) }
 end
 
 local function colorEq(a, b)

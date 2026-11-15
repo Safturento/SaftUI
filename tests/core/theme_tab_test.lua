@@ -282,7 +282,10 @@ test('a color set recolors without a config update', function()
 	eq(st.config.profile.theme.opacity, 0.5)
 end)
 
-test('a theme or toggle switch runs ThemeChanged: the profile update, which redraws first, then updates the modules, then ColorsChanged(theme) and ColorsChanged(accent)', function()
+-- What a profile update says after theme and accent: every other group's whole pass (Task 1 of live colors).
+local WHOLE = ',ColorsChanged(text),ColorsChanged(button),ColorsChanged(class),ColorsChanged(roles),ColorsChanged(reaction),ColorsChanged(renown),ColorsChanged(factions),ColorsChanged(power),ColorsChanged(item_quality),ColorsChanged(loot),ColorsChanged(status),ColorsChanged(threat),ColorsChanged(objectives)'
+
+test('a theme or toggle switch runs ThemeChanged: the profile update, which redraws first, then updates the modules, then ColorsChanged(theme) and ColorsChanged(accent), then every other group', function()
 	-- A module, so the log shows where the modules update.
 	local probe = st:NewModule('ThemeTabProbe')
 	local log, restore = {}, {}
@@ -296,17 +299,17 @@ test('a theme or toggle switch runs ThemeChanged: the profile update, which redr
 	-- st:ThemeChanged is Config:UpdateConfig, the profile update, which
 	-- redraws once before any module lays itself out around the new border.
 	Set('theme', 'thin')
-	eq(table.concat(log, ','), 'UpdateConfig,RedrawThemed,module,ColorsChanged(theme),ColorsChanged(accent)', 'a theme switch')
+	eq(table.concat(log, ','), 'UpdateConfig,RedrawThemed,module,ColorsChanged(theme),ColorsChanged(accent)' .. WHOLE, 'a theme switch')
 	eq(st.config.profile.theme.name, 'thin')
 
 	for i = #log, 1, -1 do log[i] = nil end
 	SetAlpha(1)
-	eq(table.concat(log, ','), 'UpdateConfig,RedrawThemed,module,ColorsChanged(theme),ColorsChanged(accent)', 'going solid, the old toggle')
+	eq(table.concat(log, ','), 'UpdateConfig,RedrawThemed,module,ColorsChanged(theme),ColorsChanged(accent)' .. WHOLE, 'going solid, the old toggle')
 	eq(st.config.profile.theme.transparent, false)
 
 	for i = #log, 1, -1 do log[i] = nil end
 	SetAlpha(0.8)
-	eq(table.concat(log, ','), 'UpdateConfig,RedrawThemed,module,ColorsChanged(theme),ColorsChanged(accent)', 'going see-through')
+	eq(table.concat(log, ','), 'UpdateConfig,RedrawThemed,module,ColorsChanged(theme),ColorsChanged(accent)' .. WHOLE, 'going see-through')
 	eq(st.config.profile.theme.transparent, true)
 
 	for i = #log, 1, -1 do log[i] = nil end
@@ -515,8 +518,8 @@ end)
 
 test('Accent: one color for every theme, no opacity, its own reset, and it says accent', function()
 	local log = {}
-	local real = st.ColorsChanged
-	st.ColorsChanged = function(_, group) log[#log + 1] = group; return real(st, group) end
+	local real = st.ColorChanged
+	st.ColorChanged = function(_, group) log[#log + 1] = group; return real(st, group) end
 	local row = Tab().args.accent
 	eq(row.name, 'Accent'); eq(row.type, 'color'); eq(row.size, 'small'); eq(row.order, 5.5); eq(row.hasAlpha, nil)
 	check(row.desc:find('accent', 1, true), 'its desc names what it colors')
@@ -541,5 +544,5 @@ test('Accent: one color for every theme, no opacity, its own reset, and it says 
 	eq(Rgb({ Get('accent') }), '0,0.68,0.94'); eq(table.concat(log, ','), 'accent', 'the reset says accent')
 	check(not d.differs(), 'and no longer differs')
 	eq(Rgb({ d.value() }), '0,0.68,0.94')
-	st.ColorsChanged = real
+	st.ColorChanged = real
 end)

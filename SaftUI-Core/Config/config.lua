@@ -242,6 +242,18 @@ local function UpdateModule(module)
 	end
 end
 
+-- A profile switch, copy, reset or import can change any color, and what shows
+-- one hears of a change only through its group's pass: every group's whole
+-- pass (st:ColorsChanged), in the Colors page's order, once the theme and the
+-- accent have been told. 'accent' ran just before this.
+local function AllColorsChanged()
+	for _, group in ipairs(st.COLOR_GROUPS) do
+		if group ~= 'accent' then
+			Safely(function() st:ColorsChanged(group) end)
+		end
+	end
+end
+
 -- Draws every themed frame again in the profile's theme (theme.lua), then has
 -- modules color again what they color themselves. Redrawing touches frames that
 -- may be protected, so in combat both wait for the end of it, once however many
@@ -252,14 +264,21 @@ local function RedrawTheme()
 	Safely(function() st:RedrawThemed() end)
 	Safely(function() st:ColorsChanged('theme') end)
 	Safely(function() st:ColorsChanged('accent') end)
+	AllColorsChanged()
 end
 
 -- After a theme recolor or redraw (st:ColorsChanged('theme')): what /sui
 -- colors itself, which the theme engine doesn't draw, takes the window's
--- Background again (its sidebar's fill).
-function Config:OnColorsChanged(group)
+-- Background again (its sidebar's fill). And a change of Text > Normal (key nil
+-- is any of Text's) gives the kit's font objects the new color at once; the
+-- rest of /sui takes a color when it draws again, as the picker closes.
+function Config:OnColorsChanged(group, key)
 	local OW = st.OptionsWindow
 	if group == 'theme' and OW then OW:PaintSidebar() end
+	if group == 'text' and (key == nil or key == 'normal') then
+		local OB = st.OptionsBody
+		if OB then OB.ColorFonts() end
+	end
 end
 
 -- After a font setting or a shared font changed (st:FontsChanged): /sui's own
@@ -340,6 +359,7 @@ function Config:UpdateConfig()
 	if redraw then
 		Safely(function() st:ColorsChanged('theme') end)
 		Safely(function() st:ColorsChanged('accent') end)
+		AllColorsChanged()
 	end
 
 	if InCombatLockdown() then

@@ -25,7 +25,9 @@ end
 -- After a theme color or the background's opacity changed: the same wait for combat.
 local function Recolor()
 	if st:QueueAfterCombat('ThemeRecolor', function() st:RecolorThemed() end) then return end
-	st:RecolorThemed()
+	-- Timed, not changed: while the color picker is open on a Theme color the
+	-- debug line counts this recolor as a pass named 'theme' (colors.lua).
+	st:GetModule('Colors').Timed('theme', nil, st.RecolorThemed, st)
 end
 
 local function Theme() return st.config.profile.theme end
