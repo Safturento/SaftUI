@@ -54,12 +54,15 @@ local NOTE = 'Most of SaftUI reads these when it builds its frames: reload (Relo
 test('the sections and their colors, in order, as small color swatches with tooltips, each with its own reset and no section Reset', function()
 	local sections, names = ByOrder(Tab().args), {}
 	for i, s in ipairs(sections) do names[i] = s.v.name end
-	eq(table.concat(names, ','), 'Text,Buttons,Class,Reputation,Power,Item quality,Status,Threat,Objectives')
+	eq(table.concat(names, ','), 'Text,Buttons,Class,Roles,Reputation,Factions,Power,Item quality,Loot,Status,Threat,Objectives')
 
 	local expected = {
-		text = 'Text,Grey,Red,Orange,Yellow,Green,Blue,Purple,Cyan,White',
-		button = 'Normal,Hover,Pushed,Red,Green,Blue,Yellow,Grey',
+		text = 'Text,Grey,Red,Orange,Yellow,Green,Blue,Cyan,White',
+		button = 'Normal,Hover,Pushed,Red,Green,Blue,Grey',
 		class = 'Death Knight,Demon Hunter,Druid,Evoker,Hunter,Mage,Monk,Paladin,Priest,Rogue,Shaman,Warlock,Warrior',
+		roles = 'Tank,Healer,Damage',
+		factions = 'Alliance,Horde,Neutral',
+		loot = 'Need,Greed,Transmog,Pass,Mount',
 		reaction = 'Hated,Hostile,Unfriendly,Neutral,Friendly,Honored,Revered,Exalted,Renown',
 		power = 'Mana,Rage,Focus,Energy,Runic power,Combo points,Holy power,Chi,Soul shards,Astral power,Insanity,Maelstrom,Fury,Pain,Arcane charges,Ammo,Fuel,Steam,Pyrite',
 		item_quality = 'Poor,Common,Uncommon,Rare,Epic,Legendary,Artifact,Heirloom,WoW Token',
@@ -84,9 +87,10 @@ test('the sections and their colors, in order, as small color swatches with tool
 	end
 end)
 
-test('Text and Buttons say a change shows after a reload; the others have no note', function()
-	eq(Section('text').desc, NOTE)
-	eq(Section('button').desc, NOTE)
+test('Text, Buttons, Roles, Factions and Loot say a change shows after a reload; the others have no note', function()
+	for _, key in ipairs({ 'text', 'button', 'roles', 'factions', 'loot' }) do
+		eq(Section(key).desc, NOTE, key)
+	end
 	for _, key in ipairs({ 'class', 'reaction', 'power', 'item_quality', 'status', 'threat', 'objectives' }) do
 		eq(Section(key).desc, nil, key)
 	end
@@ -97,6 +101,26 @@ local function Recorder()
 	st.ColorsChanged = function(_, group) got[#got + 1] = group end
 	return got, function() st.ColorsChanged = orig end
 end
+
+test("a Roles, Factions or Loot set and reset write the profile's own object and say their group", function()
+	local got, restore = Recorder()
+	for _, c in ipairs({ { 'roles', 'TANK' }, { 'factions', 'Horde' }, { 'loot', 'pass' }, { 'loot', 'mount' } }) do
+		local group, key = c[1], c[2]
+		local color = st.config.profile.colors[group][key]
+		local row = Section(group).args[key]
+		row.set({}, 0.11, 0.22, 0.33)
+		check(st.config.profile.colors[group][key] == color, group .. '.' .. key .. ': the same table')
+		eq(color.r .. ',' .. color.g .. ',' .. color.b, '0.11,0.22,0.33', group .. '.' .. key)
+		eq(got[#got], group, group .. '.' .. key .. ': a set says its group')
+		check(row.default.differs(), group .. '.' .. key .. ' differs')
+		got[#got + 1] = 'x'
+		row.default.reset()
+		local d = st.defaults.colors[group][key]
+		eq(color.r .. ',' .. color.g .. ',' .. color.b, d.r .. ',' .. d.g .. ',' .. d.b, group .. '.' .. key .. ': reset')
+		eq(got[#got], group, group .. '.' .. key .. ': a reset says its group')
+	end
+	restore()
+end)
 
 test('a set writes onto the profile color itself and says which group changed', function()
 	local got, restore = Recorder()
@@ -230,7 +254,10 @@ test('the roll timer bars are under Buttons Blue, not Item quality, and the diff
 	check(Section('button').args.blue.desc:find("loot roll you've chosen on", 1, true), "and a held roll's lit border and label")
 	check(quality['1'].desc:find('normal instances', 1, true), 'the badge is shown in raids too')
 	check(Section('text').args.normal.desc:find('summon button', 1, true), "Text names the totem bar summon button's arrow")
-	for key, word in pairs({ blue = 'Alliance', red = 'Horde', yellow = 'Neutral' }) do
-		check(Section('text').args[key].desc:find(word .. ' on the zone text', 1, true), 'Text ' .. key .. ' names ' .. word .. ' on the zone text')
+	for _, word in ipairs({ 'Alliance', 'Horde', 'Neutral' }) do
+		check(Section('factions').args[word].desc:find(word .. ' on the zone text', 1, true), 'Factions ' .. word .. ' names ' .. word .. ' on the zone text')
+		for key, row in pairs(Section('text').args) do
+			check(not row.desc:find(word .. ' on the zone text', 1, true), 'Text ' .. key .. ' no longer names ' .. word)
+		end
 	end
 end)

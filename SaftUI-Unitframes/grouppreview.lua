@@ -290,12 +290,10 @@ local function FillPreviewFrame(frame, member)
 	local roleConfig = role.config
 	role:SetTexture(st.textures.cornerbr)
 	role:SetTexCoord(0, 1, 0, 1)
-	if member.role == 'HEALER' then
-		role:SetVertexColor(textColors.green:GetRGB())
-	elseif member.role == 'TANK' then
-		role:SetVertexColor(textColors.blue:GetRGB())
+	if member.role == 'HEALER' or member.role == 'TANK' then
+		role:SetVertexColor(st:Color('roles', member.role):GetRGB())
 	else
-		role:SetVertexColor(textColors.red:GetRGB())
+		role:SetVertexColor(st:Color('roles', 'DAMAGER'):GetRGB())
 	end
 	role:SetShown((roleConfig.enable and member.role and (roleConfig.showDps or member.role == 'HEALER' or member.role == 'TANK')) and true or false)
 

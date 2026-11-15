@@ -67,7 +67,7 @@ test("Blizzard's OnEvent handler stays, and SaftUI's line follows it", function(
 	place(1429, 'friendly', 'Alliance')
 	H.enter('Elwynn Forest', 'Goldshire')
 	eq(ZoneTextString:GetText(), 'Elwynn Forest', "Blizzard's handler ran")
-	eq(ZT.ZoneLineString:GetText(), 'Level 1' .. DASH .. '10 ' .. DOT .. ' ' .. H.colored('Alliance', 'blue'),
+	eq(ZT.ZoneLineString:GetText(), 'Level 1' .. DASH .. '10 ' .. DOT .. ' ' .. H.colored('Alliance'),
 		'and SaftUI set its line after it')
 	eq(#take_errors(), 0, 'nothing written onto the locked frames')
 end)
@@ -128,14 +128,18 @@ test("LiveFaction hands the game's faction name on", function()
 	_G.UnitFactionGroup = factionGroup
 end)
 
-test("each word takes its Colors tab text color: Alliance blue, Horde red, Neutral yellow", function()
-	eq(ZT:ColorFaction('Alliance'), H.colored('Alliance', 'blue'), 'Alliance')
-	eq(ZT:ColorFaction('Horde'), H.colored('Horde', 'red'), 'Horde')
-	eq(ZT:ColorFaction('Neutral'), H.colored('Neutral', 'yellow'), 'Neutral')
-	local blue = st.config.profile.colors.text.blue
-	st.config.profile.colors.text.blue = CreateColor(0, 0, 1)
+test("each word takes its Factions color: Alliance blue, Horde red, Neutral yellow", function()
+	eq(ZT:ColorFaction('Alliance'), '|cff00adf0Alliance|r', 'Alliance')
+	eq(ZT:ColorFaction('Horde'), '|cffdc6464Horde|r', 'Horde')
+	eq(ZT:ColorFaction('Neutral'), '|cffc8c864Neutral|r', 'Neutral')
+	local blue = st.config.profile.colors.factions.Alliance
+	st.config.profile.colors.factions.Alliance = CreateColor(0, 0, 1)
 	eq(ZT:ColorFaction('Alliance'), '|cff0000ffAlliance|r', "a changed color is the user's palette")
-	st.config.profile.colors.text.blue = blue
+	st.config.profile.colors.factions.Alliance = blue
+	local text = st.config.profile.colors.text.blue
+	st.config.profile.colors.text.blue = CreateColor(0, 0, 1)
+	eq(ZT:ColorFaction('Alliance'), '|cff00adf0Alliance|r', 'and a Text > Blue change reaches no faction')
+	st.config.profile.colors.text.blue = text
 end)
 
 ------------------------------------------------------------------ the level range
@@ -170,19 +174,19 @@ end
 
 test('the line: the level range and the colored faction', function()
 	place(1429, 'friendly', 'Alliance')
-	eq(line_after_entering('Elwynn Forest'), 'Level 1' .. DASH .. '10 ' .. DOT .. ' ' .. H.colored('Alliance', 'blue'), 'a range')
+	eq(line_after_entering('Elwynn Forest'), 'Level 1' .. DASH .. '10 ' .. DOT .. ' ' .. H.colored('Alliance'), 'a range')
 	place(1434, 'contested')
-	eq(line_after_entering('Stranglethorn Vale'), 'Level 30 ' .. DOT .. ' ' .. H.colored('Neutral', 'yellow'), 'a single level')
+	eq(line_after_entering('Stranglethorn Vale'), 'Level 30 ' .. DOT .. ' ' .. H.colored('Neutral'), 'a single level')
 	place(1453, 'friendly', 'Alliance')
-	eq(line_after_entering('Stormwind City'), H.colored('Alliance', 'blue'), 'no level range: the faction only')
+	eq(line_after_entering('Stormwind City'), H.colored('Alliance'), 'no level range: the faction only')
 	place(9100, 'hostile', 'Horde')
-	eq(line_after_entering('Elwynn Forest'), 'Level 1' .. DASH .. '10 ' .. DOT .. ' ' .. H.colored('Horde', 'red'),
+	eq(line_after_entering('Elwynn Forest'), 'Level 1' .. DASH .. '10 ' .. DOT .. ' ' .. H.colored('Horde'),
 		"in a cave: the zone's levels, the live faction")
 	place(1429, '')
-	eq(line_after_entering('Elwynn Forest'), 'Level 1' .. DASH .. '10 ' .. DOT .. ' ' .. H.colored('Neutral', 'yellow'),
+	eq(line_after_entering('Elwynn Forest'), 'Level 1' .. DASH .. '10 ' .. DOT .. ' ' .. H.colored('Neutral'),
 		'no PvP status: Neutral, as anything but friendly or hostile is')
 	place(9301, 'friendly', 'Alliance')
-	eq(line_after_entering('Elwynn Forest'), 'Level 1' .. DASH .. '10 ' .. DOT .. ' ' .. H.colored('Alliance', 'blue'),
+	eq(line_after_entering('Elwynn Forest'), 'Level 1' .. DASH .. '10 ' .. DOT .. ' ' .. H.colored('Alliance'),
 		"outside an instance, an orphan map in a zone (a garrison): the zone's levels")
 end)
 
@@ -282,15 +286,23 @@ test('with no line, or no zone name shown, the subzone name goes under the zone 
 	eq(ZT.DifficultyTextString:GetText(), '', 'and no difficulty outside an instance')
 end)
 
-test('a text color change recolors a line still on screen', function()
+test('a Factions change recolors a line still on screen, and a Text > Red change does not', function()
 	place(1429, 'friendly', 'Alliance')
 	H.enter('Elwynn Forest')
-	local blue = st.config.profile.colors.text.blue
-	st.config.profile.colors.text.blue = CreateColor(0, 0, 1)
-	st:ColorsChanged('text')
-	check(ZT.ZoneLineString:GetText():find('|cff0000ffAlliance|r', 1, true), 'the new blue: ' .. ZT.ZoneLineString:GetText())
-	st.config.profile.colors.text.blue = blue
+	local blue = st.config.profile.colors.factions.Alliance
+	st.config.profile.colors.factions.Alliance = CreateColor(0, 0, 1)
+	st:ColorsChanged('factions')
+	check(ZT.ZoneLineString:GetText():find('|cff0000ffAlliance|r', 1, true), 'the new color: ' .. ZT.ZoneLineString:GetText())
+	st.config.profile.colors.factions.Alliance = blue
 	local r, g, b = ZT.ZoneLineString:GetTextColor()
 	local nr, ng, nb = st.config.profile.colors.text.normal:GetRGB()
 	check(r == nr and g == ng and b == nb, 'the rest of the line is ordinary text')
+
+	-- A Text change still reaches the zone line (its ordinary text), and no
+	-- faction takes it.
+	local red = st.config.profile.colors.text.red
+	st.config.profile.colors.text.red = CreateColor(0, 1, 0)
+	st:ColorsChanged('text')
+	check(ZT.ZoneLineString:GetText():find('|cff00adf0Alliance|r', 1, true), 'Alliance keeps its own: ' .. ZT.ZoneLineString:GetText())
+	st.config.profile.colors.text.red = red
 end)

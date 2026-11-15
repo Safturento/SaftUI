@@ -4,8 +4,7 @@ local UF = st:NewModule('Unitframes')
 UF.oUF = ns.oUF
 assert(UF.oUF, 'st was unable to locate oUF.')
 
--- oUF's own role and rune colors, for profiles that have none (UF:UpdateColors).
-local DEFAULT_ROLE_COLORS = UF.oUF.colors.roles
+-- oUF's own rune colors, for profiles that have none (UF:UpdateColors).
 local DEFAULT_RUNE_COLORS = UF.oUF.colors.runes
 
 UF.elements = {}
@@ -215,10 +214,10 @@ function UF:UpdateColors()
 	st.tablemerge(UF.oUF.colors.reaction, st.config.profile.colors.reaction, true)
 	st.tablemerge(UF.oUF.colors.power, st.config.profile.colors.power, true)
 	st.tablemerge(UF.oUF.colors.class, st.config.profile.colors.class, true)
-	-- The profile has no roles or runes colors by default; use oUF's then
-	-- instead of wiping them. Set every time, so a profile without them doesn't
-	-- keep the colors of a profile switched away from.
-	UF.oUF.colors.roles = st.config.profile.colors.roles or DEFAULT_ROLE_COLORS
+	-- The profile has no runes colors by default; use oUF's then instead of
+	-- wiping them. Set every time, so a profile without them doesn't keep the
+	-- colors of a profile switched away from. oUF has no role colors of its own;
+	-- the role corners read the Roles colors (st:Color('roles', role)).
 	UF.oUF.colors.runes = st.config.profile.colors.runes or DEFAULT_RUNE_COLORS
 end
 
@@ -226,7 +225,8 @@ end
 -- UF:UpdateConfig, because the picker sets a color on every move of its cursor:
 -- it copies the colors to oUF, makes the bars and tags read them again, and
 -- draws the test previews again, and rebuilds nothing. Groups the unit frames
--- don't use (text, button, item quality, renown) and a module that isn't
+-- don't use (text, button, item quality, renown), and Roles, which the corners
+-- read when they update and not on a color change, and a module that isn't
 -- enabled yet (no UF.units) change nothing. The threat colors are only the
 -- nameplates' tint and threat text (nameplates/threat.lua): the plates are
 -- tinted again, and no other unit frame is updated.

@@ -41,10 +41,10 @@ local indicators = {
        name = 'GroupRoleIndicator',
        label = 'Group role',
        order = 11,
-       desc = 'A corner colored by group role: green for healers, blue for tanks.',
+       desc = "A corner colored by group role, in the Roles colors: one for healers, one for tanks.",
        addOptions = function(args)
            args.showDps = st.Config.generators.toggle(1, 'Show damage dealers',
-               'Also shows the corner, in red, on damage dealers and on units without a role.', 'small')
+               'Also shows the corner, in the Damage color, on damage dealers and on units without a role.', 'small')
        end,
        postUpdate = function(self)
            -- oUF no longer passes a usable role to PostUpdate (nil on Forever/12.1.5+,
@@ -57,12 +57,10 @@ local indicators = {
            self:SetTexture(st.textures.cornerbr)
            self:SetShown(self.config.showDps and true or role == 'HEALER' or role == 'TANK')
            self:SetTexCoord(0, 1, 0, 1)
-           if role == 'HEALER' then
-               self:SetVertexColor(st.config.profile.colors.text.green:GetRGB())
-           elseif role == 'TANK' then
-               self:SetVertexColor(st.config.profile.colors.text.blue:GetRGB())
+           if role == 'HEALER' or role == 'TANK' then
+               self:SetVertexColor(st:Color('roles', role):GetRGB())
            else
-               self:SetVertexColor(st.config.profile.colors.text.red:GetRGB())
+               self:SetVertexColor(st:Color('roles', 'DAMAGER'):GetRGB())
            end
        end,
        postCreate = function(self)

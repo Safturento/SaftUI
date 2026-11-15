@@ -74,8 +74,8 @@ end
 -- counts the other's picks, as a second number in that choice's colour (the
 -- colours roll.lua gives those buttons' letters).
 local PAIRED = {
-	Greed = { choice = 'Transmog', color = 'purple' },
-	Transmog = { choice = 'Greed', color = 'yellow' },
+	Greed = { choice = 'Transmog', color = 'transmog' },
+	Transmog = { choice = 'Greed', color = 'greed' },
 }
 
 local function NewCount(button, point, x, y)
@@ -110,7 +110,7 @@ function LT:SetRollCounts(counts, rolls)
 		local total = totals[count.choice]
 		if total then
 			text:SetText(total)
-			if count.color then text:SetTextColor(st.config.profile.colors.text[count.color]:GetRGB()) end
+			if count.color then text:SetTextColor(st:Color('loot', count.color):GetRGB()) end
 			text:Show()
 		else
 			text:SetText('')

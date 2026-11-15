@@ -135,10 +135,10 @@ function LT:CreateFeedButtons()
 	end)
 end
 
--- A mount's entry in yellow: its border and fill, and its icon's border. Every
--- other entry has the feed's Theme and Background (drawn by DrawEntry).
+-- A mount's entry in the Loot > Mount color: its border and fill, and its
+-- icon's border. Every other entry has the feed's Theme and Background (drawn by DrawEntry).
 local function ColorMount(item)
-	local r, g, b = st.config.profile.colors.button.yellow:GetRGB()
+	local r, g, b = st:Color('loot', 'mount'):GetRGB()
 	if item.backdrop then
 		st:SetBorderColor(item.backdrop, r, g, b, 1)
 		item.backdrop:SetBackdropColor(r, g, b, .6)
@@ -149,7 +149,7 @@ local function ColorMount(item)
 end
 
 -- Draws a feed line for the entry it shows: an entry as a panel, its icon as a
--- small frame, or a mount in yellow.
+-- small frame, or a mount in its own color.
 local function DrawEntry(item, info, config)
 	if info.itemSubType == "Mount" then
 		ColorMount(item)
@@ -160,7 +160,7 @@ local function DrawEntry(item, info, config)
 end
 
 -- After a theme recolor (st:RecolorThemed gave every line the theme's colors):
--- the shown mount entries take their yellow back. From LT:OnColorsChanged (init.lua).
+-- the shown mount entries take their Loot > Mount color back. From LT:OnColorsChanged (init.lua).
 function LT:ColorFeed(group)
 	if not self.feed then return end
 	-- The buttons' icons are tinted in Colors -> Text.

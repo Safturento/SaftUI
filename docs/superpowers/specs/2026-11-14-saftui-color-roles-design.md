@@ -342,7 +342,7 @@ st:ColorRGBA(group, key, strength)   -- r, g, b, (strength or 1) * (the color's 
 - A group or key with no default is an error naming it (`"SaftUI: no color text.blue"`), so a stale hue
   key, string-keyed data included (`FACTION_COLORS`, the roll buttons' `color`, `CHOICES`, `PAIRED`,
   `text[tooExpensive and 'red' or 'white']`), fails the tests rather than drawing nothing.
-- A nil alpha counts as 1 (`CreateColor` without one leaves `a` nil).
+- A nil alpha counts as 1 (`CreateColor` itself gives `a` 1 when none is passed, in game and in the stubs; the bare `{ r, g, b }` tables the migration makes have none).
 - It returns the object, so readers that need one (`curve:AddPoint(0, color)`, `.r` reads, `ColorEscape`,
   `ColorCode`) still get one.
 

@@ -124,7 +124,6 @@ st.defaults.colors = {
 		green		= CreateColor( 60/255, 240/255,  60/255),
 		grey		= CreateColor(150/255, 150/255, 150/255),
 		blue		= CreateColor(0.0, 0.68, 0.94, 1),
-		purple		= CreateColor(197/255, 128/255, 255/255),
 		cyan        = CreateColor(120/255, 202/255, 250/255),
 		white		= CreateColor(1, 1, 1),
 	},
@@ -135,8 +134,24 @@ st.defaults.colors = {
 		red			=  CreateColor(0.6, 0.1, 0.1, 0.8),
 		green		=  CreateColor(0.1, 0.6, 0.1, 0.8),
 		blue		=  CreateColor(0.0, 0.68, 0.94, 0.8),
-		yellow		=  CreateColor(0.6, 0.6, 0.1, 0.8),
 		grey		=  CreateColor(st.normalizeRGB(150, 150,  150)),
+	},
+	roles = {
+		TANK    = CreateColor(0, 0.68, 0.94),
+		HEALER  = CreateColor(60/255, 240/255, 60/255),
+		DAMAGER = CreateColor(220/255, 100/255, 100/255),
+	},
+	factions = {
+		Alliance = CreateColor(0, 0.68, 0.94),
+		Horde    = CreateColor(220/255, 100/255, 100/255),
+		Neutral  = CreateColor(200/255, 200/255, 100/255),
+	},
+	loot = {
+		need     = CreateColor(1, 1, 1),
+		greed    = CreateColor(200/255, 200/255, 100/255),
+		transmog = CreateColor(197/255, 128/255, 1),
+		pass     = CreateColor(220/255, 100/255, 100/255),
+		mount    = CreateColor(0.6, 0.6, 0.1),
 	},
 	experience = {
 		normal = CreateColor(0.6, 0.3, 0.8, 1.0),

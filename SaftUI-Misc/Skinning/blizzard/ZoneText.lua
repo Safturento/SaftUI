@@ -53,9 +53,6 @@ end
 
 ------------------------------------------------------------------ the faction
 
--- The three words for who holds a zone, and the Colors tab text color of each.
-ZT.FACTION_COLORS = { Alliance = 'blue', Horde = 'red', Neutral = 'yellow' }
-
 local OTHER_FACTION = { Alliance = 'Horde', Horde = 'Alliance' }
 
 -- Who holds a zone, from the game's PvP status there (C_PvP.GetZonePVPInfo's
@@ -85,9 +82,10 @@ local function Byte(value)
 	return math.floor(value * 255 + 0.5)
 end
 
--- A faction's word in its Colors tab text color, as a color-coded string.
+-- A faction's word (Alliance, Horde or Neutral, the Factions colors' keys) in
+-- its Colors tab Factions color, as a color-coded string.
 function ZT:ColorFaction(faction)
-	local r, g, b = st.config.profile.colors.text[ZT.FACTION_COLORS[faction]]:GetRGB()
+	local r, g, b = st:Color('factions', faction):GetRGB()
 	return ('|cff%02x%02x%02x%s|r'):format(Byte(r), Byte(g), Byte(b), faction)
 end
 
@@ -281,13 +279,13 @@ function ZT:HookWorldMap()
 end
 
 -- After a theme recolor (st:RecolorThemed gave the lines Thin's colors): the zone
--- name's color goes back on. After a text color change, the faction takes its
--- new color: on the zone text at once, on the map on its next frame. Skinning
--- passes it on.
+-- name's color goes back on. After a Text or Factions color change, the zone
+-- line takes it: on the zone text at once, on the map on its next frame.
+-- Skinning passes it on.
 function ZT:OnColorsChanged(group)
 	if group == 'theme' and self.flourishes then
 		self:ColorFlourishes()
-	elseif group == 'text' and self.ZoneLineString then
+	elseif (group == 'text' or group == 'factions') and self.ZoneLineString then
 		self.mapLineFor = nil
 		if ZoneTextFrame:IsShown() then self:UpdateZoneLine() end
 	end

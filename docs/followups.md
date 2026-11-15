@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-14 — Three copies of the source lexer in tests](#2026-11-14--three-copies-of-the-source-lexer-in-tests)
   - [2026-11-14 — Tracker: a tracker moved in Blizzard's Edit Mode isn't the first position](#2026-11-14--tracker-a-tracker-moved-in-blizzards-edit-mode-isnt-the-first-position)
   - [2026-11-14 — A first-run setup dialog: UI size, theme, unit frame layout](#2026-11-14--a-first-run-setup-dialog-ui-size-theme-unit-frame-layout)
   - [2026-11-14 — Tracker: a refresh allocates about 175 KB, measure it in game](#2026-11-14--tracker-a-refresh-allocates-about-175-kb-measure-it-in-game)
@@ -143,6 +144,16 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-14 — Three copies of the source lexer in tests
+
+**What:** Three test files each carry their own copy of the Lua source lexer (`Lex`, which blanks comments and string contents, and `LineAt`): `tests/lib/source_lex.lua` (new, used by `tests/core/color_reads_test.lua`), `tests/core/theme_kinds_test.lua` and `tests/tracker/source_scan_test.lua`. They should share the one in `tests/lib/source_lex.lua`.
+
+**Why noticed:** Writing the color scan (Task 1 of `docs/superpowers/plans/2026-11-14-saftui-color-roles.md`, Ruling 18). The scan needed the lexer, and the other two files were being edited by other work (the objective tracker's tasks), so the new file is a copy and the two older ones were left untouched to avoid merge conflicts.
+
+**Anchors:** `tests/lib/source_lex.lua`, `tests/core/theme_kinds_test.lua` (`Lex`, `LineAt`), `tests/tracker/source_scan_test.lua`, `.agents/testing.md` (the `tests/lib/` rows).
+
+**Shape of work:** Small: delete the local copies, load `lib/source_lex.lua` in each of the two files, and run the suite. Do it once the tracker's tasks have landed.
 
 ### 2026-11-14 — Tracker: a tracker moved in Blizzard's Edit Mode isn't the first position
 
@@ -1596,6 +1607,8 @@ On retail:
 **Shape of work:** Small to medium, after the Colors tab ships: two sections with defaults, plus a toggle and a single class color lookup.
 
 **Open questions:** Whether the Blizzard switch also covers reaction colors (Blizzard's `FACTION_BAR_COLORS`).
+
+**Update 2026-11-14:** The role colors were built: Colors > Roles (`colors.roles`: `TANK`, `HEALER`, `DAMAGER`), read by the role corner and the group test previews through `st:Color('roles', role)`, and `UF:UpdateColors` no longer sets oUF's role colors (`docs/superpowers/plans/2026-11-14-saftui-color-roles.md`, Task 1). Rune colors and the class switch stay, and this entry stays Active.
 
 ### 2026-11-09 — st:Kill and st:SkinIcon still write onto Blizzard pieces (roll bars and elsewhere)
 
