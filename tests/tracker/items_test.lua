@@ -1088,3 +1088,759 @@ test('the stubs refuse the ScriptRegion functions on a region of a secure frame 
 	stub.in_combat = false
 	eq(#stub.blocked, 2, 'EnableMouse and SetParent on the region are refused')
 end)
+
+------------------------------------------------------------------ the column beside the tracker (Task 9)
+
+-- A world with quests 1..n with items and Item buttons set to Beside the tracker.
+local function beside_world(ids, setup)
+	local st, TR = world(ids)
+	TR.config.items.placement = 'beside'
+	if setup then setup(TR) end
+	TR:UpdateConfig()
+	settle()
+	return st, TR
+end
+
+local LEFT_SIDE = { point = 'TOPRIGHT', frame = 'UIParent', rel_point = 'TOPRIGHT', x_off = -60, y_off = -100 }
+local RIGHT_SIDE = { point = 'TOPLEFT', frame = 'UIParent', rel_point = 'TOPLEFT', x_off = 60, y_off = -100 }
+
+test('the pure column: Side, the 4 gap on the nearer side, 2 under an overlap, nil out of view, numbers 1 to n', function()
+	local st, TR = world({ 1 })
+	local Side, Column = TR.Items.Side, TR.Items.Column
+	eq(Side(900, 500), 'left', 'the holder right of the screen\'s middle: the column on the left')
+	eq(Side(100, 500), 'right', 'left of it: on the right')
+	eq(Side(500, 500), 'right', 'on it: the right')
+	eq(TR.LAYOUT.COLUMN_GAP, 4, 'the gap')
+	eq(TR.LAYOUT.COLUMN_STACK, 2, 'the stack gap')
+
+	-- (entries, size, side, windowLeft, windowRight, viewTop, viewBottom); y is up.
+	local places = Column({ { top = 500 }, { top = 400 } }, 24, 'left', 1000, 1250, 600, 100)
+	eq(places[1].left, 972, 'left: window left less 4 less the size')
+	eq(places[1].top, 500, 'level with its title')
+	eq(places[1].number, 1, 'number 1')
+	eq(places[2].top, 400, 'the second level with its title')
+	eq(places[2].number, 2, 'number 2')
+	places = Column({ { top = 500 } }, 24, 'right', 1000, 1250, 600, 100)
+	eq(places[1].left, 1254, 'right: the window\'s right and 4')
+
+	places = Column({ { top = 500 }, { top = 490 }, { top = 489 } }, 24, 'left', 1000, 1250, 600, 100)
+	eq(places[1].top, 500, 'the first stays')
+	eq(places[2].top, 474, 'an overlap sits 2 under the one above (its bottom 476, less 2)')
+	eq(places[3].top, 448, 'and so does the next, under the moved one')
+	places = Column({ { top = 500 }, { top = 476 } }, 24, 'left', 1000, 1250, 600, 100)
+	eq(places[2].top, 474, 'one that just touches the one above keeps 2 px from it')
+	places = Column({ { top = 500 }, { top = 475 } }, 24, 'left', 1000, 1250, 600, 100)
+	eq(places[2].top, 474, 'and one 1 px from it')
+	places = Column({ { top = 500 }, { top = 474 } }, 24, 'left', 1000, 1250, 600, 100)
+	eq(places[2].top, 474, 'one exactly 2 px from it stays')
+	places = Column({ { top = 500 }, { top = 470 } }, 24, 'left', 1000, 1250, 600, 100)
+	eq(places[2].top, 470, 'and one clear of it')
+
+	-- Out of view: the title's centre-of-button outside the scroll view. The number is kept.
+	places = Column({ { top = 700 }, { top = 500 }, { top = nil }, { top = 20 } }, 24, 'left', 1000, 1250, 600, 100)
+	eq(places[1], nil, 'above the view: none')
+	eq(places[2].number, 2, 'the second is number 2 though the first is out of view')
+	eq(places[2].top, 500, 'and the first, out of view, does not push it')
+	eq(places[3], nil, 'no title (collapsed or gone): none')
+	eq(places[4], nil, 'below the view: none')
+
+	-- A stack that runs past the view's bottom hides the buttons that do not fit.
+	places = Column({ { top = 150 }, { top = 140 }, { top = 130 } }, 40, 'left', 1000, 1250, 200, 100)
+	eq(places[1].top, 150, 'the first fits')
+	eq(places[2], nil, 'the second, stacked to 108, has its centre under the view: none')
+	eq(places[3], nil, 'and so has the third')
+	-- The side's test: a holder straddling the middle.
+	eq(Side(500.5, 500), 'left', 'just right of the middle: left')
+	eq(Side(499.5, 500), 'right', 'just left of it: right')
+
+	-- Whole pixels.
+	places = Column({ { top = 500.4 } }, 24, 'left', 1000.4, 1250.4, 600, 100, function(v) return math.floor(v / 2 + 0.5) * 2 end)
+	eq(places[1].top, 500, 'the caller\'s rounding on the top')
+	eq(places[1].left, 972, 'and the left')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('the column is 4 outside the window on the side nearer the screen\'s middle, each button level with its title', function()
+	local st, TR = beside_world({ 1, 2, 3 }, function(TR) TR.config.position = LEFT_SIDE end)
+	eq(TR.Items.Side(TR.holder:GetCenter(), UIParent:GetCenter()), 'left', 'the tracker on the right half: the column on its left')
+	eq(TR:ColumnWidth(), 24, 'the column is Button size wide')
+	for _, id in ipairs({ 1, 2, 3 }) do
+		local b, row = button(TR, id), RW.quest(TR, id)
+		check(b ~= nil and b:IsShown(), id .. ': a button')
+		eq(row.item, 'beside', id .. ': the row says its item is beside')
+		check(not row.slot:IsShown(), id .. ': no slot icon in the row')
+		eq(b:GetRight(), TR.window:GetLeft() - 4, id .. ': its right edge 4 outside the window')
+		eq(b:GetLeft(), TR.window:GetLeft() - 4 - 24, id .. ': Button size wide')
+		eq(b:GetTop(), row:GetTop(), id .. ': level with its title')
+		eq(b:GetParent(), TR.itemLayer, id .. ': a child of the layer')
+		eq(b:GetNumPoints(), 1, id .. ': one point')
+		local _, relativeTo = b:GetPoint(1)
+		eq(relativeTo, UIParent, id .. ': anchored to UIParent only')
+		eq(b:GetAttribute('item'), 'item:' .. (1000 + id), id .. ': its quest\'s item')
+	end
+	TR.config.position = RIGHT_SIDE
+	TR:UpdateConfig()
+	eq(TR.Items.Side(TR.holder:GetCenter(), UIParent:GetCenter()), 'right', 'on the left half: the column on the right')
+	for _, id in ipairs({ 1, 2, 3 }) do
+		eq(button(TR, id):GetLeft(), TR.window:GetRight() + 4, id .. ': its left edge 4 outside the window\'s right')
+		eq(button(TR, id):GetTop(), RW.quest(TR, id):GetTop(), id .. ': level with its title')
+	end
+	-- The tracker's own width and Grow change where the window is, and the column follows.
+	TR.config.width = 300
+	TR:UpdateConfig()
+	eq(button(TR, 1):GetLeft(), TR.window:GetRight() + 4, 'Width: the column follows the window')
+	TR.config.grow = 'up'
+	TR:UpdateConfig()
+	eq(button(TR, 1):GetTop(), RW.quest(TR, 1):GetTop(), 'Grow up: still level with its title')
+	TR.config.grow = 'down'
+	TR.config.height = 200
+	TR:UpdateConfig()
+	eq(button(TR, 1):GetLeft(), TR.window:GetRight() + 4, 'Max height: still beside it')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('ColumnWidth is Button size while the column shows, else 0', function()
+	local st, TR = beside_world({ 1 })
+	eq(TR:ColumnWidth(), 24, 'Beside with a quest with an item: Button size')
+	TR.config.items.size = 32
+	TR:UpdateConfig()
+	eq(TR:ColumnWidth(), 32, 'follows Button size')
+	log({})
+	settle()
+	eq(TR:ColumnWidth(), 0, 'no quest with an item: none')
+	log({ 1 })
+	settle()
+	TR.config.items.placement = 'row'
+	TR:UpdateConfig()
+	eq(TR:ColumnWidth(), 0, 'In the row: none')
+	TR.config.items.placement = 'off'
+	TR:UpdateConfig()
+	eq(TR:ColumnWidth(), 0, 'Off: none')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a button that would overlap the one above sits 2 under it; one out of view is hidden', function()
+	local st, TR = beside_world({ 1, 2, 3 }, function(TR)
+		TR.config.items.size = 40
+		TR.config.quests.spacing = 0
+	end)
+	local r1, r2, r3 = RW.quest(TR, 1), RW.quest(TR, 2), RW.quest(TR, 3)
+	check(r2:GetTop() > r1:GetTop() - 40, 'the rows are closer than a 40 button: the second title overlaps the first button')
+	local b1, b2, b3 = button(TR, 1), button(TR, 2), button(TR, 3)
+	eq(b1:GetTop(), r1:GetTop(), 'the first level with its title')
+	eq(b2:GetTop(), b1:GetTop() - 40 - 2, 'the second overlaps the first and sits 2 under it')
+	eq(b3:GetTop(), b2:GetTop() - 40 - 2, 'and the third under the second')
+	eq(b2:GetLeft(), b1:GetLeft(), 'in the same column')
+	-- Rows far apart: each level with its title.
+	TR.config.items.size = 16
+	TR:UpdateConfig()
+	for _, id in ipairs({ 1, 2, 3 }) do eq(button(TR, id):GetTop(), RW.quest(TR, id):GetTop(), id .. ': clear of the others') end
+
+	-- Out of view.
+	TR.config.height = 120
+	TR:UpdateConfig()
+	check(TR.scrollRange > 0, 'the list scrolls')
+	check(button(TR, 1):IsShown(), 'the first is in view')
+	check(not button(TR, 3):IsShown(), 'the last is out of view: hidden')
+	TR:ScrollTo(TR.scrollRange)
+	check(not button(TR, 1):IsShown(), 'scrolled: the first is out')
+	check(button(TR, 3):IsShown(), 'and the last in')
+	eq(button(TR, 3):GetTop(), RW.quest(TR, 3):GetTop(), 'level with its title, scrolled')
+	-- A collapsed group and a collapsed tracker.
+	TR:ScrollTo(0)
+	TR:ToggleZone('Elwynn Forest')
+	for index, b in ipairs(TR.itemButtons) do check(not b:IsShown(), index .. ': hidden with its group') end
+	TR:ToggleZone('Elwynn Forest')
+	TR:SetCollapsed(true)
+	for index, b in ipairs(TR.itemButtons) do check(not b:IsShown(), index .. ': hidden with the window collapsed') end
+	TR:SetCollapsed(false)
+	check(button(TR, 1):IsShown(), 'and back')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('numbers 1 to n in list order on the button and in the accent at the title\'s end, unchanged as the list scrolls', function()
+	local st, TR = beside_world({ 1, 2, 3 }, function(TR) TR.config.height = 120 end)
+	local accent = RW.rgb(st.config.profile.colors.button.blue)
+	local function numbers(where)
+		for index, id in ipairs({ 1, 2, 3 }) do
+			local b, row = button(TR, id), RW.quest(TR, id)
+			eq(b.numberText:GetText(), tostring(index), where .. ': ' .. id .. ' the number on its button')
+			eq(b.numberText:GetFontObject(), st:GetFont('pixel'), where .. ': in the Pixel font')
+			local point, _, relPoint = b.numberText:GetPoint(1)
+			eq(point .. relPoint, 'BOTTOMLEFTBOTTOMLEFT', where .. ': at its bottom left')
+			check(b.numberText:IsShown(), where .. ': shown')
+			if b:IsShown() then
+				eq(row.tag:GetText(), tostring(index), where .. ': ' .. id .. ' the same number in its row')
+				eq(row.tag:GetFontObject(), st:GetFont('pixel'), where .. ': in the Pixel font in the row')
+				eq(RW.color(row.tag), accent, where .. ': in the accent')
+			end
+		end
+	end
+	numbers('at first')
+	-- The tag follows the end of the title's text.
+	local row = RW.quest(TR, 1)
+	check(row.tag:IsShown(), 'the tag shows')
+	local _, parent, point, x = row.tag:GetPoint(1)
+	eq(parent, row, 'on its row')
+	check(x > (row.titleX or 0), 'after the title\'s start')
+	TR:ScrollTo(TR.scrollRange)
+	numbers('scrolled')
+	TR:ScrollTo(0)
+	TR.config.height = 560
+	TR:UpdateConfig()
+	-- A quest above completes and goes: the rest are numbered again out of combat.
+	log({ 2, 3 })
+	settle()
+	eq(button(TR, 2).numberText:GetText(), '1', 'the list is numbered from 1 again')
+	eq(button(TR, 3).numberText:GetText(), '2', 'in list order')
+	eq(RW.quest(TR, 3).tag:GetText(), '2', 'and so is its row')
+	-- A quest with no item has no number and no tag.
+	log({ 2, 3, 4 }, nil, nil)
+	stub.quests.log[4].item = nil
+	settle()
+	check(not RW.quest(TR, 4).tag:IsShown(), 'a quest with no item: no tag')
+	-- In the row (not beside) there are no tags.
+	TR.config.items.placement = 'row'
+	TR:UpdateConfig()
+	check(not RW.quest(TR, 2).tag:IsShown(), 'In the row: no tag')
+	check(not button(TR, 2).numberText:IsShown(), 'and no number on the button')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('in combat the column stays and the list scrolls freely; at combat end the column is placed again', function()
+	local st, TR = beside_world({ 1, 2, 3 }, function(TR) TR.config.height = 150 end)
+	check(TR.scrollRange > 0, 'the list scrolls')
+	local before = {}
+	for _, id in ipairs({ 1, 2, 3 }) do
+		local b = button(TR, id)
+		before[id] = { b:GetLeft(), b:GetTop(), b:IsShown() }
+	end
+	TW.combat(true)
+	TW.count_from_now()
+	check(not TR:IsScrollLocked(), 'a column button does not hold the list still')
+	check(not TR.window.barLock:IsShown(), 'no lock over the bar')
+	stub.fire_script(TR.window, 'OnMouseWheel', -1)
+	eq(TR:GetScroll(), math.min(40, TR.scrollRange), 'the wheel scrolls in combat')
+	TR:ScrollTo(TR.scrollRange)
+	eq(TR:GetScroll(), TR.scrollRange, 'so does a drag of the bar')
+	for _, id in ipairs({ 1, 2, 3 }) do
+		local b = button(TR, id)
+		eq(b:GetLeft(), before[id][1], id .. ': the column stayed (left)')
+		eq(b:GetTop(), before[id][2], id .. ': and (top)')
+		eq(b:IsShown(), before[id][3], id .. ': shown or hidden as it was')
+		if b:IsShown() then eq(alpha_of(b), 1, id .. ': at full strength: its quest is still listed') end
+	end
+	stub.secure_clicks = {}
+	use(button(TR, 2))
+	eq(last_use().item, 'item:1002', 'a click still uses its quest\'s item')
+	TW.count_stop()
+	eq(TW.counts.secure, 0, 'no secure frame made')
+	eq(#stub.blocked, 0, 'nothing blocked')
+	TW.combat(false)
+	eq(button(TR, 3):GetTop(), RW.quest(TR, 3):GetTop(), 'combat ends: level with its title again')
+	check(button(TR, 3):IsShown() and not button(TR, 1):IsShown(), 'the buttons of the rows in view show, the others hide')
+	eq(#stub.blocked, 0, 'nothing blocked after')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('in combat a column button follows its quest by number: a quest that went or changed its item dims, never shows another quest\'s item', function()
+	local st, TR = beside_world({ 1, 2, 3 })
+	TW.combat(true)
+	log({ 2, 3 }) -- 1 completes and goes
+	settle()
+	local one, two, three = TR.itemButtons[1], TR.itemButtons[2], TR.itemButtons[3]
+	eq(alpha_of(one), TR.DIM_ALPHA, 'the quest that went: its button dims')
+	check(one:IsShown(), 'and stays (a secure button can\'t hide in combat)')
+	eq(alpha_of(two), 1, 'the others are not dimmed by the list moving')
+	eq(alpha_of(three), 1, 'nor this one')
+	eq(two.numberText:GetText(), '2', 'the numbers stay as they were')
+	eq(RW.quest(TR, 2).tag:GetText(), '2', 'and the row of quest 2 shows the number of its own button')
+	eq(RW.quest(TR, 3).tag:GetText(), '3', 'quest 3 too')
+	stub.secure_clicks = {}
+	use(one)
+	eq(last_use().item, 'item:1001', 'the dimmed one still uses its own quest\'s item')
+	stub.fire_script(one, 'OnEnter', true)
+	local texts = stub.state(GameTooltip).texts
+	eq(texts[#texts], 'Quest 1', 'its tooltip names the quest')
+	stub.fire_script(one, 'OnLeave', true)
+
+	-- A quest that appears in combat has no button and no number until combat ends.
+	log({ 2, 3, 4 })
+	settle()
+	check(button(TR, 4) == nil, 'no button for the new quest')
+	check(not RW.quest(TR, 4).tag:IsShown(), 'no number')
+
+	-- An item that changes in combat: the button keeps the old item and dims; its row shows no number.
+	stub.quests.log[2].item.link = 'item:7777'
+	stub.quests.log[2].item.texture = 777
+	settle()
+	eq(two:GetAttribute('item'), 'item:1002', 'the button still uses the old item')
+	eq(alpha_of(two), TR.DIM_ALPHA, 'and dims')
+	check(not RW.quest(TR, 2).tag:IsShown(), 'its row no longer shows its number (it is not that item)')
+	eq(#stub.blocked, 0, 'nothing blocked')
+	TW.combat(false)
+	check(button(TR, 4) ~= nil, 'combat ends: a button')
+	eq(button(TR, 2):GetAttribute('item'), 'item:7777', 'the new item')
+	eq(alpha_of(button(TR, 2)), 1, 'full strength')
+	eq(button(TR, 4).numberText:GetText(), '3', 'numbered in list order')
+	eq(RW.quest(TR, 4).tag:GetText(), '3', 'and its row')
+	eq(#stub.blocked, 0, 'nothing blocked')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('the column keeps the same secure-frame rules: only the layer is parent, only UIParent is an anchor, the regions are made with the button', function()
+	local st, TR = beside_world({ 1, 2, 3 })
+	for _, frame in ipairs(secure_frames(TR)) do
+		check(not (frame:GetParent() ~= UIParent and frame:GetParent() ~= TR.itemLayer), 'a secure frame is on UIParent or the layer')
+		for i = 1, frame:GetNumPoints() do
+			local _, relativeTo = frame:GetPoint(i)
+			check(relativeTo == UIParent, 'anchored to UIParent only')
+		end
+	end
+	local made = {}
+	for _, b in ipairs(TR.itemButtons) do made[b] = count_parts(b) end
+	TW.combat(true)
+	TW.count_from_now()
+	log({ 2, 3, 4 })
+	settle()
+	TR.config.items.size = 32
+	TR:UpdateConfig()
+	TR:ScrollTo(0)
+	TR.config.position = RIGHT_SIDE
+	TR:UpdateConfig()
+	stub.fire_script(TR.itemWatcher, 'OnSizeChanged', 1280, 1024)
+	TW.count_stop()
+	eq(TW.counts.secure, 0, 'no secure frame made in combat')
+	eq(#stub.blocked, 0, 'nothing blocked')
+	for _, b in ipairs(TR.itemButtons) do eq(count_parts(b), made[b], 'no region or frame made on a button in combat') end
+	TW.combat(false)
+	eq(#stub.blocked, 0, 'nor at its end')
+	eq(button(TR, 2):GetLeft(), TR.window:GetRight() + 4, 'the column is on the new side, 32 wide, after combat')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('Off: a plain icon in the row, no button, no click; the nearest button can still be on', function()
+	local st, TR = world({ 1, 2 })
+	TR.config.items.placement = 'off'
+	TR.config.items.nearest = true
+	TR:UpdateConfig()
+	settle()
+	for _, id in ipairs({ 1, 2 }) do
+		local row = RW.quest(TR, id)
+		eq(row.item, 'row', id .. ': the room is kept in the row')
+		check(row.slot:IsShown(), id .. ': the icon shows')
+		check(not row.slot.icon:IsDesaturated(), id .. ': plain')
+		check(not row.tag:IsShown(), id .. ': no number')
+		check(button(TR, id) == nil, id .. ': no button')
+	end
+	for index, b in ipairs(TR.itemButtons) do check(not b:IsShown(), index .. ': no button shows') end
+	eq(TR:ColumnWidth(), 0, 'no column')
+	check(not TR:ItemsToShow(), 'nothing for the handover to leave a button for')
+	stub.secure_clicks = {}
+	stub.fire_script(RW.quest(TR, 1).slot, 'OnClick', 'LeftButton')
+	eq(#stub.secure_clicks, 0, 'a click on the icon uses nothing')
+	TW.combat(true)
+	check(not TR:IsScrollLocked(), 'in combat the list scrolls')
+	TW.combat(false)
+	-- Beside: the same.
+	TR.config.items.placement = 'beside'
+	TR:UpdateConfig()
+	TW.combat(true)
+	check(not TR:IsScrollLocked(), 'beside: the list scrolls in combat')
+	TW.combat(false)
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('the tracker counts the column as hovered, and the options offer Beside the tracker', function()
+	local st, TR = beside_world({ 1, 2 })
+	RW.mouse_off()
+	check(not TR:IsHovered(), 'the mouse away: not hovered')
+	RW.mouse_on(button(TR, 1))
+	check(not TR.window:IsMouseOver(), 'the mouse is not over the window')
+	check(TR:IsHovered(), 'but it is over the column')
+	RW.mouse_off()
+	TR.config.items.placement = 'row'
+	TR:UpdateConfig()
+	RW.mouse_on(button(TR, 1))
+	check(TR:IsHovered(), 'in a row button: the window (the button is over the window)')
+	RW.mouse_off()
+	-- The button's tooltip is placed outside the column, off the window.
+	TR.config.items.placement = 'beside'
+	TR:UpdateConfig()
+	stub.fire_script(button(TR, 1), 'OnEnter', true)
+	check(GameTooltip:IsShown(), 'the tooltip shows')
+	local point, relativeTo = GameTooltip:GetPoint(1)
+	check(relativeTo == button(TR, 1), 'beside its button')
+	stub.fire_script(button(TR, 1), 'OnLeave', true)
+	local tab = TR.ItemsTab()
+	eq(tab.args.placement.values.beside, 'Beside the tracker', 'the select offers it')
+	eq(tab.args.placement.sorting[2], 'beside', 'between In the row and Off')
+	eq(tab.args.placement.sorting[3], 'off', 'Off last')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('the column follows the holder\'s drag, the screen\'s size and the UI scale; in combat it stays', function()
+	local st, TR = beside_world({ 1, 2 }, function(TR) TR.config.position = LEFT_SIDE end)
+	local function follows(where)
+		for _, id in ipairs({ 1, 2 }) do
+			check(math.abs(button(TR, id):GetRight() - (TR.window:GetLeft() - 4)) <= 1, where .. ': ' .. id .. ' 4 outside the window')
+			check(math.abs(button(TR, id):GetTop() - RW.quest(TR, id):GetTop()) <= 1, where .. ': ' .. id .. ' level with its title')
+		end
+	end
+	follows('at first')
+	TR.holder:ClearAllPoints()
+	TR.holder:SetPoint('TOPRIGHT', UIParent, 'TOPRIGHT', -240, -330)
+	follows('a drag')
+	stub.screen_width, stub.screen_height = 1280, 1024
+	stub.fire_script(TR.itemWatcher, 'OnSizeChanged', 1280, 1024)
+	follows('a smaller screen')
+	local at = { button(TR, 1):GetLeft(), button(TR, 1):GetTop() }
+	TW.combat(true)
+	TR.holder:ClearAllPoints()
+	TR.holder:SetPoint('TOPRIGHT', UIParent, 'TOPRIGHT', -10, -20)
+	eq(button(TR, 1):GetLeft(), at[1], 'in combat it stays (left)')
+	eq(button(TR, 1):GetTop(), at[2], 'and (top)')
+	eq(#stub.blocked, 0, 'nothing blocked')
+	TW.combat(false)
+	follows('combat over')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('whole pixels with the column on both sides, under the three looks and size noise', function()
+	local checked = 0
+	for _, client in ipairs({ 'forever', 'retail' }) do
+		for _, theme in ipairs({ 'thick', 'thin', 'blizzard' }) do
+			for _, noise in ipairs({ 2 ^ -14, -2 ^ -14, 0 }) do
+				for _, size in ipairs({ 16, 30, 40 }) do
+					for _, position in ipairs({ LEFT_SIDE, RIGHT_SIDE }) do
+						local where = ('%s, %s, noise %g, size %d, %s'):format(client, theme, noise, size, position.point)
+						local st, TR = RW.world({ client = client, enabling = function()
+							log({ 1, 2, 3 }, nil, { [1] = { charges = 4, cooldown = { start = 1, duration = 9, enable = 1 } } })
+						end })
+						T.theme(theme, function() TR:UpdateConfig(); st:ColorsChanged('theme') end)
+						TR.config.items.placement = 'beside'
+						TR.config.items.size = size
+						TR.config.position = position
+						stub.size_noise = noise
+						TR:UpdateConfig()
+						TR:Refresh()
+						local off = P.off(TR.window)
+						eq(#off, 0, where .. ' (the window): ' .. P.report(off))
+						off = P.off(TR.itemLayer)
+						eq(#off, 0, where .. ' (the layer): ' .. P.report(off))
+						for _, id in ipairs({ 1, 2, 3 }) do
+							local b = button(TR, id)
+							check(b ~= nil and b:IsShown(), where .. ': button ' .. id)
+						end
+						TR:Refresh()
+						off = P.off(TR.itemLayer)
+						eq(#off, 0, where .. ' (again): ' .. P.report(off))
+						stub.size_noise = 0
+						checked = checked + 1
+					end
+				end
+			end
+		end
+	end
+	eq(checked, 2 * 3 * 3 * 3 * 2, 'every combination ran')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('with the switch off the column makes nothing and runs nothing', function()
+	local st, TR = TW.world({ enabling = function() log({ 1, 2 }) end })
+	eq(TR:ColumnWidth(), 0, 'no column width')
+	eq(TW.counts.secure, 0, 'no secure frame')
+	eq(TR.itemButtons, nil, 'no pool')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+------------------------------------------------------------------ fix round 1
+
+local function slot_text(row)
+	local texts = stub.state(GameTooltip).texts
+	return texts[#texts]
+end
+
+test('Beside: a quest whose item has no button shows its icon where the number goes (greyed in combat, plain with no link)', function()
+	local st, TR = beside_world({ 1 })
+	local row1 = RW.quest(TR, 1)
+	check(row1.tag:IsShown() and not row1.slot:IsShown(), 'a quest with its button: the number, no icon')
+	-- An item that appears in combat.
+	TW.combat(true)
+	log({ 1, 2 })
+	settle()
+	local row2 = RW.quest(TR, 2)
+	check(row2.slot:IsShown() and row2.slot.icon:IsDesaturated(), 'greyed icon in its row')
+	eq(row2.slot.icon:GetAlpha(), 0.4, 'at 40%')
+	check(not row2.tag:IsShown(), 'and no number')
+	local point, rel = row2.slot:GetPoint(1)
+	eq(rel, row2, 'placed in its row')
+	eq(row2.slot:GetLeft(), row2.tag:GetLeft(), 'where the number goes')
+	stub.fire_script(row2.slot, 'OnEnter', true)
+	eq(slot_text(), 'Its button comes when combat ends.', 'its tooltip')
+	stub.fire_script(row2.slot, 'OnLeave', true)
+	eq(#stub.blocked, 0, 'nothing blocked')
+	TW.combat(false)
+	check(not RW.quest(TR, 2).slot:IsShown() and RW.quest(TR, 2).tag:IsShown(), 'combat ends: the number replaces it')
+	eq(RW.quest(TR, 2).tag:GetText(), '2', 'numbered')
+
+	-- An item with no link: no button, a plain icon.
+	log({ 1, 2, 3 }, nil, { [3] = { link = false } })
+	stub.quests.log[4].item.link = nil
+	settle()
+	local row3 = RW.quest(TR, 3)
+	check(button(TR, 3) == nil, 'no button')
+	check(row3.slot:IsShown() and not row3.slot.icon:IsDesaturated(), 'a plain icon in its row')
+	check(not row3.tag:IsShown(), 'no number')
+	-- The title's room is the same as for a number: wide enough for a line-high icon.
+	check(TR:TagRoom() >= TR:LineHeight() + 4, 'the room fits an icon one line high')
+	eq(row3.slot:GetWidth(), TR:LineHeight(), 'the icon is one line high')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('in combat a row shows a number only while a shown button carries it', function()
+	local st, TR = beside_world({ 1, 2, 3 }, function(TR) TR.config.height = 120 end)
+	check(not button(TR, 3):IsShown(), 'the last button is hidden (its title is out of view)')
+	TW.combat(true)
+	TR:ScrollTo(TR.scrollRange)
+	local row = RW.quest(TR, 3)
+	check(not row.tag:IsShown(), 'its row shows no number: the column has no such button on screen')
+	check(row.slot:IsShown() and row.slot.icon:IsDesaturated(), 'a greyed icon instead')
+	TW.combat(false)
+	check(row.tag:IsShown() and row.tag:GetText() == '3', 'combat ends: the button and the number')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a stack that runs past the window hides the buttons that do not fit; their rows show the plain icon', function()
+	local st, TR = beside_world({ 1, 2, 3, 4, 5, 6 }, function(TR)
+		TR.config.items.size = 40
+		TR.config.quests.spacing = 0
+		TR.config.height = 200
+	end)
+	local bottom = TR.scroll:GetBottom()
+	local shown, hidden = 0, 0
+	for _, id in ipairs({ 1, 2, 3, 4, 5, 6 }) do
+		local b, row = button(TR, id), RW.quest(TR, id)
+		if b:IsShown() then
+			shown = shown + 1
+			check(b:GetTop() - 20 >= bottom, id .. ': a shown button has its centre inside the window')
+			check(row.tag:IsShown(), id .. ': with its number')
+		elseif row:IsVisible() and row:GetTop() - 20 >= bottom then
+			hidden = hidden + 1
+			check(row.slot:IsShown() and not row.slot.icon:IsDesaturated(), id .. ': a hidden button: its row shows the plain icon')
+			check(not row.tag:IsShown(), id .. ': and no number')
+		end
+	end
+	check(shown >= 1 and hidden >= 1, 'some fit and some do not (' .. shown .. ' shown, ' .. hidden .. ' hidden)')
+	-- No two shown buttons are closer than 2 px.
+	local previous
+	for _, id in ipairs({ 1, 2, 3, 4, 5, 6 }) do
+		local b = button(TR, id)
+		if b:IsShown() then
+			if previous then check(previous:GetBottom() - b:GetTop() >= 2, id .. ': 2 px under the one above at least') end
+			previous = b
+		end
+	end
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('numbers follow the list\'s order (the current zone first), not the model\'s', function()
+	local st, TR = RW.world({ enabling = function()
+		local entries = {
+			Q.header('Elwynn Forest'), Q.quest(1, { item = item_of(1), objectives = { { text = 'a', type = 'monster' } } }),
+			Q.header('Westfall'), Q.quest(2, { item = item_of(2), objectives = { { text = 'b', type = 'monster' } } }),
+		}
+		Q.set(entries, { 1, 2 })
+		stub.real_zone_text = 'Westfall'
+	end })
+	TR.config.items.placement = 'beside'
+	TR:UpdateConfig()
+	settle()
+	eq(button(TR, 2).numberText:GetText(), '1', 'the current zone\'s quest is first in the list: number 1')
+	eq(button(TR, 1).numberText:GetText(), '2', 'the other is 2')
+	check(RW.quest(TR, 2):GetTop() > RW.quest(TR, 1):GetTop(), 'as drawn')
+	stub.real_zone_text = ''
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('the beside title is narrowed by the number\'s room, which fits two digits; the number follows a short title', function()
+	local st, TR = beside_world({ 1 })
+	local row = RW.quest(TR, 1)
+	local room = TR:TagRoom()
+	local pixel = UIParent:CreateFontString(nil, 'OVERLAY')
+	pixel:SetFontObject(st:GetFont('pixel'))
+	pixel:SetText('88')
+	check(room >= math.ceil(pixel:GetStringWidth()) + TR.LAYOUT.ITEM_GAP, 'the room fits "88" and the gap')
+	local beside_width = row.title:GetWidth()
+	TR.config.items.placement = 'row'
+	TR:UpdateConfig()
+	local row_width = RW.quest(TR, 1).title:GetWidth()
+	TR.config.items.placement = 'off'
+	TR:UpdateConfig()
+	local off_width = RW.quest(TR, 1).title:GetWidth()
+	eq(off_width - beside_width, room - (TR.config.items.size + TR.LAYOUT.ITEM_GAP), 'beside is narrowed by the number\'s room, not the button\'s')
+	TR.config.items.placement = 'beside'
+	TR:UpdateConfig()
+	row = RW.quest(TR, 1)
+	local _, _, _, x = row.tag:GetPoint(1)
+	local unbounded = row.title.GetUnboundedStringWidth or row.title.GetStringWidth
+	local reach = math.ceil(unbounded(row.title))
+	eq(x, (row.titleX or 0) + math.min(reach, beside_width) + TR.LAYOUT.ITEM_GAP, 'the number sits after the title\'s last letter, not at the right edge')
+	check(x < beside_width, 'short title: well inside the row')
+	check(row_width > 0, 'sanity')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a secret title is never measured: the number is placed at the title\'s width', function()
+	-- The stubs' font strings can't hold a secret, so the draw's SetText turns one into a plain
+	-- text, and the title's width reads raise: the number's place must not read them.
+	local S = load_test_file('lib/secrets.lua')
+	local st, TR = beside_world({ 1 })
+	local restore = S.install()
+	local set_text = TR.SetText
+	TR.SetText = function(fs, text)
+		if issecretvalue(text) then
+			fs.shownText = nil
+			return fs:SetText('secret title')
+		end
+		return set_text(fs, text)
+	end
+	local row = RW.quest(TR, 1)
+	local function refuse() error('the title\'s width was read') end
+	row.title.GetUnboundedStringWidth, row.title.GetStringWidth = refuse, refuse
+	stub.quests.log[2].title = S.secret('quest title')
+	TR:Refresh()
+	check(row.tag:IsShown(), 'the number is drawn')
+	local _, _, _, x = row.tag:GetPoint(1)
+	eq(x, (row.titleX or 0) + row.title:GetWidth() + TR.LAYOUT.ITEM_GAP, 'placed at the title\'s width, no width read')
+	TR.SetText = set_text
+	row.title.GetUnboundedStringWidth, row.title.GetStringWidth = nil, nil
+	restore()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a holder straddling the screen\'s middle puts the column by its centre', function()
+	local st, TR = beside_world({ 1 })
+	local cx = UIParent:GetCenter()
+	local width = TR.config.width
+	-- A holder whose centre is just right of the screen's: the column is on the left.
+	TR.config.position = { point = 'TOPLEFT', frame = 'UIParent', rel_point = 'TOPLEFT', x_off = cx - width / 2 + 5, y_off = -100 }
+	TR:UpdateConfig()
+	eq(button(TR, 1):GetRight(), TR.window:GetLeft() - 4, 'centre right of the middle: on the left')
+	TR.config.position = { point = 'TOPLEFT', frame = 'UIParent', rel_point = 'TOPLEFT', x_off = cx - width / 2 - 5, y_off = -100 }
+	TR:UpdateConfig()
+	eq(button(TR, 1):GetLeft(), TR.window:GetRight() + 4, 'centre left of it: on the right')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a column button\'s tooltip sits outward from the column and names its quest', function()
+	local st, TR = beside_world({ 1 }, function(TR) TR.config.position = LEFT_SIDE end)
+	local b = button(TR, 1)
+	stub.fire_script(b, 'OnEnter', true)
+	local point, rel, relPoint = GameTooltip:GetPoint(1)
+	eq(point .. relPoint, 'TOPRIGHTTOPLEFT', 'left column: the tooltip to its left')
+	local texts = stub.state(GameTooltip).texts
+	eq(texts[2], 'Quest 1', 'the quest\'s title under the item\'s, full strength or not')
+	stub.fire_script(b, 'OnLeave', true)
+	TR.config.position = RIGHT_SIDE
+	TR:UpdateConfig()
+	stub.fire_script(b, 'OnEnter', true)
+	point, rel, relPoint = GameTooltip:GetPoint(1)
+	eq(point .. relPoint, 'TOPLEFTTOPRIGHT', 'right column: to its right')
+	stub.fire_script(b, 'OnLeave', true)
+end)
+
+test('Off from login makes no layer and no secure frame; a hidden column is not hovered', function()
+	local st, TR = RW.world({ enabling = function()
+		log({ 1, 2 })
+		SaftUI.config.profile.tracker.items.placement = 'off'
+	end })
+	eq(TR.itemLayer, nil, 'no layer')
+	eq(TW.counts.secure, 0, 'no secure frame')
+	TR.config.items.placement = 'beside'
+	TR:UpdateConfig()
+	settle()
+	RW.mouse_on(button(TR, 1))
+	check(TR:IsHovered(), 'the column is hovered')
+	TR.itemLayer:Hide()
+	check(not TR:IsHovered(), 'with the layer hidden (a pet battle) it is not')
+	TR.itemLayer:Show()
+	RW.mouse_off()
+end)
+
+test('ColumnWidth counts quests whose item has a link', function()
+	local st, TR = beside_world({ 1 })
+	stub.quests.log[2].item.link = nil
+	settle()
+	eq(TR:ColumnWidth(), 0, 'an item with no link makes no column')
+end)
+
+------------------------------------------------------------------ fix round 2
+
+test('a row whose button the stack hid keeps the plain icon in combat, not the greyed one', function()
+	local st, TR = beside_world({ 1, 2, 3, 4, 5, 6 }, function(TR)
+		TR.config.items.size = 40
+		TR.config.quests.spacing = 0
+		TR.config.height = 200
+	end)
+	local stacked = {}
+	for _, id in ipairs({ 1, 2, 3, 4, 5, 6 }) do
+		local b, row = button(TR, id), RW.quest(TR, id)
+		if not b:IsShown() and row:IsVisible() and row:GetTop() - 20 >= TR.scroll:GetBottom() then stacked[#stacked + 1] = id end
+	end
+	check(#stacked >= 1, 'some buttons were hidden by the stack')
+	TW.combat(true)
+	TR:Refresh()
+	TR:PlaceItems()
+	for _, id in ipairs(stacked) do
+		local row = RW.quest(TR, id)
+		check(row.slot:IsShown() and not row.slot.icon:IsDesaturated(), id .. ': still the plain icon in combat')
+	end
+	eq(#stub.blocked, 0, 'nothing blocked')
+	TW.combat(false)
+	for _, id in ipairs(stacked) do
+		check(not RW.quest(TR, id).slot.icon:IsDesaturated(), id .. ': plain after combat')
+	end
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a quest with no link between two others leaves the numbering without a gap', function()
+	local st, TR = beside_world({ 1, 2, 3 })
+	stub.quests.log[3].item.link = nil -- quest 2
+	settle()
+	check(button(TR, 2) == nil, 'no button for it')
+	eq(button(TR, 1).numberText:GetText(), '1', 'the first is 1')
+	eq(button(TR, 3).numberText:GetText(), '2', 'the one after it is 2: no gap')
+	eq(RW.quest(TR, 3).tag:GetText(), '2', 'and its row')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('an out-of-view button just above the view does not push the first one in view', function()
+	local st, TR = beside_world({ 1, 2, 3, 4 }, function(TR)
+		TR.config.items.size = 40
+		TR.config.quests.spacing = 0
+		TR.config.height = 160
+	end)
+	TR:ScrollTo(TR.scrollRange)
+	for _, id in ipairs({ 1, 2, 3, 4 }) do
+		local b, row = button(TR, id), RW.quest(TR, id)
+		if b:IsShown() then
+			local first = true
+			for _, other in ipairs({ 1, 2, 3, 4 }) do
+				if other < id and button(TR, other):IsShown() then first = false end
+			end
+			if first then eq(b:GetTop(), row:GetTop(), id .. ': the first in view is level with its title') end
+		end
+	end
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('the number sits centred on the title\'s first line', function()
+	local st, TR = beside_world({ 1 })
+	local row = RW.quest(TR, 1)
+	local _, _, _, _, y = row.tag:GetPoint(1)
+	local line = TR:LineHeight()
+	local expected = math.max(0, math.floor((line - TR.tagHeight) / 2))
+	eq(-y == 0 and 0 or -y, expected, 'its y is half what the line has over the number')
+	check(TR.tagHeight > 0 and TR.tagHeight <= line, 'the number is no taller than the line')
+end)

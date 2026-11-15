@@ -118,8 +118,8 @@ end
 -- The Items tab: where the quest item buttons sit and how they look. Every row
 -- saves into tracker.items and runs TR:UpdateConfig, whose refresh draws the
 -- rows and (out of combat) the buttons again; a change in combat waits for the
--- end of it, like the buttons (/sui is closed in combat anyway). Beside the
--- tracker, the nearest button and its key are later tasks' rows.
+-- end of it, like the buttons (/sui is closed in combat anyway). The nearest
+-- button and its key are later tasks' rows.
 function TR.ItemsTab()
 	local function toggle(order, key, name, desc)
 		local option = generators.toggle(order, name, desc)
@@ -130,10 +130,10 @@ function TR.ItemsTab()
 		placement = {
 			order = 1,
 			name = 'Item buttons',
-			desc = "Where a quest's item button sits: at the top right of its row, or off, which leaves the item as a plain icon in the row, with no button.",
+			desc = "Where a quest's item button sits: at the top right of its row, in a numbered column beside the tracker, or off, which leaves the item as a plain icon in the row, with no button.",
 			type = 'select',
-			values = { row = 'In the row', off = 'Off' },
-			sorting = { 'row', 'off' },
+			values = { row = 'In the row', beside = 'Beside the tracker', off = 'Off' },
+			sorting = { 'row', 'beside', 'off' },
 			default = TR.SettingDefault('items', 'placement'),
 		},
 		size = generators.range(2, 'Button size', 16, 40, 2, "How big a quest item button is."),

@@ -33,7 +33,10 @@ local L, Layout = TR.LAYOUT, TR.Layout
 	title and lines leave on the right: its top right corner is the row's top
 	right, itemSize square), .slot (a plain Button over that corner, shown by
 	TR:SetSlotMode: the item's icon greyed while the quest has no button yet, or
-	plain where the item has none to click, hidden under a button).
+	plain where the item has none to click, hidden under a button). 'beside' says
+	the quest's button is in the column beside the tracker (items.lua): the row
+	then has no slot, and .tag (the Pixel font, in the accent) shows the number
+	of the quest's button at the end of the title (TR:SetTag).
 ]]
 
 local PlainNumber = st.PlainNumber
@@ -395,6 +398,13 @@ local function MakeQuestRow(self)
 	end)
 	row.slot = slot
 
+	-- The column's number, at the end of the title (TR:SetTag). Plain text, so it
+	-- is set in combat too.
+	row.tag = self:NewText(row, 'pixel')
+	row.tag:SetWordWrap(false)
+	row.tag:SetJustifyV('TOP')
+	row.tag:Hide()
+
 	-- The quest's icon is a button of its own over the icon texture: a click
 	-- focuses the quest, or stops focusing it (Blizzard's POI button does the
 	-- same). It takes the mouse from the row there, so it keeps the row's hover.
@@ -498,6 +508,10 @@ function TR:ReleaseRows(all)
 					row.slot.mode = 'none'
 					Shown(row.slot, false)
 				end
+				if row.tag then
+					row.tag.numberShown = nil
+					Shown(row.tag, false)
+				end
 				pool.free[#pool.free + 1] = row
 			end
 		end
@@ -520,6 +534,42 @@ function TR:SetSlotMode(row, mode)
 	slot.icon:SetDesaturated(greyed)
 	slot.icon:SetAlpha(greyed and TR.DIM_ALPHA or 1)
 	Shown(slot, true)
+end
+
+-- What a quest row's tag shows: the number of its quest's button, or nothing
+-- (nil). Only a change is drawn.
+function TR:SetTag(row, number)
+	local tag = row.tag
+	if not tag then return end
+	if number == nil then
+		if tag.numberShown ~= nil then
+			tag.numberShown = nil
+			Shown(tag, false)
+		end
+		return
+	end
+	if tag.numberShown ~= number then
+		tag.numberShown = number
+		TR.SetText(tag, tostring(number))
+		Paint(tag, 'accent')
+	end
+	Shown(tag, true)
+end
+
+-- The room a number (or the item's icon, one line high) takes at the end of a
+-- title beside the tracker: the wider of "00" in the Pixel font (the log holds 40
+-- quests at most) and a line, and the gap before it.
+function TR:TagRoom()
+	if self.tagStamp ~= self.fontStamp then
+		local scratch = self.tagScratch
+		TR.SetText(scratch, '00')
+		local unbounded = scratch.GetUnboundedStringWidth or scratch.GetStringWidth
+		-- Wide enough for two digits, or for the item's icon one line high.
+		self.tagValue = math.max(math.ceil(PlainNumber(unbounded(scratch)) or 0), self:LineHeight()) + L.ITEM_GAP
+		self.tagHeight = PlainNumber(scratch:GetStringHeight()) or 0
+		self.tagStamp = self.fontStamp
+	end
+	return self.tagValue
 end
 
 -- The row (one in use) kind's key has now, or nil.
@@ -640,15 +690,7 @@ end
 -- The item slot's place (the row's top right, itemSize square) and icon, for a
 -- quest whose item sits in its row; hidden for one with no item there. What it
 -- shows is TR:SetSlotMode's, from the item stage (items.lua).
-local function DrawItemSlot(self, row, quest, entry, width)
-	local slot = row.slot
-	if entry.item ~= 'row' or not quest.item then
-		self:SetSlotMode(row, 'none')
-		return
-	end
-	local size = row.itemSize
-	Place(slot, row, width - size, 0)
-	Size(slot, size, size)
+local function SlotIcon(slot, quest, size)
 	local texture = quest.item.texture
 	local trim = st.config.profile.misc.icon_trim
 	if slot.shownTexture ~= texture or slot.shownTrim ~= trim or slot.shownSize ~= size then
@@ -657,6 +699,19 @@ local function DrawItemSlot(self, row, quest, entry, width)
 		-- Cropped by Icon zoom, as the button's icon is.
 		slot.icon:SetTexCoord(st:IconTexCoords(trim, size, size))
 	end
+end
+
+local function DrawItemSlot(self, row, quest, entry, width)
+	local slot = row.slot
+	if entry.item == 'beside' and quest.item then return end -- DrawQuest's, by the title
+	if entry.item ~= 'row' or not quest.item then
+		self:SetSlotMode(row, 'none')
+		return
+	end
+	local size = row.itemSize
+	Place(slot, row, width - size, 0)
+	Size(slot, size, size)
+	SlotIcon(slot, quest, size)
 end
 
 local function DrawQuest(self, row, entry, p, width)
@@ -671,6 +726,26 @@ local function DrawQuest(self, row, entry, p, width)
 	Place(row.title, row, titleX, 0)
 	Paint(row.title, TitleState(quest, settings))
 	row.titleX = titleX
+	if entry.item == 'beside' then
+		-- The number follows the title's last letter, as the zone pin does, up to the
+		-- room the layout left for it. What it says is the item stage's (TR:SetTag).
+		-- A secret title is never measured: the number goes at the title's width.
+		local reach = p.titleWidth
+		if not issecretvalue(entry.first) then
+			local unbounded = row.title.GetUnboundedStringWidth or row.title.GetStringWidth
+			reach = math.min(math.ceil(PlainNumber(unbounded(row.title)) or reach), reach)
+		end
+		local x = titleX + reach + L.ITEM_GAP
+		-- Centred on the title's first line, as the icon is; the item's icon (one line
+		-- high) takes the same place while the quest has no number.
+		local line = self:LineHeight()
+		Place(row.tag, row, x, math.max(0, math.floor((line - self.tagHeight) / 2)))
+		Place(row.slot, row, x, 0)
+		Size(row.slot, line, line)
+		SlotIcon(row.slot, quest, line)
+	else
+		self:SetTag(row, nil)
+	end
 
 	local lines = entry.lines
 	for j, line in ipairs(lines) do
@@ -837,6 +912,10 @@ function TR:BuildRows()
 	self.scratch:SetWordWrap(false)
 	self.scratch.role = 'text'
 	self.fontStrings[1] = self.scratch
+	-- The number's room is measured in a text of its own, in the Pixel font.
+	self.tagScratch = self:NewText(self.window, 'pixel')
+	self.tagScratch:SetWordWrap(false)
+	self.tagScratch:Hide()
 	self.scratch:SetFontObject(FontOf('text'))
 	self.scratch:Hide()
 	self.fonts.text = FontOf('text')
@@ -921,8 +1000,12 @@ function TR:BuildEntries(model, groups)
 	local settings = config.quests
 	local icons = self:ShowsIcons()
 	-- In the row, the item takes room there: a button (In the row), or its plain
-	-- icon (Off). Beside the tracker has a column of its own (Task 9).
-	local inRow = config.items.placement == 'row' or config.items.placement == 'off'
+	-- icon (Off). Beside the tracker the button is in the column, and the title
+	-- leaves room for the number at its end.
+	local placement = config.items.placement
+	local inRow = placement == 'row' or placement == 'off'
+	local beside = placement == 'beside'
+	self.metrics.tagRoom = beside and self:TagRoom() or 0
 	local now = GetTime()
 	local n = 0
 
@@ -945,7 +1028,7 @@ function TR:BuildEntries(model, groups)
 				entry.quest = quest
 				entry.first = TR.TitleText(quest, settings)
 				entry.lines = TR.QuestLines(quest, settings, now)
-				entry.item = inRow and quest.item and 'row' or nil
+				entry.item = quest.item and (inRow and 'row' or beside and 'beside') or nil
 				entry.icons = icons
 			end
 		end
