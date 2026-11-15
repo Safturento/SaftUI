@@ -424,8 +424,7 @@ end
 -- combat too.
 function TR:RefreshNearestCooldown()
 	local button = self.nearestButton
-	if button and button.questID and button.item then
-		button.cd = TR.ReadItemCooldown(TR.LogIndex(button.questID))
+	if button and button.questID and button.item and TR.ReadButtonCooldown(button, TR.LogIndex(button.questID)) then
 		TR.PaintItemButton(button)
 	end
 end
@@ -512,7 +511,8 @@ function TR:RefreshNearest()
 	-- second and must not put a stale tint or swipe back over what the button
 	-- read itself.
 	local index = TR.LogIndex(quest.id)
-	button.cd, button.range = TR.ReadItemCooldown(index), TR.ReadItemRange(index)
+	TR.ReadButtonCooldown(button, index)
+	button.range = TR.ReadItemRange(index)
 	button.inside = chosen.inArea == true
 	button.dimmed = false
 	TR.StyleItemButton(button, st:ResolveTheme(self.config.theme, self.config.background, 'action'), TR.NearestSize(self))
