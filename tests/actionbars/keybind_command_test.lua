@@ -33,3 +33,36 @@ test("keybind mode's highlight is the accent, at an accent that is not the defau
 	st.config.profile.theme.accent:SetRGB(0, 0.68, 0.94)
 	AB:StopKeybindMode()
 end)
+
+-- The hint line under the key list reads Text > Muted when the tooltip shows,
+-- not a grey of its own: a Muted that is not the default shows in it.
+test("keybind mode's hint line is Muted, read when the tooltip shows", function()
+	local AB = st:GetModule('ActionBars')
+	AB.built, AB.bars = true, {}
+	if not _G.GameTooltip then CreateFrame('GameTooltip', 'GameTooltip', UIParent, 'GameTooltipTemplate') end
+	AB.SetForceShown = function() end
+	AB:StartKeybindMode()
+	local binder
+	for i = 1, 40 do
+		local name, value = debug.getupvalue(AB.StartKeybindMode, i)
+		if not name then break end
+		if name == 'binder' then binder = value end
+	end
+	check(binder, 'the binder is made')
+	binder.button = CreateFrame('Frame', nil, UIParent)
+	local muted = st.config.profile.colors.text.muted
+	local function hint()
+		GameTooltip:ClearLines()
+		binder:GetScript('OnEnter')(binder)
+		local c = stub.state(GameTooltip).colors[3]
+		return c and string.format('%.2f,%.2f,%.2f', c[1], c[2], c[3])
+	end
+	local realKey = _G.GetBindingKey
+	_G.GetBindingKey = function() end -- the button has no command
+	muted:SetRGB(0.2, 0.4, 0.6)
+	eq(hint(), '0.20,0.40,0.60', 'Muted at a value that is not the default')
+	muted:SetRGB(0.8, 0.1, 0.3)
+	eq(hint(), '0.80,0.10,0.30', 'a changed Muted reaches the next show')
+	_G.GetBindingKey = realKey
+	AB:StopKeybindMode()
+end)

@@ -725,3 +725,39 @@ test("a saved theme name this version doesn't know reads as Thick, and draws", f
 	eq(inset(f), 2, "still Thick's border after a redraw")
 	eq(profile.theme.name, 'later', 'the saved name is kept, for the version that knows it')
 end)
+
+-- A frame level can be secret (a frame of Blizzard's in a restricted layout,
+-- .agents/clients.md), so st:SetBackdrop and st:SetBackdropIn do no math on one:
+-- the backdrop keeps the level it was made with, and a plain level still puts
+-- it one below.
+test('a backdrop over a frame whose level is secret is drawn and left at the level it was made with; a plain level puts it one below', function()
+	local st = fresh()
+	local S = load_test_file('lib/secrets.lua')
+	local restore = S.install()
+	local secret = S.secret('LEVEL')
+
+	local plain = frame(st)
+	plain:SetFrameLevel(10)
+	st:SetBackdrop(plain, 'theme', 'theme', 'panel')
+	eq(plain.backdrop:GetFrameLevel(), 9, 'SetBackdrop: one below a plain level')
+	local backdrops = setmetatable({}, { __mode = 'k' })
+	local plainIn = frame(st)
+	plainIn:SetFrameLevel(10)
+	eq(st:SetBackdropIn(backdrops, plainIn, 'theme', 'theme', 'panel'):GetFrameLevel(), 9, 'SetBackdropIn: one below a plain level')
+
+	local f = frame(st)
+	f.GetFrameLevel = function() return secret end
+	local ok, err = pcall(st.SetBackdrop, st, f, 'theme', 'theme', 'panel')
+	check(ok, 'SetBackdrop on a secret level raises nothing: ' .. tostring(err))
+	check(f.backdrop ~= nil, 'SetBackdrop: drawn')
+
+	local g = frame(st)
+	g.GetFrameLevel = function() return secret end
+	local result
+	ok, err = pcall(function() result = st:SetBackdropIn(backdrops, g, 'theme', 'theme', 'panel') end)
+	check(ok, 'SetBackdropIn on a secret level raises nothing: ' .. tostring(err))
+	check(result ~= nil, 'SetBackdropIn: drawn')
+
+	restore()
+	eq(#take_errors(), 0, 'no errors')
+end)
