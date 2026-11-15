@@ -80,6 +80,7 @@ The fonts plan's phases 2, 3 and 5 and this plan's Tasks 2 to 4 rewrite the same
 - **Nothing changes at the defaults** but the spec's "What a player sees change":
   - own marks: light blue to the accent;
   - the diff icon and the bag category's marker: orange to Muted;
+  - the combined bank's eye and edit mode's "Alt: next": Buttons > Grey #969696 to Muted #b4b4b4 (2026-11-15 ruling);
   - the equipped border: green to the accent;
   - the Error prefix: pure red to Danger;
   - the chat prefix: #00adef to #00adf0.
@@ -133,7 +134,7 @@ The fonts plan's phases 2, 3 and 5 and this plan's Tasks 2 to 4 rewrite the same
    - **The key.** `'accent'` takes no key: one passed is ignored.
 6. **The migration runs in `xpcall`** to `geterrorhandler()`, at login and in `Config:UpdateConfig`, so a profile it can't read is reported and the UI still loads. Its reads check types (Review Focus 1), so no profile should ever reach the handler.
 7. **`colors.version` only rises.** A non-number counts as 0. A version at or above the last step runs nothing and is left as it is.
-8. **`CO.OLD_COLORS` holds all fourteen retired keys from Task 1:** today's shipped values, alpha included, keyed by path. It is never edited after Task 1. `CO.MIGRATION_STEPS` gets one entry per task.
+8. **`CO.OLD_COLORS` holds all fourteen retired keys from Task 1:** today's shipped values, alpha included, keyed by path. It is never edited after Task 1, with one exception ruled by the controller (2026-11-15, ledger): `text.grey` is 180, 180, 180, not 150, because Text > Grey's default became #b4b4b4 (decision 49) after Task 1 landed and before step 3 ships, so a key's frozen value is the default in effect when its step ships; a grey saved at exactly 150 is a customized Muted. Do not change it back. `CO.MIGRATION_STEPS` gets one entry per task.
 9. **Step paths** are strings, `'group.key'` under `profile.colors`, plus `'accent'` for `profile.theme.accent`.
 10. **Loot and faction data hold the new keys.**
     - The roll buttons' `color` (`rollbar.lua:12-15`), `PAIRED` (`rollinfo.lua:76-79`) and `CHOICES` (`Feed/rolls.lua:39-43`) hold Loot keys: `'pass'`, `'greed'`, `'transmog'`, `'need'`.
@@ -174,9 +175,9 @@ The fonts plan's phases 2, 3 and 5 and this plan's Tasks 2 to 4 rewrite the same
 ```lua
 -- Today's shipped value of every retired key, frozen (AceDB saves only the
 -- channels that differ from a default; once a default is gone, the rest come
--- from here). Never edited after it lands.
+-- from here). Never edited after it lands (one exception: text.grey is 180, see Ruling 8).
 CO.OLD_COLORS = {
-	['text.grey'] = { r = 150/255, g = 150/255, b = 150/255 },
+	['text.grey'] = { r = 180/255, g = 180/255, b = 180/255 }, -- the plan said 150: its default became 180 (decision 49) before step 3 shipped
 	['text.white'] = { r = 1, g = 1, b = 1 },
 	['text.red'] = { r = 220/255, g = 100/255, b = 100/255 },
 	['text.orange'] = { r = 220/255, g = 150/255, b = 100/255 },

@@ -1,6 +1,6 @@
 # ResetIcon
 
-Lucide's `rotate-ccw` in accent, beside a control whose value differs from its default (or, on a member page, in its hover line), that puts that one setting back; it shows only while there is something to reset.
+Lucide's `rotate-ccw` in `text-muted`, turning `accent` under the mouse, beside a control whose value differs from its default (or, on a member page, in its hover line), that puts that one setting back; it shows only while there is something to reset.
 
 ## When to use
 
@@ -14,14 +14,14 @@ What "default" is for the setting (AceDB's default, or the shared value), the re
 
 | Part | Value | Tokens |
 | --- | --- | --- |
-| Icon | `rotate-ccw` drawn 14, `accent`; `white` under the mouse | `icon-reset`, `accent`, `white` |
+| Icon | `rotate-ccw` drawn 14, `text-muted` at rest; `accent` under the mouse | `icon-reset`, `text-muted`, `accent` |
 | Beside a control | 6 before the control; on a `MenuItem`, right against its dots (their button has room round the glyph), so the name gives up only the icon and 4 | `reset-gap` |
 | In the hover line | after "Own", 6 either side | `reset-gap` |
 | Tooltip | title "Reset" in `white`, the line under it | `white` |
 
 ## States
 
-Hidden at the default; shown and `accent` once the value differs; `white` under the mouse; a click resets and the icon goes.
+Hidden at the default; shown in `text-muted` once the value differs; `accent` under the mouse; a click resets and the icon goes.
 
 ## The History list's revert
 

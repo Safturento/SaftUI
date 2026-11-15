@@ -762,8 +762,8 @@ function OB.PlaceLabel(cell, x)
 	end
 end
 
--- A row's label color (r, g, b, a): grey while it's disabled; an own row's
--- accent at OB.OWN_STRENGTH (cell.ownLabel, optionsshare.lua); an item's grey
+-- A row's label color (r, g, b, a): Muted while it's disabled; an own row's
+-- accent at OB.OWN_STRENGTH (cell.ownLabel, optionsshare.lua); an item's Muted
 -- while its Show is off (widget.value false); else the text color. PlaceRow
 -- and a drag's Refresh both read it.
 function OB.LabelColor(cell, disabled)

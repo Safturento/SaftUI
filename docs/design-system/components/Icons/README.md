@@ -14,7 +14,7 @@ The icon's name from `st.icons` (`x`, `chevronDown`, `chevronUp`, `rotateCcw`, `
 
 - **Files.** Each icon is `Media/Textures/lucide-<name>.tga`: 32 x 32, white on transparent, Lucide's 24 grid with the glyph in its middle half. Add one with `tools/lucide-to-tga.cjs` (its header says how), register it in `st.icons`; `tests/core/icons_test.lua` checks the files.
 - **Size.** Draw at twice the glyph's size: `icon-close` 20 for a 10px cross, `icon-chevron` 16 for an 8 x 4 caret, `icon-diff` 16, `icon-reset` 14. Use an even size on a whole-pixel centre, so its edges are whole pixels.
-- **Colour.** Tint with `SetVertexColor` from a token, never in the file: carets and the close X at rest `text-muted`; close X under the mouse `text-red`; reset `accent`, `white` under the mouse; diff `text-muted`; the menu icon `text-muted`, `accent` under the mouse.
+- **Colour.** Tint with `SetVertexColor` from a token, never in the file: carets and the close X at rest `text-muted`; close X under the mouse `text-red`; reset `text-muted` at rest, `accent` under the mouse; diff `text-muted`; the menu icon `text-muted`, `accent` under the mouse.
 - **Tooltip.** An icon that replaces a word says what it does in a tooltip ("Reset", "Close").
 - **In HTML.** Inline the SVG on a 24 viewBox, stroke 2, round caps and joins, no fill; size and colour it with the same tokens.
 
@@ -24,7 +24,7 @@ The icon's name from `st.icons` (`x`, `chevronDown`, `chevronUp`, `rotateCcw`, `
 | --- | --- | --- | --- |
 | `x` | close button; the rule editor's remove (20 in a 16 box); a pinned item's remove (16, an 8px cross, in a 14 box) | 20 | `text-muted`, `text-red` |
 | `chevron-down` | dropdown caret; the rule editor's field (a copy) | 16 | `text-muted` |
-| `rotate-ccw` | reset | 14 | `accent`, `white` |
+| `rotate-ccw` | reset | 14 | `text-muted`, `accent` |
 | `diff` | diff icon | 16 | `text-muted` |
 | `ellipsis-vertical` | the menu item's icon, and the font row's slot for a typeface (spec; in the `sb-task5` build) | 16 | `text-muted`, `accent` |
 | `chevron-up`, `chevron-down` | the position nudges (12 x 12, one texture per arrow) | 12 | `text-muted`, `text` |

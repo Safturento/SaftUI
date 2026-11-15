@@ -895,6 +895,7 @@ test('keybinding: a click waits, the next key (with modifiers) is set, Esc clear
 	stub.fire_script(w.frame, 'OnKeyDown', 'ESCAPE')
 	eq(sets[2], '', 'Esc clears the binding')
 	eq(text_of(w.text), 'Not bound', 'shown as unbound')
+	eq(ink_of(w.text), grey_rgb(), 'Not bound is Text > Muted')
 
 	click(w.frame)
 	stub.fire_script(w.frame, 'OnMouseDown', 'MiddleButton')

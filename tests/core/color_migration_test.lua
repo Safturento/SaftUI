@@ -309,7 +309,7 @@ test('step 3: a customized Buttons > Grey is dropped, and never reaches Muted', 
 	check(pcall(st.MigrateColors, st, raw)); eq(raw.colors.button.grey, nil, 'retired even when it is not a table'); eq(raw.colors.text.muted, nil)
 end)
 
-test('step 3 by version: 0 runs every step, 1 runs steps 2 and 3, 2 runs step 3 alone, 3 runs nothing', function()
+test('step 3 by version: 0 runs every step, 1 runs steps 2 and 3, 2 runs step 3 alone, the last step runs nothing', function()
 	local function profile(version)
 		return { colors = { version = version, text = { red = { r = 1 }, grey = { r = 0.4 } }, button = { blue = { r = 0.5 }, grey = { r = 0.9 } } } }
 	end
@@ -320,9 +320,9 @@ test('step 3 by version: 0 runs every step, 1 runs steps 2 and 3, 2 runs step 3 
 	raw = profile(2); st:MigrateColors(raw)
 	eq(raw.colors.loot, nil); eq(raw.theme, nil, 'step 2 is not run again'); eq(raw.colors.text.muted.r, 0.4)
 	eq(raw.colors.text.grey, nil); eq(raw.colors.button.grey, nil); eq(raw.colors.version, LAST())
-	raw = profile(3); st:MigrateColors(raw)
+	raw = profile(LAST()); st:MigrateColors(raw)
 	eq(raw.colors.text.muted, nil, 'at the last step, nothing runs'); eq(raw.colors.text.grey.r, 0.4, 'and the grey is left as it is')
-	eq(raw.colors.version, 3)
+	eq(raw.colors.version, LAST())
 end)
 
 test('step 3 on a real AceDB at version 0, 1 and 2, and run twice', function()

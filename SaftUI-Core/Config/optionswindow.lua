@@ -883,6 +883,7 @@ local function Heading(title, desc)
 	F.desc:SetText(desc or '')
 	F.desc:SetTextColor(Muted()) -- the description and the search hint are read again at each draw
 	if F.search then F.search.hint:SetTextColor(Muted()) end
+	if F.brandSub then F.brandSub:SetTextColor(Muted()) end
 	local height = 0
 	if (desc or '') ~= '' then
 		-- One line reads a font height or so, whatever the game's rounding; more
@@ -1369,6 +1370,7 @@ local function BuildSidebar(window)
 	sub:SetPoint('TOPLEFT', name, 'BOTTOMLEFT', 0, -2)
 	sub:SetTextColor(Muted())
 	sub:SetText('Options')
+	F.brandSub = sub -- repainted at each draw (Heading)
 	F.sideLines[#F.sideLines + 1] = EdgeLine(brand, 'BOTTOM')
 	F.brand = brand
 

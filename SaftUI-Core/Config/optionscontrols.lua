@@ -93,7 +93,7 @@ end
 -- Paints control from its state: alpha; under Thick and Thin the edge (accent
 -- when on, or under the mouse while enabled); the icon (accent when on, or
 -- for a link, or a button with hoverIcon, under the mouse while enabled, else
--- grey); under Blizzard a text
+-- Muted); under Blizzard a text
 -- button's label (accent when on).
 local function Paint(control)
 	local blizzard = Blizzard(control)
@@ -290,7 +290,7 @@ function W.IconButton(parent, icon, tip, size, iconSize, extra)
 end
 
 -- An icon with no box, on a frame size square that takes the mouse: Text >
--- Grey at rest and accent under the mouse. tip is required. Set
+-- Muted at rest and accent under the mouse. tip is required. Set
 -- link.onClick for what a click does.
 function W.IconLink(parent, icon, size, tip, extra)
 	if not tip then error('W.IconLink needs its tooltip') end

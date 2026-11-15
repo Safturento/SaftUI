@@ -258,7 +258,7 @@ CO.SECTIONS = {
 		key = 'text', name = 'Text', note = RELOAD_NOTE,
 		colors = Colors('text', {
 			{ 'normal', 'Text', "Ordinary text: the options window, totem timers, the flyout arrow on the totem bar's summon button, and an enemy nameplate's threat text while your threat on it is fine." },
-			{ 'muted', 'Muted', "Dimmed text and icons: the options window's hints, captions, section titles and disabled controls, and the diff icon beside a setting that differs; edit mode's hint lines; the bag categories' counts and edited marker, and the combined bank's visibility toggle; SaftUI's objective tracker's zone headers, counts and chevrons; and a unit frame's level tag for a far lower level." },
+			{ 'muted', 'Muted', "Dimmed text and icons: the options window's hints, captions, section titles and disabled controls, and the diff icon beside a setting that differs; edit mode's hint lines; the bag categories' counts and their edited and yours marker, and the combined bank's visibility toggle; SaftUI's objective tracker's zone headers, counts and chevrons; and a unit frame's level tag for a far lower level." },
 			{ 'red', 'Red', "Warnings: loot roll timers under a minute, a unit frame's level tag for a much higher level and expiring totem timers. Also a durability under 20% in the durability figure's tooltip." },
 			{ 'orange', 'Orange', "A unit frame's level tag for a somewhat higher level, and the poor end of the micro menu's stats. Also a durability from 20% to 49% in the durability figure's tooltip." },
 			{ 'yellow', 'Yellow', "A unit frame's level tag near your level, unfriendly names, and the micro menu's alert flash and the middle of its stats." },

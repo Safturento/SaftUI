@@ -324,6 +324,7 @@ end)
 
 test('the docked bar has no status line: the text is kept, small and grey, never drawn on the bar and taking no mouse', function()
 	reset()
+	if EM.statusText then EM.statusText:Hide(); EM.statusText = nil end -- made here, so its first paint is the one checked
 	EM:Activate()
 	local bar = EM:GetBar()
 	EM:SetBarStatus('Undid: Moved Player')

@@ -622,9 +622,13 @@ test("the combined bank's eye toggle is Muted, at a Muted that is not the defaul
 		end
 		return out
 	end
-	for _, rgb in ipairs(eyes()) do eq(rgb, T.rgb(unpack(keep)), 'Muted at the default') end
+	local at_default = eyes()
+	eq(#at_default, 2, 'both buttons')
+	for _, rgb in ipairs(at_default) do eq(rgb, T.rgb(180/255, 180/255, 180/255), 'Muted at the default: #b4b4b4, lighter than the Buttons > Grey #969696 it replaced (a listed change)') end
 	muted:SetRGB(0.2, 0.4, 0.6)
-	for _, rgb in ipairs(eyes()) do eq(rgb, '0.20,0.40,0.60', 'a changed Muted reaches it') end
+	local changed = eyes()
+	eq(#changed, 2, 'both buttons')
+	for _, rgb in ipairs(changed) do eq(rgb, '0.20,0.40,0.60', 'a changed Muted reaches it') end
 	muted:SetRGB(unpack(keep))
 	eq(#take_errors(), 0)
 end)

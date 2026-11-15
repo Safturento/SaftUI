@@ -625,6 +625,19 @@ test("a section title carries its block's marks and the line beside it", functio
 		entry = body.shareTitles[1]
 		eq(text_rgb(entry.title), grey(), 'a title nothing owns stays grey')
 		check(entry.parts.diff:IsShown(), 'the diff icon')
+		eq(rgb(entry.parts.diff.icon:GetVertexColor()), grey(), "the title's diff icon is Text > Muted (it was orange)")
+		do -- at OB.DIFF_STRENGTH
+			local keep = OB.DIFF_STRENGTH
+			OB.DIFF_STRENGTH = 0.5
+			local ok, err = pcall(function()
+				redraw(body, Page('source', { pos = { type = 'position', name = 'Position', order = 10, share = true } }))
+				eq(string.format('%.2f', select(4, body.shareTitles[1].parts.diff.icon:GetVertexColor())), '0.50', "the title's diff icon follows OB.DIFF_STRENGTH")
+			end)
+			OB.DIFF_STRENGTH = keep
+			if not ok then error(err, 0) end
+			redraw(body, Page('source', { pos = { type = 'position', name = 'Position', order = 10, share = true } }))
+			entry = body.shareTitles[1]
+		end
 		eq(entry.parts.diff:GetLeft() - entry.title:GetLeft(), titleWidth + 4, "4 after the title's text")
 		stub.fire_script(entry.hover, 'OnEnter', true)
 		eq(entry.parts.line:GetLeft() - entry.title:GetLeft(), titleWidth + 4 + 16 + 8, '8 after the icon')

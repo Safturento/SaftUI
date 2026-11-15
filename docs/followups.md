@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-15 — Keybind mode's hint line could read Muted](#2026-11-15--keybind-modes-hint-line-could-read-muted)
   - [2026-11-15 — The action bars' and buffs' texts default to Small text](#2026-11-15--the-action-bars-and-buffs-texts-default-to-small-text)
   - [2026-11-15 — A reset on every font row](#2026-11-15--a-reset-on-every-font-row)
   - [2026-11-15 — A window title font per theme](#2026-11-15--a-window-title-font-per-theme)
@@ -162,6 +163,16 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-15 — Keybind mode's hint line could read Muted
+
+**What:** The line "Press a key to bind it. Right-click clears." that keybind mode adds to its tooltip is drawn at a literal 0.7, 0.7, 0.7. It is a dimmed hint, the role Text > Muted names, so it could read `st:Color('text', 'muted')` and follow the player's choice.
+
+**Why noticed:** Review of color roles Task 3 (Muted): the task moved SaftUI's own dimmed tooltip lines (`SaftUI-Tracker/clicks.lua`, `items.lua`) to Muted and left this one, because the spec's call 18 keeps every other hardcoded color. At the defaults it is 178.5 against Muted's 180, so nothing would visibly change.
+
+**Anchors:** `SaftUI-ActionBars/keybindmode.lua:65`; `docs/superpowers/specs/2026-11-14-saftui-color-roles-design.md` (call 18); `docs/design-system/tokens.json` (`text-muted`).
+
+**Shape of work:** one line plus a test that sets Muted to a non-default value; it belongs with Task 4's pass over direct reads, or after it.
 
 ### 2026-11-15 — The action bars' and buffs' texts default to Small text
 

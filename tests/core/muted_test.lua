@@ -17,6 +17,25 @@ local W, OB, OW = st.OptionsWidgets, st.OptionsBody, st.OptionsWindow
 local frames, theme, close_all = H.frames, H.theme, H.close_all
 if not _G.GameTooltip then CreateFrame('GameTooltip', 'GameTooltip', UIParent, 'GameTooltipTemplate') end
 
+-- A disabled titled bare row: its label is Muted (optionsbody.lua's titled branch).
+W.Define('mutedtitled', {
+	bare = true, titled = true,
+	build = function(w)
+		w.frame = CreateFrame('Frame', nil, UIParent)
+		w.frame:SetSize(10, 10)
+	end,
+	methods = {
+		SetWidth = function(self, width) self.frame:SetWidth(width); self.frame:SetHeight(40) end,
+		Refresh = function() end,
+	},
+})
+
+-- A page with no settings: the empty-page line.
+local EMPTY_PAGE = st:NewModule('MutedEmpty')
+function EMPTY_PAGE:GetConfigTable()
+	return { name = 'Muted empty', type = 'group', category = 'Frames', args = {} }
+end
+
 -- A page with an inline section (its title, and a note under it), a disabled
 -- toggle (a disabled row's label is Muted) and a range that differs on another
 -- page (the diff icon).
@@ -28,6 +47,7 @@ function MUTED_PAGE:GetConfigTable()
 			section = { name = 'A section', desc = 'Its note.', type = 'group', inline = true, order = 1, args = {
 				off = { type = 'toggle', name = 'Off row', order = 1, disabled = true,
 					get = function() return true end, set = function() end },
+				titled = { type = 'mutedtitled', name = 'Titled off', desc = 'A titled row.', size = 'wide', order = 3, disabled = true },
 				size = { type = 'range', name = 'Size', order = 2, min = 1, max = 10, step = 1,
 					get = function() return 3 end, set = function() end,
 					share = { source = 'All', shared = function() return '3' end, targets = function() return {} end,
@@ -87,8 +107,8 @@ test('the window draws its hints, captions, section titles, tools and arrows in 
 		close_all()
 		st.Config:Open('MutedPage')
 		local F = frames()
-		-- Drawn once at build: the sidebar's profile, the page's description, the
-		-- search box's hint, the footer label and the placeholder.
+		-- Drawn at build and again at each draw: the sidebar's profile, the page's
+		-- description, the search box's hint, the footer label and the placeholder.
 		eq(ink(F.profile), MINE, 'the profile name in the sidebar')
 		eq(ink(F.desc), MINE, "the page's description")
 		eq(ink(F.search.hint), MINE, "the search box's hint")
@@ -120,6 +140,7 @@ test('the window draws its hints, captions, section titles, tools and arrows in 
 		for _, found in ipairs(walk(F.content, {})) do seen[found.what] = found.rgb end
 		eq(seen['text "A section"'], MINE, "a section's title"); eq(seen['text "Its note."'], MINE, "a section's note")
 		eq(seen['text "Off row"'], MINE, "a disabled row's label")
+		eq(seen['text "Titled off"'], MINE, "a disabled titled row's label")
 		check(seen['text "Size"'] and seen['text "Size"'] ~= MINE, 'an enabled row keeps its normal color')
 
 		-- Nothing in the whole window is drawn in either old grey.
@@ -143,6 +164,13 @@ test('a changed Muted reaches them after the window draws again', function()
 		eq(seen['text "Off row"'], '0.90,0.30,0.10', "a disabled row's label")
 		eq(ink(F.desc), '0.90,0.30,0.10', "the page's description"); eq(ink(F.search.hint), '0.90,0.30,0.10', "the search box's hint")
 		eq(ink(F.profile), '0.90,0.30,0.10', 'the sidebar\'s profile line')
+		eq(ink(F.brandSub), '0.90,0.30,0.10', "the brand's Options line")
+		eq(seen['text "Titled off"'], '0.90,0.30,0.10', "a disabled titled row's label")
+		-- The footer control is unused by any page (.agents/edit-mode.md), so its label
+		-- is pinned only at build, above.
+		st.Config:Open('MutedEmpty')
+		OW:Render()
+		eq(ink(F.placeholder), '0.90,0.30,0.10', 'the empty-page line')
 	end)
 	close_all()
 end)
@@ -161,13 +189,16 @@ test("the diff icon is Muted at OB.DIFF_STRENGTH (a listed change from orange); 
 		eq(text(r, g, b), MINE, 'in Muted, not orange'); eq(a, 1, 'at strength 1')
 		local keep = OB.DIFF_STRENGTH
 		OB.DIFF_STRENGTH = 0.5
-		OW:Render()
-		for _, cell in ipairs(OW.GetDrawnRows()) do
-			if cell.row.key == 'size' and cell.frame.share then diff = cell.frame.share.diff end
-		end
-		r, g, b, a = diff.icon:GetVertexColor()
-		eq(text(r, g, b), MINE); eq(string.format('%.2f', a), '0.50', 'its alpha follows OB.DIFF_STRENGTH')
+		local ok, err = pcall(function()
+			OW:Render()
+			for _, cell in ipairs(OW.GetDrawnRows()) do
+				if cell.row.key == 'size' and cell.frame.share then diff = cell.frame.share.diff end
+			end
+			r, g, b, a = diff.icon:GetVertexColor()
+			eq(text(r, g, b), MINE); eq(string.format('%.2f', a), '0.50', 'its alpha follows OB.DIFF_STRENGTH')
+		end)
 		OB.DIFF_STRENGTH = keep
+		if not ok then error(err, 0) end
 		close_all()
 	end)
 end)

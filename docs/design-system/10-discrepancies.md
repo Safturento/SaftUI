@@ -117,8 +117,8 @@ Standard: a written spacing scale (Code changes 10); until then use the tokens a
 Where: `OB.FLOAT_GAP` = 6, the title's gap (`optionsbody.lua:133`); the small dialog then ends 24 under them (`optionssmalldialog.lua:39-40`).
 Standard: the owner's rule, `float-gap` 24 above and below.
 
-**26. Two oranges, five reds. (The two light blues and the two blues are one accent now: color roles, Task 2. The diff orange is Muted now: Task 3.)**
-Where: diff #e0a040 (`optionsbody.lua:157`, now Text > Muted at `OB.DIFF_STRENGTH`) against Text > Orange #dc9664 (rule editor OR; the Categories "edited" marker was orange too and is Muted now) and the Cooldown Manager's #ff8040 (`Blizzard_CooldownViewer.lua:86`); own #8fd8ff against Text > Cyan #78cafa; red as Text > Red, Buttons > Red, threat bad, the close fill and `|cFFFF0000` (`api.lua:129`); blue as the profile's 0/0.68/0.94 and the chat prefix `|cff00adef` (`api.lua:122`). None of the kit's own colours is on the Colors tab or follows the theme.
+**26. Two oranges, five reds. (The two light blues and the two blues are one accent now: color roles, Task 2. The diff orange and the Categories "edited" marker's orange are Muted now: Task 3, `OB.DIFF_STRENGTH`.)**
+Where: Text > Orange #dc9664 (rule editor OR) against the Cooldown Manager's #ff8040 (`Blizzard_CooldownViewer.lua:86`); own #8fd8ff against Text > Cyan #78cafa; red as Text > Red, Buttons > Red, threat bad, the close fill and `|cFFFF0000` (`api.lua:129`); blue as the profile's 0/0.68/0.94 and the chat prefix `|cff00adef` (`api.lua:122`). None of the kit's own colours is on the Colors tab or follows the theme.
 Standard: the diff icon in `text-muted` (the old `diff` orange token is gone), own values in the `accent` (the old `own` light blue is gone), `accent` read from the profile everywhere (the chat prefix included), `text-red` for every error.
 
 **27. Two divider colours on one Thick page.**
