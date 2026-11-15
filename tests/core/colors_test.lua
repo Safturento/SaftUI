@@ -35,6 +35,9 @@ test('ColorsChanged calls OnColorsChanged with the group on every module that ha
 	st:ColorsChanged('class')
 	eq(table.concat(got, ','), 'class')
 	eq(#take_errors(), 1, 'the error is reported, not raised')
+	-- Gone again: a profile update now runs every group's whole pass, and a module
+	-- that errors would report on each.
+	st.modules.ColorsTestA, st.modules.ColorsTestB = nil, nil
 end)
 
 ------------------------------------------------------------------ the Colors tab
@@ -97,10 +100,12 @@ test('Text, Buttons, Roles, Factions and Loot say a change shows after a reload;
 	end
 end)
 
+-- The groups a set or a reset says changed: they say st:ColorChanged(group, key)
+-- (the key is color_live_test.lua's).
 local function Recorder()
-	local got, orig = {}, st.ColorsChanged
-	st.ColorsChanged = function(_, group) got[#got + 1] = group end
-	return got, function() st.ColorsChanged = orig end
+	local got, orig = {}, st.ColorChanged
+	st.ColorChanged = function(_, group) got[#got + 1] = group end
+	return got, function() st.ColorChanged = orig end
 end
 
 test("a Roles, Factions or Loot set and reset write the profile's own object and say their group", function()
