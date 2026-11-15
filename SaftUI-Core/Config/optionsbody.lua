@@ -274,6 +274,13 @@ function OB.Font(key)
 	return fontObjects[key]
 end
 
+-- Text > Normal on every font object, the widgets' too, and nothing else: what
+-- a change of that color runs (a color pass sets no font).
+function OB.ColorFonts()
+	for key in pairs(fontObjects) do fontObjects[key]:SetTextColor(Normal()) end
+	W.ColorFonts()
+end
+
 -- The profile's faces again (a profile change), the widgets' too.
 function OB.UpdateFonts()
 	for key in pairs(fontObjects) do ApplyFont(key) end

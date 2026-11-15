@@ -638,8 +638,19 @@ function Region.GetEffectiveScale(self, s) return effective_scale(s) end
 -- Ignoring the parent's scale, as a frame's (Frame.SetIgnoreParentScale).
 function Region.SetIgnoreParentScale(self, s, ignore) s.ignore_parent_scale = ignore and true or false end
 function Region.IsIgnoringParentScale(self, s) return s.ignore_parent_scale == true end
+-- Writes a color into the table the field already holds, so a color setter makes
+-- nothing per call, as the game's makes nothing (a reader's cost case counts
+-- garbage: tests/lib/color_cost.lua).
+local function put_color(s, field, r, g, b, a)
+	local c = s[field]
+	if not c then
+		c = {}
+		s[field] = c
+	end
+	c[1], c[2], c[3], c[4] = r, g, b, a or 1
+end
 function Region.SetVertexColor(self, s, r, g, b, a)
-	s.vertex_color = { number_arg(s, r, 'r'), number_arg(s, g, 'g'), number_arg(s, b, 'b'), a or 1 }
+	put_color(s, 'vertex_color', number_arg(s, r, 'r'), number_arg(s, g, 'g'), number_arg(s, b, 'b'), a)
 end
 function Region.GetVertexColor(self, s)
 	local c = s.vertex_color or { 1, 1, 1, 1 }
@@ -663,7 +674,7 @@ function Texture.SetTexture(self, s, asset)
 end
 function Texture.GetTexture(self, s) return s.texture end
 function Texture.SetColorTexture(self, s, r, g, b, a)
-	s.color_texture = { number_arg(s, r, 'r'), number_arg(s, g, 'g'), number_arg(s, b, 'b'), a or 1 }
+	put_color(s, 'color_texture', number_arg(s, r, 'r'), number_arg(s, g, 'g'), number_arg(s, b, 'b'), a)
 	s.texture, s.atlas = nil, nil
 end
 -- Takes left, right, top, bottom, or the eight corners (ULx, ULy, LLx, LLy,
@@ -805,7 +816,7 @@ function FontInstance.SetFontObject(self, s, font)
 end
 function FontInstance.GetFontObject(self, s) return s.font_object end
 function FontInstance.SetTextColor(self, s, r, g, b, a)
-	s.text_color = { number_arg(s, r, 'r'), number_arg(s, g, 'g'), number_arg(s, b, 'b'), a or 1 }
+	put_color(s, 'text_color', number_arg(s, r, 'r'), number_arg(s, g, 'g'), number_arg(s, b, 'b'), a)
 end
 -- Its own SetTextColor, else its font object's, else white.
 local function text_color_of(s)
@@ -1317,7 +1328,7 @@ function StatusBar.SetOrientation(self, s, orientation)
 end
 function StatusBar.GetOrientation(self, s) return s.orientation or 'HORIZONTAL' end
 function StatusBar.SetStatusBarColor(self, s, r, g, b, a)
-	s.bar_color = { number_arg(s, r, 'r'), number_arg(s, g, 'g'), number_arg(s, b, 'b'), a or 1 }
+	put_color(s, 'bar_color', number_arg(s, r, 'r'), number_arg(s, g, 'g'), number_arg(s, b, 'b'), a)
 end
 function StatusBar.GetStatusBarColor(self, s)
 	local c = s.bar_color or { 1, 1, 1, 1 }
