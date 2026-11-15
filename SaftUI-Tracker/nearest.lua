@@ -6,8 +6,9 @@ local TR = st.Tracker
 	button"): one bigger button for the quest item you most likely want, a
 	SecureActionButtonTemplate button of SaftUI's, SaftUITrackerNearestItem, on its
 	own holder (SaftUITrackerNearestHolder, its edit mode mover 'trackernearest'),
-	not in the item layer. Off by default (items.nearest); shown only while it has
-	an item and combat is not on. The game's rules for it are the item buttons'
+	not in the item layer. Off by default (items.nearest); shown or hidden only out
+	of combat, while it has an item (in combat it stays as it was, frozen, and dims
+	when its quest's item is gone). The game's rules for it are the item buttons'
 	(items.lua, .agents/taint.md rules 6 and 15), kept like this:
 
 	  - The holder is a plain frame made with the tracker, in combat too (a
