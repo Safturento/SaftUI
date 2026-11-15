@@ -425,7 +425,7 @@ test("Kinds of text: Button text applies at once; a saved panels.font still reac
 	local box = CreateFrame('CheckButton', 'FontsTestBox', UIParent)
 	box.Text = box:CreateFontString(nil, 'ARTWORK')
 	st:SkinCheckButton(box)
-	check(box.text:GetFontObject() == st:GetFont('normal'), 'a label starts in Check box labels')
+	check(box.text:GetFontObject() == st:GetFont('normal'), 'a label starts in the panels font (Text by default)')
 	local slot = CreateFrame('Button', 'FontsTestSlot', UIParent)
 	slot.Count = slot:CreateFontString(nil, 'ARTWORK')
 	st:SkinActionButton(slot, nil, 'slot')
