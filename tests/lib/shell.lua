@@ -33,6 +33,7 @@
 	  use_client(name, before) a fresh world on 'forever' or 'retail'
 	  st.config.global        an empty table, as AceDB gives
 	  SCALE_SCREENS           the screens use_scale knows, by k: { width, height, mode }
+	  TEST_SCALE              set in a scaled run: the shell then builds every world at use_scale(TEST_SCALE)
 	  use_scale(k)            puts the world on k's screen at the scale the model gives it
 	                          (0.75, 1, 1.25 or 1.55); nothing is reset; returns UIScale.Resolve's table
 ]]
@@ -569,10 +570,12 @@ local CLIENT_INTERFACES = { forever = 16001, retail = 120000 }
 -- A fresh world on one client, 'forever' or 'retail': reset_world(), then
 -- stub.interface set to the client's, the globals that client lacks dropped
 -- (stub.apply_client, tests/wow/game.lua) and Core's constants.lua run again
--- (it reads the interface, the player's name and realm and the screen when it
--- loads, so st.forever follows). before, if given, runs on the fresh stubs
--- first, to change what constants.lua reads. Returns SaftUI. Everything else
--- is as reset_world() leaves it, so a file can switch clients between cases;
+-- (it reads the interface and the player's name and realm when it loads, so
+-- st.forever follows), then, in a scaled run, use_scale(TEST_SCALE) once more,
+-- so the world is at the scale after everything that rebuilt it. before, if
+-- given, runs on the fresh stubs first, to change what constants.lua reads (a
+-- screen it sets is put back to the scale's in a scaled run). Returns SaftUI.
+-- Everything else is as reset_world() leaves it, so a file can switch clients between cases;
 -- the caller loads the rest of its world after it (load_core_helpers(), or
 -- core/config_helpers.lua for the real AceDB).
 function use_client(name, before)
@@ -585,6 +588,7 @@ function use_client(name, before)
 	stub.interface = interface
 	stub.apply_client()
 	load_saftui('SaftUI-Core/constants.lua')
+	if TEST_SCALE then use_scale(TEST_SCALE) end
 	return SaftUI
 end
 
@@ -622,4 +626,10 @@ function use_scale(k)
 	UIParent:SetScale(resolved.uiScale)
 	st.UIScale:SetTokens()
 	return resolved
+end
+
+-- In a scaled run (TEST_SCALE, which runner.py sets) every world is built at
+-- that scale: this file runs again on every reset_world and use_client.
+if TEST_SCALE then
+	use_scale(TEST_SCALE)
 end
