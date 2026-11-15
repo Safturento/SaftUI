@@ -336,7 +336,7 @@ function TR:OnEvent(event, ...)
 			-- Nothing runs after lockdown begins unless asked: the next frame draws what
 			-- combat changes (the dimming, the scroll lock's tooltip and bar).
 			C_Timer.After(0, function() self:RefreshItems() end)
-			return -- (it has just read everything this event would mark)
+			return -- (a refresh run here has read everything this event would mark; with only a probe pass run, the items pass above draws the rest)
 		end
 	elseif event == 'PLAYER_REGEN_ENABLED' then
 		self.combatNow = false

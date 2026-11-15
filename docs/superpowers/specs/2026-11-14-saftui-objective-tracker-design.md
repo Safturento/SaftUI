@@ -814,7 +814,7 @@ defaults being Show (the owner: "options for everything", nothing on by default)
 | Out of combat | `visibility.nocombat` | Show, Fade, Hide | the rest of the time |
 | Mouse off | `visibility.mouseoff` | Show, Fade | the mouse isn't over the window or the item column |
 | In instances | `visibility.instance` | Show, Fade, Hide | `IsInInstance()` (a dungeon, raid, battleground, arena or scenario) |
-| Boss fights | `visibility.boss` | Show, Fade, Hide | `ENCOUNTER_START` to `ENCOUNTER_END` (`IsEncounterInProgress()` at load) |
+| Boss fights | `visibility.boss` | Show, Fade, Hide | `ENCOUNTER_START` to `ENCOUNTER_END` (`C_InstanceEncounter.IsEncounterInProgress()` at load; the global `IsEncounterInProgress` is Blizzard's deprecated shim over it, so the code reads the namespace and falls back to the global: the controller's ruling after Task 12's review) |
 | Mythic+ | `visibility.mythic` | Show, Fade, Hide | `C_ChallengeMode.IsChallengeModeActive()` (`CHALLENGE_MODE_START`, `COMPLETED`, `RESET`); shown only where the function exists |
 
 And with them:
@@ -1082,7 +1082,7 @@ objectives, items, distances, the focused quest, popups), with `IsEliteQuest` an
 only under `use_client('forever')`; the old quest globals; `C_SuperTrack`; `C_Minimap.IsInsideQuestBlob`;
 `C_Scenario.GetInfo`; `GetTasksTable`, `GetTaskInfo`; `C_ContentTracking.GetTrackedIDs`;
 `C_TradeSkillUI.GetRecipesTracked`; `C_PerksActivities`; `C_NeighborhoodInitiative`;
-`C_ChallengeMode.IsChallengeModeActive`; `IsInInstance`; `IsEncounterInProgress`; `GetBindingKey`,
+`C_ChallengeMode.IsChallengeModeActive`; `IsInInstance`; `C_InstanceEncounter.IsEncounterInProgress` (the global is a deprecated shim; the controller's ruling after Task 12's review); `GetBindingKey`,
 `SetBinding`, `SaveBindings`, `GetCurrentBindingSet` (refused in combat into `stub.blocked`);
 `Constants.QuestWatchConsts`; `Enum.QuestClassification`, `Enum.ContentTrackingType`,
 `Enum.UIMapType`. In `tests/wow/widgets.lua`: the templates `SecureActionButtonTemplate` and

@@ -36,7 +36,9 @@ local OT, shape_before
 -- is a C method of the frame's metatable, not a field of the frame: the post-hook
 -- on it (the fade, Task 12) puts the game's wrapper in a field of that name, the
 -- way the hooks on SetPoint, ClearAllPoints and UpdateHeight replace Blizzard's
--- own, so that one key is left out as theirs are by being functions already there.
+-- own, so that one key is left out as theirs are by being functions already there,
+-- and only when the function is one hooksecurefunc made (stub.hook_wrappers): an
+-- addon's own function in that field is a write onto Blizzard's frame and counts.
 local function shape()
 	local out = {}
 	local frames = { tracker = OT.tracker, container = OT.container, header = OT.tracker.Header,
@@ -47,7 +49,7 @@ local function shape()
 		for key, value in pairs(frame) do
 			if type(value) ~= 'function' then
 				keys[#keys + 1] = tostring(key) .. '=' .. tostring(value)
-			elseif key ~= 'SetAlpha' then
+			elseif not (key == 'SetAlpha' and stub.hook_wrappers[value]) then
 				keys[#keys + 1] = tostring(key)
 			end
 		end
@@ -337,7 +339,8 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 			TR:PlaceBlizzard('place')
 			TR:PlaceBlizzard('concealed')
 			TR:PlaceBlizzard('concealed')
-			eq(OT.called(), expected(C_METHODS, READS), 'revealing and concealing: the same set')
+			-- (revealed, the hover's rectangle reads the tracker's size, the two reads rule 5 allows)
+			eq(OT.called(), expected(C_METHODS, READS, 'tracker:GetHeight,tracker:GetWidth'), 'revealing and concealing: the same set and the size')
 
 			-- Blizzard's re-places do the same.
 			OT.watch_calls()

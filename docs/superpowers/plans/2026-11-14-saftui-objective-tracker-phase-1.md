@@ -1071,7 +1071,7 @@ git commit -m "tracker: hand over to Blizzard's tracker while a section SaftUI d
   - `window.lua`: Background under the mouse only; faded rows take no mouse.
   - `init.lua`: the events.
   - `options.lua`: the Visibility tab.
-- Stubs: `IsEncounterInProgress` (`stub.encounter`).
+- Stubs: `C_InstanceEncounter.IsEncounterInProgress` and the global shim `IsEncounterInProgress` (`stub.encounter`). (Corrected after the review, the controller's ruling: the global is Blizzard's deprecated shim over the namespaced function.)
 - Test: create `tests/tracker/visibility_test.lua`; extend `source_scan_test.lua` (`SetAlpha`).
 - Docs:
   - `.agents/taint.md`: the fade on Blizzard's tracker; no button invisible while clickable.
@@ -1081,7 +1081,7 @@ git commit -m "tracker: hand over to Blizzard's tracker while a section SaftUI d
 **Interfaces:**
 - Consumes: Tasks 8 and 11.
 - Produces:
-  - `TR.Visibility.Applies() -> { combat, nocombat, mouseoff, instance, boss, mythic }`. It reads `InCombatLockdown`, `TR:IsHovered`, `IsInInstance`, `IsEncounterInProgress` and `C_ChallengeMode.IsChallengeModeActive` where present.
+  - `TR.Visibility.Applies() -> { combat, nocombat, mouseoff, instance, boss, mythic }`. It reads `InCombatLockdown`, `TR:IsHovered`, `IsInInstance`, `C_InstanceEncounter.IsEncounterInProgress` (else the deprecated global `IsEncounterInProgress`) and `C_ChallengeMode.IsChallengeModeActive` where present.
   - `TR.Visibility.Resolve(applies, settings, hovered) -> { window = 'show' | 'fade' | 'hide', alpha, items = 'show' | 'fade' | 'hide', itemAlpha, hideItemsDirectly, background }` (pure):
     - the strongest trigger wins, Hide over Fade over Show;
     - Show fully under the mouse turns Fade into Show;

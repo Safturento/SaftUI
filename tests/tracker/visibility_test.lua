@@ -348,6 +348,7 @@ both('a faded-to-0 window takes no clicks and no wheel; the mouse brings it back
 	stub.fire_event('QUEST_LOG_UPDATE')
 	RW.later(1)
 	local row = TR:GetQuestRow(1)
+	TR.header.collapse:EnableMouse(true) -- (a Button takes the mouse in the game; the stub's starts without)
 	check(row:IsMouseEnabled(), 'the row takes the mouse')
 	check(TR.header.collapse:IsMouseEnabled() and TR.header:IsMouseEnabled(), 'and the header and its chevron')
 	check(TR.window:IsMouseWheelEnabled() and TR.scroll:IsMouseWheelEnabled(), 'and the list the wheel (it scrolls)')
@@ -702,3 +703,139 @@ test('the Visibility tab: the six triggers, Mythic+ only where the client has it
 		eq(#take_errors(), 0, 'no errors')
 	end
 end)
+
+------------------------------------------------------------------ fix round 1
+
+test('the boss fight: C_InstanceEncounter.IsEncounterInProgress where it exists, else the global shim, else not applying', function()
+	local st, TR = world({})
+	local A = TR.Visibility.Applies
+	stub.encounter = true
+	eq(A().boss, true, 'both there: a fight')
+	local real_c, real_g = C_InstanceEncounter, IsEncounterInProgress
+	local asked = 0
+	C_InstanceEncounter = { IsEncounterInProgress = function() asked = asked + 1 return stub.encounter == true end }
+	IsEncounterInProgress = function() error('the deprecated global must not be read when the namespace has it') end
+	eq(A().boss, true, 'the namespaced function answers')
+	eq(asked, 1, 'and is the one asked')
+	C_InstanceEncounter = nil
+	IsEncounterInProgress = function() return stub.encounter == true end
+	eq(A().boss, true, 'only the global (a client before the namespace): it answers')
+	IsEncounterInProgress = nil
+	eq(A().boss, false, 'neither: no error, not applying')
+	C_InstanceEncounter, IsEncounterInProgress = real_c, real_g
+	stub.encounter = false
+	check(type(C_InstanceEncounter) == 'table' and type(C_InstanceEncounter.IsEncounterInProgress) == 'function', 'the stub has the namespace')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+both('Hide quest items off, the window hidden by a trigger: the list keeps being laid out, a new quest gets its button at its row, a spare is never left at another quest\'s spot', function(st, TR)
+	eq(items_shown(TR), 2, 'two buttons')
+	set(TR, { nocombat = 'hide' })
+	check(not TR.window:IsShown(), 'the window is hidden')
+	log({ 1, 2, 3 }, true)
+	stub.fire_event('QUEST_LOG_UPDATE')
+	RW.later(1)
+	eq(items_shown(TR), 3, 'a quest picked up meanwhile gets a shown button')
+	local function at_row(id)
+		local button, row = TR:GetItemButton(id), TR:GetQuestRow(id)
+		check(button ~= nil and button:IsShown(), 'quest ' .. id .. ' has a shown button')
+		if button and row then eq(button.placedTop, row:GetTop(), 'quest ' .. id .. ': at its row\'s top') end
+	end
+	for _, id in ipairs({ 1, 2, 3 }) do at_row(id) end
+	log({ 2, 3, 4 }, true)
+	stub.fire_event('QUEST_LOG_UPDATE')
+	RW.later(1)
+	eq(items_shown(TR), 3, 'quest 1 left, quest 4 came: still three')
+	for _, id in ipairs({ 2, 3, 4 }) do at_row(id) end
+	-- Combat: the usual freeze and dim; a row that did not move leaves its button at full alpha.
+	set(TR, { nocombat = 'show', combat = 'hide' })
+	TW.combat(true)
+	check(not TR.window:IsShown(), 'in combat the window is hidden')
+	eq(items_shown(TR), 3, 'the buttons stay')
+	eq(min_item_alpha(TR), 1, 'at full alpha: the hidden rows did not move')
+	TW.combat(false)
+end, { ids = { 1, 2 } })
+
+both('Blizzard\'s tracker: a hold goes stale while concealed; the next reveal is at the fade\'s alpha', function(st, TR, OT)
+	set(TR, { nocombat = 'fade', fade_alpha = 0.3 })
+	fade_done(TR)
+	scenario(true)
+	settle_probes()
+	fade_done(TR)
+	check(near(OT.tracker:GetAlpha(), 0.3), 'faded in its place')
+	scenario(false)
+	settle_probes(TR.HOLD + 1)
+	eq(TR.handoverState, 'own', 'concealed again')
+	-- Blizzard\'s own animations (UIParent hidden and shown) while it is concealed.
+	OT.tracker:SetAlpha(0)
+	OT.tracker:SetAlpha(1)
+	scenario(true)
+	settle_probes()
+	fade_done(TR)
+	check(near(OT.tracker:GetAlpha(), 0.3), 'revealed at the fade\'s alpha, never full while the fade holds: ' .. OT.tracker:GetAlpha())
+end, { blizzard = true })
+
+both('in place the fade is a fade, not a snap, for Blizzard\'s tracker too', function(st, TR, OT)
+	set(TR, { mouseoff = 'fade', fade_alpha = 0.2 })
+	scenario(true)
+	settle_probes()
+	fade_done(TR)
+	check(near(OT.tracker:GetAlpha(), 0.2), 'faded')
+	RW.mouse_on(TR.holder)
+	stub.fire_script(TR.fader, 'OnUpdate', 0.02)
+	local alpha = OT.tracker:GetAlpha()
+	check(alpha > 0.2 and alpha < 1, 'one short frame after the mouse arrives it is part way: ' .. alpha)
+	fade_done(TR)
+	eq(OT.tracker:GetAlpha(), 1, 'and arrives')
+end, { blizzard = true })
+
+both('a window faded to 0 takes no clicks anywhere: the scroll bar\'s parts and the wheel too; a frame that never took the mouse never gets it', function(st, TR)
+	local bar = TR.scroll.ScrollBar
+	local parts = { bar.Track, bar.Back, bar.Forward, bar:GetThumb() }
+	for _, part in ipairs(parts) do part:EnableMouse(true) end
+	bar:EnableMouseWheel(true)
+	local empty = TR.pools.empty.rows[1]
+	check(empty ~= nil and not empty:IsMouseEnabled(), 'the empty-list row never took the mouse')
+	set(TR, { mouseoff = 'fade', fade_alpha = 0 })
+	fade_done(TR)
+	for _, part in ipairs(parts) do check(not part:IsMouseEnabled(), 'a scroll bar part takes no mouse') end
+	check(not bar:IsMouseWheelEnabled(), 'nor does the bar the wheel')
+	RW.mouse_on(TR.window)
+	stub.fire_script(TR.fader, 'OnUpdate', 0.016)
+	for _, part in ipairs(parts) do check(part:IsMouseEnabled(), 'and they take it back') end
+	check(bar:IsMouseWheelEnabled(), 'the wheel too')
+	RW.mouse_off()
+	fade_done(TR)
+	RW.mouse_on(TR.window)
+	fade_done(TR)
+	check(not empty:IsMouseEnabled(), 'after a fade cycle the empty-list row still takes none')
+end, { ids = {}, config = function(st) st.config.profile.tracker.hide_empty = false end })
+
+both('the hover area: the holder and, handed over, Blizzard\'s revealed rectangle as placed (Grow up in place too); the scroll bar\'s rule is not widened', function(st, TR, OT)
+	TR.config.grow = 'up'
+	TR.config.height = 300
+	TR:UpdateConfig()
+	scenario(true)
+	settle_probes()
+	eq(TR.handoverState, 'blizzard', 'handed over')
+	-- A point inside Blizzard\'s tracker but below the holder\'s bottom.
+	local scale = OT.tracker:GetEffectiveScale()
+	local x = (OT.tracker:GetLeft() + OT.tracker:GetRight()) / 2 * scale
+	local y = (OT.tracker:GetBottom() + 5) * scale
+	check(OT.tracker:GetBottom() < TR.holder:GetBottom(), 'Blizzard\'s tracker reaches below the holder')
+	stub.cursor_x, stub.cursor_y = x, y
+	eq(TR:IsTrackerHovered(), true, 'over Blizzard\'s tracker: hovered')
+	eq(TR:IsHovered(), false, 'the bar\'s and the scroll\'s rule are as they were')
+	RW.mouse_off()
+	eq(TR:IsTrackerHovered(), false, 'away: not')
+end, { blizzard = true })
+
+both('the item layer\'s driver reaches the nearest button only by the pet battle; a refresh after a fade leaves it at full alpha', function(st, TR)
+	eq(stub.state(TR.nearestDriver).state_drivers['state-visibility'], '[petbattle] hide; show', 'built with triggers set: the pet battle\'s alone')
+	set(TR, { items = true, combat = 'fade', nocombat = 'fade', fade_alpha = 0 })
+	fade_done(TR)
+	TR:RefreshNearest()
+	stub.fire_event('QUEST_LOG_UPDATE')
+	RW.later(1)
+	eq(TR.nearestButton:GetAlpha(), 1, 'the nearest button never wears the fade')
+end, { nearest = true, visibility = { items = true, combat = 'hide', boss = 'hide' } })

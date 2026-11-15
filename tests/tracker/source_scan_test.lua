@@ -154,6 +154,8 @@ local function Scan(source)
 		-- tracker.field = value, tracker[key] = value
 		Each(mask, before .. '%s*%.%s*([%w_]+)%s*=[^=]', function(s, field) Flag(s, ('a field written onto it: %s.%s'):format(name, field)) end)
 		Each(mask, before .. '%s*%[[^%]\n]*%]%s*=[^=]', function(s) Flag(s, 'a key written onto it: ' .. name .. '[...]') end)
+		-- rawset(tracker, key, value) is a write onto it like tracker[key] = value
+		Each(mask, 'rawset%(%s*[%w_%.]*' .. name .. '%s*,', function(s) Flag(s, 'rawset onto it') end)
 		-- tracker.field:Method(), tracker.field(...)
 		Each(mask, before .. '%s*%.%s*([%w_]+)%s*:%s*([%w_]+)', function(s, field, method)
 			if field == 'Selection' and method == 'Hide' then return end
@@ -272,7 +274,7 @@ test('the scanner flags what is off the list and lets the allowed through', func
 		'tracker:ClearAllPoints()', 'tracker:MarkDirty()', 'tracker:Update()', 'tracker:UpdateHeight()',
 		'tracker:SetCollapsed(true)', 'tracker:UnregisterAllEvents()', 'tracker:UnregisterEvent("X")', 'tracker:GetRect()',
 		'tracker:GetRight()', 'tracker:GetWidth()', 'tracker:GetHeight(false)', 'tracker:IsMouseOver()', 'tracker:SetRolesets("x")',
-		'tracker:EnableMouse(false)', 'tracker:GetAlpha()', 'tracker.foo = 1', 'tracker["foo"] = 1', 'tracker.Update(tracker)', 'tracker.Header:Hide()',
+		'tracker:EnableMouse(false)', 'tracker:GetAlpha()', 'rawset(tracker, "SetAlpha", function() end)', 'rawset(self.blizzardFrame, "x", 1)\nself.blizzardFrame = tracker', 'tracker.foo = 1', 'tracker["foo"] = 1', 'tracker.Update(tracker)', 'tracker.Header:Hide()',
 		'tracker.Selection:Show()', 'getmetatable(tracker).__index.Hide(tracker)', 'getmetatable(tracker).__index.SetShown(tracker, false)',
 		'local m = getmetatable(tracker).__index\nm.Hide(tracker)', 'local m = getmetatable(tracker).__index\nm.SetParent = nil', 'local m = getmetatable(tracker).__index\nm.SetAlpha = nil',
 		'getmetatable(tracker).__newindex = nil', 'local t = getmetatable(tracker)',

@@ -452,12 +452,17 @@ local function OnWheel(_, delta)
 	TR:ScrollTo(Layout.Wheel(TR:GetScroll(), delta, TR.scrollRange or 0))
 end
 
--- Whether the mouse is over the tracker: the window, the item column beside it,
--- or, while Blizzard's tracker shows (the handover), its place: SaftUI's holder
--- or the beside spot (TR:IsBlizzardHovered, never Blizzard's own frame).
+-- Whether the mouse is over the tracker: the window or the item column beside it
+-- (the scroll bar's rule and the scroll to a focused quest read this).
 function TR:IsHovered()
 	if self.window == nil then return false end
-	return self.window:IsMouseOver() or self:IsColumnHovered() or self:IsBlizzardHovered() or false
+	return self.window:IsMouseOver() or self:IsColumnHovered() or false
+end
+
+-- The same for the fading rules (visibility.lua): and, while Blizzard's tracker
+-- shows (the handover), its place too (TR:IsBlizzardHovered).
+function TR:IsTrackerHovered()
+	return self:IsHovered() or self:IsBlizzardHovered()
 end
 
 -- The bar rule: shown while Scroll bar under the mouse only is off, or the

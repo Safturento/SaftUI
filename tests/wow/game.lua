@@ -386,14 +386,19 @@ function IsInInstance()
 	local instance = stub.instance
 	return instance ~= nil, instance and instance.type or 'none'
 end
--- IsEncounterInProgress() -> inProgress: a global function every boss mod calls,
--- true from ENCOUNTER_START to ENCOUNTER_END (stub.encounter). It is on both
--- clients (warcraft.wiki.gg, API IsEncounterInProgress); it is not in the
--- generated API documentation on either branch of Gethe/wow-ui-source (checked
--- in the Instance, EncounterJournal, Unit and Frame documentation, 2026-11-14),
--- so the signature is the wiki's, not Blizzard's source.
+-- C_InstanceEncounter.IsEncounterInProgress() -> isInProgress (bool, not
+-- nilable), true from ENCOUNTER_START to ENCOUNTER_END (stub.encounter): the
+-- generated documentation, Blizzard_APIDocumentationGenerated/
+-- InstanceEncounterDocumentation.lua line 11, the same on both branches of
+-- Gethe/wow-ui-source (read 2026-11-15). The global IsEncounterInProgress is only
+-- Blizzard's deprecated shim over it (Blizzard_DeprecatedInstanceEncounter/
+-- Deprecated_InstanceEncounter.lua lines 8-10, defined only while the CVar
+-- loadDeprecationFallbacks is on, "removed at the next expansion"), stubbed as
+-- that shim so a test can take either away.
 stub.encounter = false
-function IsEncounterInProgress() return stub.encounter == true end
+C_InstanceEncounter = C_InstanceEncounter or {}
+function C_InstanceEncounter.IsEncounterInProgress() return stub.encounter == true end
+function IsEncounterInProgress() return C_InstanceEncounter.IsEncounterInProgress() end
 -- name, instanceType, difficultyID, difficultyName, maxPlayers,
 -- dynamicDifficulty, isDynamic, instanceID, instanceGroupSize, lfgDungeonID.
 -- Outside an instance the game names the continent and gives 0s; here the
@@ -433,6 +438,8 @@ local function pack(...)
 	return { n = select('#', ...), ... }
 end
 
+stub.hook_wrappers = setmetatable({}, { __mode = 'k' })
+
 -- Post-hooks tbl[name] (or the global name): the original runs, then hook
 -- with the same arguments, and the original's results are returned. Like the
 -- game, the wrapper is stored in tbl itself, so hooking a frame's method puts
@@ -445,11 +452,15 @@ function hooksecurefunc(tbl, name, hook)
 	if type(original) ~= 'function' or type(hook) ~= 'function' then
 		error(('hooksecurefunc(): %s is not a function, or no hook was given'):format(tostring(name)), 2)
 	end
-	rawset(tbl, name, function(...)
+	local wrapper = function(...)
 		local results = pack(original(...))
 		hook(...)
 		return unpack(results, 1, results.n)
-	end)
+	end
+	-- (the wrappers the game makes, so a test can tell one from an addon's own
+	-- function put in the same field)
+	stub.hook_wrappers[wrapper] = true
+	rawset(tbl, name, wrapper)
 end
 
 StaticPopupDialogs = {}

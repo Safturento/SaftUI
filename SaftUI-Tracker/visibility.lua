@@ -34,8 +34,9 @@ local TR = st.Tracker
 	  - the panel (Background under the mouse only) is the window's backdrop frame's
 	    alpha; the text stays.
 	  - the item buttons, with Hide quest items with the tracker off: untouched,
-	    full alpha, shown, usable whatever the window does, hanging where their rows
-	    were while it is hidden (items.lua, Frozen). On: Fade is their alpha, never
+	    full alpha, shown, usable whatever the window does; a hidden window keeps
+	    being laid out, so out of combat they are assigned and placed by its rows
+	    as usual (in combat they stay put and dim as always). On: Fade is their alpha, never
 	    under BUTTON_MIN_ALPHA (a button at 0 still takes clicks and EnableMouse is
 	    blocked on a secure button in combat), Hide is the layer's state driver in
 	    combat (In combat, Out of combat and Boss fights, which a macro condition can
@@ -98,23 +99,30 @@ end
 -- then In combat, Out of combat and Boss fights when they are Hide and Hide quest
 -- items with the tracker is on, then show. The nearest button's is
 -- TR.NearestDriver(), never this.
+local driverKey, driverText
 function Visibility.Driver(settings)
+	-- Cached by the four settings it reads: it runs on every refresh.
+	local items = settings.items and true or false
+	local key = ('%s|%s|%s|%s'):format(tostring(items), tostring(settings.combat), tostring(settings.nocombat), tostring(settings.boss))
+	if key == driverKey and TR.PET_BATTLE_HIDE == driverText.pet then return driverText.text end
 	local parts = { TR.PET_BATTLE_HIDE }
-	if settings.items then
+	if items then
 		for _, part in ipairs(DRIVER_PARTS) do
 			if settings[part.key] == 'hide' then parts[#parts + 1] = part.condition end
 		end
 	end
 	parts[#parts + 1] = 'show'
-	return table.concat(parts, '; ')
+	driverKey, driverText = key, { pet = TR.PET_BATTLE_HIDE, text = table.concat(parts, '; ') }
+	return driverText.text
 end
 
 -- Which triggers apply now: { combat, nocombat, mouseoff, instance, boss, mythic }.
 -- Reads InCombatLockdown (or the combat events' word: lockdown begins after
 -- PLAYER_REGEN_DISABLED's handlers and ends before PLAYER_REGEN_ENABLED's),
--- TR:IsHovered (or the `hovered` it is given), IsInInstance, IsEncounterInProgress
--- (the encounter events' word while one is known: the game may still say a fight is
--- on inside ENCOUNTER_END) and C_ChallengeMode.IsChallengeModeActive, each only
+-- TR:IsTrackerHovered (or the `hovered` it is given), IsInInstance,
+-- C_InstanceEncounter.IsEncounterInProgress (the global shim where the namespace is
+-- missing; the encounter events' word while one is known: the game may still say a
+-- fight is on inside ENCOUNTER_END) and C_ChallengeMode.IsChallengeModeActive, each only
 -- where the client has it. Mythic+ and the encounter call may be missing: those
 -- triggers then never apply.
 function Visibility.Applies(hovered, out)
@@ -123,7 +131,7 @@ function Visibility.Applies(hovered, out)
 	if combat == nil then combat = InCombatLockdown() end
 	applies.combat = combat and true or false
 	applies.nocombat = not applies.combat
-	if hovered == nil then hovered = TR:IsHovered() end
+	if hovered == nil then hovered = TR:IsTrackerHovered() end
 	applies.mouseoff = not hovered
 
 	local instance = false
@@ -134,9 +142,20 @@ function Visibility.Applies(hovered, out)
 	applies.instance = instance
 
 	local boss = TR.encounterNow
-	if boss == nil and type(IsEncounterInProgress) == 'function' then
-		local going = Plain(IsEncounterInProgress())
-		boss = going == true or going == 1
+	if boss == nil then
+		-- The namespaced function where it exists; the global is Blizzard's deprecated
+		-- shim over it (gone with the CVar loadDeprecationFallbacks, and at the next
+		-- expansion), read only where the namespace is missing.
+		local ask
+		if type(C_InstanceEncounter) == 'table' and type(C_InstanceEncounter.IsEncounterInProgress) == 'function' then
+			ask = C_InstanceEncounter.IsEncounterInProgress
+		elseif type(IsEncounterInProgress) == 'function' then
+			ask = IsEncounterInProgress
+		end
+		if ask then
+			local going = Plain(ask())
+			boss = going == true or going == 1
+		end
 	end
 	applies.boss = boss and true or false
 
@@ -203,10 +222,38 @@ end
 -- faded out (alpha 0): a click goes through to the world. Hovering is geometry
 -- (IsMouseOver), which needs no mouse. EnableMouse is not protected on any of
 -- these (none is secure, none is a parent or anchor of a secure frame).
+-- Only a frame this turned off is turned on again: one that never took the mouse
+-- (the empty-list row) never gets it.
+local mouseOff, wheelOff = setmetatable({}, { __mode = 'k' }), setmetatable({}, { __mode = 'k' })
+
 local function SetFrameMouse(frame, on)
 	if not frame then return end
-	if frame:IsMouseEnabled() ~= on then frame:EnableMouse(on) end
-	if not on and GameTooltip:IsOwned(frame) then GameTooltip:Hide() end
+	if on then
+		if mouseOff[frame] then
+			mouseOff[frame] = nil
+			frame:EnableMouse(true)
+		end
+		return
+	end
+	if frame:IsMouseEnabled() then
+		mouseOff[frame] = true
+		frame:EnableMouse(false)
+	end
+	if GameTooltip:IsOwned(frame) then GameTooltip:Hide() end
+end
+
+-- The same for a frame's wheel.
+local function SetFrameWheel(frame, on)
+	if not frame then return end
+	if on then
+		if wheelOff[frame] then
+			wheelOff[frame] = nil
+			frame:EnableMouseWheel(true)
+		end
+	elseif frame:IsMouseWheelEnabled() then
+		wheelOff[frame] = true
+		frame:EnableMouseWheel(false)
+	end
 end
 
 -- One row's mouse takers: the row, a quest row's slot and icon button, a zone
@@ -236,6 +283,16 @@ function TR:SetInput(on)
 		SetFrameMouse(header.collapse, on)
 	end
 	if self.window then SetFrameMouse(self.window.barLock, on) end
+	-- The scroll bar's own parts (the template's track and thumb take the mouse, its
+	-- steppers are buttons, the bar the wheel): plain frames of SaftUI's scroll frame.
+	local bar = self.scroll and self.scroll.ScrollBar
+	if bar then
+		SetFrameMouse(bar.Track, on)
+		SetFrameMouse(bar.Back, on)
+		SetFrameMouse(bar.Forward, on)
+		SetFrameMouse(bar.GetThumb and bar:GetThumb(), on)
+		SetFrameWheel(bar, on)
+	end
 	self:UpdateWheel()
 end
 
@@ -298,7 +355,7 @@ function TR:StepFade(elapsed)
 	local fx = self.fx
 	if not fx then return end
 	if self.hoverWatch then
-		local hovered = self:IsHovered() and true or false
+		local hovered = self:IsTrackerHovered() and true or false
 		if hovered ~= self.hoverSeen then
 			self:ApplyVisibility()
 		end
@@ -340,7 +397,7 @@ end
 function TR:ApplyVisibility()
 	if not self.built or not self.window then return end
 	local settings = self.config.visibility
-	local hovered = self:IsHovered() and true or false
+	local hovered = self:IsTrackerHovered() and true or false
 	self.hoverSeen = hovered
 	self.applies = Visibility.Applies(hovered, self.applies)
 	local result = Visibility.Resolve(self.applies, settings, hovered, self.visibility)
@@ -348,24 +405,28 @@ function TR:ApplyVisibility()
 	local fx = Fx(self)
 
 	-- Shown or hidden: one answer, with the handover's and the empty list's
-	-- (ApplyWindowShown), and Blizzard's tracker follows (PlaceBlizzard).
+	-- (ApplyWindowShown), and Blizzard's tracker follows (PlaceBlizzard), after the
+	-- alphas below are settled so it is placed once, with the alpha it will wear.
 	local hidden = result.window == 'hide'
 	local hiddenChanged = (self.visHidden or false) ~= hidden
 	self.visHidden = hidden
-	if hiddenChanged then
-		self:ApplyWindowShown()
-		self:PlaceBlizzard(self.blizzardWhere)
-	end
 
-	-- The alphas move toward their targets; one that isn't seen (a hidden window, a
-	-- window that just came back) is put there at once.
-	local snap = not self.fxPlaced or hiddenChanged or not self.window:IsShown()
+	-- The alphas move toward their targets; one that isn't seen (a window hidden
+	-- with nothing else wearing it, a window that just came back) is put there at
+	-- once. Blizzard's tracker in SaftUI's place wears the window's alpha while the
+	-- window is hidden by the handover, so that one fades.
+	local worn = self.window:IsShown() or ((self.handoverState or 'own') ~= 'own' and not hidden)
+	local snap = not self.fxPlaced or hiddenChanged or not worn
 	fx.tWindow, fx.tItems, fx.tBg = result.alpha, result.itemAlpha, result.background and 1 or 0
 	if snap then
 		fx.window, fx.items, fx.bg = fx.tWindow, fx.tItems, fx.tBg
 		self.fxPlaced = true
-		self:DrawFade()
 	end
+	if hiddenChanged then
+		self:ApplyWindowShown()
+		self:PlaceBlizzard(self.blizzardWhere)
+	end
+	if snap then self:DrawFade() end
 	self.fading = fx.window ~= fx.tWindow or fx.items ~= fx.tItems or fx.bg ~= fx.tBg
 
 	-- A window faded out takes no mouse; one that comes back takes it at once, so a
@@ -382,8 +443,9 @@ function TR:ApplyVisibility()
 
 	-- The mouse is watched while a rule needs it: Mouse off, a panel under the mouse
 	-- only, or a fade the mouse lifts.
-	self.hoverWatch = settings.mouseoff ~= 'show' or settings.background_hover == true
-		or (settings.hover and result.base == 'fade') or false
+	-- Nothing is hovered, or revealed to be, while the window is hidden by a trigger.
+	self.hoverWatch = (not hidden) and (settings.mouseoff ~= 'show' or settings.background_hover == true
+		or (settings.hover and result.base == 'fade')) or false
 	self:UpdateFader()
 end
 

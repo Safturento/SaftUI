@@ -190,24 +190,18 @@ end
 ------------------------------------------------------------------ the fade and the mouse
 
 -- Whether the mouse is over the place Blizzard's tracker shows at: SaftUI's
--- holder while it is in SaftUI's place (a frame of SaftUI's, Width by Max height),
--- or the beside spot's numbers (BlizzardTarget's screen corner, the tracker's
--- width and height by the two reads the rule allows) while it is beside. Never
--- Blizzard's own frame (no rect read of it, .agents/taint.md rule 5). False while
--- it is concealed.
+-- holder plus the rectangle SaftUI placed it in (CacheRect), while it shows (in
+-- SaftUI's place or beside). Never Blizzard's own frame (no rect read of it,
+-- .agents/taint.md rule 5). False while it is concealed. Allocates nothing.
 function TR:IsBlizzardHovered()
-	local tracker = self.blizzardFrame
 	local where = self.blizzardEffective
-	if not tracker or where == nil or where == 'concealed' then return false end
-	if where == 'place' then return self.holder ~= nil and self.holder:IsMouseOver() or false end
-	local _, point, _, _, screenX, screenY = self:BlizzardTarget('beside')
-	if not screenX then return false end
-	local width, height, scale = tracker:GetWidth(true), tracker:GetHeight(true), tracker:GetEffectiveScale()
+	if not self.blizzardFrame or where == nil or where == 'concealed' then return false end
+	if self.holder and self.holder:IsMouseOver() then return true end
+	local rect = self.blizzardRect
+	if not (rect and rect.valid) then return false end
 	local cursorX, cursorY = GetCursorPosition()
-	if not Plain(width, height, scale, cursorX, cursorY) then return false end
-	width, height = width * scale, height * scale
-	local left = point == 'TOPLEFT' and screenX or screenX - width
-	return cursorX >= left and cursorX <= left + width and cursorY <= screenY and cursorY >= screenY - height
+	if not Plain(cursorX, cursorY) then return false end
+	return cursorX >= rect.left and cursorX <= rect.right and cursorY <= rect.top and cursorY >= rect.bottom
 end
 
 -- Holds Blizzard's tracker at `alpha` (its C SetAlpha, from the frame's
@@ -235,7 +229,13 @@ end
 function TR:SyncBlizzardAlpha(force)
 	if not self.blizzardFrame then return end
 	local where = self.blizzardEffective
-	if where == nil or where == 'concealed' then return end
+	if where == nil then return end
+	if where == 'concealed' then
+		-- Off screen: not touched. But if Blizzard set its own alpha meanwhile the
+		-- hold is stale (unknown, false), so the next reveal writes it again.
+		if force and self.blizzardAlphaSet ~= nil then self.blizzardAlphaSet = false end
+		return
+	end
 	local fx = self.fx
 	local alpha = fx and fx.window or 1
 	self:SetBlizzardAlpha(alpha < 1 and alpha or nil, force)
@@ -249,7 +249,7 @@ local function PlaceAt(self, tracker, where)
 		and st:QueueAfterCombat('tracker_blizzard', function() self:PlaceBlizzard(self.blizzardWhere) end) then
 		return
 	end
-	local parent, point, x, y = self:BlizzardTarget(where)
+	local parent, point, x, y, screenX, screenY = self:BlizzardTarget(where)
 	if not parent then return end
 	local methods = getmetatable(tracker).__index
 	local clamp = where ~= 'concealed'
@@ -257,9 +257,35 @@ local function PlaceAt(self, tracker, where)
 	if issecretvalue(clamped) or (clamped and true or false) ~= clamp then
 		methods.SetClampedToScreen(tracker, clamp)
 	end
-	if PlacedAt(tracker, parent, point, x, y) then return end
-	methods.ClearAllPoints(tracker)
-	methods.SetPoint(tracker, point, parent, point, x, y)
+	if not PlacedAt(tracker, parent, point, x, y) then
+		methods.ClearAllPoints(tracker)
+		methods.SetPoint(tracker, point, parent, point, x, y)
+	end
+	return point, screenX, screenY
+end
+
+-- Blizzard's revealed rectangle as SaftUI placed it, in screen units, cached for
+-- the hover (one table, refilled): worked out from the spot SaftUI gave the tracker
+-- and the two reads rule 5 allows (`GetWidth(true)`, `GetHeight(true)`), each time
+-- it is placed (every layout of Blizzard's re-places it, so a height change
+-- follows), never per frame. The controller's ruling (for the owner to check): the
+-- hover area is SaftUI's holder plus this rectangle while Blizzard's tracker shows,
+-- so Grow up in place, where the tracker hangs below the holder's bottom, is covered.
+local function CacheRect(self, tracker, where, point, screenX, screenY)
+	local rect = self.blizzardRect
+	if not rect then
+		rect = {}
+		self.blizzardRect = rect
+	end
+	rect.valid = false
+	if where == 'concealed' or not screenX then return end
+	local width, height, scale = tracker:GetWidth(true), tracker:GetHeight(true), tracker:GetEffectiveScale()
+	if not Plain(width, height, scale) then return end
+	width, height = width * scale, height * scale
+	rect.left = point == 'TOPLEFT' and screenX or screenX - width
+	rect.right = rect.left + width
+	rect.top, rect.bottom = screenY, screenY - height
+	rect.valid = true
 end
 
 -- Puts Blizzard's tracker at `where` ('concealed', 'place' or 'beside').
@@ -279,7 +305,8 @@ function TR:PlaceBlizzard(where)
 	self.blizzardWhere = where
 	if self.visHidden then where = 'concealed' end
 	self.blizzardEffective = where
-	PlaceAt(self, tracker, where)
+	local point, screenX, screenY = PlaceAt(self, tracker, where)
+	CacheRect(self, tracker, where, point, screenX, screenY)
 	-- The fade holds while it shows, and is let go once it is revealed again.
 	self:SyncBlizzardAlpha()
 end

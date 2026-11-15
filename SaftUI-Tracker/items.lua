@@ -776,10 +776,21 @@ local function RoundToPixel(value)
 	return st:RoundToPixel(value, UIParent)
 end
 
+-- Whether a row is laid out where it can be read: visible, or shown in a window
+-- that only a trigger has hidden (Hide quest items off: the list keeps being laid
+-- out while it is hidden, so the buttons are assigned and placed by their rows as
+-- usual). Not for a collapsed list or a window the handover or an empty list hides.
+local function RowLaidOut(self, row)
+	if not row then return false end
+	if row:IsVisible() then return true end
+	return self.visHidden == true and row:IsShown() and self.scroll:IsShown() and self.content:IsShown()
+		and not self.itemsHidden and self.handoverState ~= 'blizzard'
+end
+
 -- The offsets of a row's button, in the layer's pixels, or nil while it isn't
 -- wanted there.
 local function Place(self, row, size)
-	if not row or not row:IsVisible() then return nil end
+	if not RowLaidOut(self, row) then return nil end
 	return Items.RowPlace(row:GetTop(), row:GetRight(), self.scroll:GetTop(), self.scroll:GetBottom(), size, RoundToPixel)
 end
 
@@ -810,16 +821,7 @@ local function ShowAt(self, button, left, top)
 	end
 end
 
--- Whether a trigger has hidden the window while the quest items stay (Hide quest
--- items off): its rows are hidden with it, and the buttons hang where their rows
--- were, shown, usable and at full alpha, rather than following rows that aren't
--- there. They are placed again when the window is back.
-local function Frozen(self)
-	return self.visHidden and not self.itemsHidden
-end
-
 local function PlaceButton(self, button, row, size)
-	if Frozen(self) then return end
 	ShowAt(self, button, Place(self, row, size))
 end
 
@@ -858,7 +860,7 @@ local function ColumnPlaces(self, wanted, size)
 			entries[index] = entry
 		end
 		local row = slot.row
-		local top = row:IsVisible() and row:GetTop() or nil
+		local top = RowLaidOut(self, row) and row:GetTop() or nil
 		entry.top = top and RoundToPixel(top) or nil
 		-- Whether the title's button would be in view: a place of none then means the
 		-- stack pushed it out, not the scroll.
@@ -929,9 +931,7 @@ local function AssignItems(self, wanted)
 			if column then
 				local place = places[index]
 				MarkStacked(self, button, index, place)
-				if Frozen(self) then
-					-- (as it hung)
-				elseif place then
+				if place then
 					ShowAt(self, button, place.left, place.top)
 				else
 					ShowAt(self, button)
@@ -973,8 +973,7 @@ local function DimItems(self)
 				local rowTop
 				if sameItem and row.item == 'row' then
 					local _, top = Place(self, row, button.sizeSet or size)
-					-- (a window hidden by a trigger moved no row: the button hangs as it was)
-					rowTop = Frozen(self) and button.placedTop or top
+					rowTop = top
 					button.item, button.title = item, quest.title
 					button.cd, button.range = item.cooldown, item.range
 				end
@@ -1098,7 +1097,6 @@ end
 -- The column's buttons, placed again where the list has them now: their places
 -- and numbers, hiding the ones whose title is out of view.
 local function PlaceColumn(self)
-	if Frozen(self) then return end
 	local wanted = Wanted(self)
 	local places = ColumnPlaces(self, wanted, self.config.items.size)
 	for index, slot in ipairs(wanted) do
