@@ -635,3 +635,39 @@ test("UF:GetConfigFrame('nameplate') is the plate with the lowest number, or nil
 	eq(target(), two.Health, "an element's Position places it on that plate")
 	check(three ~= nil, 'a third')
 end)
+
+------------------------------------------------------------------ resets
+
+test('the plate pages have a reset on each setting: Friendly plates is saved on the Enemy config and resets through its own set', function()
+	local st, UF = world('forever')
+	load_saftui('SaftUI-Core/Config/optionsdefault.lua')
+	local OM = st.OptionsModel
+	local root = { Unitframes = UF:GetConfigTable() }
+	local function Row(path)
+		local group = { args = root }
+		for _, key in ipairs(path) do group = OM.SubOption(group, key) end
+		return { option = group, path = path, type = group.type, key = path[#path] }
+	end
+	local friendly = Row({ 'Unitframes', 'friendlynameplate', 'general', 'friendly' })
+	local width = Row({ 'Unitframes', 'nameplate', 'general', 'width' })
+	eq(OM.DefaultSource(root, friendly), 'derived', 'Friendly plates resets from where it is saved')
+	eq(OM.DefaultSource(root, width), 'derived', "a Width box too, though its get hands on to the group's")
+	check(not OM.DefaultDiffers(root, friendly) and not OM.DefaultDiffers(root, width), 'both at their defaults on a fresh profile')
+
+	local config = UF:GetProfileConfig().nameplate
+	local friendlyDefault = config.friendly
+	local widthDefault = config.width
+	local applied, apply = 0, UF.ApplyNameplateCVars
+	UF.ApplyNameplateCVars = function(...) applied = applied + 1 return apply(...) end
+	check(OM.WriteValue(root, friendly, not friendlyDefault), 'Friendly plates changed')
+	check(OM.WriteValue(root, width, tostring(widthDefault + 9)), 'Width changed')
+	eq(config.friendly, not friendlyDefault, 'it is saved on the Enemy page config')
+	check(OM.DefaultDiffers(root, friendly) and OM.DefaultDiffers(root, width), 'both differ')
+	local before = applied
+	check(OM.DefaultReset(root, friendly), 'Friendly plates reset')
+	check(OM.DefaultReset(root, width), 'Width reset')
+	eq(config.friendly, friendlyDefault, 'Friendly plates is at its default')
+	eq(config.width, widthDefault, 'Width is at its default')
+	check(applied > before, "the reset went through the row's own set: the game's settings followed")
+	check(not OM.DefaultDiffers(root, friendly) and not OM.DefaultDiffers(root, width), 'neither differs now')
+end)

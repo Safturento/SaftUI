@@ -169,7 +169,8 @@ for _, config in pairs(indicators) do
                     Update()
                 end,
                 UF:ConfigTarget(unit, config.name),
-                "Where the icon sits: which of its points goes to which point of what it's attached to, then moved by X and Y."
+                "Where the icon sits: which of its points goes to which point of what it's attached to, then moved by X and Y.",
+                nil, UF.SavedAt(unit, config.configKey, 'position')
             ),
         }
         if config.addOptions then
@@ -180,6 +181,7 @@ for _, config in pairs(indicators) do
             order = config.order,
             type = 'group',
             name = config.label,
+            saved = UF.SavedIn(unit, config.configKey),
             get = function(info) return Config()[info[#info]] end,
             set = function(info, value)
                 Config()[info[#info]] = value

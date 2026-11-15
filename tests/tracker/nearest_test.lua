@@ -611,7 +611,11 @@ test('the Position row moves the holder and saves nearest_position', function()
 	local _, _, _, x = TR.nearestHolder:GetPoint(1)
 	eq(x, -100, 'the holder follows')
 	eq(position.get({}, 'x_off'), -100, 'and reads it back')
-	position.default.reset()
+	local root = { Tracker = TR:GetConfigTable() }
+	local row = { option = root.Tracker.args.items.args.nearest_position, path = { 'Tracker', 'items', 'nearest_position' },
+		type = 'position', key = 'nearest_position' }
+	eq(st.OptionsModel.DefaultSource(root, row), 'mover', "the row's reset is its mover's")
+	check(st.OptionsModel.DefaultReset(root, row), 'the reset ran')
 	eq(TR.config.items.nearest_position.x_off, -320, 'reset to the default')
 	eq(#take_errors(), 0, 'no errors')
 end)

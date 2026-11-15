@@ -42,6 +42,7 @@ function TB:GetConfigTable()
 	local timerFont = generators.font(5.5,
 		"The font of the time left on each element's totem. The totem bar's key bindings, counts and names follow Button text (Global settings > Fonts); the timers have their own.")
 	timerFont.name = 'Timer font'
+	timerFont.saved = st.Config.SavedAt('totembar', 'timer_font')
 	timerFont.get = function() return self.config.timer_font end
 	timerFont.set = function(_, value)
 		self.config.timer_font = value
@@ -90,6 +91,7 @@ function TB:GetConfigTable()
 			desc = ('The %s totem: its button border, its choice in the flyout and its timer bar.'):format(element),
 			type = 'color',
 			size = 'small',
+			saved = st.Config.SavedAt('totembar', 'colors', element),
 			get = function()
 				local color = self.config.colors[element]
 				return color[1], color[2], color[3]
@@ -107,6 +109,7 @@ function TB:GetConfigTable()
 		name = 'General',
 		type = 'group',
 		order = 1,
+		saved = st.Config.SavedIn('totembar'),
 		get = function(info) return self.config[info[#info]] end,
 		set = function(info, value)
 			local key = info[#info]

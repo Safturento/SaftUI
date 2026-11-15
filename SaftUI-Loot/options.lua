@@ -14,6 +14,7 @@ local function TestModeToggle(desc, field, setter)
 		size = 'small',
 		get = function() return LT[field] and true or false end,
 		set = function(_, value) setter(LT, value) end,
+		noReset = 'Test mode lasts this session: it is off at every login.',
 	}
 end
 
@@ -25,6 +26,7 @@ local function BuildGeneral(config_key, args, apply)
 		type = 'group',
 		order = 1,
 		get = function(info) return LT.config[config_key][info[#info]] end,
+		saved = st.Config.SavedIn('loot', config_key),
 		set = function(info, value)
 			LT.config[config_key][info[#info]] = value
 			apply()

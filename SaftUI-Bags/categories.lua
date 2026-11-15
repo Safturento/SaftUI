@@ -46,6 +46,7 @@ local INV = st:GetModule('Inventory')
 	  (a default restored or reset beside a category with its name is
 	  numbered, "Toys (2)", so no two categories share a name)
 	  INV:ResetCategory(id)              INV:ResetAllCategories()
+	  INV:CategoryOrderDiffers()         INV:ResetCategoryOrder()
 	  INV:GetPin(itemID)                 INV:PinItem(itemID, id)
 	  INV:UnpinItem(itemID)              INV:GetPinnedItems(id)
 	  INV:IsProtected(itemID)            INV:SetProtected(itemID, on)
@@ -54,6 +55,7 @@ local INV = st:GetModule('Inventory')
 	  INV:MigrateCategories()    an old profile's hide flags and Auto Vendor list
 	  INV:IsCategoryHidden(windowId, key)
 	  INV:SetCategoryHidden(windowId, key, hidden)    (Show in, below)
+	  INV:ShowCategoryEverywhere(key)
 ]]
 
 INV.SELL_CATEGORY = 'Grays/Auto Vendor'
@@ -590,6 +592,64 @@ function INV:ResetCategory(id)
 	return true
 end
 
+-- The order the shipped categories go back to: the default order of those
+-- that exist (not deleted), Miscellaneous last, each of yours right after the
+-- category it follows now (first when it is first; after the one of yours
+-- before it, in a run). Returns the ids, and the shipped ones' ids alone.
+local function ShippedOrder(self)
+	local store = self:CategoryStore()
+	local current = self:GetCategoryList()
+	local after, first, anchor = {}, {}, nil
+	for _, entry in ipairs(current) do
+		if entry.default then
+			anchor = entry.id
+		elseif anchor then
+			after[anchor] = after[anchor] or {}
+			table.insert(after[anchor], entry.id)
+		else
+			first[#first + 1] = entry.id
+		end
+	end
+	local out, shipped = {}, {}
+	for _, id in ipairs(first) do out[#out + 1] = id end
+	for _, def in ipairs(self.CategoryDefaults.Build()) do
+		if def.id ~= self.MISC_CATEGORY and (KEPT[def.id] or not store.deleted[def.id]) then
+			shipped[#shipped + 1] = def.id
+			out[#out + 1] = def.id
+			for _, id in ipairs(after[def.id] or {}) do out[#out + 1] = id end
+		end
+	end
+	out[#out + 1] = self.MISC_CATEGORY
+	return out, shipped
+end
+
+-- Whether the shipped categories are out of their shipped order (yours
+-- going where they are doesn't count).
+function INV:CategoryOrderDiffers()
+	local _, shipped = ShippedOrder(self)
+	local now = {}
+	for _, entry in ipairs(self:GetCategoryList()) do
+		if entry.default and entry.id ~= self.MISC_CATEGORY then now[#now + 1] = entry.id end
+	end
+	return not R.Equal(now, shipped)
+end
+
+-- Puts the shipped categories back in their shipped order, each of yours
+-- right after the category it follows now, Miscellaneous last. Nothing else
+-- changes.
+function INV:ResetCategoryOrder()
+	if not self:CategoryOrderDiffers() then return false end
+	local order = ShippedOrder(self)
+	local store = self:CategoryStore()
+	local own = false
+	for _, entry in ipairs(self:GetCategoryList()) do
+		if not entry.default then own = true end
+	end
+	store.order = own and order or nil
+	self:CategoriesChanged()
+	return true
+end
+
 -- Everything as shipped: order, edits, your categories and the deleted
 -- defaults cleared, and the pins to your categories removed. Other pins and
 -- Protected stay. (nextId stays, so an id is never used twice.)
@@ -782,5 +842,15 @@ function INV:SetCategoryHidden(windowId, key, hidden)
 	if type(filters.categories) ~= 'table' then filters.categories = {} end
 	if type(filters.categories[windowId]) ~= 'table' then filters.categories[windowId] = {} end
 	filters.categories[windowId][key] = hidden or nil
+	return true
+end
+
+-- Shows a list category in every window, any a flag was set for (Show in lists
+-- the windows of this client, but the Edit view's checkbox and a migrated
+-- profile can hide it in one it doesn't), in one write.
+function INV:ShowCategoryEverywhere(key)
+	local entry = Entry(self, key)
+	if not entry then return false end
+	if SetField(self, key, 'hide', {}) then self:CategoriesChanged() end
 	return true
 end

@@ -117,7 +117,8 @@ local function GetConfigTable(unit)
 			end,
 			UF:ConfigTarget(unit, 'Castbar', frameKey),
 			("Where the %s sits: which of its points goes to which point of what it's attached to, then moved by X and Y."):format(what),
-			name
+			name,
+			key and UF.SavedAt(unit, 'castbar', key, 'position') or UF.SavedAt(unit, 'castbar', 'position')
 		)
 	end
 
@@ -128,6 +129,7 @@ local function GetConfigTable(unit)
 			name = name,
 			type = 'group',
 			inline = true,
+			saved = UF.SavedIn(unit, 'castbar', key),
 			get = function(info) return Config()[key][info[#info]] end,
 			set = function(info, value)
 				Config()[key][info[#info]] = value
@@ -145,6 +147,7 @@ local function GetConfigTable(unit)
 			desc = desc,
 			type = 'color',
 			size = 'small',
+			saved = UF.SavedAt(unit, 'castbar', 'colors', key),
 			get = function()
 				local color = Config().colors[key]
 				return color.r, color.g, color.b
@@ -177,6 +180,7 @@ local function GetConfigTable(unit)
 		order = 6,
 		type = 'group',
 		name = 'Castbar',
+		saved = UF.SavedIn(unit, 'castbar'),
 		get = function(info) return Config()[info[#info]] end,
 		set = function(info, value)
 			Config()[info[#info]] = value
@@ -196,7 +200,7 @@ local function GetConfigTable(unit)
 					framelevel = generators.framelevel(3, FRAME_LEVEL),
 					normal = Color(4, 'Color', 'normal', "The bar's color while the cast can be interrupted. Shown from the next cast."),
 					nointerrupt = Color(5, "Can't interrupt", 'nointerrupt', "The bar's color while the cast can't be interrupted. Shown from the next cast."),
-					size = UF.GenerateRelativeSizeConfigGroup(6),
+					size = UF.GenerateRelativeSizeConfigGroup(6, UF.SavedIn(unit, 'castbar')),
 					-- Last in Bar.
 					position = Position(1000, nil, nil, 'castbar'),
 				},
@@ -208,7 +212,7 @@ local function GetConfigTable(unit)
 				theme = generators.theme(1, "The icon's border and background."),
 				background = generators.background(1.5),
 				framelevel = generators.framelevel(2, FRAME_LEVEL),
-				size = UF.GenerateRelativeSizeConfigGroup(3),
+				size = UF.GenerateRelativeSizeConfigGroup(3, UF.SavedIn(unit, 'castbar', 'icon')),
 				-- Last in Icon.
 				position = Position(1000, 'icon', 'Icon', 'icon', 'Icon position'),
 			}),

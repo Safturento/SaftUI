@@ -80,6 +80,7 @@ local function GetConfigTable(unit)
 			name = name,
 			type = 'group',
 			inline = true,
+			saved = UF.SavedIn(unit, 'additionalpower', key),
 			get = function(info) return Config()[key][info[#info]] end,
 			set = function(info, value)
 				Config()[key][info[#info]] = value
@@ -94,6 +95,7 @@ local function GetConfigTable(unit)
 		order = 3,
 		type = 'group',
 		name = 'Additional power',
+		saved = UF.SavedIn(unit, 'additionalpower'),
 		get = function(info) return Config()[info[#info]] end,
 		set = function(info, value)
 			Config()[info[#info]] = value
@@ -109,7 +111,7 @@ local function GetConfigTable(unit)
 			background = G.background(4.5),
 			alpha = G.alpha(5, 'How solid the mana bar is, from see-through to opaque.'),
 			framelevel = G.framelevel(6, 'Draws the bar over the parts of the unit frame with a lower frame level, and under those with a higher one.'),
-			size = UF.GenerateRelativeSizeConfigGroup(8),
+			size = UF.GenerateRelativeSizeConfigGroup(8, UF.SavedIn(unit, 'additionalpower')),
 			-- oUF's AdditionalPower knows only colorPower.
 			colors = UF.GenerateColorsConfigGroup(9, unit, 'additionalpower', { 'colorPower' }, Config, Update, {
 				colorPower = 'Colors the bar and its background in the mana color. With this and Custom both off, nothing colors them: they keep the last color they had.',
@@ -140,7 +142,7 @@ local function GetConfigTable(unit)
 					end,
 					UF:ConfigTarget(unit, 'AdditionalPower', 'text'),
 					"Where the mana text sits: which of its points goes to which point of what it's attached to, then moved by X and Y.",
-					'Text position'
+					'Text position', UF.SavedAt(unit, 'additionalpower', 'text', 'position')
 				),
 			}),
 			bg = Section(99, 'Bar background', 'bg', {
@@ -156,7 +158,8 @@ local function GetConfigTable(unit)
 					Update()
 				end,
 				UF:ConfigTarget(unit, 'AdditionalPower'),
-				"Where the mana bar sits: which of its points goes to which point of what it's attached to, then moved by X and Y."
+				"Where the mana bar sits: which of its points goes to which point of what it's attached to, then moved by X and Y.",
+				nil, UF.SavedAt(unit, 'additionalpower', 'position')
 			),
 		},
 	}

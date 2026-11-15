@@ -199,6 +199,15 @@ function AP:GetGeometry(key)
 	return geo
 end
 
+-- Wrap direction's default for the grow in use: the shipped one when it runs across the
+-- grow, else the fallback GetGeometry uses.
+function AP:DefaultWrap(key)
+	local _, shipped = st:DefaultAt('auras', key, 'wrap')
+	local geo = self:GetGeometry(key)
+	if IsPerpendicular(geo.grow, shipped) then return shipped end
+	return geo.horizontal and 'DOWN' or 'LEFT'
+end
+
 function AP:Invalidate(key)
 	self.geometry[key] = nil
 end
@@ -684,6 +693,7 @@ function AP:GetTextOptions(key, kind, name, order)
 		type = 'group',
 		inline = true,
 		order = order,
+		saved = st.Config.SavedIn('auras', key, kind),
 		get = function(i) return self.config[key][kind][i[#i]] end,
 		set = function(i, value)
 			self.config[key][kind][i[#i]] = value
@@ -711,7 +721,8 @@ function AP:GetTextOptions(key, kind, name, order)
 				end,
 				nil,
 				('Where the %s text sits on each icon: which point of the text goes to which point of the icon, then moved by X and Y.'):format(what),
-				kind == 'duration' and 'Duration position' or 'Stack count position'
+				kind == 'duration' and 'Duration position' or 'Stack count position',
+				st.Config.SavedAt('auras', key, kind) -- the text's point, rel_point and offsets sit in its own table
 			),
 		},
 	}
@@ -774,6 +785,7 @@ function AP:GetFrameOptions(info, order)
 				name = 'General',
 				type = 'group',
 				order = 1,
+				saved = st.Config.SavedIn('auras', key),
 				get = function(i)
 					local option = i[#i]
 					if option == 'wrap' or option == 'grow' then
@@ -810,6 +822,19 @@ function AP:GetFrameOptions(info, order)
 						values = function()
 							return self:GetGeometry(key).horizontal and WRAP_VALUES.horizontal or WRAP_VALUES.vertical
 						end,
+						-- The shipped wrap, or, while Grow runs the other way and the shipped one
+						-- would not fit it, the one the layout falls back to (a wrap that does not
+						-- fit is not kept): Reset writes it and the row then matches it.
+						default = {
+							differs = function()
+								return self:GetGeometry(key).wrap ~= self:DefaultWrap(key)
+							end,
+							reset = function()
+								self.config[key].wrap = self:DefaultWrap(key)
+								self:Refresh(key)
+							end,
+							value = function() return self:DefaultWrap(key) end,
+						},
 					},
 					perrow = perrow,
 					position = position,
