@@ -224,6 +224,7 @@ end
 -- table already there keeps its identity and its methods, and nothing is
 -- made); a color oUF has none of yet is put there.
 local function CopyColor(group, key, from)
+	if from == nil then return end
 	local to = group[key]
 	if type(to) == 'table' and type(from) == 'table' then
 		to.r, to.g, to.b = from.r, from.g, from.b
@@ -309,18 +310,32 @@ UF.COLOR_ELEMENTS = {
 	class = { 'Health', 'Power' },
 	reaction = { 'Health', 'Power' },
 	power = { 'Power', 'AdditionalPower', 'ClassPower' },
-	status = { 'Health' },
+	status = { 'Health', 'Power' },
 	roles = { 'GroupRoleIndicator' },
 }
 -- The groups whose colors the tags read: the name's class and reaction color,
 -- and the text colors (a much higher level's tag, hostile names).
 UF.COLOR_TAGS = { class = true, reaction = true, text = true }
 -- The groups the test mode previews draw again for (grouppreview.lua).
-UF.PREVIEW_GROUPS = { class = true, reaction = true, power = true, roles = true, text = true }
+UF.PREVIEW_GROUPS = { class = true, reaction = true, power = true, status = true, roles = true, text = true }
+-- The Text colors the tags read (tags.lua: the level's colors and the hostile
+-- and unfriendly names'); Normal, Strong and Shared reach no tag.
+local TEXT_TAG_KEYS = { danger = true, warning = true, caution = true, success = true, muted = true }
 -- The power colors ClassPower reads (oUF's classpower.lua).
 local CLASS_POWER_KEYS = { ARCANE_CHARGES = true, CHI = true, COMBO_POINTS = true, ESSENCE = true,
 	HOLY_POWER = true, ICICLES = true, MAELSTROM = true, SOUL_FRAGMENTS = true, SOUL_SHARDS = true,
 	TIP_OF_THE_SPEAR = true }
+
+-- Whether a player's frame shows a standing: oUF colors a player by its
+-- standing when the class doesn't take it first (a bar with Class off and
+-- Reaction on, a name with Color friendly on and Class off). Plain fields.
+local function ShowsStandingForPlayers(frame)
+	local health, power = frame.Health, frame.Power
+	if health and health.colorReaction and not health.colorClass then return true end
+	if power and power.colorReaction and not (power.colorClass or power.colorPower) then return true end
+	local name = frame.config and frame.config.name
+	return (name and name.color_friendly and not name.colorClass) and true or false
+end
 
 -- Whether the color (group, key) is one the frame's unit shows. key nil is
 -- every color of the group. A class color reaches by the unit's class token
@@ -336,10 +351,11 @@ function UF.ColorReaches(frame, group, key)
 		local _, token = UnitClass(unit)
 		return issecretvalue(token) or token == key
 	elseif group == 'reaction' then
-		-- A player's bar wears its class color (the Class flag, on by default),
-		-- not a standing; a pet or an NPC wears its standing.
+		-- A player's frame wears its class color (the Class flag, on by
+		-- default), not a standing, unless its flags say otherwise; a pet or an
+		-- NPC wears its standing.
 		local isPlayer = UnitIsPlayer(unit)
-		if not issecretvalue(isPlayer) and isPlayer then return false end
+		if not issecretvalue(isPlayer) and isPlayer and not ShowsStandingForPlayers(frame) then return false end
 		local reaction = UnitReaction(unit, 'player')
 		return issecretvalue(reaction) or reaction == key
 	elseif group == 'power' then
@@ -368,7 +384,11 @@ local passGroup, passKey
 
 local function UpdateColorElement(frame, name)
 	local element = frame[name]
-	if element and frame:IsElementEnabled(name) then element:ForceUpdate() end
+	if not element or not frame:IsElementEnabled(name) then return end
+	-- A part its config turns off (and a friend's threat text) is not updated:
+	-- oUF updates every element when the frame shows.
+	if element.config and not UF:ElementWanted(element) then return end
+	element:ForceUpdate()
 end
 
 local function ColorFrame(frame)
@@ -382,6 +402,9 @@ local function ColorFrame(frame)
 	local unit = frame.__unit
 	if not (unit and UnitExists(unit)) then return end
 	if frame.isNamePlate and not UF:PlateShowsUnit(frame) then return end
+	-- A hidden frame (a header's children while another layout shows) takes the
+	-- color when it shows: oUF's OnShow updates every element.
+	if frame.IsVisible and not frame:IsVisible() then return end
 	local group, key = passGroup, passKey
 	local reached = UF.ColorReaches(frame, group, key)
 	local elements = UF.COLOR_ELEMENTS[group]
@@ -394,12 +417,14 @@ local function ColorFrame(frame)
 				if reached then UpdateColorElement(frame, name) end
 			elseif name == 'AdditionalPower' then
 				if key == nil or key == 'MANA' then UpdateColorElement(frame, name) end
-			elseif key == nil or (CLASS_POWER_KEYS[key] and unit == 'player') then
+			elseif key == nil or CLASS_POWER_KEYS[key] then
 				UpdateColorElement(frame, name)
 			end
 		end
 	end
-	if UF.COLOR_TAGS[group] and reached then frame:UpdateTags() end
+	if UF.COLOR_TAGS[group] and reached and (group ~= 'text' or key == nil or TEXT_TAG_KEYS[key]) then
+		frame:UpdateTags()
+	end
 end
 
 -- A plate's threat text, in the Text colors: the normal text color while the

@@ -56,9 +56,22 @@ UnitGroupRolesAssigned = function(unit) return roleOf[unit] or 'NONE' end
 -- A frame whose elements count their ForceUpdate calls and which counts its
 -- UpdateTags calls; all its methods are shared, so a call makes nothing.
 local ELEMENTS = { 'Health', 'Power', 'AdditionalPower', 'ClassPower', 'GroupRoleIndicator' }
-local function ForceUpdate(self) self.updates = self.updates + 1 end
+-- Each element and each frame paints a real stub widget as it updates, with
+-- the color oUF holds at that moment (what oUF's own update does with the
+-- colors), so C.measure counts real calls and a pass skipped in combat, or
+-- run before oUF has the new color, shows. 'seen' is the red it read.
+local function ForceUpdate(self)
+	self.updates = self.updates + 1
+	local c = oUFColors.class.MAGE
+	self.seen = c.r
+	self.tex:SetVertexColor(c.r, c.g, c.b)
+end
 local function IsElementEnabled(self, name) return self.owner.have[name] == true end
-local function UpdateTags(self) self.tags = self.tags + 1 end
+local function UpdateTags(self)
+	self.tags = self.tags + 1
+	local c = oUFColors.class.MAGE
+	self.font:SetTextColor(c.r, c.g, c.b)
+end
 local function GetConfig() return {} end
 
 local frames = {}
@@ -66,9 +79,11 @@ local function make_frame(unit, have, plate)
 	local frame = { __unit = unit, tags = 0, have = {}, UpdateTags = UpdateTags, IsElementEnabled = IsElementEnabled,
 		GetConfig = GetConfig, isNamePlate = plate or nil, shown = true, threats = 0 }
 	frame.owner = frame
+	local host = CreateFrame('Frame', nil, UIParent)
+	frame.font = host:CreateFontString()
 	for _, name in ipairs(have) do
 		frame.have[name] = true
-		frame[name] = { updates = 0, ForceUpdate = ForceUpdate }
+		frame[name] = { updates = 0, ForceUpdate = ForceUpdate, tex = host:CreateTexture() }
 	end
 	frames[#frames + 1] = frame
 	return frame
@@ -107,7 +122,7 @@ end
 classOf.player, powerOf.player = 'DRUID', 'ENERGY'
 for _, name in ipairs({ 'AdditionalPower', 'ClassPower' }) do
 	singles.player.have[name] = true
-	singles.player[name] = { updates = 0, ForceUpdate = ForceUpdate }
+	singles.player[name] = { updates = 0, ForceUpdate = ForceUpdate, tex = CreateFrame('Frame', nil, UIParent):CreateTexture() }
 end
 for i = 1, 3 do
 	local unit = 'boss' .. i
@@ -122,6 +137,7 @@ UF.nameplates = plates
 UF.units = { boss = boss }
 for unit, frame in pairs(singles) do UF.units[unit] = frame end
 UF.PlateShowsUnit = function(_, frame) return frame.shown end
+UF.ElementWanted = function(_, element) return element.config.enable end -- updaters.lua's, as far as a config goes
 UF.UpdatePlateThreat = function(_, frame) frame.threats = frame.threats + 1 end
 local previews = {}
 UF.testGroups = { party = true }
@@ -138,6 +154,14 @@ end
 for _, key in ipairs({ 'MAGE', 'WARRIOR', 'DRUID' }) do seed('class', key) end
 for key in pairs({ [2] = true, [4] = true }) do seed('reaction', key) end
 for _, key in ipairs({ 'MANA', 'ENERGY', 'COMBO_POINTS' }) do seed('power', key) end
+
+-- Every widget is colored once, as the stub's first color call makes a table.
+for _, frame in ipairs(frames) do
+	for _, name in ipairs(ELEMENTS) do
+		if frame[name] then frame[name]:ForceUpdate() end
+	end
+	frame:UpdateTags()
+end
 
 local function set(group, key, r, g, b)
 	local color = profile[group][key]
@@ -282,13 +306,20 @@ test('Status > Disconnected: Health of raid7 alone', function()
 	local t = totals()
 	eq(t.Health, 1, 'one Health')
 	eq(raid[7].Health.updates, 1, 'raid7')
-	eq(t.Power + t.tags, 0, 'nothing else')
+	eq(raid[7].Power.updates, 1, "and its Power, which has Disconnected and Tapped flags too")
+	eq(t.Power, 1, 'no other Power')
+	eq(t.tags, 0, 'no tags')
 	eq(rgb(oUFColors.disconnected), '0.40,0.40,0.40', "oUF's color")
 	reset()
 	st:ColorChanged('status', 'tapped')
 	t = totals()
 	eq(t.Health, 1, 'Tapped: one Health')
 	eq(plates[1].Health.updates, 1, 'the tapped plate')
+	reset()
+	st:ColorsChanged('status')
+	t = totals()
+	eq(t.Health, 89, 'the whole Status pass: every Health')
+	eq(t.Power, 50, 'and every Power')
 end)
 
 test("Text > Danger: UpdateTags on every frame showing a unit, no element update; Text > Normal: the shown plates' threat text", function()
@@ -302,9 +333,14 @@ test("Text > Danger: UpdateTags on every frame showing a unit, no element update
 	reset()
 	st:ColorChanged('text', 'normal')
 	t = totals()
-	eq(t.tags, 89, 'the tags again')
+	eq(t.tags, 0, 'no tag reads Normal')
 	eq(t.threats, 39, "the 39 shown plates' threat text")
 	eq(plates[36].threats, 0, 'not the plate showing no unit')
+	for _, key in ipairs({ 'strong', 'shared' }) do
+		reset()
+		st:ColorChanged('text', key)
+		eq(totals().tags, 0, 'no tag reads ' .. key)
+	end
 	reset()
 	missing.raid3 = true
 	st:ColorChanged('text', 'danger')
@@ -388,16 +424,22 @@ test("the whole pass (key nil) updates every frame with a unit, for the group's 
 	eq(t.Health, 0, 'no Health')
 	reset()
 	st:ColorsChanged('text')
-	eq(totals().threats, 39, "the plates' threat text on a whole Text pass")
+	t = totals()
+	eq(t.threats, 39, "the plates' threat text on a whole Text pass")
+	eq(t.tags, 89, 'and every tags')
 end)
 
-test('the previews redraw for class, reaction, power, roles and text; not for status or threat', function()
-	for _, case in ipairs({ { 'class', 'MAGE' }, { 'reaction', 2 }, { 'power', 'MANA' }, { 'roles', 'TANK' }, { 'text', 'danger' } }) do
+test('the previews redraw for class, reaction, power, status, roles and text (their offline members); not for threat', function()
+	for _, case in ipairs({ { 'class', 'MAGE' }, { 'reaction', 2 }, { 'power', 'MANA' }, { 'status', 'disconnected' },
+			{ 'roles', 'TANK' }, { 'text', 'danger' } }) do
 		reset()
 		st:ColorChanged(case[1], case[2])
 		eq(previews.party, 1, case[1] .. ' redraws the party preview once')
 	end
-	for _, case in ipairs({ { 'status', 'tapped' }, { 'threat', 'warning' } }) do
+	reset()
+	st:ColorsChanged('status')
+	eq(previews.party, 1, 'the whole Status pass too')
+	for _, case in ipairs({ { 'threat', 'warning' } }) do
 		reset()
 		st:ColorChanged(case[1], case[2])
 		eq(previews.party, nil, case[1] .. ' does not')
@@ -408,9 +450,11 @@ end)
 test('100 Class > Mage passes allocate under 4 KB; in combat the same calls (Review Focus 4)', function()
 	reset()
 	st:ColorChanged('class', 'MAGE')
+	reset()
 	local m = C.measure(function() st:ColorChanged('class', 'MAGE') end, 100)
 	C.print('100 class passes', m)
 	check(m.kb < 4, ('under 4 KB, got %.2f'):format(m.kb))
+	eq(m.calls.total, 2300, '23 color calls a pass: 9 Health, 5 Power, 9 tags (real stub widgets)')
 	eq(m.forbidden.total, 0, 'nothing forbidden')
 	eq(m.made, 0, 'nothing made')
 	reset()
@@ -419,13 +463,88 @@ test('100 Class > Mage passes allocate under 4 KB; in combat the same calls (Rev
 	C.print('100 class passes, in combat', combat)
 	check(combat.kb < 4, ('under 4 KB in combat, got %.2f'):format(combat.kb))
 	eq(combat.forbidden.total, 0, 'nothing forbidden in combat')
+	eq(combat.made, 0, 'nothing made in combat')
 	eq(combat.calls.total, m.calls.total, 'the same calls')
+	local t = totals()
+	eq(t.Health, 900, 'in combat every mage Health was updated, 100 times')
 	stub.in_combat = false
+	reset()
 	local text = C.measure(function() st:ColorChanged('text', 'danger') end, 100)
 	check(text.kb < 4, ('Text passes under 4 KB, got %.2f'):format(text.kb))
+	check(text.calls.total > 0, 'and they color')
 	local roles = C.measure(function() st:ColorChanged('roles', 'TANK') end, 100)
 	check(roles.kb < 4, ('Roles passes under 4 KB, got %.2f'):format(roles.kb))
 	eq(#take_errors(), 0)
+end)
+
+test("oUF has the new color before a frame updates (the whole pass at an edit's end would show the old one)", function()
+	reset()
+	set('class', 'MAGE', 0.77, 0.66, 0.55)
+	st:ColorChanged('class', 'MAGE')
+	for _, frame in ipairs({ raid[1], raid[9], plates[37] }) do
+		eq(frame.Health.seen, 0.77, frame.__unit .. ' read the new red')
+	end
+	set('class', 'MAGE', 0.31, 0.66, 0.55)
+	st:ColorsChanged('class')
+	eq(raid[1].Health.seen, 0.31, 'and on the whole pass')
+	eq(raid[2].Health.seen, 0.31, 'every frame')
+end)
+
+test('Reputation reaches a player whose bar or name shows its standing, and no other', function()
+	reset()
+	local target = singles.target
+	target.Health.colorReaction, target.Health.colorClass = true, false
+	st:ColorChanged('reaction', 5)
+	eq(target.Health.updates, 1, 'a player with Class off and Reaction on')
+	target.Health.colorReaction = nil
+	reset()
+	target.config = { name = { color_friendly = true, colorClass = false } }
+	st:ColorChanged('reaction', 5)
+	eq(target.tags, 1, 'a player whose name has Color friendly on and Class color off')
+	eq(target.Health.updates, 1, '(and so is its Health: the frame shows a standing)')
+	target.config = nil
+	reset()
+	target.Health.colorReaction, target.Health.colorClass = true, true
+	st:ColorChanged('reaction', 5)
+	eq(target.Health.updates, 0, 'a player with Class on is not')
+	target.Health.colorReaction, target.Health.colorClass = nil, nil
+	reset()
+	singles.focus.Power.colorReaction = true
+	st:ColorChanged('reaction', 5)
+	eq(singles.focus.Power.updates, 1, 'a player whose Power shows its standing')
+	singles.focus.Power.colorReaction = nil
+	eq(#take_errors(), 0)
+end)
+
+test('ClassPower follows the frame that has it, in a vehicle too', function()
+	reset()
+	singles.player.__unit = 'vehicle'
+	st:ColorChanged('power', 'COMBO_POINTS')
+	eq(singles.player.ClassPower.updates, 1, 'the player frame whose unit is the vehicle')
+	singles.player.__unit = 'player'
+	eq(#take_errors(), 0)
+end)
+
+test('a hidden frame and an element its config turns off are not updated', function()
+	reset()
+	raid[1].IsVisible = function() return false end
+	st:ColorChanged('class', 'MAGE')
+	eq(raid[1].Health.updates + raid[1].tags, 0, 'a hidden frame: oUF updates it when it shows')
+	eq(raid[9].Health.updates, 1, 'a shown one')
+	raid[1].IsVisible = nil
+	reset()
+	raid[9].Power.config = { enable = false }
+	st:ColorChanged('class', 'MAGE')
+	eq(raid[9].Power.updates, 0, 'a bar its config turns off')
+	eq(raid[9].Health.updates, 1, 'its Health')
+	raid[9].Power.config = nil
+end)
+
+test('a profile color with no value leaves the color oUF has', function()
+	oUFColors.class.ZZZ = CreateColor(0.5, 0.5, 0.5)
+	UF:UpdateColors('class', 'ZZZ')
+	eq(rgb(oUFColors.class.ZZZ), '0.50,0.50,0.50')
+	oUFColors.class.ZZZ = nil
 end)
 
 test('UF.ColorReaches: key nil reaches every frame, a group with no rule too', function()

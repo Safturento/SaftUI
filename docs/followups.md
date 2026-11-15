@@ -7,6 +7,10 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-15 — Unit frames: a Warrior class pick updates every Warrior NPC plate](#2026-11-15--unit-frames-a-warrior-class-pick-updates-every-warrior-npc-plate)
+  - [2026-11-15 — Unit frames: what a color pass's real element updates cost](#2026-11-15--unit-frames-what-a-color-passs-real-element-updates-cost)
+  - [2026-11-15 — Unit frames: a color oUF lacks is set to the profile's own table](#2026-11-15--unit-frames-a-color-ouf-lacks-is-set-to-the-profiles-own-table)
+  - [2026-11-15 — Unit frames: a vehicle power type with no oUF color falls back to Mana](#2026-11-15--unit-frames-a-vehicle-power-type-with-no-ouf-color-falls-back-to-mana)
   - [2026-11-15 — Forever: Show in > Bank does nothing for the default bank (the combined bank)](#2026-11-15--forever-show-in--bank-does-nothing-for-the-default-bank-the-combined-bank)
   - [2026-11-15 — Auto Vendor counts a fresh purchase in a just-sold slot as a refused sale](#2026-11-15--auto-vendor-counts-a-fresh-purchase-in-a-just-sold-slot-as-a-refused-sale)
   - [2026-11-15 — Auto Vendor's second question overstates the earlier stacks that leave](#2026-11-15--auto-vendors-second-question-overstates-the-earlier-stacks-that-leave)
@@ -185,6 +189,62 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-15 — Unit frames: a Warrior class pick updates every Warrior NPC plate
+
+**What:** `UF.ColorReaches` for Class matches the unit's class token for any unit, so a Class > Warrior (or Paladin, Rogue, Mage) pick also updates every NPC plate whose unit carries that token, though a plate's bar and name don't show NPC class (`colorClassNPC` is off on plates). The spec's L3 ("nothing else updates") doesn't hold near a pack. Nothing visible changes; it is only cost.
+
+**Why noticed:** Review of the live colors Task 3 (unit frames and nameplates), `.superpowers/sdd/2026-11-15-saftui-live-colors/task-3-review.md`, m1. A probe in the cost test's world had Class > Warrior reach 49 frames (35 of 40 plates): Health 49, Power 14, tags 49, 112 calls, against 23 for a Mage.
+
+**Anchors:** `SaftUI-Unitframes/unitframes.lua` (`UF.ColorReaches`, `ColorFrame`), `tests/unitframes/color_cost_test.lua`, `SaftUI-Unitframes/config/default.lua` (`colorClassNPC`, `colorClassPet`).
+
+**What's been considered:** Token matching never misses a frame (party and raid frames color NPCs and pets by class: `colorClassNPC`, `colorClassPet`, on in `party.lua`, `raid10.lua`, `raid40.lua`). The cheap fix is to reach an NPC only if the frame's Health or Power has `colorClassNPC`, and a pet only with `colorClassPet`, read from the frame's own fields as the Reputation rule reads its flags.
+
+**Shape of work:** a small change in `UF.ColorReaches` with a cost case on a plate with the flag off.
+
+**Open questions:** whether `/sui debug` shows the pass costing enough near a pack to be worth it.
+
+### 2026-11-15 — Unit frames: what a color pass's real element updates cost
+
+**What:** The unit frame color pass's cost is measured only with counting stand-ins for oUF's elements, so the tests' `forbidden 0` and `kb < 4` cover the handler, not the real `ForceUpdate`s it calls. The reviewer's probe with real SaftUI callbacks on stub widgets: Health and Power make 1 to 2 setters and no garbage; ClassPower calls `SetShown` once and `SetWidth` five times and makes about 76 KB over 100 calls (two tables in `PostUpdateClassPower`, plus oUF's `unpack(chargedPoints or {})`); the role corner calls `SetTexture` once (oUF adds `SetAtlas` and `Show` or `Hide`). None is protected, and oUF runs them all in combat on its own events. Rough time from counting C calls: Class > Mage 0.3 to 0.5 ms, Text > Danger in a raid with plates 1.5 to 3 ms, a Warrior pick near a pack 1.5 to 3 ms, a whole Class pass of a 40 raid 1 to 2.5 ms.
+
+**Why noticed:** Review of the live colors Task 3, `.superpowers/sdd/2026-11-15-saftui-live-colors/task-3-review.md`, m3. Only `/sui debug` can say whether a pass passes 2 ms, and Test mode with Raid 40 (`UF:UpdateGroupPreview` restyles and lays out 40 preview frames on every pass of Roles and Text too) is probably the heaviest case.
+
+**Anchors:** `SaftUI-Unitframes/unitframes.lua` (`ColorFrame`), `SaftUI-Unitframes/elements/classpower.lua` (`PostUpdateClassPower`), `SaftUI-Unitframes/elements/indicators.lua` (the role corner's `postUpdate`), `SaftUI-Unitframes/grouppreview.lua`, the `<DEBUG:Colors>` line.
+
+**What's been considered:** The spec allows an oUF element's `ForceUpdate` in a pass, so this is not a violation. Possible cuts: a color-only update for ClassPower and the role corner (no `SetShown`, `SetWidth` or `SetTexture`), or a throttle of the previews.
+
+**Shape of work:** an in-game read of the debug line first (Class and Text > Normal in a raid, Test mode with Raid 40), then a ticket only if one is slow.
+
+**Open questions:** the slowest pass the owner sees in game.
+
+### 2026-11-15 — Unit frames: a color oUF lacks is set to the profile's own table
+
+**What:** `CopyColor` (`SaftUI-Unitframes/unitframes.lua`) sets a color oUF has none of to the profile's own table, as `st.tablemerge` did. A later profile switch's merge then writes the new profile's values into the table of the old profile. It matters only if oUF lacks a SaftUI color key in game (the test world lacks every key); which keys, if any, is unchecked.
+
+**Why noticed:** Review of the live colors Task 3, `.superpowers/sdd/2026-11-15-saftui-live-colors/task-3-review.md`, n3. The behavior is older than the task; the commit kept it.
+
+**Anchors:** `UF:UpdateColors`, `CopyColor`, oUF's `Libraries/oUF/colors.lua` (read only), `st.config.profile.colors`.
+
+**What's been considered:** Copying into a new color object (`UF.oUF:CreateColor`) instead of aliasing would make it safe.
+
+**Shape of work:** list the keys SaftUI's Colors page has that oUF's table lacks, and make the fallback a copy.
+
+**Open questions:** whether any key is missing in game.
+
+### 2026-11-15 — Unit frames: a vehicle power type with no oUF color falls back to Mana
+
+**What:** Power reaches a frame by its unit's power token. A unit whose token oUF has no color for (a vehicle's power type) falls back to Mana's color in oUF's `power.lua`, so a Mana pick misses that frame. Rare; the edit's whole pass covers it.
+
+**Why noticed:** Review of the live colors Task 3, `.superpowers/sdd/2026-11-15-saftui-live-colors/task-3-review.md`, n4.
+
+**Anchors:** `UF.ColorReaches` (the `power` branch), oUF's `Libraries/oUF/elements/power.lua` (read only).
+
+**What's been considered:** Treat a token with no oUF color as `MANA`.
+
+**Shape of work:** one line in `UF.ColorReaches` and a test.
+
+**Open questions:** none.
 
 ### 2026-11-15 — Forever: Show in > Bank does nothing for the default bank (the combined bank)
 
