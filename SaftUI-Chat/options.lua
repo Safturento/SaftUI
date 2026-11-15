@@ -100,12 +100,12 @@ function CHT:GetConfigTable()
 					tabs_fade = {
 						order = 8,
 						name = 'Fade tabs',
-						desc = 'Let the chat tabs fade out. Requires a reload.',
+						desc = 'Let the chat tabs fade out. Turning it on lets them fade from the next time you hover the chat.',
 						type = 'toggle',
 						get = function() return self.config.tabs.fade end,
 						set = function(_, value)
 							self.config.tabs.fade = value
-							st:Print('Reload your UI to apply.')
+							self:ApplyTabFading()
 						end,
 					},
 					position = position, -- last

@@ -187,6 +187,80 @@ test("a profile change turns tab fading off and on without a reload", function()
 	profile.chat.tabs.fade = false
 end)
 
+-- Blizzard keeps each tab's alphas (ChatFrameUtil.GetTabAlphas, mouse-over and no-mouse),
+-- and a chat window's hasBeenFaded says which one FCFTab_UpdateAlpha sets. A stand-in.
+local tab_alphas = setmetatable({}, { __mode = 'k' })
+local had_util = _G.ChatFrameUtil
+_G.ChatFrameUtil = _G.ChatFrameUtil or {}
+function ChatFrameUtil.GetTabAlphas(tab)
+	local a = tab_alphas[tab]
+	if a then return a[1], a[2] end
+end
+
+test("switching to a profile with fading on puts Blizzard's tab alpha back at once", function()
+	profile.chat.tabs.fade = false
+	local frame, _, tab = CW.build(13)
+	CHT:SkinChatFrame(frame)
+	tab_alphas[tab] = { 0.6, 0.2 } -- mouse over, no mouse
+	eq(tab:GetAlpha(), 1, 'held at 1')
+
+	profile.chat.tabs.fade = true
+	CHT:ApplyChatFrameConfig(frame)
+	eq(tab:GetAlpha(), 0.2, "Blizzard's no-mouse alpha, with no hover needed")
+	CHT:ApplyChatFrameConfig(frame)
+	tab:SetAlpha(0.9)
+	eq(tab:GetAlpha(), 0.9, 'and Blizzard fades from there, with nothing held')
+
+	profile.chat.tabs.fade = false
+	CHT:ApplyChatFrameConfig(frame)
+	eq(tab:GetAlpha(), 1, 'back to 1 when fading goes off')
+	rawset(frame, 'hasBeenFaded', true) -- the window has been faded: the mouse-over alpha
+	profile.chat.tabs.fade = true
+	CHT:ApplyChatFrameConfig(frame)
+	eq(tab:GetAlpha(), 0.6, 'the mouse-over alpha once the window has faded')
+	profile.chat.tabs.fade = false
+end)
+
+test("the /sui Fade tabs toggle applies at once in both directions, with no reload", function()
+	local had = NUM_CHAT_WINDOWS
+	NUM_CHAT_WINDOWS = 15
+	profile.chat.tabs.fade = true
+	local frame, _, tab = CW.build(14)
+	CHT:SkinChatFrame(frame)
+	tab_alphas[tab] = { 0.6, 0.2 }
+	local toggle = CHT:GetConfigTable().args.general.args.tabs_fade
+	check(not toggle.desc:find('eload', 1, true), 'the tooltip no longer says to reload')
+
+	toggle.set({}, false)
+	eq(profile.chat.tabs.fade, false, 'writes the setting')
+	check(stub.hook_wrappers[rawget(tab, 'SetAlpha')], 'and hooks the tab, though it was skinned with fading on')
+	tab:SetAlpha(0.3)
+	eq(tab:GetAlpha(), 1, 'the tab is held at 1')
+	toggle.set({}, true)
+	eq(tab:GetAlpha(), 0.2, "and Blizzard's alpha is back at once")
+	profile.chat.tabs.fade = false
+	NUM_CHAT_WINDOWS = had
+end)
+
+test("a second skin of the same window adds no second hook on its edit box", function()
+	local frame, editbox = CW.build(15)
+	local hides = 0
+	local dock = GeneralDockManager
+	local real = getmetatable(dock).__index.Hide
+	rawset(dock, 'Hide', function(self, ...) hides = hides + 1 return real(self, ...) end)
+	CHT:SkinChatFrame(frame)
+	CHT:SkinChatFrame(frame)
+	editbox:Show()
+	rawset(dock, 'Hide', nil)
+	eq(hides, 1, 'one hook, one Hide of the dock manager')
+end)
+
+test("the fixture refuses a SetScript on the chat window but the wheel's", function()
+	local frame = CW.build(16)
+	check(pcall(frame.SetScript, frame, 'OnMouseWheel', function() end), 'the wheel handler is allowed')
+	check(not pcall(frame.SetScript, frame, 'OnShow', function() end), 'any other script errors')
+end)
+
 test("edit mode's outline sits on the chat's border, or on the chat under None", function()
 	CHT.holder = CreateFrame('Frame', nil, UIParent)
 	CHT.holder:SetSize(400, 200)

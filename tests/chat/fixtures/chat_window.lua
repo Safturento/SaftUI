@@ -17,7 +17,7 @@
 
 	The window, its edit box and its tab are locked (lib/locked_widget.lua), so a
 	skin that writes a field onto one, or SetScripts the edit box or the tab,
-	fails. The window's own SetScript is left open: SaftUI's wheel handler
+	fails. The window's SetScript is open for the wheel's script only: SaftUI's wheel handler
 	(CHT's onMouseScroll) replaces Blizzard's, which is the owner's call
 	(docs/followups.md, "Chat writes fields and scripts onto Blizzard's chat
 	frames"). Everything the skin kills or strips (the Kill helpers write fields
@@ -81,8 +81,13 @@ function CW.build(id)
 	locked(frame, 'Blizzard chat window')
 	locked(editbox, 'Blizzard chat edit box')
 	locked(tab, 'Blizzard chat tab')
-	-- The wheel handler is allowed (see the header); nothing else on the window.
-	rawset(frame, 'SetScript', methods.SetScript)
+	-- The wheel handler is allowed (see the header); no other script of the window.
+	rawset(frame, 'SetScript', function(self, script, fn)
+		if script ~= 'OnMouseWheel' then
+			error('SetScript ' .. tostring(script) .. ' on a Blizzard chat window frame', 2)
+		end
+		return methods.SetScript(self, script, fn)
+	end)
 	return frame, editbox, tab
 end
 
