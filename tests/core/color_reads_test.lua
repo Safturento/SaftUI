@@ -45,6 +45,21 @@ local function LineText(source, position)
 	return (source:match('^[^\n]*', from):gsub('^%s+', ''))
 end
 
+-- Each statement of mask (a line split at ';') as { text, finish }: finish is
+-- where it ends, so a binding is read for what follows it on its own line too.
+local function Statements(mask)
+	local out, position = {}, 1
+	for line in (mask .. '\n'):gmatch('(.-)\n') do
+		local offset = 0
+		for statement in (line .. ';'):gmatch('(.-);') do
+			offset = offset + #statement + 1
+			out[#out + 1] = { text = statement, finish = position + offset - 1 }
+		end
+		position = position + #line + 1
+	end
+	return out
+end
+
 local function Fail(found, path, rule, mask, position, source)
 	found[#found + 1] = ('%s:%d: %s: %s'):format(path, L.LineAt(mask, position), rule, LineText(source, position))
 end
@@ -79,15 +94,14 @@ local function Scan(path, source, defaults)
 
 		-- B. A local bound to a group, read for a retired key of it.
 		local bound = {}
-		local position = 1
-		for line in (mask .. '\n'):gmatch('(.-)\n') do
-			local name, expression = line:match('^%s*local%s+([%w_]+)%s*=%s*(.-)%s*;?%s*$')
+		local statements = Statements(mask)
+		for _, statement in ipairs(statements) do
+			local name, expression = statement.text:match('^%s*local%s+([%w_]+)%s*=%s*(.-)%s*$')
 			if name then
 				local group = expression:match('%f[%w_][Cc]olors%s*%.%s*(%a+)$')
 					or expression:match('%f[%w_]Colors%s*%(%s*%)%s*%.%s*(%a+)$')
-				if group and RETIRED[group] then bound[#bound + 1] = { name = name, group = group, from = position + #line } end
+				if group and RETIRED[group] then bound[#bound + 1] = { name = name, group = group, from = statement.finish } end
 			end
-			position = position + #line + 1
 		end
 		for _, binding in ipairs(bound) do
 			for _, key in ipairs(RETIRED[binding.group]) do
@@ -141,17 +155,15 @@ local function Scan(path, source, defaults)
 		-- profile.colors), read for a role group; a local bound to the theme
 		-- table, read for the accent; and the ['colors'] and rawget forms.
 		local whole = {}
-		position = 1
-		for line in (mask .. '\n'):gmatch('(.-)\n') do
-			local name, expression = line:match('^%s*local%s+([%w_]+)%s*=%s*(.-)%s*;?%s*$')
+		for _, statement in ipairs(statements) do
+			local name, expression = statement.text:match('^%s*local%s+([%w_]+)%s*=%s*(.-)%s*$')
 			if name then
 				if expression:match('%f[%w_][Cc]olors$') or expression:match('%f[%w_]Colors%s*%(%s*%)$') then
-					whole[#whole + 1] = { name = name, kind = 'colors', from = position + #line }
+					whole[#whole + 1] = { name = name, kind = 'colors', from = statement.finish }
 				elseif expression:match('%f[%w_]theme$') or expression:match('%f[%w_]Theme%s*%(%s*%)$') then
-					whole[#whole + 1] = { name = name, kind = 'theme', from = position + #line }
+					whole[#whole + 1] = { name = name, kind = 'theme', from = statement.finish }
 				end
 			end
-			position = position + #line + 1
 		end
 		for _, binding in ipairs(whole) do
 			local keys = binding.kind == 'theme' and { 'accent' } or DIRECT_GROUPS
@@ -173,19 +185,29 @@ local function Scan(path, source, defaults)
 			end
 		end
 		for _, group in ipairs(DIRECT_GROUPS) do
-			local from = 1
-			while true do
-				local s, e = code:find('%[%s*[\'"]colors[\'"]%s*%]%s*%.%s*' .. group .. '%f[^%w_]', from)
-				if not s then break end
-				if mask:sub(s, s) == '[' then Fail(found, path, 'D direct read', mask, s, source) end -- not inside a string
-				from = e + 1
+			for _, pattern in ipairs({
+				'%[%s*[\'"]colors[\'"]%s*%]%s*%.%s*' .. group .. '%f[^%w_]',
+				'%[%s*[\'"]colors[\'"]%s*%]%s*%[%s*[\'"]' .. group .. '[\'"]%s*%]',
+			}) do
+				local from = 1
+				while true do
+					local s, e = code:find(pattern, from)
+					if not s then break end
+					if mask:sub(s, s) == '[' then Fail(found, path, 'D direct read', mask, s, source) end -- not inside a string
+					from = e + 1
+				end
 			end
-			from = 1
-			while true do
-				local s, e = code:find('rawget%s*%([^,%)]*[cC]olors%s*,%s*[\'"]' .. group .. '[\'"]', from)
-				if not s then break end
-				if mask:sub(s, s + 5) == 'rawget' then Fail(found, path, 'D direct read', mask, s, source) end -- not inside a string
-				from = e + 1
+			for _, pattern in ipairs({
+				'rawget%s*%([^,%)]*[cC]olors%s*,%s*[\'"]' .. group .. '[\'"]',
+				'rawget%s*%(%s*[%w_%.%[%]\'" ]*Colors%s*%(%s*%)%s*,%s*[\'"]' .. group .. '[\'"]',
+			}) do
+				local from = 1
+				while true do
+					local s, e = code:find(pattern, from)
+					if not s then break end
+					if mask:sub(s, s + 5) == 'rawget' then Fail(found, path, 'D direct read', mask, s, source) end -- not inside a string
+					from = e + 1
+				end
 			end
 		end
 
@@ -338,6 +360,18 @@ test('the rules, on samples: each fails what it names and passes the rest', func
 	eq(scanD('local colors = st.config.profile.colors\nreturn colors.threat.bad, colors.class.MAGE, colors.button.hover'), '', 'game-named groups and Buttons through an alias')
 	eq(scanD('local t = st.config.profile.theme\nreturn t.name'), '', 'the theme alias read for something else')
 	eq(scanD("-- local c = Colors(); c.text.danger\nlocal s = 'rawget(colors, \"text\")'"), '', 'a comment and a string')
+	-- D, the one-line and bracket forms
+	eq(scanD('local c = st.config.profile.colors; return c.text.danger'), 'D', 'an alias read on the same line')
+	eq(scanD("local c = Colors(); return c['loot'].pass"), 'D', 'by a string, on the same line')
+	eq(scanD('local t = Theme(); return t.accent'), 'D', 'the theme alias on the same line')
+	eq(scanD('local c = st.config.profile.colors; return c.threat.bad'), '', 'the same line, a game-named group')
+	eq(scanD("local c = 'a; local x = colors'; return c.text"), '', 'a semicolon in a string is no statement')
+	eq(scanD("return st.config.profile['colors']['text'].danger"), 'D', "the ['colors']['text'] form")
+	eq(scanD("return st.config.profile['colors'].threat, st.config.profile['colors']['class']"), '', "game-named groups by the ['colors'] forms")
+	eq(scanD("return rawget(Colors(), 'roles')"), 'D', 'rawget on Colors()')
+	eq(scanD("return rawget(OB.Colors(), 'factions')"), 'D', 'rawget on OB.Colors()')
+	eq(scanD("return rawget(Colors(), 'class')"), '', 'rawget on a game-named group')
+	eq(scanD("-- rawget(Colors(), 'roles') and profile['colors']['text']\nlocal s = \"rawget(Colors(), 'roles')\""), '', 'a comment and a string')
 	-- C
 	eq(scan("local c = st:Color('text', 'normal')"), '')
 	eq(scan("local c = st:Color('text', 'normal2')"), 'C')
