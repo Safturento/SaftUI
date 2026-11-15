@@ -23,7 +23,7 @@ local LAB = LibStub('LibActionButton-1.0')
 	    LibActionButton only shows, hides or sizes those regions, never changes
 	    their alpha.
 	  - The attack flash is a flat red tint over the icon.
-	  - An equipped item gets a green border on the backdrop, in place of the
+	  - An equipped item gets an accent border (Theme > Accent) on the backdrop, in place of the
 	    template's green glow (hideElements.equipped). It goes back on after a
 	    theme recolor or redraw (AB:OnColorsChanged).
 	  - A pet action's autocast corners and ants (the template's AutoCastOverlay)
@@ -495,12 +495,12 @@ function AB:OnFontsChanged()
 	end)
 end
 
--- An equipped item's border.
+-- An equipped item's border: the accent (Theme > Accent).
 local function ColorEquipped(backdrop)
-	st:SetBorderColor(backdrop, st.config.profile.colors.button.green:GetRGB())
+	st:SetBorderColor(backdrop, st:Color('accent'):GetRGB())
 end
 
--- A green border while the button holds an equipped item, the theme's border
+-- An accent border while the button holds an equipped item, the theme's border
 -- otherwise. Only touches the backdrop when that changes. The pet and stance
 -- buttons never hold an item, and have no IsEquipped.
 function AB:UpdateEquippedBorder(button)
@@ -522,7 +522,7 @@ function AB:UpdateEquippedBorder(button)
 end
 
 -- A theme recolor or redraw put the theme's border back on every button
--- (group 'theme'): the equipped ones get their green again.
+-- (group 'theme'): the equipped ones get their accent again.
 function AB:OnColorsChanged(group)
 	if group ~= 'theme' then return end
 	for button, skin in pairs(skins) do

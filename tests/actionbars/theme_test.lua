@@ -4,7 +4,7 @@
 --   - the buttons are drawn with it as action buttons: the backdrop fills the
 --     button, with the icon inside its border, and a new theme's inset
 --     reaches the icon when the bars are styled again;
---   - an equipped item's green border survives a theme recolor (a drag of
+--   - an equipped item's accent border survives a theme recolor (a drag of
 --     the Border color picker recolors on every move) and a theme switch.
 --
 -- Real: SaftUI-ActionBars' config.lua, init.lua and skin.lua over Core's
@@ -85,8 +85,10 @@ local function switch(name)
 	end)
 end
 
-local function green()
-	return T.text(st.config.profile.colors.button.green:GetRGB())
+-- An equipped item's border is the accent (Theme > Accent), a listed change
+-- from the green it was.
+local function accent()
+	return T.text(st:Color('accent'):GetRGB())
 end
 
 test('the action bar default looks as it did', function()
@@ -141,7 +143,7 @@ test("under Blizzard a 45px action button's icon sits inside the action inset", 
 	eq(#take_errors(), 0, 'no errors')
 end)
 
-test("under Blizzard an equipped item shows Blizzard's equipped border in the green, through a recolor", function()
+test("under Blizzard an equipped item shows Blizzard's equipped border in the accent, through a recolor", function()
 	fresh()
 	st.config.profile.theme.name = 'blizzard'
 	local worn, other = bar(button('ThemeTestBlizzWorn', true), button('ThemeTestBlizzOther', false))
@@ -150,8 +152,8 @@ test("under Blizzard an equipped item shows Blizzard's equipped border in the gr
 		if not (own and own:IsShown()) then return 'off' end
 		return tostring(own:GetAtlas()) .. ' ' .. T.text(own:GetVertexColor())
 	end
-	local GREEN = 'UI-HUD-ActionBar-IconFrame-Border ' .. green() .. ',1.00'
-	eq(border(worn), GREEN, "an equipped item: Blizzard's equipped border, in the green")
+	local ACCENT = 'UI-HUD-ActionBar-IconFrame-Border ' .. accent() .. ',1.00'
+	eq(border(worn), ACCENT, "an equipped item: Blizzard's equipped border, in the accent")
 	eq(border(other), 'off', 'another: none')
 	eq(T.over(worn.backdrop), 'Ring=UI-HUD-ActionBar-IconFrame', 'the ring stays')
 
@@ -160,16 +162,16 @@ test("under Blizzard an equipped item shows Blizzard's equipped border in the gr
 		st.config.profile.templates.blizzard.bordercolor = { 0.1 * move, 0.5, 0.5, 1 }
 		st:RecolorThemed()
 		st:ColorsChanged('theme')
-		eq(border(worn), GREEN, 'move ' .. move .. ': the equipped item stays green')
+		eq(border(worn), ACCENT, 'move ' .. move .. ': the equipped item stays the accent')
 		eq(border(other), 'off', 'move ' .. move .. ': the other stays bare')
 	end
 
 	-- A switch away and back (every button is styled again, which draws it again).
 	switch('thick')
-	eq(T.edge_rgb(worn.backdrop), green(), 'under Thick: the green line')
+	eq(T.edge_rgb(worn.backdrop), accent(), 'under Thick: the accent line')
 	eq(border(worn), 'off', 'and no Blizzard border')
 	switch('blizzard')
-	eq(border(worn), GREEN, 'back under Blizzard: green again')
+	eq(border(worn), ACCENT, 'back under Blizzard: the accent again')
 
 	-- Taken off: the border goes.
 	worn.equipped = false
@@ -178,10 +180,24 @@ test("under Blizzard an equipped item shows Blizzard's equipped border in the gr
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+test("an equipped item's border is the accent (answer 5, a listed change from green)", function()
+	fresh()
+	eq(st.defaults.colors.button.green, nil, 'Buttons > Green is gone')
+	local worn = bar(button('ThemeTestAccentWorn', true))
+	eq(T.edge_rgb(worn.backdrop), T.text(0, 0.68, 0.94), 'at the defaults: the accent (it was green)')
+	local accent = st.config.profile.theme.accent
+	accent:SetRGB(0.9, 0.1, 0.2)
+	-- Read when the border goes on: the next theme recolor or redraw (a reload for the rest).
+	st:ColorsChanged('theme')
+	eq(T.edge_rgb(worn.backdrop), T.text(0.9, 0.1, 0.2), 'a changed accent is the next border')
+	accent:SetRGB(0, 0.68, 0.94)
+	eq(#take_errors(), 0, 'no errors')
+end)
+
 test('the equipped border survives a recolor', function()
 	fresh()
 	local worn, other = bar(button('ThemeTestWorn', true), button('ThemeTestOther', false))
-	eq(T.edge_rgb(worn.backdrop), green(), 'an equipped item: the green border')
+	eq(T.edge_rgb(worn.backdrop), accent(), 'an equipped item: the accent border')
 	local thick = st.config.profile.templates.thick
 	eq(T.edge(other.backdrop), T.text(unpack(thick.bordercolor)), "another: the theme's border")
 
@@ -189,12 +205,12 @@ test('the equipped border survives a recolor', function()
 	for move = 1, 3 do
 		thick.bordercolor = { 0.1 * move, 0.5, 0.5, 1 }
 		st:RecolorThemed()
-		eq(T.edge_rgb(worn.backdrop), green(), 'move ' .. move .. ': the equipped item stays green')
+		eq(T.edge_rgb(worn.backdrop), accent(), 'move ' .. move .. ': the equipped item stays the accent')
 		eq(T.edge(other.backdrop), T.text(unpack(thick.bordercolor)), 'move ' .. move .. ": the other takes the theme's new border")
 	end
 
 	switch('thin')
-	eq(T.edge_rgb(worn.backdrop), green(), 'a switch to Thin: still green')
+	eq(T.edge_rgb(worn.backdrop), accent(), 'a switch to Thin: still the accent')
 	eq(T.edge(other.backdrop), T.text(unpack(st.config.profile.templates.thin.bordercolor)), "the other takes Thin's border")
 
 	-- Taken off: LibActionButton updates the button, and its border is the theme's,
@@ -210,7 +226,7 @@ test('the equipped border survives a recolor', function()
 	worn.equipped = true
 	LAB.callbacks:Fire('OnButtonUpdate', worn)
 	st:RecolorThemed()
-	eq(T.edge_rgb(worn.backdrop), green(), 'put on again: green, through a recolor')
+	eq(T.edge_rgb(worn.backdrop), accent(), 'put on again: the accent, through a recolor')
 	eq(#take_errors(), 0, 'no errors')
 end)
 
