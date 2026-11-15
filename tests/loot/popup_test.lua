@@ -145,7 +145,9 @@ local function check_blizzard(where)
 		eq(row.Item.Count:GetFontObject(), NumberFontNormal, label .. ': the count font')
 		if row.QualityText then eq(row.QualityText:GetFontObject(), GameFontWhiteTiny2, label .. ': the quality font') end
 		eq(T.text(row.Item.icon:GetTexCoord()), T.text(0, 0, 0, 1, 1, 0, 1, 1), label .. ': the icon shows the whole texture')
-		eq(row.Item.icon:GetNumMaskTextures(), 1, label .. ': the icon is round again')
+		eq(row.Item.icon:GetNumMaskTextures(), LF.client == 'forever' and 1 or 0,
+			label .. ': the icon has the mask Blizzard gave it (Forever\'s round one, none on retail)')
+		eq(T.rgb(row.Text:GetTextColor()), T.rgb(unpack(LF.QUALITY[select(5, GetLootSlotInfo(i))])), label .. ': the name keeps Blizzard\'s quality color')
 		local card = drawn_child(row)
 		check(not card or not card:IsShown(), label .. ': SaftUI\'s card is not shown')
 		local slot = slot_backdrop(row)
@@ -192,9 +194,10 @@ local function check_skinned(where)
 		local trim = profile.misc.icon_trim
 		eq(T.text(row.Item.icon:GetTexCoord()), T.text(trim, trim, trim, 1 - trim, 1 - trim, trim, 1 - trim, 1 - trim), label .. ': the icon is cropped')
 		eq(row.Item.icon:GetNumMaskTextures(), 0, label .. ': its round mask is off')
+		eq(T.rgb(row.Text:GetTextColor()), T.rgb(unpack(LF.QUALITY[select(5, GetLootSlotInfo(i))])), label .. ': the name keeps Blizzard\'s quality color through the font')
 		-- The slot's border is the quality color; a money row has none.
 		if row.QualityText then
-			local color = st:QualityColor(row.GetQuality(row))
+			local color = st:QualityColor((select(5, GetLootSlotInfo(i))))
 			eq(T.edge_rgb(slot), T.text(color.r, color.g, color.b), label .. ': the slot\'s border is the item\'s quality color')
 		end
 		check(slot.GetFrameLevel(slot) < row.Item:GetFrameLevel(), label .. ': the slot lies under the icon')
@@ -205,7 +208,7 @@ end
 local function open() LF.open(SLOTS) end
 
 local function clean()
-	local allowed = { SetAlpha = true, SetFontObject = true, SetTexCoord = true, RemoveMaskTexture = true, AddMaskTexture = true, HookScript = true }
+	local allowed = { SetAlpha = true, SetFontObject = true, SetTextColor = true, SetTexCoord = true, RemoveMaskTexture = true, AddMaskTexture = true, HookScript = true }
 	for _, call in ipairs(LF.calls) do
 		check(allowed[call], 'SaftUI called ' .. call .. ' on one of Blizzard\'s loot widgets')
 	end
@@ -240,17 +243,19 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 	end)
 end
 
-test('a row handed out again for another slot keeps its skin and takes the new quality', function()
+test('a changed slot takes the new quality (read as Init reads it); a pooled row comes back styled', function()
 	world('forever')
 	open()
 	local row = rows()[1]
 	local slot = slot_backdrop(row)
 	local before = T.edge_rgb(slot)
 	LF.change(1, { quality = 5, name = 'Legendary thing' })
+	-- The element data still says epic (LOOT_OPENED's); GetLootSlotInfo says legendary.
+	eq(row.GetQuality(row), 4, 'Blizzard\'s element data is not replaced')
 	local color = st:QualityColor(5)
 	eq(T.edge_rgb(slot), T.text(color.r, color.g, color.b), 'the slot\'s border is the new quality\'s')
 	check(before ~= T.edge_rgb(slot), 'it changed')
-	-- Close, open fewer rows, then more: pooled rows come back styled.
+	eq(T.rgb(row.Text:GetTextColor()), T.rgb(unpack(LF.QUALITY[5])), 'and the name keeps Blizzard\'s color for it')
 	LF.close()
 	LF.open({ { kind = 'item', quality = 3, name = 'Blue thing' } })
 	eq(#own_children(rows()[1]), 1, 'a pooled row has still only one card')
@@ -258,6 +263,58 @@ test('a row handed out again for another slot keeps its skin and takes the new q
 	eq(T.edge_rgb(slot_backdrop(rows()[1])), T.text(blue.r, blue.g, blue.b), 'and the new slot\'s color')
 	LF.open(SLOTS)
 	check_skinned('the pool, handed out again')
+	clean()
+end)
+
+test('retail: no mask to take off or put back, and a toggle round trip leaves none', function()
+	world('retail')
+	open()
+	for _, row in ipairs(rows()) do eq(row.Item.icon:GetNumMaskTextures(), 0, 'no mask on retail\'s icon') end
+	check_skinned('retail on')
+	profile.loot.popup.enable = false
+	LT:UpdatePopup()
+	check_blizzard('retail off')
+	profile.loot.popup.enable = true
+	LT:UpdatePopup()
+	check_skinned('retail on again')
+	clean()
+end)
+
+test('names keep their quality colors through a font change, the toggle and a theme switch', function()
+	world('forever')
+	open()
+	profile.loot.popup.font = 'pixel'
+	st:FontsChanged()
+	check_skinned('font')
+	profile.loot.popup.enable = false
+	LT:UpdatePopup()
+	check_blizzard('off')
+	profile.loot.popup.enable = true
+	LT:UpdatePopup()
+	switch('blizzard')
+	check_blizzard('Blizzard theme')
+	switch('thin')
+	check_skinned('Thin')
+	clean()
+end)
+
+test('a row handed out while Enable is off is not hooked, and no row is hooked twice', function()
+	world('forever')
+	open()
+	profile.loot.popup.enable = false
+	LT:UpdatePopup()
+	LF.open({ { kind = 'item', quality = 2, name = 'Late thing' }, { kind = 'item', quality = 1, name = 'x' },
+		{ kind = 'item', quality = 1, name = 'y' }, { kind = 'item', quality = 1, name = 'z' } })
+	local fresh = rows()[4]
+	check(not stub.hook_wrappers[fresh.Init], 'a row first seen while off has no Init hook')
+	profile.loot.popup.enable = true
+	LT:UpdatePopup()
+	check(stub.hook_wrappers[fresh.Init], 'hooked once it is on')
+	LT:UpdatePopup()
+	LT:UpdatePopup()
+	local init = fresh.Init
+	LT:UpdatePopup()
+	eq(fresh.Init, init, 'and never a second time')
 	clean()
 end)
 

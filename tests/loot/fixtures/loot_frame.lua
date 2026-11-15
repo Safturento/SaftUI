@@ -61,6 +61,8 @@ local QUALITY = {
 	[0] = { 0.62, 0.62, 0.62 }, { 1, 1, 1 }, { 0.12, 1, 0 }, { 0, 0.44, 0.87 }, { 0.64, 0.21, 0.93 }, { 1, 0.5, 0 },
 }
 
+LF.QUALITY = QUALITY
+
 local driving = 0
 local omitted = {}
 
@@ -113,6 +115,16 @@ local function guard(widget)
 	local base = meta.__index
 	meta.__index = function(t, key)
 		local value = base[key]
+		if key == 'SetFontObject' and type(value) == 'function' then
+			-- A font object resets a font string's explicit text color in the
+			-- game (SaftUI-Core/Media/fonts.lua, st:ApplyFont's note).
+			return function(self, ...)
+				if driving == 0 then LF.calls[#LF.calls + 1] = key end
+				local result = value(self, ...)
+				stub.state(self).text_color = nil
+				return result
+			end
+		end
 		if type(value) == 'function' and type(key) == 'string' and changes(key) then
 			return function(...)
 				if driving == 0 then LF.calls[#LF.calls + 1] = key end
@@ -131,15 +143,24 @@ end
 
 ------------------------------------------------------------------ a row
 
-local function quality_of(row) return row.data.quality or 1 end
+-- What Init reads for a slot, as the game's GetLootSlotInfo gives it (LF.loot,
+-- by slot index); the row's own data (the element data) is made when the loot
+-- opens and is never replaced, as in the game.
+local function quality_of(row)
+	return select(5, GetLootSlotInfo(row.data.index)) or 1
+end
+
+local function slot_of(row) return LF.loot[row.data.index] end
 
 -- LootFrameElementMixin:Init (and LootFrameItemElementMixin:Init): what Blizzard
 -- sets on a row for its slot.
 local function init(row)
-	local data = row.data
+	local data = slot_of(row)
 	row.Text:SetText(data.name or 'Item')
 	local color = QUALITY[quality_of(row)] or QUALITY[1]
+	-- On a font string SetVertexColor sets the text's color.
 	row.Text:SetVertexColor(unpack(color))
+	row.Text:SetTextColor(unpack(color))
 	if row.NameFrame then row.NameFrame:SetVertexColor(unpack(color)) end
 	if row.IconQuestTexture then row.IconQuestTexture:Hide() end
 	row.Item.icon:SetTexture(data.icon or 134400)
@@ -177,13 +198,18 @@ local function make_row(kind)
 
 	-- ItemButton (Blizzard_ItemButton's Shared/ItemButtonTemplate.xml).
 	local icon = texture(item, 'icon', 'BORDER', 'Item.icon')
-	local mask = item:CreateMaskTexture()
-	mask:SetAllPoints(item)
-	rawset(item, 'Mask', mask)
+	-- Forever's ItemButton has a round Mask (PostOnLoad adds it to the icon and
+	-- the normal and pushed textures); retail's has none.
+	local mask
+	if LF.client == 'forever' then
+		mask = item:CreateMaskTexture()
+		mask:SetAllPoints(item)
+		rawset(item, 'Mask', mask)
+	end
 	if icon then
 		icon:SetSize(37, 37)
 		icon:SetPoint('CENTER')
-		icon:AddMaskTexture(mask)
+		if mask then icon:AddMaskTexture(mask) end
 	end
 	local count = fontstring(item, 'Count', 'ARTWORK', NumberFontNormal, 'Item.Count')
 	if count then count:Hide() end
@@ -199,8 +225,10 @@ local function make_row(kind)
 	rawset(item, 'NormalTexture', item:GetNormalTexture())
 	rawset(item, 'PushedTexture', item:GetPushedTexture())
 	rawset(item, 'HighlightTexture', item:GetHighlightTexture())
-	item:GetNormalTexture():AddMaskTexture(mask)
-	item:GetPushedTexture():AddMaskTexture(mask)
+	if mask then
+		item:GetNormalTexture():AddMaskTexture(mask)
+		item:GetPushedTexture():AddMaskTexture(mask)
+	end
 
 	-- LootFrameElementTemplate's regions.
 	local name = texture(row, 'NameFrame', 'BACKGROUND', 'NameFrame')
@@ -251,7 +279,8 @@ local function make_row(kind)
 		if driving == 0 then LF.stray[#LF.stray + 1] = 'Init' end
 		drive(init, self)
 	end)
-	rawset(row, 'GetQuality', function(self) return quality_of(self) end)
+	-- The element data's quality, from when the loot opened (LootFrame:Open).
+	rawset(row, 'GetQuality', function(self) return self.data.quality end)
 	rawset(row, 'GetSlotIndex', function(self) return self.data.index end)
 	rawset(row, 'kind', kind)
 	rawset(row, 'data', {})
@@ -268,6 +297,12 @@ function LF.build(opts)
 	omitted = {}
 	for _, path in ipairs(opts.omit or {}) do omitted[path] = true end
 	LF.client = opts.client or 'forever'
+	LF.loot = {}
+	-- The game's GetLootSlotInfo: texture, item, quantity, currencyID, quality.
+	function GetLootSlotInfo(index)
+		local slot = LF.loot[index]
+		return slot.icon or 134400, slot.name or 'Item', slot.count or 1, nil, slot.quality
+	end
 	LF.calls, LF.stray, LF.widgets, LF.rows, LF.pool, LF.active = {}, {}, {}, {}, { item = {}, money = {} }, {}
 	-- Every Blizzard widget made, as a set, and its key list as built.
 	LF.set, LF.keys0 = {}, {}
@@ -349,13 +384,15 @@ end
 -- the scroll box updated.
 function LF.open(slots)
 	LF.close()
+	-- (a copy: a test's slot list is reused, and LF.change replaces entries)
+	LF.loot = {}
+	for i, slot in ipairs(slots) do LF.loot[i] = slot end
 	drive(function()
 		LF.frame:Show()
 		for index, slot in ipairs(slots) do
-			slot.index = index
 			slot.kind = slot.kind or 'item'
 			local row = table.remove(LF.pool[slot.kind]) or make_row(slot.kind)
-			row.data = slot
+			row.data = { index = index, quality = slot.quality or 1 }
 			row:Init()
 			row:Show()
 			LF.active[#LF.active + 1] = row
@@ -367,8 +404,9 @@ end
 -- LOOT_SLOT_CHANGED for the slot at index.
 function LF.change(index, slot)
 	local row = LF.active[index]
-	slot.index, slot.kind = index, row.kind
-	row.data = slot
+	slot.kind = row.kind
+	-- GetLootSlotInfo now answers for the new item; the element data stays.
+	LF.loot[index] = slot
 	drive(function() row:Init() end)
 end
 

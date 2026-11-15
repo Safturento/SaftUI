@@ -124,7 +124,8 @@ end
 
 -- A popup row's own reset (the options kit's `default` field): the rotate-ccw
 -- icon while the setting differs from its default, putting it back and
--- applying it. A font reset also tells the fonts (st:FontsChanged).
+-- applying it. The Font row's is replaced below with the Fonts module's, which
+-- also tells the fonts (st:FontsChanged).
 local function PopupDefault(key, apply)
 	return {
 		differs = function() return LT.config.popup[key] ~= st.defaults.loot.popup[key] end,
@@ -145,7 +146,7 @@ function LT:GetPopupOptions()
 	local general = BuildGeneral('popup', {
 		enable = generators.toggle(1, 'Enable',
 			"Draw Blizzard's loot window in SaftUI's look: a panel, a card for each item and the item's quality on its slot's border. " ..
-			"Off, the window stays as Blizzard draws it. Where it opens (at the cursor) is Blizzard's setting.",
+			"Off, the window stays as Blizzard draws it. Where it opens is Blizzard's: at the mouse with Blizzard's setting, else where Edit Mode puts it.",
 			'small'),
 		theme = generators.theme(2, "The loot window's border and background. Under Blizzard and None the window keeps Blizzard's own look."),
 		background = generators.background(3),

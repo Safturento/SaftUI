@@ -14,9 +14,11 @@ local LT = st:GetModule('Loot')
 	ScrollingFlatPanel.xml and .lua): both clients have the same scroll box
 	window. The classic one (LootButton1 to LootButton4 and paging) is on
 	neither, so this skin has nothing for it and does nothing where LootFrame has
-	no ScrollBox. The two clients differ only in the gamepad pieces (Forever's
-	FrameGlow and jump hints, its `acquiredFromItem` and smart navigation code),
-	which the skin never touches.
+	no ScrollBox. The clients differ in the gamepad code and in two pieces the skin
+	touches: Forever's ItemButton has a round Mask on its icon (retail's has none,
+	so a restore adds one mask on Forever and none on retail) and its close button
+	is 28 x 28 (24 x 24 on retail). LootFrame is also an Edit Mode system, whose
+	SetPoint, Hide and the like are Lua overrides the skin never calls.
 	  - LootFrame is a DefaultPanelFlatTemplate (.NineSlice, .Bg,
 	    .TitleContainer.TitleText) with a .ClosePanelButton, a .ScrollBox and a
 	    .ScrollBar. Blizzard sizes it itself (ScrollingFlatPanelMixin:Resize from
@@ -45,7 +47,8 @@ local LT = st:GetModule('Loot')
 	    Font.
 	Left as Blizzard's: the scroll bar, the shadows at the scroll box's edges,
 	the quest and profession overlays on an icon, a row's text color (Blizzard's
-	quality color, put on in Init), the gamepad pieces and where the window is.
+	quality color, put on in Init and put back after the font), the gamepad pieces
+	and where the window is.
 
 	Taint (.agents/taint.md). Loot buttons are clicked in combat all the time and
 	the window is Blizzard's, so it is only looked at: nothing is written onto
@@ -129,17 +132,29 @@ local function Named(font)
 	if name and _G[name] == font then return font end
 end
 
--- SaftUI's font on a font string, or what Blizzard had back.
+-- A font object resets a text's own color (st:ApplyFont's note), and Blizzard
+-- colors each name by quality in Init (SetVertexColor, which on a font string is
+-- the text's color), so the color read before the change is put back after it,
+-- as the objective tracker skin does. A secret color is left alone.
+local function KeepColor(target, change)
+	local r, g, b, a
+	if target.GetTextColor then r, g, b, a = target:GetTextColor() end
+	change()
+	if r and not issecretvalue(r) then target:SetTextColor(r, g, b, a) end
+end
+
+-- SaftUI's font on a font string, or what Blizzard had back; the text's color
+-- stays what it was.
 local function PutFont(target, kind, active, font)
 	if not target or not target.SetFontObject then return end
 	if active then
 		if fonts[target] == nil then
 			fonts[target] = { font = Named(target.GetFontObject and target:GetFontObject()) }
 		end
-		if font then target:SetFontObject(font) end
+		if font then KeepColor(target, function() target:SetFontObject(font) end) end
 	elseif fonts[target] then
 		local original = fonts[target].font or _G[BLIZZARD_FONTS[kind]]
-		if original then target:SetFontObject(original) end
+		if original then KeepColor(target, function() target:SetFontObject(original) end) end
 	end
 end
 
@@ -232,11 +247,23 @@ end
 
 ------------------------------------------------------------------ the rows
 
--- The quality of an item row, nil for a money row. GetQuality is Blizzard's
--- (the element data's), a read.
+-- The quality of an item row, nil for a money row. Read the way Blizzard's
+-- Init reads it, from GetLootSlotInfo for the row's slot: the element data's
+-- quality (GetQuality) is made when the loot opens and is not replaced when a
+-- slot changes (LOOT_SLOT_CHANGED runs Init again), so it can be stale. Both
+-- of the row's methods are Blizzard Lua, called only to read (GetSlotIndex,
+-- and GetQuality for a currency, whose quality Init takes from
+-- CurrencyContainerUtil, which isn't called from here).
 local function ElementQuality(element)
-	if not element.QualityText or type(element.GetQuality) ~= 'function' then return end
-	local ok, quality = pcall(element.GetQuality, element)
+	if not element.QualityText then return end
+	local ok, index = pcall(element.GetSlotIndex or error, element)
+	if ok and type(index) == 'number' and GetLootSlotInfo then
+		local _, _, _, currencyID, quality = GetLootSlotInfo(index)
+		if not currencyID and type(quality) == 'number' then return quality end
+		if not currencyID and quality == nil then return Enum and Enum.ItemQuality and Enum.ItemQuality.Common or 1 end
+	end
+	local quality
+	ok, quality = pcall(element.GetQuality or error, element)
 	if ok and type(quality) == 'number' then return quality end
 end
 
@@ -323,7 +350,6 @@ local function StyleSlot(element, active)
 	local item = element.Item
 	if not item then return end
 	local theme, background = Look()
-	if active and not slots[item] then st:MarkForeign(item) end
 	st:SetBackdropIn(slots, item, active and theme or 'none', background, 'slot')
 	local backdrop = slots[item]
 	if backdrop then
@@ -412,9 +438,11 @@ local function Sweep()
 	end
 	for _, element in ipairs(Elements(frame)) do
 		if styled[element] ~= generation then
-			styled[element] = generation
-			Apply(HookElement, element)
-			Apply(StyleElement, element, active)
+			-- A row first seen while the skin is off is not hooked (the hooks
+			-- would do nothing): it is when the skin comes on. Marked styled
+			-- only once it is, so a row whose styling errored is tried again.
+			if active then Apply(HookElement, element) end
+			if xpcall(StyleElement, geterrorhandler(), element, active) then styled[element] = generation end
 		end
 	end
 end
