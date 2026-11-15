@@ -128,6 +128,18 @@ local st = SaftUI
 	has own (a member page) shows only its share's Reset; a disabled row
 	shows none.
 
+	A row with no default field still has a reset, from where its value is
+	saved (optionsdefault.lua): a group or option may carry saved (SaftUI's own
+	field, read from the node that gives the row its get, never inherited from
+	another): saved = function(info) -> key1, key2, ... (the saved path, as
+	returns; st.Config.SavedIn and SavedAt build the usual ones), or false (not
+	a profile value). The default is what st.defaults holds at that path, by
+	AceDB's rules (st:DefaultAt), and a reset writes it through the row's own
+	set. An option may instead say why it has none: noReset = '<why>' (read raw,
+	never drawn). OM.DefaultSource(root, row) names a row's source: 'share',
+	'default', 'mover' (a Position whose group is a mover's configPath: edit
+	mode's own Reset), 'derived', 'none' or nil (the reset walk's failure).
+
 	A color option may carry toggle (SaftUI's own field, read raw, never
 	inherited): the color and a "use this color" check box as one control. Its
 	functions are each called with the option's info:
@@ -216,6 +228,8 @@ local function GetSubOption(group, key)
 	end
 	return group.args[key]
 end
+
+OM.SubOption = GetSubOption -- optionsdefault.lua walks a path as the model does
 
 -- The table AceConfig registered: what info.options is.
 local function Options(root)
@@ -1069,7 +1083,11 @@ end
 ]]
 function OM.DefaultState(root, row)
 	local default = DefaultOf(row.option)
-	if not default then return nil end
+	if not default then
+		-- No hand default: a mover's Position, or a default derived from where
+		-- the row is saved (optionsdefault.lua, when loaded).
+		return OM.SourceState and OM.SourceState(root, row) or nil
+	end
 	local info = BuildInfo(row.option, Options(root), row.path)
 	local state = { differs = ShareAsk(default, 'differs', info) and true or false }
 	local text = default.text
@@ -1083,11 +1101,28 @@ function OM.DefaultState(root, row)
 	return state
 end
 
--- Runs the row's default.reset(info) through safecall: true when it ran,
--- false when there's none or it errored (the error goes to the handler).
+-- Whether the row's hand default says its value differs now, and nothing
+-- else: the icon asks it for every row on every render (no words, no value).
+function OM.HandDiffers(root, row)
+	local default = DefaultOf(row.option)
+	if not default then return false end
+	local info = BuildInfo(row.option, Options(root), row.path)
+	return ShareAsk(default, 'differs', info) and true or false
+end
+
+-- Puts the row's default back: its hand default.reset(info) through safecall
+-- (true when it ran, false when it errored: the error goes to the handler),
+-- else, for a mover's Position or a derived default, optionsdefault.lua's
+-- OM.SourceReset (ok, and the message of a failed one). false when there is
+-- no reset.
 function OM.DefaultReset(root, row)
 	local default = DefaultOf(row.option)
-	local func = default and default.reset
+	if not default then
+		if not OM.SourceReset then return false end
+		local ok, message = OM.SourceReset(root, row)
+		return ok and true or false, message
+	end
+	local func = default.reset
 	if type(func) ~= 'function' then return false end
 	local info = BuildInfo(row.option, Options(root), row.path)
 	return (safecall(func, info)) and true or false

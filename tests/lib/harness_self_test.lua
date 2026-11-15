@@ -89,6 +89,17 @@ test('load_saftui takes one path, inside an addon folder', function()
 	check(tostring(err):find('no_such_file.lua', 1, true), 'the error names the file: ' .. tostring(err))
 end)
 
+test('read_test_source reads a file under tests/ as text with LF endings, nil for a missing one, and takes a relative path', function()
+	local text = read_test_source('lib/harness.lua')
+	check(type(text) == 'string' and text:find('function read_test_source', 1, true), 'a helper file reads as its text')
+	check(not text:find('\r', 1, true), 'with LF line endings')
+	local none, why = read_test_source('lib/no_such_file.lua')
+	eq(none, nil, 'a missing file is nil')
+	check(type(why) == 'string' and why:find('no_such_file', 1, true), 'with the reason: ' .. tostring(why))
+	check(not pcall(read_test_source, '../README.md'), 'a path with ".." errors')
+	check(not pcall(read_test_source, '/etc/hostname'), 'an absolute path errors')
+end)
+
 test('apply_defaults fills the profile from st.defaults and keeps what is there', function()
 	reset_world()
 	SaftUI.defaults = { a = { b = 1, c = { d = 2 } }, e = 3 }

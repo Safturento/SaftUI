@@ -219,7 +219,8 @@ end
 -- label, configPath, blizzardFrame, module, isDisabled, isHidden,
 -- noDefaultReason, ...> }. spec isn't changed; its other fields go to
 -- st:RegisterMover as they are, except frame, getPosition and setPosition, which
--- the helper's own replace, and defaults, which becomes getDefaultPosition:
+-- the helper's own replace, and defaults, which becomes getDefaultPosition (and
+-- peekDefaultPosition, the same without the copy, for EM:PeekDefaultPosition):
 --   key     the mover's key, as st:RegisterMover's first argument.
 --   defaults  optional, the twin of config: a function returning the table that
 --           holds the default `position` (function() return st.defaults.chat end).
@@ -251,9 +252,38 @@ function st:RegisterConfigMover(frame, spec)
 		end
 	end
 	def.frame = frame
+	if spec.defaults ~= nil then
+		-- The same default without the copy, for a caller that only compares it
+		-- (EM:PeekDefaultPosition: the options kit's icon check, every render).
+		local defaults = spec.defaults
+		def.peekDefaultPosition = function()
+			local d = defaults()
+			return d and d.position or nil
+		end
+	end
 	def.getPosition = function() return getConfig().position end
 	def.setPosition = function(position) getConfig().position = position end
 	return st:RegisterMover(spec.key, def)
+end
+
+-- The registered mover whose configPath is path (a list of keys, compared key
+-- by key), or nil: the mover whose section a Position row sits in. length
+-- takes the first keys of path only (a row's group, without its own key); no
+-- table is made. With two movers on one path the lowest key wins.
+function EM:MoverAt(path, length)
+	length = length or #path
+	local found
+	for key, mover in pairs(self.movers) do
+		local at = mover.def.configPath
+		if at and #at == length and (not found or key < found.key) then
+			local same = true
+			for i = 1, length do
+				if at[i] ~= path[i] then same = false; break end
+			end
+			if same then found = mover end
+		end
+	end
+	return found
 end
 
 -- The module name a mover with none is listed under.
@@ -300,6 +330,19 @@ end
 -- True when the mover's frame is on but not on screen now.
 function EM:IsMoverHidden(mover)
 	return RunPredicate(mover, 'isHidden')
+end
+
+-- Where Reset would put the mover's frame, without a copy: the table the
+-- registration holds (it may be st.defaults' own, or a fresh one), which a
+-- caller only reads. For a check made on every render (EM:CanReset(mover, true)),
+-- which must make no table. Nil when there is no default.
+function EM:PeekDefaultPosition(mover)
+	local def = mover.def
+	local get = def.peekDefaultPosition or def.getDefaultPosition
+	if not get then return nil end
+	local ok, position = xpcall(get, geterrorhandler())
+	if not ok or type(position) ~= 'table' then return nil end
+	return position
 end
 
 -- Where Reset puts the mover's frame: a fresh deep copy on every call, so a

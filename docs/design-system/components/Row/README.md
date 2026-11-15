@@ -12,6 +12,7 @@ Every option in `/sui` and in the small dialog. The body packs rows into lines b
 - `size`: `'small'` for a quarter (toggles, execute buttons and inputs only; a colour is never small), none for a half, `'wide'` for a line. Descriptions and position blocks always take a line.
 - `disabled` and, while it's disabled, `disabledDesc` saying why.
 - For a shared setting, the share fields (see `OwnMark`, `DiffIcon`, `ResetIcon`, `ApplyList`).
+- A reset (see `ResetIcon`): `saved`, where the setting is saved, on the group that gives the row its `get` or on the option itself (`st.Config.SavedIn(...)` or `SavedAt(...)`; `saved = false` for a value that is not a profile key), or a hand `default`; or `noReset`, a sentence on why a row has none. A row with none of these fails the reset walk.
 
 ## Sizes
 
