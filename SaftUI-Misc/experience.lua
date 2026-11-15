@@ -98,6 +98,7 @@ function XP:GetConfigTable()
 			desc = desc,
 			type = 'color',
 			size = size,
+			saved = st.Config.SavedAt('colors', 'experience', key),
 			get = function()
 				return Colors().experience[key]:GetRGB()
 			end,
@@ -119,6 +120,7 @@ function XP:GetConfigTable()
 				name = 'General',
 				type = 'group',
 				order = 1,
+				saved = st.Config.SavedIn('experience'),
 				get = function(info) return self.config[info[#info]] end,
 				set = function(info, value) self.config[info[#info]] = value; self:UpdateConfig() end,
 				args = {
