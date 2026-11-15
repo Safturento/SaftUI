@@ -52,7 +52,7 @@ local function CreateBar(parent)
 	bar.Timer:SetStatusBarTexture(st.BLANK_TEX)
 	-- A font is needed before text is set (SetText errors on a font string
 	-- without one); ApplyBarConfig re-applies it with the rest.
-	local font = st:GetFont(LT.config.roll.font)
+	local font = st:FontObject(LT.config.roll.font)
 	bar.Timer.Text = bar.Timer:CreateFontString(nil, 'OVERLAY')
 	bar.Timer.Text:SetFontObject(font)
 	bar.Name = bar.Timer:CreateFontString(nil, 'OVERLAY')
@@ -61,7 +61,7 @@ local function CreateBar(parent)
 	bar.Name:SetWordWrap(false)
 	bar.Name:SetVertexColor(1, 1, 1)
 	bar.Choice = bar.Timer:CreateFontString(nil, 'OVERLAY')
-	bar.Choice:SetFontObject(st:GetFont('pixel'))
+	st:ApplyFont(bar.Choice, 'pixel')
 	bar.Choice:Hide()
 
 	bar.buttons = {}
@@ -124,7 +124,7 @@ end
 -- chosen button gets a border, lit, on its edges with its art inside; every
 -- other button has none, as on Blizzard's bar.
 local function ApplyBarConfig(bar, config)
-	local font = st:GetFont(config.font)
+	local font = st:FontObject(config.font)
 
 	bar:SetSize(config.width, config.height)
 	bar.IconFrame:SetSize(config.height, config.height)
@@ -171,7 +171,7 @@ local function ApplyBarConfig(bar, config)
 
 	-- The label sits before the timer, and the name before it.
 	local nameEnd = bar.Timer.Text
-	bar.Choice:SetFontObject(st:GetFont('pixel'))
+	st:ApplyFont(bar.Choice, 'pixel')
 	bar.Choice:ClearAllPoints()
 	if bar.choice then
 		bar.Choice:SetPoint('RIGHT', bar.Timer.Text, 'LEFT', -2, 0)

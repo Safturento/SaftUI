@@ -312,7 +312,7 @@ function TR:BuildNearestButton()
 	button:SetPoint('TOPLEFT', holder, 'TOPLEFT', 0, 0)
 	-- Its key, top right, in the Pixel font.
 	local text = button.over:CreateFontString(nil, 'OVERLAY')
-	text:SetFontObject(st:GetFont('pixel'))
+	st:ApplyFont(text, 'pixel')
 	text:SetJustifyH('RIGHT')
 	text:SetPoint('TOPRIGHT', button.over, 'TOPRIGHT', -2, -2)
 	text:Hide()

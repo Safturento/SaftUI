@@ -269,6 +269,8 @@ test("a bar's Cooldown menu sets the numbers' font, size, outline and place at o
 
 	set('size', 14)
 	eq(AB.config.bar1.text.countdown.size, 14, 'Size writes text.countdown.size')
+	eq(numbers:GetFontObject(), st:GetFont(AB:CountdownValue(AB:GetBarConfig('bar1'))), "the object is the value's typeface")
+	eq(stub.state(numbers).font, nil, 'and no SetFont was called on the numbers')
 	eq(font(numbers), path(pixelMed.font_name) .. ',14,' .. OUTLINE, 'the numbers take it at once, in the same face and outline')
 	eq(get('size'), 14, 'Size shows it')
 	eq(get('font'), pixelMed.font_name, 'Font still shows the face drawn')
@@ -277,6 +279,8 @@ test("a bar's Cooldown menu sets the numbers' font, size, outline and place at o
 	set('font', 'Friz Quadrata TT')
 	set('outline', 'NONE')
 	eq(font(numbers), path('Friz Quadrata TT') .. ',14,', 'Font and Outline: another face, no outline')
+	eq(numbers:GetFontObject(), st:GetFont(AB:CountdownValue(AB:GetBarConfig('bar1'))), "the object is the value's typeface")
+	eq(stub.state(numbers).font, nil, 'and still no SetFont')
 	eq(get('font') .. ',' .. get('outline'), 'Friz Quadrata TT,NONE', 'shown in their rows')
 
 	local position = group.args.position
@@ -322,7 +326,10 @@ test("a bar's Cooldown menu sets the numbers' font, size, outline and place at o
 		'nil,nil,nil', 'the font, size and outline are unset')
 	eq(('%s %s %s,%s'):format(countdown.point, countdown.rel_point, countdown.x_off, countdown.y_off),
 		'CENTER CENTER 0,0', 'and the place is the default')
+	eq(numbers:GetFontObject(), st:GetFont(AB:CountdownValue(AB:GetBarConfig('bar1'))), 'the numbers are on the default value again, at once')
+	eq(AB:CountdownValue(AB:GetBarConfig('bar1')), 'pixel_med', 'which is Pixel Med, a shared font')
 	eq(numbers:GetFontObject(), st:GetFont('pixel_med'), 'the numbers are on Pixel Med again, at once')
+	eq(stub.state(numbers).font, nil, 'by the font object alone')
 	eq(font(numbers), font(st:GetFont('pixel_med')), "drawn in its font")
 	eq(T.anchor(numbers, names), 'CENTER button CENTER 0.00,0.00', 'in the middle')
 	eq(get('font') .. ',' .. get('size') .. ',' .. get('outline'),
@@ -343,6 +350,93 @@ test("a bar's Cooldown menu sets the numbers' font, size, outline and place at o
 	eq(AB:GetSetting('all', 'countdown.size'), nil, 'its reset unsets it')
 	eq(numbers:GetFontObject(), st:GetFont('pixel'), 'and the bar is back on Pixel at 30px')
 	eq(font(numbers), font(st:GetFont('pixel')), "drawn in Pixel's font")
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("the numbers' value: the shared font by size while nothing is set, else the typeface of what is drawn", function()
+	fresh()
+	local config = AB:GetBarConfig('bar1')
+	eq(config.size, 45, 'bar 1 ships 45px buttons')
+	eq(AB:CountdownValue(config), 'pixel_med', '45px: Large numbers')
+	eq(AB:CountdownValue({ size = 30, text = {} }), 'pixel', '30px, no countdown settings: Small text')
+	eq(AB:CountdownValue({ size = 36, text = { countdown = {} } }), 'pixel_med', 'the least size for Large numbers')
+	eq(AB:CountdownValue({ size = 35, text = { countdown = {} } }), 'pixel', 'one under it')
+	local value = AB:CountdownValue({ size = 30, text = { countdown = { size = 14 } } })
+	eq(type(value), 'table', 'a size alone makes a typeface')
+	eq(value.font_size, 14, 'at that size')
+	eq(value.font_name, st.config.profile.fonts.pixel.font_name, "in the default font's face")
+	eq(value.font_outline, st.config.profile.fonts.pixel.font_outline, "and its outline")
+	eq(AB:CountdownValue({ size = 30, text = { countdown = { font = 'Colus' } } }).font_name, 'Colus', 'a font alone: that face')
+	eq(AB:CountdownValue({ size = 30, text = { countdown = { outline = 'NONE' } } }).font_outline, 'NONE', 'an outline alone')
+	eq(AB:CountdownValue({ size = 30, text = { countdown = { font = 'pixel' } } }), 'pixel', "a shared font's key stays the key")
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a hotkey switched Small text, then Colus, then Small text follows each with no SetFont (G2)', function()
+	fresh()
+	local b = bar('bar1', button('CooldownTestHotkey'))
+	local function drawn()
+		local config = AB:GetBarConfig('bar1').text.hotkey
+		return st:GetFont(st:FaceFont(config.font, config.size, config.outline))
+	end
+	local function set(font)
+		AB:SetSetting('bar1', 'hotkey.font', font)
+		AB:UpdateBar('bar1')
+	end
+	set('pixel')
+	eq(b.HotKey:GetFontObject(), st:GetFont('pixel'), "Small text: the shared font's object")
+	eq(b.labConfig.text.hotkey.value, 'pixel', "the config's value is the key")
+	eq(b.HotKey:GetHeight(), select(2, st:FontValues('pixel')), "the one-line height is the shared font's size")
+	set('Colus')
+	eq(b.HotKey:GetFontObject(), drawn(), 'Colus: a typeface object')
+	check(b.HotKey:GetFontObject() ~= st:GetFont('pixel'), 'not the shared one')
+	eq(b.labConfig.text.hotkey.font.font, path('Colus'), "the library's own face is Colus too")
+	set('pixel')
+	eq(b.HotKey:GetFontObject(), st:GetFont('pixel'), 'Small text again, with no reload')
+	for _, key in ipairs({ 'HotKey', 'Count', 'Name' }) do
+		eq(stub.state(b[key]).font, nil, key .. ': no SetFont, ever')
+	end
+	-- No forced shadow: what a font string has (here set by hand, as a font object's would give) stays.
+	b.HotKey:SetShadowOffset(2, -2)
+	AB:UpdateBar('bar1')
+	eq(T.text(b.HotKey:GetShadowOffset()), '2.00,-2.00', "the style doesn't set the shadow to 0, 0")
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("SaftUI's own buttons (the pet and stance bars) draw their texts with st:ApplyFont, and again when the setting changes", function()
+	fresh()
+	local header = CreateFrame('Frame', 'CooldownTestSecureBar', UIParent)
+	header.id = 'pet'
+	-- The stubs have no ActionButtonTemplate: a secure button with the template's
+	-- regions made by hand.
+	local real = CreateFrame
+	function CreateFrame(kind, name, parent, template, id)
+		local frame = real(kind, name, parent, 'SecureActionButtonTemplate', id)
+		frame.icon = frame:CreateTexture(nil, 'BACKGROUND')
+		frame.IconMask = frame:CreateMaskTexture()
+		frame.Flash = frame:CreateTexture(nil, 'ARTWORK')
+		frame.cooldown = real('Cooldown', nil, frame)
+		for _, key in ipairs({ 'HotKey', 'Count', 'Name' }) do frame[key] = frame:CreateFontString(nil, 'OVERLAY') end
+		return frame
+	end
+	GetCVarBool = GetCVarBool or function(name) return stub.cvars[name] == '1' end
+	local ok, pet = pcall(AB.CreateSecureButton, AB, header, 1, { Refresh = function() end, SetTooltip = function() end })
+	CreateFrame = real
+	check(ok, tostring(pet))
+	local function set(font)
+		AB:SetSetting('pet', 'hotkey.font', font)
+		pet:UpdateConfig(AB:GetButtonConfig('pet', 1))
+	end
+	set('pixel')
+	eq(pet.HotKey:GetFontObject(), st:GetFont('pixel'), 'Small text')
+	set('Colus')
+	check(pet.HotKey:GetFontObject() ~= st:GetFont('pixel'), 'Colus: a typeface object')
+	eq(select(2, pet.HotKey:GetFont()), AB:GetBarConfig('pet').text.hotkey.size, 'at the setting\'s size')
+	set('pixel')
+	eq(pet.HotKey:GetFontObject(), st:GetFont('pixel'), 'Small text again')
+	for _, key in ipairs({ 'HotKey', 'Count', 'Name' }) do
+		eq(stub.state(pet[key]).font, nil, key .. ': no SetFont')
+	end
 	eq(#take_errors(), 0, 'no errors')
 end)
 

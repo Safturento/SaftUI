@@ -459,7 +459,7 @@ function INV:CreateSlot(container, categoryName)
 	slot.cooldown:SetAllPoints(slot)
 
 	local itemLevel = slot:CreateFontString(nil, 'OVERLAY')
-	itemLevel:SetFontObject(st:GetFont(self.config.fonts.icons))
+	st:ApplyFont(itemLevel, self.config.fonts.icons)
 	itemLevel:SetPoint('BOTTOMRIGHT', slot.Count, -1, 0)
 	slot.itemLevel = itemLevel
 
@@ -502,7 +502,7 @@ end
 function INV:StyleSlot(slot, categoryFrame, container, lineSlots)
 	self:SetSlotPosition(slot, categoryFrame, container, lineSlots)
 	slot:SetSize(self:GetButtonWidth(), self:GetButtonHeight())
-	slot.itemLevel:SetFontObject(st:GetFont(self.config.fonts.icons))
+	st:ApplyFont(slot.itemLevel, self.config.fonts.icons)
 	slot.reagentMarker:SetVertexColor(st.config.profile.colors.text.green:GetRGB())
 	self:SkinSlot(slot)
 end

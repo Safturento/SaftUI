@@ -39,7 +39,7 @@ UF.SetMaxWidth = SetMaxWidth
 local function UpdateConfig(unitframe)
 	UF:UpdateElement(unitframe.Name)
 
-	unitframe.Name:SetFontObject(st:GetFont(unitframe.config.name.font))
+	st:ApplyFont(unitframe.Name, unitframe.config.name.font)
 	SetMaxWidth(unitframe.Name, unitframe.config.name)
     unitframe.Name.overrideUnit = true
 

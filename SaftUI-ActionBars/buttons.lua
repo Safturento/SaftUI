@@ -56,7 +56,7 @@ local Button = {}
 
 -- LibActionButton's UpdateTextElement: one text's font, place and color.
 local function ApplyText(region, text)
-	region:SetFont(text.font.font or STANDARD_TEXT_FONT, text.font.size, text.font.flags or '')
+	st:ApplyFont(region, text.value)
 	region:SetJustifyH(text.justifyH)
 	region:ClearAllPoints()
 	region:SetPoint(text.position.anchor, region:GetParent(), text.position.relAnchor or text.position.anchor,

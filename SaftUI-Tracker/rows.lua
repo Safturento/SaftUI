@@ -170,9 +170,9 @@ end
 
 local function FontOf(role)
 	local config = TR.config
-	if role == 'text' then return st:GetFont(config.font) or st:GetFont('normal') end
-	if role == 'header' then return st:GetFont(config.header_font) or st:GetFont('normal') end
-	return st:GetFont('pixel')
+	if role == 'text' then return st:FontObject(config.font) end
+	if role == 'header' then return st:FontObject(config.header_font) end
+	return st:FontObject('pixel')
 end
 
 local FONT_ROLES = { 'text', 'header', 'pixel' }

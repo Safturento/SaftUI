@@ -582,7 +582,7 @@ function LT:UpdateLootFeedConfig()
 		self.feed.items[i] = item
 	end
 
-	local font_obj = st:GetFont(config.font)
+	local font_obj = st:FontObject(config.font)
 
 	for i,item in pairs(self.feed.items) do
 		item:ClearAllPoints()

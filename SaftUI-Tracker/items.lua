@@ -536,14 +536,14 @@ local function NewButton(parent, name)
 	over:SetFrameLevel(button:GetFrameLevel() + 2)
 	button.over = over
 	button.count = over:CreateFontString(nil, 'OVERLAY')
-	button.count:SetFontObject(st:GetFont('pixel'))
+	st:ApplyFont(button.count, 'pixel')
 	button.count:SetJustifyH('RIGHT')
 	button.count:SetPoint('BOTTOMRIGHT', over, 'BOTTOMRIGHT', -2, 2)
 	button.count:Hide()
 	-- The column's number (Beside the tracker), made with the button like the count:
 	-- the Pixel font, at the bottom left.
 	button.numberText = over:CreateFontString(nil, 'OVERLAY')
-	button.numberText:SetFontObject(st:GetFont('pixel'))
+	st:ApplyFont(button.numberText, 'pixel')
 	button.numberText:SetJustifyH('LEFT')
 	button.numberText:SetPoint('BOTTOMLEFT', over, 'BOTTOMLEFT', 2, 2)
 	button.numberText:Hide()

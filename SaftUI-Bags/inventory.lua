@@ -240,10 +240,10 @@ end
 -- Re-applies the profile to the category headers and item slots a container
 -- has made.
 function INV:StyleContainerContents(container)
-	local titleFont = st:GetFont(self.config.fonts.titles)
+	local titleFont = self.config.fonts.titles
 	for _, category in pairs(container.categories) do
 		category.header:SetHeight(self.config.categoryTitleHeight)
-		category.header.text:SetFontObject(titleFont)
+		st:ApplyFont(category.header.text, titleFont)
 		-- A profile change runs out of combat (UpdateConfig waits for its end):
 		-- the slots are anchored at the window's line now, as ApplyView does, and
 		-- the frame records it.
