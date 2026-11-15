@@ -311,9 +311,9 @@ test('Reset, All and Multiple on a bar, and on All bars', function()
 	-- Multiple's list: every other bar; for a text a pet or stance bar lacks, not them.
 	eq(labels(OM.ShareTargets(r, row(r, 'bar3', 'size'))),
 		'Bar 1,Bar 2,Bar 4,Bar 5,Bar 6,Bar 7,Bar 8,Pet bar,Stance bar', 'every bar but Bar 3')
-	eq(labels(OM.ShareTargets(menu_row(row(r, 'bar3', 'count'), 'size'))),
+	eq(labels(OM.ShareTargets(menu_setting(row(r, 'bar3', 'count'), 'size'))),
 		'Bar 1,Bar 2,Bar 4,Bar 5,Bar 6,Bar 7,Bar 8', 'Stack count: no Pet bar or Stance bar')
-	eq(labels(OM.ShareTargets(menu_row(row(r, 'bar3', 'hotkey'), 'size'))),
+	eq(labels(OM.ShareTargets(menu_setting(row(r, 'bar3', 'hotkey'), 'size'))),
 		'Bar 1,Bar 2,Bar 4,Bar 5,Bar 6,Bar 7,Bar 8,Pet bar,Stance bar', 'Hotkey: the pet and stance bars too')
 	eq(labels(OM.ShareTargets(r, row(r, 'all', 'size'))), 'Pet bar,Stance bar', "on All bars: the bars that own it")
 
@@ -369,7 +369,7 @@ test("the shares name the members ('bar', 'bars'), and the pet and stance bars w
 	-- An item's Show, and a setting in its menu, carry them too.
 	local item = row(r, 'pet', 'hotkey')
 	eq(OM.ShareState(r, item).pageText, 'the Pet bar', "the pet bar's Hotkey")
-	eq(OM.ShareState(menu_row(item, 'size')).pageText, 'the Pet bar', 'and its Size')
+	eq(OM.ShareState(menu_setting(item, 'size')).pageText, 'the Pet bar', 'and its Size')
 	no_errors()
 end)
 
@@ -386,10 +386,10 @@ test('a text item: own-marked by its menu, its diff lines naming the settings', 
 	local all = OM.ShareState(r, row(r, 'all', 'hotkey'))
 	eq(differs(all), 'Bar 3: Size, Position', "All bars' Hotkey names Bar 3 and its settings")
 	eq(all.offers, false, 'its line acts on Show, which no bar owns')
-	eq(differs(OM.ShareState(menu_row(row(r, 'all', 'hotkey'), 'size'))), 'Bar 3: 8', 'Size, in the menu, names its value')
+	eq(differs(OM.ShareState(menu_setting(row(r, 'all', 'hotkey'), 'size'))), 'Bar 3: 8', 'Size, in the menu, names its value')
 	eq(differs(OM.ShareState(menu_row(row(r, 'all', 'hotkey'), 'position'))), 'Bar 3: Top Left to Top Right, -3, -3',
 		'Position names the whole place')
-	eq(OM.ShareState(menu_row(row(r, 'bar3', 'hotkey'), 'size')).own, true, "Bar 3's menu: Size is own")
+	eq(OM.ShareState(menu_setting(row(r, 'bar3', 'hotkey'), 'size')).own, true, "Bar 3's menu: Size is own")
 	eq(OM.ShareState(menu_row(row(r, 'bar3', 'hotkey'), 'font')).own, false, 'Font follows')
 
 	AB:SetSetting('bar3', 'hotkey.show', false)
@@ -401,13 +401,13 @@ test('a text item: own-marked by its menu, its diff lines naming the settings', 
 
 	-- A set in the menu makes the setting the bar's own, and applies to the bar.
 	calls = {}
-	local menuRoot, size = menu_row(row(r, 'bar2', 'count'), 'size')
+	local menuRoot, size = menu_setting(row(r, 'bar2', 'count'), 'size')
 	eq(OM.Get(menuRoot, size), 10, "Bar 2's stack count size: All bars' 10")
 	OM.Set(menuRoot, size, 13)
 	eq(AB:IsOwn('bar2', 'count.size') and AB:GetBarConfig('bar2').text.count.size, 13, 'own now, 13')
 	eq(table.concat(calls, ','), 'UpdateBar:bar2', 'Bar 2 is updated')
 	calls = {}
-	menuRoot, size = menu_row(row(r, 'all', 'macro'), 'size')
+	menuRoot, size = menu_setting(row(r, 'all', 'macro'), 'size')
 	OM.Set(menuRoot, size, 11)
 	eq(AB:GetSetting('all', 'macro.size'), 11, "All bars' macro name size")
 	eq(#calls, #AB.BAR_IDS, 'every bar is updated')
@@ -547,6 +547,11 @@ end)
 
 test("search finds a text menu's settings on All bars and on each bar", function()
 	fresh()
+	-- A text on Small text, as they ship, hides its Outline and Size (they are the font's).
+	for _, result in ipairs(OM.Search(root(), 'Outline')) do
+		check(not (result.menu and result.sectionTitle == 'Hotkey'), "no Hotkey Outline while Hotkey is on Small text")
+	end
+	AB:SetSetting('all', 'hotkey.font', 'Homespun') -- a typeface: its Size and Outline show
 	local found = {}
 	for _, result in ipairs(OM.Search(root(), 'Outline')) do
 		if result.menu and result.sectionTitle == 'Hotkey' then found[#found + 1] = result.path[2] end
@@ -576,7 +581,9 @@ test('SettingText', function()
 	eq(AB:SettingText('bar3', 'hotkey.show'), 'Hidden', 'a hidden text')
 	eq(AB:SettingText('all', 'hotkey.show'), 'Shown', 'a shown one')
 	eq(AB:SettingText('all', 'hotkey.outline'), 'Monochrome outline', "an outline by the Fonts module's label")
-	eq(AB:SettingText('all', 'hotkey.font'), st.config.profile.fonts.pixel.font_name, 'a font by its name')
+	eq(AB:SettingText('all', 'hotkey.font'), 'Small text', 'a text ships Small text: a shared font by its name')
+	AB:SetSetting('bar3', 'hotkey.font', 'Colus')
+	eq(AB:SettingText('bar3', 'hotkey.font'), 'Colus', 'a face by its name')
 	no_errors()
 end)
 
@@ -839,6 +846,9 @@ end
 test("a text's Font lists the shared fonts first; Small text picked saves 'pixel', hides Size and Outline and shows the link", function()
 	font_world()
 	local W = st.OptionsWidgets
+	-- The shipped text is Small text; its look as a face is what an older profile or a pick gives.
+	eq(menu_keys(row(root(), 'all', 'hotkey')), 'font,position', 'shipped: Small text, with no Size or Outline')
+	AB:SetSetting('all', 'hotkey.font', 'Homespun')
 	local r = root()
 	local item = row(r, 'all', 'hotkey')
 	eq(item.option.menu.args.font.type, 'font', "the Font row is Core's font row")

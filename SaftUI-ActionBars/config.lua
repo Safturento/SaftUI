@@ -26,9 +26,9 @@ local st = SaftUI
 	    Buttons per row is shipped own on bars 4-8 (columns), Button size on
 	    the pet and stance bars (30). The values here are kept for every bar
 	    as today's defaults, which the one-time conversion reads (shared.lua).
-	  - text: hotkey, stack count and macro name. Each has show, font (a
-	    LibSharedMedia font name, or a shared font's key once a Font row picks one,
-	    which brings its own size and outline), size, outline (a Fonts outline name, 'NONE' for
+	  - text: hotkey, stack count and macro name. Each has show, font (a shared
+	    font's key, 'pixel' (Small text) by default, which brings its own size and
+	    outline, or a LibSharedMedia font name once a Font row picks one), size, outline (a Fonts outline name, 'NONE' for
 	    none), point and rel_point (the text's point and the button's), and
 	    x_off / y_off from there. text.countdown is the cooldown numbers:
 	    point, rel_point, x_off and y_off as above, and no show (Blizzard's
@@ -103,7 +103,11 @@ end
 local function Text(point, x_off, y_off)
 	return {
 		show = true,
-		font = pixel.font_name,
+		-- The shared font Small text, so a change on the Fonts tab reaches the text. Its
+		-- size and outline are what the text drew when it was a copy of Small text's
+		-- look: not drawn while the font is a shared one (the font brings its own), and
+		-- what a typeface picked later starts from.
+		font = 'pixel',
 		size = pixel.font_size,
 		outline = pixel.font_outline,
 		point = point,

@@ -459,6 +459,8 @@ test("a shared font a bar's text uses changing on the Fonts tab restyles that ba
 	fresh()
 	local b = bar('bar1', button('CooldownTestFonts'))
 	local other = bar('bar2', button('CooldownTestFontsTwo'))
+	-- The texts ship Small text: bar 2's are given faces, so it names no shared font.
+	for _, kind in ipairs({ 'hotkey', 'count', 'macro' }) do AB:SetSetting('all', kind .. '.font', 'Homespun') end
 	AB:SetSetting('bar1', 'hotkey.font', 'pixel')
 	AB:UpdateBar('bar1')
 	local before, otherBefore = b.configs, other.configs

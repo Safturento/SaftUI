@@ -286,8 +286,91 @@ local function Shown(src, key, numButtons)
 	return value
 end
 
+-- What the texts' font, size and outline shipped as before Small text became their
+-- default font: a copy of Small text's face, size and outline (AceDB saves only
+-- what differs from a default, so a profile saved then has a face only where it
+-- chose one, and a size or an outline only where it changed them). A record of
+-- the past, kept here whatever Small text's defaults become.
+AB.OLD_TEXT_FONT = { font = 'Homespun', size = 10, outline = 'MONOCHROMEOUTLINE' }
+
+-- The texts whose font the step below converts: the cooldown numbers have no
+-- font of their own to convert.
+local FONT_KINDS = { 'hotkey', 'count', 'macro' }
+
+AB.DEFAULT_TEXT_FONT = 'pixel'
+AB.FONTS_VERSION = 1
+
+-- A text that reads the shared font by default but has a size or an outline that
+-- is not the old copy's drew the old copy's face at that size or outline (the
+-- face was never saved: it was the default). Whether a text's font is Small
+-- text because it was never set, or because a Font row picked it, can't be told
+-- once AceDB has put the defaults back, so this reads a size or an outline kept
+-- beside it as the first: a face and a size picked in the old build, then Small
+-- text, is the one shape this gets wrong (it draws the old face at that size).
+local function KeepsOldFace(font, size, outline)
+	local old = AB.OLD_TEXT_FONT
+	return font == AB.DEFAULT_TEXT_FONT and (size ~= old.size or outline ~= old.outline)
+end
+
+-- One-time step for a profile saved before the texts' default font was Small text
+-- (actionbars.fontsVersion, which has no default; it rides in the profile's own
+-- table, so a copy carries it and a reset clears it): each text keeps what it
+-- drew. It runs before the conversion to All bars below, which compares what
+-- each bar shows. Table writes only.
+--   - In a profile not yet converted to All bars, each bar's own text tables
+--     (the values a bar shows, with no flags yet).
+--   - In one converted, All bars' text tables, and then each bar's effective
+--     values: a bar that follows All bars' Small text but owns a size or an
+--     outline owns the old face too, so it draws what it did. A bar that owns
+--     its font (a shared font picked from the Font row) keeps it.
+function AB:ConvertFonts()
+	local config = self.config
+	if not config or config.fontsVersion ~= nil then return end
+	local old = AB.OLD_TEXT_FONT
+
+	local function Convert(text)
+		if type(text) == 'table' and KeepsOldFace(text.font, text.size, text.outline) then
+			text.font = old.font
+		end
+	end
+
+	if not config.version then
+		for _, id in ipairs(self.BAR_IDS) do
+			local bar = config[id]
+			for _, kind in ipairs(FONT_KINDS) do
+				if bar and bar.text and self:HasSetting(id, kind .. '.font') then Convert(bar.text[kind]) end
+			end
+		end
+	else
+		for _, kind in ipairs(FONT_KINDS) do
+			if config.all and config.all.text then Convert(config.all.text[kind]) end
+		end
+		for _, id in ipairs(self.BAR_IDS) do
+			local bar = config[id]
+			for _, kind in ipairs(FONT_KINDS) do
+				local key = kind .. '.'
+				if bar and bar.text and type(bar.text[kind]) == 'table' and self:HasSetting(id, key .. 'font')
+					and not self:IsOwn(id, key .. 'font') then
+					local all = config.all and config.all.text and config.all.text[kind] or {}
+					if all.font == AB.DEFAULT_TEXT_FONT then
+						local text = bar.text[kind]
+						local size = self:IsOwn(id, key .. 'size') and text.size or all.size
+						local outline = self:IsOwn(id, key .. 'outline') and text.outline or all.outline
+						if size ~= old.size or outline ~= old.outline then
+							text.font = old.font
+							OwnTable(bar)[key .. 'font'] = true
+						end
+					end
+				end
+			end
+		end
+	end
+	config.fontsVersion = AB.FONTS_VERSION
+end
+
 -- Once per profile (see the top). Table writes only.
 function AB:ConvertProfile()
+	self:ConvertFonts()
 	local config = self.config
 	if config.version then return end
 

@@ -460,8 +460,7 @@ end
 -- once (C_Timer.After(0): one restyle per frame at most, the last step's look),
 -- and in combat (a restyle is protected) it waits for the end of it, once. The
 -- pet and stance buttons take their object by SetFontObject alone, but go
--- through the same restyle. A bar whose texts name typefaces (every profile
--- today) is not touched.
+-- through the same restyle. A bar whose texts all name typefaces is not touched.
 local fontsPending
 local function UsesSharedFont(config)
 	for _, kind in ipairs({ 'hotkey', 'count', 'macro' }) do
@@ -485,6 +484,9 @@ function AB:RestyleSharedFontBars()
 end
 
 function AB:OnFontsChanged()
+	-- A profile switched to is converted before its fonts are read: the profile
+	-- update runs st:FontsChanged before the modules' UpdateConfig.
+	if self.config then self:TryConvertProfile() end
 	if fontsPending or not next(self.bars) then return end
 	fontsPending = true
 	C_Timer.After(0, function()

@@ -225,6 +225,15 @@ test("Buffs > Duration's Font lists the shared fonts; Small text picked hides Si
 	function AP:GetGeometry() return { horizontal = true, grow = 'LEFT', wrap = 'DOWN' } end
 	function AP:UpdateText() end
 	local tree = AP:GetConfigTable()
+	-- The shipped texts are Small text, with no Size or Outline; a face shows them.
+	for _, frame in ipairs({ 'buffs', 'debuffs' }) do
+		for _, kind in ipairs({ 'duration', 'count' }) do
+			local group = tree.args[frame].args.text.args[kind]
+			eq(profile.auras[frame][kind].font, 'pixel', frame .. ' ' .. kind .. ' ships Small text')
+			eq(group.args.size.hidden() and group.args.outline.hidden(), true, 'with Size and Outline hidden')
+			profile.auras[frame][kind].font = 'Homespun'
+		end
+	end
 	for _, frame in ipairs({ 'buffs', 'debuffs' }) do
 		for _, kind in ipairs({ 'duration', 'count' }) do
 			local group = tree.args[frame].args.text.args[kind]

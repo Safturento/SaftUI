@@ -9,7 +9,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 - [Active](#active)
   - [2026-11-15 — Option descriptions that say "red" or "yellow" for what Danger and Caution color](#2026-11-15--option-descriptions-that-say-red-or-yellow-for-what-danger-and-caution-color)
   - [2026-11-15 — Keybind mode's hint line could read Muted](#2026-11-15--keybind-modes-hint-line-could-read-muted)
-  - [2026-11-15 — The action bars' and buffs' texts default to Small text](#2026-11-15--the-action-bars-and-buffs-texts-default-to-small-text)
   - [2026-11-15 — A reset on every font row](#2026-11-15--a-reset-on-every-font-row)
   - [2026-11-15 — A window title font per theme](#2026-11-15--a-window-title-font-per-theme)
   - [2026-11-15 — The tooltip lines take SaftUI's shadow and spacing](#2026-11-15--the-tooltip-lines-take-saftuis-shadow-and-spacing)
@@ -128,6 +127,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-15 — The action bars' and buffs' texts default to Small text](#2026-11-15--the-action-bars-and-buffs-texts-default-to-small-text)
   - [2026-11-15 — All bars' Cooldown diff icon misses a bar that owns a size or outline alone](#2026-11-15--all-bars-cooldown-diff-icon-misses-a-bar-that-owns-a-size-or-outline-alone)
   - [2026-11-10 — Fonts: separate the fonts users pick per kind of text from SaftUI's internal font objects](#2026-11-10--fonts-separate-the-fonts-users-pick-per-kind-of-text-from-saftuis-internal-font-objects)
   - [2026-11-13 — Theme change errors in the theme engine: can't measure restricted regions](#2026-11-13--theme-change-errors-in-the-theme-engine-cant-measure-restricted-regions)
@@ -184,23 +184,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 **Anchors:** `SaftUI-ActionBars/keybindmode.lua:65`; `docs/superpowers/specs/2026-11-14-saftui-color-roles-design.md` (call 18); `docs/design-system/tokens.json` (`text-muted`).
 
 **Shape of work:** one line plus a test that sets Muted to a non-default value; it belongs with Task 4's pass over direct reads, or after it.
-
-### 2026-11-15 — The action bars' and buffs' texts default to Small text
-
-**What:** The action bars' hotkey, stack count and macro name, and the buffs' and debuffs' duration and stack count, still ship a copy of Small text's look (Homespun 10, Monochrome outline) saved as a face name, a size and an outline. Their Font rows now list SaftUI's fonts (the fonts design, Task 8), so a player can pick Small text and follow it, but an untouched profile does not. Make Small text the default (the key `pixel`), with a conversion that writes today's copy into any text that set one of font, size or outline, so those keep their look.
-
-**Why noticed:** The fonts design's "Later" list (`docs/superpowers/specs/2026-11-14-saftui-fonts-design.md`), kept out of the plan on purpose: the owner decided the texts keep their saved shape and copied faces (call 23). It would settle Discrepancy 2 by default instead of by a pick.
-
-**Anchors:**
-- `SaftUI-ActionBars/config.lua` (`Text()`, the shipped copy), `SaftUI-ActionBars/shared.lua` (`AB:ConvertProfile`, the profile `version` flag: the model for a one-time conversion), `SaftUI-ActionBars/skin.lua` (`TextConfig`, `AB:OnFontsChanged`).
-- `SaftUI-Misc/config.lua` (`st.defaults.auras`: `duration` and `count` of `buffs` and `debuffs`), `SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua` (`AP:UpdateFont`).
-- `docs/design-system/10-discrepancies.md` (2) and `docs/research/2026-11-14-fonts-audit.md` (the recommendation).
-
-**What's been considered:** The audit recommended it. AceDB saves only what differs from a default, so a profile that never saved a text's font, size or outline would move to Small text by itself, and one that saved any of them must be converted to keep its copy. A text on Small text takes Small text's own shadow where the copy has none (the action bars' and buffs' copies are shadowless), so an owner who gave Small text a shadow would see it on hotkeys and timers.
-
-**Shape of work:** Small: two defaults, a conversion for each module with its marker, tests for an untouched profile, a profile that saved one field and a profile switch, and the docs. One ticket.
-
-**Open questions:** Whether the conversion should also keep the look of a text that saved only its position (it saved no font field, so it follows). Whether the macro names on bars 1 to 8 keep their old shadow (the in-game check of the fonts plan) before this builds on it.
 
 ### 2026-11-15 — A reset on every font row
 
@@ -2382,6 +2365,25 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-15 — The action bars' and buffs' texts default to Small text
+
+**What:** The action bars' hotkey, stack count and macro name, and the buffs' and debuffs' duration and stack count, still ship a copy of Small text's look (Homespun 10, Monochrome outline) saved as a face name, a size and an outline. Their Font rows now list SaftUI's fonts (the fonts design, Task 8), so a player can pick Small text and follow it, but an untouched profile does not. Make Small text the default (the key `pixel`), with a conversion that writes today's copy into any text that set one of font, size or outline, so those keep their look.
+
+**Why noticed:** The fonts design's "Later" list (`docs/superpowers/specs/2026-11-14-saftui-fonts-design.md`), kept out of the plan on purpose: the owner decided the texts keep their saved shape and copied faces (call 23). It would settle Discrepancy 2 by default instead of by a pick.
+
+**Anchors:**
+- `SaftUI-ActionBars/config.lua` (`Text()`, the shipped copy), `SaftUI-ActionBars/shared.lua` (`AB:ConvertProfile`, the profile `version` flag: the model for a one-time conversion), `SaftUI-ActionBars/skin.lua` (`TextConfig`, `AB:OnFontsChanged`).
+- `SaftUI-Misc/config.lua` (`st.defaults.auras`: `duration` and `count` of `buffs` and `debuffs`), `SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua` (`AP:UpdateFont`).
+- `docs/design-system/10-discrepancies.md` (2) and `docs/research/2026-11-14-fonts-audit.md` (the recommendation).
+
+**What's been considered:** The audit recommended it. AceDB saves only what differs from a default, so a profile that never saved a text's font, size or outline would move to Small text by itself, and one that saved any of them must be converted to keep its copy. A text on Small text takes Small text's own shadow where the copy has none (the action bars' and buffs' copies are shadowless), so an owner who gave Small text a shadow would see it on hotkeys and timers.
+
+**Shape of work:** Small: two defaults, a conversion for each module with its marker, tests for an untouched profile, a profile that saved one field and a profile switch, and the docs. One ticket.
+
+**Open questions:** Whether the conversion should also keep the look of a text that saved only its position (it saved no font field, so it follows). Whether the macro names on bars 1 to 8 keep their old shadow (the in-game check of the fonts plan) before this builds on it.
+
+**Resolved 2026-11-15:** The action bars' hotkey, stack count and macro name and the buffs' and debuffs' duration and stack count ship the shared font Small text (`'pixel'`); their size and outline defaults stay the old copy's, shown only once a typeface is picked. Small text's shadow is 0, 0, as the copies' was, so an untouched profile draws exactly what it did; a profile that customised Small text itself now sees that on these texts (what the change is for). A one-time step per module (`AB:ConvertFonts`, `actionbars.fontsVersion`; `AP:ConvertFonts`, `auras.fontsVersion`) keeps the look of a text that saved a size or an outline without a face (it becomes the old face, Homespun, as a typeface); in a profile already converted to All bars a bar that owned only a size or an outline owns the face too. A saved face stays. One shape is read the other way: a text that picked Small text in the old build while keeping a size or an outline saved beside it (indistinguishable from "never set" once AceDB has put the defaults back) is converted to Homespun at that size. A position-only customisation follows Small text, as it drew the same face. Tests: `tests/actionbars/text_font_default_test.lua`, `tests/misc/buff_text_font_default_test.lua`.
 
 ### 2026-11-15 — All bars' Cooldown diff icon misses a bar that owns a size or outline alone
 
