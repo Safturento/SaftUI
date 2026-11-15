@@ -247,7 +247,7 @@ end
 -- fade held, an alpha above the fade lifts it (Blizzard's 1, or another addon
 -- giving it back) and the fade is written again; one below it (0, from Blizzard's
 -- hidden UIParent or another addon hiding it) stands, and the hold is marked
--- unknown (false) so SaftUI's own next write, at a fade step or a reveal, is made.
+-- kept equal to the fade, so nothing SaftUI does writes until the fade itself moves (a step, the hover), is let go or is lifted.
 -- With no fade held an outside alpha is never touched.
 function TR:OnBlizzardAlpha(alpha)
 	if not self.blizzardFrame then return end
@@ -263,7 +263,10 @@ function TR:OnBlizzardAlpha(alpha)
 	elseif alpha >= fade then
 		self:SyncBlizzardAlpha(true)
 	elseif self.blizzardAlphaSet ~= nil then
-		self.blizzardAlphaSet = false
+		-- The hold is the fade itself, so a placement, a refresh or a probe pass
+		-- (SetBlizzardAlpha writes only what differs from it) writes nothing: the
+		-- outside alpha stands until the fade moves, is let go or is lifted.
+		self.blizzardAlphaSet = fade
 	end
 end
 
