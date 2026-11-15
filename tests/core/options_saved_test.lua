@@ -512,6 +512,31 @@ test("asking a hand default row whether it differs makes no table of its own: th
 	check(grown < 20, 'a hand default makes no table per ask (grew ' .. grown .. ' KB)')
 end)
 
+test("a Width or Height box's get hands on to its group's: the group's saved reaches it, its own wins, and a get of the page's own is left alone", function()
+	local root = setup()
+	st.defaults.sv_.width, st.defaults.sv_.height = 200, 30
+	data().width, data().height = 200, 30
+	local box = root.Page.args.box
+	box.args.width = generators.width(7, 'Width')
+	box.args.height = generators.height(8, 'Height')
+	local width = new_row(root, 'Page', 'box', 'width')
+	eq(OM.DefaultSource(root, width), 'derived', "the Width box is derived with no saved of its own: the group's reaches it")
+	check(not OM.DefaultDiffers(root, width), 'at its default')
+	check(OM.WriteValue(root, width, '260'), 'a change is written through its own set')
+	eq(data().width, 260, 'a number, in the profile')
+	check(OM.DefaultDiffers(root, width), 'it differs')
+	check(OM.DefaultReset(root, width), 'its reset runs')
+	eq(data().width, 200, 'and puts the default back')
+	-- Its own saved still wins, as a page may give it: the box then reads against that key's default.
+	box.args.height.saved = st.Config.SavedAt('sv_', 'range')
+	local height = new_row(root, 'Page', 'box', 'height')
+	check(OM.DefaultDiffers(root, height), "a box's own saved is the one read (30 against the range's 0.3)")
+	-- A box that says it has no reset (Chat's size, which keeps the hand-on get) is none, not derived from the group.
+	box.args.height.saved = nil
+	box.args.height.noReset = 'no default'
+	eq(OM.DefaultSource(root, height), 'none', 'a noReset box is none')
+end)
+
 ------------------------------------------------------------------ DefaultAt, merged tables (C1)
 
 test('DefaultAt: a partial own table gets the rest from the sibling **, as AceDB merges it', function()

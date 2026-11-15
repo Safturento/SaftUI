@@ -167,7 +167,7 @@ local function GetNode(root, row)
 	local group, node = { args = root }, nil
 	for _, key in ipairs(row.path) do
 		group = OM.SubOption(group, key)
-		if group.get ~= nil then node = group end
+		if group.get ~= nil and not (group.saved == nil and group.noReset == nil and group.get == st.Config.generators.NumberInputGet) then node = group end
 	end
 	return node
 end

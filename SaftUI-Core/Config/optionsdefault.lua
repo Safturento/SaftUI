@@ -16,7 +16,9 @@ local st = SaftUI
 
 	saved is read from the node that gives the row its get (the option itself
 	when it has one, else the nearest group above it with one), never from
-	another node. noReset is read raw from the option.
+	another node; a Width or Height box's get (generators.NumberInputGet) only
+	hands on to the group's, so it is looked through unless the box carries its
+	own saved or a noReset. noReset is read raw from the option.
 
 	A row's reset source, in order (OM.DefaultSource):
 	  'share'    a member page's share (share.own): its hover line's Reset
@@ -303,9 +305,19 @@ local function OptionsFor(root)
 	return options
 end
 
+-- Whether a get only hands on to the group's (a Width or Height box's
+-- generators.NumberInputGet, which turns the group's number into text): the
+-- group above is what gives the row its value, and its saved reaches the row
+-- unless the box carries one of its own, or says it has no reset (Chat's size).
+local function HandsOn(group)
+	local G = st.Config and st.Config.generators
+	return group.saved == nil and group.noReset == nil and G ~= nil and group.get == G.NumberInputGet
+end
+
 -- Walks the row's path as the model does, filling info for it and giving the
 -- node that gives the row its get (the option itself, else the nearest group
--- above with one) and the nearest handler. Nil for a path that isn't there.
+-- above with one; a get that only hands on, HandsOn, is looked through) and the
+-- nearest handler. Nil for a path that isn't there.
 local function Locate(root, row)
 	local options = OptionsFor(root)
 	local path = row.path
@@ -319,7 +331,7 @@ local function Locate(root, row)
 			return nil
 		end
 		info[i] = path[i]
-		if group.get ~= nil then node = group end
+		if group.get ~= nil and not HandsOn(group) then node = group end
 		handler = group.handler or handler
 	end
 	for i = size + 1, infoSize do info[i] = nil end
