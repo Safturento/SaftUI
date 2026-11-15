@@ -138,18 +138,20 @@ function TR:UpdateConfig()
 	if self.model then self:Refresh() end
 end
 
+-- The groups whose colors the tracker reads: Text, Objectives, the Accent and the
+-- theme's own. A pass for any other group touches nothing in it.
+function TR.ColorGroupReaches(group)
+	return group == 'text' or group == 'objectives' or group == 'accent' or group == 'theme'
+end
+
 -- A theme recolor or a change of a profile color: what each part of the tracker
 -- colors itself is put back. The one entry point of the module (a second
 -- definition in another file would silently replace this one): each part adds
 -- its own call here. Runs while the switch is off too (st:ColorsChanged calls
 -- every module), so each part does nothing until it exists.
-function TR.ColorGroupReaches(group)
-	return group == 'text' or group == 'objectives' or group == 'accent' or group == 'theme'
-end
-
 function TR:OnColorsChanged(group)
 	if not self.built or not TR.ColorGroupReaches(group) then return end
-	self:ColorWindow()
+	self:ColorWindow(group)
 	self:ColorRows(group)
 	self:ColorItems()
 	self:ColorNearest()

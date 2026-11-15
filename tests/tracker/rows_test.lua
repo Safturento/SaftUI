@@ -1134,7 +1134,8 @@ end)
 RW.both('a Class or Power pass repaints nothing in the tracker; Text, Objectives and the Accent still do', function(st, TR)
 	Q.set({ Q.header('A'), Q.quest(1, { objectives = { { text = 'old', type = 'monster' } } }) }, { 1 }, {})
 	TR:Refresh()
-	-- The tracker alone: edit mode's own handler (Task 2's) sets and hides on every pass.
+	-- The tracker alone: RW.calls counts every widget's setters, and edit mode's handler
+	-- (and Core's) paint on Text, Buttons and the Accent too.
 	local function total(group, key)
 		local modules = st.modules
 		st.modules = { Tracker = TR }
@@ -1153,5 +1154,36 @@ RW.both('a Class or Power pass repaints nothing in the tracker; Text, Objectives
 	eq(total('class'), 0, 'a whole Class pass repaints nothing')
 	for _, pair in ipairs({ { 'text', 'muted' }, { 'objectives', 'complete' }, { 'accent' }, { 'theme' } }) do
 		check(total(pair[1], pair[2]) > 0, pair[1] .. ' still repaints')
+	end
+end)
+
+RW.both("a pass for the tracker's live groups only colors: nothing forbidden or made, no garbage, nothing blocked in combat", function(st, TR)
+	local C = load_test_file('lib/color_cost.lua')
+	Q.set({ Q.header('A'), Q.quest(1, { item = { link = 'item:6948', texture = 134400 } }), Q.quest(2) }, { 1, 2 })
+	TR:Refresh()
+	-- The tracker alone: RW.calls counts every widget, and edit mode's handler
+	-- (and Core's) paint on Text, Buttons and the Accent too.
+	local modules = st.modules
+	for _, combat in ipairs({ false, true }) do
+		RW.TW.combat(combat)
+		stub.blocked = {}
+		st.modules = { Tracker = TR }
+		local ok, err = pcall(function()
+			for _, pass in ipairs({ { 'text', 'muted' }, { 'text', 'danger' }, { 'objectives', 'completed' }, { 'accent' }, { 'theme' } }) do
+				st:ColorChanged(pass[1], pass[2])
+				local m = C.measure(function() st:ColorChanged(pass[1], pass[2]) end, 100)
+				local where = pass[1] .. ' ' .. tostring(pass[2]) .. (combat and ' in combat' or '')
+				eq(m.forbidden.total, 0, where .. ': nothing forbidden')
+				eq(m.made, 0, where .. ': nothing made')
+				check(m.calls.total > 0, where .. ': colors')
+				-- A theme recolor draws the header's line through st:ResolveTheme, a look table per pass;
+				-- the Colors page's groups make none.
+				if pass[1] ~= 'theme' then check(m.kb < 4, where .. ': no garbage: ' .. m.kb) end
+			end
+		end)
+		st.modules = modules
+		eq(#stub.blocked, 0, 'nothing blocked' .. (combat and ' in combat' or ''))
+		RW.TW.combat(false)
+		if not ok then error(err, 0) end
 	end
 end)

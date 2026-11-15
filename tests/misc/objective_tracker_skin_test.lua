@@ -618,10 +618,25 @@ test('the skin repaints for its groups only: a Class pass touches nothing', func
 	end
 	for _, group in ipairs({ 'text', 'objectives', 'accent', 'theme' }) do
 		st:ColorsChanged(group)
-		local m = C.measure(function() st:ColorChanged(group) end)
+		local m = C.measure(function() st:ColorChanged(group) end, 100)
 		check(m.calls.total > 0, group .. ': the skin colors its pieces')
 		eq(m.forbidden.total, 0, group .. ': nothing forbidden')
 		eq(m.made, 0, group .. ': nothing made')
+		if group == 'text' or group == 'accent' then
+			check(m.kb < 4, group .. ': no table per pass: ' .. m.kb .. ' KB over 100 passes')
+		end
 	end
+	-- Objectives colors each line through Apply, an xpcall with arguments: the stub's xpcall
+	-- (tests/wow/lua.lua) makes a closure for those, the game's makes none. With a stand-in
+	-- that makes none, the skin's own pass makes no table.
+	local stub_xpcall = _G.xpcall
+	_G.xpcall = function(fn, _, ...) return pcall(fn, ...) end
+	local ok, err = pcall(function()
+		st:ColorChanged('objectives')
+		local m = C.measure(function() st:ColorChanged('objectives') end, 100)
+		check(m.kb < 4, 'objectives, without the stub\'s xpcall closure: ' .. m.kb .. ' KB over 100 passes')
+	end)
+	_G.xpcall = stub_xpcall
+	if not ok then error(err, 0) end
 	clean()
 end)

@@ -885,10 +885,11 @@ test('the skin repaints for its groups only: a Class pass touches nothing', func
 	end
 	for _, group in ipairs({ 'accent', 'theme' }) do
 		st:ColorsChanged(group)
-		local m = C.measure(function() st:ColorChanged(group) end)
+		local m = C.measure(function() st:ColorChanged(group) end, 100)
 		check(m.calls.total > 0, group .. ': the hover edges are colored')
 		eq(m.forbidden.total, 0, group .. ': nothing forbidden')
 		eq(m.made, 0, group .. ': nothing made')
+		check(m.kb < 4, group .. ': no table per pass: ' .. m.kb .. ' KB over 100 passes')
 	end
 	clean()
 end)

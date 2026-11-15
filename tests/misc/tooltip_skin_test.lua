@@ -338,3 +338,63 @@ test('a shown unit tooltip takes its class or standing color at once; a hidden o
 	tip:Hide()
 	eq(#take_errors(), 0, 'no error')
 end)
+
+test('a unit tooltip pass only colors: nothing forbidden or made, no garbage, in combat too', function()
+	local C = load_test_file('lib/color_cost.lua')
+	TT.config.theme, TT.config.background = 'theme', 'theme'
+	TT:UpdateConfig()
+	local tip = tooltips.GameTooltip
+	_G.UnitName = function() return 'Someone' end
+	_G.UnitPlayerControlled = function() return true end
+	_G.UnitClass = function() return 'Mage', 'MAGE' end
+	st.config.profile.colors.class.MAGE = { r = 0.4, g = 0.5, b = 0.6 }
+	tip:Show()
+	TT:GameTooltip_OnTooltipSetUnit(tip)
+	local modules = st.modules
+	for _, combat in ipairs({ false, true }) do
+		stub.in_combat = combat
+		st.modules = { Tooltip = TT } -- this reader alone: other modules' handlers are other tasks'
+		local ok, err = pcall(function()
+			for _, pass in ipairs({ { 'class', 'MAGE' }, { 'class' }, { 'theme' } }) do
+				st:ColorChanged(pass[1], pass[2])
+				local m = C.measure(function() st:ColorChanged(pass[1], pass[2]) end, 100)
+				local where = pass[1] .. ' ' .. tostring(pass[2]) .. (combat and ' in combat' or '')
+				eq(m.forbidden.total, 0, where .. ': nothing forbidden')
+				eq(m.made, 0, where .. ': nothing made')
+				check(m.calls.total > 0, where .. ': colors')
+				check(m.kb < 4, where .. ': no garbage: ' .. m.kb)
+			end
+		end)
+		st.modules = modules
+		stub.in_combat = false
+		if not ok then error(err, 0) end
+	end
+	tip:Hide()
+end)
+
+test('a shown unit tooltip with a secret class takes no color pass and raises no error', function()
+	local S = load_test_file('lib/secrets.lua')
+	local restore = S.install()
+	local secret = S.secret('class')
+	local blizzard = { r = 0.7, g = 0.6, b = 0.5 }
+	local was = _G.C_ClassColor
+	_G.C_ClassColor = { GetClassColor = function() return blizzard end }
+	_G.UnitName = function() return 'Someone' end
+	_G.UnitPlayerControlled = function() return true end
+	_G.UnitClass = function() return 'Mage', secret end
+	local tip = tooltips.GameTooltip
+	tip:Show()
+	local ok, err = pcall(function()
+		TT:GameTooltip_OnTooltipSetUnit(tip)
+		st:ColorsChanged('class')
+		st:ColorChanged('class', 'MAGE')
+		st:ColorsChanged('theme')
+	end)
+	local r, g, b = left1:GetTextColor()
+	tip:Hide()
+	_G.C_ClassColor = was
+	restore()
+	check(ok, 'no error: ' .. tostring(err))
+	check(r == blizzard.r and g == blizzard.g and b == blizzard.b, "the name keeps Blizzard's class color")
+	eq(#take_errors(), 0, 'nothing reported')
+end)

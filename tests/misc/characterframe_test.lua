@@ -231,7 +231,7 @@ test('Text > Strong: the shown item levels at once', function()
 	profile.colors.text.strong:SetRGB(0.9, 0.1, 0.3)
 	st:ColorChanged('text', 'strong')
 	eq(rgb(buttons.Head), '0.9,0.1,0.3', 'a shown slot follows')
-	eq(rgb(buttons.Neck), '0.4,0.8,0.2', 'a hidden one is left')
+	eq(rgb(buttons.Neck), '0.9,0.1,0.3', 'a hidden one follows too, so none is left stale')
 	-- Another Text color, another group: nothing.
 	profile.colors.text.strong:SetRGB(0.2, 0.2, 0.2)
 	st:ColorChanged('text', 'muted')
@@ -248,4 +248,22 @@ test('Text > Strong: the shown item levels at once', function()
 	check(m.calls.total <= 100 * #SLOTS, 'at most one setter per slot per pass')
 	buttons.Neck:Show()
 	eq(#take_errors(), 0, 'no error')
+end)
+
+test('one skin erroring in a color pass is reported once and does not stop the others', function()
+	local bad = SK:NewModule('ErroringSkin')
+	local seen = {}
+	function bad:OnColorsChanged() error('a skin that fails') end
+	local good = SK:NewModule('RecordingSkin')
+	function good:OnColorsChanged(group, key) seen[#seen + 1] = group .. ':' .. tostring(key) end
+	take_errors()
+	profile.colors.text.strong:SetRGB(0.3, 0.3, 0.3)
+	SK:OnColorsChanged('text', 'strong')
+	eq(table.concat(seen, ','), 'text:strong', 'the other skin ran, with its group and key')
+	local text = parts(buttons.Head)
+	eq(table.concat({ text:GetTextColor() }, ',', 1, 3), '0.3,0.3,0.3', 'and so did the character frame')
+	local errors = take_errors()
+	eq(#errors, 1, 'one error reported')
+	check(tostring(errors[1]):find('a skin that fails', 1, true) ~= nil, 'it is the skin\'s')
+	bad.OnColorsChanged, good.OnColorsChanged = nil, nil
 end)
