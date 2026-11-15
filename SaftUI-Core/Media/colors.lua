@@ -111,10 +111,11 @@ CO.OLD_COLORS = {
 }
 
 -- One step per change of the colors' keys, run in order on a profile saved
--- before it. A step is { copy, retire }: copy lists { source, destination, ...}
--- (a customized source's color goes into each destination), retire the paths
--- that leave. A path is 'group.key' under profile.colors. The steps are never
--- edited once shipped; each change appends one.
+-- before it. A step is { copy, retire, opacity }: copy lists { source,
+-- destination, ...} (a customized source's color goes into each destination),
+-- retire the paths that leave, opacity the colors whose saved opacity goes back
+-- to the default's. A path is 'group.key' under profile.colors. The steps are
+-- never edited once shipped; each change appends one.
 CO.MIGRATION_STEPS = {
 	{
 		copy = {
@@ -162,6 +163,14 @@ CO.MIGRATION_STEPS = {
 		retire = {
 			'text.white', 'text.red', 'text.orange', 'text.yellow', 'text.green', 'text.cyan', 'button.red',
 		},
+	},
+	{
+		-- The Buttons colors' opacity is drawn now, as each reader's strength
+		-- times it. No opacity was ever drawn before, so a saved one (the
+		-- slider was there, and did nothing) goes back to 100%, once: the
+		-- defaults are 100% and a chosen opacity from here on is kept. The
+		-- colors themselves are untouched.
+		opacity = { 'button.normal', 'button.hover', 'button.pushed', 'button.danger' },
 	},
 }
 
@@ -233,6 +242,19 @@ local function RunStep(profile, step)
 		local holder = group and profile.colors[group]
 		if type(holder) == 'table' then holder[key] = nil end
 	end
+	for _, path in ipairs(step.opacity or {}) do
+		local group, key = SplitPath(path)
+		local holder = group and profile.colors[group]
+		local color = type(holder) == 'table' and holder[key]
+		if type(color) == 'table' then
+			-- In place, never nil, and no table made: a color that was saved
+			-- keeps its own channels, and an unsaved one already reads the
+			-- default's opacity.
+			local default = st.defaults and st.defaults.colors and st.defaults.colors[group]
+			default = type(default) == 'table' and default[key]
+			color.a = type(default) == 'table' and default.a or 1
+		end
+	end
 end
 
 -- Brings a profile's colors up to the last step: every step after the
@@ -290,7 +312,7 @@ CO.SECTIONS = {
 		}),
 	},
 	{
-		key = 'button', name = 'Buttons', note = RELOAD_NOTE, hasAlpha = true,
+		key = 'button', name = 'Buttons', note = RELOAD_NOTE .. " Opacity sets how strongly each is drawn: 100% is SaftUI's own.", hasAlpha = true,
 		colors = Colors('button', {
 			{ 'normal', 'Normal', "A SaftUI button's or check box's highlight, a scroll bar thumb at rest, and the micro menu's button highlight." },
 			{ 'hover', 'Hover', "A checked check box, a hovered scroll bar thumb, the minimap tracking button's hover, micro menu button highlights and resize handles." },

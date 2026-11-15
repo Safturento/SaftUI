@@ -72,6 +72,26 @@ test("a totem button's flash is Buttons > Danger at 40%, at an odd value", funct
 	if c then eq(T.rgb(c[1], c[2], c[3]) .. ' ' .. string.format('%.2f', c[4]), T.rgb(unpack(BUTTON)) .. ' 0.40', 'Buttons > Danger at 40%') end
 end)
 
+test("a totem button's flash is Buttons > Danger at 40% times its opacity: 0.4 at 100%, 0.2 at 50%", function()
+	local StyleButton = find_upvalue(TB.SetupSkin, 'StyleButton')
+	check(StyleButton, 'the button styling')
+	if not StyleButton then return end
+	TB.config = TB.config or {}
+	TB.config.button_size = 36
+	for _, a in ipairs({ 1, 0.5 }) do
+		st.config.profile.colors.button.danger.a = a
+		local button = CreateFrame('Button', nil, UIParent)
+		button.icon = button:CreateTexture(nil, 'BACKGROUND')
+		button.Flash = button:CreateTexture(nil, 'ARTWORK')
+		local skin = { hover = button:CreateTexture(), pushed = button:CreateTexture() }
+		local ok, err = pcall(StyleButton, button, skin, 'thick', 'solid')
+		check(ok, tostring(err))
+		local c = stub.state(button.Flash).color_texture or { -1, -1, -1, -1 }
+		eq(T.rgb(c[1], c[2], c[3]) .. ' ' .. string.format('%.2f', c[4]), T.rgb(unpack(BUTTON)) .. ' ' .. string.format('%.2f', 0.4 * a), 'at ' .. a * 100 .. '%')
+	end
+	st.config.profile.colors.button.danger.a = 1
+end)
+
 -- The retail curve: C_CurveUtil.CreateColorCurve and Enum.LuaCurveType, as the
 -- game documents them (Gethe/wow-ui-source, live,
 -- Blizzard_APIDocumentationGenerated: CurveUtilDocumentation.lua,

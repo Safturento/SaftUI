@@ -120,8 +120,7 @@ local function StyleArt(button)
             pushed:SetAtlas(micro.pushedBackground, false)
             PlaceArt(pushed, button)
         else
-            local r, g, b = st.config.profile.colors.button.pushed:GetRGB()
-            pushed:SetColorTexture(r, g, b, PUSHED_ALPHA)
+            pushed:SetColorTexture(st:ColorRGBA('button', 'pushed', PUSHED_ALPHA))
             pushed:SetAllPoints(button)
         end
     end
@@ -178,8 +177,7 @@ local function StyleTextures(button)
     end
     local highlight = not blizzard and button:GetHighlightTexture()
     if highlight then
-        local r, g, b = st.config.profile.colors.button.hover:GetRGB()
-        highlight:SetColorTexture(r, g, b, HOVER_ALPHA)
+        highlight:SetColorTexture(st:ColorRGBA('button', 'hover', HOVER_ALPHA))
         -- LoadMicroButtonTextures tints it for a guild tabard
         highlight:SetVertexColor(1, 1, 1)
         highlight:SetBlendMode('BLEND')

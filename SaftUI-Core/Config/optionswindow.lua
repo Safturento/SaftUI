@@ -219,7 +219,7 @@ S.size, S.sidebar, S.bodyWidth = 'full', true, OB.WIDTH
 -- changed (OW.SIZE_GUARD).
 S.keepRow, S.sizedAt = nil, nil
 
-local Colors, Normal, Muted, Accent = OB.Colors, OB.Normal, OB.Muted, OB.Accent
+local Normal, Muted, Accent = OB.Normal, OB.Muted, OB.Accent
 
 -- Whether SaftUI's color picker is open (its keys and its changes are its).
 local function ColorPickerShown() return W.ColorPickerShown() end
@@ -1726,7 +1726,7 @@ end)
 
 ------------------------------------------------------------------ for the later files
 
-S.F, S.Colors, S.Schedule, S.SavePosition, S.SaveWindow, S.Inside = F, Colors, Schedule, SavePosition, SaveWindow, Inside
+S.F, S.Schedule, S.SavePosition, S.SaveWindow, S.Inside = F, Schedule, SavePosition, SaveWindow, Inside
 S.ColorPickerShown, S.EscapeKeys = ColorPickerShown, EscapeKeys
 S.SetScroll, S.SetNavScroll = SetScroll, SetNavScroll
 S.FOOTER_MIN_ROOM = FOOTER_MIN_ROOM

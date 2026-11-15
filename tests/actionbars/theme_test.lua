@@ -207,6 +207,22 @@ test("the flash on an action button is Buttons > Danger at 40%, under Thick and 
 	danger:SetRGB(0.6, 0.1, 0.1)
 end)
 
+test("the flash on an action button is Buttons > Danger at 40% times its opacity: 0.4 at 100%, 0.2 at 50%", function()
+	fresh()
+	local danger = st.config.profile.colors.button.danger
+	danger:SetRGB(0.1, 0.8, 0.3)
+	local b = button('ThemeTestFlashOpacity', false)
+	for _, a in ipairs({ 1, 0.5 }) do
+		danger.a = a
+		for _, look in ipairs({ 'thick', 'thin' }) do
+			T.theme(look, function() bar(b) end)
+			local c = stub.state(b.Flash).color_texture or { -1, -1, -1, -1 }
+			eq(T.text(c[1], c[2], c[3]) .. ' ' .. string.format('%.2f', c[4]), T.text(0.1, 0.8, 0.3) .. ' ' .. string.format('%.2f', 0.4 * a), look .. ' at ' .. a * 100 .. '%')
+		end
+	end
+	danger:SetRGB(0.6, 0.1, 0.1); danger.a = 1
+end)
+
 test('the equipped border survives a recolor', function()
 	fresh()
 	local worn, other = bar(button('ThemeTestWorn', true), button('ThemeTestOther', false))

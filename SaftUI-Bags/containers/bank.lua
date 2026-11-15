@@ -53,7 +53,7 @@ local function CreateBankBagSlot(bar, tab)
 	-- Tints a slot that hasn't been bought yet
 	slot.locked = slot:CreateTexture(nil, 'OVERLAY')
 	slot.locked:SetTexture(st.BLANK_TEX)
-	slot.locked:SetVertexColor(st:Color('button', 'danger'):GetRGB())
+	slot.locked:SetVertexColor(st:ColorRGBA('button', 'danger'))
 	slot.locked:SetAlpha(0.3)
 	slot.locked:SetAllPoints()
 

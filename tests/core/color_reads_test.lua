@@ -4,20 +4,24 @@
 --   A  a retired key (text.purple, text.grey, button.yellow): read as `group.key` or
 --      `group['key']`;
 --   B  a local bound to colors.text or colors.button, read for a retired key
---      of that group (a binding of colors.text fails rule D itself);
+--      of that group (a binding of either fails rule D itself);
 --   C  an st:Color or st:ColorRGBA call with a literal group or key that has
 --      no default, or a key given with 'accent';
 --   D  a direct read of a role color: `colors.text`, `colors.roles`,
---      `colors.factions`, `colors.loot`, `Colors().text` and the like, or
---      `theme.accent`. Every Text, Roles, Factions, Loot and accent read goes
---      through st:Color or st:ColorRGBA (Buttons follow in Task 5). Groups
---      named for game concepts (class, reaction, power, item quality, status,
---      threat, objectives) keep their own reads;
+--      `colors.factions`, `colors.loot`, `colors.button`, `Colors().text` and
+--      the like, or `theme.accent`. Every Text, Buttons, Roles, Factions, Loot
+--      and accent read goes through st:Color or st:ColorRGBA. Groups named for
+--      game concepts (class, reaction, power, item quality, status, threat,
+--      objectives) keep their own reads;
 --   E  a retired wrapper or constant, by its hue name in code (Blue, LinkBlue,
 --      OWN_TEXT: the accent is OB.Accent and OB.OWN_STRENGTH; Grey, GreyRGB,
 --      DIFF_COLOR: Text > Muted is OB.Muted, and the diff icon is Muted at
 --      OB.DIFF_STRENGTH), and the tip line's field `red = true` (it is
---      `danger = true`).
+--      `danger = true`);
+--   F  a Buttons read through st:Color: every Buttons color is drawn at its
+--      own strength times its opacity, so it is st:ColorRGBA('button', key,
+--      strength) (a read of `button` through st:Color leaves the opacity
+--      out).
 -- SaftUI-Core/Media/colors.lua, which holds the retired keys' old values and
 -- the migration, is exempt from every rule but C (it holds strings of the retired keys today, and from Task 4 the one direct read, rule D's, that the accessor makes: don't remove the exemption as dead). Real: the source files, and
 -- Core's defaults (core/config_helpers.lua).
@@ -38,7 +42,7 @@ local RETIRED = {
 local HUE_NAMES = { 'Blue', 'LinkBlue', 'OWN_TEXT', 'Grey', 'GreyRGB', 'DIFF_COLOR' }
 
 -- Rule D: the groups whose every read goes through the accessor.
-local DIRECT_GROUPS = { 'text', 'roles', 'factions', 'loot' }
+local DIRECT_GROUPS = { 'text', 'roles', 'factions', 'loot', 'button' }
 
 local function LineText(source, position)
 	local from = (source:sub(1, position):match('.*\n()') or 1)
@@ -211,6 +215,15 @@ local function Scan(path, source, defaults)
 			end
 		end
 
+		-- F. A Buttons read through st:Color leaves the opacity out.
+		local from = 1
+		while true do
+			local s, e = code:find('st%s*:%s*Color%s*%(%s*[\'"]button[\'"]', from)
+			if not s then break end
+			if mask:sub(s, s) == 's' then Fail(found, path, 'F button strength', mask, s, source) end -- not inside a string
+			from = e + 1
+		end
+
 		-- E. Hue names in code.
 		for _, name in ipairs(HUE_NAMES) do
 			local from = 1
@@ -222,7 +235,7 @@ local function Scan(path, source, defaults)
 			end
 		end
 		-- E. The tip line's old field.
-		local from = 1
+		from = 1
 		while true do
 			local s, e = mask:find('%f[%w_]red%s*=%s*true%f[^%w_]', from)
 			if not s then break end
@@ -271,7 +284,7 @@ local function Rules(found)
 end
 
 test('the rules, on samples: each fails what it names and passes the rest', function()
-	local d = { text = { normal = 1 }, loot = { pass = 1 } }
+	local d = { text = { normal = 1 }, loot = { pass = 1 }, button = { normal = 1, hover = 1 } }
 	-- Rule D has its own samples below; the others' samples read `colors.text` freely.
 	local function without(src, keep)
 		local out = {}
@@ -299,7 +312,7 @@ test('the rules, on samples: each fails what it names and passes the rest', func
 	eq(scan('local c = colors.button.red:GetRGB()'), 'A', 'Buttons > Red is Buttons > Danger')
 	eq(scan("local c = colors.button['red']"), 'A')
 	eq(scan('local c = colors.text.reddish'), '', 'a longer name is not the key')
-	eq(Rules(Scan('sample.lua', "local c = st:Color('text', 'danger')\nlocal b = st:Color('button', 'danger')", { text = { danger = 1 }, button = { danger = 1 } })), '', 'the new keys')
+	eq(Rules(Scan('sample.lua', "local c = st:Color('text', 'danger')\nlocal b = st:ColorRGBA('button', 'danger', 0.4)", { text = { danger = 1 }, button = { danger = 1 } })), '', 'the new keys')
 	eq(scan('local c = colors.text.bluegreen'), '', 'a longer name is not the key')
 	eq(scan('local c = colors.text.grey:GetRGB()'), 'A')
 	eq(scan("local c = colors.button['grey']"), 'A')
@@ -343,7 +356,12 @@ test('the rules, on samples: each fails what it names and passes the rest', func
 	eq(scanD('local c = Theme().accent'), 'D', 'the accent through Theme()')
 	eq(scanD('local c = defaults.theme.accent'), 'D', 'the shipped accent too')
 	eq(scanD("local c = st:Color('accent')\nlocal t = st:Color('text', 'normal')\nlocal l = st:Color('loot', 'pass')"), '', 'the accessor')
-	eq(scanD('local c = colors.class.MAGE\nlocal d = colors.threat.bad\nlocal e = colors.button.hover\nlocal f = colors.objectives.failed'), '', 'game-named groups and Buttons keep their reads')
+	eq(scanD('local c = colors.class.MAGE\nlocal d = colors.threat.bad\nlocal f = colors.objectives.failed'), '', 'game-named groups keep their reads')
+	eq(scanD('local c = colors.button.hover:GetRGB()'), 'D', 'Buttons go through the accessor too')
+	eq(scanD('local c = Colors().button.normal'), 'D', 'Buttons through Colors()')
+	eq(scanD("local c = st.config.profile.colors['button']"), 'D', 'Buttons by a string')
+	eq(scanD("local c = st.config.profile.colors.button\nlocal d = c.hover"), 'D', 'a binding of Buttons fails itself')
+	eq(scanD('local c = colors.buttons\nlocal d = Colors().buttonsize'), '', 'a longer name is not the group')
 	eq(scanD("-- colors.text.normal and theme.accent\nlocal s = 'colors.loot'"), '', 'a comment and a string')
 	eq(scanD('local c = config.text.size\nlocal d = self.theme.accents\nlocal e = colors.texture'), '', 'a longer name is not the group')
 	eq(scanD('local textColors = st.config.profile.colors.text\nlocal c = textColors.normal'), 'D', 'a binding of text fails itself')
@@ -357,9 +375,9 @@ test('the rules, on samples: each fails what it names and passes the rest', func
 	eq(scanD('local t = Theme()\nreturn t.accent'), 'D', 'an alias of Theme()')
 	eq(scanD("return st.config.profile['colors'].text"), 'D', "the ['colors'] form")
 	eq(scanD("return rawget(st.config.profile.colors, 'text')"), 'D', 'rawget on the table')
-	eq(scanD('local colors = st.config.profile.colors\nreturn colors.threat.bad, colors.class.MAGE, colors.button.hover'), '', 'game-named groups and Buttons through an alias')
-	eq(scanD('local t = st.config.profile.theme\nreturn t.name'), '', 'the theme alias read for something else')
-	eq(scanD("-- local c = Colors(); c.text.danger\nlocal s = 'rawget(colors, \"text\")'"), '', 'a comment and a string')
+	eq(scanD('local colors = st.config.profile.colors\nreturn colors.threat.bad, colors.class.MAGE'), '', 'game-named groups through an alias')
+	eq(scanD('local c = st.config.profile.colors\nreturn c.button.hover'), 'D', 'Buttons through an alias')
+	eq(scanD("local c = Colors()\nreturn c['button'].hover"), 'D', 'Buttons through an alias, by a string')
 	-- D, the one-line and bracket forms
 	eq(scanD('local c = st.config.profile.colors; return c.text.danger'), 'D', 'an alias read on the same line')
 	eq(scanD("local c = Colors(); return c['loot'].pass"), 'D', 'by a string, on the same line')
@@ -367,11 +385,21 @@ test('the rules, on samples: each fails what it names and passes the rest', func
 	eq(scanD('local c = st.config.profile.colors; return c.threat.bad'), '', 'the same line, a game-named group')
 	eq(scanD("local c = 'a; local x = colors'; return c.text"), '', 'a semicolon in a string is no statement')
 	eq(scanD("return st.config.profile['colors']['text'].danger"), 'D', "the ['colors']['text'] form")
+	eq(scanD("return Colors()['colors']['button']"), 'D', "the ['colors']['button'] form")
 	eq(scanD("return st.config.profile['colors'].threat, st.config.profile['colors']['class']"), '', "game-named groups by the ['colors'] forms")
 	eq(scanD("return rawget(Colors(), 'roles')"), 'D', 'rawget on Colors()')
-	eq(scanD("return rawget(OB.Colors(), 'factions')"), 'D', 'rawget on OB.Colors()')
+	eq(scanD("return rawget(OB.Colors(), 'button')"), 'D', 'rawget on OB.Colors()')
 	eq(scanD("return rawget(Colors(), 'class')"), '', 'rawget on a game-named group')
 	eq(scanD("-- rawget(Colors(), 'roles') and profile['colors']['text']\nlocal s = \"rawget(Colors(), 'roles')\""), '', 'a comment and a string')
+	eq(scanD('local t = st.config.profile.theme\nreturn t.name'), '', 'the theme alias read for something else')
+	eq(scanD("-- local c = Colors(); c.text.danger\nlocal s = 'rawget(colors, \"text\")'"), '', 'a comment and a string')
+	-- F
+	eq(scan("local c = st:Color('button', 'normal')"), 'F', 'a Buttons read through st:Color')
+	eq(scan("local r, g, b = st:Color('button', 'hover'):GetRGB()"), 'F')
+	eq(scan('local c = st:Color ( "button", key )'), 'F', 'with spaces and the other quotes')
+	eq(scan("local r, g, b, a = st:ColorRGBA('button', 'normal', 1)"), '', 'st:ColorRGBA at a strength')
+	eq(scan("local c = st:Color('buttons', 'x')"), 'C', 'a longer group is no Buttons read (and has no default)')
+	eq(scan("-- st:Color('button', 'danger')\nlocal s = \"st:Color('button', 'danger')\""), '', 'a comment and a string')
 	-- C
 	eq(scan("local c = st:Color('text', 'normal')"), '')
 	eq(scan("local c = st:Color('text', 'normal2')"), 'C')

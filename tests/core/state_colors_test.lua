@@ -165,5 +165,5 @@ test('Text at its defaults draws what it did: Normal 0.9, 0.9, 0.8; Strong and D
 	eq(text(st.defaults.colors.text.strong:GetRGB()), '1.00,1.00,1.00')
 	eq(text(st.defaults.colors.text.danger:GetRGB()), text(220/255, 100/255, 100/255))
 	eq(text(st.defaults.colors.button.danger:GetRGBA()), text(0.6, 0.1, 0.1))
-	eq(select(4, st.defaults.colors.button.danger:GetRGBA()), 0.8)
+	eq(select(4, st.defaults.colors.button.danger:GetRGBA()), 1, 'at 100%: its opacity is drawn now')
 end)

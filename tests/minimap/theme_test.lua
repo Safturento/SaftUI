@@ -232,3 +232,92 @@ test("under Blizzard a micro button shows Blizzard's own art, and today's look a
 	eq(button:GetHighlightTexture():GetNumPoints(), 2, 'the highlight covers the button again')
 	eq(T.inset(panel), 2, 'the panel is a small frame again')
 end)
+
+------------------------------------ the Buttons colors' opacity
+
+-- Every Buttons reader here draws its color at its own strength times the
+-- color's opacity (st:ColorRGBA('button', key, strength)): a micro button's
+-- highlight at 0.4 and its pushed fill at 0.6 (the flat looks), a bar item's
+-- highlight and pushed fill, the tracking, queue and expansion buttons'
+-- highlights, each at 1. The colors are not the defaults, so a reader that
+-- draws the shipped color fails, and the opacity is 100% (its own strength)
+-- and then 50% (half).
+local BUTTON_COLOR = { normal = { 0.2, 0.7, 0.4 }, hover = { 0.9, 0.2, 0.6 }, pushed = { 0.5, 0.8, 0.1 } }
+local function paint_buttons(a)
+	for key, rgb in pairs(BUTTON_COLOR) do
+		local c = profile.colors.button[key]
+		c:SetRGB(unpack(rgb)); c.a = a
+	end
+end
+local function want(key, strength, a) return T.text(BUTTON_COLOR[key][1], BUTTON_COLOR[key][2], BUTTON_COLOR[key][3], strength * a) end
+local function filled(texture)
+	local c = stub.state(texture).color_texture or { -1, -1, -1, -1 }
+	return T.text(c[1], c[2], c[3], c[4])
+end
+
+test("a micro button's flat highlight is Hover at 0.4 and its pushed fill Pushed at 0.6, times the opacity", function()
+	local MicroMenu = st:GetModule('MicroMenu')
+	local button
+	for _, child in ipairs({ _G.MicroMenu:GetChildren() }) do
+		if child.layoutIndex == 1 then button = child end
+	end
+	check(button ~= nil, 'the micro button the case above made')
+	-- The pushed fill is made when the look changes (StyleArt), the highlight at every layout.
+	local function look(name)
+		profile.theme.name = name
+		st:RedrawThemed()
+		MicroMenu:UpdateButtons()
+	end
+	for _, a in ipairs({ 1, 0.5 }) do
+		paint_buttons(a)
+		look('blizzard'); look('thick')
+		eq(filled(button:GetHighlightTexture()), want('hover', 0.4, a), 'the highlight at ' .. a * 100 .. '%')
+		eq(filled(button.PushedBackground), want('pushed', 0.6, a), 'the pushed fill at ' .. a * 100 .. '%')
+	end
+	paint_buttons(1)
+	look('blizzard'); look('thick')
+	eq(filled(button:GetHighlightTexture()), '0.90,0.20,0.60,0.40', 'back at 100%: Hover at 0.4, as before')
+	eq(filled(button.PushedBackground), '0.50,0.80,0.10,0.60', 'and Pushed at 0.6')
+end)
+
+test("a bar item's highlight is Normal and its pushed fill Pushed, each at 1 times the opacity", function()
+	local MicroMenu = st:GetModule('MicroMenu')
+	for _, a in ipairs({ 1, 0.5 }) do
+		paint_buttons(a)
+		local item = CreateFrame('Button', nil, UIParent)
+		MicroMenu:SkinBarButton(item)
+		eq(T.text(item:GetHighlightTexture():GetVertexColor()), want('normal', 1, a), 'the highlight at ' .. a * 100 .. '%')
+		eq(T.text(item:GetPushedTexture():GetVertexColor()), want('pushed', 1, a), 'the pushed fill at ' .. a * 100 .. '%')
+	end
+	paint_buttons(1)
+end)
+
+test("the tracking, queue and expansion buttons' highlights are Hover at 1 times the opacity", function()
+	local MicroMenu = st:GetModule('MicroMenu')
+	load_saftui('SaftUI-Minimap/queuebutton.lua')
+	load_saftui('SaftUI-Minimap/expansionbutton.lua')
+	local function texture_button()
+		local b = CreateFrame('Button', nil, UIParent)
+		for _, set in ipairs({ 'SetNormalTexture', 'SetPushedTexture', 'SetHighlightTexture' }) do b[set](b, b:CreateTexture()) end
+		return b
+	end
+	local keep_cluster, keep_queue, keep_expansion = _G.MinimapCluster, _G.QueueStatusButton, _G.ExpansionLandingPageMinimapButton
+	local tracking = texture_button()
+	tracking.StateTexture, tracking.AddTexture = tracking:CreateTexture(), tracking:CreateTexture()
+	tracking.OnButtonStateChanged = function() end
+	_G.MinimapCluster = { TrackingFrame = { Button = tracking }, SetEditModeScale = function() end }
+	_G.QueueStatusButton = texture_button()
+	_G.QueueStatusButton.Eye = CreateFrame('Frame', nil, UIParent)
+	_G.ExpansionLandingPageMinimapButton = texture_button()
+	for _, a in ipairs({ 1, 0.5 }) do
+		paint_buttons(a)
+		MicroMenu:SkinTrackingButton()
+		eq(T.text(tracking:GetHighlightTexture():GetVertexColor()), want('hover', 1, a), 'the tracking button at ' .. a * 100 .. '%')
+		MicroMenu:SkinQueueButton()
+		eq(T.text(_G.QueueStatusButton:GetHighlightTexture():GetVertexColor()), want('hover', 1, a), 'the queue button at ' .. a * 100 .. '%')
+		MicroMenu:UpdateExpansionLandingPageButton()
+		eq(T.text(_G.ExpansionLandingPageMinimapButton:GetHighlightTexture():GetVertexColor()), want('hover', 1, a), 'the expansion button at ' .. a * 100 .. '%')
+	end
+	paint_buttons(1)
+	_G.MinimapCluster, _G.QueueStatusButton, _G.ExpansionLandingPageMinimapButton = keep_cluster, keep_queue, keep_expansion
+end)

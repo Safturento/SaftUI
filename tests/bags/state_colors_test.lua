@@ -88,6 +88,17 @@ test("a bank slot not bought yet is tinted Buttons > Danger, at an odd value", f
 	eq(string.format('%.2f', bar.slots[3].locked:GetAlpha()), '0.30', 'at 30%, as before')
 end)
 
+test("a bank slot not bought yet draws Buttons > Danger at its opacity on the vertex, and its own 30% on the region either way", function()
+	local danger = colors.button.danger
+	for _, a in ipairs({ 1, 0.5 }) do
+		danger.a = a
+		local slot = bank_bar(true).slots[3]
+		eq(string.format('%.2f,%.2f,%.2f,%.2f', slot.locked:GetVertexColor()), string.format('%.2f,%.2f,%.2f,%.2f', BUTTON[1], BUTTON[2], BUTTON[3], a), 'the vertex at ' .. a * 100 .. '%')
+		eq(string.format('%.2f', slot.locked:GetAlpha()), '0.30', 'the region at 30% either way')
+	end
+	danger.a = 1
+end)
+
 test("the tab's price is Text > Strong when you can afford it and Text > Danger when you can't", function()
 	eq(rgb(bank_bar(true).purchaseButton.text:GetTextColor()), rgb(unpack(STRONG)), 'affordable')
 	eq(rgb(bank_bar(false).purchaseButton.text:GetTextColor()), rgb(unpack(DANGER)), "too expensive")

@@ -39,13 +39,14 @@ local function Outside(texture, button)
 	texture:SetPoint('BOTTOMRIGHT', button, 'BOTTOMRIGHT', BOX_OUT, -BOX_OUT)
 end
 
--- SaftUI's flat look on one of the textures: blank, filling the button, in color.
-local function Flat(texture, button, color, blend)
+-- SaftUI's flat look on one of the textures: blank, filling the button, in the
+-- Buttons color key at its opacity.
+local function Flat(texture, button, key, blend)
 	texture:SetTexture(st.BLANK_TEX)
 	texture:SetTexCoord(0, 1, 0, 1)
 	texture:ClearAllPoints()
 	texture:SetAllPoints(button)
-	texture:SetVertexColor(color:GetRGB())
+	texture:SetVertexColor(st:ColorRGBA('button', key))
 	if blend then texture:SetBlendMode(blend) end
 end
 
@@ -78,10 +79,9 @@ local function Draw(skin)
 		skin.hover:SetBlendMode(look.highlightBlend)
 		Outside(skin.hover, button)
 	else
-		local colors = st.config.profile.colors.button
 		if skin.box then skin.box:Hide() end
-		Flat(skin.checked, button, colors.hover)
-		Flat(skin.hover, button, colors.normal, skin.hoverBlend)
+		Flat(skin.checked, button, 'hover')
+		Flat(skin.hover, button, 'normal', skin.hoverBlend)
 	end
 end
 
@@ -109,13 +109,13 @@ function st:SkinCheckButton(button, style)
 
 	local checked = button:CreateTexture(nil, 'OVERLAY')
 	checked:SetTexture(self.BLANK_TEX)
-	checked:SetVertexColor(self.config.profile.colors.button.hover:GetRGB())
+	checked:SetVertexColor(st:ColorRGBA('button', 'hover'))
 	checked:SetAllPoints(button)
 	button:SetCheckedTexture(checked)
 
 	local hover = button:CreateTexture(nil, 'OVERLAY')
 	hover:SetTexture(self.BLANK_TEX)
-	hover:SetVertexColor(self.config.profile.colors.button.normal:GetRGB())
+	hover:SetVertexColor(st:ColorRGBA('button', 'normal'))
 	hover:SetAllPoints(button)
 	button:SetHighlightTexture(hover)
 

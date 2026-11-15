@@ -88,9 +88,10 @@ test('the sections and their colors, in order, as small color swatches with tool
 end)
 
 test('Text, Buttons, Roles, Factions and Loot say a change shows after a reload; the others have no note', function()
-	for _, key in ipairs({ 'text', 'button', 'roles', 'factions', 'loot' }) do
+	for _, key in ipairs({ 'text', 'roles', 'factions', 'loot' }) do
 		eq(Section(key).desc, NOTE, key)
 	end
+	eq(Section('button').desc, NOTE .. " Opacity sets how strongly each is drawn: 100% is SaftUI's own.", "Buttons add what their opacity does")
 	for _, key in ipairs({ 'class', 'reaction', 'power', 'item_quality', 'status', 'threat', 'objectives' }) do
 		eq(Section(key).desc, nil, key)
 	end
@@ -133,7 +134,10 @@ test('a set writes onto the profile color itself and says which group changed', 
 	eq(got[#got], 'class')
 
 	Section('button').args.hover.set({}, 0.1, 0.1, 0.1, 0.5)
-	eq(st.config.profile.colors.button.hover.a, 0.5, 'Buttons write alpha')
+	eq(st.config.profile.colors.button.hover.a, 0.5, 'Buttons write alpha, and every Buttons reader draws it (button_opacity_test.lua)')
+	eq(select(4, st:ColorRGBA('button', 'hover', 0.4)), 0.2, 'a reader at 0.4 draws half of it')
+	Section('button').args.hover.default.reset()
+	eq(st.config.profile.colors.button.hover.a, 1, "and its reset is SaftUI's own: 100%")
 
 	local before = st.config.profile.colors.text.danger.a
 	Section('text').args.danger.set({}, 0.5, 0.5, 0.5, 0.5)
@@ -275,7 +279,7 @@ test('no Text, Buttons, Roles, Factions or Loot row or description names a hue a
 	end
 end)
 
-test('the state colors are the profile objects, each at its old default, and Buttons > Danger keeps its own opacity', function()
+test('the state colors are the profile objects, each at its old default, and Buttons > Danger is at 100% (its opacity is drawn now)', function()
 	local text = st.config.profile.colors.text
 	local want = { strong = { 1, 1, 1 }, danger = { 220/255, 100/255, 100/255 }, warning = { 220/255, 150/255, 100/255 },
 		caution = { 200/255, 200/255, 100/255 }, success = { 60/255, 240/255, 60/255 }, shared = { 120/255, 202/255, 250/255 } }
@@ -283,7 +287,7 @@ test('the state colors are the profile objects, each at its old default, and But
 		eq(text[key].r .. ',' .. text[key].g .. ',' .. text[key].b, c[1] .. ',' .. c[2] .. ',' .. c[3], key)
 	end
 	local danger = st.config.profile.colors.button.danger
-	eq(danger.r .. ',' .. danger.g .. ',' .. danger.b .. ',' .. danger.a, '0.6,0.1,0.1,0.8', 'Buttons > Danger')
+	eq(danger.r .. ',' .. danger.g .. ',' .. danger.b .. ',' .. danger.a, '0.6,0.1,0.1,1', 'Buttons > Danger')
 	for _, old in ipairs({ 'white', 'red', 'orange', 'yellow', 'green', 'cyan' }) do eq(rawget(st.defaults.colors.text, old), nil, old .. ' has no default') end
 	eq(rawget(st.defaults.colors.button, 'red'), nil, 'nor Buttons > Red')
 end)

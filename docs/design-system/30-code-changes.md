@@ -80,7 +80,7 @@ The organisational changes that would make this system real in the addon: one pl
 
 ## 9. One state vocabulary
 
-- **What.** Rename Buttons > Normal and Hover in the UI for what they do (keys stay), or remap them so Normal is the resting fill and Hover the hover; route every hover through it.
+- **What.** Rename Buttons > Normal and Hover in the UI for what they do (keys stay), or remap them so Normal is the resting fill and Hover the hover; route every hover through it. **Color roles, Task 5:** Normal and Hover keep their names (the color roles design's non-goal), and their opacity is drawn: every Buttons read is `st:ColorRGBA('button', key, strength)`, the defaults are 100%, and a saved opacity went back to 100% once (migration step 5).
 - **Why.** Discrepancy 3: the names don't say their roles (`colors.lua:64-65`).
 - **Size.** Small code, a design call.
 - **Risk.** Low.
@@ -102,7 +102,7 @@ Each a few lines and safe:
 - the toggle's literal 34 (`optionstypes.lua:36`) to `OB.FLAT.rowHeight`;
 - the close hover red read from `templates.close` (done: color roles Task 4, the edge and the cross are Danger);
 - the chat prefix `|cff00adef` (`api.lua:122`) and the error `|cFFFF0000` (`:129`) read from the profile's blue and red (both are done: the prefix is the accent's hex and the Error prefix and DEBUG are Text > Danger, read at each print; color roles Tasks 2 and 4);
-- `OB.SHARE` colours read through `Colors()`;
+- `OB.SHARE` colours read through `Colors()` (done: the share line's marks, diff icon and links read the accent, Muted and Strong through the accessor; color roles Tasks 2 to 4);
 - the float gap to the owner's 24 (`OB.FLOAT_GAP`, `optionsbody.lua:133`);
 - delete the unreferenced TGAs and the 20 x 10 close path once the loot popup is decided;
 - fix the bag search's multi-line flag;

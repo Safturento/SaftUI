@@ -136,10 +136,10 @@ st.defaults.colors = {
 		shared		= CreateColor(120/255, 202/255, 250/255),
 	},
 	button = {
-		normal		=  CreateColor(0.1, 0.1, 0.1, 0.6),
-		hover 		=  CreateColor(0.3, 0.5, 0.7, 0.8),
-		pushed		=  CreateColor(0.3, 0.4, 0.5, 0.8),
-		danger		=  CreateColor(0.6, 0.1, 0.1, 0.8),
+		normal		=  CreateColor(0.1, 0.1, 0.1, 1),
+		hover 		=  CreateColor(0.3, 0.5, 0.7, 1),
+		pushed		=  CreateColor(0.3, 0.4, 0.5, 1),
+		danger		=  CreateColor(0.6, 0.1, 0.1, 1),
 	},
 	roles = {
 		TANK    = CreateColor(0, 0.68, 0.94),

@@ -455,10 +455,10 @@ function st:EnableResizing(frame, resizeButton, callback)
 	frame.ResizeButton:SetNormalTexture(st.textures.cornerbr)
 
 	frame.ResizeButton:SetPushedTexture(st.textures.cornerbr)
-	frame.ResizeButton:GetPushedTexture():SetVertexColor(st.config.profile.colors.button.hover:GetRGB())
+	frame.ResizeButton:GetPushedTexture():SetVertexColor(st:ColorRGBA('button', 'hover'))
 
 	frame.ResizeButton:SetHighlightTexture(st.textures.cornerbr)
-	frame.ResizeButton:GetHighlightTexture():SetVertexColor(st.config.profile.colors.button.hover:GetRGB())
+	frame.ResizeButton:GetHighlightTexture():SetVertexColor(st:ColorRGBA('button', 'hover'))
 	frame.ResizeButton:GetHighlightTexture():SetBlendMode('BLEND')
 
 	frame.ResizeButton:SetFrameLevel(4)

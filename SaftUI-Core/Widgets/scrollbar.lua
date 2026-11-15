@@ -6,9 +6,8 @@ local st = SaftUI
 -- art shows.
 local function ColorThumb(thumb)
     if st:DrawnTheme(thumb) == 'blizzard' then return end
-    local colors = st.config.profile.colors.button
-    local color = thumb.pressed and colors.pushed or thumb.entered and colors.hover or colors.normal
-    thumb.backdrop:SetBackdropColor(color:GetRGB())
+    local key = thumb.pressed and 'pushed' or thumb.entered and 'hover' or 'normal'
+    thumb.backdrop:SetBackdropColor(st:ColorRGBA('button', key))
 end
 
 -- thumb -> the layers of its scroll bar that hold MinimalScrollBar's own art,

@@ -303,8 +303,7 @@ local function StyleButton(button, skin, theme, background)
 			skin.checked:SetBlendMode('ADD')
 		end
 		if button.Flash then
-			local r, g, b = st:Color('button', 'danger'):GetRGB()
-			button.Flash:SetColorTexture(r, g, b, 0.4)
+			button.Flash:SetColorTexture(st:ColorRGBA('button', 'danger', 0.4))
 			button.Flash:ClearAllPoints()
 			button.Flash:SetAllPoints(icon)
 		end

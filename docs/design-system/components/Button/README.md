@@ -41,7 +41,7 @@ Blizzard's panel button (`st:ShowPanelButton`), with its own pressed and disable
 
 ## Other buttons in the code (not the standard)
 
-Six kinds and five heights today: Core's `st:CreateButton`/`st:SkinButton` (drawn `control` in the theme, Pixel 10, `button-normal` highlight, `button-pushed` when held, black 40% when disabled) used by keybind mode's Done (60 x 16), the loot feed's F and V (20 x 20), the bag header's buttons (23). (Edit mode's footer buttons, 22 tall with `text-success` text when on, were of this kind until the edit mode bar replaced them with the kit's icon buttons.) The code changes propose one button component with two or three sizes; until then, build kit buttons with this look.
+Six kinds and five heights today: Core's `st:CreateButton`/`st:SkinButton` (drawn `control` in the theme, Pixel 10, `button-normal` highlight, `button-pushed` when held, each at its opacity (100% by default), black 40% when disabled) used by keybind mode's Done (60 x 16), the loot feed's F and V (20 x 20), the bag header's buttons (23). (Edit mode's footer buttons, 22 tall with `text-success` text when on, were of this kind until the edit mode bar replaced them with the kit's icon buttons.) The code changes propose one button component with two or three sizes; until then, build kit buttons with this look.
 
 ## Do and don't
 

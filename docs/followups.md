@@ -553,7 +553,7 @@ Then, with the switch on, the spec's G1 to G12, each with the task that built it
 
 **Being built or planned elsewhere:** 5, 15, 31 to 33 (the edit mode bar: `docs/superpowers/specs/2026-11-13-saftui-edit-mode-bar-design.md`); 9, 13, 17 (the colour control as a field, Copy from beside the Unit dropdown: branch `fb-kit2`); 11, 12 (scaling and the small-text font: their own followup); 25 (overlapping mover labels: in the edit mode bar's plan).
 
-**Shape of work:** Several small tasks (20, 21, 28, 29, 30, 8, 22 are each small) and two projects (the theme-following options window with the accent and one button; the colour roles rename). Group the small ones into one or two passes.
+**Shape of work:** Several small tasks (20, 21, 28, 29, 30, 8, 22 are each small) and two projects (the theme-following options window with the accent and one button; the colour roles rename, which is built: decisions 7, 14 and 48, color roles Tasks 1 to 5). Group the small ones into one or two passes.
 
 ### 2026-11-13 — Objective tracker skin: in-game checks and what was left out
 

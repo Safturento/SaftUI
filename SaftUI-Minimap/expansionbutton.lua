@@ -48,7 +48,7 @@ function MicroMenu:UpdateExpansionLandingPageButton()
         hover = button:CreateTexture(nil, 'OVERLAY')
     end
     hover:SetTexture(st.BLANK_TEX)
-    hover:SetVertexColor(st.config.profile.colors.button.hover:GetRGB())
+    hover:SetVertexColor(st:ColorRGBA('button', 'hover'))
     hover:ClearAllPoints()
     hover:SetAllPoints(button)
     button:SetHighlightTexture(hover)
