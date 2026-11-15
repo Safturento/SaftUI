@@ -476,3 +476,224 @@ test('the Text, Factions, Loot letter and Objectives rows carry their previews',
 		check(W.ReadPreview(option.preview) == 'text', 'Text > ' .. key .. ' reads as a text preview')
 	end
 end)
+
+------------------------------------------------------------------ the hooks a kind needs
+
+-- A kind that records what the picker gives it.
+local function probe_kind(name, extra)
+	local log = { built = 0, layouts = {}, paints = 0 }
+	local def = {
+		Build = function(area)
+			log.built = log.built + 1
+			local t = area:CreateTexture(nil, 'ARTWORK')
+			t:SetColorTexture(1, 1, 1, 1)
+			return { t = t }
+		end,
+		Paint = function() log.paints = log.paints + 1 end,
+		Layout = function(pieces, width, height, spec)
+			log.layouts[#log.layouts + 1] = { pieces = pieces, width = width, height = height, spec = spec }
+		end,
+	}
+	for k, v in pairs(extra or {}) do def[k] = v end
+	check(W.DefinePreview(name, def), 'defined ' .. name)
+	return log, def
+end
+
+test("Layout is given the option's preview fields (as the spec Paint gets), so a kind can show a style's pieces", function()
+	local log = probe_kind('styled')
+	reset()
+	local given = { kind = 'styled', style = 'unit' }
+	local _, F = open({ preview = given, name = 'Mage', hasAlpha = true })
+	local last = log.layouts[#log.layouts]
+	check(last, 'laid out as it opened')
+	eq(last.width .. ',' .. last.height, '402,64', 'the strip')
+	check(last.pieces == F.previewPieces.styled, 'its pieces')
+	check(last.spec.fields == given, 'spec.fields is the option\'s table')
+	eq(last.spec.name, 'Mage', 'spec.name')
+	eq(last.spec.hasAlpha, true, 'spec.hasAlpha')
+	reset()
+	W.PreviewKinds().styled = nil
+end)
+
+test('a note may be a function of the theme in use, giving a string or nil', function()
+	local seen = {}
+	probe_kind('themed', { note = function(blizzard, spec) seen[#seen + 1] = blizzard; return blizzard and 'Shown as Thick.' or nil end })
+	T.theme('thick')
+	reset()
+	local _, F = open({ preview = 'themed' })
+	check(not F.previewNote:IsShown(), 'no note under Thick')
+	eq(F.previewNote:GetText(), '', 'and no text')
+	T.theme('blizzard')
+	reset()
+	_, F = open({ preview = 'themed' })
+	check(F.previewNote:IsShown(), 'a note under Blizzard')
+	eq(F.previewNote:GetText(), 'Shown as Thick.', 'its text')
+	eq(seen[#seen], true, 'the function got whether Blizzard is in use')
+	reset()
+	T.theme('thick')
+	W.PreviewKinds().themed = nil
+end)
+
+test('a note function that errors, or gives no string, shows no note', function()
+	probe_kind('badnote', { note = function() error('boom') end })
+	reset()
+	local _, F = open({ preview = 'badnote' })
+	check(not F.previewNote:IsShown(), 'no note')
+	eq(F.frame:GetHeight(), 436, 'the preview still shows')
+	take_errors()
+	reset()
+	W.PreviewKinds().badnote = nil
+end)
+
+test('a theme change with the picker open lays the preview out again once, on the theme pass; a color pass does not', function()
+	local log = probe_kind('relay', { note = function(blizzard) return blizzard and 'Blizzard note' or nil end })
+	T.theme('thick')
+	reset()
+	local _, F = open({ preview = 'relay' })
+	local n = #log.layouts
+	check(not F.previewNote:IsShown(), 'no note under Thick')
+	st:RecolorThemed() -- a Theme color: the same look
+	st.config.profile.colors.text.muted:SetRGB(0.3, 0.3, 0.3)
+	st:ColorChanged('text', 'muted')
+	C.step(st)
+	eq(#log.layouts, n, 'a color pass lays nothing out')
+	T.theme('blizzard') -- the Theme tab's switch, with the picker open
+	eq(#log.layouts, n + 1, 'the theme change lays it out again, once')
+	check(F.previewNote:IsShown() and F.previewNote:GetText() == 'Blizzard note', 'and the note comes')
+	st:RecolorThemed()
+	eq(#log.layouts, n + 1, 'a recolor under the same look lays nothing out')
+	T.theme('thick')
+	eq(#log.layouts, n + 2, 'and back')
+	check(not F.previewNote:IsShown(), 'the note goes')
+	st.config.profile.colors.text.muted:SetRGB(0.2, 0.4, 0.6)
+	reset()
+	W.PreviewKinds().relay = nil
+end)
+
+------------------------------------------------------------------ a module kind that fails
+
+test("a kind's Paint that errors is reported once and does not drop the area's Text follower", function()
+	local log = probe_kind('badpaint', { Paint = function() error('paint boom') end })
+	reset()
+	take_errors()
+	local told, F = open({ preview = 'badpaint' })
+	press(F.square, 0.3, 0.3)
+	press(F.square, 0.6, 0.6)
+	press(F.square, 0.9, 0.2)
+	release(F.square)
+	check(#told.changes >= 1, 'the field is told of every change')
+	eq(#take_errors(), 1, 'reported once')
+	local muted = st.config.profile.colors.text.muted
+	muted:SetRGB(0.9, 0.1, 0.2)
+	st:ColorChanged('text', 'muted')
+	C.step(st) -- a Text pass with the failing kind open
+	take_errors()
+	reset()
+	-- The Text follower is still there for the text kind.
+	_, F = open({ preview = 'text', name = 'Danger' })
+	muted:SetRGB(0.4, 0.5, 0.6)
+	st:ColorChanged('text', 'muted')
+	C.step(st)
+	eq(rgb3(F.previewPieces.text.captions[1]:GetTextColor()), '0.40,0.50,0.60', 'the text kind still follows Text')
+	muted:SetRGB(0.2, 0.4, 0.6)
+	reset()
+	W.PreviewKinds().badpaint = nil
+end)
+
+test("a kind's Build that fails opens today's picker, once built, and leaks no holder", function()
+	local made = 0
+	probe_kind('badbuild', { Build = function(area) made = made + 1; error('build boom') end })
+	reset()
+	take_errors()
+	local _, F = open({ preview = 'badbuild' })
+	eq(F.frame:GetHeight(), 342, "today's picker")
+	check(not F.preview:IsShown(), 'no strip')
+	local children = #{ F.preview:GetChildren() }
+	for _ = 1, 3 do open({ preview = 'badbuild' }) end
+	eq(made, 1, 'not built again on later openings')
+	eq(#{ F.preview:GetChildren() }, children, 'no holder per opening')
+	eq(#take_errors(), 1, 'reported once')
+	reset()
+	W.PreviewKinds().badbuild = nil
+end)
+
+test("a kind's Layout that errors opens today's picker with no stale spec and no Last used chip", function()
+	probe_kind('badlayout', { Layout = function() error('layout boom') end })
+	reset()
+	take_errors()
+	local told, F = open({ preview = 'badlayout' })
+	check(told.opened and F.frame:IsShown(), 'it opens')
+	eq(F.frame:GetHeight(), 342, 'with no preview')
+	check(not F.preview:IsShown(), 'no strip')
+	eq(#take_errors(), 1, 'reported')
+	local _, F2 = open() -- opening again accepts the first as Okay
+	reset()
+	eq(#st.config.global.colorPicker.recent, 0, 'nothing was remembered')
+	W.PreviewKinds().badlayout = nil
+end)
+
+test('a kind a module defines again is built again', function()
+	local first = probe_kind('again')
+	reset()
+	open({ preview = 'again' })
+	eq(first.built, 1, 'built')
+	local second = probe_kind('again')
+	local _, F = open({ preview = 'again' })
+	eq(second.built, 1, 'the new def is built')
+	eq(first.built, 1, 'the old one is not built again')
+	check(F.previewPieces.again == second.layouts[#second.layouts].pieces, 'and its pieces show')
+	reset()
+	W.PreviewKinds().again = nil
+end)
+
+------------------------------------------------------------------ what the text kind draws, and where
+
+test("the picker's own paint path makes nothing: 1000 dispatches, 24 setter calls at most, under 4 KB", function()
+	reset()
+	local _, F = open({ preview = 'text', name = 'Danger' })
+	F.paintPreview()
+	local m = C.measure(function() F.paintPreview() end, 1000)
+	check(m.calls.total <= 24 * 1000, 'at most 24 setter calls, got ' .. m.calls.total / 1000)
+	check(m.kb < 4, ('under 4 KB, got %.2f'):format(m.kb))
+	eq(m.forbidden.total, 0, 'nothing placed or shown')
+	reset()
+end)
+
+test("the text kind's captions are inside the area; Text and the sample do not overlap and are a centered pair", function()
+	reset()
+	for _, sample in ipairs({ 'Danger', '(Contested territory)' }) do
+		local _, F = open({ preview = { kind = 'text', sample = sample } })
+		local pieces = F.previewPieces.text
+		for i, caption in ipairs(pieces.captions) do
+			check(caption:GetTop() - caption:GetStringHeight() >= F.preview:GetBottom() - 0.001, sample .. ': caption ' .. i .. ' inside the area')
+		end
+		for i, tile in ipairs(pieces.tiles) do
+			local label, fs = pieces.labels[i], pieces.samples[i]
+			check(label:GetLeft() + label:GetStringWidth() <= fs:GetLeft() + 0.001, sample .. ': Text ends before the sample, tile ' .. i)
+			check(fs:GetRight() <= tile:GetRight() + 0.001 and label:GetLeft() >= tile:GetLeft(), sample .. ': both inside tile ' .. i)
+			local middle = (label:GetLeft() + fs:GetRight()) / 2
+			check(math.abs(middle - (tile:GetLeft() + tile:GetRight()) / 2) <= 1, sample .. ': the pair is centered in tile ' .. i)
+		end
+	end
+	reset()
+end)
+
+test('a long sample wraps to two lines at most', function()
+	reset()
+	local _, F = open({ preview = { kind = 'text', sample = '(Contested territory)' } })
+	local fs = F.previewPieces.text.samples[1]
+	eq(stub.state(fs).word_wrap, true, 'wraps')
+	eq(fs:GetMaxLines(), 2, 'two lines at most')
+	check(fs:GetStringHeight() <= 2 * 13 * 1.5, 'no taller than two lines')
+	reset()
+end)
+
+test('a 436-tall picker opened beside a field near the screen bottom, after one with no preview, stays on the screen', function()
+	reset()
+	open()
+	local low = field(100, UIParent:GetHeight() - 120)
+	local _, F = open({ preview = 'text', owner = low })
+	check(F.frame:GetBottom() >= -0.001, 'its bottom is on the screen')
+	eq(F.frame:GetHeight(), 436, 'at its new height')
+	reset()
+end)

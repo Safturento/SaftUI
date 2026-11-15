@@ -25,8 +25,8 @@ local Kit = W.Kit
 	  W.DefinePreview(name, def) -> boolean
 	      def = { Build = fn(area, width, height) -> pieces,
 	              Paint = fn(pieces, r, g, b, a, spec),
-	              Layout = fn(pieces, width, height) (optional),
-	              note = string (optional) }.
+	              Layout = fn(pieces, width, height, spec) (optional),
+	              note = string | fn(blizzard, spec) -> string | nil (optional) }.
 	      false for a built-in kind's name, or a def without Build and Paint;
 	      a module adds a kind of its own this way (and may define it again).
 	      Build runs the first time the kind shows, with an area (a frame the size
@@ -41,9 +41,16 @@ local Kit = W.Kit
 	      setter calls at most, nothing made). spec = { fields = <the option's
 	      preview table, or {}>, name = <the option's name>, hasAlpha = boolean },
 	      one table for as long as the picker is open. Layout, when there is one,
-	      places the pieces for a strip width x height; it runs whenever the
-	      picker opens (the width differs with an opacity). note is shown at the
-	      right of the "Preview" caption, in Muted.
+	      places the pieces for a strip width x height and shows or hides them
+	      for the option's style (spec.fields): Paint may not Show or Hide. It
+	      runs whenever the picker opens (the width differs with an opacity) and
+	      again, once, when the theme flips between Blizzard's look and SaftUI's
+	      with the picker open (on the theme pass, never in a color pass). note is
+	      shown at the right of the "Preview" caption, in Muted; a function gets
+	      whether Blizzard's look is in use and the spec, and is called at each
+	      layout. A Paint that errors is reported once per opening and not run
+	      again in it; a Build or Layout that errors opens the picker with no
+	      preview.
 	  W.ReadPreview(value) -> name, fields | nil
 	      'text' -> 'text', {}; { kind = 'bar', style = 'unit' } -> 'bar' and that
 	      table; anything else, or a name no kind has, -> nil.
@@ -113,7 +120,7 @@ local TEXT_TILES = {
 	{ theme = 'thin', background = 'solid', caption = 'Thin' },
 	{ theme = 'theme', background = 'options', caption = 'Options windows' },
 }
-local TILE_PAD, SAMPLE_X = 8, 44 -- "Text" in from the tile's left; the sample in from it
+local TILE_PAD, PAIR_GAP = 8, 8 -- the pair's room either side in a tile; between "Text" and the sample
 
 local function TextFont(fs)
 	Kit.SetFieldFont(fs, nil, CAPTION_SIZE)
@@ -132,13 +139,10 @@ function text.Build(area)
 		pieces.tiles[i] = tile
 
 		local label = TextFont(Kit.NewText(tile, 'LEFT'))
-		label:SetPoint('LEFT', tile, 'LEFT', TILE_PAD, 0)
 		label:SetText('Text')
 		pieces.labels[i] = label
 
 		local sample = TextFont(Kit.NewText(tile, 'LEFT'))
-		sample:SetPoint('LEFT', tile, 'LEFT', SAMPLE_X, 0)
-		sample:SetWidth(tileWidth - SAMPLE_X - TILE_PAD)
 		sample:SetWordWrap(true)
 		sample:SetMaxLines(2)
 		pieces.samples[i] = sample
@@ -160,19 +164,46 @@ end
 
 -- The first tile at the strip's left, the last at its right, the middle one
 -- between them (whole units: both are even).
-function text.Layout(pieces, width)
+-- The sample: the field's own, else the option's name.
+local function SampleOf(spec)
+	local sample = spec.fields.sample
+	if type(sample) ~= 'string' then sample = spec.name end
+	if type(sample) ~= 'string' then sample = '' end
+	return sample
+end
+
+-- "Text" and the sample are a pair centered in each tile, a gap apart: the
+-- sample as wide as it is, or the room that is left when it wraps to two lines.
+function text.Layout(pieces, width, _, spec)
 	local tileWidth = PV.TILE_WIDTH
 	local x = { 0, floor((width - tileWidth) / 2), width - tileWidth }
+	local sample = SampleOf(spec)
+	local label, shown = pieces.labels[1], pieces.samples[1]
+	local labelWidth = math.ceil(label:GetStringWidth())
+	local room = tileWidth - 2 * TILE_PAD - labelWidth - PAIR_GAP
+	-- Measured on one line with no width of its own, then wrapped again.
+	shown:SetWordWrap(false)
+	shown:SetWidth(0)
+	shown:SetText(sample)
+	local sampleWidth = math.min(room, math.ceil(shown:GetStringWidth()))
+	shown:SetWordWrap(true)
+	local start = floor((tileWidth - (labelWidth + PAIR_GAP + sampleWidth)) / 2)
 	for i, tile in ipairs(pieces.tiles) do
 		tile:ClearAllPoints()
 		tile:SetPoint('TOPLEFT', pieces.area, 'TOPLEFT', x[i], 0)
+		pieces.labels[i]:ClearAllPoints()
+		pieces.labels[i]:SetPoint('LEFT', tile, 'LEFT', start, 0)
+		local fs = pieces.samples[i]
+		fs:ClearAllPoints()
+		fs:SetPoint('LEFT', tile, 'LEFT', start + labelWidth + PAIR_GAP, 0)
+		fs:SetWidth(sampleWidth)
+		fs:SetText(sample)
+		pieces.shown[i] = sample
 	end
 end
 
 function text.Paint(pieces, r, g, b, _, spec)
-	local sample = spec.fields.sample
-	if type(sample) ~= 'string' then sample = spec.name end
-	if type(sample) ~= 'string' then sample = '' end
+	local sample = SampleOf(spec)
 	local nr, ng, nb = st:Color('text', 'normal'):GetRGB()
 	local mr, mg, mb = st:Color('text', 'muted'):GetRGB()
 	for i = 1, #pieces.tiles do

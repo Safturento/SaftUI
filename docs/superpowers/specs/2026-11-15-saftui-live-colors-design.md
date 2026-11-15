@@ -171,7 +171,6 @@ runs), and the rules below hold for it the same.
 | Test previews | live | redrawn on every step | per key, as above | up to 3 |
 | The unit tooltip on screen | next | colored as it shows (`tooltip.lua:75`) | `TT:OnColorsChanged`: a shown unit tooltip of that class | 1 |
 | The bags' gold tooltip, the roll tooltip | next | at show | unchanged | — |
-| The picker's class chips | next open | filled as it opens | the picker paints that class's chip | 1 |
 
 #### Roles (Tank, Healer, Damage)
 
@@ -429,12 +428,14 @@ debug line times the Theme tab's `st:RecolorThemed()` passes made during an edit
 
 Two placements, drawn for the owner in `.superpowers/brainstorm/color-preview-v1.html` (three contexts each:
 Text > Danger, Buttons > Hover, Class > Mage). The picker today: a 170 square at 20, 48; the hue strip and,
-with an opacity, its strip; a 152 column of the two blocks and the number boxes; Class colors at 248, Last
-used at 294, Okay and Cancel at the bottom right; 410 wide (442 with an opacity) by 388.
+with an opacity, its strip; a 152 column of the two blocks and the number boxes; Last used at 248 (the owner
+took the Class colors row out of the picker on 2026-11-15: the Colors page edits those), Okay and Cancel at
+the bottom right; 410 wide (442 with an opacity) by 342.
 
 - **A, under the square** (recommended, **call**; Question 1). A caption "Preview" at 248 and a strip the
-  picker's inner width (370, or 402 with an opacity) and 64 tall at 266, between the square and Class
-  colors. Class colors, Last used and the buttons move down 94, so the picker is 482 tall. Trade-off: it
+  picker's inner width (370, or 402 with an opacity) and 64 tall at 266, between the square and Last used.
+  Last used (now at 342 and 360) and the buttons move down 94, so the picker is 436 tall. **Chosen by the
+  owner, 2026-11-15.** Trade-off: it
   keeps today's width, so it opens beside its field as now, and the preview sits in the eye line between
   the square and the chips; it is 94 taller.
 - **B, beside the numbers.** A caption at 48 and a column 176 wide and 172 tall from 66 to 238, 16 right of
@@ -443,7 +444,7 @@ used at 294, Okay and Cancel at the bottom right; 410 wide (442 with an opacity)
   covers more of the page.
 
 **No preview.** An option with no `preview`, or one the kit can't read, opens today's picker, 410 or 442
-by 388, with nothing added and nothing moved.
+by 342, with nothing added and nothing moved.
 
 ### The field
 
@@ -465,7 +466,7 @@ piece of its own later.
 
 | Kind | Its fields | What it draws under A (64 tall) | Under B (172 tall) |
 | --- | --- | --- | --- |
-| `text` | `sample` (default: the color's name), `font` (a shared font's key, default Text) | three tiles 118 by 44, each "Text" in Text > Normal beside the sample in the color: on Thick's panel, on Thin's panel, and on the Options windows background as the theme in use draws it, see-through over a strip of the `world` stand-in when that background is (**call**); captions Thick, Thin, Options windows | the three stacked, 176 by 36 |
+| `text` | `sample` (default: the color's name), `font` (a shared font's key, default Text: **not built**, no row needs it; add it with the first row that does, applied with `st:ApplyFont` at each opening, never `SetFont` in a paint) | three tiles 118 by 44, each "Text" in Text > Normal beside the sample in the color: on Thick's panel, on Thin's panel, and on the Options windows background as the theme in use draws it, see-through over a strip of the `world` stand-in when that background is (**call**); captions Thick, Thin, Options windows | the three stacked, 176 by 36 |
 | `button` | `key` (the Buttons key edited) | five tiles 74 by 44, the states: Rest (a SaftUI button; a scroll bar thumb at rest: Normal), Hover (the button's highlight: Normal; a thumb under the mouse: Hover), Pressed (the button's pressed fill and a pressed thumb: Pushed), Checked (a check box: Hover), Flash (an action button's flash at 0.4, and an unbought bank slot: Danger); every piece at its reader's strength times the opacity; the captions of the tiles the edited key reaches in Text, the rest in Muted | five rows, the caption at the left |
 | `bar` | `style` (`'unit'`, `'role'`, `'reputation'`, `'power'`, `'points'`, `'plate'`), `label`, `threat` | `unit`: a unit frame's health bar 200 by 28 (filled 70%, the label at its left and 70% at its right), a raid frame 80 by 40, a unit tooltip with its name and border in the color; `role`: a raid frame with the role corner; `reputation`: the experience bar's reputation bar and an NPC's health bar; `power`: a health bar with the power bar under it; `points`: five class power points, three lit; `plate`: a nameplate 200 by 20 with its name and, with `threat`, the percent above its right end in the color | stacked, each at its own size |
 | `border` | `style` (`'slot'`, `'entry'`) | `slot`: a bag slot (the Slot theme's slot, an icon, its border in the color) and a loot feed line with an item's name in the color; `entry`: a loot feed entry, its border and its fill at 60% in the color | stacked |
@@ -608,7 +609,7 @@ Part B:
     updated), never skipped.
 13. **SaftUI's tracker and the edit mode bar repaint only for the groups they draw.**
 14. **The loot feed keeps an item's plain name and quality**, and colors the name as it draws.
-15. **Placement A**, under the square (Question 1).
+15. **Placement A**, under the square (Question 1: chosen by the owner, 2026-11-15), and no Class colors row in the picker.
 16. **`preview` is a kind's name or a table**, no function; a module adds a kind with `W.DefinePreview`.
 17. **Five kinds** (`text`, `button`, `bar`, `border`, `accent`), and the rows' previews as tabled.
 18. **The button kind under Blizzard** draws as Thick, with a note.

@@ -334,7 +334,33 @@ end
 local function PaintKind()
 	local kind = spec and spec.kind
 	local pieces = kind and F.previewPieces[kind]
-	if pieces then spec.def.Paint(pieces, S.r, S.g, S.b, spec.hasAlpha and S.a or 1, spec.paint) end
+	if pieces and not spec.failed then spec.def.Paint(pieces, S.r, S.g, S.b, spec.hasAlpha and S.a or 1, spec.paint) end
+end
+
+-- PaintKind, guarded: a kind of a module that errors is reported once for this
+-- opening and not painted again, and stops neither the field being told nor
+-- the area's Text follower (which a follower that errors would lose).
+-- xpcall with no arguments makes no closure.
+local function PaintPreview()
+	if not (spec and spec.kind) or spec.failed then return end
+	if not xpcall(PaintKind, geterrorhandler()) and spec then spec.failed = true end
+end
+
+-- The kind's note and its Layout for the strip's inner width, guarded, run
+-- when the picker lays out and when the theme's look changes under it; false
+-- when the kind's Layout errors. Defined with Layout, below.
+local PlaceKind
+
+-- The theme pass of the preview (st:KeepOwnColors, which runs after a
+-- recolor or a redraw of the theme): paints again, and lays the kind out again
+-- when the look flipped between Blizzard's and SaftUI's (a boolean compare, so
+-- a drag of a Theme color stays colors only).
+local function PreviewOwnColors()
+	if not (spec and spec.kind) then return end
+	if spec.blizzard ~= (BlizzardLook() and true or false) then
+		if PlaceKind(spec.kind) == false then spec.failed = true end
+	end
+	PaintPreview()
 end
 
 local function Paint()
@@ -353,7 +379,7 @@ local function Paint()
 	F.new:Paint(S.r, S.g, S.b, shown)
 	ShowBoxes()
 	-- Last: a kind of a module that errors must not stop the field being told.
-	if spec and spec.kind then xpcall(PaintKind, geterrorhandler()) end
+	PaintPreview()
 end
 
 -- The color has changed: show it, and tell the field.
@@ -766,8 +792,9 @@ local function BuildPreview()
 	F.preview = st:CreateFrame('Frame', nil, frame)
 	F.preview:Hide()
 	F.previewHolders, F.previewPieces, F.previewDefs = {}, {}, {}
-	st:KeepOwnColors(F.preview, PaintKind)
-	st:FollowColor(F.preview, 'text', nil, PaintKind)
+	F.paintPreview = PaintPreview -- for tests
+	st:KeepOwnColors(F.preview, PreviewOwnColors)
+	st:FollowColor(F.preview, 'text', nil, PaintPreview)
 end
 
 local function Build()
@@ -873,22 +900,23 @@ end
 -- defined the kind anew), or nil when there is none or its Build fails.
 local function PrepareKind(kind, def, hasAlpha)
 	if not kind then return nil end
-	if not F.previewPieces[kind] or F.previewDefs[kind] ~= def then
+	if F.previewDefs[kind] ~= def then
 		local old = F.previewHolders[kind]
 		if old then old:Hide() end
+		F.previewPieces[kind], F.previewDefs[kind] = nil, def
 		local holder = st:CreateFrame('Frame', nil, F.preview)
 		holder:SetPoint('TOPLEFT', F.preview, 'TOPLEFT', 0, 0)
 		holder:SetPoint('BOTTOMRIGHT', F.preview, 'BOTTOMRIGHT', 0, 0)
+		F.previewHolders[kind] = holder
 		local _, _, _, width = Columns(hasAlpha)
 		local ok, pieces = xpcall(def.Build, geterrorhandler(), holder, width - 2 * PAD, W.PREVIEW.HEIGHT)
-		if not ok or type(pieces) ~= 'table' then
-			holder:Hide()
-			F.previewHolders[kind], F.previewPieces[kind], F.previewDefs[kind] = nil, nil, nil
-			return nil
+		if ok and type(pieces) == 'table' then
+			F.previewPieces[kind] = pieces
+		else
+			holder:Hide() -- a Build that failed is not tried again until the kind is defined anew
 		end
-		F.previewHolders[kind], F.previewPieces[kind], F.previewDefs[kind] = holder, pieces, def
 	end
-	return kind
+	return F.previewPieces[kind] and kind or nil
 end
 
 -- The panel for hasAlpha: wider by the opacity strip and its gap with it; with a
@@ -929,9 +957,8 @@ local function Layout(hasAlpha, kind)
 	F.preview:SetShown(kind ~= nil)
 	F.previewCaption:SetShown(kind ~= nil)
 	for name, holder in pairs(F.previewHolders) do holder:SetShown(name == kind) end
-	local note = kind and spec.def.note
-	F.previewNote:SetText(note or '')
-	F.previewNote:SetShown(note ~= nil and note ~= false)
+	F.previewNote:SetText('')
+	F.previewNote:Hide()
 	if kind then
 		local PV = W.PREVIEW
 		local inner = width - 2 * PAD
@@ -939,8 +966,32 @@ local function Layout(hasAlpha, kind)
 		Place(F.previewCaption, frame, PAD, PV.CAPTION_Y)
 		F.previewNote:ClearAllPoints()
 		F.previewNote:SetPoint('TOPRIGHT', frame, 'TOPRIGHT', -PAD, -PV.CAPTION_Y)
-		local layout = spec.def.Layout
-		if layout then layout(F.previewPieces[kind], inner, PV.HEIGHT) end
+		spec.inner = inner
+		return PlaceKind(kind)
+	end
+end
+
+-- The kind's note and Layout (the pieces placed, or shown or hidden for the
+-- option's style: Layout(pieces, width, height, spec) with spec as Paint gets
+-- it). The note is a string, or a function(blizzard, spec) -> string | nil of
+-- the theme in use. An error is reported; Layout's makes the picker open with
+-- no preview.
+function PlaceKind(kind)
+	local def, PV = spec.def, W.PREVIEW
+	local blizzard = BlizzardLook() and true or false
+	spec.blizzard = blizzard
+	local note = def.note
+	if type(note) == 'function' then
+		local ok, value = xpcall(note, geterrorhandler(), blizzard, spec.paint)
+		note = ok and value or nil
+	end
+	if type(note) ~= 'string' then note = nil end
+	F.previewNote:SetText(note or '')
+	F.previewNote:SetShown(note ~= nil)
+	if def.Layout then
+		if not xpcall(def.Layout, geterrorhandler(), F.previewPieces[kind], spec.inner, PV.HEIGHT, spec.paint) then
+			return false
+		end
 	end
 end
 
@@ -994,7 +1045,11 @@ function W.OpenColorPicker(owner, options)
 	end
 	S.r, S.g, S.b, S.a = spec.r, spec.g, spec.b, hasAlpha and spec.a or 1
 	S.h, S.s, S.v = M.RGBToHSV(S.r, S.g, S.b, 0)
-	Layout(hasAlpha, spec.kind)
+	if Layout(hasAlpha, spec.kind) == false then
+		-- The kind's Layout errored: today's picker, no preview.
+		spec.kind, spec.def, spec.paint = nil, nil, nil
+		Layout(hasAlpha, nil)
+	end
 	Look()
 	FillRecentChips()
 	F.was:Paint(spec.r, spec.g, spec.b, hasAlpha and spec.a or 1)
