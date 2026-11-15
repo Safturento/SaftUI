@@ -416,6 +416,7 @@ function st:StyleEditBox(editbox, theme, background, font)
 	local look = { theme or 'theme', background or 'solid' }
 	editBoxLooks[editbox] = look
 	DrawEditBox(editbox, look)
+	ColorFocused(editbox)
 
 	if font then st:ApplyEditBoxFont(editbox, font) end
 end

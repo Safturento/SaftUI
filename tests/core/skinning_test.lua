@@ -116,3 +116,29 @@ test('SkinIcon: a crop the game resets is put back, with Icon zoom at 0 too, and
 	eq(rawget(texture, '__stTexCoord'), nil, 'no crop written onto the icon')
 	eq(rawget(texture, '__stTexCoordHooked'), nil, 'no hooked flag written onto the icon')
 end)
+
+-- A focused edit box keeps its white border when it is styled again (a theme
+-- or profile switch: Chat and Bags call st:StyleEditBox from UpdateConfig,
+-- which draws the backdrop over the white); an unfocused one doesn't get it.
+test('st:StyleEditBox puts the focused box\'s white border back after it draws, and leaves an unfocused box alone', function()
+	local function box(name)
+		local b = CreateFrame('EditBox', name, UIParent)
+		b:SetSize(200, 20)
+		b:SetPoint('CENTER')
+		b:CreateFontString(nil, 'OVERLAY')
+		st:SkinEditBox(b, 'theme', 'theme')
+		return b
+	end
+	local function edge(b)
+		local backdrop = st:DrawnFrame(b)
+		return string.format('%.2f,%.2f,%.2f,%.2f', backdrop:GetBackdropBorderColor())
+	end
+	local focused, idle = box('SkinTestFocusedBox'), box('SkinTestIdleBox')
+	focused:SetFocus()
+	eq(edge(focused), '1.00,1.00,1.00,1.00', 'white while focused')
+	st:StyleEditBox(focused, 'theme', 'theme')
+	eq(edge(focused), '1.00,1.00,1.00,1.00', 'still white after it is styled again')
+	st:StyleEditBox(idle, 'theme', 'theme')
+	check(edge(idle) ~= '1.00,1.00,1.00,1.00', 'an unfocused box is not white')
+	focused:ClearFocus()
+end)
