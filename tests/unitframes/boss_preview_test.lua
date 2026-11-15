@@ -268,3 +268,21 @@ test("a preview's power text follows Short, as the real text does", function()
 	UF.testGroups.boss = nil
 	UF:UpdateGroupPreview('boss')
 end)
+
+test("a preview's custom power color also colors the power background, as the real bar does", function()
+	local power = P.boss.power
+	UF.testGroups.boss = true
+	power.enable, power.colorCustom, power.customColor = true, true, { .2, .4, .6 }
+	power.colorPower, power.colorClass, power.colorReaction, power.colorDisconnected = false, false, false, false
+	UF:UpdateGroupPreview('boss')
+	local bar = previews()[1].Power
+	local r, g, b = bar:GetStatusBarColor()
+	eq(('%.2f %.2f %.2f'):format(r, g, b), '0.20 0.40 0.60', 'the bar takes the custom color')
+	local mu = power.bg.multiplier
+	local br, bg, bb, ba = bar.bg:GetVertexColor()
+	eq(('%.2f %.2f %.2f %.2f'):format(br, bg, bb, ba),
+		('%.2f %.2f %.2f %.2f'):format(.2 * mu, .4 * mu, .6 * mu, power.bg.alpha), 'and its background the darker shade')
+	power.enable, power.colorCustom = false, false
+	UF.testGroups.boss = nil
+	UF:UpdateGroupPreview('boss')
+end)

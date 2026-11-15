@@ -99,19 +99,6 @@ end
 
 local CLIENTS = { 'forever', 'retail' }
 
--- Turns the offsets in a config saved as text into numbers. The castbar's
--- defaults save some as text ("0", "-3"), which the game's SetPoint takes
--- (Lua's C API reads a numeric string as a number) and the stub's refuses.
-local function number_offsets(config)
-	for key, value in pairs(config) do
-		if type(value) == 'table' then
-			number_offsets(value)
-		elseif (key == 'x_off' or key == 'y_off') and type(value) == 'string' then
-			config[key] = tonumber(value)
-		end
-	end
-end
-
 ------------------------------------------------------------------ the kinds
 
 test('every unit frame and bar draws as unitframe, a party or raid member as member; under Thick and Thin as a bar', function()
@@ -291,7 +278,6 @@ test("the player's separate power bar has its own box; a castbar set to Thin kee
 		-- is placed relative to the target's by default.
 		local target = make_unit_frame('SaftUI_Target', 'target', { 'Health', 'Castbar' })
 		UF:UpdateUnitFrame(target)
-		number_offsets(P.boss.castbar)
 		local boss = make_unit_frame('B', 'boss', { 'Health', 'Castbar' })
 		UF:UpdateUnitFrame(boss)
 		eq(drawn(boss.Castbar), 'thin,solid,unitframe', client .. ": the boss castbar's Thin default")

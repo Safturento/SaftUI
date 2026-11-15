@@ -20,8 +20,7 @@ local S = load_test_file('lib/secrets.lua')
 
 -- A world with every part of a plate on, the plates spawned. Task 7 makes the
 -- castbar, the aura areas and the quest icon on the plate's defaults, with the
--- castbar and its spell name placed by numbers (every unit's castbar default
--- has its offsets as strings, which the stubbed SetPoint refuses) and no time.
+-- castbar and its spell name placed as the test needs them and no time.
 local function world(client)
 	local st, UF = NP.world(client or 'forever')
 	local P = UF:GetProfileConfig().nameplate

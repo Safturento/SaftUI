@@ -112,9 +112,6 @@ local function PostUpdateClassPower(classPower, cur, max, hasCurChanged, hasMaxC
 	local width = (classPower:GetWidth() - (classPower.config.spacing * (max - 1))) / max
 	for i = 1, max do
 		classPower[i]:SetWidth(width)
-		if classPower.config.show_empty then
-			classPower[i]:Show()
-		end
 	end
 	-- The charged points' indices come after the power type.
 	local charged = {}
