@@ -1,6 +1,18 @@
 local st = SaftUI
 local MicroMenu = st:GetModule('MicroMenu')
 
+-- The badge SkinInstanceDifficulty made, and the item quality its color is (1, 3
+-- or 4: normal, Heroic, Mythic), kept so a color pass can color it again.
+local badge, badgeQuality
+
+-- The badge's color, the item quality the difficulty names (Colors > Item
+-- quality). Color only, so it is the whole of what a color pass does here, and
+-- UpdateDungeonDifficulty calls it too.
+function MicroMenu:ColorDifficulty()
+    if not (badge and badgeQuality) then return end
+    badge.Bg:SetVertexColor(st.config.profile.colors.item_quality[badgeQuality]:GetRGB())
+end
+
 function MicroMenu:SkinInstanceDifficulty()
     -- Forever has no instance difficulty frame
     if not MinimapCluster.InstanceDifficulty then return end
@@ -21,6 +33,7 @@ function MicroMenu:SkinInstanceDifficulty()
     button.Bg:SetTexture(st.BLANK_TEX)
     button.Bg:SetAllPoints()
     button.Bg:SetVertexColor(0.66, 0.40, 0.72)
+    badge = button
 
     -- Blizzard's difficulty frame is hidden for good; its Update post-hook
     -- fills in SaftUI's button. It has no OnShow or OnHide script, so hiding
@@ -49,17 +62,18 @@ function MicroMenu:UpdateDungeonDifficulty()
     st:InsetTexture(button.Bg, .2)
 
     if displayMythic then
-        button.Bg:SetVertexColor(st.config.profile.colors.item_quality[4]:GetRGB())
+        badgeQuality = 4
         button.Icon:SetAtlas('ui-hud-minimap-guildbanner-mythic-large', true)
         text = 'M' .. text
     elseif (isHeroic or displayHeroic) then
-        button.Bg:SetVertexColor(st.config.profile.colors.item_quality[3]:GetRGB())
+        badgeQuality = 3
         button.Icon:SetAtlas('ui-hud-minimap-guildbanner-heroic-large', true)
         text = 'H' .. text
     else
-        button.Bg:SetVertexColor(st.config.profile.colors.item_quality[1]:GetRGB())
+        badgeQuality = 1
         button.Icon:SetTexture('')
     end
+    self:ColorDifficulty()
 
 
 

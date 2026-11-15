@@ -335,4 +335,7 @@ EM:On('Disabled', function()
 	moverDragging, pressed = false, false
 	EM:UpdateBarDock()
 end)
-EM:On('ColorsChanged', ColorStrip)
+EM:On('ColorsChanged', function(group)
+	if group == 'accent' then ColorStrip() end
+end)
+EM:On('Enabled', ColorStrip) -- a pass is not passed on while edit mode is off

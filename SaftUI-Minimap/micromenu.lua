@@ -137,6 +137,26 @@ function MicroMenu:UpdateConfig()
     self:UpdateButtons()
 end
 
+-- A color changed (st:ColorChanged): Blizzard's micro buttons' hover, pushed fill and
+-- alert flash (Buttons > Hover and Pushed, Text > Caution: MicroMenu:ColorMicroButtons),
+-- and the instance difficulty badge's (Item quality 1, 3 and 4). The other
+-- items' textures are followers (st:FollowColor). Color only: it runs in combat.
+function MicroMenu:OnColorsChanged(group, key)
+    if group == 'button' then
+        if key == nil or key == 'hover' or key == 'pushed' then
+            self:ColorMicroButtons(key)
+        end
+    elseif group == 'text' then
+        if key == nil or key == 'caution' then
+            self:ColorMicroButtons(key)
+        end
+    elseif group == 'item_quality' then
+        if key == nil or key == 1 or key == 3 or key == 4 then
+            self:ColorDifficulty()
+        end
+    end
+end
+
 function MicroMenu:OnEnable()
     st:BindModuleConfig(self, 'micromenu')
     self.Container = CreateFrame('Frame', 'SaftUI_MicroMenu', UIParent)

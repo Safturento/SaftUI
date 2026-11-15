@@ -214,6 +214,12 @@ local function Pressed()
 	return true
 end
 
+-- A skinned button's flat highlight and pressed fill follow Buttons > Normal
+-- and Pushed at their opacity (st:FollowColor). Painted under Blizzard too,
+-- where their alpha is 0: they come back right when the look switches.
+local function PaintHighlight(texture) texture:SetVertexColor(st:ColorRGBA('button', 'normal')) end
+local function PaintPushed(texture) texture:SetVertexColor(st:ColorRGBA('button', 'pushed')) end
+
 -- button -> how st:SkinButton keeps it: { button, theme, background, flat,
 -- own, tab, pressed, blizzard }. flat is SaftUI's flat state textures, own
 -- the Left, Middle and Right of a button of Blizzard's panel button template,
@@ -303,6 +309,7 @@ function st:SkinButton(button, theme, background, font)
 
         button:SetHighlightTexture(hover)
         button.hover = hover
+		st:FollowColor(hover, 'button', 'normal', PaintHighlight)
 	end
 
 	if button.SetPushedTexture and not button.pushed then
@@ -313,6 +320,7 @@ function st:SkinButton(button, theme, background, font)
 
         button:SetPushedTexture(pushed)
 		button.pushed = pushed
+		st:FollowColor(pushed, 'button', 'pushed', PaintPushed)
 	end
 
 	if button.SetDisabledTexture and not button.disabled then

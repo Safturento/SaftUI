@@ -53,6 +53,8 @@ function INV:InitializeBankCategorySelection()
 			visibility:GetCheckedTexture():SetTexture(st.textures.eyeOpen)
 			unchecked:SetVertexColor(r, g, b, 0.3)
 			unchecked:SetTexture(st.textures.eyeClosed)
+			visibility.unchecked = unchecked
+			st:FollowColor(visibility, 'text', 'muted', INV.PaintEye)
 		end,
 		items = {
 			{
@@ -119,24 +121,45 @@ function INV:CloseCombinedBank()
 	self:SetDepositButtonShown(false)
 end
 
+-- The footer's text from the counts last read (container.slotCounts: the
+-- bank's used and total, then the warband bank's): the second count is left
+-- out when it has no slots (no warband bank on this client, or no tabs bought)
+-- instead of showing a useless 0/0, and is drawn in Text > Shared.
+local function SetFooter(container)
+	local counts = container.slotCounts
+	local text = ('%d/%d '):format(counts[1], counts[2])
+	if counts[4] > 0 then
+		text = text .. INV.TintText(('%d/%d'):format(counts[3], counts[4]), 'shared')
+	end
+	container.footer.slots:SetText(text)
+end
+
 local function UpdateContainerSlots(container)
 	local empty, total
-	local text = ''
 	empty, total = INV:GetNumContainerSlots(INV.bagIds.bank)
-	text = text .. ('%d/%d '):format(total - empty, total)
+	local counts = container.slotCounts or {}
+	container.slotCounts = counts
+	counts[1], counts[2] = total - empty, total
 
-	-- The second count is the warband bank. Leave it out when it has no slots
-	-- (no warband bank on this client, or no tabs bought) instead of showing a
-	-- useless 0/0.
 	empty, total = INV:GetNumContainerSlots(INV.bagIds.warband)
-	if total > 0 then
-		text = text .. st.StringFormat:ColorString(
-				(('%d/%d'):format(total - empty, total)),
-				st:Color('text', 'shared'):GetRGB()
-		)
-	end
+	counts[3], counts[4] = total - empty, total
 
-	container.footer.slots:SetText(text)
+	SetFooter(container)
+end
+
+-- Text > Shared changed: the footer's warband count set again from the counts
+-- last read (no bag is asked, nothing laid out).
+function INV:ColorCombinedFooter()
+	local container = self.containers.combinedbank
+	if container and container.slotCounts and container.footer then SetFooter(container) end
+end
+
+-- A check button's eye is drawn in Text > Muted (it follows that color): the
+-- open one in full, the closed one at 30%.
+function INV.PaintEye(visibility)
+	local r, g, b = st:Color('text', 'muted'):GetRGB()
+	visibility:GetCheckedTexture():SetVertexColor(r, g, b, 1)
+	visibility.unchecked:SetVertexColor(r, g, b, 0.3)
 end
 
 function INV:InitializeCombinedBank()

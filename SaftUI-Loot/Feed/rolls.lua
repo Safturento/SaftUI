@@ -199,9 +199,12 @@ end
 -- Test mode builds its sample through this too.
 function LT:BuildRollEntry(link, rolls, allowUncached)
 	local name, _, quality, _, _, itemType, itemSubType, _, _, texture = C_Item.GetItemInfo(link)
+	local plain
 	if name then
-		local color = quality and st.config.profile.colors.item_quality[quality]
-		if color then name = st.StringFormat:ColorString(name, color:GetRGB()) end
+		-- The plain name and quality are kept: the line colors the name as it
+		-- draws (LT.FeedItemName), so a changed Item quality color reaches it.
+		plain = name
+		if quality then name = LT.FeedItemName({ plain = plain, quality = quality }) end
 	elseif allowUncached then
 		name = link
 		_, itemType, itemSubType, _, texture = C_Item.GetItemInfoInstant(link)
@@ -211,6 +214,8 @@ function LT:BuildRollEntry(link, rolls, allowUncached)
 
 	return {
 		name = name,
+		plain = plain,
+		quality = plain and quality or nil,
 		icon = texture,
 		link = link,
 		type = 'Rolls',

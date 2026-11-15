@@ -78,6 +78,22 @@ test('an explicit Transparent uses the stored opacity while the toggle is off', 
 	eq(st:ResolveTheme('thin', 'solid').alpha, 1, 'Solid override')
 end)
 
+test("ThemeBorderColor is the border color ResolveTheme draws, and the profile's theme for None or an unknown name", function()
+	local st = fresh()
+	local function same(theme, want)
+		local r, g, b = st:ThemeBorderColor(theme)
+		local c = want.colors.bordercolor
+		eq(T.text(r, g, b), T.text(c[1], c[2], c[3]), tostring(theme))
+	end
+	for _, name in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		same(name, st:ResolveTheme(name))
+		st.config.profile.theme.name = name
+		same(nil, st:ResolveTheme())
+		same('none', st:ResolveTheme())
+		same('no such theme', st:ResolveTheme('no such theme'))
+	end
+end)
+
 test('old names read as LEGACY', function()
 	local st = fresh()
 	local look = st:ResolveLegacyTemplate('thicktransparent')

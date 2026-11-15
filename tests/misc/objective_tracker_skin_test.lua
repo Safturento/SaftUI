@@ -604,3 +604,42 @@ test("a font that names nothing draws Text on every text, and a typeface reaches
 	eq(OT.tracker.Header.Text:GetFontObject(), st:FontObject(face), 'the header in the typeface')
 	clean()
 end)
+
+test('the skin repaints for its groups only: a Class pass touches nothing', function()
+	local C = load_test_file('lib/color_cost.lua')
+	world('forever')
+	local blocks = OT.layout(quest_module(), { { id = 1, objectives = { 'One' }, item = 3 } })
+	check(blocks[1] ~= nil, 'a block is drawn')
+	for group, key in pairs({ class = 'MAGE', reaction = 4, power = 'MANA', button = 'normal', status = 'tapped' }) do
+		st:ColorChanged(group, key)
+		local m = C.measure(function() st:ColorChanged(group, key) end)
+		eq(m.calls.total, 0, group .. ': no color set')
+		eq(m.forbidden.total, 0, group .. ': nothing forbidden')
+	end
+	for _, group in ipairs({ 'text', 'objectives', 'accent', 'theme' }) do
+		st:ColorsChanged(group)
+		local m = C.measure(function() st:ColorChanged(group) end, 100)
+		check(m.calls.total > 0, group .. ': the skin colors its pieces')
+		eq(m.forbidden.total, 0, group .. ': nothing forbidden')
+		eq(m.made, 0, group .. ': nothing made')
+		if group == 'text' or group == 'accent' then
+			check(m.kb < 4, group .. ': no table per pass: ' .. m.kb .. ' KB over 100 passes')
+		end
+	end
+	-- Objectives colors each line through Apply, an xpcall with arguments: the stub's xpcall
+	-- (tests/wow/lua.lua) makes a closure for those, the game's makes none. With a stand-in
+	-- that makes none, the skin's own pass makes no table: Objectives, and Theme, which colors
+	-- the lines the same way and takes the header lines' border color without a look table.
+	local stub_xpcall = _G.xpcall
+	_G.xpcall = function(fn, _, ...) return pcall(fn, ...) end
+	local ok, err = pcall(function()
+		for _, group in ipairs({ 'objectives', 'theme' }) do
+			st:ColorChanged(group)
+			local m = C.measure(function() st:ColorChanged(group) end, 100)
+			check(m.kb < 4, group .. ', without the stub\'s xpcall closure: ' .. m.kb .. ' KB over 100 passes')
+		end
+	end)
+	_G.xpcall = stub_xpcall
+	if not ok then error(err, 0) end
+	clean()
+end)

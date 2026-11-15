@@ -46,6 +46,7 @@ function MicroMenu:UpdateExpansionLandingPageButton()
     -- this texture once it's set, so the flat color goes back every time
     if not hover then
         hover = button:CreateTexture(nil, 'OVERLAY')
+        st:FollowColor(hover, 'button', 'hover', MicroMenu.PaintHover)
     end
     hover:SetTexture(st.BLANK_TEX)
     hover:SetVertexColor(st:ColorRGBA('button', 'hover'))

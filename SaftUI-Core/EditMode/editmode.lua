@@ -33,7 +33,11 @@ local callbacks = {}
 --                      detached into its floating window or docked again
 --                      (Bar/bar.lua's EM:SetBarFloating), slid, changed width or
 --                      turned Hide until hovered on or off (Bar/bardock.lua)
---   'ColorsChanged'    group: st:ColorsChanged(group), for every group
+--   'ColorsChanged'    group, key: a color pass (Media/colors.lua's
+--                      st:ColorChanged; key is nil on a whole pass of the group),
+--                      fired only while edit mode is on, for every group: a
+--                      listener filters by the groups it draws, and only
+--                      colors (the parts look again as edit mode comes on)
 --   'HistoryChanged'   no arguments: a step was pushed, merged, undone, redone,
 --                      reverted, trimmed or the history cleared (history.lua)
 function EM:On(event, fn)

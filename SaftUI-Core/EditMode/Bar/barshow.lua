@@ -54,6 +54,11 @@ local function Modules(bar)
 			return width
 		end,
 		Look = function(_, blizzard) W.LookSelectFace(face, blizzard) end,
+		-- A color pass: SaftUI's face is painted again; under Blizzard the face is
+		-- Blizzard's art, which has no SaftUI color (its Look places and sets atlases).
+		Recolor = function(_, blizzard)
+			if not blizzard then W.LookSelectFace(face, false) end
+		end,
 		Refresh = function()
 			face.text:SetText(EM.ShowFaceText(EM:GetModules(), function(name) return EM:IsModuleShown(name) end))
 		end,
@@ -134,6 +139,11 @@ local function Filter(bar)
 			box.hint:ClearAllPoints()
 			box.hint:SetPoint('LEFT', box, 'LEFT', left, 0)
 			box.hint:SetPoint('RIGHT', box, 'RIGHT', -TEXT_RIGHT, 0)
+		end,
+		-- A color pass: the glass and the hint, not the insets or the points.
+		Recolor = function()
+			box.icon:SetVertexColor(OB.Muted())
+			box.hint:SetTextColor(OB.Muted())
 		end,
 		Refresh = ShowHint,
 	}

@@ -44,6 +44,7 @@ function MicroMenu:SkinQueueButton()
     hover:SetVertexColor(st:ColorRGBA('button', 'hover'))
     hover:SetAllPoints(button)
     button:SetHighlightTexture(hover)
+    st:FollowColor(hover, 'button', 'hover', MicroMenu.PaintHover)
 
     KeepInBar(button)
 

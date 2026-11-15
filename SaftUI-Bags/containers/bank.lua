@@ -18,6 +18,10 @@ local BANK_BAG_SLOT_EVENTS = {
 	'PLAYER_REGEN_ENABLED',
 }
 
+-- The key of the Text color a bag bar's price is drawn in (by its font string,
+-- weak): Danger when the next tab costs more than you have, else Strong.
+local priceKeys = setmetatable({}, { __mode = 'k' })
+
 local function GetBankBagLocation(tab)
 	return ItemLocation:CreateFromBagAndSlot(Enum.BagIndex.Characterbanktab, tab)
 end
@@ -162,7 +166,9 @@ function INV:UpdateBankBagSlots(bar)
 		local tabData = C_Bank.FetchNextPurchasableBankTabData(bankType)
 		local canAfford = tabData and tabData.canAfford
 		local tooExpensive = canAfford ~= nil and not issecretvalue(canAfford) and not canAfford
-		purchase.text:SetTextColor(st:Color('text', tooExpensive and 'danger' or 'strong'):GetRGB())
+		local priceKey = tooExpensive and 'danger' or 'strong'
+		priceKeys[purchase.text] = priceKey
+		purchase.text:SetTextColor(st:Color('text', priceKey):GetRGB())
 	else
 		purchase:Hide()
 	end
@@ -171,6 +177,34 @@ function INV:UpdateBankBagSlots(bar)
 	bar:SetSize(
 		self:GetButtonWidth() * numButtons + spacing * (numButtons - 1) + padding * 2,
 		self:GetButtonHeight() + padding * 2)
+end
+
+-- A color the bank's bag bar draws changed (key nil: any of the group):
+-- Buttons > Danger tints the slots not bought yet, Text > Danger or Strong
+-- draws the price of the next tab. Only the colors are set.
+local BANK_BAR_WINDOWS = { 'bank', 'combinedbank' } -- as INV:UpdateBagSlotBars walks them
+
+local function ColorBankBar(bar, group, key)
+	if group == 'button' then
+		if key ~= nil and key ~= 'danger' then return end
+		for _, slot in pairs(bar.slots) do
+			slot.locked:SetVertexColor(st:ColorRGBA('button', 'danger'))
+		end
+	elseif group == 'text' then
+		local purchase = bar.purchaseButton
+		local priceKey = purchase and priceKeys[purchase.text]
+		if priceKey and (key == nil or key == priceKey) then
+			purchase.text:SetTextColor(st:Color('text', priceKey):GetRGB())
+		end
+	end
+end
+
+function INV:ColorBankBars(group, key)
+	for _, id in ipairs(BANK_BAR_WINDOWS) do
+		local container = self.containers[id]
+		local bar = container and container.bagSlotContainer
+		if bar then ColorBankBar(bar, group, key) end
+	end
 end
 
 function INV:InitializeBankBagSlots(container)

@@ -180,9 +180,7 @@ end
 
 -- The color of a header's line: the theme's border color, faint.
 local function LineColor()
-	local theme, background = Look()
-	local look = st:ResolveTheme(theme, background) or st:ResolveTheme()
-	local r, g, b = unpack(look.colors.bordercolor)
+	local r, g, b = st:ThemeBorderColor((Look()))
 	return r, g, b, LINE_ALPHA
 end
 
@@ -611,15 +609,20 @@ end
 -- A status color changed on the Colors tab (OnColorsChanged('objectives')): only
 -- the lines are colored again (no StyleAll, which would restyle every bar and
 -- item button for each step of the color picker).
+local recolorActive
+local function RecolorModule(module)
+	if module.ObjectivesBlock then Apply(ColorBlock, module.ObjectivesBlock, recolorActive) end
+	if module.usedBlocks then
+		for _, blocks in pairs(module.usedBlocks) do
+			for _, block in pairs(blocks) do Apply(ColorBlock, block, recolorActive) end
+		end
+	end
+end
+
 function OT:RecolorLines()
 	if not installed then return end
-	local active = Active()
-	EachModule(function(module)
-		if module.ObjectivesBlock then Apply(ColorBlock, module.ObjectivesBlock, active) end
-		for _, blocks in pairs(module.usedBlocks or {}) do
-			for _, block in pairs(blocks) do Apply(ColorBlock, block, active) end
-		end
-	end)
+	recolorActive = Active()
+	EachModule(RecolorModule)
 end
 
 function OT:UpdateConfig()
@@ -634,8 +637,12 @@ end
 -- item buttons' hover take the colors again, and the objective lines for a
 -- change of the Objectives colors or of the theme (Blizzard's look back or ours).
 function OT:OnColorsChanged(group)
+	if group ~= 'text' and group ~= 'objectives' and group ~= 'accent' and group ~= 'theme' then return end
 	if group == 'objectives' or group == 'theme' then self:RecolorLines() end
-	for _, entry in pairs(headers) do entry.line:SetVertexColor(LineColor()) end
+	-- The header lines are the theme's border color: no Colors page color reaches them.
+	if group == 'theme' then
+		for _, entry in pairs(headers) do entry.line:SetVertexColor(LineColor()) end
+	end
 	for _, entry in pairs(collapses) do ColorCollapse(entry) end
 	for _, entry in pairs(items) do ColorItem(entry) end
 end

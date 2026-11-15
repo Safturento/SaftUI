@@ -162,6 +162,13 @@ end
 -- Skins button with config (the profile's buttons by default): its backdrop in
 -- config.theme and config.background, drawn as kind ('action' by default; a
 -- bag slot is a 'slot'), and config.font and config.trueSize.
+-- hover -> whether it is SaftUI's flat tint (the Accent), not Blizzard's art,
+-- as the last skinning left it: only the flat one follows the Accent.
+local flatHovers = setmetatable({}, { __mode = 'k' })
+local function PaintHover(hover)
+	if flatHovers[hover] then hover:SetVertexColor(st:Color('accent'):GetRGB()) end
+end
+
 function st:SkinActionButton(button, config, kind)
 	-- With no config the button wears Core's own button settings, and its texts
 	-- follow their font (Button text, Global settings > Fonts). A config of a
@@ -270,12 +277,14 @@ function st:SkinActionButton(button, config, kind)
 		hoverBlends[hover] = hover:GetBlendMode()
 	end
 	if button.hover then
+		st:FollowColor(button.hover, 'accent', nil, PaintHover)
 		if hoverArt then
 			local blend = state.highlightBlend or 'ADD'
 			-- The setter first, then the art, kept in the hover's layer, where
 			-- the client shows it only under the mouse (HOVER_LAYER).
 			button:SetHighlightTexture(button.hover, blend)
 			st.ThemeArt.StyleState(button.hover, hoverArt, button, blend, st.ThemeArt.HOVER_LAYER)
+			flatHovers[button.hover] = false
 		else
 			button.hover:SetTexture(st.BLANK_TEX)
 			button.hover:SetTexCoord(0, 1, 0, 1)
@@ -290,6 +299,7 @@ function st:SkinActionButton(button, config, kind)
 			button.hover:ClearAllPoints()
 			-- button.hover:SetVertexColor(1, 1, 1, .1)
 			button.hover:SetVertexColor(st:Color('accent'):GetRGB())
+			flatHovers[button.hover] = true
 			st:SetInside(button.hover, inset)
 		end
 	end
@@ -442,6 +452,9 @@ function st:ApplyEditBoxFont(editbox, font)
 	st:ApplyFont(text, font)
 end
 
+-- The corner's pushed and highlight textures are Buttons > Hover at its opacity.
+local function PaintCorner(texture) texture:SetVertexColor(st:ColorRGBA('button', 'hover')) end
+
 function st:EnableResizing(frame, resizeButton, callback)
 	if resizeButton then
 		frame.ResizeButton = resizeButton
@@ -468,9 +481,11 @@ function st:EnableResizing(frame, resizeButton, callback)
 
 	frame.ResizeButton:SetPushedTexture(st.textures.cornerbr)
 	frame.ResizeButton:GetPushedTexture():SetVertexColor(st:ColorRGBA('button', 'hover'))
+	st:FollowColor(frame.ResizeButton:GetPushedTexture(), 'button', 'hover', PaintCorner)
 
 	frame.ResizeButton:SetHighlightTexture(st.textures.cornerbr)
 	frame.ResizeButton:GetHighlightTexture():SetVertexColor(st:ColorRGBA('button', 'hover'))
+	st:FollowColor(frame.ResizeButton:GetHighlightTexture(), 'button', 'hover', PaintCorner)
 	frame.ResizeButton:GetHighlightTexture():SetBlendMode('BLEND')
 
 	frame.ResizeButton:SetFrameLevel(4)

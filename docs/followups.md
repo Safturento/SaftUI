@@ -7,6 +7,16 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-15 — `/sui` following during a color drag](#2026-11-15--sui-following-during-a-color-drag)
+  - [2026-11-15 — The Theme tab's color drag recolors every drawn frame](#2026-11-15--the-theme-tabs-color-drag-recolors-every-drawn-frame)
+  - [2026-11-15 — Edit mode: a Theme pass with edit mode on still does the full look and list refresh](#2026-11-15--edit-mode-a-theme-pass-with-edit-mode-on-still-does-the-full-look-and-list-refresh)
+  - [2026-11-15 — Unit frames: a Warrior class pick updates every Warrior NPC plate](#2026-11-15--unit-frames-a-warrior-class-pick-updates-every-warrior-npc-plate)
+  - [2026-11-15 — Unit frames: what a color pass's real element updates cost](#2026-11-15--unit-frames-what-a-color-passs-real-element-updates-cost)
+  - [2026-11-15 — Unit frames: a color oUF lacks is set to the profile's own table](#2026-11-15--unit-frames-a-color-ouf-lacks-is-set-to-the-profiles-own-table)
+  - [2026-11-15 — Unit frames: a vehicle power type with no oUF color falls back to Mana](#2026-11-15--unit-frames-a-vehicle-power-type-with-no-ouf-color-falls-back-to-mana)
+
+  - [2026-11-15 — Two Misc readers break "a pass only colors"](#2026-11-15--two-misc-readers-break-a-pass-only-colors)
+  - [2026-11-15 — A roll result line's All passed and winner color are baked in at push](#2026-11-15--a-roll-result-lines-all-passed-and-winner-color-are-baked-in-at-push)
   - [2026-11-15 — A Position reset runs a unit frame's update once for every part it writes](#2026-11-15--a-position-reset-runs-a-unit-frames-update-once-for-every-part-it-writes)
   - [2026-11-15 — After a UI scale change, a reset half-pixel Position can show its icon again](#2026-11-15--after-a-ui-scale-change-a-reset-half-pixel-position-can-show-its-icon-again)
   - [2026-11-15 — Reset-every-setting: leftovers from the reviews](#2026-11-15--reset-every-setting-leftovers-from-the-reviews)
@@ -189,6 +199,130 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 ## Active
 
+### 2026-11-15 — `/sui` following during a color drag
+
+**What:** While the color picker is open, every SaftUI frame follows the color as it is dragged except the `/sui` window itself, which redraws once when the picker closes (Okay or Cancel). Making the window follow during the drag is a larger change across the options kit.
+
+**Why noticed:** The live colors design's Question 2 for the owner (`docs/superpowers/specs/2026-11-15-saftui-live-colors-design.md`, "What stays as it is, and why" and "Questions for the owner"): is `/sui` following when the picker closes all right? The plan built "at close" and the owner has not said otherwise. The reason it waits: a redraw while the picker is open releases the field the picker writes through, and repainting in place means touching the widget files of the options kit, which other branches were editing and the reset-on-every-setting design was reworking. The kit's field font does follow at once (its font objects), and Part B's preview (Tasks 9 to 11 of the plan) shows the text roles and the Accent on SaftUI's panels and controls meanwhile.
+
+**Anchors:** `docs/superpowers/specs/2026-11-15-saftui-live-colors-design.md` ("What stays as it is, and why", Question 2); `docs/superpowers/plans/2026-11-15-saftui-live-colors.md`; `SaftUI-Core/Config/optionscolorpicker.lua` (the edit's begin and end); `SaftUI-Core/Config/config.lua` (`Config:OnColorsChanged`, the redraw at close); the kit: `SaftUI-Core/Config/optionswidgets.lua`, `optionsbody.lua`, `optionstypes.lua`, `optionsmodel.lua` and the rows' own files; `tests/core/color_live_test.lua`.
+
+**What's been considered:** Repaint in place: every kit widget registers a follower for the colors it draws (`st:FollowColor`), as Core's buttons and check boxes already do, instead of the window being rebuilt. The branches in flight when this was written were the resets plan's last task (the options kit and `tests/lib/harness.lua`) and the UI scaling design (`optionsresize.lua`, `panels.lua`); the change is best made after they land.
+
+**Shape of work:** a design pass over the kit (which widgets draw a Colors-page color and where), then one ticket per widget family; each with a cost case (`tests/lib/color_cost.lua`).
+
+**Open questions:** Whether the owner wants it at all once the preview shows the text roles and the Accent beside the picker; whether the window should follow only for the color being dragged, or for every Colors page group.
+
+### 2026-11-15 — The Theme tab's color drag recolors every drawn frame
+
+**What:** A color picked on the Theme tab (its background and border colors, the templates' colors) runs `st:RecolorThemed()`, which recolors every frame drawn by the theme engine, on each pass of the drag. It is not made cheaper by the live colors work: the pass is timed (`theme` in the debug line) and nothing more.
+
+**Why noticed:** The live colors design left the Theme tab's colors out of scope (its call 11: "their recolor is timed in the debug line, a followup if over budget"). Whether it is over budget only the game can say: the spec's target is 2 ms a pass and the guard waits one frame per 8 ms over, three at most.
+
+**Anchors:** `SaftUI-Core/Media/theme.lua` (`Recolor()`, which runs `st:RecolorThemed()` through `CO.Timed('theme', nil, fn)`), `SaftUI-Core/theme.lua` (`st:RecolorThemed`), `SaftUI-Core/Media/colors.lua` (`CO.Timed`, `CO.EditStats`, the `<DEBUG:Colors>` line), `docs/superpowers/plans/2026-11-15-saftui-live-colors-in-game-checklist.md` (the debug line check).
+
+**What's been considered:** Act on it only if the owner's debug line, after a Theme tab color drag in a full UI (bags and the bank open, a 40-player raid or Test mode with Raid 40, the tracker), shows `theme` over 8 ms. Then: recolor only the frames whose look reads the color (by template and by key, as the Colors page's passes filter by group and key), or throttle the drag's passes.
+
+**Shape of work:** a read of the debug line first; if slow, one ticket in Core to filter `st:RecolorThemed` by the template key that changed.
+
+**Open questions:** The slowest `theme` pass the owner sees in game.
+
+### 2026-11-15 — Edit mode: a Theme pass with edit mode on still does the full look and list refresh
+
+**What:** With edit mode on, a Theme color pass (`st:ColorChanged('theme')`) still runs `EM:RefreshBar()`, the History list's `LookList()` and `EM:RefreshHistoryList()`: the Show filter re-anchors and sets its insets, rows are placed, shown and hidden. With the list open that is about 139 setter calls, 51 forbidden calls (`ClearAllPoints`, `SetPoint`, `Hide`, `Show`, `SetWidth`, `SetHeight`, `SetTextInsets`, `SetTexture`, `SetSize`) and about 6.4 KB per pass, and a drag on the Theme tab's colors runs one every frame. Text and Accent passes are already color-only.
+
+**Why noticed:** The review of live colors Task 2 (Core's widgets and edit mode), finding m3, probe P6. The brief and the spec ("`theme` and `accent` as today", the Theme tab's recolor timed, not changed) kept Theme's full look, so it was left.
+
+**Anchors:** `SaftUI-Core/EditMode/Bar/bar.lua` (`EM:RefreshBar`, `EM:RecolorBar`, the `ColorsChanged` listener), `SaftUI-Core/EditMode/Bar/historylist.lua` (`LookList`, `RecolorList`, the `ColorsChanged` listener), `SaftUI-Core/EditMode/mover.lua` (`EM:OnColorsChanged`), `tests/core/editmode_colors_test.lua`, `.superpowers/sdd/2026-11-15-saftui-live-colors/task-2-review.md`.
+
+**What's been considered:** On `'theme'`, run `EM:RecolorBar()` and the list's recolor when `W.BlizzardLook()` has not changed since the last look, and the full look only when it has (a switch to or from Blizzard). The profile update's `SettingsChanged` already refreshes the list, so the list refresh on Theme could go.
+
+**Shape of work:** Small: remember the last look in `bar.lua` and `historylist.lua`, branch the Theme listeners, and run the edit mode cost cases for a Theme pass under Thick, Thin and Blizzard.
+
+**Open questions:** Whether a Theme pass can change anything but the look's color while the art stays the same (a Background change reaches the bar's backdrop through the theme's own recolor, not here).
+### 2026-11-15 — Unit frames: a Warrior class pick updates every Warrior NPC plate
+
+**What:** `UF.ColorReaches` for Class matches the unit's class token for any unit, so a Class > Warrior (or Paladin, Rogue, Mage) pick also updates every NPC plate whose unit carries that token, though a plate's bar and name don't show NPC class (`colorClassNPC` is off on plates). The spec's L3 ("nothing else updates") doesn't hold near a pack. Nothing visible changes; it is only cost.
+
+**Why noticed:** Review of the live colors Task 3 (unit frames and nameplates), `.superpowers/sdd/2026-11-15-saftui-live-colors/task-3-review.md`, m1. A probe in the cost test's world had Class > Warrior reach 49 frames (35 of 40 plates): Health 49, Power 14, tags 49, 112 calls, against 23 for a Mage.
+
+**Anchors:** `SaftUI-Unitframes/unitframes.lua` (`UF.ColorReaches`, `ColorFrame`), `tests/unitframes/color_cost_test.lua`, `SaftUI-Unitframes/config/default.lua` (`colorClassNPC`, `colorClassPet`).
+
+**What's been considered:** Token matching never misses a frame (party and raid frames color NPCs and pets by class: `colorClassNPC`, `colorClassPet`, on in `party.lua`, `raid10.lua`, `raid40.lua`). The cheap fix is to reach an NPC only if the frame's Health or Power has `colorClassNPC`, and a pet only with `colorClassPet`, read from the frame's own fields as the Reputation rule reads its flags.
+
+**Shape of work:** a small change in `UF.ColorReaches` with a cost case on a plate with the flag off.
+
+**Open questions:** whether `/sui debug` shows the pass costing enough near a pack to be worth it.
+
+### 2026-11-15 — Unit frames: what a color pass's real element updates cost
+
+**What:** The unit frame color pass's cost is measured only with counting stand-ins for oUF's elements, so the tests' `forbidden 0` and `kb < 4` cover the handler, not the real `ForceUpdate`s it calls. The reviewer's probe with real SaftUI callbacks on stub widgets: Health and Power make 1 to 2 setters and no garbage; ClassPower calls `SetShown` once and `SetWidth` five times and makes about 76 KB over 100 calls (two tables in `PostUpdateClassPower`, plus oUF's `unpack(chargedPoints or {})`); the role corner calls `SetTexture` once (oUF adds `SetAtlas` and `Show` or `Hide`). None is protected, and oUF runs them all in combat on its own events. Rough time from counting C calls: Class > Mage 0.3 to 0.5 ms, Text > Danger in a raid with plates 1.5 to 3 ms, a Warrior pick near a pack 1.5 to 3 ms, a whole Class pass of a 40 raid 1 to 2.5 ms.
+
+**Why noticed:** Review of the live colors Task 3, `.superpowers/sdd/2026-11-15-saftui-live-colors/task-3-review.md`, m3. Only `/sui debug` can say whether a pass passes 2 ms, and Test mode with Raid 40 (`UF:UpdateGroupPreview` restyles and lays out 40 preview frames on every pass of Roles and Text too) is probably the heaviest case.
+
+**Anchors:** `SaftUI-Unitframes/unitframes.lua` (`ColorFrame`), `SaftUI-Unitframes/elements/classpower.lua` (`PostUpdateClassPower`), `SaftUI-Unitframes/elements/indicators.lua` (the role corner's `postUpdate`), `SaftUI-Unitframes/grouppreview.lua`, the `<DEBUG:Colors>` line.
+
+**What's been considered:** The spec allows an oUF element's `ForceUpdate` in a pass, so this is not a violation. Possible cuts: a color-only update for ClassPower and the role corner (no `SetShown`, `SetWidth` or `SetTexture`), or a throttle of the previews.
+
+**Shape of work:** an in-game read of the debug line first (Class and Text > Normal in a raid, Test mode with Raid 40), then a ticket only if one is slow.
+
+**Open questions:** the slowest pass the owner sees in game.
+
+### 2026-11-15 — Unit frames: a color oUF lacks is set to the profile's own table
+
+**What:** `CopyColor` (`SaftUI-Unitframes/unitframes.lua`) sets a color oUF has none of to the profile's own table, as `st.tablemerge` did. A later profile switch's merge then writes the new profile's values into the table of the old profile. It matters only if oUF lacks a SaftUI color key in game (the test world lacks every key); which keys, if any, is unchecked.
+
+**Why noticed:** Review of the live colors Task 3, `.superpowers/sdd/2026-11-15-saftui-live-colors/task-3-review.md`, n3. The behavior is older than the task; the commit kept it.
+
+**Anchors:** `UF:UpdateColors`, `CopyColor`, oUF's `Libraries/oUF/colors.lua` (read only), `st.config.profile.colors`.
+
+**What's been considered:** Copying into a new color object (`UF.oUF:CreateColor`) instead of aliasing would make it safe.
+
+**Shape of work:** list the keys SaftUI's Colors page has that oUF's table lacks, and make the fallback a copy.
+
+**Open questions:** whether any key is missing in game.
+
+### 2026-11-15 — Unit frames: a vehicle power type with no oUF color falls back to Mana
+
+**What:** Power reaches a frame by its unit's power token. A unit whose token oUF has no color for (a vehicle's power type) falls back to Mana's color in oUF's `power.lua`, so a Mana pick misses that frame. Rare; the edit's whole pass covers it.
+
+**Why noticed:** Review of the live colors Task 3, `.superpowers/sdd/2026-11-15-saftui-live-colors/task-3-review.md`, n4.
+
+**Anchors:** `UF.ColorReaches` (the `power` branch), oUF's `Libraries/oUF/elements/power.lua` (read only).
+
+**What's been considered:** Treat a token with no oUF color as `MANA`.
+
+**Shape of work:** one line in `UF.ColorReaches` and a test.
+
+**Open questions:** none.
+
+### 2026-11-15 — Two Misc readers break "a pass only colors"
+
+**What:** the zone text's color handler calls `SetPoint` on Blizzard's `SubZoneTextString` and makes about 1 KB a pass; the experience bar's Reputation handler calls `Show` and makes about 1.1 KB a pass. Both break the live colors spec's rule that a pass only colors, and no task owns either file.
+
+**Why noticed:** the review of live colors Task 7 (Misc's skins, the tooltip and SaftUI's tracker) probed every Misc reader with the cost helper (`tests/lib/color_cost.lua`). The spec calls both readers "as today", so neither task 7 nor any other task of that plan changed them.
+
+**Anchors:** `ZT:OnColorsChanged` in `SaftUI-Misc/Skinning/blizzard/ZoneText.lua` (on any Text key or Factions, while the zone text shows, it runs `UpdateZoneLine`: a `SetPoint` on `SubZoneTextString`, a `SetText`, about 1.07 KB a pass, `SetPoint` 100 times over 100 passes); `XP:OnColorsChanged` in `SaftUI-Misc/experience.lua` (on Reputation it runs `UpdateReputation`: `Show`, `SetMinMaxValues`, `SetValue`, about 1.1 KB a pass, `Show` 100 times over 100 passes); `.agents/taint.md` rule 1 on Blizzard frames; the plan `docs/superpowers/plans/2026-11-15-saftui-live-colors.md` ("A pass only colors").
+
+**What's been considered:** neither frame is secure or tainting, so nothing is broken in the game today; the cost is the point. A zone line that only needs its color could set the font string's color (the color is the only thing a Factions or Text pass changes) instead of laying the line out again, and the reputation bar's pass could set the bar's color without `Show` or its range.
+
+**Shape of work:** small: two handlers cut down to color setters, each with a cost case (`C.measure`, forbidden 0, `kb < 4`) in `tests/misc/zone_text_test.lua` and `tests/misc/experience_test.lua`.
+
+**Open questions:** whether the zone line's color is held apart from its text (it may be one `SetText` with an escape), which would decide if the pass can color alone.
+
+### 2026-11-15 — A roll result line's All passed and winner color are baked in at push
+
+**What:** A roll result's feed line (`Feed/rolls.lua`, `ResultText`) builds its right text once, at push: "All passed" in Loot > Pass, or the winner's name in their class color. A shown line, and a saved one after a reload, never follows a change to Loot > Pass or to a class color, though the Pass row's description names "All passed (on the feed line and in its roll tooltip)".
+
+**Why noticed:** Review of the live colors Task 6 (Loot). The audit and the brief didn't list this reader, so the task made the feed's item names and progress bars live and left this one. Context: the plan's goal is that every Colors page color reaches every SaftUI reader on screen as the picker is dragged.
+
+**Anchors:** `SaftUI-Loot/Feed/rolls.lua` (`ResultText`, `BuildRollEntry`), `SaftUI-Loot/Feed/feed.lua` (`LT:ColorFeed`, `LT.FeedItemName`), `docs/superpowers/plans/2026-11-15-saftui-live-colors.md` Ruling 15, `.superpowers/sdd/2026-11-15-saftui-live-colors/task-6-review.md` (m4).
+
+**What's been considered:** The same shape as the item names: the entry already keeps `rolls`, so keep it and build the right text at draw (`LT.RollResultText(info)`), and have `ColorFeed` set it again for `loot` (nil or `pass`) and `class`. A class color change then reaches only the lines with a winner.
+
+**Shape of work:** Small: one function moved out of the push, one branch in `ColorFeed`, a test beside `live_colors_test.lua`'s feed cases; saved entries already hold `rolls`, so restored lines follow too.
+
+**Open questions:** Whether the roll tooltip's lines (colored when shown) need a change: they read the color each time they open, so probably not.
 ### 2026-11-15 — A Position reset runs a unit frame's update once for every part it writes
 
 **What:** A reset of a unit frame part's Position whose anchor and offsets all differ writes point, rel_point, `relative_to` (twice, for a Global frame) and the offsets, and each part's own `set` calls `UF:UpdateConfig(unit)`: six updates for one click.

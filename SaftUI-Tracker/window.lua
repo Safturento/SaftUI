@@ -697,27 +697,27 @@ end
 -- The line along the header's bottom: the drawn theme's border color, faint
 -- (the skin's LineColor rule).
 local function LineColor()
-	local config = TR.config
-	local look = st:ResolveTheme(config.theme, config.background) or st:ResolveTheme()
-	local r, g, b = unpack(look.colors.bordercolor)
+	local r, g, b = st:ThemeBorderColor(TR.config.theme)
 	return r, g, b, L.LINE_ALPHA
 end
 
 -- What the module colors itself, put back after a theme recolor or a color
 -- change: the texts, the line and the chevrons.
-function TR:ColorHeader()
+-- The line is the theme's border color, which no Colors page color reaches: a pass
+-- redraws it only for 'theme' (group nil is a draw).
+function TR:ColorHeader(group)
 	local header = self.header
 	if not header then return end
 	header.title:SetTextColor(st:Color('text', 'normal'):GetRGB())
 	header.count:SetTextColor(st:Color('text', 'muted'):GetRGB())
-	header.line:SetVertexColor(LineColor())
+	if group == nil or group == 'theme' then header.line:SetVertexColor(LineColor()) end
 	for chevron in pairs(chevrons) do PaintChevron(chevron) end
 end
 
 -- The window's part of a color change; the module's one OnColorsChanged
 -- (init.lua) calls it, and each later part adds its own call there.
-function TR:ColorWindow()
-	self:ColorHeader()
+function TR:ColorWindow(group)
+	self:ColorHeader(group)
 end
 
 -- The header from the profile: shown or not, its fonts, the count's switch and

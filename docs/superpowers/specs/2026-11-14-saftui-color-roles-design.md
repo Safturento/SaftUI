@@ -70,6 +70,7 @@ Blizzard theme the rule editor's AND and OR, the own mark and the diff icon keep
   readers stay; only their opacity starts to work.
 - Live Text and Buttons colors. As today (the Colors tab spec's non-goal), most readers set a color when
   they build a frame, and the sections say to reload.
+  **Revised 2026-11-15:** every color now shows at once; see `docs/superpowers/specs/2026-11-15-saftui-live-colors-design.md`.
 - The groups that already name a game concept: Class, Reputation and Renown, Power, Item quality, Status,
   Threat, Objectives. Their keys, labels and readers are untouched.
 - The options kit's surface colors (`st.BOX_COLORS`, `SIDEBAR_BG`, `OB.LINE`, `DOT_GREY`): they belong to

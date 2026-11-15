@@ -432,10 +432,13 @@ end
 
 -- Sets a title on its font string, cut short with dots inside `room` wide so
 -- the scroll frame doesn't cut it mid-glyph: the name gives way, the count in
--- parentheses at its end stays.
-local function FitTitle(text, title, room)
-	text:SetWordWrap(false)
-	text:SetWidth(0)
+-- parentheses at its end stays. again says the font string was fitted before
+-- (its wrap and width are set): only the text is set, as a color pass may.
+local function FitTitle(text, title, room, again)
+	if not again then
+		text:SetWordWrap(false)
+		text:SetWidth(0)
+	end
 	text:SetText(title)
 	if text:GetUnboundedStringWidth() <= room then return end
 	local head, tail = title:match('^(.-)( %(.-%))$')

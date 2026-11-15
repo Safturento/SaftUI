@@ -52,10 +52,12 @@ end
 local function Tab() return st.Config:GetOptionsTable().Fonts.args.colors end
 local function Section(key) return Tab().args[key] end
 
-local NOTE = 'Most of SaftUI reads these when it builds its frames: reload (Reload UI, bottom right) to see a change everywhere.'
 
 test('the sections and their colors, in order, as small color swatches with tooltips, each with its own reset and no section Reset', function()
-	local sections, names = ByOrder(Tab().args), {}
+	local sections, names = {}, {}
+	for _, s in ipairs(ByOrder(Tab().args)) do
+		if s.key ~= 'intro' then sections[#sections + 1] = s end
+	end
 	for i, s in ipairs(sections) do names[i] = s.v.name end
 	eq(table.concat(names, ','), 'Text,Buttons,Class,Roles,Reputation,Factions,Power,Item quality,Loot,Status,Threat,Objectives')
 
@@ -90,13 +92,23 @@ test('the sections and their colors, in order, as small color swatches with tool
 	end
 end)
 
-test('Text, Buttons, Roles, Factions and Loot say a change shows after a reload; the others have no note', function()
-	for _, key in ipairs({ 'text', 'roles', 'factions', 'loot' }) do
-		eq(Section(key).desc, NOTE, key)
+test("no section's note says to reload; Buttons' says what opacity does; the others have none", function()
+	for _, section in ipairs(st:GetModule('Colors').SECTIONS) do
+		check(not (section.note or ''):lower():find('reload', 1, true), section.key .. ': no reload in its note')
 	end
-	eq(Section('button').desc, NOTE .. " Opacity sets how strongly each is drawn: 100% is SaftUI's own.", "Buttons add what their opacity does")
-	for _, key in ipairs({ 'class', 'reaction', 'power', 'item_quality', 'status', 'threat', 'objectives' }) do
+	eq(Section('button').desc, "Opacity sets how strongly each is drawn: 100% is SaftUI's own.", "Buttons say what their opacity does")
+	for _, key in ipairs({ 'text', 'roles', 'factions', 'loot', 'class', 'reaction', 'power', 'item_quality', 'status', 'threat', 'objectives' }) do
 		eq(Section(key).desc, nil, key)
+	end
+end)
+
+test('the Colors tab starts with its line', function()
+	local intro = Tab().args.intro
+	check(intro, 'an intro')
+	eq(intro.type, 'description'); eq(intro.order, 0)
+	eq(intro.name, 'A change shows everywhere as you pick it. This window takes it when the picker closes.')
+	for key, v in pairs(Tab().args) do
+		if key ~= 'intro' then check(v.order > 0, key .. ' comes after it') end
 	end
 end)
 

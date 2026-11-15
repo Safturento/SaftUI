@@ -138,8 +138,17 @@ end
 -- Blizzard, or SaftUI's theme Blizzard for 'theme'. False for None. A
 -- control's own code asks this to show its Blizzard art or its own look.
 function st:IsBlizzardLook(theme, background)
-	local look = st:ResolveTheme(theme, background)
-	return look ~= nil and look.name == 'blizzard'
+	-- The name alone, as ResolveTheme draws it: no look table is made, so a color pass may ask.
+	if theme == 'none' then return false end
+	return ResolveName(theme) == 'blizzard'
+end
+
+-- The border color a Theme override draws (r, g, b), which is
+-- st:ResolveTheme(theme).colors.bordercolor, or the profile's own theme's for None
+-- (as a header line's callers fall back), with no look table made: a color pass may ask.
+function st:ThemeBorderColor(theme)
+	local name = ResolveName(theme ~= 'none' and theme or nil)
+	return unpack(st.config.profile.templates[name].bordercolor)
 end
 
 -- The look an old template name drew: nil for none, and for no name, which drew

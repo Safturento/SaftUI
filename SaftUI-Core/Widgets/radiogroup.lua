@@ -27,6 +27,12 @@ local function ColorPicked(button)
     st:SetBorderColor(button.backdrop, st:Color('accent'):GetRGB())
 end
 
+-- The Accent reaches the picked button at once (st:FollowColor); the others
+-- keep the theme's border.
+local function PaintPicked(button)
+    if button.picked then ColorPicked(button) end
+end
+
 function st:CreateRadioGroup(name, parent, options)
     -- The group has no backdrop of its own; its buttons have theirs.
     local radioGroup = st:CreateFrame('frame', name, parent)
@@ -42,13 +48,16 @@ function st:CreateRadioGroup(name, parent, options)
         button:SetSize(options.buttonWidth, options.buttonHeight)
         st:SetButtonTab(button, false)
         button.config = item --store button config for use in callbacks
+        st:FollowColor(button, 'accent', nil, PaintPicked)
         button:SetScript('OnClick', function(self, mouseButton, down)
             for _, _button in pairs(radioGroup.buttons) do
 				st:SetBackdrop(_button, options.theme or 'theme', options.background or 'solid', 'control')
 				st:KeepOwnColors(_button, nil)
+				_button.picked = false
 				st:SetButtonTab(_button, false)
 			end
 			ColorPicked(self)
+			self.picked = true
 			st:KeepOwnColors(self, ColorPicked)
 			st:SetButtonTab(self, true)
 
