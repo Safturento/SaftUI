@@ -132,7 +132,7 @@ function CHT:HoldTabAlpha(tab)
 			end
 		end)
 	end
-	tab:SetAlpha(1)
+	if tab:GetAlpha() ~= 1 then tab:SetAlpha(1) end
 end
 
 function CHT:SkinChatFrame(frame)
@@ -221,6 +221,9 @@ end
 -- frame SkinChatFrame already skinned.
 function CHT:ApplyChatFrameConfig(frame)
 	self:ApplyChatFont(frame)
+
+	-- Tab fading follows the profile: the hook is made the first time it is off.
+	self:HoldTabAlpha(TabOf(frame))
 
 	local editbox = _G[frame:GetName()..'EditBox']
 	if editbox then
@@ -408,8 +411,8 @@ function CHT:ApplyAppearance()
 	end
 end
 
--- A profile change: chat size and position, then each chat frame's look. Tab fading
--- (tabs.fade) is only applied when the frames are first skinned.
+-- A profile change: chat size and position, then each chat frame's look, tab fading
+-- (tabs.fade) among it.
 function CHT:UpdateConfig()
 	if not self.config then return end -- not enabled
 

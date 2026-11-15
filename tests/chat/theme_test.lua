@@ -161,6 +161,32 @@ test("with tab fading on SaftUI hooks nothing on the tab", function()
 	profile.chat.tabs.fade = false
 end)
 
+-- Tab fading (tabs.fade) follows the profile live: a profile switch or copy that turns
+-- it off holds the tabs at 1 from then on, and one that turns it on lets Blizzard fade.
+test("a profile change turns tab fading off and on without a reload", function()
+	profile.chat.tabs.fade = true
+	local frame, _, tab = CW.build(12)
+	CHT:SkinChatFrame(frame)
+	tab:SetAlpha(0.4)
+	eq(rawget(tab, 'SetAlpha'), nil, 'fading on at skin time: nothing hooked')
+
+	profile.chat.tabs.fade = false -- a switch to a profile that doesn't fade
+	CHT:ApplyChatFrameConfig(frame)
+	check(stub.hook_wrappers[rawget(tab, 'SetAlpha')], 'the post-hook is there now')
+	eq(tab:GetAlpha(), 1, 'the tab is at 1 at once')
+	tab:SetAlpha(0.2)
+	eq(tab:GetAlpha(), 1, 'and stays there through a fade step')
+	local hook = rawget(tab, 'SetAlpha')
+	CHT:ApplyChatFrameConfig(frame)
+	eq(rawget(tab, 'SetAlpha'), hook, 'a second apply adds no second hook')
+
+	profile.chat.tabs.fade = true -- and back to one that fades
+	CHT:ApplyChatFrameConfig(frame)
+	tab:SetAlpha(0.2)
+	eq(tab:GetAlpha(), 0.2, 'Blizzard fades it again')
+	profile.chat.tabs.fade = false
+end)
+
 test("edit mode's outline sits on the chat's border, or on the chat under None", function()
 	CHT.holder = CreateFrame('Frame', nil, UIParent)
 	CHT.holder:SetSize(400, 200)
