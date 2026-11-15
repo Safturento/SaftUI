@@ -61,6 +61,7 @@ function TR:Build()
 	self.built = true
 	self:BuildWindow()
 	self:BuildRows()
+	self:BuildItems()
 	self:RegisterEvents()
 	-- Blizzard's tracker goes off screen (blizzard.lua), once the window is there
 	-- for the y it hides at.
@@ -132,6 +133,7 @@ function TR:OnColorsChanged(group)
 	if not self.built then return end
 	self:ColorWindow()
 	self:ColorRows(group)
+	self:ColorItems()
 end
 
 -- What the tracker keeps per character, in st.config.char.tracker: each zone
@@ -251,8 +253,13 @@ function TR:OnEvent(event, ...)
 		if self.knownIds and not self.knownIds[questID] then return end
 	end
 	if event == 'BAG_UPDATE_COOLDOWN' then
-		if self.RefreshCooldowns then self:RefreshCooldowns() end
+		self:RefreshCooldowns()
 		return
+	end
+	-- Combat starting or ending changes what the list may do at once (the scroll
+	-- lock); the buttons themselves are the queued pass's and the refresh's.
+	if event == 'PLAYER_REGEN_DISABLED' or event == 'PLAYER_REGEN_ENABLED' then
+		self:UpdateScrollLock()
 	end
 	self:MarkDirty(event)
 end
@@ -403,7 +410,7 @@ end
 -- The stages of the later tasks, each once its file defines it (the item
 -- buttons, the probes, the handover, the visibility).
 function TR:RunStages()
-	if self.RefreshItems then self:RefreshItems() end
+	self:RefreshItems()
 	if self.RunProbes then self:RunProbes() end
 	if self.UpdateHandover then self:UpdateHandover() end
 	if self.ApplyVisibility then self:ApplyVisibility() end

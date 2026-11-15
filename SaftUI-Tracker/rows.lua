@@ -7,7 +7,8 @@ local L, Layout = TR.LAYOUT, TR.Layout
 	refresh that keeps them current. Built by TR:Build with the window, so with
 	the switch off none of it exists. Nothing here is secure and nothing is
 	anchored to a secure frame, so the rows lay out in combat too; the quest
-	item buttons (Task 8) are the layer's, not the rows'.
+	item buttons are the item layer's (items.lua), not the rows': a row only
+	leaves room for one, and draws the item's slot (below).
 
 	A refresh (TR:Refresh) reads the model, groups it, makes the entries, claims
 	a row for each, lays them out (TR.Layout.Rows, with the real font strings
@@ -28,9 +29,11 @@ local L, Layout = TR.LAYOUT, TR.Layout
 	the row a key has now. A quest row is a Button (the mouse for the hover, and
 	for the clicks of Task 7): .title (font string), .icon, .hover, .parts[i]
 	({ fs, bar }: the i-th line, a text or a progress bar), .quest (the model's),
-	.questID, .item ('row' where the quest's item button sits in the row, whose
-	room the title and lines leave on the right: its top right corner is the
-	row's top right, itemSize square).
+	.questID, .item ('row' where the quest's item sits in the row, whose room the
+	title and lines leave on the right: its top right corner is the row's top
+	right, itemSize square), .slot (a plain Button over that corner, shown by
+	TR:SetSlotMode: the item's icon greyed while the quest has no button yet, or
+	plain where the item has none to click, hidden under a button).
 ]]
 
 local PlainNumber = st.PlainNumber
@@ -369,6 +372,25 @@ local function MakeQuestRow(self)
 	row.title = self:NewText(row, 'text')
 	row.title:SetJustifyV('TOP')
 
+	-- The item's slot, at the row's top right. A plain Button (never secure): it
+	-- takes the mouse from the row there, so it keeps the row's hover, and
+	-- clicks nothing. Items.lua says what it shows.
+	local slot = CreateFrame('Button', nil, row)
+	slot:EnableMouse(true)
+	slot:Hide()
+	slot.icon = slot:CreateTexture(nil, 'ARTWORK')
+	slot.icon:SetAllPoints(slot)
+	slot.mode = 'none'
+	slot:SetScript('OnEnter', function(self)
+		TR:HoverRow(row, true)
+		TR:ShowSlotTooltip(self, row)
+	end)
+	slot:SetScript('OnLeave', function(self)
+		TR:HoverRow(row, false)
+		if GameTooltip:IsOwned(self) then GameTooltip:Hide() end
+	end)
+	row.slot = slot
+
 	-- The quest's icon is a button of its own over the icon texture: a click
 	-- focuses the quest, or stops focusing it (Blizzard's POI button does the
 	-- same). It takes the mouse from the row there, so it keeps the row's hover.
@@ -468,10 +490,32 @@ function TR:ReleaseRows(all)
 				end
 				if row.key ~= nil then pool.byKey[row.key] = nil end
 				row.key, row.quest, row.questID, row.item, row.timerPart = nil, nil, nil, nil, nil
+				if row.slot then
+					row.slot.mode = 'none'
+					Shown(row.slot, false)
+				end
 				pool.free[#pool.free + 1] = row
 			end
 		end
 	end
+end
+
+-- What a quest row's item slot shows: 'none' (hidden: a button sits over the
+-- row's corner), 'greyed' (the icon desaturated at DIM_ALPHA, while the quest's
+-- item has no button yet) or 'icon' (the plain icon, where the item has no
+-- button to be had). Only a change is drawn.
+function TR:SetSlotMode(row, mode)
+	local slot = row.slot
+	if slot.mode == mode then return end
+	slot.mode = mode
+	if mode == 'none' then
+		Shown(slot, false)
+		return
+	end
+	local greyed = mode == 'greyed'
+	slot.icon:SetDesaturated(greyed)
+	slot.icon:SetAlpha(greyed and TR.DIM_ALPHA or 1)
+	Shown(slot, true)
 end
 
 -- The row (one in use) kind's key has now, or nil.
@@ -589,12 +633,32 @@ local function DrawIcon(self, row, quest, entry)
 	Shown(row.iconButton, show)
 end
 
+-- The item slot's place (the row's top right, itemSize square) and icon, for a
+-- quest whose item sits in its row; hidden for one with no item there. What it
+-- shows is TR:SetSlotMode's, from the item stage (items.lua).
+local function DrawItemSlot(self, row, quest, entry, width)
+	local slot = row.slot
+	if entry.item ~= 'row' or not quest.item then
+		self:SetSlotMode(row, 'none')
+		return
+	end
+	local size = row.itemSize
+	Place(slot, row, width - size, 0)
+	Size(slot, size, size)
+	local texture = quest.item.texture
+	if slot.shownTexture ~= texture then
+		slot.shownTexture = texture
+		slot.icon:SetTexture(texture)
+	end
+end
+
 local function DrawQuest(self, row, entry, p, width)
 	local quest = entry.quest
 	local settings = self.config.quests
 	row.quest, row.questID, row.item = quest, quest.id, entry.item
 	row.itemSize = self.config.items.size
 	row.timerPart = nil
+	DrawItemSlot(self, row, quest, entry, width)
 	DrawIcon(self, row, quest, entry)
 	local titleX = entry.icons and (L.ICON + L.ICON_GAP) or 0
 	Place(row.title, row, titleX, 0)
@@ -849,7 +913,9 @@ function TR:BuildEntries(model, groups)
 	local config = self.config
 	local settings = config.quests
 	local icons = self:ShowsIcons()
-	local inRow = config.items.placement == 'row'
+	-- In the row, the item takes room there: a button (In the row), or its plain
+	-- icon (Off). Beside the tracker has a column of its own (Task 9).
+	local inRow = config.items.placement == 'row' or config.items.placement == 'off'
 	local now = GetTime()
 	local n = 0
 

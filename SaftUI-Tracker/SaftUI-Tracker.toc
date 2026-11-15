@@ -13,5 +13,6 @@ layout.lua
 window.lua
 rows.lua
 clicks.lua
+items.lua
 blizzard.lua
 options.lua

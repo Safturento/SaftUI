@@ -418,6 +418,92 @@ test('SetAttribute runs OnAttributeChanged on every call, an unchanged value too
 	check(stub.blocked[1] and stub.blocked[1][2] == 'SetAttribute', 'the blocked call is noted')
 end)
 
+test('a secure template frame is protected: in combat it refuses moves, shows, hides and attributes into stub.blocked; alpha and its children are free', function()
+	reset_world()
+	local layer = CreateFrame('Frame', 'SecureLayer', UIParent, 'SecureHandlerStateTemplate')
+	local button = CreateFrame('Button', 'SecureOne', layer, 'SecureActionButtonTemplate')
+	local plain = CreateFrame('Frame', nil, UIParent)
+	local cooldown = CreateFrame('Cooldown', nil, button, 'CooldownFrameTemplate')
+	local child = CreateFrame('Frame', nil, button)
+	local protected, explicit = button:IsProtected()
+	check(protected and explicit, 'a secure action button is protected')
+	check(layer:IsProtected(), 'so is a secure handler')
+	check(not plain:IsProtected() and not cooldown:IsProtected() and not child:IsProtected(), 'a plain frame, a cooldown and a child of a secure frame are not')
+	button:SetPoint('CENTER', UIParent, 'CENTER')
+	button:SetAttribute('type', 'item')
+	button:Show()
+	eq(#stub.blocked, 0, 'out of combat nothing is refused')
+	eq(button:GetAttribute('type'), 'item', 'the attribute is set')
+
+	stub.in_combat = true
+	local calls = {
+		function() button:SetPoint('TOPLEFT', UIParent, 'TOPLEFT') end,
+		function() button:ClearAllPoints() end,
+		function() button:SetSize(30, 30) end,
+		function() button:Hide() end,
+		function() button:Show() end,
+		function() button:SetAttribute('type', 'macro') end,
+		function() button:SetFrameLevel(40) end,
+		function() button:EnableMouse(false) end,
+		function() button:RegisterForClicks('AnyUp') end,
+		function() layer:SetAllPoints(UIParent) end,
+		function() layer:Hide() end,
+		function() layer:SetAttribute('state-visibility', 'hide') end,
+	}
+	for _, call in ipairs(calls) do call() end
+	eq(#stub.blocked, #calls, 'each is noted as blocked')
+	check(button:IsShown(), 'nothing hid it')
+	eq(button:GetAttribute('type'), 'item', 'nor changed its attribute')
+	local blocked = #stub.blocked
+	button:SetAlpha(0.4)
+	eq(button:GetAlpha(), 0.4, 'alpha is free')
+	cooldown:SetCooldown(1, 2)
+	child:Hide()
+	child:SetPoint('CENTER', button, 'CENTER')
+	plain:SetPoint('CENTER', UIParent, 'CENTER')
+	eq(#stub.blocked, blocked, 'so are a cooldown, a child and a plain frame')
+	stub.in_combat = false
+end)
+
+test('a secure action button\'s click: acts on the press or the release as the setting says, and only with a type, in combat too', function()
+	reset_world()
+	local button = CreateFrame('Button', nil, UIParent, 'SecureActionButtonTemplate')
+	button:RegisterForClicks('AnyUp', 'AnyDown')
+	button:Show()
+	stub.click(button, 'LeftButton', true)
+	eq(#stub.secure_clicks, 0, 'no type: nothing')
+	button:SetAttribute('type', 'item')
+	button:SetAttribute('item', 'item:6948')
+	stub.click(button, 'LeftButton', true)
+	stub.click(button, 'LeftButton', false)
+	eq(#stub.secure_clicks, 1, 'cast on key down (the default): the press acts, the release does not')
+	eq(stub.secure_clicks[1].item, 'item:6948', 'with the attributes as they stand')
+	stub.cast_on_key_down = false
+	stub.click(button, 'LeftButton', true)
+	stub.click(button, 'LeftButton', false)
+	eq(#stub.secure_clicks, 2, 'with it off, the release acts')
+	button:SetAttribute('useOnKeyDown', true)
+	stub.click(button, 'LeftButton', true)
+	eq(#stub.secure_clicks, 3, 'a useOnKeyDown attribute decides for itself')
+	stub.in_combat = true
+	stub.click(button, 'LeftButton', true)
+	eq(#stub.secure_clicks, 4, 'in combat a click still uses it')
+	stub.in_combat = false
+	button:Hide()
+	check(not pcall(stub.click, button, 'LeftButton', true), 'a hidden button takes no click (stub.click errors)')
+end)
+
+test('a cooldown keeps SetCooldown\'s start and duration, Clear drops them, and a bad argument errors', function()
+	reset_world()
+	local cooldown = CreateFrame('Cooldown', nil, UIParent, 'CooldownFrameTemplate')
+	cooldown:SetCooldown(10, 5)
+	eq(stub.state(cooldown).cooldown_start, 10, 'the start')
+	eq(stub.state(cooldown).cooldown_duration, 5, 'the duration')
+	cooldown:Clear()
+	eq(stub.state(cooldown).cooldown_duration, nil, 'cleared')
+	check(not pcall(cooldown.SetCooldown, cooldown, 'x', 5), 'a start that is not a number errors')
+end)
+
 test('reset_world rebuilds the stubs and the shell, and keeps the test file\'s locals', function()
 	local before = SaftUI
 	local keep = 'kept'

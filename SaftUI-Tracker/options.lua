@@ -115,6 +115,48 @@ function TR.QuestsTab()
 	return tab
 end
 
+-- The Items tab: where the quest item buttons sit and how they look. Every row
+-- saves into tracker.items and runs TR:UpdateConfig, whose refresh draws the
+-- rows and (out of combat) the buttons again; a change in combat waits for the
+-- end of it, like the buttons (/sui is closed in combat anyway). Beside the
+-- tracker, the nearest button and its key are later tasks' rows.
+function TR.ItemsTab()
+	local function toggle(order, key, name, desc)
+		local option = generators.toggle(order, name, desc)
+		option.default = TR.SettingDefault('items', key)
+		return option
+	end
+	local args = {
+		placement = {
+			order = 1,
+			name = 'Item buttons',
+			desc = "Where a quest's item button sits: at the top right of its row, or off, which leaves the item as a plain icon in the row, with no button.",
+			type = 'select',
+			values = { row = 'In the row', off = 'Off' },
+			sorting = { 'row', 'off' },
+			default = TR.SettingDefault('items', 'placement'),
+		},
+		size = generators.range(2, 'Button size', 16, 40, 2, "How big a quest item button is."),
+		cooldown = toggle(3, 'cooldown', 'Cooldown', "The item's cooldown on its button."),
+		count = toggle(4, 'count', 'Count', "The item's charges, when it has more than one."),
+		range = toggle(5, 'range', 'Out of range in red',
+			"Tints the button red while the item can't be used on what is in front of you."),
+		combat = {
+			order = 6,
+			type = 'description',
+			name = 'In combat a quest item that appears gets its button when combat ends, buttons stay where they were, and the nearest button keeps its item. Changes to buttons wait for the end of combat.',
+		},
+	}
+	args.size.default = TR.SettingDefault('items', 'size')
+	local tab = TR.Tab(3, 'Items', args)
+	tab.get = function(info) return TR.config.items[info[#info]] end
+	tab.set = function(info, value)
+		TR.config.items[info[#info]] = value
+		TR:UpdateConfig()
+	end
+	return tab
+end
+
 -- The Tracker page in /sui, under Info: General first, with the switch, then
 -- a tab for each part of the tracker as it's built (each task adds its own).
 function TR:GetConfigTable()
@@ -210,6 +252,7 @@ function TR:GetConfigTable()
 		args = {
 			general = general,
 			quests = TR.QuestsTab(),
+			items = TR.ItemsTab(),
 		},
 	}
 

@@ -263,6 +263,8 @@ function TR:ApplyHolder()
 		function() return self:GetPosition() end)
 	st:KeepInScreenMargin(holder)
 	self:PlaceWindow()
+	-- The rows moved with the window: the quest item buttons follow (or dim).
+	if self.PlaceItems then self:PlaceItems() end
 	-- Blizzard's tracker follows the holder (its y concealed, its corner in place).
 	self:PlaceBlizzard(self.blizzardWhere)
 end
@@ -292,7 +294,10 @@ function TR:SetEmpty(empty)
 	self.isEmpty = empty and true or false
 	if not self.window then return end
 	local shown = not (self.isEmpty and self.config.hide_empty)
-	if self.window:IsShown() ~= shown then self.window:SetShown(shown) end
+	if self.window:IsShown() ~= shown then
+		self.window:SetShown(shown)
+		self:PlaceItems()
+	end
 end
 
 function TR:SetCollapsed(collapsed)
@@ -303,6 +308,8 @@ function TR:SetCollapsed(collapsed)
 	-- Opening draws the rows a collapsed refresh left alone.
 	if not self:IsCollapsed() and self.rowsStale and self.model then self:Redraw() end
 	self:UpdateTicker()
+	-- The rows are hidden or shown with the scroll frame: the buttons follow.
+	self:PlaceItems()
 end
 
 ------------------------------------------------------------------ size and scroll
@@ -397,9 +404,23 @@ function TR:ScrollTo(offset)
 	self:PlaceFocusBar()
 end
 
--- Task 8: while an item button sits in a row the list doesn't scroll in combat.
+-- Whether the list is held still (Ruling 17): in combat, with the placement In
+-- the row and a quest item button shown in a row. A button doesn't follow its
+-- row in combat, so the list mustn't move under it. The wheel and the bar hold,
+-- and window.barLock, a SaftUI frame over the bar, takes the mouse there.
 function TR:IsScrollLocked()
-	return false
+	if not self.built or not InCombatLockdown() or self.config.items.placement ~= 'row' then return false end
+	return self:RowButtonShown()
+end
+
+-- The lock changes with combat and with the buttons shown: barLock shows while
+-- it holds, and the bar follows (UpdateBar draws it at DIM_ALPHA).
+function TR:UpdateScrollLock()
+	local lock = self.window and self.window.barLock
+	if not lock then return end
+	local locked = self:IsScrollLocked()
+	if lock:IsShown() ~= locked then lock:SetShown(locked) end
+	self:UpdateBar()
 end
 
 -- The wheel over the window or the scroll frame: 40 a notch, clamped.
@@ -431,7 +452,8 @@ function TR:UpdateBar()
 			visible = self.hoverAt ~= nil and now - self.hoverAt < L.BAR_LINGER
 		end
 	end
-	local alpha = visible and 1 or 0
+	-- While the list is held still the bar shows as dormant.
+	local alpha = visible and (self:IsScrollLocked() and TR.DIM_ALPHA or 1) or 0
 	if self.barAlpha ~= alpha or bar:GetAlpha() ~= alpha then
 		self.barAlpha = alpha
 		bar:SetAlpha(alpha)
@@ -622,6 +644,9 @@ function TR:BuildWindow()
 			settling = false
 		end
 		TR:PlaceFocusBar()
+		-- The quest item buttons follow their rows (out of combat; the list is held
+		-- still in combat while one shows).
+		TR:PlaceItems()
 	end)
 	-- The player's own scrolling is real input only: the wheel (OnWheel) and a
 	-- mouse-down on the bar's thumb, track or steppers. The bar setting the offset
@@ -638,6 +663,24 @@ function TR:BuildWindow()
 	end
 	self.scroll = scroll
 	self.content = scroll.ScrollChild
+
+	-- Over the scroll bar while the list is held still (TR:IsScrollLocked): it
+	-- takes the mouse so the thumb, track and steppers can't be used, swallows a
+	-- press or a drag, and says why on hover. A plain frame of SaftUI's, shown
+	-- and hidden in combat too.
+	if bar then
+		local lock = CreateFrame('Frame', nil, window)
+		lock:SetAllPoints(bar)
+		lock:SetFrameLevel(bar:GetFrameLevel() + 10)
+		lock:EnableMouse(true)
+		lock:SetScript('OnMouseDown', function() end)
+		lock:SetScript('OnEnter', function(self)
+			ShowTip(self, 'Scrolling is locked', 'Scrolling waits for the end of combat while quest item buttons sit in the rows.')
+		end)
+		lock:SetScript('OnLeave', function(self) HideTip(self) end)
+		lock:Hide()
+		window.barLock = lock
+	end
 
 	self.watcher = CreateFrame('Frame', nil, UIParent)
 
