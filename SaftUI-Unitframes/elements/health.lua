@@ -17,21 +17,26 @@ local function PostUpdateHealth(health, unit, current, max)
 		local config = health.config.text
 		local secret = issecretvalue(current) or issecretvalue(max)
 		local deficit
-		if config.hide_full or config.deficit then
-			deficit = secret and C_StringUtil.TruncateWhenZero(UnitHealthMissing(unit)) or max - current
+		if config.deficit then
+			-- Plain or secret, the game blanks a zero, so a full health shows no -0.
+			deficit = C_StringUtil.TruncateWhenZero(secret and UnitHealthMissing(unit) or max - current)
 		end
 
-		if config.hide_full and deficit == 0 then
+		-- No game function tells an addon whether a secret deficit is zero, so
+		-- Hide full applies to a plain health only: a secret health shows its text.
+		if config.hide_full and not secret and max - current == 0 then
 			health.text:SetText('')
 		elseif UnitIsDead(unit) then
 			health.text:SetText('Dead')
 		elseif config.deficit then
 			health.text:SetText(C_StringUtil.WrapString(deficit, '-'))
 		elseif config.percent then
+			-- Rounded the same way for a plain and a secret health: the game
+			-- rounds a secret one and Lua can't floor it.
 			if secret then
 				health.text:SetFormattedText('%.0f', UnitHealthPercent(unit, true, CurveConstants.ScaleTo100))
 			else
-				health.text:SetText(getHealthPercentText(current / max * 100))
+				health.text:SetFormattedText('%.0f', current / max * 100)
 			end
 		else
 			local text = current
@@ -39,12 +44,18 @@ local function PostUpdateHealth(health, unit, current, max)
 				text = UF.ShortNumber(current)
 			end
 
-			if config.boss_percent and UnitLevel(unit) == -1 then
-				local percent = secret and UnitHealthPercent(unit) or current / max * 100
-				text = ("%s | %s"):format(text, getHealthPercentText(percent, 1))
+			-- A secret level can't be compared with -1: no percent then.
+			local level = config.boss_percent and UnitLevel(unit)
+			if level and not issecretvalue(level) and level == -1 then
+				if secret then
+					health.text:SetFormattedText('%s | %.1f', text, UnitHealthPercent(unit, true, CurveConstants.ScaleTo100))
+					text = nil
+				else
+					text = ("%s | %s"):format(text, getHealthPercentText(current / max * 100, 1))
+				end
 			end
 
-			health.text:SetText(text)
+			if text then health.text:SetText(text) end
 		end
 	end
 

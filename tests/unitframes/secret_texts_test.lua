@@ -68,6 +68,11 @@ local function world(client)
 	load_saftui('SaftUI-Unitframes/nameplates/options.lua')
 
 	restoreSecrets = S.install()
+	-- The game's: a zero gives an empty string, any other value as it is.
+	function C_StringUtil.TruncateWhenZero(value)
+		if not issecretvalue(value) and value == 0 then return '' end
+		return value
+	end
 	secretPercent = S.secret('PERCENT')
 	CurveConstants = { ScaleTo100 = {} }
 	function UnitHealthPercent(...)
@@ -248,6 +253,77 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		check(type(shown) == 'table' and shown.abbreviated == current, 'AbbreviateNumbers got the secret health, and SetText its result')
 		-- With the same options as a plain value, so the text looks the same either way.
 		eq(type(shown) == 'table' and AbbreviateNumbers(12500, shown.options), '12.5K', 'in the short form')
+	end)
+end
+
+test('a plain full health under Deficit shows nothing, not -0; Percent rounds a plain value as it does a secret one', function()
+	local health = bar('Health')
+	health.config.text.deficit, health.config.text.hide_full, health.config.text.boss_percent = true, false, false
+	health.PostUpdate(health, 'target', 100, 100)
+	eq(health.text:GetText(), '', 'full: nothing')
+	health.PostUpdate(health, 'target', 60, 100)
+	eq(health.text:GetText(), '-40', 'missing: as before')
+	-- Percent: '%.0f' for both, so 99.6 is 100 (a floor would say 99).
+	health.config.text.deficit, health.config.text.percent = false, true
+	health.PostUpdate(health, 'target', 996, 1000)
+	eq(health.text:GetText(), '100', 'a plain 99.6 rounds')
+end)
+
+for _, client in ipairs({ 'forever', 'retail' }) do
+	test(client .. ': Hide full with a secret health shows the text: the game answers no "is this zero", and nothing is compared', function()
+		world(client)
+		local health = bar('Health')
+		health.config.text.hide_full, health.config.text.boss_percent = true, false
+		-- Hide full has no use for the missing health; asking would be the old path.
+		local asked
+		UnitHealthMissing = function() asked = true; return S.secret('MISSING') end
+		local shown
+		health.text.SetText = function(_, v) shown = v end
+		local current = S.secret('CUR')
+		local ok, err = pcall(health.PostUpdate, health, 'raid1', current, S.secret('MAX'))
+		check(ok, tostring(err))
+		check(shown == current, 'the text shows')
+		check(not asked, 'no missing health asked for')
+		-- A plain full health still hides it.
+		health.PostUpdate(health, 'raid1', 100, 100)
+		eq(shown, '', 'plain and full: hidden')
+		UnitHealthMissing = nil
+	end)
+
+	test(client .. ': Boss percent with a secret level shows no percent, and a secret health joins the percent in the game', function()
+		world(client)
+		local health = bar('Health')
+		health.config.text.boss_percent = true
+		local shown, fmt, args
+		health.text.SetText = function(_, v) shown = v end
+		health.text.SetFormattedText = function(_, f, ...) fmt, args = f, { ... } end
+		-- A secret level: no percent, whatever the health is. The test model
+		-- can't make a compare with a secret fail (Lua 5.1 says false where the
+		-- game errors), so the guard is pinned by what it asks: the level is
+		-- checked with issecretvalue before it is compared.
+		local level = S.secret('LVL')
+		stub.units.boss1 = { name = 'Boss', level = level }
+		local current = S.secret('CUR')
+		local asked
+		local was = issecretvalue
+		issecretvalue = function(value) if value == level then asked = true end return was(value) end
+		local ok, err = pcall(health.PostUpdate, health, 'boss1', current, S.secret('MAX'))
+		issecretvalue = was
+		check(ok, tostring(err)); check(shown == current and fmt == nil, 'the health alone')
+		check(asked, 'the level was asked about before it was compared')
+		-- A plain skull level and a secret health: the game formats the parts.
+		stub.units.boss1.level = -1
+		shown, fmt = nil, nil
+		ok, err = pcall(health.PostUpdate, health, 'boss1', current, S.secret('MAX'))
+		check(ok, tostring(err))
+		check(shown == nil, 'nothing written over the joined text')
+		eq(fmt, '%s | %.1f', 'joined by the game')
+		check(args[1] == current and args[2] == secretPercent, 'the health, then the percent')
+		check(lastHealthPercentArgs[1] == 'boss1' and lastHealthPercentArgs[2] == true and lastHealthPercentArgs[3] == CurveConstants.ScaleTo100, 'scaled to 0-100')
+		-- A plain health under a skull level, as before.
+		health.PostUpdate(health, 'boss1', 500, 1000)
+		eq(shown, '500 | 50.0', 'plain')
+		stub.units.boss1 = nil
 	end)
 end
 

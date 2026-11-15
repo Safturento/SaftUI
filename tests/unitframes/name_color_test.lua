@@ -80,6 +80,34 @@ test('a secret reaction gives no colour and no error', function()
 	check(ok, tostring(text)); eq(text, 'Guard')
 end)
 
+test("the name redraws on a faction change, not on every target change, and reads no 'target' unit", function()
+	local events = {}
+	for event in UF.oUF.Tags.Events['st:name']:gmatch('%S+') do events[event] = true end
+	check(events.UNIT_FACTION, 'a neutral unit turning hostile redraws its name colour')
+	check(not events.PLAYER_TARGET_CHANGED, 'no redraw of every plate on a target change')
+	-- oUF's target frame updates its own tags on a target change (Libraries/oUF/units.lua,
+	-- HandleUnit), which this test doesn't load. The tag must then read only the
+	-- unit it is given: record every unit the game is asked about.
+	local seen = {}
+	local names = { 'UnitLevel', 'UnitReaction', 'UnitName', 'UnitClass', 'UnitIsPlayer', 'UnitClassification',
+		'UnitPlayerControlled', 'UnitInPartyIsAI' }
+	local originals = {}
+	for _, fn in ipairs(names) do
+		originals[fn] = _G[fn]
+		if originals[fn] then
+			_G[fn] = function(unit, ...) seen[unit] = true; return originals[fn](unit, ...) end
+		end
+	end
+	setup({ showLevel = true, show_classification = true, colorClass = true, color_hostile = true, color_friendly = true },
+		{ name = 'Mob', level = 20, reaction = 2, class = 'MAGE' })
+	stub.units.nameplate1 = stub.units.target
+	pcall(tag, 'nameplate1', 'nameplate1', 'target')
+	for _, fn in ipairs(names) do _G[fn] = originals[fn] end
+	stub.units.nameplate1 = nil
+	check(seen.nameplate1, 'it read the unit it was given')
+	check(not seen.target, "and never 'target'")
+end)
+
 test('the secrets are put back', function()
 	stub.units.target = nil
 	restoreSecrets()

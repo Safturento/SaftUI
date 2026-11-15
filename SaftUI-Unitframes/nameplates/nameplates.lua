@@ -265,10 +265,10 @@ end
 -- The plate's unit changed faction: a friend turned hostile, or back. Updated
 -- only when its kind changed, and then the frame's elements updated too, as
 -- oUF does after an add, so the parts turned on show their unit's state. That
--- update also draws the name again, in the new kind's colours: the st:name
--- tag (tags.lua) has no faction event of its own, and its oUF update runs the
--- tags, the name's bound again to the new config if the kind changed it
--- (elements/name.lua).
+-- update also draws the name again, in the new kind's colours: its oUF update
+-- runs the tags, the name's bound again to the new config if the kind changed
+-- it (elements/name.lua). The st:name tag's own UNIT_FACTION redraws it a
+-- frame later too, and covers a faction change that keeps the kind.
 local function UpdatePlateKind(frame)
 	local friendly = UF.IsFriendlyPlate(frame.__unit)
 	if friendly == frame.friendly then return end

@@ -191,8 +191,8 @@ test('UNIT_FACTION turns a friend hostile: the plate takes the enemy look, and b
 		enemy('nameplate1')
 		stub.fire_event('UNIT_FACTION', 'nameplate1')
 		check_enemy(st, UF, frame, client .. ': turned hostile')
-		-- The st:name tag has no UNIT_FACTION event: the name is bound to the
-		-- new config, then oUF's update (which runs the tags) draws it.
+		-- The name is bound to the new config, then oUF's update (which runs the
+		-- tags) draws it; the tag's own UNIT_FACTION redraws it again a frame later.
 		local seen = {}
 		for i = mark + 1, #NP.ouf.calls do
 			local call = NP.ouf.calls[i]
