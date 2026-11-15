@@ -194,8 +194,9 @@ test("a margin wider than Blizzard's clamp is the margin; a narrower or negative
 end)
 
 test("Blizzard's clamp arriving after SaftUI's setup (a layout apply, Edit Mode opening) reaches the holder at once", function()
-	-- SaftUI's skin zeroes ChatFrame1's insets (CHT:SkinChatFrame) and Blizzard
-	-- sets them again on its next layout apply or Edit Mode enter.
+	-- Until Blizzard's first layout apply ChatFrame1 has no insets (SaftUI's skin
+	-- leaves them alone: tests/chat/theme_test.lua), and Blizzard sets them on its
+	-- layout apply or Edit Mode enter.
 	ChatFrame1:SetClampRectInsets(0, 0, 0, 0)
 	SetMargin(20)
 	eq(Insets(CHT.holder), '-20,20,20,-20', 'no clamp on the chat: the margin alone')

@@ -109,6 +109,23 @@ test("the edit box keeps Blizzard's OnShow and OnHide, and SaftUI's hide and sho
 	check(GeneralDockManager:IsShown(), 'and shown again when it hides')
 end)
 
+-- ChatFrame1 is an Edit Mode system frame: Blizzard sets its clamp insets from its
+-- Selection box on every layout apply (EditModeSystemMixin:UpdateClampOffsets), and
+-- they're Blizzard's to keep (.agents/taint.md, rule 5). The other windows' stay SaftUI's.
+test("skinning leaves ChatFrame1's clamp insets Blizzard's, and zeroes the other windows'", function()
+	local frame1 = CW.build(1)
+	_G.ChatFrame1 = frame1
+	frame1:SetClampRectInsets(-32, 25, 60, -32) -- Blizzard's
+	CHT:SkinChatFrame(frame1)
+	eq(table.concat({ frame1:GetClampRectInsets() }, ','), '-32,25,60,-32', "ChatFrame1's band is Blizzard's")
+
+	local frame2 = CW.build(2)
+	frame2:SetClampRectInsets(-32, 25, 60, -32)
+	CHT:SkinChatFrame(frame2)
+	eq(table.concat({ frame2:GetClampRectInsets() }, ','), '0,0,0,0', "another window's is zeroed, as before")
+	_G.ChatFrame1 = nil
+end)
+
 -- Tab fading is off by default (tabs.fade). Blizzard fades a tab through its own
 -- SetAlpha (UIFrameFade, from FCF_FadeInChatFrame and FCF_FadeOutChatFrame, and
 -- FCF_FadeInTabs), which SaftUI used to replace with UIFrameFadeRemoveFrame: a

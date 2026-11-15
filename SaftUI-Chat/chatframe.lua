@@ -154,7 +154,12 @@ function CHT:SkinChatFrame(frame)
 -- 	frame:SetMinResize(170, 40)
 -- 	frame:SetMaxResize(1000, 1000)
 	frame:SetFading(false)
-	frame:SetClampRectInsets(0,0,0,0)
+	-- ChatFrame1's clamp insets are Blizzard's (an Edit Mode system frame, .agents/taint.md
+	-- rule 5): Edit Mode sets them on every layout apply, and the holder reads them live
+	-- (st:KeepHolderInScreenMargin), so SaftUI never sets them. The other windows' are 0.
+	if frame ~= ChatFrame1 then
+		frame:SetClampRectInsets(0,0,0,0)
+	end
 
 	self:ApplyChatFont(frame)
 
