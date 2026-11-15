@@ -280,12 +280,22 @@ end
 
 local LONG = string.rep('word ', 24) .. 'end.' -- 100 characters: wider than 388 at 13 pt, narrower than 774
 
-test("LayoutSections takes the height of each note from noteHeightOf; none given, the one line's 13", function()
+test("LayoutSections takes the height of each note from noteHeightOf; none given, the one line's 15", function()
 	local sections = { { title = 'T', note = 'N', rows = { { key = 'a' } } } }
 	local one = OB.LayoutSections(sections)
-	local tall = OB.LayoutSections(sections, nil, nil, nil, nil, nil, function() return 39 end)
-	eq(tall[1].rowsY - one[1].rowsY, 39 - 13, 'the rows are as much further down as the note is taller')
+	local tall = OB.LayoutSections(sections, nil, nil, nil, nil, nil, function() return 45 end)
+	eq(tall[1].rowsY - one[1].rowsY, 45 - 15, 'the rows are as much further down as the note is taller')
 	eq(one[1].noteY, tall[1].noteY, 'the note starts where it did')
+end)
+
+test('section notes are drawn in the note font, 15; the small font (the hover line) stays 13', function()
+	local _, size = OB.Font('note'):GetFont()
+	eq(size, 15, 'the note font')
+	local _, small = OB.Font('small'):GetFont()
+	eq(small, 13, 'small is still 13')
+	local body = noted(774, false, 'A short note.')
+	eq(body.pools.note.used[1]:GetFontObject(), OB.Font('note'), 'the drawn note wears it')
+	eq(body:NoteHeight({ note = 'A short note.' }), 15, 'a one line note is 15 tall')
 end)
 
 test('a note that fits on one line lays out as it did; one that does not wraps to the body and moves the rows down', function()

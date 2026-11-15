@@ -536,7 +536,7 @@ test("/sui's titles take Heading's face and outline at their own sizes; tabs, la
 		eq(s, size, key .. ': its own size')
 		eq(f, 'OUTLINE', key .. ': Heading\'s outline')
 	end
-	for key, size in pairs({ tab = 17, label = 16, small = 13 }) do
+	for key, size in pairs({ tab = 17, label = 16, small = 13, note = 15 }) do
 		local p, s, f = OB.Font(key):GetFont()
 		eq(p, path('AgencyFB Bold'), key .. ": Text's face")
 		eq(s, size, key .. ': its own size')

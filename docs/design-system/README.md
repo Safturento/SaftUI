@@ -45,7 +45,8 @@ SaftUI replaces World of Warcraft's interface with flat, dark frames that sit qu
 | Tab | `tab` 17 | AgencyFB Bold | tabs |
 | Label | `label` 16 | AgencyFB Bold | row labels, sidebar entries |
 | Field | `field` 15 | AgencyFB Bold | values, list rows, buttons, page description |
-| Small | `small` 13 | AgencyFB Bold | hover line, section notes |
+| Small | `small` 13 | AgencyFB Bold | hover line |
+| Note | `note` 15 | AgencyFB Bold | section notes, in `text-grey` |
 | In-world text | `normal` 16 | AgencyFB Bold | window titles, unit frame names and values, tooltip lines |
 | Pixel text | `pixel` 10, `pixel-med` 18 | Homespun | hotkeys, counts, mover labels, cooldown numbers (`pixel-med` on buttons of `countdown-large` and up) |
 
