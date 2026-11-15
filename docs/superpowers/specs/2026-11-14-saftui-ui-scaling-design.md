@@ -1005,12 +1005,15 @@ phase 5.
    the one-time chat line points them to `/sui scale pixel`. Assumed: they mostly play on your defaults,
    so Automatic is right for everyone, as "it must work on the addon's defaults with no setup" said. The
    other way is to start existing installs on screens far from 1440 at Pixel for pixel and let them opt in.
+   **Answered (Settled 2):** as assumed. Automatic for everyone, existing installs included.
 2. **Two pixel borders on the Mac.** The rule you accepted gives 2 at 1.55 (and on any 4K screen). It will
    look heavier than at 1440p, by design; confirm once the Mac friend has seen it (G3), or say if you'd
    rather keep one pixel lines at every density.
+   **Answered (Settled 3):** the rule stands, 2 pixel lines from k = 1.5. G3 is still the Mac friend's look.
 3. **Screens under 1080 pixels high.** Assumed: SaftUI draws them at the 1080p size (text as you judged it
    at 1080p, the layout no longer fitting in proportion). The other way is the full proportional fit, with
    Homespun under 7.5 pixels.
+   **Answered (Settled 4):** as assumed. The 1080p size, the automatic part's floor of 0.75.
 
 ## Calls made while writing this
 
@@ -1058,3 +1061,35 @@ Ordered by how much the owner is likely to care.
     three; `set_screen` keeps meaning pixel for pixel.**
 26. **Phase 4's order**: unit frames and nameplates, action bars, bags, Misc and skins, loot, minimap and
     micro menu, chat and the tracker.
+
+## Settled with the owner after the draft (2026-11-15)
+
+These override anything above that they contradict.
+
+The owner was asked to approve the draft and to answer its three questions with the recommendations
+"Automatic size for everyone, two-pixel lines on high-density screens, screens under 1080 drawn at the
+1080p size". He said: "Good to go with those recommendations".
+
+1. **The design is approved.** Every call under "Calls made while writing this" (1 to 26) stands as
+   written. The phase 1 plan (`docs/superpowers/plans/2026-11-15-saftui-ui-scaling-phase-1.md`) places
+   the experiments E0 to E6 before the tasks they decide.
+2. **Question 1: Automatic for everyone.** Existing installs start in Automatic at 100%, as new ones do,
+   whether or not the friends moved or resized frames for today's size. No install starts at Pixel for
+   pixel. The one-time chat line (The first login after the update) and `/sui scale pixel` are the way back
+   for a friend whose tuned layout no longer suits. This is the question's own assumption.
+3. **Question 2: two pixel lines from k = 1.5.** The rule the owner accepted stands: every line is
+   `max(1, floor(k + 0.5))` pixels (The line weight). The recommendation as it was put to the owner,
+   "two-pixel lines on high-density screens", is not quite what the question offered. The question
+   offered this rule, which goes by k (the screen's height over 1440, times the UI size) and not by the
+   screen's pixel density. What is settled is the question's option, the rule:
+   - the 3456 x 2234 Mac and a 3840 x 2160 screen at 100% get 2 pixel lines;
+   - a 3024 x 1964 MacBook Pro 14 (k 1.36), and the 3456 x 2234 Mac at a UI size of 95% or less (k under
+     1.5), keep 1 pixel lines, however dense their screens;
+   - 3 pixel lines come from k = 2.5.
+
+   The Mac friend's look at the result (G3) still comes after the build. Keeping one pixel lines at every
+   density would be a later change to that one rule.
+4. **Question 3: screens under 1080 pixels high take the 1080p size.** The automatic part's floor of 0.75
+   stands (The formula, call 3). Text stays at the size the owner judged at 1080p, and on shorter screens
+   the layout no longer fits in proportion. The full proportional fit is not built. This is the question's
+   own assumption.
