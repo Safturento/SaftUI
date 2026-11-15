@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-15 — Option descriptions that say "red" or "yellow" for what Danger and Caution color](#2026-11-15--option-descriptions-that-say-red-or-yellow-for-what-danger-and-caution-color)
   - [2026-11-15 — Keybind mode's hint line could read Muted](#2026-11-15--keybind-modes-hint-line-could-read-muted)
   - [2026-11-15 — The action bars' and buffs' texts default to Small text](#2026-11-15--the-action-bars-and-buffs-texts-default-to-small-text)
   - [2026-11-15 — A reset on every font row](#2026-11-15--a-reset-on-every-font-row)
@@ -163,6 +164,16 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-15 — Option descriptions that say "red" or "yellow" for what Danger and Caution color
+
+**What:** A few player-facing descriptions name a hue for a color that is now a role the player can change, so they can stop being true: the totem bar's timers ("It turns red in the last 10 seconds", `SaftUI-Misc/totemoptions.lua`), the tracker's "Out of range in red" (`SaftUI-Tracker/options.lua`), and the unit frames' "Color hostile" and Color by reaction descriptions ("names of hostile units red, and ... yellow", `SaftUI-Unitframes/elements/name.lua`, `config/config.lua`). They could say "in the danger color" or point at Global settings > Colors > Text.
+
+**Why noticed:** Color roles Task 4 moved those readers to Text > Danger and Text > Caution (the hue-named keys went), and its rule for the Colors page's own descriptions is that they name what a color colors, never its hue. These option descriptions sit outside that page, so the task left them.
+
+**Anchors:** `SaftUI-Misc/totemoptions.lua:21,24`; `SaftUI-Tracker/options.lua:143-144`; `SaftUI-Unitframes/elements/name.lua:71`; `README.md:43` (both turn red in the last 10 seconds); `docs/design-system/25-colour-roles.md`.
+
+**Shape of work:** a wording pass over five strings; the tests that pin a description's text change with them. The reaction color's own description ("red when hostile") is about the Reputation colors, which are not roles, so it stays.
 
 ### 2026-11-15 — Keybind mode's hint line could read Muted
 
@@ -534,7 +545,6 @@ Then, with the switch on, the spec's G1 to G12, each with the task that built it
 - 3: every colour-plus-opacity pair becomes one colour control (the pairs still need listing).
 - 4, 19: one button component at one size and font; the close button and the window's small buttons the same height as buttons, icons centred.
 - 8: `/sui` tooltips' descriptions in the normal text colour, not Blizzard's gold.
-- 14: hue-named colours renamed by role (waiting on the owner's answers on the Colour roles page), with a migration.
 - 21: the docs spell "color".
 - 22: SaftUI's font on every line of item and compare tooltips (find why they show Blizzard's).
 - 24: a written spacing scale, and unexplained values moved onto it.

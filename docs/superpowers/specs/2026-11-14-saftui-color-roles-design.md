@@ -662,3 +662,8 @@ override anything above that they contradict.
    grey for Text). The combined bank's eye toggle and edit mode's "Alt: next" picker line, which read
    Buttons > Grey (#969696), therefore read #b4b4b4 and look a little lighter. A customized Buttons > Grey is
    dropped. If the lighter look is wrong in game, say so and Muted or those two readers change.
+9. **2026-11-15, the controller's ruling for the owner to check (color roles, Task 4, beside call 18):** the
+   chevron under the mouse in the skinned Blizzard objective tracker (`Blizzard_ObjectiveTracker.lua`) is
+   Strong, as the chevron under the mouse in SaftUI's own tracker is (call 18 folds that one). It is white by
+   default, so nothing changes on screen. If it should stay a plain white, say so and it goes back to
+   `1, 1, 1`.

@@ -66,7 +66,7 @@ local function SetupSlot(slotId, slotName)
 	-- added to Blizzard's button.
 	local itemLevel = button:CreateFontString(nil, 'OVERLAY')
 	st:ApplyFont(itemLevel, st.config.profile.skinning.font)
-	itemLevel:SetTextColor(st.config.profile.colors.text.white:GetRGB())
+	itemLevel:SetTextColor(st:Color('text', 'strong'):GetRGB())
 	itemLevel:SetDrawLayer('OVERLAY', 7)
 	itemLevel:SetPoint('BOTTOMRIGHT', -3, 3)
 
@@ -111,8 +111,8 @@ end
 function CF:UpdateConfig()
 	for _, slot in pairs(slots) do
 		st:ApplyFont(slot.itemLevel, st.config.profile.skinning.font)
-		-- A font object can reset an explicit colour, and the profile's white may differ.
-		slot.itemLevel:SetTextColor(st.config.profile.colors.text.white:GetRGB())
+		-- A font object can reset an explicit colour, and the profile's Text > Strong may differ.
+		slot.itemLevel:SetTextColor(st:Color('text', 'strong'):GetRGB())
 	end
 end
 

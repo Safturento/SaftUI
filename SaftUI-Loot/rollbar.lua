@@ -201,9 +201,9 @@ local function SetBarTimer(bar, sec)
 	end
 
 	if sec < 60 then
-		bar.Timer.Text:SetVertexColor(st.config.profile.colors.text.red:GetRGB())
+		bar.Timer.Text:SetVertexColor(st:Color('text', 'danger'):GetRGB())
 	else
-		bar.Timer.Text:SetVertexColor(1, 1, 1)
+		bar.Timer.Text:SetVertexColor(st:Color('text', 'strong'):GetRGB())
 	end
 end
 

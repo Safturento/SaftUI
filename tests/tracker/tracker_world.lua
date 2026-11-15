@@ -172,6 +172,8 @@ function TW.world(opts)
 	GameTooltip:Hide()
 	st.config.char = {}
 	st.config.profile.colors.text.muted:SetRGB(0.2, 0.4, 0.6) -- not the default, so a reader that draws a grey of its own fails
+	st.config.profile.colors.text.strong:SetRGB(0.8, 0.3, 0.6) -- the same for a white (the percent, a chevron under the mouse)
+	st.config.profile.colors.text.danger:SetRGB(0.9, 0.2, 0.3) -- and a red (an item out of range)
 	InstallCounters()
 	if opts.addons then
 		for _, name in ipairs(opts.addons) do stub.loaded_addons[name] = true end

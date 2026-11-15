@@ -187,8 +187,8 @@ local function LineColor()
 end
 
 local function ColorCollapse(entry)
-	entry.icon:SetVertexColor(Profile().colors.text.muted:GetRGB())
-	entry.hover:SetVertexColor(1, 1, 1, 1)
+	entry.icon:SetVertexColor(st:Color('text', 'muted'):GetRGB())
+	entry.hover:SetVertexColor(st:Color('text', 'strong'):GetRGB()) -- the chevron under the mouse, as in SaftUI's own tracker
 end
 
 ------------------------------------------------------------------ headers

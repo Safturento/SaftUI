@@ -38,10 +38,6 @@ local function Round(value)
 	return math.floor(value + 0.5)
 end
 
-local function Colors()
-	return st.config.profile.colors
-end
-
 ------------------------------------------------------------------ tooltips
 
 -- A tooltip over owner: title in white, then line (if any) in Text > Normal.
@@ -51,7 +47,7 @@ local function ShowTip(owner, title, line)
 	GameTooltip:ClearLines()
 	GameTooltip:AddLine(title, 1, 1, 1)
 	if line then
-		local r, g, b = Colors().text.normal:GetRGB()
+		local r, g, b = st:Color('text', 'normal'):GetRGB()
 		GameTooltip:AddLine(line, r, g, b, true)
 	end
 	GameTooltip:Show()
@@ -100,12 +96,13 @@ end
 -- Every chevron NewChevron made, so a color change paints them again.
 local chevrons = setmetatable({}, { __mode = 'k' })
 
--- Text > Muted at rest, white under the mouse (the skin's chevrons).
+-- Text > Muted at rest, Text > Strong under the mouse (the skin's chevrons).
 local function PaintChevron(button)
 	if button.hovered then
-		button.icon:SetVertexColor(1, 1, 1, 1)
+		local r, g, b = st:Color('text', 'strong'):GetRGB()
+		button.icon:SetVertexColor(r, g, b, 1)
 	else
-		local r, g, b = Colors().text.muted:GetRGB()
+		local r, g, b = st:Color('text', 'muted'):GetRGB()
 		button.icon:SetVertexColor(r, g, b, 1)
 	end
 end
@@ -548,9 +545,8 @@ end
 function TR:ColorHeader()
 	local header = self.header
 	if not header then return end
-	local text = Colors().text
-	header.title:SetTextColor(text.normal:GetRGB())
-	header.count:SetTextColor(text.muted:GetRGB())
+	header.title:SetTextColor(st:Color('text', 'normal'):GetRGB())
+	header.count:SetTextColor(st:Color('text', 'muted'):GetRGB())
 	header.line:SetVertexColor(LineColor())
 	for chevron in pairs(chevrons) do PaintChevron(chevron) end
 end

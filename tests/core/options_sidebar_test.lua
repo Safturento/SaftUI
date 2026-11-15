@@ -37,12 +37,12 @@ end
 -- Time passes past the size guard (OW.SIZE_GUARD).
 local function wait() stub.time = stub.time + 0.31 end
 
--- A button's tooltip lines as 'title | line | red:line'.
+-- A button's tooltip lines as 'title | line | danger:line'.
 local function tip_text(button)
 	local title, lines = button.tip(button)
 	local out = { title }
 	for _, line in ipairs(lines or {}) do
-		out[#out + 1] = type(line) == 'table' and ((line.red and 'red:' or '') .. line.text) or line
+		out[#out + 1] = type(line) == 'table' and ((line.danger and 'danger:' or '') .. line.text) or line
 	end
 	return table.concat(out, ' | ')
 end
@@ -272,7 +272,7 @@ test('it does nothing in combat, or with the color picker open, which the toggle
 	stub.in_combat = false
 	check(W.OpenColorPicker(F.window, { r = 1, g = 0, b = 0, onChange = function() end }), 'the picker opens')
 	check(F.sideToggle.disabled, 'the toggle is disabled')
-	eq(tip_text(F.sideToggle), 'Collapse the sidebar | Hides the page list; the window narrows from its left. | red:Close the color picker first.')
+	eq(tip_text(F.sideToggle), 'Collapse the sidebar | Hides the page list; the window narrows from its left. | danger:Close the color picker first.')
 	wait(); tap(F.sideToggle)
 	eq(OW:IsSidebarShown(), true, 'a click does nothing')
 	eq(OW:SetSidebarShown(false), false)
@@ -293,7 +293,7 @@ test('on a screen too narrow for full with the sidebar, the toggle at full is di
 	local F = frames()
 	eq(OW:GetWindowSize(), 'full'); eq(F.window:GetWidth(), 832, 'full fits without the sidebar')
 	check(F.sideToggle.disabled, 'the toggle is disabled')
-	eq(tip_text(F.sideToggle), 'Show the sidebar | Shows the page list again. | red:The screen is too narrow for the sidebar at full size. Shrink to half first.')
+	eq(tip_text(F.sideToggle), 'Show the sidebar | Shows the page list again. | danger:The screen is too narrow for the sidebar at full size. Shrink to half first.')
 	wait(); tap(F.sideToggle)
 	eq(OW:IsSidebarShown(), false, 'a click does nothing'); eq(F.window:GetWidth(), 832)
 	eq(OW:SetSidebarShown(true), false)

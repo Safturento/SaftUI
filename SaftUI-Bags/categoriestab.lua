@@ -137,7 +137,7 @@ local INV = st:GetModule('Inventory')
 local W, OB, OM, OW = st.OptionsWidgets, st.OptionsBody, st.OptionsModel, st.OptionsWindow
 -- What the rule editor drags with too (dragparts.lua): text helpers and the drag.
 local D = INV.DragParts
-local Colors, Muted, Text, TextWidth, Inside = D.Colors, D.Muted, D.Text, D.TextWidth, D.Inside
+local Muted, Text, TextWidth, Inside = D.Muted, D.Text, D.TextWidth, D.Inside
 
 local floor, ceil, max, min = math.floor, math.ceil, math.max, math.min
 local format = string.format
@@ -186,7 +186,7 @@ local QUESTION_MARK = 134400 -- Interface\Icons\INV_Misc_QuestionMark
 local FOOTER_KEYS = { 'caught', 'pins' }
 local FOOTER_EDGE = 1 -- the line across the footer's top
 
-local function Normal() return Colors().text.normal:GetRGB() end
+local function Normal() return st:Color('text', 'normal'):GetRGB() end
 
 local function IsSetKey(key)
 	return type(key) == 'string' and key:sub(1, 5) == 'Set: '
@@ -571,7 +571,7 @@ local function StepTip(dir)
 	return function(button)
 		local title = dir < 0 and 'Previous category' or 'Next category'
 		if not button.disabled then return title end
-		return title, { { text = dir < 0 and 'This is the first category.' or 'This is the last category.', red = true } }
+		return title, { { text = dir < 0 and 'This is the first category.' or 'This is the last category.', danger = true } }
 	end
 end
 
@@ -1386,7 +1386,7 @@ local function ItemButton(w, i)
 	remove.icon:SetTexture(st.icons.x)
 	remove.icon:SetSize(16, 16) -- an 8 px cross in the middle
 	remove.icon:SetPoint('CENTER', remove, 'CENTER', 0, 0)
-	remove:SetScript('OnEnter', function(self) self.icon:SetVertexColor(Colors().text.red:GetRGB()) end)
+	remove:SetScript('OnEnter', function(self) self.icon:SetVertexColor(st:Color('text', 'danger'):GetRGB()) end)
 	remove:SetScript('OnLeave', function(self) self.icon:SetVertexColor(Muted()) end)
 	remove:SetScript('OnClick', function() RemoveItem(w, icon) end)
 	icon.remove = remove

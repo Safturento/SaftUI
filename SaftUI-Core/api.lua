@@ -255,33 +255,34 @@ function st:ShortBindingKey(key)
 	return prefix .. short
 end
 
--- The chat prefix: SaftUI in the accent (Theme > Accent), read at each print.
--- While the defaults don't exist yet (Core is still loading) it is the shipped
--- accent's hex. A channel is rounded to a whole 0-255, as the Colors tab's hex.
-local SHIPPED_ACCENT_HEX = '00adf0'
+-- A color's hex for a chat line, read at each print through the accessor. While
+-- the defaults don't exist yet (Core is still loading) the accessor raises, and
+-- the line takes shipped instead, the role's own default. A channel is rounded
+-- to a whole 0-255, as the Colors tab's hex.
+local function Hex(shipped, group, key)
+	local ok, color = pcall(st.Color, st, group, key)
+	if not ok then return shipped end
+	return ('%02x%02x%02x'):format(math.floor(color.r * 255 + 0.5), math.floor(color.g * 255 + 0.5), math.floor(color.b * 255 + 0.5))
+end
+
+-- The chat prefix: SaftUI in the accent (Theme > Accent).
 local function Title()
-	local defaults = st.defaults
-	local hex = SHIPPED_ACCENT_HEX
-	if defaults and defaults.theme and defaults.theme.accent then
-		local r, g, b = st:Color('accent'):GetRGB()
-		hex = ('%02x%02x%02x'):format(math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5), math.floor(b * 255 + 0.5))
-	end
-	return '|cff' .. hex .. 'SaftUI|r'
+	return '|cff' .. Hex('00adf0', 'accent') .. 'SaftUI|r'
 end
 
 function st:Print(...)
 	print(('[%s]: '):format(Title()), ...)
 end
 
+-- Error is Text > Danger (dc6464 before the defaults exist).
 function st:Error(...)
-	print(('[%s |cFFFF0000Error|r]: '):format(Title()), ...)
+	print(('[%s |cff%sError|r]: '):format(Title(), Hex('dc6464', 'text', 'danger')), ...)
 end
 
 function st:Debug(module, ...)
 	if not self.DEBUG then return end
 
-	local label = st.StringFormat:ColorString(
-			'DEBUG', st.config.profile.colors.text.red:GetRGB())
+	local label = st.StringFormat:ColorString('DEBUG', st:Color('text', 'danger'):GetRGB())
 	st:Print(('<%s:%s>'):format(label, module), ...)
 end
 

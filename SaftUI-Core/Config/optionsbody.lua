@@ -239,8 +239,8 @@ OB.LABEL_HEIGHT = LABEL_HEIGHT
 OB.LINE = { 0.18, 0.18, 0.18, 1 } -- #2e2e2e: the lines between parts
 
 local Colors = OM.Colors
-local function Normal() return Colors().text.normal:GetRGB() end
-local function Muted() return Colors().text.muted:GetRGB() end
+local function Normal() return st:Color('text', 'normal'):GetRGB() end
+local function Muted() return st:Color('text', 'muted'):GetRGB() end
 local function Accent() return st:Color('accent'):GetRGB() end
 OB.Colors, OB.Normal, OB.Muted, OB.Accent = Colors, Normal, Muted, Accent -- the window's files take them
 
@@ -688,7 +688,7 @@ end
 ------------------------------------------------------------------ rows
 
 -- A row's tooltip: its name, its desc, and while it's disabled why
--- (row.disabledDesc, the model's), in Text > Red. Of frame's row, owned by
+-- (row.disabledDesc, the model's), in Text > Danger. Of frame's row, owned by
 -- owner (the frame itself when nil: an execute button owns its own).
 local function ShowTip(frame, owner)
 	local row = frame.row
@@ -700,7 +700,7 @@ local function ShowTip(frame, owner)
 	GameTooltip:AddLine(row.name, 1, 1, 1)
 	if desc then GameTooltip:AddLine(desc, nil, nil, nil, true) end
 	if why then
-		local r, g, b = Colors().text.red:GetRGB()
+		local r, g, b = st:Color('text', 'danger'):GetRGB()
 		GameTooltip:AddLine(why, r, g, b, true)
 	end
 	GameTooltip:Show()

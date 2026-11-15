@@ -6,15 +6,15 @@
 <title>CloseButton</title>
 <style>
   .closex { width: var(--close-size); height: var(--close-size); display: flex; align-items: center; justify-content: center; }
-  .closex.is-hover { background: var(--close-fill); border-color: var(--text-red); }
+  .closex.is-hover { background: var(--close-fill); border-color: var(--text-danger); }
   .closex.is-pressed .sui-ic { transform: translateY(var(--line-width)); }
 </style>
 </head>
 <body class="sui-world">
 <div class="sui-stage">
   <div class="sui-stack"><div class="caption sui-state">Rest</div><div class="closex sui-box"><svg class="sui-ic sui-ic-close" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></div></div>
-  <div class="sui-stack"><div class="caption sui-state">Hover</div><div class="closex sui-box is-hover"><svg class="sui-ic sui-ic-close is-red" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></div></div>
-  <div class="sui-stack"><div class="caption sui-state">Pressed</div><div class="closex sui-box is-hover is-pressed"><svg class="sui-ic sui-ic-close is-red" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></div></div>
+  <div class="sui-stack"><div class="caption sui-state">Hover</div><div class="closex sui-box is-hover"><svg class="sui-ic sui-ic-close is-danger" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></div></div>
+  <div class="sui-stack"><div class="caption sui-state">Pressed</div><div class="closex sui-box is-hover is-pressed"><svg class="sui-ic sui-ic-close is-danger" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></div></div>
 </div>
 </body>
 </html>

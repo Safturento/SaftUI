@@ -168,6 +168,7 @@ end
 test('a row per block and group, a badge per group, AND the accent and OR orange', function()
 	local pinned = st.config.profile.theme.accent -- a non-default accent: a literal blue fails
 	pinned:SetRGB(0.9, 0.1, 0.2)
+	st.config.profile.colors.text.warning:SetRGB(0.8, 0.4, 0.1) -- OR's Warning at a value that is not the default, so a hardcoded orange fails
 	local rule = grp('and', {
 		blk('class', { class = 7 }),
 		grp('or', { blk('subclass', { class = 7, subclasses = { 7, 9 } }), t('Mote of') }),
@@ -205,7 +206,7 @@ test('a row per block and group, a badge per group, AND the accent and OR orange
 	eq(orBadge.line:GetLeft() - left, 46, "the nested line at 34 + 12")
 	eq(rootBadge.line:GetWidth(), 2, 'a line is 2 wide')
 	-- Question 2: AND's line, connector and badge are the accent; OR keeps its orange.
-	local blue, orange = Color('accent'), Color('text', 'orange')
+	local blue, orange = Color('accent'), Color('text', 'warning')
 	check(same_rgb(stub.state(rootBadge.line).color_texture, blue), "AND's line is the accent")
 	check(same_rgb(stub.state(orBadge.line).color_texture, orange), "OR's line keeps its orange")
 	check(same_rgb({ rootBadge.text:GetTextColor() }, blue), "AND's badge text is the accent")
@@ -253,8 +254,9 @@ test('a row per block and group, a badge per group, AND the accent and OR orange
 	check(same_rgb({ w.rows[7].fields.addBlock.text:GetTextColor() }, Color('accent')), 'in blue')
 	eq(w.rows[1].remove.icon:GetTexture(), st.icons.x, "the X is Lucide's x")
 	check(same_rgb({ w.rows[1].remove.icon:GetVertexColor() }, Color('text', 'muted')), 'the X is Muted at rest')
+	st.config.profile.colors.text.danger:SetRGB(0.9, 0.3, 0.1) -- not the default, so a hardcoded red fails
 	stub.fire_script(w.rows[1].remove, 'OnEnter')
-	check(not same_rgb({ w.rows[1].remove.icon:GetVertexColor() }, Color('text', 'muted')), 'and lit under the mouse')
+	check(same_rgb({ w.rows[1].remove.icon:GetVertexColor() }, { 0.9, 0.3, 0.1 }), 'and Text > Danger under the mouse')
 	stub.fire_script(w.rows[1].remove, 'OnLeave')
 	check(same_rgb({ w.rows[1].remove.icon:GetVertexColor() }, Color('text', 'muted')), 'Muted again')
 	eq(w.rows[1].remove:GetRight(), w.frame:GetRight(), 'at the right')
@@ -404,6 +406,8 @@ test("each block type's fields set its params", function()
 	end
 
 	-- Tooltip contains and Name contains: a 150 box, and whole word.
+	local accent = st.config.profile.theme.accent
+	accent:SetRGB(0.9, 0.2, 0.4) -- not the default, so a check mark drawn in a blue of its own fails
 	for _, id in ipairs({ 'tooltip', 'name' }) do
 		local ed, row, f = one(blk(id, { text = '' }))
 		eq(row.label:GetText(), R.BlockType(id).label, id .. ': its label')
@@ -416,10 +420,12 @@ test("each block type's fields set its params", function()
 		click(ed.w.rows[1].fields.word)
 		eq(ed.stored.items[1].word, true, id .. ': whole word on')
 		check(ed.w.rows[1].fields.word.mark:IsShown(), id .. ': and checked')
+		check(same_rgb(stub.state(ed.w.rows[1].fields.word.mark).color_texture, { 0.9, 0.2, 0.4 }), id .. ': its mark is the accent')
 		click(ed.w.rows[1].fields.word)
 		eq(ed.stored.items[1].word, nil, id .. ': and off')
 		done(ed)
 	end
+	accent:SetRGB(0, 0.68, 0.94)
 
 	-- Name is: a 150 box.
 	local ed, row, f = one(blk('nameis', { text = 'Hearthstone' }))
@@ -780,6 +786,7 @@ end)
 ------------------------------------------------------------------ the highlight
 
 test('SetHighlight tints the row at a path', function()
+	st.config.profile.colors.text.warning:SetRGB(0.8, 0.4, 0.1) -- not the default, so a hardcoded orange fails
 	local ed = editor(grp('and', { t('a'), grp('or', { t('b'), t('c') }) }))
 	local w = ed.w
 	local function tinted()
@@ -793,7 +800,7 @@ test('SetHighlight tints the row at a path', function()
 	w:SetHighlight({ 2, 2 })
 	eq(tinted(), '4', 'the row at the path')
 	local color = stub.state(w.rows[4].tint).color_texture
-	check(same_rgb(color, Color('text', 'orange')) and math.abs(color[4] - 0.25) < 1e-6, 'orange at 0.25, a row tint')
+	check(same_rgb(color, Color('text', 'warning')) and math.abs(color[4] - 0.25) < 1e-6, 'orange at 0.25, a row tint')
 	w:SetHighlight({ 2 })
 	eq(tinted(), '2', "a group's title row")
 	click(w.rows[1].notBox)

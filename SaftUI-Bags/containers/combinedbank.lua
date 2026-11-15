@@ -48,7 +48,7 @@ function INV:InitializeBankCategorySelection()
 				INV:UpdateContainerBagIds(button.config.bagType, checked)
 			end)
 
-			local r,g,b = st.config.profile.colors.text.muted:GetRGB()
+			local r,g,b = st:Color('text', 'muted'):GetRGB()
 			visibility:GetCheckedTexture():SetVertexColor(r, g, b, 1)
 			visibility:GetCheckedTexture():SetTexture(st.textures.eyeOpen)
 			unchecked:SetVertexColor(r, g, b, 0.3)
@@ -128,7 +128,7 @@ local function UpdateContainerSlots(container)
 	if total > 0 then
 		text = text .. st.StringFormat:ColorString(
 				(('%d/%d'):format(total - empty, total)),
-				st.config.profile.colors.text.cyan:GetRGB()
+				st:Color('text', 'shared'):GetRGB()
 		)
 	end
 

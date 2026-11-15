@@ -54,13 +54,13 @@ Two ways: identical today, so the player sees one look; they will drift.
 Standard: one state skin (Code changes 6).
 
 **12. The item tooltip's lines.**
-Where: Misc's skin sets the Normal font on every line (`SaftUI-Misc/tooltip.lua:46-58`), including the compare tooltips; the screenshot notes read the lines as Blizzard's. The Bags add "Category:" in `accent` and "Caught by:" in `text-yellow` (`SaftUI-Bags/slot.lua:215-250`).
+Where: Misc's skin sets the Normal font on every line (`SaftUI-Misc/tooltip.lua:46-58`), including the compare tooltips; the screenshot notes read the lines as Blizzard's. The Bags add "Category:" in `accent` and "Caught by:" in `text-caution` (`SaftUI-Bags/slot.lua:215-250`).
 Standard: unsettled; see unknown 9.
 
 ## Seen in /sui, every time it opens
 
 **13. Grey and red text miss contrast under Thin.**
-Where: `text-red` on Thin's `backdrop` (#333333) is 3.6:1: the page description, section titles and notes outside the panels, and the status line. On `panel-fill` red is still short (4.4:1). `text-muted` (#b4b4b4 since 2026-11-14, decision 49) now passes on both (8.0:1 Thick, 6.1:1 Thin, 7.4:1 on `panel-fill`).
+Where: `text-danger` on Thin's `backdrop` (#333333) is 3.6:1: the page description, section titles and notes outside the panels, and the status line. On `panel-fill` red is still short (4.4:1). `text-muted` (#b4b4b4 since 2026-11-14, decision 49) now passes on both (8.0:1 Thick, 6.1:1 Thin, 7.4:1 on `panel-fill`).
 Two ways: the colours were chosen against Thick's #1f1f1f (4.8:1 for red).
 Standard: keep the colours exact (they are the profile's); if the owner wants Thin's red readable, lighten Thin's backdrop a step or let small red text sit on panels only.
 
@@ -106,7 +106,7 @@ Where: the kit's 18 with an accent square (`optionslook.lua:471-477`), the rule 
 Standard: `Toggle` (18, accent square) everywhere.
 
 **23. The Bags' Categories tab speaks a second visual language.**
-Where: `SaftUI-Bags/categoriestab.lua`, `ruleeditor.lua`: Box text boxes 22 tall (kit 24), 14 check boxes, a copied caret (`ruleeditor.lua:99-104`), its own selected row (a 3px bar, `categoriestab.lua:121,480`, against the sidebar's 2px), its own hovers (10%, 25%, 15%), two X sizes with no tooltips, blue "+ Block + Group" links, AND (blue) and OR (`text-orange`) rails and chips. Under Blizzard it keeps Box (`docs/followups.md:1015-1030`).
+Where: `SaftUI-Bags/categoriestab.lua`, `ruleeditor.lua`: Box text boxes 22 tall (kit 24), 14 check boxes, a copied caret (`ruleeditor.lua:99-104`), its own selected row (a 3px bar, `categoriestab.lua:121,480`, against the sidebar's 2px), its own hovers (10%, 25%, 15%), two X sizes with no tooltips, blue "+ Block + Group" links, AND (blue) and OR (`text-warning`) rails and chips. Under Blizzard it keeps Box (`docs/followups.md:1015-1030`).
 Standard: the kit's controls through exported looks (Code changes 7); the rails and chips may stay as the editor's own, in tokens.
 
 **24. Dialog paddings and frames.**
@@ -117,9 +117,9 @@ Standard: a written spacing scale (Code changes 10); until then use the tokens a
 Where: `OB.FLOAT_GAP` = 6, the title's gap (`optionsbody.lua:133`); the small dialog then ends 24 under them (`optionssmalldialog.lua:39-40`).
 Standard: the owner's rule, `float-gap` 24 above and below.
 
-**26. Two oranges, five reds. (The two light blues and the two blues are one accent now: color roles, Task 2. The diff orange and the Categories "edited" marker's orange are Muted now: Task 3, `OB.DIFF_STRENGTH`.)**
-Where: Text > Orange #dc9664 (rule editor OR) against the Cooldown Manager's #ff8040 (`Blizzard_CooldownViewer.lua:86`); own #8fd8ff against Text > Cyan #78cafa; red as Text > Red, Buttons > Red, threat bad, the close fill and `|cFFFF0000` (`api.lua:129`); blue as the profile's 0/0.68/0.94 and the chat prefix `|cff00adef` (`api.lua:122`). None of the kit's own colours is on the Colors tab or follows the theme.
-Standard: the diff icon in `text-muted` (the old `diff` orange token is gone), own values in the `accent` (the old `own` light blue is gone), `accent` read from the profile everywhere (the chat prefix included), `text-red` for every error.
+**26. Two oranges, five reds. (The two light blues and the two blues are one accent now: color roles, Task 2. The diff orange and the Categories "edited" marker's orange are Muted now: Task 3, `OB.DIFF_STRENGTH`. The Error prefix's pure red is Text > Danger and the close hover's fill is read from `templates.close`: Task 4. Resolved.)**
+Where: Text > Warning #dc9664 (rule editor OR) against the Cooldown Manager's #ff8040 (`Blizzard_CooldownViewer.lua:86`); own #8fd8ff against Text > Shared #78cafa; red as Text > Danger, Buttons > Danger, threat bad, the close fill and (until Task 4) `|cFFFF0000` in the Error prefix; blue as the profile's 0/0.68/0.94 and the chat prefix `|cff00adef` (`api.lua:122`). None of the kit's own colours is on the Colors tab or follows the theme.
+Standard: the diff icon in `text-muted` (the old `diff` orange token is gone), own values in the `accent` (the old `own` light blue is gone), `accent` read from the profile everywhere (the chat prefix included), `text-danger` for every error.
 
 **27. Two divider colours on one Thick page.**
 Where: `line` #2e2e2e for the tab rule, sidebar edge, footer and dialog lines (`optionsbody.lua:163,217`); `hairline` (white 7%) inside panels (`:150`); the position nudge divider in `kit-edge` (`optionsposition.lua:147`).
@@ -172,8 +172,8 @@ These are the code's colours and stay as they are here; the owner decides whethe
 | Pair | Thick | Thin | Floor |
 | --- | --- | --- | --- |
 | `text-muted` on `backdrop` | 8.0:1 | 6.1:1 | 4.5:1 |
-| `text-red` on `backdrop` | 4.8:1 | 3.6:1 | 4.5:1 |
+| `text-danger` on `backdrop` | 4.8:1 | 3.6:1 | 4.5:1 |
 | `border` against `backdrop` | 1.9:1 | 1.7:1 | 3:1 for a line that carries meaning |
 | `kit-edge` against `kit-field` | 2.2:1 | 2.2:1 | 3:1 for a control border |
 | `dot-grey` on `kit-field` | 2.5:1 | 2.5:1 | 3:1 for a mark |
-| `text` code on `kit-field`, beside a `ColorBar`'s swatch (was `white` on the colour, 1.3:1 and up) | 14.5:1 | same | 4.5:1 |
+| `text` code on `kit-field`, beside a `ColorBar`'s swatch (was `text-strong` on the colour, 1.3:1 and up) | 14.5:1 | same | 4.5:1 |

@@ -314,6 +314,9 @@ local function world()
 	S = LT.ROLL_STATE
 	LT:InitializeRollFrame()
 	stub.time = 0
+	-- Strong and Danger at values that are not their defaults, so a timer drawn in a white or red of its own fails.
+	st.config.profile.colors.text.strong:SetRGB(0.4, 0.8, 0.2)
+	st.config.profile.colors.text.danger:SetRGB(0.9, 0.2, 0.3)
 	return LT
 end
 
@@ -484,6 +487,7 @@ test('choosing on a matched roll holds it in its place, with its item, timer, co
 	eq(bar.Name:GetText(), 'Drakefire Amulet', 'the item name')
 	eq(bar.Icon:GetTexture(), ITEMS.amulet.texture, "the item's icon")
 	eq(bar.Timer.Text:GetText(), '01:30', 'the time left: 30 of 120 seconds gone')
+	eq(T.rgb(bar.Timer.Text:GetVertexColor()), T.rgb(0.4, 0.8, 0.2), 'in Text > Strong over a minute')
 	local _, length = bar.Timer:GetMinMaxValues()
 	eq(length, 120, 'the timer runs over the roll, in seconds')
 	eq(bar.Timer:GetValue(), 90, 'with 90 left')
@@ -682,6 +686,7 @@ test('a held roll whose time runs out stays up locked, empty, for 3 seconds, fad
 	tick(89)
 	check(bar:IsShown(), 'still up with a second left')
 	eq(bar.Timer.Text:GetText(), '00:01', 'counting down')
+	eq(T.rgb(bar.Timer.Text:GetVertexColor()), T.rgb(0.9, 0.2, 0.3), 'in Text > Danger under a minute')
 	tick(2)
 	check(bar:IsShown() and held_bar(roll) == bar, 'its time ran out: it stays')
 	eq(bar.Timer.Text:GetText(), '00:00', 'its timer empty')

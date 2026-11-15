@@ -150,7 +150,7 @@ function LT:AddRollLines(tooltip, rolls, live)
 				end
 
 				local r, g, b = 1, 1, 1
-				if line == winner then r, g, b = st:Color('text', 'green'):GetRGB() end
+				if line == winner then r, g, b = st:Color('text', 'success'):GetRGB() end
 				tooltip:AddDoubleLine('  ' .. name, roll and tostring(roll) or '', 1, 1, 1, r, g, b)
 			end
 		end

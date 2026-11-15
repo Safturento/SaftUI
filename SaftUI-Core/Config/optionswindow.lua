@@ -1484,7 +1484,7 @@ local function BuildFooter()
 	F.status:SetMaxLines(2)
 	F.status:SetPoint('LEFT', region, 'LEFT', 0, 0)
 	F.status:SetPoint('RIGHT', region, 'RIGHT', 0, 0)
-	F.status:SetTextColor(Colors().text.red:GetRGB())
+	F.status:SetTextColor(st:Color('text', 'danger'):GetRGB())
 
 	-- The footer control: its label, then its widgets (DrawFooterControl).
 	local control = CreateFrame('Frame', nil, region)

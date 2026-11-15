@@ -168,7 +168,7 @@ local LINE_GAP = 6
 -- which SaftUI's replaces, or under the zone name; this runs after it, each time.
 function ZT:UpdateZoneLine()
 	local line = self:ZoneLine()
-	self.ZoneLineString:SetTextColor(st.config.profile.colors.text.normal:GetRGB())
+	self.ZoneLineString:SetTextColor(st:Color('text', 'normal'):GetRGB())
 	self.ZoneLineString:SetText(line)
 	if line ~= '' and ZoneTextFrame:IsShown() then
 		SubZoneTextString:SetPoint('TOP', self.ZoneLineString, 'BOTTOM', 0, -LINE_GAP)

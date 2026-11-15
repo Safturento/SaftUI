@@ -134,3 +134,39 @@ test('a print before the defaults exist', function() -- Review Focus 3
 	check(Printed(function() st:Error('x') end):find('|cff00adf0SaftUI|r', 1, true), 'and for Error')
 	st.defaults = keep
 end)
+
+-- Task 4: the Error prefix and DEBUG are Text > Danger, read at each call.
+
+test('the Error prefix is Danger at print time (a listed change from pure red); before the defaults dc6464', function() -- Review Focus 3
+	local danger = st.config.profile.colors.text.danger
+	check(Printed(function() st:Error('x') end):find('|cffdc6464Error|r]:', 1, true), 'Danger at its default, not the old pure red')
+	check(not Printed(function() st:Error('x') end):find('|cffff0000', 1, true), 'no hardcoded red')
+	danger.r, danger.g, danger.b = 0, 1, 0
+	check(Printed(function() st:Error('x') end):find('|cff00ff00Error|r]:', 1, true), 'the next print follows a changed Danger')
+	danger.r, danger.g, danger.b = 220/255, 100/255, 100/255
+	st.config:SetProfile('Three')
+	local other = st.config.profile.colors.text.danger
+	other.r, other.g, other.b = 0, 0, 1
+	check(Printed(function() st:Error('x') end):find('|cff0000ffError|r]:', 1, true), "a profile switch reaches the new profile's Danger")
+	other.r, other.g, other.b = 220/255, 100/255, 100/255
+	local keep = st.defaults
+	st.defaults = nil
+	local line = Printed(function() st:Error('x') end)
+	check(line:find('|cffdc6464Error|r]:', 1, true), 'before the defaults, the shipped hex: ' .. tostring(line))
+	st.defaults = keep
+	st.config.profile.theme.accent.r = 1
+	check(Printed(function() st:Error('x') end):find('^%[|cffffadf0SaftUI|r |cffdc6464Error|r%]'), 'the accent and Danger each in their own place')
+	st.config.profile.theme.accent.r = 0
+end)
+
+test('DEBUG is Danger, read at each call', function()
+	load_string_format()
+	local keep = st.DEBUG
+	st.DEBUG = true
+	local danger = st.config.profile.colors.text.danger
+	check(Printed(function() st:Debug('Mod', 'x') end):find('<|cffdc6464DEBUG|r:Mod>', 1, true), 'at the default')
+	danger.r, danger.g, danger.b = 0, 1, 0
+	check(Printed(function() st:Debug('Mod', 'x') end):find('<|cff00ff00DEBUG|r:Mod>', 1, true), 'a changed Danger')
+	danger.r, danger.g, danger.b = 220/255, 100/255, 100/255
+	st.DEBUG = keep
+end)

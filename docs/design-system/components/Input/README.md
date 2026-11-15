@@ -21,7 +21,7 @@ Free text (a name, a frame to anchor to) and numbers with no sensible range (wid
 ## States
 
 - Under the mouse and while focused: the edge turns `accent`. Enter commits, Esc reverts; both clear focus.
-- A value `validate` refuses shows its message in the window's status line, `text-red`.
+- A value `validate` refuses shows its message in the window's status line, `text-danger`.
 - Disabled: `alpha-disabled`; it loses focus.
 
 ## Blizzard theme

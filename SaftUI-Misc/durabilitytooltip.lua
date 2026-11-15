@@ -49,12 +49,11 @@ local function Hex(color)
 	return ('|cff%02x%02x%02x'):format(byte(color.r), byte(color.g), byte(color.b))
 end
 
--- The Colors page's text color for a durability ratio.
+-- The Colors page's text color for a durability ratio: Success, Warning or Danger.
 local function PercentColor(ratio)
-	local colors = st.config.profile.colors.text
-	if ratio >= 0.5 then return colors.green end
-	if ratio >= 0.2 then return colors.orange end
-	return colors.red
+	if ratio >= 0.5 then return st:Color('text', 'success') end
+	if ratio >= 0.2 then return st:Color('text', 'warning') end
+	return st:Color('text', 'danger')
 end
 
 -- The item's name in slot, from its link's [name]; the slot's own name when

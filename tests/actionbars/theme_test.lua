@@ -194,6 +194,19 @@ test("an equipped item's border is the accent (answer 5, a listed change from gr
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+test("the flash on an action button is Buttons > Danger at 40%, under Thick and Thin (Blizzard's is its own art), at an odd value", function()
+	fresh()
+	local danger = st.config.profile.colors.button.danger
+	danger:SetRGB(0.1, 0.8, 0.3) -- not the default, so a hardcoded red fails
+	local b = button('ThemeTestFlash', false)
+	for _, look in ipairs({ 'thick', 'thin' }) do
+		T.theme(look, function() bar(b) end)
+		local c = stub.state(b.Flash).color_texture or { -1, -1, -1, -1 }
+		eq(T.text(c[1], c[2], c[3]) .. ' ' .. string.format('%.2f', c[4]), T.text(0.1, 0.8, 0.3) .. ' 0.40', look .. ': Buttons > Danger at 40%')
+	end
+	danger:SetRGB(0.6, 0.1, 0.1)
+end)
+
 test('the equipped border survives a recolor', function()
 	fresh()
 	local worn, other = bar(button('ThemeTestWorn', true), button('ThemeTestOther', false))

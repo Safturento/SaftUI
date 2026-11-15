@@ -6,17 +6,16 @@ local MARKS = { rare = 'R', rareelite = 'R+', elite = '+', worldboss = 'B' }
 
 -- A level's colour, by its difference from the player's.
 local function LevelColor(levelDiff)
-	local colors = st.config.profile.colors.text
 	if levelDiff >= 5 then
-		return colors.red
+		return st:Color('text', 'danger')
 	elseif levelDiff >= 3 then
-		return colors.orange
+		return st:Color('text', 'warning')
 	elseif levelDiff >= -3 then
-		return colors.yellow
+		return st:Color('text', 'caution')
 	elseif levelDiff >= -10 then
-		return colors.green
+		return st:Color('text', 'success')
 	end
-	return colors.muted
+	return st:Color('text', 'muted')
 end
 
 -- What goes before the name: the level and the classification mark, in the
@@ -57,9 +56,9 @@ local function NameColor(config, unit, reaction)
 		return classColor and '|cff' .. st.StringFormat:ToHex(classColor:GetRGB())
 	elseif reaction then
 		if config.color_hostile and reaction < 3 then
-			return '|cff' .. st.StringFormat:ToHex(st.config.profile.colors.text.red:GetRGB())
+			return '|cff' .. st.StringFormat:ToHex(st:Color('text', 'danger'):GetRGB())
 		elseif config.color_hostile and reaction < 5 then
-			return '|cff' .. st.StringFormat:ToHex(st.config.profile.colors.text.yellow:GetRGB())
+			return '|cff' .. st.StringFormat:ToHex(st:Color('text', 'caution'):GetRGB())
 		elseif config.color_friendly and reaction >= 5 then
 			local reactionColor = UF.oUF.colors.reaction[reaction]
 			return reactionColor and '|cff' .. st.StringFormat:ToHex(reactionColor:GetRGB())

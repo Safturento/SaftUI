@@ -15,7 +15,7 @@ local floor, max, min = math.floor, math.max, math.min
 
 local Box, BlizzardLook, HoverEdge, LookButton = W.Box, W.BlizzardLook, W.HoverEdge, W.LookButton
 local LIST_STRATA, FIELD_HEIGHT = Kit.LIST_STRATA, Kit.FIELD_HEIGHT
-local BG, EDGE, Colors, FIELD_FONT_SIZE = Kit.BG, Kit.EDGE, Kit.Colors, Kit.FIELD_FONT_SIZE
+local BG, EDGE, FIELD_FONT_SIZE = Kit.BG, Kit.EDGE, Kit.FIELD_FONT_SIZE
 local SetFieldFont, NewText, Art, Changes = Kit.SetFieldFont, Kit.NewText, Kit.Art, Kit.Changes
 local ShowBox, PaintFace, CheckBox, LookCheckBox = Kit.ShowBox, Kit.PaintFace, Kit.CheckBox, Kit.LookCheckBox
 local SetCheck, CatchKeys = Kit.SetCheck, Kit.CatchKeys
@@ -70,11 +70,11 @@ local function ListFill()
 			row.text:SetText(entry.label)
 			-- A caption is Text > Muted; the picked entry the accent; the rest normal.
 			if entry.caption then
-				row.text:SetTextColor(Colors().text.muted:GetRGB())
+				row.text:SetTextColor(st:Color('text', 'muted'):GetRGB())
 			elseif entry.key == list.selected then
 				row.text:SetTextColor(st:Color('accent'):GetRGB())
 			else
-				row.text:SetTextColor(Colors().text.normal:GetRGB())
+				row.text:SetTextColor(st:Color('text', 'normal'):GetRGB())
 			end
 			if entry.caption or entry.disabled then row.hover:Hide() end -- a scroll can put one under the mouse
 			row:SetAlpha(entry.disabled and DISABLED_ALPHA or 1)

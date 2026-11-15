@@ -303,7 +303,7 @@ test("a press leaves the sidebar's and the footer's buttons their size, and a ho
 		theme(look)
 		st.Config:Open('Loot')
 		local f = frames()
-		local green = st.config.profile.colors.text.green
+		local green = st.config.profile.colors.text.success
 		for name, button in pairs({ reload = f.reloadButton, close = f.closeButton, editmode = f.actions[1] }) do
 			local before = size_of(button)
 			stub.fire_script(button, 'OnMouseDown', 'LeftButton')

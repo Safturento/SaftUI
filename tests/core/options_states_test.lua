@@ -471,7 +471,7 @@ local function tip_text(button)
 	local title, lines = button.tip(button)
 	local out = { title }
 	for _, line in ipairs(lines or {}) do
-		out[#out + 1] = type(line) == 'table' and ((line.red and 'red:' or '') .. line.text) or line
+		out[#out + 1] = type(line) == 'table' and ((line.danger and 'danger:' or '') .. line.text) or line
 	end
 	return table.concat(out, ' | ')
 end
@@ -528,7 +528,7 @@ do
 		eq(atlases_of(F.shrink), art.shrink.disabled, 'shrink: Condense-Disabled, no highlight')
 		eq(atlases_of(F.grow), art.grow.disabled, 'grow: Expand-Disabled')
 		eq(F.shrink:GetAlpha(), 0.4, 'at the disabled alpha, as under every look')
-		eq(tip_text(F.shrink), 'Shrink to a bar | A small bar, to see the whole UI. It keeps the page. | red:Close the color picker first.')
+		eq(tip_text(F.shrink), 'Shrink to a bar | A small bar, to see the whole UI. It keeps the page. | danger:Close the color picker first.')
 		stub.fire_script(F.shrink, 'OnMouseDown', 'LeftButton')
 		eq(atlases_of(F.shrink), art.shrink.disabled, 'a disabled arrow is not pressed')
 		stub.fire_script(F.shrink, 'OnMouseUp', 'LeftButton')
@@ -593,7 +593,7 @@ do
 			W.OpenColorPicker(F.window, { r = 1, g = 0, b = 0, onChange = function() end })
 			check(F.shrink.disabled, what .. ': disabled by the picker')
 			eq(F.shrink:GetAlpha(), 0.4, what .. ': at the disabled alpha')
-			eq(tip_text(F.shrink), 'Shrink to a bar | A small bar, to see the whole UI. It keeps the page. | red:Close the color picker first.')
+			eq(tip_text(F.shrink), 'Shrink to a bar | A small bar, to see the whole UI. It keeps the page. | danger:Close the color picker first.')
 			W.CloseColorPicker()
 			-- Thick still has its box.
 			look('thick')

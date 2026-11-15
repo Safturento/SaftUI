@@ -102,10 +102,10 @@ S.ARROW_GAP_TO_HEADER, S.ARROW_GAP_TO_TITLE = GAP_TO_HEADER, GAP_TO_TITLE
 local function Reasons(size)
 	local lines = {}
 	if S.ColorPickerShown() then
-		lines[#lines + 1] = { text = 'Close the color picker first.', red = true }
+		lines[#lines + 1] = { text = 'Close the color picker first.', danger = true }
 	end
 	if size == 'full' and not OW.Fits(S.layout, size, S.sidebar) then
-		lines[#lines + 1] = { text = 'The screen is too narrow for the full window.', red = true }
+		lines[#lines + 1] = { text = 'The screen is too narrow for the full window.', danger = true }
 	end
 	return lines
 end

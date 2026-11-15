@@ -127,19 +127,19 @@ st.defaults.templates = {
 st.defaults.colors = {
 	text = {
 		normal		= CreateColor(0.9, 0.9, 0.8),
-		red			= CreateColor(220/255, 100/255, 100/255),
-		orange 		= CreateColor(220/255, 150/255, 100/255),
-		yellow		= CreateColor(200/255, 200/255, 100/255),
-		green		= CreateColor( 60/255, 240/255,  60/255),
 		muted		= CreateColor(180/255, 180/255, 180/255),
-		cyan        = CreateColor(120/255, 202/255, 250/255),
-		white		= CreateColor(1, 1, 1),
+		strong		= CreateColor(1, 1, 1),
+		danger		= CreateColor(220/255, 100/255, 100/255),
+		warning		= CreateColor(220/255, 150/255, 100/255),
+		caution		= CreateColor(200/255, 200/255, 100/255),
+		success		= CreateColor( 60/255, 240/255,  60/255),
+		shared		= CreateColor(120/255, 202/255, 250/255),
 	},
 	button = {
 		normal		=  CreateColor(0.1, 0.1, 0.1, 0.6),
 		hover 		=  CreateColor(0.3, 0.5, 0.7, 0.8),
 		pushed		=  CreateColor(0.3, 0.4, 0.5, 0.8),
-		red			=  CreateColor(0.6, 0.1, 0.1, 0.8),
+		danger		=  CreateColor(0.6, 0.1, 0.1, 0.8),
 	},
 	roles = {
 		TANK    = CreateColor(0, 0.68, 0.94),

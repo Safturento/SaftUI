@@ -258,7 +258,6 @@ end
 -- Places and colours a skinned button's pieces from the profile. Safe to run again: it
 -- makes nothing new.
 local function StyleButton(button, skin, theme, background)
-	local colors = st.config.profile.colors
 
 	if skin.backdrop then
 		-- The button is the ring's host: under Blizzard the ring is a texture of
@@ -304,7 +303,7 @@ local function StyleButton(button, skin, theme, background)
 			skin.checked:SetBlendMode('ADD')
 		end
 		if button.Flash then
-			local r, g, b = colors.button.red:GetRGB()
+			local r, g, b = st:Color('button', 'danger'):GetRGB()
 			button.Flash:SetColorTexture(r, g, b, 0.4)
 			button.Flash:ClearAllPoints()
 			button.Flash:SetAllPoints(icon)
@@ -362,7 +361,7 @@ local function ColorArrow(button, slot)
 	skin.slot = slot
 	local r, g, b = TB:GetElementColor(slot)
 	if not r then
-		r, g, b = st.config.profile.colors.text.normal:GetRGB()
+		r, g, b = st:Color('text', 'normal'):GetRGB()
 	end
 	skin.arrow:SetVertexColor(r, g, b)
 	skin.hover:SetVertexColor(r, g, b)

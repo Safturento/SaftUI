@@ -14,7 +14,7 @@ The icon's name from `st.icons` (`x`, `chevronDown`, `chevronUp`, `rotateCcw`, `
 
 - **Files.** Each icon is `Media/Textures/lucide-<name>.tga`: 32 x 32, white on transparent, Lucide's 24 grid with the glyph in its middle half. Add one with `tools/lucide-to-tga.cjs` (its header says how), register it in `st.icons`; `tests/core/icons_test.lua` checks the files.
 - **Size.** Draw at twice the glyph's size: `icon-close` 20 for a 10px cross, `icon-chevron` 16 for an 8 x 4 caret, `icon-diff` 16, `icon-reset` 14. Use an even size on a whole-pixel centre, so its edges are whole pixels.
-- **Colour.** Tint with `SetVertexColor` from a token, never in the file: carets and the close X at rest `text-muted`; close X under the mouse `text-red`; reset `text-muted` at rest, `accent` under the mouse; diff `text-muted`; the menu icon `text-muted`, `accent` under the mouse.
+- **Colour.** Tint with `SetVertexColor` from a token, never in the file: carets and the close X at rest `text-muted`; close X under the mouse `text-danger`; reset `text-muted` at rest, `accent` under the mouse; diff `text-muted`; the menu icon `text-muted`, `accent` under the mouse.
 - **Tooltip.** An icon that replaces a word says what it does in a tooltip ("Reset", "Close").
 - **In HTML.** Inline the SVG on a 24 viewBox, stroke 2, round caps and joins, no fill; size and colour it with the same tokens.
 
@@ -22,7 +22,7 @@ The icon's name from `st.icons` (`x`, `chevronDown`, `chevronUp`, `rotateCcw`, `
 
 | Icon | Where | Drawn | Tint |
 | --- | --- | --- | --- |
-| `x` | close button; the rule editor's remove (20 in a 16 box); a pinned item's remove (16, an 8px cross, in a 14 box) | 20 | `text-muted`, `text-red` |
+| `x` | close button; the rule editor's remove (20 in a 16 box); a pinned item's remove (16, an 8px cross, in a 14 box) | 20 | `text-muted`, `text-danger` |
 | `chevron-down` | dropdown caret; the rule editor's field (a copy) | 16 | `text-muted` |
 | `rotate-ccw` | reset | 14 | `text-muted`, `accent` |
 | `diff` | diff icon | 16 | `text-muted` |
@@ -36,7 +36,7 @@ The icon's name from `st.icons` (`x`, `chevronDown`, `chevronUp`, `rotateCcw`, `
 | `keyboard` | the keybind mode command in /sui's collapsed footer (registered; used by the window's sizes work) | 16 | `text-muted`, `accent` |
 | `list` | the Categories tab's category button (registered; used by the window's sizes work) | 16 | `text-muted`, `accent` |
 | `map-pin` | SaftUI's tracker: after the current zone's name on its zone header | 16 (an 8 px glyph) | `accent` |
-| `chevron-up`, `chevron-down` | SaftUI's tracker: the header's collapse button and each zone header's (up while it shows, down while collapsed; a 16 square button, hover white) | 16 (an 8 px glyph) | `text-muted`, `white` under the mouse |
+| `chevron-up`, `chevron-down` | SaftUI's tracker: the header's collapse button and each zone header's (up while it shows, down while collapsed; a 16 square button, hover white) | 16 (an 8 px glyph) | `text-muted`, `text-strong` under the mouse |
 | `link` | the font row's link to a shared font's section of Global settings > Fonts, in the slot at the row's right edge (the item's dots use the same slot); its tooltip names the font and says where it goes | 16 | `text-muted`, `accent` |
 | `ellipsis`, `settings` | registered, unused | | |
 

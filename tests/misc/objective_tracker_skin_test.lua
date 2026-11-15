@@ -47,6 +47,7 @@ local function world(client, opts)
 	apply_defaults()
 	profile = st.config.profile
 	profile.colors.text.muted:SetRGB(0.2, 0.4, 0.6) -- not the default, so a reader that draws a grey of its own fails
+	profile.colors.text.strong:SetRGB(0.8, 0.3, 0.6) -- the same for a white (the chevron under the mouse)
 	if opts.off then profile.skinning.objective_tracker = false end
 	if opts.late then stub.installed_addons.Blizzard_ObjectiveTracker = true end
 	load_saftui('SaftUI-Misc/Skinning/skinning.lua')
@@ -149,7 +150,7 @@ local function check_header(header, where)
 	local tints = {}
 	for _, icon in ipairs(icons) do tints[T.rgb(icon:GetVertexColor())] = true end
 	check(tints['0.20,0.40,0.60'], where .. ': the chevron at rest is Text > Muted')
-	check(tints['1.00,1.00,1.00'], where .. ': and its hover is white')
+	check(tints['0.80,0.30,0.60'], where .. ': and its hover is Text > Strong')
 end
 
 local function check_header_blizzard(header, where)
@@ -496,6 +497,21 @@ test('a pooled block handed out again is hooked once and stays styled', function
 	local _, boxes = box_of(item)
 	eq(boxes, 1, 'one backdrop on it')
 	eq(#own_regions(item), 1, 'one hover on it')
+	clean()
+end)
+
+test("a quest item button's hover is the accent, at an accent that is not the default, and follows a change of it", function()
+	world('forever')
+	profile.theme.accent:SetRGB(0.9, 0.2, 0.4)
+	local blocks = OT.layout(quest_module(), { { id = 1, objectives = { 'One' }, item = 3 } })
+	local item = blocks[1].rightEdgeFrame
+	local hover = own_regions(item)[1]
+	check(hover ~= nil, 'a hover of SaftUI\'s')
+	eq(T.rgb(hover:GetVertexColor()), '0.90,0.20,0.40', 'the accent when it is made')
+	profile.theme.accent:SetRGB(0.1, 0.8, 0.5)
+	st:ColorsChanged('accent')
+	eq(T.rgb(hover:GetVertexColor()), '0.10,0.80,0.50', "a change of the accent (not 'theme' or 'button') reaches it")
+	profile.theme.accent:SetRGB(0, 0.68, 0.94)
 	clean()
 end)
 

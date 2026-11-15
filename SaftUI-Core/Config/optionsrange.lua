@@ -13,7 +13,7 @@ local format = string.format
 
 local Box, Edge, BlizzardLook, AtlasSize = W.Box, W.Edge, W.BlizzardLook, W.AtlasSize
 local FIELD_HEIGHT, Base, builders, define = Kit.FIELD_HEIGHT, Kit.Base, Kit.builders, Kit.define
-local ALT, EDGE, FIELD, Colors, Art, Changes = Kit.ALT, Kit.EDGE, Kit.FIELD, Kit.Colors, Kit.Art, Kit.Changes
+local ALT, EDGE, FIELD, Art, Changes = Kit.ALT, Kit.EDGE, Kit.FIELD, Kit.Art, Kit.Changes
 local HidePieces, LayThree, LookInput = Kit.HidePieces, Kit.LayThree, Kit.LookInput
 
 local TRACK_WIDTH, VALUE_WIDTH, GAP = 116, 46, 6
@@ -67,7 +67,7 @@ local function LookRange(w, blizzard)
 			knob:SetTexture(st.BLANK_TEX)
 			knob:SetTexCoord(0, 1, 0, 1)
 			knob:SetSize(KNOB_WIDTH, KNOB_HEIGHT)
-			knob:SetVertexColor(Colors().text.normal:GetRGB())
+			knob:SetVertexColor(st:Color('text', 'normal'):GetRGB())
 		end
 	end
 	-- The slider between the arrows (Blizzard), else across the whole 116.
@@ -142,7 +142,7 @@ builders.range = function(w)
 	local knob = slider:GetThumbTexture()
 	knob:SetDrawLayer('OVERLAY')
 	knob:SetSize(KNOB_WIDTH, KNOB_HEIGHT)
-	knob:SetVertexColor(Colors().text.normal:GetRGB())
+	knob:SetVertexColor(st:Color('text', 'normal'):GetRGB())
 
 	-- The end arrows, hidden until Blizzard's look (LookRange): each a button
 	-- of the frame's with its art as a texture, in colour while it can step

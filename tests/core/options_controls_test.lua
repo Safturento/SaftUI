@@ -41,7 +41,7 @@ local function put(control)
 	return control
 end
 
-local function tip(button) return 'Exit', { 'Leaves edit mode.', { text = 'Unsaved.', red = true } } end
+local function tip(button) return 'Exit', { 'Leaves edit mode.', { text = 'Unsaved.', danger = true } } end
 
 -- Where the tooltip's lines and their colors go: AddLine records them.
 local lines
@@ -103,7 +103,7 @@ test('W.IconButton: a 26 square with its 16 icon in the middle, grey; it needs i
 	eq(stub.state(GameTooltip).anchor, 'ANCHOR_BOTTOM', 'under it')
 	eq(lines[1].text .. '|' .. lines[1].color, 'Exit|1.00,1.00,1.00', 'the title white')
 	eq(lines[2].text .. '|' .. lines[2].color, 'Leaves edit mode.|' .. NORMAL(), 'a line in Text > Normal')
-	eq(lines[3].text .. '|' .. lines[3].color, 'Unsaved.|' .. color_of(colors().text.red), 'a red line in Text > Red')
+	eq(lines[3].text .. '|' .. lines[3].color, 'Unsaved.|' .. color_of(colors().text.danger), 'a danger line in Text > Danger')
 	eq(edge_of(b), BLUE(), 'accent under the mouse')
 	stub.fire_script(b, 'OnLeave', true)
 	check(not GameTooltip:IsShown(), 'gone when it leaves')
@@ -297,7 +297,7 @@ end)
 test('W.ShowTip and W.HideTip: the owner, the anchor, a white title and Text > Normal or Red lines', function()
 	local owner = W.IconButton(new_parent(), st.icons.eye, tip)
 	reset_lines()
-	W.ShowTip(owner, 'Title', { 'one', { text = 'two', red = true } }, 'ANCHOR_RIGHT')
+	W.ShowTip(owner, 'Title', { 'one', { text = 'two', danger = true } }, 'ANCHOR_RIGHT')
 	check(GameTooltip:IsOwned(owner) and GameTooltip:IsShown(), 'owned and shown')
 	eq(stub.state(GameTooltip).anchor, 'ANCHOR_RIGHT', 'the anchor given')
 	eq(#lines, 3, 'a title and two lines')
@@ -551,7 +551,7 @@ test("a label keeps the colour its caller gave it through hover, and one with no
 	for _, look in ipairs({ 'thick', 'blizzard' }) do
 		theme(look)
 		local blizzard = look == 'blizzard'
-		local green = st.config.profile.colors.text.green
+		local green = st.config.profile.colors.text.success
 		local b = put(W.Button(new_parent(), 'Edit mode', function() end))
 		W.LookControl(b, blizzard)
 		b.text:SetTextColor(green:GetRGB())

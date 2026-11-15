@@ -164,17 +164,20 @@ test('the timer hook drives the timer text through the side table', function()
 		if region:GetObjectType() == 'FontString' then timer_text = region end
 	end
 	check(timer_text, 'the timer has a font string')
+	-- Strong and Danger at values that are not their defaults, so a hardcoded white or red fails.
+	SaftUI.config.profile.colors.text.strong:SetRGB(0.4, 0.8, 0.2)
+	SaftUI.config.profile.colors.text.danger:SetRGB(0.9, 0.2, 0.3)
 
 	frame.Timer:SetValue(120)
 	stub.fire_script(frame.Timer, 'OnUpdate', 0.1)
 	eq(timer_text:GetText(), SaftUI.StringFormat:ToClock(120), 'two minutes shown')
 	local r, g, b = timer_text:GetVertexColor()
-	check(r == 1 and g == 1 and b == 1, 'white at 60 seconds or more')
+	check(math.abs(r - 0.4) < 1e-6 and math.abs(g - 0.8) < 1e-6 and math.abs(b - 0.2) < 1e-6, 'Text > Strong at 60 seconds or more')
 
 	frame.Timer:SetValue(30)
 	stub.fire_script(frame.Timer, 'OnUpdate', 0.1)
 	eq(timer_text:GetText(), SaftUI.StringFormat:ToClock(30), 'thirty seconds shown')
-	local red = SaftUI.config.profile.colors.text.red
+	local red = SaftUI.config.profile.colors.text.danger
 	local rr, rg, rb = red:GetRGB()
 	r, g, b = timer_text:GetVertexColor()
 	check(math.abs(r - rr) < 1e-6 and math.abs(g - rg) < 1e-6 and math.abs(b - rb) < 1e-6, 'red under 60 seconds')

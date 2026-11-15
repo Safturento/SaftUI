@@ -15,7 +15,7 @@ The share fields' "who differs and with what": a list of member names and their 
 | Part | Value | Tokens |
 | --- | --- | --- |
 | Icon | `diff` drawn 16, tinted `text-muted` (Text > Muted, at `OB.DIFF_STRENGTH`, 1; it was orange until color roles, Task 3), 4 after the label's text; the label is cut to leave it room | `icon-diff`, `text-muted`, `diff-gap` |
-| Tooltip | the setting's name in `white`, "All bars: value", then two columns: member names, values in `accent` | `white`, `tooltip-gold`, `accent` |
+| Tooltip | the setting's name in `text-strong`, "All bars: value", then two columns: member names, values in `accent` | `text-strong`, `tooltip-gold`, `accent` |
 | Hover line | on the row: "Apply to: All \| Multiple" (here All makes every bar follow; Multiple lists the bars that own it) | `small`, `accent` |
 
 ## States
@@ -31,5 +31,5 @@ Same icon and colour.
 ## Do and don't
 
 - Do keep the full list in the tooltip, so it can be long without growing the row.
-- Don't give the diff icon a colour of its own: it is Muted, a dimmed mark beside the label, and has no token of its own. Text > Orange (`text-orange`) is the bags' rule editor's OR, not this.
+- Don't give the diff icon a colour of its own: it is Muted, a dimmed mark beside the label, and has no token of its own. Text > Warning (`text-warning`) is the bags' rule editor's OR, not this.
 - Don't hide the icon until hover.

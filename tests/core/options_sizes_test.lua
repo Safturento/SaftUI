@@ -353,12 +353,12 @@ if not _G.GameTooltip then CreateFrame('GameTooltip', 'GameTooltip', UIParent) e
 local function color_of(c) return string.format('%.2f,%.2f,%.2f', c:GetRGB()) end
 local function vertex(texture) return string.format('%.2f,%.2f,%.2f', texture:GetVertexColor()) end
 
--- A button's tooltip lines as 'title | line | red:line'.
+-- A button's tooltip lines as 'title | line | danger:line'.
 local function tip_text(button)
 	local title, lines = button.tip(button)
 	local out = { title }
 	for _, line in ipairs(lines or {}) do
-		out[#out + 1] = type(line) == 'table' and ((line.red and 'red:' or '') .. line.text) or line
+		out[#out + 1] = type(line) == 'table' and ((line.danger and 'danger:' or '') .. line.text) or line
 	end
 	return table.concat(out, ' | ')
 end
@@ -701,8 +701,8 @@ test('opens at the remembered size; one the screen cannot hold opens at half, an
 	check(F.grow.disabled, 'Grow is disabled')
 	local _, lines = F.grow.tip(F.grow)
 	local last = lines[#lines]
-	check(type(last) == 'table' and last.red and last.text == 'The screen is too narrow for the full window.', 'its last line, red, says why')
-	eq(tip_text(F.grow), 'Grow to full | The page in two columns. | red:The screen is too narrow for the full window.')
+	check(type(last) == 'table' and last.danger and last.text == 'The screen is too narrow for the full window.', 'its last line, Danger, says why')
+	eq(tip_text(F.grow), 'Grow to full | The page in two columns. | danger:The screen is too narrow for the full window.')
 	wait(); click(F.grow)
 	eq(OW:GetWindowSize(), 'half', 'a click does nothing')
 	eq(OW:Grow(), false)
@@ -762,7 +762,7 @@ test('while the color picker is open the arrows do nothing and say why', functio
 	check(F.shrink.disabled, 'the arrow is disabled at once')
 	stub.fire_script(F.shrink, 'OnEnter', true)
 	check(GameTooltip:IsOwned(F.shrink), 'it still shows its tooltip')
-	eq(tip_text(F.shrink), "Shrink to half | The page in one column. The window's right edge stays. | red:Close the color picker first.")
+	eq(tip_text(F.shrink), "Shrink to half | The page in one column. The window's right edge stays. | danger:Close the color picker first.")
 	stub.fire_script(F.shrink, 'OnLeave', true)
 	wait(); click(F.shrink)
 	eq(OW:GetWindowSize(), 'full', 'a click does nothing')

@@ -43,7 +43,7 @@ local Kit = W.Kit
 
 local BlizzardLook, HoverEdge = W.BlizzardLook, W.HoverEdge
 local Base, builders, define = Kit.Base, Kit.builders, Kit.define
-local Colors, CheckBox, LookCheckBox, SetCheck = Kit.Colors, Kit.CheckBox, Kit.LookCheckBox, Kit.SetCheck
+local CheckBox, LookCheckBox, SetCheck = Kit.CheckBox, Kit.LookCheckBox, Kit.SetCheck
 
 local BOX_SIZE = 18
 local BOX_ROW = 22 -- the Blizzard check box's art is drawn for a row this tall (the check list's)
@@ -56,7 +56,7 @@ local DOTS_WIDTH, DOTS_HEIGHT, DOTS_ICON = 16, 24, 16
 local function PaintSlot(button, over)
 	local icon = button.icon
 	if not over then
-		icon:SetVertexColor(Colors().text.muted:GetRGB())
+		icon:SetVertexColor(st:Color('text', 'muted'):GetRGB())
 	elseif button.blizzard then
 		icon:SetVertexColor(1, 1, 1)
 	else

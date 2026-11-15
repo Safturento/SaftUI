@@ -1364,11 +1364,20 @@ test("a link's click takes its tooltip away, and leaving a link puts its accent 
 		stub.fire_script(by.spacing.frame, 'OnEnter', true)
 		local textBlue = rgb(st.config.profile.theme.accent:GetRGB())
 		local buttonBlue = rgb(st.config.profile.theme.accent:GetRGB())
+		-- Text > Strong at a value that is not white, so a hardcoded 1, 1, 1 fails.
+		local strong = st.config.profile.colors.text.strong
+		strong:SetRGB(0.9, 0.3, 0.1)
 		for _, key in ipairs({ 'all', 'multiple' }) do
 			stub.fire_script(parts[key], 'OnEnter', true)
-			eq(rgb(parts[key].text:GetTextColor()), '1.00,1.00,1.00', key .. ' white under the mouse')
+			eq(rgb(parts[key].text:GetTextColor()), '0.90,0.30,0.10', key .. ' in Text > Strong under the mouse')
 			stub.fire_script(parts[key], 'OnLeave', true)
 			eq(rgb(parts[key].text:GetTextColor()), textBlue, key .. ' in the accent again')
+		end
+		strong:SetRGB(1, 1, 1)
+		for _, key in ipairs({ 'all', 'multiple' }) do
+			stub.fire_script(parts[key], 'OnEnter', true)
+			eq(rgb(parts[key].text:GetTextColor()), '1.00,1.00,1.00', key .. ' Strong at its default (white)')
+			stub.fire_script(parts[key], 'OnLeave', true)
 		end
 		-- The reset icon: Text > Muted at rest, lit in the accent under the mouse.
 		local textGrey = rgb(st.config.profile.colors.text.muted:GetRGB())

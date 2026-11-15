@@ -143,6 +143,26 @@ CO.MIGRATION_STEPS = {
 		copy = { { 'text.grey', 'text.muted' } },
 		retire = { 'text.grey', 'button.grey' },
 	},
+	{
+		-- The state colors take their roles' names: White is Strong, Red
+		-- Danger, Orange Warning, Yellow Caution, Green Success and Cyan
+		-- Shared, and Buttons > Red is Buttons > Danger. Each keeps its hue,
+		-- never an alpha. Step 1 read text.white, yellow, red and green for
+		-- the Loot, Roles and Factions groups before this; a change made after
+		-- it reaches only these.
+		copy = {
+			{ 'text.white', 'text.strong' },
+			{ 'text.red', 'text.danger' },
+			{ 'text.orange', 'text.warning' },
+			{ 'text.yellow', 'text.caution' },
+			{ 'text.green', 'text.success' },
+			{ 'text.cyan', 'text.shared' },
+			{ 'button.red', 'button.danger' },
+		},
+		retire = {
+			'text.white', 'text.red', 'text.orange', 'text.yellow', 'text.green', 'text.cyan', 'button.red',
+		},
+	},
 }
 
 -- 'group.key' under profile.colors, or 'accent' for profile.theme.accent
@@ -259,12 +279,12 @@ CO.SECTIONS = {
 		colors = Colors('text', {
 			{ 'normal', 'Text', "Ordinary text: the options window, totem timers, the flyout arrow on the totem bar's summon button, and an enemy nameplate's threat text while your threat on it is fine." },
 			{ 'muted', 'Muted', "Dimmed text and icons: the options window's hints, captions, section titles and disabled controls, and the diff icon beside a setting that differs; edit mode's hint lines; the bag categories' counts and their edited and yours marker, and the combined bank's visibility toggle; SaftUI's objective tracker's zone headers, counts and chevrons; and a unit frame's level tag for a far lower level." },
-			{ 'red', 'Red', "Warnings: loot roll timers under a minute, a unit frame's level tag for a much higher level and expiring totem timers. Also a durability under 20% in the durability figure's tooltip." },
-			{ 'orange', 'Orange', "A unit frame's level tag for a somewhat higher level, and the poor end of the micro menu's stats. Also a durability from 20% to 49% in the durability figure's tooltip." },
-			{ 'yellow', 'Yellow', "A unit frame's level tag near your level, unfriendly names, and the micro menu's alert flash and the middle of its stats." },
-			{ 'green', 'Green', "Good things: a lower level's tag, bag item levels for a Bind on Equip item, the winner's roll in the loot feed's roll tooltip, and the good end of the micro menu's stats. Also a durability from 50% up in the durability figure's tooltip." },
-			{ 'cyan', 'Cyan', 'Warbound item levels and the warband bank count in bags.' },
-			{ 'white', 'White', 'Plain item levels and counts in bags, and item levels on the character frame.' },
+			{ 'strong', 'Strong', "Plain item levels and counts in bags, item levels on the character frame, a bank slot's price you can afford, the options window's share line under the mouse, loot roll timer text over a minute, and SaftUI's objective tracker's progress percent and the chevron under the mouse (in the skinned Blizzard tracker too)." },
+			{ 'danger', 'Danger', "Errors and refusals: status lines, why a control is disabled, edit mode's refusals, the bank's combat line and a price you can't afford, and the chat's Error prefix and DEBUG label. Also urgency (loot roll timers under a minute, expiring totems, a tracker item out of range), remove icons and the close button under the mouse, hostile names, a unit frame's level tag for a much higher level, and a durability under 20% in the durability figure's tooltip." },
+			{ 'warning', 'Warning', "A unit frame's level tag for a somewhat higher level, the poor end of the micro menu's stats, the bag rule editor's OR groups and its Caught now highlight, and a durability from 20% to 49% in the durability figure's tooltip." },
+			{ 'caution', 'Caution', "A unit frame's level tag near your level, unfriendly names, the micro menu's alert flash and the middle of its stats, and Caught by: in a bag item's tooltip." },
+			{ 'success', 'Success', "Good things: a lower level's tag, bag item levels for a Bind on Equip item, the reagent marker and count, the winner's roll in the loot feed's roll tooltip, and the good end of the micro menu's stats. Also a durability from 50% up in the durability figure's tooltip." },
+			{ 'shared', 'Shared', 'Warbound item levels, account-wide currency counts and the warband bank count in bags.' },
 		}),
 	},
 	{
@@ -273,7 +293,7 @@ CO.SECTIONS = {
 			{ 'normal', 'Normal', "A SaftUI button's or check box's highlight, a scroll bar thumb at rest, and the micro menu's button highlight." },
 			{ 'hover', 'Hover', "A checked check box, a hovered scroll bar thumb, the minimap tracking button's hover, micro menu button highlights and resize handles." },
 			{ 'pushed', 'Pushed', 'A pressed SaftUI button, scroll bar thumb or micro menu button.' },
-			{ 'red', 'Red', "Locked bank slots, and the flash on an action bar or totem button." },
+			{ 'danger', 'Danger', "Locked bank slots, and the flash on an action bar or totem button." },
 		}),
 	},
 	{

@@ -62,11 +62,13 @@ test('color_friendly is off by default and leaves a friendly NPC uncoloured', fu
 end)
 
 test('hostile red and neutral yellow are unchanged, with the option on or off', function()
+	-- Danger and Caution at values that are not their defaults, so a hardcoded color fails.
+	st.config.profile.colors.text.danger:SetRGB(0.9, 0.2, 0.2); st.config.profile.colors.text.caution:SetRGB(0.7, 0.7, 0.2)
 	for _, friendly in ipairs({ false, true }) do
 		setup({ color_hostile = true, color_friendly = friendly }, { name = 'Mob', level = 20, reaction = 2 })
-		eq(tag('target', 'target', 'target'), hex(st.config.profile.colors.text.red) .. 'Mob|r')
+		eq(tag('target', 'target', 'target'), hex(st.config.profile.colors.text.danger) .. 'Mob|r')
 		stub.units.target.reaction = 4
-		eq(tag('target', 'target', 'target'), hex(st.config.profile.colors.text.yellow) .. 'Mob|r')
+		eq(tag('target', 'target', 'target'), hex(st.config.profile.colors.text.caution) .. 'Mob|r')
 	end
 	setup({ color_friendly = true }, { name = 'Mob', level = 20, reaction = 2 })
 	eq(tag('target', 'target', 'target'), 'Mob', 'a hostile unit is not coloured by color_friendly alone')

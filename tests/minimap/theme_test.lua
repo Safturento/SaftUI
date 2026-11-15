@@ -166,6 +166,7 @@ test("under Blizzard a micro button shows Blizzard's own art, and today's look a
 	profile.theme.name = 'thick'
 	st:RedrawThemed()
 	local button = micro_button(1, 'Questlog')
+	profile.colors.text.caution:SetRGB(0.7, 0.7, 0.2) -- not the default, so a flat alert in a color of its own fails
 	MicroMenu:SkinBlizzardMicroMenu()
 	local panel
 	for _, child in ipairs({ button:GetChildren() }) do
@@ -184,6 +185,10 @@ test("under Blizzard a micro button shows Blizzard's own art, and today's look a
 	eq(fades(), '0,0,0,0', 'Thick: Blizzard background, shadows and performance bar faded')
 	eq(button.PushedBackground:GetAtlas(), nil, 'Thick: the pushed background is a flat color')
 	eq(button.FlashBorder:GetAtlas(), nil, 'Thick: the alert is a flat color')
+	do
+		local c = stub.state(button.FlashBorder).color_texture or {}
+		eq(T.text(c[1] or -1, c[2] or -1, c[3] or -1), T.text(0.7, 0.7, 0.2), "Thick: the flat alert is Text > Caution")
+	end
 	eq(select(1, button.FlashBorder:GetDrawLayer()), 'BACKGROUND', 'Thick: behind the icon')
 	eq(button:GetHighlightTexture():GetAtlas(), nil, "Thick: the highlight isn't Blizzard's atlas")
 

@@ -17,7 +17,7 @@ SaftUI replaces World of Warcraft's interface with flat, dark frames that sit qu
 
 **Naming.** A label names the setting, not the action: "First button", not "Set growth direction". A picker's label says what it picks: "Unit", "Bar". A part's Position names itself: "Count position". Never show an internal key ("grouproleindicator") or Ace's internal words ("Template", "Highlight", "Close Button").
 
-**Tooltips.** Every option on a finished page has a desc, and the desc is its label's tooltip: the name in `white`, the desc under it, and, while the option is disabled, why, in `text-red`. An icon that stands in for a word always has a tooltip saying what it does ("Reset: Buttons per row follows All bars again. Bar 3's own value is dropped."). Name a path with a plain greater-than sign, "Global settings > Theme", never an arrow glyph: SaftUI's fonts may not have one. Say "reload to apply" in a desc when a setting can't apply live, and let a section note say what waits for a reload: "Most of SaftUI reads these when it builds its frames: reload (Reload UI, bottom right) to see a change everywhere."
+**Tooltips.** Every option on a finished page has a desc, and the desc is its label's tooltip: the name in `text-strong`, the desc under it, and, while the option is disabled, why, in `text-danger`. An icon that stands in for a word always has a tooltip saying what it does ("Reset: Buttons per row follows All bars again. Bar 3's own value is dropped."). Name a path with a plain greater-than sign, "Global settings > Theme", never an arrow glyph: SaftUI's fonts may not have one. Say "reload to apply" in a desc when a setting can't apply live, and let a section note say what waits for a reload: "Most of SaftUI reads these when it builds its frames: reload (Reload UI, bottom right) to see a change everywhere."
 
 **Numbers.** Colours read as `#RRGGBB`, and `#RRGGBB · 60%` with opacity under 100%. Offsets and sizes are whole numbers. No emoji, no exclamation marks; short, plain sentences.
 
@@ -26,7 +26,7 @@ SaftUI replaces World of Warcraft's interface with flat, dark frames that sit qu
 ### Colour
 
 - **Surfaces.** In-world frames take `backdrop` at `alpha-theme` (0.9) with a `border` line; Thick adds `border-alt` lines outside and inside it. The options window draws `backdrop` solid, its sidebar `sidebar`, and each section's rows sit on `panel-fill` with `hairline` lines between them. Controls are Boxes: `kit-field` inside a `kit-edge` line with a `kit-alt` line outside; buttons and open lists fill with `kit-bg`.
-- **Text.** `text` for labels, values, titles and the tab you are on; `text-muted` for section titles, notes, captions, other tabs, carets and anything dimmed; `white` for a tooltip's title and the colour bar's hex code; `text-red` for errors and why something is disabled. `text-muted` passes 4.5:1 on both themes (8.0:1 on Thick's `backdrop`, 6.1:1 on Thin's, 7.4:1 on `panel-fill`); under Thin `text-red` misses it on `backdrop` (3.6:1) and is still short on `panel-fill` (4.4:1).
+- **Text.** `text` for labels, values, titles and the tab you are on; `text-muted` for section titles, notes, captions, other tabs, carets and anything dimmed; `text-strong` for a tooltip's title and the colour bar's hex code; `text-danger` for errors and why something is disabled. `text-muted` passes 4.5:1 on both themes (8.0:1 on Thick's `backdrop`, 6.1:1 on Thin's, 7.4:1 on `panel-fill`); under Thin `text-danger` misses it on `backdrop` (3.6:1) and is still short on `panel-fill` (4.4:1).
 - **Accent.** `accent` is the only accent: the check mark, slider fill, picked dot, the selected sidebar entry's bar and the tab underline, a hovered or focused control's edge, links, the own mark, a selected mover. `accent-fill` (25%) sits behind a selected or hovered row. Never use a second blue for these.
 - **Shared settings.** The `accent` marks a member's own value (the bar and the label); the diff icon, in `text-muted`, marks a setting some member changed. Use them for nothing else on these rows.
 - **Data colours.** `class-*`, `reaction-*`, `power-*`, `quality-*` (through `st:QualityColor`), `threat-*` and `status-offline` colour bars, names and borders by what they show. They are profile settings: never hard-code them, never use them as decoration.
@@ -72,10 +72,10 @@ All lines are `line-width` (1px); marks and underlines are `mark-width` (2px). A
 | Focus | the box's edge stays accent | `accent` |
 | On | an accent square inside the check box | `accent`, `check-inset` |
 | Selected | accent fill with an accent bar (sidebar), accent underline (tab) | `accent-fill`, `mark-width` |
-| Disabled | the control at 40%, its label `text-muted`; the tooltip says why | `alpha-disabled`, `text-muted`, `text-red` |
+| Disabled | the control at 40%, its label `text-muted`; the tooltip says why | `alpha-disabled`, `text-muted`, `text-danger` |
 | Own | 2px accent bar, label in the accent | `accent` |
 | Differs | the diff icon after the label, in `text-muted` | `text-muted` |
-| Error | the status line or tooltip line in red | `text-red` |
+| Error | the status line or tooltip line in red | `text-danger` |
 
 State is always visible; hover only offers actions. In-world icon buttons keep their own set: hover `accent` added, pressed `pressed-fill`, checked `checked-fill`, flash `flash-fill`, equipped `accent` border.
 
@@ -86,7 +86,7 @@ Frames stack by strata, lowest first: `strata-grid`, `strata-skins`, `strata-fra
 ## Iconography
 
 - Lucide (lucide.dev, ISC) wherever an icon fits. In the addon each is a 32x32 white TGA (`st.icons`, made by `tools/lucide-to-tga.cjs`), Lucide's 24 grid with the glyph in its middle half, so draw it at twice the glyph: `icon-close` 20 for a 10px cross, `icon-chevron` 16 for an 8px caret, `icon-diff` 16, `icon-reset` 14. In HTML, inline the SVG on a 24 viewBox, stroke 2, round caps and joins, no fill.
-- Tint an icon with a colour token (`SetVertexColor`), never bake colour into the file: carets and the close X rest in `text-muted`, reset rests in `text-muted` and turns `accent` under the mouse, diff is `text-muted`, the close X turns `text-red` under the mouse.
+- Tint an icon with a colour token (`SetVertexColor`), never bake colour into the file: carets and the close X rest in `text-muted`, reset rests in `text-muted` and turns `accent` under the mouse, diff is `text-muted`, the close X turns `text-danger` under the mouse.
 - In use: `x`, `chevron-down`, `rotate-ccw`, `diff`; registered for the menus and nudges: `ellipsis-vertical`, `ellipsis`, `chevron-up`, `settings`. Still hand-made, to be replaced by Lucide: the loot feed's "F" and "V" letters, the bag view glyphs, the drag handle's dots, the resize corner, and the funnel, eye and mail TGAs.
 - No emoji, ever.
 

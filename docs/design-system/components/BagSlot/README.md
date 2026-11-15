@@ -17,9 +17,9 @@ The slot's item info (quality, count, class, item level, bound state, bag), read
 | Slot | 60 wide x 50 tall (the height is `inventory.iconsize`, the width 6:5 to it), 3 apart; windows padded 10; category titles 50 tall in `normal` | `slot-width`, `slot-height`, `button-spacing`, `frame-padding` |
 | Border | the item's quality colour (every quality, Poor to Heirloom); black for no quality; the Slot theme's border on a free slot | `quality-*`, `border` |
 | Count | `pixel`, bottom right, 4 in | `pixel` |
-| Item level (armour and weapons) | `pixel` beside the count, on a black 80% backing to the icon's corner; white, `text-green` if bind on equip, `text-cyan` if warbound | `ilvl-backing`, `text-green`, `text-cyan` |
+| Item level (armour and weapons) | `pixel` beside the count, on a black 80% backing to the icon's corner; `text-strong`, `text-success` if bind on equip, `text-shared` if warbound | `ilvl-backing`, `text-strong`, `text-success`, `text-shared` |
 | Auto-vendor item | Blizzard's junk coin (`bags-junkcoin`) at the icon's top left | |
-| Reagent bag | a 14px `text-green` wedge in the icon's top right (the `cornerbr` texture, flipped) | `reagent-wedge`, `text-green` |
+| Reagent bag | a 14px `text-success` wedge in the icon's top right (the `cornerbr` texture, flipped) | `reagent-wedge`, `text-success` |
 | States | hover, pressed and disabled as `ActionButton`'s (`st:SkinActionButton`) | `accent`, `pressed-fill` |
 
 ## Blizzard theme

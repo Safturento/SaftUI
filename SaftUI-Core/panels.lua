@@ -354,15 +354,16 @@ function st:CreateCloseButton(frame)
 
 	local function Look(hover)
 		if blizzard then return end
-		local colors = self.config.profile.colors
 		if hover then
-			close:SetBackdropColor(0.5, 0.1, 0.1, 0.4)
-			close:SetBackdropBorderColor(colors.text.red:GetRGB())
-			x:SetVertexColor(colors.text.red:GetRGB())
+			-- The fill is the close template's (no option sets it); the edge and
+			-- the cross are Text > Danger.
+			close:SetBackdropColor(unpack(self.config.profile.templates.close.backdropcolor))
+			close:SetBackdropBorderColor(st:Color('text', 'danger'):GetRGB())
+			x:SetVertexColor(st:Color('text', 'danger'):GetRGB())
 		else
 			close:SetBackdropColor(unpack(self.BOX_COLORS.field))
 			close:SetBackdropBorderColor(unpack(self.BOX_COLORS.edge))
-			x:SetVertexColor(colors.text.muted:GetRGB())
+			x:SetVertexColor(st:Color('text', 'muted'):GetRGB())
 		end
 	end
 	Look(false)
