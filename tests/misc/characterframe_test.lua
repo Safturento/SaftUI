@@ -43,8 +43,17 @@ function GetInventoryItemLink(unit, id) return links[id] end
 C_Item = C_Item or {}
 C_Item.GetDetailedItemLevelInfo = function(link) return link == 'item:1' and 33 or nil end
 local Util = st:NewModule('Utilities')
-Util.SetItemQuality = function() end
-Util.ClearItemQuality = function() end
+-- The real helpers write fields onto the frame they are handed (itemupgrades.lua), so the
+-- stand-ins do too: they record the frame, and write one field on it as the real ones do.
+local quality_calls = {}
+Util.SetItemQuality = function(_, frame, link)
+	quality_calls[#quality_calls + 1] = { frame = frame, link = link }
+	frame.alwaysShowProfessionsQuality = true
+end
+Util.ClearItemQuality = function(_, frame)
+	quality_calls[#quality_calls + 1] = { frame = frame, clear = true }
+	frame.professionQualityOverlayOverride = nil
+end
 
 load_saftui('SaftUI-Misc/Skinning/blizzard/characterframe/characterframe.lua')
 local CF = SK:GetModule('CharacterFrame')
@@ -146,4 +155,46 @@ test('a Skinning font that names nothing draws Text; a typeface reaches the text
 	profile.skinning.font = 'pixel'
 	SK:UpdateConfig()
 	if not ok then error(err, 0) end
+end)
+
+-- What the game can see of one of Blizzard's buttons from the outside, apart from its
+-- Lua fields (the locked button refuses those): where it is, how big, whose child, shown.
+local function outside(button)
+	return table.concat({ button:GetWidth(), button:GetHeight(), tostring(button:GetParent()), tostring(button:IsShown()),
+		button:GetNumPoints(), button:GetFrameLevel() }, '|')
+end
+
+test("Blizzard's slot buttons get no field and no script from the item update, only SaftUI's overlay does", function()
+	local button = buttons.Chest
+	local before = outside(button)
+	links[INVSLOT_CHEST] = 'item:1'
+	quality_calls = {}
+	CF:UpdateEquipSlot(button) -- the locked button errors on a field written onto it
+	links[INVSLOT_CHEST] = nil
+	CF:UpdateEquipSlot(button)
+	check(#quality_calls == 2, 'the quality helpers ran for the set and the clear')
+	for _, call in ipairs(quality_calls) do
+		check(call.frame ~= button, 'the helper was handed SaftUI\'s overlay, not Blizzard\'s button')
+		eq(call.frame:GetParent(), button, "the overlay is the slot's child")
+		check(not call.frame:IsMouseEnabled(), 'the overlay takes no mouse, so clicks and drags reach the slot')
+	end
+	eq(quality_calls[1].frame, quality_calls[2].frame, 'one overlay per slot')
+	eq(outside(button), before, "the button's size, points, parent, shown state and level are as Blizzard left them")
+	check(button:GetScript('OnClick') == nil and button:GetScript('OnEnter') == nil, 'no script of the slot was set')
+end)
+
+test('every slot has its own overlay, over the whole slot, and the helpers use it', function()
+	local seen = {}
+	for _, name in ipairs(SLOTS) do
+		local button = buttons[name]
+		quality_calls = {}
+		links[button:GetID()] = nil
+		CF:UpdateEquipSlot(button)
+		local overlay = quality_calls[1].frame
+		check(overlay ~= nil and overlay ~= button, name .. ': an overlay of SaftUI\'s')
+		check(not seen[overlay], name .. ': not shared with another slot')
+		seen[overlay] = true
+		local point, relativeTo = overlay:GetPoint(1)
+		eq(relativeTo, button, name .. ': anchored to its slot')
+	end
 end)

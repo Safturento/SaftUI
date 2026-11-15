@@ -79,7 +79,15 @@ local function SetupSlot(slotId, slotName)
 	itemLevelBG:SetVertexColor(0, 0, 0)
 	itemLevelBG:Hide()
 
+	-- The upgrade tier icon, its level text and the crafting quality pip. Util's helpers
+	-- write fields onto the frame they are given and run Blizzard's overlay functions
+	-- on it, so they are given this frame of SaftUI's, a child over the whole slot that
+	-- takes no mouse (a plain frame doesn't), never the secure slot button.
+	local overlay = CreateFrame('Frame', nil, button)
+	overlay:SetAllPoints(button)
+
 	slots[button] = {
+		overlay = overlay,
 		itemLevel = itemLevel,
 		itemLevelBG = itemLevelBG,
 		gems = CF:CreateSlotGems(button, SLOT_POSITIONS[slotId]),
@@ -96,11 +104,11 @@ function CF:UpdateEquipSlot(button)
 		local level = C_Item.GetDetailedItemLevelInfo(itemLink)
 		slot.itemLevel:SetText(level or '')
 		slot.itemLevelBG:SetShown(level ~= nil)
-		Util:SetItemQuality(button, itemLink)
+		Util:SetItemQuality(slot.overlay, itemLink)
 	else
 		slot.itemLevel:SetText('')
 		slot.itemLevelBG:Hide()
-		Util:ClearItemQuality(button)
+		Util:ClearItemQuality(slot.overlay)
 	end
 
 	self:UpdateSlotGems(slot.gems, itemLink)
