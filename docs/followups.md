@@ -78,7 +78,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — The disabled loot popup writes nametext onto Blizzard's LootButton](#2026-11-11--the-disabled-loot-popup-writes-nametext-onto-blizzards-lootbutton)
   - [2026-11-11 — Class power types with no Blizzard art draw a borderless flat bar under Blizzard](#2026-11-11--class-power-types-with-no-blizzard-art-draw-a-borderless-flat-bar-under-blizzard)
   - [2026-11-11 — Blizzard theme: the bags' rule editor and Categories list keep the options window's own look](#2026-11-11--blizzard-theme-the-bags-rule-editor-and-categories-list-keep-the-options-windows-own-look)
-  - [2026-11-11 — Grays/Auto Vendor: a finished edit that broadens its rule sells at the next merchant](#2026-11-11--graysauto-vendor-a-finished-edit-that-broadens-its-rule-sells-at-the-next-merchant)
   - [2026-11-11 — Rule editor: a level mode picked before a number is typed does nothing](#2026-11-11--rule-editor-a-level-mode-picked-before-a-number-is-typed-does-nothing)
   - [2026-11-11 — Bag categories: in-game checks](#2026-11-11--bag-categories-in-game-checks)
   - [2026-11-11 — Bag settings: the reagent section nothing reads](#2026-11-11--bag-settings-the-reagent-section-nothing-reads)
@@ -127,6 +126,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-11 — Grays/Auto Vendor: a finished edit that broadens its rule sells at the next merchant](#2026-11-11--graysauto-vendor-a-finished-edit-that-broadens-its-rule-sells-at-the-next-merchant)
   - [2026-11-15 — SaftUI's tracker: experiments and in-game checks before the switch turns on](#2026-11-15--saftuis-tracker-experiments-and-in-game-checks-before-the-switch-turns-on)
   - [2026-11-14 — Tracker: a refresh allocates about 175 KB, measure it in game](#2026-11-14--tracker-a-refresh-allocates-about-175-kb-measure-it-in-game)
   - [2026-11-13 — Objective tracker skin: zone grouping, max height and a scroll frame](#2026-11-13--objective-tracker-skin-zone-grouping-max-height-and-a-scroll-frame)
@@ -1441,20 +1441,6 @@ Loot feed, retail: the item's `n/m` quality text and the profession overlay unde
 
 Also check in game, under Blizzard: the item strips' (Pinned items, Caught now) action ring sits over each icon. `LayItems` (`categoriestab.lua`) moves each icon and its border's frame to new levels on every draw, and the ring's holder is a child of that border frame (`themeart.lua`, `Holder`), so it may end up level with the icon rather than above it. The stubs don't model frame level stacking.
 
-### 2026-11-11 — Grays/Auto Vendor: a finished edit that broadens its rule sells at the next merchant
-
-**What:** Auto vendor sells whatever Grays/Auto Vendor's rule catches, and every editor change saves at once. A half-built rule can no longer widen it (an AND holding a block or group that isn't filled in catches nothing), but a finished edit that says "everything but" does, at the next merchant: NOT on an Old gear or Protected block in its inner OR (both are complete the moment they're added), flipping its root AND to OR (one click on the badge), removing its inner OR group with the X, or "Has vendor price: yes" in the inner OR. Each sells every priced item that `INV:IsAutoVendorItem` doesn't refuse (Protected, Cosmetic, fishing, account-bound, in a set, tooltip missing). Selling can't be undone, and buyback holds 12 items.
-
-**Why noticed:** The bag categories final review (2026-11-11), under "Declined to judge": these are deliberate edits, and the spec says auto vendor follows the rule, but the reviewer called a confirm on the selling category's root flip or group removal "a cheap product decision for the user". The fix for the review's C-1 (half-built rules) left them as they are, and `tests/bags/category_store_test.lua` ("a half-edited Grays/Auto Vendor rule never sells more than the shipped one") skips NOT Old gear and NOT Protected in the inner OR for this reason.
-
-**Anchors:** `SaftUI-Bags/ruleeditor.lua` (the badge's flip, the X, NOT, `Edit`); `SaftUI-Bags/categories.lua` (`INV:IsAutoVendorItem`); `SaftUI-Bags/autovendor.lua` (`INV:AutoVendor`); the slot's junk coin and the tab's Caught now, which already show what would sell before a merchant is opened.
-
-**What's been considered:** A confirm in the editor before an edit widens the selling category's rule (the root flip, removing a group, NOT); a cap on what one merchant visit sells, with a prompt above it; or nothing, since the coins show the change first.
-
-**Shape of work:** A product decision first, then a small change in the editor or in auto vendor, with tests.
-
-**Open questions:** Which of these, if any?
-
 ### 2026-11-11 — Rule editor: a level mode picked before a number is typed does nothing
 
 **What:** A new Item level or Required level block has no number, so it can't be read and catches nothing until it has one. Its mode list (at least, at most, between) moves the number typed to the bound the mode needs. With no number yet there's nothing to move, so picking "at most" or "between" on a new block changes nothing, and it still shows "at least". The user has to type a number first, then pick the mode.
@@ -2350,6 +2336,22 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-11 — Grays/Auto Vendor: a finished edit that broadens its rule sells at the next merchant
+
+**What:** Auto vendor sells whatever Grays/Auto Vendor's rule catches, and every editor change saves at once. A half-built rule can no longer widen it (an AND holding a block or group that isn't filled in catches nothing), but a finished edit that says "everything but" does, at the next merchant: NOT on an Old gear or Protected block in its inner OR (both are complete the moment they're added), flipping its root AND to OR (one click on the badge), removing its inner OR group with the X, or "Has vendor price: yes" in the inner OR. Each sells every priced item that `INV:IsAutoVendorItem` doesn't refuse (Protected, Cosmetic, fishing, account-bound, in a set, tooltip missing). Selling can't be undone, and buyback holds 12 items.
+
+**Why noticed:** The bag categories final review (2026-11-11), under "Declined to judge": these are deliberate edits, and the spec says auto vendor follows the rule, but the reviewer called a confirm on the selling category's root flip or group removal "a cheap product decision for the user". The fix for the review's C-1 (half-built rules) left them as they are, and `tests/bags/category_store_test.lua` ("a half-edited Grays/Auto Vendor rule never sells more than the shipped one") skips NOT Old gear and NOT Protected in the inner OR for this reason.
+
+**Anchors:** `SaftUI-Bags/ruleeditor.lua` (the badge's flip, the X, NOT, `Edit`); `SaftUI-Bags/categories.lua` (`INV:IsAutoVendorItem`); `SaftUI-Bags/autovendor.lua` (`INV:AutoVendor`); the slot's junk coin and the tab's Caught now, which already show what would sell before a merchant is opened.
+
+**What's been considered:** A confirm in the editor before an edit widens the selling category's rule (the root flip, removing a group, NOT); a cap on what one merchant visit sells, with a prompt above it; or nothing, since the coins show the change first.
+
+**Shape of work:** A product decision first, then a small change in the editor or in auto vendor, with tests.
+
+**Open questions:** Which of these, if any?
+
+**Resolved 2026-11-15:** The owner decided against a prompt on every broadened edit: "what if we order the sales by priority so that grays are sold first, then only show that prompt if permanent losses would be risky (like if there's over 12 non-gray items". `SaftUI-Bags/autovendor.lua` now sells grays first, then everything else the rules catch, the cheapest stack first (so the merchant's buyback list, which keeps the last 12 sales, ends up holding the most valuable), and when more than `INV:BuybackSize()` (the game's `BUYBACK_ITEMS_PER_PAGE`, 12) non-gray stacks would sell, it sells the grays and asks Sell them or Keep them before the rest; Keep sells nothing more at that merchant and the question returns at the next. Tests: `tests/bags/autovendor_sale_test.lua`.
 
 ### 2026-11-15 — SaftUI's tracker: experiments and in-game checks before the switch turns on
 

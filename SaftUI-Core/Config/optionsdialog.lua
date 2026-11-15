@@ -190,15 +190,20 @@ local function OpenDialog(text, onYes, onNo, prompt, yesLabel, noLabel)
 	end
 	-- Its height is odd for an odd number of lines: placed by its corner, so
 	-- its edges stay on whole units.
-	W.PlaceCentred(dialog.frame, W.dialogAnchor or UIParent, DIALOG_WIDTH, height)
+	local anchor = W.dialogAnchor
+	if not (anchor and anchor:IsShown()) then anchor = UIParent end
+	W.PlaceCentred(dialog.frame, anchor, DIALOG_WIDTH, height)
 	dialog.catcher:Show()
 end
 
 -- Asks text with Yes and No buttons, centered over the window. onYes runs on
 -- Yes; onNo (optional) on No, Esc or a click outside. Enter is Yes. A dialog
--- that is already up is answered No first.
-function W.Confirm(text, onYes, onNo)
-	OpenDialog(text, onYes, onNo, false, 'Yes', 'No')
+-- that is already up is answered No first. yesLabel and noLabel (optional)
+-- name the buttons for a question the words Yes and No don't answer (the
+-- bags' auto vendor asks Sell them or Keep them, in the world, with no
+-- window up: the dialog then centers on the screen).
+function W.Confirm(text, onYes, onNo, yesLabel, noLabel)
+	OpenDialog(text, onYes, onNo, false, yesLabel or 'Yes', noLabel or 'No')
 end
 
 -- Asks text with a one-line edit box under it, filled with initial (or empty),
