@@ -144,6 +144,9 @@ test("the paired counts and the feed's roll tooltip read Loot: All passed and Pa
 	}
 	local text = { colors.text.danger:GetRGB() }
 	set(colors.text.danger, 0, 0, 0)
+	-- Need shares Strong's default (White's) and Greed Caution's (Yellow's): move both away.
+	local keep_strong, keep_caution = { colors.text.strong:GetRGB() }, { colors.text.caution:GetRGB() }
+	set(colors.text.strong, 0, 0, 0); set(colors.text.caution, 0, 0, 0)
 
 	-- The feed line's right side, "All passed", in Loot > Pass too.
 	C_Item = { GetItemInfo = function() end, GetItemInfoInstant = function() return 1, 'Armor', 'Cloth', nil, 134400 end }
@@ -162,6 +165,7 @@ test("the paired counts and the feed's roll tooltip read Loot: All passed and Pa
 		if line.r then seen[line.text] = T.rgb(line.r, line.g, line.b) end
 	end
 	eq(seen.Need, WHITE, 'Need'); eq(seen.Transmog, PURPLE, 'Transmog'); eq(seen.Greed, YELLOW, 'Greed')
+	set(colors.text.strong, unpack(keep_strong)); set(colors.text.caution, unpack(keep_caution))
 	local passed
 	for _, line in ipairs(lines) do
 		if line.text:find('Pass: ', 1, true) then passed = line.text end

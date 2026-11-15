@@ -315,6 +315,15 @@ test('a Factions change recolors a line still on screen, and a Text > Danger cha
 	check(ZT.ZoneLineString:GetText():find('|cffdc6464Horde|r', 1, true), 'Horde keeps Factions > Horde: ' .. ZT.ZoneLineString:GetText())
 	danger:SetRGB(220/255, 100/255, 100/255)
 
+	-- Neutral shares Caution's default (Yellow's), and a changed Caution leaves it alone.
+	place(9100, 'contested')
+	H.enter('Elwynn Forest')
+	local caution = st.config.profile.colors.text.caution
+	caution:SetRGB(0, 1, 0)
+	st:ColorsChanged('text')
+	check(ZT.ZoneLineString:GetText():find('|cffc8c864Neutral|r', 1, true), 'Neutral keeps Factions > Neutral: ' .. ZT.ZoneLineString:GetText())
+	caution:SetRGB(200/255, 200/255, 100/255)
+
 	-- The rest of the line is Text > Normal, at a value that is not the default.
 	local normal = st.config.profile.colors.text.normal
 	normal:SetRGB(0.2, 0.6, 0.4)
