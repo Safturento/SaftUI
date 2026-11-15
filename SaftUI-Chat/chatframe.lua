@@ -91,7 +91,7 @@ function CHT:ApplyChatFont(frame, onlyIfChanged)
 		return
 	end
 	last[1], last[2], last[3], last[4], last[5] = path, size, flags, x, y
-	st:SetFontOrText(frame, path, size, flags)
+	frame:SetFont(path, size, flags)
 	frame:SetShadowColor(0, 0, 0, 1)
 	frame:SetShadowOffset(x, y)
 end

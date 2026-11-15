@@ -565,7 +565,12 @@ end)
 test("a font that names nothing draws Text on every text, and a typeface reaches them through the skin's update", function()
 	world('forever')
 	local block = OT.layout(quest_module(), { { id = 1, objectives = { 'One' }, progress = true } })[1]
+	local first = { font_name = 'Colus', font_size = 12, font_outline = 'OUTLINE', shadow_offset = { 0, 0 }, spacing = 4 }
 	for _, value in ipairs({ 'gone', 17, false }) do
+		-- A typeface first, so Text is told from "left as it was".
+		profile.objectivetracker.font, profile.objectivetracker.header_font, profile.skinning.font = first, first, first
+		skin:UpdateConfig()
+		check_texts(block, st:FontObject(first), 'the typeface before ' .. tostring(value), true)
 		profile.objectivetracker.font, profile.objectivetracker.header_font, profile.skinning.font = value, value, value
 		skin:UpdateConfig()
 		check_texts(block, st:GetFont('normal'), 'Text for ' .. tostring(value), true)

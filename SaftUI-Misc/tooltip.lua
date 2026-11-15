@@ -47,7 +47,7 @@ local function StyleLine(line, font, size, outline)
 	if not line then return end
 	local current, currentSize, currentOutline = line:GetFont()
 	if current ~= font or currentSize ~= size or currentOutline ~= outline then
-		st:SetFontOrText(line, font, size, outline)
+		line:SetFont(font, size, outline)
 	end
 end
 

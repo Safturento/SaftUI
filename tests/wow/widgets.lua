@@ -776,8 +776,16 @@ local function font_of(s)
 	if s.font_object then return font_of(states[s.font_object]) end
 end
 
+-- stub.refused_fonts[path] = true makes SetFont refuse that file (false, and no
+-- font set), 'error' makes it raise: the game's answer for a file it can't load
+-- is documented as `success` on a font string (SimpleFontStringAPIDocumentation)
+-- and not said for a font object, so both are played.
+stub.refused_fonts = {}
 function FontInstance.SetFont(self, s, path, size, flags)
 	if type(path) ~= 'string' and type(path) ~= 'number' then usage(s, 'SetFont(): path must be a font file') end
+	local refused = stub.refused_fonts[path]
+	if refused == 'error' then usage(s, "SetFont(): couldn't load the font file") end
+	if refused then return false end
 	s.font = { path, number_arg(s, size, 'height'), flags or '' }
 	return true
 end

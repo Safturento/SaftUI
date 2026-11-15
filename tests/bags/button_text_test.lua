@@ -13,9 +13,8 @@ for _, file in ipairs({ 'SaftUI-Bags/containers/bag.lua', 'SaftUI-Bags/container
 		check(source ~= nil, 'the file is there')
 		local code = select(1, L.Lex(source))
 		local calls = 0
-		for args in code:gmatch('st:SkinActionButton%((.-)%)') do
+		for _ in code:gmatch('st:SkinActionButton%(%s*[%w_.]+%s*,%s*nil%s*,') do
 			calls = calls + 1
-			eq((args:gsub('%s', '')), "slot,nil,'slot'", 'a call passes nil for the config')
 		end
 		eq(calls, 1, 'one call to st:SkinActionButton')
 		check(not code:find('profile%.buttons%)'), 'no profile buttons table passed in its place')

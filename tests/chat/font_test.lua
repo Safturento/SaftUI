@@ -276,23 +276,59 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		eq(#take_errors(), 0, 'no errors')
 	end)
 
-	test(client .. ": a face whose file fails to load draws in Text's face on chat", function()
+	test(client .. ": a face whose file fails to load draws in Text's face on chat, which cannot tell by itself", function()
 		st, CHT, profile, frames = world(client)
 		old_profile('normal', nil)
 		CHT:ConvertFonts()
-		-- A face LibSharedMedia lists whose file the game refuses: SetFont returns
-		-- false (a stand-in on the window: the stubs' SetFont takes any path).
+		-- A face LibSharedMedia lists whose file the game refuses. A chat window's
+		-- SetFont returns nothing in game (ScrollingMessageFrame's wraps the font
+		-- object's), so the window can't tell: the refusal is found once on a font
+		-- string of SaftUI's (stub.refused_fonts), and the window gets Text's face.
 		local broken = { font_name = 'Colus', font_size = 12, font_outline = 'NONE', shadow_offset = { 0, 0 }, spacing = 4 }
-		local colus = path('Colus')
 		local method = getmetatable(frames[1]).__index.SetFont
-		rawset(frames[1], 'SetFont', function(self, face, ...)
-			if face == colus then return false end
-			return method(self, face, ...)
-		end)
+		rawset(frames[1], 'SetFont', function(self, ...) method(self, ...) end) -- returns nothing, as a chat window's
+		eq(frames[1]:SetFont(path('Colus'), 12, ''), nil, 'the stand-in returns nothing, as a chat window does')
+		stub.refused_fonts[path('Colus')] = true
 		profile.chat.font = broken
 		CHT:ApplyChatFont(frames[1])
 		eqdrawn(frames[1], 'AgencyFB Bold', 12, '', 0, 0, "chat: Text's face at the typeface's size")
 		eq(#take_errors(), 0, 'no errors')
+	end)
+	test(client .. ": a Fonts tab change reaches chat's edit box and its instructions, and a change of Text's face reaches the windows", function()
+		st, CHT, profile, frames = world(client)
+		old_profile('normal', nil)
+		CHT:ConvertFonts()
+		local box = CreateFrame('EditBox', 'ChatFrame1EditBox', UIParent)
+		-- Its text is the first region, as st:StyleEditBox reads it.
+		local text = box:CreateFontString(nil, 'ARTWORK')
+		text:SetFontObject(GameFontNormal)
+		box.Instructions = box:CreateFontString(nil, 'ARTWORK')
+		box.Instructions:SetFontObject(GameFontNormal)
+		local FN = st:GetModule('Fonts')
+		st:FontsChanged()
+		check(text:GetFontObject() == st:GetFont('normal'), "the edit box's text takes chat's font")
+		check(box.Instructions:GetFontObject() == st:GetFont('normal'), 'and its instructions')
+		local face = { font_name = 'Colus', font_size = 12, font_outline = 'OUTLINE', shadow_offset = { 0, 0 }, spacing = 4 }
+		profile.chat.font = face
+		st:FontsChanged()
+		check(text:GetFontObject() == st:FontObject(face), "a typeface reaches the edit box's text")
+		check(box.Instructions:GetFontObject() == st:FontObject(face), 'and its instructions')
+		profile.chat.font = 'normal'
+		-- Text's face changed on the Fonts tab, its size and shadow as they were.
+		profile.fonts.normal.font_name = 'Colus'
+		FN:UpdateFontConfig('normal')
+		st:FontsChanged()
+		eqdrawn(frames[1], 'Colus', 16, 'OUTLINE', 0, 0, "Text's new face reaches the window")
+		profile.fonts.normal.font_name = nil
+		eq(#take_errors(), 0, 'no errors')
+	end)
+
+	test(client .. ': a Font size that is not a number counts as the old default', function()
+		st, CHT, profile, frames = world(client)
+		old_profile('normal', 'big')
+		CHT:ConvertFonts()
+		eq(profile.chat.font, 'normal', 'nothing written: 16 is Text')
+		eq(rawget(profile.chat, 'fontsize'), nil, 'fontsize is gone')
 	end)
 end
 

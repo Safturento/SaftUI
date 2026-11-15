@@ -79,7 +79,7 @@ test("the tooltip's lines take Text's face, size and outline from st:FontValues;
 	eq(#take_errors(), 0, 'no errors')
 end)
 
-test("a face whose file fails to load draws in Text's face on the tooltip's lines", function()
+test("a face whose file fails to load draws in Text's face on the tooltip's lines, set once", function()
 	local st = T.client('forever')
 	local tip = CreateFrame('GameTooltip', 'GameTooltip', UIParent)
 	local left = tip:CreateFontString('GameTooltipTextLeft1', 'ARTWORK')
@@ -90,15 +90,16 @@ test("a face whose file fails to load draws in Text's face on the tooltip's line
 	load_saftui('SaftUI-Misc/tooltip.lua')
 	local TT = st:GetModule('Tooltip')
 	st:BindModuleConfig(TT, 'tooltip')
-	local colus = path(st, 'Colus')
+	stub.refused_fonts[path(st, 'Colus')] = true -- the game refuses the file
+	local sets = 0
 	local method = getmetatable(left).__index.SetFont
-	rawset(left, 'SetFont', function(self, face, ...)
-		if face == colus then return false end -- the game refuses the file
-		return method(self, face, ...)
-	end)
+	rawset(left, 'SetFont', function(self, ...) sets = sets + 1; return method(self, ...) end)
 	TT.config.font = { font_name = 'Colus', font_size = 11, font_outline = 'NONE', shadow_offset = { 0, 0 }, spacing = 4 }
 	TT:UpdateTooltipFonts(tip)
 	eqfont(left, path(st, 'AgencyFB Bold'), 11, '', "Text's face at the typeface's size and outline")
+	eq(sets, 1, 'set once')
+	for _ = 1, 50 do TT:UpdateTooltipFonts(tip) end
+	eq(sets, 1, 'and not again on every Show')
 	eq(#take_errors(), 0, 'no errors')
 end)
 
@@ -195,6 +196,22 @@ test('a Small text change reaches the totem texts and timers at once, with their
 	profile.buttons.font = 'pixel_med'
 	st:FontsChanged()
 	check(timer:GetFontObject() == st:GetFont('pixel_med'), 'Button text reaches the timer text at once')
+	-- The text on the bar decides how tall the bar is: Large numbers (18) lay it
+	-- out taller than Small text (10).
+	TB.config.timer_bar, TB.config.timer_text, TB.config.timer_text_position = true, true, 'on'
+	local function tallest()
+		local tall = 0
+		for _, child in ipairs({ slot:GetChildren() }) do
+			for _, grandchild in ipairs({ child:GetChildren() }) do tall = math.max(tall, grandchild:GetHeight()) end
+		end
+		return tall
+	end
+	st:FontsChanged()
+	local large = tallest()
+	profile.buttons.font = 'pixel'
+	st:FontsChanged()
+	check(large > tallest(), 'a taller font lays the timers out taller: ' .. large .. ' against ' .. tallest())
+	profile.buttons.font = 'pixel_med'
 	local face = { font_name = 'Colus', font_size = 13, font_outline = 'OUTLINE', shadow_offset = { 0, 0 }, spacing = 4 }
 	profile.buttons.font = face
 	st:FontsChanged()
@@ -311,16 +328,12 @@ test("RestedXP's texts take chat's face and outline at RestedXP's sizes, again o
 	eq(title_face, path(st, 'Colus'), 'the title keeps Huge title')
 
 	-- A face the game refuses to load draws in Text's face.
-	local colus = path(st, 'Colus')
-	local method = getmetatable(R.Footer.text).__index.SetFont
-	rawset(R.Footer.text, 'SetFont', function(self, face, ...)
-		if face == colus then return false end
-		return method(self, face, ...)
-	end)
-	chat.font = { font_name = 'Colus', font_size = 30, font_outline = 'NONE', shadow_offset = { 0, 0 }, spacing = 4 }
+	st.LSM:Register('font', 'Refused RXP face', 'Interface\\AddOns\\SaftUI-Core\\Media\\Fonts\\refused-rxp.ttf')
+	stub.refused_fonts[path(st, 'Refused RXP face')] = true
+	chat.font = { font_name = 'Refused RXP face', font_size = 30, font_outline = 'NONE', shadow_offset = { 0, 0 }, spacing = 4 }
 	st:FontsChanged()
 	eqfont(R.Footer.text, path(st, 'AgencyFB Bold'), 9, '', "a face that fails to load: Text's face at RestedXP's size")
-	rawset(R.Footer.text, 'SetFont', nil)
+	stub.refused_fonts[path(st, 'Refused RXP face')] = nil
 
 	chat.font = 'gone'
 	st:FontsChanged()
@@ -399,4 +412,14 @@ test('the color picker draws Text for a value that names nothing, with no error 
 	eq(#take_errors(), 0, 'no errors for an empty typeface')
 	profile.headers.font, profile.skinning.font = 'normal', 'normal'
 	eq(SK ~= nil, true)
+end)
+
+test('a font change with the color picker skin never installed does not install or restyle it', function()
+	local st, SK, CP, profile = picker_world('forever', true) -- the toggle off at login: not installed
+	local title = CP.frame.Header.Text
+	profile.skinning.color_picker = true -- on in the profile, but nothing installs it until UpdateConfig
+	st:FontsChanged()
+	check(title:GetFontObject() == GameFontNormal, "the title is still Blizzard's: nothing restyled")
+	eq(#take_errors(), 0, 'no errors')
+	eq(SK ~= nil and CP ~= nil, true)
 end)

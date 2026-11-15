@@ -621,3 +621,35 @@ test('a listed face whose file fails to load: the typeface object falls back to 
 	eq(size, 21, 'at the size asked')
 	eq(flags, 'THICKOUTLINE', 'with the outline asked')
 end)
+
+for _, mode in ipairs({ true, 'error' }) do
+	test('a face the game refuses (SetFont ' .. (mode == 'error' and 'raises' or 'returns false') .. '): every reader and the typeface object get Text\'s face, tested once per file', function()
+		local face_name = 'Refused face ' .. tostring(mode)
+		st.LSM:Register('font', face_name, 'Interface\\AddOns\\SaftUI-Core\\Media\\Fonts\\refused' .. tostring(mode) .. '.ttf')
+		local colus = path(face_name)
+		local text = path('AgencyFB Bold')
+		stub.refused_fonts[colus] = mode
+		local look = { font_name = face_name, font_size = 19, font_outline = 'OUTLINE' }
+		local p, size, flags = st:FontValues(look)
+		eq(p, text, "st:FontValues gives Text's face")
+		eq(size, 19, 'at the size asked')
+		eq(flags, 'OUTLINE', 'and the outline asked')
+		local object = st:GetFont(look)
+		local face, osize = object:GetFont()
+		eq(face, text, "the typeface object is in Text's face")
+		eq(osize, 19, 'at the size asked')
+		-- Cached by path: the answer is not asked again once the game would take
+		-- the file (a file does not appear during a session).
+		stub.refused_fonts[colus] = nil
+		eq((st:FontValues(look)), text, 'the answer is kept per path')
+		-- A face it takes is unaffected, and builds nothing once known.
+		eq((st:FontValues({ font_name = 'Homespun' })), path('Homespun'), 'another face is its own')
+		collectgarbage(); collectgarbage('stop')
+		local before = collectgarbage('count')
+		for _ = 1, 2000 do st:FontValues(look); st:FontValues('normal') end
+		local grown = collectgarbage('count') - before
+		collectgarbage('restart')
+		eq(grown, 0, 'no garbage once a face is known')
+		eq(#take_errors(), 0, 'no errors')
+	end)
+end

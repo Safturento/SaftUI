@@ -181,3 +181,21 @@ test('chat font change follows', function()
 	RX:UpdateConfig()
 	check(bar.candyBarLabel:GetFont() == SaftUI:GetFont('pixel'):GetFont(), 'timer follows chat font, got ' .. tostring(bar.candyBarLabel:GetFont()))
 end)
+
+test('a Fonts tab or chat font change reaches a timer, a value that names nothing draws Text, and a refused face draws Text', function()
+	local R, T, RX = setup()
+	local st = SaftUI
+	local bar = T.Start(56, 'Sentinel Hill')
+	st.config.profile.chat.font = 'pixel'
+	st:FontsChanged() -- not RX:UpdateConfig: the Fonts tab's own call
+	check(bar.candyBarLabel:GetFont() == st:GetFont('pixel'):GetFont(), 'the timer follows a font change, got ' .. tostring(bar.candyBarLabel:GetFont()))
+	st.config.profile.chat.font = 'gone'
+	st:FontsChanged()
+	check(bar.candyBarLabel:GetFont() == st:GetFont('normal'):GetFont(), "a value that names nothing: Text's face")
+	st.LSM:Register('font', 'Refused timer face', 'Interface\\AddOns\\SaftUI-Core\\Media\\Fonts\\refused-timer.ttf')
+	stub.refused_fonts[st.LSM:Fetch('font', 'Refused timer face')] = true
+	st.config.profile.chat.font = { font_name = 'Refused timer face', font_size = 9, font_outline = 'NONE', shadow_offset = { 0, 0 }, spacing = 4 }
+	st:FontsChanged()
+	check(bar.candyBarLabel:GetFont() == st:GetFont('normal'):GetFont(), "a face the game refuses: Text's face on the timer too")
+	stub.refused_fonts[st.LSM:Fetch('font', 'Refused timer face')] = nil
+end)

@@ -240,10 +240,11 @@ local function Typeface(value)
 		object = CreateFont('SaftUI_Typeface' .. typefaceCount .. 'Font')
 		object:SetTextColor(1, 1, 1)
 		local fields = { font_name = name, font_size = size, font_outline = outline, shadow_offset = { x, y }, spacing = spacing }
-		-- A face LibSharedMedia lists whose file fails to load: the object takes
-		-- Text's face with the size, outline, shadow and spacing asked for, so the
-		-- text still draws (in Text's face).
-		if not pcall(FN.SetObject, FN, object, fields) then
+		-- A face LibSharedMedia lists whose file the game refuses (st:FontLoads): the
+		-- object takes Text's face with the size, outline, shadow and spacing asked
+		-- for, so the text still draws (in Text's face). A SetObject that raises
+		-- for another reason falls back the same way.
+		if not st:FontLoads(path) or not pcall(FN.SetObject, FN, object, fields) then
 			fields.font_name = st.defaults.fonts.normal.font_name
 			FN:SetObject(object, fields)
 		end
@@ -278,23 +279,40 @@ function st:ApplyFont(fontString, value)
 	fontString:SetFontObject(st:FontObject(value))
 end
 
--- For a reader that takes values, not an object: path, size, flags, shadow X,
--- shadow Y and spacing of a font setting.
-function st:FontValues(value)
-	local name, size, outline, x, y, spacing = Resolve(value)
-	return st.LSM:Fetch('font', name), size, st.OutlineFlag(outline), x, y, spacing
+-- Whether the game takes a font file: tried once per file path on a font string of
+-- SaftUI's own, hidden (a font string's SetFont returns `success`, in the API
+-- documentation, which does not say whether a file it cannot load makes it return
+-- false or raise, so both count as refused), and kept: the answer for a path does
+-- not change in a session. A readable list of faces can name a file that is
+-- missing or broken (an addon removed or a bad registration).
+local loads = {}
+local probe
+function st:FontLoads(path)
+	local known = loads[path]
+	if known ~= nil then return known end
+	if not probe then
+		local holder = CreateFrame('Frame', nil, UIParent)
+		holder:Hide()
+		probe = holder:CreateFontString(nil, 'BACKGROUND')
+	end
+	local ok, result = pcall(probe.SetFont, probe, path, 12, '')
+	known = ok and result ~= false
+	loads[path] = known
+	return known
 end
 
--- Sets a font on a region of the game's (a chat window, a tooltip line, a text of
--- another addon's) from values: SetFont returns false when the game refuses the
--- face's file, and then Text's face is set instead, at the same size and flags,
--- as a typeface object does (Typeface's fallback). Builds nothing. Returns
--- whether a font was set.
-function st:SetFontOrText(region, path, size, flags)
-	if region:SetFont(path, size, flags) ~= false then return true end
-	local textPath = st:FontValues('normal')
-	if textPath == path then return false end
-	return region:SetFont(textPath, size, flags) ~= false
+-- For a reader that takes values, not an object: path, size, flags, shadow X,
+-- shadow Y and spacing of a font setting. A face the game refuses to load
+-- (st:FontLoads) gives Text's face in its place, with the size and flags asked,
+-- so every reader, whether it sets a font string, a chat window or another
+-- addon's timer, draws something. Builds nothing once a face is known.
+function st:FontValues(value)
+	local name, size, outline, x, y, spacing = Resolve(value)
+	local path = st.LSM:Fetch('font', name)
+	if not st:FontLoads(path) then
+		path = st.LSM:Fetch('font', (Resolve('normal')))
+	end
+	return path, size, st.OutlineFlag(outline), x, y, spacing
 end
 
 -- The words for a font setting: a shared font's name ("Heading"), a typeface as
