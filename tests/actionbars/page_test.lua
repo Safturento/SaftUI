@@ -119,6 +119,23 @@ local function menu_row(item, key)
 	error('no menu row ' .. key, 2)
 end
 
+-- A menu's option as a row, hidden or not: the model leaves a hidden row out
+-- of a view (the Size and Outline of a text on a shared font), but its get,
+-- set, share and default still work. -> the menu's root, the row.
+local function menu_setting(item, key)
+	local menuRoot = OM.MenuRoot(item.option)
+	return menuRoot, { key = key, option = menuRoot[OM.MENU_KEY].args[key], path = { OM.MENU_KEY, key } }
+end
+
+-- The keys of an item's menu as drawn: a hidden row is not among them.
+local function menu_keys(item)
+	local out = {}
+	for _, s in ipairs(OM.BuildView(OM.MenuRoot(item.option), OM.MENU_KEY).sections) do
+		for _, each in ipairs(s.rows) do out[#out + 1] = each.key end
+	end
+	return table.concat(out, ',')
+end
+
 local function differs(state)
 	local out = {}
 	for _, entry in ipairs(state.differs) do out[#out + 1] = entry.name .. ': ' .. entry.value end
@@ -446,28 +463,34 @@ test("the cooldown numbers: Show is Blizzard's setting on All bars, none on a ba
 
 	-- Until set they show what's drawn: Pixel Med on 45px buttons, Pixel on the pet bar's 30.
 	local med, pixel = st.config.profile.fonts.pixel_med, st.config.profile.fonts.pixel
-	eq(OM.Get(menu_row(row(r, 'bar3', 'countdown'), 'size')), med.font_size, "Bar 3's Size: Pixel Med's")
-	eq(OM.Get(menu_row(row(r, 'pet', 'countdown'), 'size')), pixel.font_size, "the pet bar's: Pixel's")
-	eq(OM.Get(menu_row(row(r, 'bar3', 'countdown'), 'font')), med.font_name, 'Font: the face drawn')
-	eq(OM.Get(menu_row(row(r, 'bar3', 'countdown'), 'outline')), med.font_outline, 'Outline: the outline drawn')
+	-- Font shows the shared font drawn, and Size and Outline are hidden with it (what
+	-- they hold is still those fonts', which a size set alone shows).
+	eq(OM.Get(menu_row(row(r, 'bar3', 'countdown'), 'font')), 'pixel_med', 'Font: Large numbers on 45px')
+	eq(OM.Get(menu_row(row(r, 'pet', 'countdown'), 'font')), 'pixel', "the pet bar's: Small text")
+	eq(menu_keys(row(r, 'bar3', 'countdown')), 'font,position', 'Size and Outline hidden')
+	eq(OM.Get(menu_setting(row(r, 'bar3', 'countdown'), 'size')), med.font_size, "Bar 3's Size: Large numbers'")
+	eq(OM.Get(menu_setting(row(r, 'pet', 'countdown'), 'size')), pixel.font_size, "the pet bar's: Small text's")
+	eq(OM.Get(menu_setting(row(r, 'bar3', 'countdown'), 'outline')), med.font_outline, 'Outline: the outline drawn')
 	eq(AB:GetSetting('bar3', 'countdown.size'), nil, 'which is still unset')
 
 	-- On a bar each setting's reset is its share's: follow All bars again.
-	local barRoot, barSize = menu_row(row(r, 'bar3', 'countdown'), 'size')
+	local barRoot, barSize = menu_setting(row(r, 'bar3', 'countdown'), 'size')
 	OM.Set(barRoot, barSize, 14)
 	r = root()
 	eq(OM.ShareState(r, row(r, 'bar3', 'countdown')).marked, true, "Bar 3's Cooldown is marked by its menu")
+	-- All bars' Size stays shown while a bar owns it, though its Font is the shared font by
+	-- button size, so the diff names Bar 3.
 	eq(differs(OM.ShareState(r, row(r, 'all', 'countdown'))), 'Bar 3: Size', "All bars' Cooldown names Bar 3's Size")
 	eq(OM.ShareState(r, row(r, 'all', 'countdown')).offers, false, 'with no line: its Show is no shared setting')
 	calls = {}
-	barRoot, barSize = menu_row(row(r, 'bar3', 'countdown'), 'size')
+	barRoot, barSize = menu_setting(row(r, 'bar3', 'countdown'), 'size')
 	OM.ShareCall(barRoot, barSize, 'reset')
 	eq(AB:IsOwn('bar3', 'countdown.size'), false, 'Bar 3 follows All bars again')
-	eq(OM.Get(menu_row(row(r, 'bar3', 'countdown'), 'size')), med.font_size, "and shows Pixel Med's again")
+	eq(OM.Get(menu_setting(row(r, 'bar3', 'countdown'), 'size')), med.font_size, "and shows Large numbers' again")
 	eq(table.concat(calls, ','), 'UpdateBar:bar3', 'Bar 3 is updated')
 
 	-- On All bars: unset is the default; set, its reset unsets it.
-	local menuRoot, size = menu_row(row(r, 'all', 'countdown'), 'size')
+	local menuRoot, size = menu_setting(row(r, 'all', 'countdown'), 'size')
 	eq(OM.DefaultState(menuRoot, size).differs, false, 'unset: at its default')
 	OM.Set(menuRoot, size, 16)
 	eq(OM.DefaultState(menuRoot, size).differs, true, 'set: it differs')
@@ -534,7 +557,7 @@ test("search finds a text menu's settings on All bars and on each bar", function
 	for _, result in ipairs(OM.Search(root(), 'Outline')) do
 		if result.path[2] == 'pet' then onPet[#onPet + 1] = result.sectionTitle end
 	end
-	eq(table.concat(onPet, ','), 'Hotkey,Cooldown', 'on the pet bar: its two texts')
+	eq(table.concat(onPet, ','), 'Hotkey', "on the pet bar: its Hotkey's (the Cooldown's is hidden while its font is a shared one)")
 	no_errors()
 end)
 
@@ -611,7 +634,7 @@ test("every setting's own reset: on All bars against the shipped default, on a b
 	-- Every menu setting has its default on All bars, the countdown's too.
 	for _, kind in ipairs({ 'hotkey', 'countdown' }) do
 		for field, value in pairs({ font = 'Friz Quadrata TT', size = 17, outline = 'THICK' }) do
-			local menuRoot, setting = menu_row(row(r, 'all', kind), field)
+			local menuRoot, setting = menu_setting(row(r, 'all', kind), field)
 			eq(OM.DefaultState(menuRoot, setting).differs, false, kind .. ' ' .. field .. ': at its default')
 			OM.Set(menuRoot, setting, value)
 			eq(OM.DefaultState(menuRoot, setting).differs, true, kind .. ' ' .. field .. ': set, it differs')
@@ -677,7 +700,7 @@ test('picking the value a control already shows changes nothing and makes nothin
 	untouched('countdown.font', 'the drawn cooldown font')
 	eq(AB:GetSetting('bar3', 'countdown.font'), nil, 'an unset cooldown font stays unset')
 	local size
-	menuRoot, size = menu_row(row(r, 'bar3', 'countdown'), 'size')
+	menuRoot, size = menu_setting(row(r, 'bar3', 'countdown'), 'size')
 	OM.Set(menuRoot, size, OM.Get(menuRoot, size))
 	untouched('countdown.size', 'the drawn cooldown size')
 	eq(AB:GetSetting('bar3', 'countdown.size'), nil, 'an unset cooldown size stays unset')
@@ -775,16 +798,201 @@ test("the cooldown numbers' unset reads as 'by button size', each with its noun"
 	fresh()
 	local r = root()
 	for field, noun in pairs({ font = 'font', size = 'size', outline = 'outline' }) do
-		local menuRoot, setting = menu_row(row(r, 'all', 'countdown'), field)
+		local menuRoot, setting = menu_setting(row(r, 'all', 'countdown'), field)
 		local want = "Large numbers' " .. noun .. " on buttons of 36px and up, Small text's below (Global settings > Fonts)"
 		eq(OM.DefaultState(menuRoot, setting).text, want, field .. ': the reset names what comes back')
 		check(setting.option.desc:find("Until set, it goes by the button's size: " .. want, 1, true), field .. ': the desc says so')
 	end
 	AB:SetSetting('bar3', 'countdown.size', 14)
 	r = root()
-	local menuRoot, setting = menu_row(row(r, 'all', 'countdown'), 'size')
+	local menuRoot, setting = menu_setting(row(r, 'all', 'countdown'), 'size')
 	eq(differs(OM.ShareState(menuRoot, setting)), 'Bar 3: 14', 'the diff names the bar')
 	eq(OM.ShareState(menuRoot, setting).shared, 'By button size', "and All bars' unset size as by button size")
+	no_errors()
+end)
+
+------------------------------------------------------------------ the texts' Font rows
+
+-- A text's menu drawn on a body, with Core's widgets loaded: font_world() makes
+-- the world, draw_menu(id, kind) -> menu, its cells by key.
+local function font_world()
+	fresh()
+	load_saftui('SaftUI-Core/Libraries/Ace3/AceConfig-3.0/AceConfigRegistry-3.0/AceConfigRegistry-3.0.lua')
+	load_options_widgets()
+	load_saftui('SaftUI-Core/Config/optionsbody.lua')
+	load_options_window()
+end
+
+local function draw_menu(id, kind)
+	local OB = st.OptionsBody
+	local content = CreateFrame('Frame', nil, UIParent)
+	content:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 100, -100)
+	content:SetSize(376, 800)
+	local menuRoot = OM.MenuRoot(row(root(), id, kind).option)
+	local menu = OB.New(content, menuRoot, function() end, 376, { oneColumn = true })
+	menu:Draw(OM.BuildView(menuRoot, OM.MENU_KEY).sections)
+	local by = {}
+	for _, c in ipairs(menu.cells) do by[c.row.key] = c end
+	return menu, by
+end
+
+test("a text's Font lists the shared fonts first; Small text picked saves 'pixel', hides Size and Outline and shows the link", function()
+	font_world()
+	local W = st.OptionsWidgets
+	local r = root()
+	local item = row(r, 'all', 'hotkey')
+	eq(item.option.menu.args.font.type, 'font', "the Font row is Core's font row")
+	eq(item.option.menu.args.font.faceOnly, true, 'in its face-only mode: no menu inside the menu')
+	eq(menu_keys(item), 'font,size,outline,position', 'a typeface: Font, Size, Outline, Position')
+
+	local menu, by = draw_menu('all', 'hotkey')
+	local w = by.font.widget
+	local face = AB:GetSetting('all', 'hotkey.font')
+	eq(w.kind, 'typeface', "today's profile names a face")
+	eq(w.face.text:GetText(), face, 'and shows it')
+	check(not w.dots:IsShown(), 'with no dots: no menu inside a menu')
+	stub.click(w.face)
+	local list = W.GetListFrames()
+	eq(list.entries[1].label, 'SaftUI fonts', 'the list opens on the shared fonts')
+	local order = {}
+	for i = 2, 7 do order[#order + 1] = list.entries[i].key end
+	eq(table.concat(order, ','), 'normal,pixel,pixel_med,heading,title,subtitle', 'the six, in order')
+	eq(list.selected, 'face:' .. face, 'the face is the picked entry')
+	W.CloseList()
+
+	w:Pick('pixel')
+	eq(AB:GetSetting('all', 'hotkey.font'), 'pixel', 'Small text saves its key')
+	eq(AB:GetSetting('bar3', 'hotkey.font'), 'pixel', 'a bar that follows has it')
+	eq(AB:IsOwn('bar3', 'hotkey.font'), false, 'and owns nothing')
+	eq(menu_keys(item), 'font,position', 'Size and Outline are hidden')
+	menu:Release()
+	menu, by = draw_menu('all', 'hotkey')
+	w = by.font.widget
+	eq(w.kind, 'shared', 'the row reads a shared font')
+	eq(w.face.text:GetText(), 'Small text', 'by its name')
+	check(w.dots:IsShown(), 'with the link to the Fonts tab')
+	eq(w.dots.icon:GetTexture(), st.icons.link, 'in its slot')
+	eq(by.size, nil, 'no Size drawn')
+	eq(by.outline, nil, 'no Outline drawn')
+	menu:Release()
+
+	-- A bar that owns its own font hides them on its own page alone.
+	AB:SetSetting('bar3', 'hotkey.font', 'Colus')
+	eq(menu_keys(row(root(), 'bar3', 'hotkey')), 'font,size,outline,position', "Bar 3's own typeface shows them")
+	eq(menu_keys(row(root(), 'bar4', 'hotkey')), 'font,position', 'Bar 4 follows the shared font')
+	no_errors()
+end)
+
+test('a face picked saves its name and shows Size and Outline again, with what they held', function()
+	font_world()
+	AB:SetSetting('all', 'hotkey.size', 17)
+	AB:SetSetting('all', 'hotkey.outline', 'THICKOUTLINE')
+	AB:SetSetting('all', 'hotkey.font', 'pixel')
+	local item = row(root(), 'all', 'hotkey')
+	eq(menu_keys(item), 'font,position', 'on Small text: hidden')
+	local menu, by = draw_menu('all', 'hotkey')
+	by.font.widget:Pick('face:Colus')
+	eq(AB:GetSetting('all', 'hotkey.font'), 'Colus', "the face's name alone, as it was saved before")
+	eq(type(AB:GetSetting('all', 'hotkey.font')), 'string', 'a string')
+	eq(menu_keys(row(root(), 'all', 'hotkey')), 'font,size,outline,position', 'Size and Outline are back')
+	menu:Release()
+	local menuRoot, size = menu_row(row(root(), 'all', 'hotkey'), 'size')
+	eq(OM.Get(menuRoot, size), 17, 'Size held 17')
+	eq(OM.Get(menu_row(row(root(), 'all', 'hotkey'), 'outline')), 'THICKOUTLINE', 'and Outline its value')
+	no_errors()
+end)
+
+test("the cooldown numbers' unset Font shows Large numbers on 45 px buttons and Small text on 30, with the link; a size set alone shows the face it draws", function()
+	font_world()
+	local med, pixel = st.config.profile.fonts.pixel_med, st.config.profile.fonts.pixel
+	eq(AB:GetBarConfig('bar3').size, 45, 'Bar 3 has 45 px buttons')
+	eq(AB:GetBarConfig('pet').size, 30, 'the pet bar 30')
+	local W = st.OptionsWidgets
+	local menu, by = draw_menu('bar3', 'countdown')
+	eq(by.font.widget.kind, 'shared', 'a shared font')
+	eq(by.font.widget.face.text:GetText(), 'Large numbers', 'Large numbers on 45 px')
+	eq(by.font.widget.dots.icon:GetTexture(), st.icons.link, 'with the link')
+	check(by.font.widget.dots:IsShown(), 'shown')
+	eq(by.size, nil, 'Size hidden')
+	eq(by.outline, nil, 'Outline hidden')
+	eq(AB:GetSetting('bar3', 'countdown.font'), nil, 'while the setting is still unset')
+	menu:Release()
+	menu, by = draw_menu('pet', 'countdown')
+	eq(by.font.widget.face.text:GetText(), 'Small text', 'Small text on 30 px')
+	menu:Release()
+
+	-- Picking what is shown writes nothing: the bar still follows All bars.
+	menu, by = draw_menu('bar3', 'countdown')
+	by.font.widget:Pick('pixel_med')
+	eq(AB:IsOwn('bar3', 'countdown.font'), false, 'Bar 3 follows')
+	-- Picking the other one does.
+	by.font.widget:Pick('pixel')
+	eq(AB:GetSetting('bar3', 'countdown.font'), 'pixel', 'Small text saved on Bar 3')
+	eq(AB:CountdownValue(AB:GetBarConfig('bar3')), 'pixel', 'and drawn')
+	menu:Release()
+	AB:ResetSetting('bar3', 'countdown.font')
+
+	-- A size set alone: the face it draws, with Size and Outline shown.
+	AB:SetSetting('all', 'countdown.size', 20)
+	local item = row(root(), 'bar3', 'countdown')
+	eq(menu_keys(item), 'font,size,outline,position', 'Size and Outline shown')
+	menu, by = draw_menu('bar3', 'countdown')
+	eq(by.font.widget.kind, 'typeface', 'a typeface')
+	eq(by.font.widget.face.text:GetText(), med.font_name, "the face it draws: Large numbers' face")
+	menu:Release()
+	menu, by = draw_menu('pet', 'countdown')
+	eq(by.font.widget.face.text:GetText(), pixel.font_name, "Small text's face on 30 px")
+	menu:Release()
+	no_errors()
+end)
+
+test("on All bars a text's Size and Outline stay shown while any bar owns them, so the diff icon and Apply to name that bar", function()
+	font_world()
+	-- A shared font on All bars: nothing is owned, so both are hidden.
+	AB:SetSetting('all', 'hotkey.font', 'pixel')
+	eq(menu_keys(row(root(), 'all', 'hotkey')), 'font,position', 'no owner: Size and Outline hidden')
+	-- Bar 3 owns an Outline alone: All bars shows Outline (and not Size), and names the bar.
+	AB:SetSetting('bar3', 'hotkey.outline', 'THICKOUTLINE')
+	local r = root()
+	eq(menu_keys(row(r, 'all', 'hotkey')), 'font,outline,position', 'an owner of Outline: Outline shown, Size still hidden')
+	local menuRoot, outline = menu_row(row(r, 'all', 'hotkey'), 'outline')
+	eq(differs(OM.ShareState(menuRoot, outline)), 'Bar 3: Thick outline', "the diff icon names Bar 3's Outline")
+	eq(labels(OM.ShareTargets(menuRoot, outline)), 'Bar 3', 'Apply to lists Bar 3')
+	eq(differs(OM.ShareState(r, row(r, 'all', 'hotkey'))), 'Bar 3: Outline', "the item's icon names it")
+	-- Bar 3's own page hides both while its font is shared.
+	eq(menu_keys(row(r, 'bar3', 'hotkey')), 'font,position', "Bar 3's own page hides them while its font is shared")
+	-- Apply to All clears it, and the row hides again.
+	OM.ShareCall(menuRoot, outline, 'applyAll')
+	eq(menu_keys(row(root(), 'all', 'hotkey')), 'font,position', 'nobody owns it: hidden again')
+	-- The cooldown numbers: a bar owning a Size alone.
+	AB:SetSetting('bar3', 'countdown.size', 14)
+	eq(menu_keys(row(root(), 'all', 'countdown')), 'font,size,position', 'Size shown while Bar 3 owns it')
+	AB:ResetSetting('bar3', 'countdown.size')
+	eq(menu_keys(row(root(), 'all', 'countdown')), 'font,position', 'and hidden again once it follows')
+	no_errors()
+end)
+
+test("the texts' Outline rows list None first, as every other outline list", function()
+	font_world()
+	local want = table.concat(st:GetModule('Fonts').OUTLINE_ORDER, ',')
+	for _, kind in ipairs({ 'hotkey', 'count', 'macro', 'countdown' }) do
+		local sorting = row(root(), 'all', kind).option.menu.args.outline.sorting
+		eq(type(sorting) == 'table' and table.concat(sorting, ','), want, kind .. ': Outline sorted as the Fonts tab')
+	end
+end)
+
+test('re-picking the cooldown font already shown on All bars writes nothing; picking the other one does', function()
+	font_world()
+	local menu, by = draw_menu('all', 'countdown')
+	local w = by.font.widget
+	eq(w.value, 'pixel_med', 'All bars shows Large numbers (45 px)')
+	calls = {}
+	w:Pick('pixel_med')
+	eq(AB:GetSetting('all', 'countdown.font'), nil, 'the shown entry writes nothing')
+	eq(#calls, 0, 'and updates nothing')
+	w:Pick('pixel')
+	eq(AB:GetSetting('all', 'countdown.font'), 'pixel', 'another one is written')
+	menu:Release()
 	no_errors()
 end)
 

@@ -695,3 +695,89 @@ test("SaftUI's own preloaded faces count as loading with no probe", function()
 	eq(asked, 0, 'no probe')
 	stub.refused_fonts = real
 end)
+
+------------------------------------------------------------------ what a probe is judged against, and the fallback face
+
+-- Text on face `name` (registered, SaftUI does not preload it), the objects set.
+local function text_on(name)
+	fonts().normal.font_name = name
+	FN:UpdateFontConfig('normal')
+	st:FontsChanged()
+end
+local function text_back()
+	fonts().normal.font_name = nil
+	FN:UpdateFontConfig('normal')
+	st:FontsChanged()
+end
+
+test("Text on a face SaftUI does not preload: a typeface in that same face draws in it (the probe is judged against a SaftUI face, not Text's)", function()
+	st.LSM:Register('font', 'Friz probe', 'Interface\\AddOns\\SomeAddon\\friz.ttf')
+	text_on('Friz probe')
+	local look = { font_name = 'Friz probe', font_size = 13 }
+	eq((st:FontValues(look)), path('Friz probe'), 'a value reader draws it')
+	eq((st:GetFont(look):GetFont()), path('Friz probe'), 'and so does the typeface object')
+	eq((st:GetFont('normal'):GetFont()), path('Friz probe'), 'Text itself is in it')
+	text_back()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("Text's own face raising on SetFont: no reader raises, a typeface in another face draws, and what is refused draws in SaftUI's default Text face", function()
+	st.LSM:Register('font', 'Raising text', 'Interface\\AddOns\\SomeAddon\\raising.ttf')
+	st.LSM:Register('font', 'Other probe', 'Interface\\AddOns\\SomeAddon\\other.ttf')
+	stub.refused_fonts[path('Raising text')] = 'error'
+	local ok, err = pcall(text_on, 'Raising text')
+	check(ok, 'putting Text on it raises nothing: ' .. tostring(err))
+	local ok2, p = pcall(st.FontValues, st, { font_name = 'Other probe', font_size = 12 })
+	check(ok2, 'a reader does not raise: ' .. tostring(p))
+	eq(p, path('Other probe'), 'a typeface in another face draws in it')
+	eq((st:FontValues('normal')), path(st.defaults.fonts.normal.font_name), "Text on a refused face draws in SaftUI's default Text face")
+	eq((st:GetFont('normal'):GetFont()), path(st.defaults.fonts.normal.font_name), 'its object too')
+	eq((st:FontValues({ font_name = 'Raising text', font_size = 9 })), path(st.defaults.fonts.normal.font_name), 'a typeface in the refused face the same')
+	stub.refused_fonts[path('Raising text')] = nil
+	text_back()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("both fallbacks draw in the same face: the profile's Text when it loads", function()
+	st.LSM:Register('font', 'Alt text', 'Interface\\AddOns\\SomeAddon\\alt.ttf')
+	st.LSM:Register('font', 'Refused same', 'Interface\\AddOns\\SomeAddon\\same.ttf')
+	text_on('Alt text')
+	stub.refused_fonts[path('Refused same')] = true
+	local look = { font_name = 'Refused same', font_size = 15 }
+	eq((st:FontValues(look)), path('Alt text'), "a value reader: the profile's Text")
+	eq((st:GetFont(look):GetFont()), path('Alt text'), 'the typeface object: the same face')
+	stub.refused_fonts[path('Refused same')] = nil
+	text_back()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a refused face is retried by st:RetryFonts, which st:FontsChanged runs', function()
+	st.LSM:Register('font', 'Retry face', 'Interface\\AddOns\\SomeAddon\\retry.ttf')
+	stub.refused_fonts[path('Retry face')] = true
+	local look = { font_name = 'Retry face', font_size = 12 }
+	eq((st:FontValues(look)), path(st.defaults.fonts.normal.font_name), 'refused: Text')
+	stub.refused_fonts[path('Retry face')] = nil
+	eq((st:FontValues(look)), path(st.defaults.fonts.normal.font_name), 'the refusal is kept')
+	st:RetryFonts()
+	eq((st:FontValues(look)), path('Retry face'), 'asked again after st:RetryFonts')
+end)
+
+test('a shared font on a face the game refuses draws in Text\'s face, whether SetFont says false, raises or says nothing; the other shared fonts are still set', function()
+	for _, mode in ipairs({ true, 'error', 'silent' }) do
+		local name = 'Refused shared ' .. tostring(mode)
+		st.LSM:Register('font', name, 'Interface\\AddOns\\SomeAddon\\shared' .. tostring(mode) .. '.ttf')
+		stub.refused_fonts[path(name)] = mode
+		fonts().pixel.font_name = name
+		fonts().heading.font_name = name
+		local ok, err = pcall(FN.UpdateFontConfig, FN)
+		check(ok, tostring(mode) .. ': nothing raises: ' .. tostring(err))
+		for _, key in ipairs({ 'pixel', 'heading' }) do
+			eq((st:GetFont(key):GetFont()), path(st.defaults.fonts.normal.font_name), tostring(mode) .. ': ' .. key .. " in Text's face")
+		end
+		check(st:GetFont('subtitle'):GetFont() ~= nil, tostring(mode) .. ': a later shared font is still set')
+		stub.refused_fonts[path(name)] = nil
+		fonts().pixel.font_name, fonts().heading.font_name = nil, nil
+		FN:UpdateFontConfig()
+	end
+	eq(#take_errors(), 0, 'no errors')
+end)

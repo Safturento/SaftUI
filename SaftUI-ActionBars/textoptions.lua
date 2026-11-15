@@ -9,7 +9,10 @@ local AB = st:GetModule('ActionBars')
 	the cooldown numbers (AB.barTypes texts), so their pages show only those.
 
 	AB:GetTextItem(id, kind, order): id is a bar or 'all'. Its Show box is the
-	text's show; its menu holds Font, Size, Outline, then the text's Position
+	text's show; its menu holds Font (Core's font row in its face-only mode: one
+	of SaftUI's fonts, saved as its key, or a typeface, saved as its face's
+	name), Size and Outline (both hidden while the font is a shared one, which
+	brings its own), then the text's Position
 	block with no TO part (the text's point, THIS, the button's, AT ITS, and the
 	offsets), named Position, as the menu's title names the text. Each one, the
 	Show too, is a shared setting (shared.lua): it reads the effective config
@@ -28,8 +31,10 @@ local AB = st:GetModule('ActionBars')
 	    for every bar). An open /sui draws again when it changes in Blizzard's
 	    options (skin.lua), so the box follows. On a bar there's no box.
 	  - their Font, Size and Outline show what's drawn until they're set
-	    (AB:GetCountdownFont: Large numbers on buttons of 36px and up, Small
-	    text below); on All bars their default is unset, and their reset unsets
+	    (AB:GetCountdownFont: while none of the three is set, the shared font
+	    by button size, Large numbers on buttons of 36px and up and Small text
+	    below, with Size and Outline hidden; with a size or outline set and no
+	    font, the face drawn); on All bars their default is unset, and their reset unsets
 	    them again.
 	There is no Reset button: every setting has its own (Core's default and
 	share fields, .agents/edit-mode.md).
@@ -124,14 +129,9 @@ local function TextMenu(self, id, kind, update)
 	local what = WHAT[kind]
 	local countdown = kind == 'countdown'
 	local args = {
-		font = {
-			order = 1,
-			name = 'Font',
-			desc = 'The font of ' .. what .. '.',
-			type = 'select',
-			dialogControl = 'LSM30_Font',
-			values = st.LSM:HashTable('font'),
-		},
+		font = generators.font(1,
+			'The font of ' .. what .. '. One of SaftUI\'s fonts (Global settings > Fonts) sets the size and outline too and follows its changes there; a typeface takes this text\'s Size and Outline.',
+			{ faceOnly = true }),
 		size = generators.range(2, 'Size', 6, 32, 1, 'The size of ' .. what .. ', in points.'),
 		outline = {
 			order = 3,
@@ -157,6 +157,23 @@ local function TextMenu(self, id, kind, update)
 		if id == 'all' then option.default = TextDefault(self, kind, field, update) end
 		if countdown and field ~= 'position' then option.desc = option.desc .. CountdownUnset(field) end
 	end
+	-- A shared font brings its own size and outline, so the text's Size and
+	-- Outline show only while its font is a typeface. On All bars they stay shown
+	-- while any bar owns one, so the diff icon and Apply to name that bar (the
+	-- model leaves a hidden option out of them) and All bars can make it follow.
+	local function SharedFont()
+		if countdown then return st:IsSharedFont((self:GetCountdownFont(self:GetBarConfig(id)))) end
+		return st:IsSharedFont(self:GetSetting(id, kind .. '.font'))
+	end
+	local function Hidden(field)
+		return function()
+			if not SharedFont() then return false end
+			return id ~= 'all' or #self:OwnersOf(kind .. '.' .. field) == 0
+		end
+	end
+	args.size.hidden = Hidden('size')
+	args.outline.hidden = Hidden('outline')
+	args.outline.sorting = { unpack(st:GetModule('Fonts').OUTLINE_ORDER) }
 
 	local get = function(info) return self:GetSetting(id, kind .. '.' .. info[#info]) end
 	if countdown then

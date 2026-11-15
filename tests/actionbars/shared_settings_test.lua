@@ -543,3 +543,46 @@ test("a bar's outline label says how All bars' Visibility hides it", function()
 	eq(label.text:find('in combat', 1, true) ~= nil, true, 'bar3 follows: in combat')
 	eq(table.concat(take_errors(), '\n'), '', 'no errors')
 end)
+
+test("a shared font on All bars' hotkey reaches every bar that follows it; Apply to and the diff icon name it 'Small text'", function()
+	fresh()
+	local face = AB:GetSetting('all', 'hotkey.font')
+	check(not st:IsSharedFont(face), "today's hotkey font is a face, not a key")
+	AB:SetSetting('bar6', 'hotkey.font', 'Colus')
+	AB:SetSetting('all', 'hotkey.font', 'pixel')
+	local small = st.config.profile.fonts.pixel
+	for _, id in ipairs(AB.BAR_IDS) do
+		local text = AB:GetBarConfig(id).text.hotkey
+		if id == 'bar6' then
+			eq(text.font, 'Colus', 'Bar 6 owns its face')
+		else
+			eq(text.font, 'pixel', id .. ' follows All bars: Small text')
+			local config = AB:GetButtonConfig(id, 1).text.hotkey
+			eq(config.value, 'pixel', id .. ": LibActionButton's config is made from the key")
+			eq(config.font.size, small.font_size, id .. ": at Small text's size, not the text's own")
+		end
+	end
+
+	-- The diff icon names the shared font, and the one it differs by.
+	local share = AB:ShareFor('all', 'hotkey.font')
+	eq(share.shared(), 'Small text', "All bars' value by its name")
+	local owners = share.differs()
+	eq(#owners, 1, 'one bar owns the font')
+	eq(owners[1].name .. ': ' .. owners[1].value, 'Bar 6: Colus', "Bar 6's face by its name")
+	AB:SetSetting('bar6', 'hotkey.font', 'pixel_med')
+	eq(share.differs()[1].value, 'Large numbers', "a shared font by st:FontLabel on a bar")
+	eq(AB:SettingText('bar6', 'hotkey.font', 'bar6'), 'Large numbers', 'SettingText too')
+
+	-- Apply to copies the key to the chosen bars, and a bar that follows shows Small text.
+	AB:ApplyTo('bar6', 'hotkey.font', { 'bar2', 'bar3' })
+	eq(AB:GetBarConfig('bar2').text.hotkey.font .. ',' .. AB:GetBarConfig('bar3').text.hotkey.font, 'pixel_med,pixel_med',
+		'the picked bars take Large numbers')
+	eq(AB:IsOwn('bar2', 'hotkey.font') and AB:IsOwn('bar3', 'hotkey.font'), true, 'as their own')
+	eq(AB:GetBarConfig('bar4').text.hotkey.font, 'pixel', 'Bar 4 still follows Small text')
+	AB:ApplyTo('bar6', 'hotkey.font', { 'bar4' })
+	eq(AB:SettingText('bar4', 'hotkey.font'), 'Large numbers', 'and says so')
+	AB:ApplyToAll('bar6', 'hotkey.font')
+	eq(AB:GetSetting('all', 'hotkey.font'), 'pixel_med', 'All bars takes it')
+	eq(AB:SettingText('all', 'hotkey.font'), 'Large numbers', 'by name')
+	eq(#take_errors(), 0, 'no errors')
+end)

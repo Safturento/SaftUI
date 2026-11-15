@@ -6,7 +6,7 @@
 -- W4 (half, collapsed) and W5 (the bar), and W6, the bar with the sidebar
 -- collapsed (it keeps the sidebar's state). The matrix walks them on both
 -- clients, under Thick, Thin and Blizzard, on the pages the window really has
--- (Global settings, Profiles, Action bars, Unit frames with its
+-- (Global settings, the Theme tab of Fonts, Profiles, Action bars, Unit frames with its
 -- Unit, Copy from, Profile and Manage line, the Bags' Categories tab, Loot, Skinning and a
 -- search), one transition at a time, and at each state checks: every edge on a
 -- whole pixel (with the size noise up, down and off, in turn); no two of the
@@ -99,6 +99,10 @@ local function world(client)
 	AB.barTypes = { pet = { texts = { hotkey = true, countdown = true } }, stance = { texts = { hotkey = true, countdown = true } } }
 	local function nothing() return function() end end
 	function AB:ShowsCooldownNumbers() return true end -- reads Blizzard's cvar
+	-- The page asks the numbers' drawn font (a text's Size and Outline hide while it is a shared font).
+	function AB:GetCountdownFont(config)
+		return config.size >= st.LARGE_COUNTDOWN_SIZE and 'pixel_med' or 'pixel', 12, 'NONE'
+	end
 	AB.UpdateBar, AB.UpdateBars, AB.LayoutBar, AB.LayoutExtra, AB.UpdateConfig = nothing(), nothing(), nothing(), nothing(), nothing()
 	load_saftui('SaftUI-ActionBars/shared.lua')
 	load_saftui('SaftUI-ActionBars/textoptions.lua')

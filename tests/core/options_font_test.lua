@@ -1372,3 +1372,27 @@ test("the menu's read with no live widget gives Text's values (n2)", function()
 	eq(group.args.spacing.get(), text.spacing, "and Text's spacing")
 	eq(#take_errors(), 0, 'no errors')
 end)
+
+test('a refused face is tried again when a font row picks a face and when its list opens', function()
+	in_look('thick', function()
+		st.LSM:Register('font', 'Row retry face', 'Interface\\AddOns\\SomeAddon\\rowretry.ttf')
+		local late, text = path('Row retry face'), path(st.defaults.fonts.normal.font_name)
+		local look = { font_name = 'Row retry face', font_size = 12 }
+		stub.refused_fonts[late] = true
+		eq((st:FontValues(look)), text, 'refused: Text')
+		stub.refused_fonts[late] = nil
+		local w = row_widget('face', 'Homespun', {})
+		w:Pick('face:Row retry face')
+		eq((st:FontValues(look)), late, 'a pick asks again: it draws in its own face')
+
+		st.LSM:Register('font', 'Row retry two', 'Interface\\AddOns\\SomeAddon\\rowretry2.ttf')
+		local two = path('Row retry two')
+		local look2 = { font_name = 'Row retry two', font_size = 12 }
+		stub.refused_fonts[two] = true
+		eq((st:FontValues(look2)), text, 'another face refused')
+		stub.refused_fonts[two] = nil
+		open(w)
+		eq((st:FontValues(look2)), two, 'opening the list asks again')
+		W.CloseList()
+	end)
+end)

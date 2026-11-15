@@ -607,6 +607,14 @@ RW.both("the zone rows and the header take their height from the Header font: 20
 	TR:Refresh()
 	local a, b = RW.zone(TR, 'A'), RW.zone(TR, 'B')
 	local first = RW.quest(TR, 1)
+	-- A Fonts tab change, the real path: the shared font's settings, the module's
+	-- OnFontsChanged through st:FontsChanged, and the refresh it marks.
+	local function heading(size)
+		st.config.profile.fonts.heading.font_size = size
+		st:GetModule('Fonts'):UpdateFontConfig('heading')
+		st:FontsChanged()
+		RW.later(1)
+	end
 	eq(a:GetHeight(), 20, 'a zone row is 20 at Heading 15')
 	eq(TR.header:GetHeight(), 24, 'the header is 24')
 	local top, gap = first:GetTop(), a:GetTop() - a:GetHeight() - first:GetTop()
@@ -615,9 +623,15 @@ RW.both("the zone rows and the header take their height from the Header font: 20
 	local scrollTop = TR.window:GetTop() - TR.scroll:GetTop()
 	eq(scrollTop, 8 + 24 + 6, 'the list under the padding, the header and its gap')
 
-	st.config.profile.fonts.heading.font_size = 40
-	st:GetModule('Fonts'):UpdateFontConfig('heading')
-	TR:UpdateConfig()
+	-- 18 is odd after the factor (23 and 27): the heights are kept even, so the chevrons centre on whole pixels.
+	heading(18)
+	eq(a:GetHeight(), 24, 'a zone row is 24 at Heading 18, not 23')
+	eq(TR.header:GetHeight(), 28, 'the header 28, not 27')
+	eq(a.chevron:GetTop() % 1 .. ',' .. TR.header.collapse:GetTop() % 1, '0,0', "both chevrons on whole pixels")
+	eq(a.chevron:GetTop(), a:GetTop() - (24 - 16) / 2, "the zone chevron centred in its row")
+	eq(TR.header.collapse:GetTop(), TR.header:GetTop() - (28 - 16) / 2, "and the header's in the header")
+
+	heading(40)
 	eq(a:GetHeight(), 50, 'a zone row grows with Heading: 50 at 40')
 	eq(TR.header:GetHeight(), 54, 'the header too: 54')
 	eq(a:GetHeight() % 1 .. ',' .. TR.header:GetHeight() % 1, '0,0', 'whole pixels')
@@ -626,13 +640,35 @@ RW.both("the zone rows and the header take their height from the Header font: 20
 	check(TR.contentHeight > content, 'the content is taller: ' .. TR.contentHeight .. ' over ' .. content)
 	eq(TR.window:GetHeight(), math.min(8 * 2 + 54 + 6 + TR.contentHeight, TR:MaxHeight()), "the window's height follows")
 	check(b:GetTop() < a:GetTop() - 50, 'the next zone is under the first')
-	local _, _, _, _, chevronY = a.chevron:GetPoint(1)
 	eq(a.chevron:GetTop(), a:GetTop() - (50 - 16) / 2, 'the chevron is centred in the taller row')
+	eq(TR.header.collapse:GetTop(), TR.header:GetTop() - (54 - 16) / 2, "the header's collapse chevron is centred in the taller header")
 
-	st.config.profile.fonts.heading.font_size = 15
-	st:GetModule('Fonts'):UpdateFontConfig('heading')
-	TR:UpdateConfig()
-	eq(a:GetHeight(), 20, 'back at 15: 20')
+	-- A list that fits under a 24 tall header but not a 54 tall one scrolls, and
+	-- its rows give the bar its room: the decision reads the header's real height.
+	-- Max height 60 over the content: the view (the max less 16 of padding, 6 of gap and the header) is 16 short of
+	-- the content under a 54 tall header and 14 more than it under a 24 tall one.
+	TR.config.height = TR.contentHeight + 60
+	st:FontsChanged()
+	RW.later(1)
+	check(TR.scrollRange > 0, 'the list scrolls under the 54 tall header')
+	eq(TR.barRoom, 14, "and the rows leave the bar's room")
+	eq(RW.quest(TR, 1):GetWidth(), 244 - 14, 'the rows are narrower by the bar')
+	eq(TR.header:GetWidth(), 244, 'the header is not')
+
+	-- A typeface Header font: its own size gives the heights, whatever Heading is.
+	TR.config.height = 600
+	heading(15)
+	eq(a:GetHeight(), 20, 'Heading back at 15: 20')
+	st.config.profile.tracker.header_font = { font_name = 'Colus', font_size = 33, font_outline = 'NONE', shadow_offset = { 0, 0 }, spacing = 0 }
+	st:FontsChanged()
+	RW.later(1)
+	eq(a:GetHeight(), 42, "a typeface of 33: its own size (ceil of 1.25 times 33 is 42), not Heading's")
+	eq(TR.header:GetHeight(), 46, 'and the header 46')
+	eq(TR.header.collapse:GetTop(), TR.header:GetTop() - (46 - 16) / 2, 'the chevron follows')
+	st.config.profile.tracker.header_font = 'heading'
+	st:FontsChanged()
+	RW.later(1)
+	eq(a:GetHeight(), 20, 'back on Heading: 20')
 	eq(TR.header:GetHeight(), 24, 'and 24')
 	eq(#take_errors(), 0, 'no errors')
 end)

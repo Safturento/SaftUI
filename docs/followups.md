@@ -7,6 +7,12 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-15 — The action bars' and buffs' texts default to Small text](#2026-11-15--the-action-bars-and-buffs-texts-default-to-small-text)
+  - [2026-11-15 — A reset on every font row](#2026-11-15--a-reset-on-every-font-row)
+  - [2026-11-15 — A window title font per theme](#2026-11-15--a-window-title-font-per-theme)
+  - [2026-11-15 — The tooltip lines take SaftUI's shadow and spacing](#2026-11-15--the-tooltip-lines-take-saftuis-shadow-and-spacing)
+  - [2026-11-15 — Title bar height beside Window titles on the Theme tab](#2026-11-15--title-bar-height-beside-window-titles-on-the-theme-tab)
+  - [2026-11-15 — Search into the dots menus](#2026-11-15--search-into-the-dots-menus)
   - [2026-11-15 — SaftUI's tracker: experiments and in-game checks before the switch turns on](#2026-11-15--saftuis-tracker-experiments-and-in-game-checks-before-the-switch-turns-on)
   - [2026-11-15 — SaftUI's tracker phase 2: task quests (bonus objectives and world quests)](#2026-11-15--saftuis-tracker-phase-2-task-quests-bonus-objectives-and-world-quests)
   - [2026-11-15 — SaftUI's tracker phase 3: scenarios and dungeons](#2026-11-15--saftuis-tracker-phase-3-scenarios-and-dungeons)
@@ -80,7 +86,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Bag categories: a Set checkbox is dead while the Equipment sets entry hides the window](#2026-11-11--bag-categories-a-set-checkbox-is-dead-while-the-equipment-sets-entry-hides-the-window)
   - [2026-11-11 — Old gear's tabard and shirt exclusion never matched](#2026-11-11--old-gears-tabard-and-shirt-exclusion-never-matched)
   - [2026-11-11 — Auto Vendor pins now beat Grays' exclusions and equipment sets](#2026-11-11--auto-vendor-pins-now-beat-grays-exclusions-and-equipment-sets)
-  - [2026-11-10 — Fonts: separate the fonts users pick per kind of text from SaftUI's internal font objects](#2026-11-10--fonts-separate-the-fonts-users-pick-per-kind-of-text-from-saftuis-internal-font-objects)
   - [2026-11-10 — Zone level and faction line: in-game checks](#2026-11-10--zone-level-and-faction-line-in-game-checks)
   - [2026-11-10 — Zone faction line edge cases: a PvP subzone's status, same-named zones on the map](#2026-11-10--zone-faction-line-edge-cases-a-pvp-subzones-status-same-named-zones-on-the-map)
   - [2026-11-10 — Zone text's fade times are written onto Blizzard's frames](#2026-11-10--zone-texts-fade-times-are-written-onto-blizzards-frames)
@@ -121,6 +126,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-15 — All bars' Cooldown diff icon misses a bar that owns a size or outline alone](#2026-11-15--all-bars-cooldown-diff-icon-misses-a-bar-that-owns-a-size-or-outline-alone)
+  - [2026-11-10 — Fonts: separate the fonts users pick per kind of text from SaftUI's internal font objects](#2026-11-10--fonts-separate-the-fonts-users-pick-per-kind-of-text-from-saftuis-internal-font-objects)
   - [2026-11-13 — Theme change errors in the theme engine: can't measure restricted regions](#2026-11-13--theme-change-errors-in-the-theme-engine-cant-measure-restricted-regions)
   - [2026-11-13 — Action bars: shared settings for all bars, and Cooldown numbers as an Enable box](#2026-11-13--action-bars-shared-settings-for-all-bars-and-cooldown-numbers-as-an-enable-box)
   - [2026-11-13 — In-game pass: five small changes asked for](#2026-11-13--in-game-pass-five-small-changes-asked-for)
@@ -155,6 +162,93 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-15 — The action bars' and buffs' texts default to Small text
+
+**What:** The action bars' hotkey, stack count and macro name, and the buffs' and debuffs' duration and stack count, still ship a copy of Small text's look (Homespun 10, Monochrome outline) saved as a face name, a size and an outline. Their Font rows now list SaftUI's fonts (the fonts design, Task 8), so a player can pick Small text and follow it, but an untouched profile does not. Make Small text the default (the key `pixel`), with a conversion that writes today's copy into any text that set one of font, size or outline, so those keep their look.
+
+**Why noticed:** The fonts design's "Later" list (`docs/superpowers/specs/2026-11-14-saftui-fonts-design.md`), kept out of the plan on purpose: the owner decided the texts keep their saved shape and copied faces (call 23). It would settle Discrepancy 2 by default instead of by a pick.
+
+**Anchors:**
+- `SaftUI-ActionBars/config.lua` (`Text()`, the shipped copy), `SaftUI-ActionBars/shared.lua` (`AB:ConvertProfile`, the profile `version` flag: the model for a one-time conversion), `SaftUI-ActionBars/skin.lua` (`TextConfig`, `AB:OnFontsChanged`).
+- `SaftUI-Misc/config.lua` (`st.defaults.auras`: `duration` and `count` of `buffs` and `debuffs`), `SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua` (`AP:UpdateFont`).
+- `docs/design-system/10-discrepancies.md` (2) and `docs/research/2026-11-14-fonts-audit.md` (the recommendation).
+
+**What's been considered:** The audit recommended it. AceDB saves only what differs from a default, so a profile that never saved a text's font, size or outline would move to Small text by itself, and one that saved any of them must be converted to keep its copy. A text on Small text takes Small text's own shadow where the copy has none (the action bars' and buffs' copies are shadowless), so an owner who gave Small text a shadow would see it on hotkeys and timers.
+
+**Shape of work:** Small: two defaults, a conversion for each module with its marker, tests for an untouched profile, a profile that saved one field and a profile switch, and the docs. One ticket.
+
+**Open questions:** Whether the conversion should also keep the look of a text that saved only its position (it saved no font field, so it follows). Whether the macro names on bars 1 to 8 keep their old shadow (the in-game check of the fonts plan) before this builds on it.
+
+### 2026-11-15 — A reset on every font row
+
+**What:** `generators.font` takes no default, so a font row has a reset icon only where its page builds `default` by hand (`FN.FontSettingDefault`: the Fonts tab's Kinds of text rows, Theme > Window titles, and All bars' texts through the action bars' own `TextDefault`). Every other Font row (the tooltip's, chat's, Skinning's, the bags', the loot's, the tracker's, the unit frame elements', the buffs') has none. Give `generators.font` the default, and have it build `default` through the inherited `get` and `set`, as the number inputs do.
+
+**Why noticed:** The fonts design's "Later" list. The rule is a reset per setting (`docs/design-system/10-discrepancies.md`, 17), and a font row is a setting like any other.
+
+**Anchors:** `SaftUI-Core/Config/generators.lua` (`generators.font`, the number inputs' `default`), `SaftUI-Core/Media/fonts.lua` (`FN.FontSettingDefault`), `SaftUI-Core/Config/optionsshare.lua` (`DefaultText`'s `font` branch), and each page's `generators.font(` call (grep it).
+
+**What's been considered:** The row's `differs` is any value but the default (a table always differs), its `reset` writes the default and runs `st:FontsChanged()`, and its `text` is `st:FontLabel(default)`: `FN.FontSettingDefault` already does that. What's missing is each page's default value, which `st.defaults` holds, and a rule for rows that read a copy (the action bars' and buffs' texts, face only).
+
+**Shape of work:** Small to medium: the generator, then each page's call with its default; tests per page that the icon shows only when the value differs. One ticket.
+
+**Open questions:** What the face-only rows (the action bars' and buffs' texts) reset to, which follows the Small text followup above.
+
+### 2026-11-15 — A window title font per theme
+
+**What:** Theme > Window titles sets one font for every window title under every theme. Let each theme (Thick, Thin, Blizzard) have its own, falling back to Window titles where it sets none.
+
+**Why noticed:** The fonts design's "Later" list; the owner moved Window titles to the Theme tab (decision 5) and left a per-theme font for later.
+
+**Anchors:** `SaftUI-Core/Media/theme.lua` (the Window titles section and its Font row), `SaftUI-Core/Media/fonts.lua` (`headers.font`, the Kinds of text key that Window titles keeps), `SaftUI-Core/panels.lua` (`HeaderFont`, `st:CreateHeader`).
+
+**What's been considered:** Nothing beyond the one line. The themes' other settings (Accent, Options windows) are one choice for all themes, so a per-theme font would be the first that is not.
+
+**Shape of work:** Needs a design pass (which of the three looks differ enough to want their own, and where the rows go), then small work in the Theme tab and `HeaderFont`.
+
+**Open questions:** Whether it is a row per theme or a "per theme" switch on the one row.
+
+### 2026-11-15 — The tooltip lines take SaftUI's shadow and spacing
+
+**What:** The tooltip's lines take the Font row's face, size and outline (its dots menu lists Size and Outline only), and leave Blizzard's shadow and line spacing alone. Let them take SaftUI's shadow and spacing too, for the consistency decision 22 of the fonts design asks for.
+
+**Why noticed:** The fonts design's "Later" list. The plan kept the tooltip's menu to the two fields its reader applies (Ruling 7), so no row in a menu does nothing.
+
+**Anchors:** `SaftUI-Misc/tooltip.lua` (the lines' `SetFont`, the changed-only compare on each Show), `SaftUI-Misc/tooltipposition.lua` (the Font row's `fields`), `docs/superpowers/plans/2026-11-14-saftui-fonts.md` (Ruling 7).
+
+**What's been considered:** Chat keeps Blizzard's line spacing for the same reason (its frames draw at 0 where Text's is 4), so the tooltip's own spacing would be a look change for everyone, not only a consistency fix. The lines are Blizzard's font strings, copied onto on each Show, so the compare would grow two fields.
+
+**Shape of work:** Small: the reader and the row's `fields`, tests for the lines, and an in-game look at the tooltip's spacing.
+
+**Open questions:** Whether the tooltip's line spacing should follow Text's 4 or stay Blizzard's.
+
+### 2026-11-15 — Title bar height beside Window titles on the Theme tab
+
+**What:** Under the Blizzard theme a window's header sits in the metal's title bar (a fixed strip of 20). A Window titles font taller than that strip has no way to give it more room. Add a Title bar height setting beside Window titles on the Theme tab.
+
+**Why noticed:** The fonts design's "Later" list, from the Window titles move (decision 5).
+
+**Anchors:** `SaftUI-Core/Media/theme.lua` (the Window titles section), `SaftUI-Core/themeart.lua` and `st.ThemeArt.TitleStrip()` (the 20), `st:HeaderInTitleBar`, `st:HeaderButtonSize` and `st:HeaderRoom` in `SaftUI-Core/panels.lua`.
+
+**What's been considered:** Every window that places things above its header reads `st:ArtAboveHeader` and `st:HeaderRoom`, so a height that varies needs them to read the setting, and the bags' window (protected in combat) re-lays out through the combat queue.
+
+**Shape of work:** A design pass (a size range, whether Thick and Thin have a header height too), then medium work across the header helpers and the windows that hang from them.
+
+**Open questions:** Whether it applies to all three looks or only to Blizzard's title bar.
+
+### 2026-11-15 — Search into the dots menus
+
+**What:** `/sui`'s search lists a font row but never the Size, Outline, Shadow offset and Line spacing rows behind a typeface's dots, because the menu is built from the row's value when it opens and no option holds it. Searching "Size" finds only real Size rows.
+
+**Why noticed:** The fonts design's "Later" list; the plan's Task 4 pinned the current behavior in a test ("search finds no row of a dots menu").
+
+**Anchors:** `SaftUI-Core/Config/optionsfont.lua` (`w:Menu()`), `SaftUI-Core/Config/optionsmodel.lua` (`CollectMenu`, `OM.Search`), `tests/core/options_font_test.lua` (the search case).
+
+**What's been considered:** A font row has no `menu` field, so search's walk of item menus never sees it. A row whose value is a shared font has no menu to list, and one whose value is a typeface has a different menu per value, so a hit would have to open the row's menu on the right typeface or name the row only.
+
+**Shape of work:** Needs a design pass on what a hit is (the row, or the menu open on it), then a small model change and tests.
+
+**Open questions:** Whether a hit on a row whose value is a shared font should still list the typeface fields.
 
 ### 2026-11-15 — SaftUI's tracker: experiments and in-game checks before the switch turns on
 
@@ -1494,29 +1588,6 @@ What the plan's list doesn't cover:
 
 **Open questions:** Does the user mind a listed Cosmetic, fishing, account-bound or equipment set item showing, unsold, in Grays/Auto Vendor rather than in its old category?
 
-### 2026-11-10 — Fonts: separate the fonts users pick per kind of text from SaftUI's internal font objects
-
-**What:** SaftUI's fonts are a handful of named font objects (Pixel, Pixel Med, Pixel Huge, Normal, Normal Med, Title (Colus), Subtitle), each a face, size, outline, shadow and spacing together. Code picks an object by key, and the user's options pick objects too. So restyling one kind of text means changing an object every other user of it shares. The user wants it split the way the template strings became Theme: what the user chooses per kind of text, apart from SaftUI's internal font objects.
-
-**Why noticed:** The user, 2026-11-10: "I'd also like to queue up another piece of work restructuring how fonts are managed, similar to template I'd like to separate internal font usage from user facing font usage - a good example of why I want this is I'd like to change my bag category labels to Colus but don't currently have a good way of doing that without also changing the font of my unit frames as well as anything else that uses the "Normal" font object. we can explore that subject deeper after but that's some starter context."
-
-Today the bag category titles already have a font choice (`inventory.fonts.titles`, `SaftUI-Bags/options.lua`), but it picks a whole object: choosing Title gives Colus at the title's size, and the only way to get Colus at label size is to change Normal's face, which every unit frame and anything else on Normal shares.
-
-**Anchors:**
-- `SaftUI-Core/Media/fonts.lua`: `FN:UpdateFontConfig` (a font object per `st.config.profile.fonts` entry, `SaftUI_<name>Font`), `st:GetFont(key)`, the Fonts tab (a Kinds of text section: `headers.font`, `buttons.font`, `panels.font`; then a section per font object).
-- `SaftUI-Core/Config/defaults.lua`: `st.defaults.fonts` (the objects and their derived sizes).
-- Per-module font keys: e.g. `inventory.fonts.titles` (`SaftUI-Bags/category.lua:432`, `inventory.lua:209,228`), and every `st:GetFont(...)` and `st:CreateFontString(parent, '<key>')` across the modules.
-- The precedent: the Themes project (`docs/superpowers/specs/2026-11-10-saftui-themes-design.md`): internal names hidden, a global choice that every module inherits, per-module overrides only.
-
-**What's been considered:** Nothing yet beyond the user's framing. The Themes precedent suggests a global font that kinds of text inherit by default, with per-kind overrides (face, size, outline) that don't touch the shared objects.
-
-**Shape of work:** A brainstorm (which kinds of text the user sees, what a choice holds: face only, or face, size and outline; inherit and override, as Themes), then a spec and a plan. Probably one project: a font-choice layer over the objects, a migration for saved font keys, and the options.
-
-**Open questions:**
-- What does a per-kind choice hold: a face only, or face, size and outline?
-- Which kinds of text get their own choice, and how are they grouped in `/sui`?
-- Do the named objects stay user-visible at all, or become internal like the template strings?
-
 ### 2026-11-10 — Zone level and faction line: in-game checks
 
 **What:** The zone text's new line under the zone name (level range and faction, e.g. "Level 10–20 · Alliance") and the world map's faction line under a hovered zone's name were built from Blizzard's source and checked only in `tests/`. To check in game, Forever first:
@@ -2291,6 +2362,47 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-15 — All bars' Cooldown diff icon misses a bar that owns a size or outline alone
+
+**What:** On All bars, the Cooldown item's diff icon and its Apply to list come from the menu's Size and Outline rows. While All bars' cooldown font is the shared font by button size, those two rows are hidden, and the model skips a hidden option, so a bar that set its own cooldown Size or Outline (which makes that bar draw a typeface) is not named on All bars' Cooldown.
+
+**Why noticed:** Found while moving the action bars' text menus onto the font row (fonts plan, Task 8): `tests/actionbars/page_test.lua` ("the cooldown numbers: Show is Blizzard's setting...") used to expect "Bar 3: Size" and now expects no difference.
+
+**Anchors:** `SaftUI-ActionBars/textoptions.lua` (`SharedFont`, which hides Size and Outline), `SaftUI-Core/Config/optionsmodel.lua` (`OM.ShareState`, which skips a hidden `inner` at the `share and not IsHidden` test), `AB:OwnersOf` in `SaftUI-ActionBars/shared.lua`.
+
+**What's been considered:** The same happens to a hotkey, count or macro name on All bars while All bars' font is a shared font and a bar owns its own size or outline. Fixing it in the model (an item's diff counts hidden options that carry a share) is a Core change that touches every page's items; fixing it in the action bars (keep the rows visible and disable them) changes what the player sees.
+
+**Shape of work:** Small in the model, with a test per page that hides a shared option; or a decision to accept it.
+
+**Open questions:** Which side fixes it, and whether a hidden option's own mark and diff should still count.
+
+**Resolved 2026-11-15:** on All bars a text's Size and Outline stay shown while any bar owns one (`SaftUI-ActionBars/textoptions.lua`, `Hidden`), so the diff icon and Apply to name that bar; a bar's own page still hides them while its font is shared. Tests in `tests/actionbars/page_test.lua`.
+
+### 2026-11-10 — Fonts: separate the fonts users pick per kind of text from SaftUI's internal font objects
+
+**What:** SaftUI's fonts are a handful of named font objects (Pixel, Pixel Med, Pixel Huge, Normal, Normal Med, Title (Colus), Subtitle), each a face, size, outline, shadow and spacing together. Code picks an object by key, and the user's options pick objects too. So restyling one kind of text means changing an object every other user of it shares. The user wants it split the way the template strings became Theme: what the user chooses per kind of text, apart from SaftUI's internal font objects.
+
+**Why noticed:** The user, 2026-11-10: "I'd also like to queue up another piece of work restructuring how fonts are managed, similar to template I'd like to separate internal font usage from user facing font usage - a good example of why I want this is I'd like to change my bag category labels to Colus but don't currently have a good way of doing that without also changing the font of my unit frames as well as anything else that uses the "Normal" font object. we can explore that subject deeper after but that's some starter context."
+
+Today the bag category titles already have a font choice (`inventory.fonts.titles`, `SaftUI-Bags/options.lua`), but it picks a whole object: choosing Title gives Colus at the title's size, and the only way to get Colus at label size is to change Normal's face, which every unit frame and anything else on Normal shares.
+
+**Anchors:**
+- `SaftUI-Core/Media/fonts.lua`: `FN:UpdateFontConfig` (a font object per `st.config.profile.fonts` entry, `SaftUI_<name>Font`), `st:GetFont(key)`, the Fonts tab (a Kinds of text section: `headers.font`, `buttons.font`, `panels.font`; then a section per font object).
+- `SaftUI-Core/Config/defaults.lua`: `st.defaults.fonts` (the objects and their derived sizes).
+- Per-module font keys: e.g. `inventory.fonts.titles` (`SaftUI-Bags/category.lua:432`, `inventory.lua:209,228`), and every `st:GetFont(...)` and `st:CreateFontString(parent, '<key>')` across the modules.
+- The precedent: the Themes project (`docs/superpowers/specs/2026-11-10-saftui-themes-design.md`): internal names hidden, a global choice that every module inherits, per-module overrides only.
+
+**What's been considered:** Nothing yet beyond the user's framing. The Themes precedent suggests a global font that kinds of text inherit by default, with per-kind overrides (face, size, outline) that don't touch the shared objects.
+
+**Shape of work:** A brainstorm (which kinds of text the user sees, what a choice holds: face only, or face, size and outline; inherit and override, as Themes), then a spec and a plan. Probably one project: a font-choice layer over the objects, a migration for saved font keys, and the options.
+
+**Open questions:**
+- What does a per-kind choice hold: a face only, or face, size and outline?
+- Which kinds of text get their own choice, and how are they grouped in `/sui`?
+- Do the named objects stay user-visible at all, or become internal like the template strings?
+
+**Resolved 2026-11-14:** the fonts design, Tasks 1 to 8 (`docs/superpowers/specs/2026-11-14-saftui-fonts-design.md`, `docs/superpowers/plans/2026-11-14-saftui-fonts.md`): six shared fonts named for their jobs, a Heading font, a font row that lists them and every typeface with a typeface's own size, outline, shadow and line spacing behind its dots, every font setting applying at once, and the action bars' and buffs' Font rows on SaftUI's fonts. Its leftovers are the Active entries dated 2026-11-15.
 
 ### 2026-11-13 — Theme change errors in the theme engine: can't measure restricted regions
 

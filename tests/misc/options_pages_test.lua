@@ -171,9 +171,15 @@ test('Totem bar: one small color per element, read and written as the bar reads 
 	check_page('TotemBarOffClass', plain)
 end)
 
+-- The Auras module, its file loaded once (a module's file can't load twice).
+local function auras()
+	if not st:GetModule('Auras', true) then load_saftui('SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua') end
+	return st:GetModule('Auras')
+end
+
 test('Buffs: the text positions are Position options over the same keys', function()
-	load_saftui('SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua')
-	local AP = st:GetModule('Auras')
+	local AP = auras()
+	local real = { UpdateFont = AP.UpdateFont, UpdateText = AP.UpdateText, GetGeometry = AP.GetGeometry }
 	AP.holders = { buffs = CreateFrame('Frame', nil, UIParent), debuffs = CreateFrame('Frame', nil, UIParent) }
 	AP.maxAuras = { buffs = 32, debuffs = 16 }
 	AP.config = profile.auras
@@ -207,6 +213,71 @@ test('Buffs: the text positions are Position options over the same keys', functi
 	local got = layout({ Auras = tree }, 'Auras', 'buffs')
 	eq(got, 'size:normal 1, max:normal 2, spacing_x:normal 1, spacing_y:normal 2, grow:normal 1, wrap:normal 2, perrow:normal 1',
 		'General in pairs')
+	for name, fn in pairs(real) do AP[name] = fn end -- the real ones back for the next case
+end)
+
+test("Buffs > Duration's Font lists the shared fonts; Small text picked hides Size and Outline, and the timers follow Small text", function()
+	local AP = auras()
+	local real = { UpdateText = AP.UpdateText, GetGeometry = AP.GetGeometry }
+	st:BindModuleConfig(AP, 'auras')
+	AP.holders = { buffs = CreateFrame('Frame', nil, UIParent), debuffs = CreateFrame('Frame', nil, UIParent) }
+	AP.maxAuras = { buffs = 32, debuffs = 16 }
+	function AP:GetGeometry() return { horizontal = true, grow = 'LEFT', wrap = 'DOWN' } end
+	function AP:UpdateText() end
+	local tree = AP:GetConfigTable()
+	for _, frame in ipairs({ 'buffs', 'debuffs' }) do
+		for _, kind in ipairs({ 'duration', 'count' }) do
+			local group = tree.args[frame].args.text.args[kind]
+			eq(group.args.font.type, 'font', frame .. ' ' .. kind .. ": Font is Core's font row")
+			eq(group.args.font.faceOnly, true, 'in its face-only mode')
+			eq(table.concat(group.args.outline.sorting or {}, ','), table.concat(st:GetModule('Fonts').OUTLINE_ORDER, ','), 'Outline lists None first')
+			eq(group.args.size.hidden(), false, 'a face: Size shows')
+			eq(group.args.outline.hidden(), false, 'and Outline')
+		end
+	end
+
+	-- The window's walk of the page: a face lists Size and Outline, a shared font does not.
+	local function keys()
+		local list = {}
+		local group = tree.args.buffs.args.text.args.duration
+		for key, option in pairs(group.args) do
+			if not (option.hidden and option.hidden()) then list[#list + 1] = { key = key, order = option.order } end
+		end
+		table.sort(list, function(a, b) return a.order < b.order end)
+		local out = {}
+		for _, each in ipairs(list) do out[#out + 1] = each.key end
+		return table.concat(out, ',')
+	end
+	eq(keys(), 'font,size,outline,position', 'Font, Size, Outline, Position on a face')
+
+	local duration = tree.args.buffs.args.text.args.duration
+	local timer = AP:GetFont('buffs', 'duration')
+	local face = profile.auras.buffs.duration
+	eq(duration.get(info_for('font')), face.font, "the face the profile names, as it was saved")
+	duration.set(info_for('font'), 'pixel')
+	eq(profile.auras.buffs.duration.font, 'pixel', 'Small text saves its key')
+	eq(keys(), 'font,position', 'Size and Outline are hidden')
+	local path, size, flags = st:FontValues('pixel')
+	local got, gotSize, gotFlags = timer:GetFont()
+	eq(got .. ',' .. gotSize .. ',' .. gotFlags, path .. ',' .. size .. ',' .. flags, "the timers take Small text's face, size and outline")
+
+	-- And follow a change of Small text on the Fonts tab.
+	st.config.profile.fonts.pixel.font_size = 13
+	st:GetModule('Fonts'):UpdateFontConfig('pixel')
+	st:FontsChanged()
+	eq(select(2, timer:GetFont()), 13, 'at once, with no reload')
+
+	-- A face again: Size and Outline come back and apply.
+	duration.set(info_for('font'), 'Colus')
+	eq(keys(), 'font,size,outline,position', 'Size and Outline are back')
+	duration.set(info_for('size'), 12)
+	eq(select(2, timer:GetFont()), 12, "the setting's own size")
+	local stack = tree.args.buffs.args.text.args.count
+	stack.set(info_for('font'), 'heading')
+	eq(stack.args.size.hidden() and stack.args.outline.hidden(), true, "Stack count's too")
+	eq(duration.args.size.hidden(), false, "and its own: Duration's Size shows on a face")
+	eq(#take_errors(), 0, 'no errors')
+	for name, fn in pairs(real) do AP[name] = fn end
 end)
 
 test('Swing timer: sizes and descs, Position last', function()
