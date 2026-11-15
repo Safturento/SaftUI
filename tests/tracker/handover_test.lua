@@ -858,3 +858,23 @@ both('the same switch with a tracker the game counts as protected: it stays in p
 	eq(TR.handoverState, 'both', 'still both')
 	clean()
 end)
+
+-- N1: AssignItems reads each button's own live cooldown and range, not the model's
+-- (as old as the last quest event): an item used from Blizzard's own button during a
+-- handover shows its swipe and range when SaftUI's buttons come back.
+both('an item used during a handover shows its cooldown and range when the buttons come back, with no quest event between', function(client)
+	local st, TR, OT = world({ client = client })
+	scenario(true)
+	settle()
+	eq(TR.handoverState, 'blizzard', 'handed over')
+	stub.time = stub.time + 1
+	stub.quests.log[2].item.cooldown = { start = stub.time, duration = 30, enable = 1 }
+	stub.quests.log[2].item.range = 0
+	scenario(false)
+	settle(TR.HOLD + 1)
+	eq(TR.handoverState, 'own', 'back')
+	local b = TR:GetItemButton(1)
+	check(b ~= nil and b:IsShown(), 'the button is back')
+	eq(stub.state(b.cooldown).cooldown_duration, 30, 'with its swipe')
+	eq(b.range, 0, 'and its range')
+end)

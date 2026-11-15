@@ -947,7 +947,10 @@ local function AssignItems(self, wanted)
 		end
 		if button and self:SetButtonItem(button, quest.item) then
 			button.item, button.title = quest.item, quest.title
-			button.cd, button.range = quest.item.cooldown, quest.item.range
+			-- Their own live reads, never the model's (as old as the last quest event).
+			local logIndex = LogIndex(quest.id)
+			TR.ReadButtonCooldown(button, logIndex)
+			button.range = ReadRange(logIndex)
 			button.inside = ReadInside(quest.id)
 			StyleButton(button, look)
 			SetKind(button, column, entry.number, self.columnSide)
