@@ -9,7 +9,10 @@ local Kit = W.Kit
 
 	  W.OpenColorPicker(owner, spec) -> boolean
 	      spec = { r, g, b, a, hasAlpha, onChange = function(r, g, b, a),
-	      onCancel = function() }. owner is the frame it opens beside (the
+	      onCancel = function(), preview, name }. preview is the option's
+	      own field (a preview kind's name or a table, optionspreview.lua) and
+	      name the option's: with a kind the file knows, a strip under the
+	      square shows the color in context and the picker is 94 taller. owner is the frame it opens beside (the
 	      field's): its top left 8 right of the owner's top right, or left of
 	      the owner's left, and up, when it would leave the screen. false in
 	      combat. Opening it while it is open for another field accepts the
@@ -33,9 +36,14 @@ local Kit = W.Kit
 	goes back to it), a chevron-right, and the color being chosen at the right
 	(no words on them; each has a tooltip), the
 	red, green and blue boxes (0 to 255), the opacity box (a percent, hasAlpha
-	only) and the hex box; Class colors (SaftUI's own, a chip for each class
-	the client has, its name the tooltip), Last used (up to 12, newest first,
-	account-wide in st.config.global.colorPicker.recent), and Okay and Cancel.
+	only) and the hex box; the preview, when the option has one (a caption
+	"Preview" at 248, its note at the right, and the area at 266, 64 tall,
+	the panel's inner width: W.PREVIEW, optionspreview.lua; it is repainted
+	by Paint on each change, by st:KeepOwnColors after a theme recolor and by
+	a follower of Text); Last used (up to 12, newest first, account-wide in
+	st.config.global.colorPicker.recent; at 248, or 342 under a preview), and
+	Okay and Cancel. The Colors page edits the class colors, so the picker has
+	no row of them.
 	The square and the strips are gradient textures (Texture:SetGradient with
 	CreateColor), on both clients.
 
@@ -74,7 +82,7 @@ local floor, max, min = math.floor, math.max, math.min
 local format = string.format
 
 local Box, Edge, BlizzardLook = W.Box, W.Edge, W.BlizzardLook
-local Colors, NewText, SetFieldFont, LookInput = Kit.Colors, Kit.NewText, Kit.SetFieldFont, Kit.LookInput
+local NewText, SetFieldFont, LookInput = Kit.NewText, Kit.SetFieldFont, Kit.LookInput
 
 ------------------------------------------------------------------ the maths
 
@@ -204,9 +212,8 @@ local BOX_WIDTH, BOX_HEIGHT = 84, 22
 local ROW_FIRST, ROW_PITCH = 34, 28 -- the first number row, in from the column's top; between rows
 local CAPTION_SIZE = 13
 local CHIP, CHIP_GAP = 18, 4
-local CLASS_CAPTION_Y, CLASS_Y = 248, 266
-local RECENT_CAPTION_Y, RECENT_Y = 294, 312
-local HEIGHT = 388
+local RECENT_CAPTION_Y, RECENT_Y = 248, 266 -- Last used; 94 further down (W.PREVIEW.ROOM) with a preview
+local HEIGHT = 342
 local LEVEL = 500 -- over the window (100), the small dialog (300) and an item's menu (410)
 local THUMB, BAR_WIDTH, BAR_HEIGHT = 10, 22, 6 -- the square's thumb; a strip's
 local CHECKER, CHECKER_DARK, CHECKER_LIGHT = Kit.CHECKER, Kit.CHECKER_DARK, Kit.CHECKER_LIGHT -- the color field's own (optionstypes.lua)
@@ -319,6 +326,17 @@ local function ShowBoxes()
 	end
 end
 
+-- The open picker's preview kind painted with the color being chosen (the
+-- field's kind def, its pieces, the opacity as shown): on every change, as
+-- the picker opens, and when something took the preview's own colors off its
+-- frames (a theme recolor or redraw: st:KeepOwnColors) or Text changed (a
+-- follower). Sets colors only (optionspreview.lua).
+local function PaintKind()
+	local kind = spec and spec.kind
+	local pieces = kind and F.previewPieces[kind]
+	if pieces then spec.def.Paint(pieces, S.r, S.g, S.b, spec.hasAlpha and S.a or 1, spec.paint) end
+end
+
 local function Paint()
 	if not frame then return end
 	local hr, hg, hb = M.HSVToRGB(S.h, 1, 1)
@@ -334,6 +352,8 @@ local function Paint()
 	local shown = alpha and S.a or 1
 	F.new:Paint(S.r, S.g, S.b, shown)
 	ShowBoxes()
+	-- Last: a kind of a module that errors must not stop the field being told.
+	if spec and spec.kind then xpcall(PaintKind, geterrorhandler()) end
 end
 
 -- The color has changed: show it, and tell the field.
@@ -612,71 +632,9 @@ local function Chip(row, i)
 	return chip
 end
 
--- The classes the client has, in its order: { name, token }. GetClassInfo takes
--- a class ID, and Forever's IDs are not 1 to N (Druid is 11): its own list is
--- C_SpecializationInfo.GetAllClassIDs, as Blizzard's class menu reads it;
--- retail has none, and its IDs are 1 to GetNumClasses. An ID the client gives
--- no class for is skipped.
-local function Classes()
-	local ids = C_SpecializationInfo and C_SpecializationInfo.GetAllClassIDs and C_SpecializationInfo.GetAllClassIDs()
-	if not ids then
-		ids = {}
-		for i = 1, GetNumClasses and GetNumClasses() or 0 do ids[i] = i end
-	end
-	local out = {}
-	if GetClassInfo then
-		for _, id in ipairs(ids) do
-			local name, token = GetClassInfo(id)
-			if name and token then out[#out + 1] = { name = name, token = token } end
-		end
-	end
-	return out
-end
-
--- A class chip in its class's color.
-local function PaintChip(chip, color)
-	chip:Paint(color.r, color.g, color.b, 1)
-end
-
-local function FillClassChips()
-	local row, n = F.classes, 0
-	for _, class in ipairs(Classes()) do
-		local color = Colors().class[class.token]
-		if color then
-			n = n + 1
-			local chip = Chip(row, n)
-			chip.class = class.token
-			PaintChip(chip, color)
-			chip.tip = function() return class.name end
-			chip.pick = function() SetRGBA(color.r, color.g, color.b) end
-			chip:Show()
-		end
-	end
-	for i = n + 1, #row.chips do
-		row.chips[i].class = nil
-		row.chips[i]:Hide()
-	end
-end
-
--- Each shown class chip in its class's color, the colors part of
--- FillClassChips: a follower of Class (st:FollowColor in Build) while the
--- picker is open, for the class that changed or, on a whole pass (key nil),
--- every chip. Nothing is made, shown or moved.
-local function PaintClassChips(_, key)
-	if not spec then return end
-	local classes = Colors().class
-	for _, chip in ipairs(F.classes.chips) do
-		local token = chip.class
-		if token and (key == nil or key == token) then
-			local color = classes[token]
-			if color then PaintChip(chip, color) end
-		end
-	end
-end
-
--- The picker's own Text colors: its captions and the chevron in Muted, the
--- number boxes' labels in Normal. A follower of Text (st:FollowColor in Build)
--- while it is open, and the color part of Look.
+-- The picker's own Text colors: its captions (the preview's too) and the
+-- chevron in Muted, the number boxes' labels in Normal. A follower of Text
+-- (st:FollowColor in Build) while it is open, and the color part of Look.
 local function PaintText()
 	if not spec then return end
 	local r, g, b = st:Color('text', 'muted'):GetRGB()
@@ -802,6 +760,16 @@ local function BuildBlocks()
 	Tip(F.new, 'New', 'The color being chosen.')
 end
 
+-- The preview's area, made once and hidden; each kind's pieces are built, in a
+-- holder the size of the area, the first time the kind shows (PrepareKind).
+local function BuildPreview()
+	F.preview = st:CreateFrame('Frame', nil, frame)
+	F.preview:Hide()
+	F.previewHolders, F.previewPieces, F.previewDefs = {}, {}, {}
+	st:KeepOwnColors(F.preview, PaintKind)
+	st:FollowColor(F.preview, 'text', nil, PaintKind)
+end
+
 local function Build()
 	F.captions, F.edits, F.order = {}, {}, {}
 	frame = st:CreateFrame('Frame', nil, UIParent)
@@ -825,15 +793,14 @@ local function Build()
 	BuildAlpha()
 	BuildBlocks()
 	F.shadeCaption, F.hueCaption, F.alphaCaption = Caption('Shade', 'CENTER'), Caption('Hue', 'CENTER'), Caption('Opacity', 'CENTER')
-	F.classCaption, F.recentCaption = Caption('Class colors', 'LEFT'), Caption('Last used', 'LEFT')
+	F.recentCaption = Caption('Last used', 'LEFT')
+	F.previewCaption, F.previewNote = Caption('Preview', 'LEFT'), Caption('', 'RIGHT')
 	F.shadeCaption:SetPoint('TOP', F.square, 'BOTTOM', 0, -4)
 	F.hueCaption:SetPoint('TOP', F.hue, 'BOTTOM', 0, -4)
 	F.alphaCaption:SetPoint('TOP', F.alpha, 'BOTTOM', 0, -4)
-	F.classCaption:SetPoint('TOPLEFT', frame, 'TOPLEFT', PAD, -CLASS_CAPTION_Y)
-	F.recentCaption:SetPoint('TOPLEFT', frame, 'TOPLEFT', PAD, -RECENT_CAPTION_Y)
-	F.classes, F.recent = { y = CLASS_Y, chips = {} }, { y = RECENT_Y, chips = {} }
+	F.recent = { y = RECENT_Y, chips = {} }
+	BuildPreview()
 	st:FollowColor(frame, 'text', nil, PaintText)
-	st:FollowColor(frame, 'class', nil, PaintClassChips)
 
 	for i, entry in ipairs(BoxSpecs()) do
 		local edit = NewBox(frame, entry)
@@ -893,12 +860,44 @@ end
 
 ------------------------------------------------------------------ layout and look
 
--- The panel for hasAlpha: wider by the opacity strip and its gap with it.
-local function Layout(hasAlpha)
+-- Where the columns sit for hasAlpha: the hue strip, the opacity strip and the
+-- number column from the left, and the panel's width.
+local function Columns(hasAlpha)
 	local hueX = PAD + SQUARE + GAP
 	local alphaX = hueX + STRIP_WIDTH + GAP
 	local columnX = (hasAlpha and alphaX or hueX) + STRIP_WIDTH + GAP
-	frame:SetSize(columnX + COLUMN + PAD, HEIGHT)
+	return hueX, alphaX, columnX, columnX + COLUMN + PAD
+end
+
+-- The preview kind to show, built the first time (and again when a module
+-- defined the kind anew), or nil when there is none or its Build fails.
+local function PrepareKind(kind, def, hasAlpha)
+	if not kind then return nil end
+	if not F.previewPieces[kind] or F.previewDefs[kind] ~= def then
+		local old = F.previewHolders[kind]
+		if old then old:Hide() end
+		local holder = st:CreateFrame('Frame', nil, F.preview)
+		holder:SetPoint('TOPLEFT', F.preview, 'TOPLEFT', 0, 0)
+		holder:SetPoint('BOTTOMRIGHT', F.preview, 'BOTTOMRIGHT', 0, 0)
+		local _, _, _, width = Columns(hasAlpha)
+		local ok, pieces = xpcall(def.Build, geterrorhandler(), holder, width - 2 * PAD, W.PREVIEW.HEIGHT)
+		if not ok or type(pieces) ~= 'table' then
+			holder:Hide()
+			F.previewHolders[kind], F.previewPieces[kind], F.previewDefs[kind] = nil, nil, nil
+			return nil
+		end
+		F.previewHolders[kind], F.previewPieces[kind], F.previewDefs[kind] = holder, pieces, def
+	end
+	return kind
+end
+
+-- The panel for hasAlpha: wider by the opacity strip and its gap with it; with a
+-- preview kind (spec.kind), taller by W.PREVIEW.ROOM, the strip and its caption
+-- in the room between the square and Last used.
+local function Layout(hasAlpha, kind)
+	local hueX, alphaX, columnX, width = Columns(hasAlpha)
+	local room = kind and W.PREVIEW.ROOM or 0
+	frame:SetSize(width, HEIGHT + room)
 	Place(F.square, frame, PAD, BODY_Y)
 	Place(F.hue, frame, hueX, BODY_Y)
 	Place(F.alpha, frame, alphaX, BODY_Y)
@@ -923,6 +922,25 @@ local function Layout(hasAlpha)
 	F.order = {}
 	for _, edit in ipairs(F.edits) do
 		if hasAlpha or not edit.alpha then F.order[#F.order + 1] = edit end
+	end
+	F.recentCaption:ClearAllPoints()
+	F.recentCaption:SetPoint('TOPLEFT', frame, 'TOPLEFT', PAD, -(RECENT_CAPTION_Y + room))
+	F.recent.y = RECENT_Y + room
+	F.preview:SetShown(kind ~= nil)
+	F.previewCaption:SetShown(kind ~= nil)
+	for name, holder in pairs(F.previewHolders) do holder:SetShown(name == kind) end
+	local note = kind and spec.def.note
+	F.previewNote:SetText(note or '')
+	F.previewNote:SetShown(note ~= nil and note ~= false)
+	if kind then
+		local PV = W.PREVIEW
+		local inner = width - 2 * PAD
+		Place(F.preview, frame, PAD, PV.Y, inner, PV.HEIGHT)
+		Place(F.previewCaption, frame, PAD, PV.CAPTION_Y)
+		F.previewNote:ClearAllPoints()
+		F.previewNote:SetPoint('TOPRIGHT', frame, 'TOPRIGHT', -PAD, -PV.CAPTION_Y)
+		local layout = spec.def.Layout
+		if layout then layout(F.previewPieces[kind], inner, PV.HEIGHT) end
 	end
 end
 
@@ -964,11 +982,20 @@ function W.OpenColorPicker(owner, options)
 		r = options.r or 0, g = options.g or 0, b = options.b or 0, a = options.a or 1,
 		onChange = options.onChange, onCancel = options.onCancel, stale = options.stale,
 	}
+	-- The option's preview (optionspreview.lua): a kind the kit knows, else none.
+	local kind, fields = W.ReadPreview(options.preview)
+	if kind then
+		local def = W.PreviewKinds()[kind]
+		spec.kind = PrepareKind(kind, def, hasAlpha)
+		if spec.kind then
+			spec.def = def
+			spec.paint = { fields = fields, name = options.name, hasAlpha = hasAlpha }
+		end
+	end
 	S.r, S.g, S.b, S.a = spec.r, spec.g, spec.b, hasAlpha and spec.a or 1
 	S.h, S.s, S.v = M.RGBToHSV(S.r, S.g, S.b, 0)
-	Layout(hasAlpha)
+	Layout(hasAlpha, spec.kind)
 	Look()
-	FillClassChips()
 	FillRecentChips()
 	F.was:Paint(spec.r, spec.g, spec.b, hasAlpha and spec.a or 1)
 	frame:SetFrameStrata('FULLSCREEN_DIALOG')

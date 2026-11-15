@@ -443,83 +443,11 @@ test('a click on the left block (the opening color) goes back to it', function()
 	reset()
 end)
 
--- The classes a client lists, by token, as the chips show them (by tooltip).
-local function class_names(F)
-	local out = {}
-	for _, chip in ipairs(chips_shown(F.classes)) do out[#out + 1] = chip.tip() end
-	return out
-end
-
-test('class colors: a chip for each class the client has, SaftUI\'s colors, the class name as the tooltip', function()
-	reset()
-	local _, F = open()
-	local chips = chips_shown(F.classes)
-	eq(#chips, 9, 'Forever has nine classes')
-	local colors = st.config.profile.colors.class
-	local seen = {}
-	for i, chip in ipairs(chips) do
-		local name, token = GetClassInfo(stub.class_ids[i]) -- by class ID, as the game takes it
-		local c = stub.state(chip.color).color_texture
-		eq(c[1], colors[token].r, name .. ' red')
-		eq(c[3], colors[token].b, name .. ' blue')
-		stub.fire_script(chip, 'OnEnter', true)
-		eq(GameTooltip:GetOwner(), chip, name .. ': the tooltip is the chip\'s')
-		eq(stub.state(GameTooltip).texts[1], name, 'the class name')
-		stub.fire_script(chip, 'OnLeave', true)
-		check(not GameTooltip:IsShown(), 'gone on leaving')
-		seen[name] = true
-	end
-	check(seen['Warrior'] and seen['Druid'] and not seen['Evoker'], 'Druid (ID 11) is there, no Evoker on Forever')
-	reset()
-	-- A changed class color is the chip's color.
-	st.config.profile.colors.class.WARRIOR = CreateColor(0.1, 0.2, 0.3)
-	_, F = open()
-	eq(stub.state(F.classes.chips[1].color).color_texture[1], 0.1, 'SaftUI\'s Colors page color')
-	reset()
-end)
-
-test('class colors: retail has no GetAllClassIDs, its IDs are 1 to GetNumClasses', function()
-	local real = C_SpecializationInfo.GetAllClassIDs
-	C_SpecializationInfo.GetAllClassIDs = nil
-	stub.class_ids = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 }
-	reset()
-	local _, F = open()
-	eq(#chips_shown(F.classes), 13, 'thirteen')
-	eq(class_names(F)[13], 'Evoker', 'in ID order')
-	-- A gap (an ID the client has no class for) is skipped, not an error.
-	stub.class_ids = { 1, 2, 3, 4, 5, 7, 8, 9, 11 }
-	_, F = open()
-	eq(#chips_shown(F.classes), 8, 'ID 6 gives no class: skipped (Druid, ID 11, is past GetNumClasses)')
-	C_SpecializationInfo.GetAllClassIDs = real
-	reset()
-end)
-
-test('class colors: with GetAllClassIDs the list is the client\'s own IDs, gaps and all', function()
-	reset()
-	stub.class_ids = { 1, 2, 3, 4, 5, 7, 8, 9, 11 }
-	local _, F = open()
-	local names = class_names(F)
-	eq(table.concat(names, ','), 'Warrior,Paladin,Hunter,Rogue,Priest,Shaman,Mage,Warlock,Druid', 'nine, in ID order')
-	reset()
-end)
-
-test('a class chip sets the color and keeps the opacity', function()
-	reset()
-	local told, F = open({ a = 0.5 })
-	local chip = chips_shown(F.classes)[1]
-	click(chip)
-	local r, g, b, a = told.last()
-	local warrior = st.config.profile.colors.class.WARRIOR
-	eq(r, warrior.r, 'r')
-	eq(g, warrior.g, 'g')
-	eq(a, 0.5, 'opacity kept')
-	reset()
-end)
-
 test('the chips take OnEnter and OnLeave with the game\'s motion argument', function()
 	reset()
+	st.config.global.colorPicker.recent = { { r = 1, g = 0, b = 0, a = 1 } }
 	local _, F = open()
-	local chip = chips_shown(F.classes)[1]
+	local chip = chips_shown(F.recent)[1]
 	local ok = pcall(stub.fire_script, chip, 'OnEnter', true)
 	check(ok, 'OnEnter(self, motion)')
 	ok = pcall(stub.fire_script, F.was, 'OnLeave', true)
@@ -730,13 +658,13 @@ test('every part is on whole pixels, under each look, with sizes read back a hai
 	theme('thick')
 end)
 
-test('the title, captions and chips: Class colors and Last used, Shade, Hue and Opacity', function()
+test('the title, captions and chips: Last used, Shade, Hue and Opacity', function()
 	reset()
 	local _, F = open()
 	eq(F.shadeCaption:GetText(), 'Shade', 'Shade')
 	eq(F.hueCaption:GetText(), 'Hue', 'Hue')
 	eq(F.alphaCaption:GetText(), 'Opacity', 'Opacity')
-	eq(F.classCaption:GetText(), 'Class colors', 'Class colors')
+	check(F.classCaption == nil and F.classes == nil, 'no Class colors row: the Colors page edits those')
 	eq(F.recentCaption:GetText(), 'Last used', 'Last used')
 	local r, g, b = st.config.profile.colors.text.muted:GetRGB()
 	local cr, cg, cb = F.shadeCaption:GetTextColor()
@@ -1048,7 +976,7 @@ test('a missed mouse up still ends the move: the strip stops it when the button 
 	reset()
 end)
 
------------------------------------------------------------------- following Text and Class while open
+------------------------------------------------------------------ following Text while open
 
 test("its captions, box labels and chevron follow Text > Muted and Normal while it is open", function()
 	theme('thick')
@@ -1073,31 +1001,4 @@ test("its captions, box labels and chevron follow Text > Muted and Normal while 
 	normal:SetRGB(unpack(keep_normal))
 	reset()
 	muted:SetRGB(0.2, 0.4, 0.6)
-end)
-
-test("a class chip follows its class's color while it is open", function()
-	theme('thick')
-	reset()
-	local mage = st.config.profile.colors.class.MAGE
-	local keep = { mage:GetRGB() }
-	local _, F = open()
-	local chip
-	for _, c in ipairs(chips_shown(F.classes)) do if c.class == 'MAGE' then chip = c end end
-	check(chip, 'a Mage chip is shown')
-	mage:SetRGB(0.9, 0.2, 0.1)
-	st:ColorChanged('class', 'MAGE')
-	C.step(st)
-	eq(string.format('%.2f,%.2f,%.2f', unpack(stub.state(chip.color).color_texture)), '0.90,0.20,0.10', 'the Mage chip follows')
-	local other
-	for _, c in ipairs(chips_shown(F.classes)) do if c.class ~= 'MAGE' then other = c end end
-	local before = { unpack(stub.state(other.color).color_texture) }
-	local other_color = st.config.profile.colors.class[other.class]
-	local keep_other = { other_color:GetRGB() }
-	other_color:SetRGB(0.3, 0.3, 0.3)
-	st:ColorChanged('class', 'MAGE')
-	C.step(st)
-	eq(stub.state(other.color).color_texture[1], before[1], "another class's chip waits for its own change")
-	other_color:SetRGB(unpack(keep_other))
-	mage:SetRGB(unpack(keep))
-	reset()
 end)

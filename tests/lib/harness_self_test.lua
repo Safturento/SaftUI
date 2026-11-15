@@ -955,6 +955,9 @@ test("load_options_widgets and load_options_window load the files Core's Config/
 		eq(table.concat(options_widget_files(), ', '), table.concat(listed, ', ', from, to),
 			"the shell's widget files are load.xml's, in its order")
 	end
+	local at = {}
+	for i, path in ipairs(options_widget_files()) do at[path:match('[^/]+$')] = i end
+	eq(at['optionspreview.lua'], at['optionscolorpicker.lua'] + 1, 'optionspreview.lua loads right after optionscolorpicker.lua')
 	-- The window's files: after optionsbody.lua and before generators.lua.
 	eq(table.concat(options_window_files(), ', '), table.concat(listed, ', ', windowFrom or 1, windowTo or #listed),
 		"the shell's window files are load.xml's, in its order")
