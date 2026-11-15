@@ -42,3 +42,40 @@ test("a bank eye toggle re-applies the bag window's search to the combined bank'
 	eq(names_alpha(c), 'Gold Bar=1.0 Iron Bar=0.1 Silver Bar=0.1', 'opened again: the search still holds')
 	eq(#take_errors(), 0, 'no errors')
 end)
+
+test("the bag window's search box is one line, skinned once, in SaftUI's look", function()
+	INV, W = H.views_world('forever')
+	load_saftui('SaftUI-Core/Widgets/editbox.lua')
+	load_saftui('SaftUI-Bags/search.lua')
+	local container = H.window('bag')
+	local st = SaftUI
+	-- InputBoxTemplate isn't in the stubs: a plain edit box with the text the
+	-- template gives, and a recorder of SetMultiLine (the game's multi-line
+	-- box is the one that takes Enter as a new line).
+	local multiline = false
+	local createFrame = CreateFrame
+	_G.CreateFrame = function(frameType, name, parent, template, ...)
+		if template ~= 'InputBoxTemplate' then return createFrame(frameType, name, parent, template, ...) end
+		local box = createFrame(frameType, name, parent, nil, ...)
+		box:CreateFontString(nil, 'OVERLAY')
+		box.SetMultiLine = function(_, on) multiline = on end
+		return box
+	end
+	-- Every skin the box gets.
+	local real_skin, real_style = st.SkinEditBox, st.StyleEditBox
+	local skins, styles = 0, {}
+	st.SkinEditBox = function(self, ...) skins = skins + 1; return real_skin(self, ...) end
+	st.StyleEditBox = function(self, box, theme, background, font)
+		styles[#styles + 1] = tostring(theme) .. '/' .. tostring(background)
+		return real_style(self, box, theme, background, font)
+	end
+	INV:InitializeSearch(container)
+	_G.CreateFrame = createFrame
+	st.SkinEditBox, st.StyleEditBox = real_skin, real_style
+	eq(multiline, false, 'one line: Enter is not a new line')
+	eq(skins, 1, 'skinned once, inside st:CreateEditBox')
+	eq(table.concat(styles, ' '), 'nil/nil theme/theme', "the skin's default look, then SaftUI's theme and background by st:StyleEditBox, with no second skin")
+	check(container.search ~= nil and container.search:GetParent() == container.footer, "it is the window's search box, in the footer")
+	eq(container.search:GetHeight(), 20, 'twenty tall')
+	eq(#take_errors(), 0, 'no errors')
+end)
