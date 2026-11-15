@@ -90,16 +90,22 @@ test("a face whose file fails to load draws in Text's face on the tooltip's line
 	load_saftui('SaftUI-Misc/tooltip.lua')
 	local TT = st:GetModule('Tooltip')
 	st:BindModuleConfig(TT, 'tooltip')
-	stub.refused_fonts[path(st, 'Colus')] = true -- the game refuses the file
+	st.LSM:Register('font', 'Refused tip face', 'Interface\\AddOns\\SaftUI-Core\\Media\\Fonts\\refused-tip.ttf')
+	stub.refused_fonts[path(st, 'Refused tip face')] = true -- the game refuses the file
 	local sets = 0
 	local method = getmetatable(left).__index.SetFont
 	rawset(left, 'SetFont', function(self, ...) sets = sets + 1; return method(self, ...) end)
-	TT.config.font = { font_name = 'Colus', font_size = 11, font_outline = 'NONE', shadow_offset = { 0, 0 }, spacing = 4 }
+	TT.config.font = { font_name = 'Refused tip face', font_size = 11, font_outline = 'NONE', shadow_offset = { 0, 0 }, spacing = 4 }
 	TT:UpdateTooltipFonts(tip)
 	eqfont(left, path(st, 'AgencyFB Bold'), 11, '', "Text's face at the typeface's size and outline")
 	eq(sets, 1, 'set once')
 	for _ = 1, 50 do TT:UpdateTooltipFonts(tip) end
 	eq(sets, 1, 'and not again on every Show')
+	local probed, real = 0, stub.refused_fonts
+	stub.refused_fonts = setmetatable({}, { __index = function(_, k) probed = probed + 1; return real[k] end })
+	for _ = 1, 50 do TT:UpdateTooltipFonts(tip) end
+	stub.refused_fonts = real
+	eq(probed, 0, 'and no probe either: the answer is kept between st:FontsChanged')
 	eq(#take_errors(), 0, 'no errors')
 end)
 

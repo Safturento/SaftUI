@@ -622,8 +622,8 @@ test('a listed face whose file fails to load: the typeface object falls back to 
 	eq(flags, 'THICKOUTLINE', 'with the outline asked')
 end)
 
-for _, mode in ipairs({ true, 'error' }) do
-	test('a face the game refuses (SetFont ' .. (mode == 'error' and 'raises' or 'returns false') .. '): every reader and the typeface object get Text\'s face, tested once per file', function()
+for _, mode in ipairs({ true, 'error', 'silent' }) do
+	test('a face the game refuses (SetFont ' .. (mode == 'error' and 'raises' or mode == 'silent' and 'says nothing' or 'returns false') .. '): every reader and the typeface object get Text\'s face, tested once per file', function()
 		local face_name = 'Refused face ' .. tostring(mode)
 		st.LSM:Register('font', face_name, 'Interface\\AddOns\\SaftUI-Core\\Media\\Fonts\\refused' .. tostring(mode) .. '.ttf')
 		local colus = path(face_name)
@@ -653,3 +653,39 @@ for _, mode in ipairs({ true, 'error' }) do
 		eq(#take_errors(), 0, 'no errors')
 	end)
 end
+
+test('a refusal is not kept past st:FontsChanged: a face refused once and accepted after it draws in its own face, with one probe between', function()
+	st.LSM:Register('font', 'Late face', 'Interface\\AddOns\\SaftUI-Core\\Media\\Fonts\\late.ttf')
+	local late, text = path('Late face'), path('AgencyFB Bold')
+	local asked, state = 0, { [late] = true }
+	local real = stub.refused_fonts
+	stub.refused_fonts = setmetatable({}, { __index = function(_, k) if k == late then asked = asked + 1 end return state[k] end })
+	local look = { font_name = 'Late face', font_size = 14 }
+	eq((st:FontValues(look)), text, 'refused: Text')
+	local object = st:GetFont(look)
+	eq((object:GetFont()), text, 'and the typeface object')
+	for _ = 1, 100 do st:FontValues(look) end
+	eq(asked, 1, 'one probe between two st:FontsChanged, however often it is asked')
+	-- The game takes the file now.
+	state[late] = nil
+	eq((st:FontValues(look)), text, 'still Text until something changes')
+	st:FontsChanged()
+	eq((st:FontValues(look)), late, 'after st:FontsChanged it is asked again and draws in its own face')
+	eq((st:GetFont(look):GetFont()), late, 'a typeface object made for it takes the face too')
+	asked = 0
+	state[late] = true -- a positive answer is kept
+	st:FontsChanged()
+	eq((st:FontValues(look)), late, 'a face known to load is not asked again')
+	eq(asked, 0, 'no probe')
+	stub.refused_fonts = real
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("SaftUI's own preloaded faces count as loading with no probe", function()
+	local colus = path('Colus')
+	local asked, real = 0, stub.refused_fonts
+	stub.refused_fonts = setmetatable({}, { __index = function(_, k) if k == colus then asked = asked + 1 end return k == colus or nil end })
+	eq((st:FontValues({ font_name = 'Colus' })), colus, 'a preloaded face, though the game would refuse it')
+	eq(asked, 0, 'no probe')
+	stub.refused_fonts = real
+end)

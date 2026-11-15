@@ -284,11 +284,12 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		-- SetFont returns nothing in game (ScrollingMessageFrame's wraps the font
 		-- object's), so the window can't tell: the refusal is found once on a font
 		-- string of SaftUI's (stub.refused_fonts), and the window gets Text's face.
-		local broken = { font_name = 'Colus', font_size = 12, font_outline = 'NONE', shadow_offset = { 0, 0 }, spacing = 4 }
+		st.LSM:Register('font', 'Refused chat face', 'Interface\\AddOns\\SaftUI-Core\\Media\\Fonts\\refused-chat.ttf')
+		local broken = { font_name = 'Refused chat face', font_size = 12, font_outline = 'NONE', shadow_offset = { 0, 0 }, spacing = 4 }
 		local method = getmetatable(frames[1]).__index.SetFont
 		rawset(frames[1], 'SetFont', function(self, ...) method(self, ...) end) -- returns nothing, as a chat window's
-		eq(frames[1]:SetFont(path('Colus'), 12, ''), nil, 'the stand-in returns nothing, as a chat window does')
-		stub.refused_fonts[path('Colus')] = true
+		eq(frames[1]:SetFont(path('Refused chat face'), 12, ''), nil, 'the stand-in returns nothing, as a chat window does')
+		stub.refused_fonts[path('Refused chat face')] = true
 		profile.chat.font = broken
 		CHT:ApplyChatFont(frames[1])
 		eqdrawn(frames[1], 'AgencyFB Bold', 12, '', 0, 0, "chat: Text's face at the typeface's size")
