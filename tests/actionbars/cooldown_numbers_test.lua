@@ -581,9 +581,6 @@ test('the pet and stance bars have the Cooldown item too, the extra buttons none
 		table.sort(kinds)
 		eq(table.concat(kinds, ','), 'countdown,hotkey', id .. ': the hotkey and the cooldown numbers')
 	end
-	-- The extras' General group says where it is saved (Core's optionsdefault.lua, over the model).
-	load_saftui('SaftUI-Core/Config/optionsmodel.lua')
-	load_saftui('SaftUI-Core/Config/optionsdefault.lua')
 	for _, id in ipairs(AB.EXTRA_IDS) do
 		eq(AB:GetExtraOptions(id, 1).args.text, nil, id .. ': no Text tab')
 	end

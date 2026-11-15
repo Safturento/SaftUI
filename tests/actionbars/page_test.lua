@@ -432,7 +432,7 @@ test('every action bar row has a reset or its share, and each derived one round-
 	R.check_page({ ActionBars = AB:GetConfigTable() }, 'ActionBars')
 end)
 
-test("All bars' Cooldown Show resets to Blizzard's default", function()
+test("All bars' Cooldown Show resets to Blizzard's default, through the model", function()
 	fresh()
 	load_test_file('lib/reset_walk.lua')
 	local r = root()
@@ -440,26 +440,48 @@ test("All bars' Cooldown Show resets to Blizzard's default", function()
 	eq(AB.COUNTDOWN_CVAR, CVAR, 'one name for the setting')
 	eq(C_CVar.GetCVarDefault(CVAR), '1', "the stub knows Blizzard's default")
 	eq(OM.DefaultSource(r, item), 'default', 'a hand default')
-	eq(item.option.default.differs(), false, 'on, as the game ships it: no icon')
+	eq(OM.DefaultDiffers(r, item), false, 'on, as the game ships it: no icon')
 	C_CVar.SetCVar(CVAR, '0')
-	eq(item.option.default.differs(), true, 'off differs')
-	eq(item.option.default.value(), true, "the value it goes back to")
-	item.option.default.reset()
+	eq(OM.DefaultDiffers(r, item), true, 'off differs')
+	OM.DefaultReset(r, item)
 	eq(C_CVar.GetCVarBool(CVAR), true, 'reset: on')
 	eq(stub.cvars[CVAR], '1', "reset: '1'")
-	eq(item.option.default.differs(), false, 'and no icon again')
+	eq(OM.DefaultDiffers(r, item), false, 'and no icon again')
 end)
 
-test("All bars' Cooldown Show has no reset on a client with no CVar default", function()
+test("All bars' Cooldown Show has no reset where the client gives no CVar default (no function, or a nil answer)", function()
+	for _, how in ipairs({ 'no function', 'nil answer' }) do
+		fresh()
+		load_test_file('lib/reset_walk.lua')
+		local had, hadDefault = C_CVar.GetCVarDefault, stub.cvar_defaults[CVAR]
+		if how == 'no function' then C_CVar.GetCVarDefault = nil else stub.cvar_defaults[CVAR] = nil end
+		local r = { ActionBars = AB:GetConfigTable() }
+		local item = row(r, 'all', 'countdown')
+		C_CVar.GetCVarDefault, stub.cvar_defaults[CVAR] = had, hadDefault
+		C_CVar.SetCVar(CVAR, '0')
+		eq(OM.DefaultSource(r, item), 'none', how .. ': none')
+		eq(item.option.default, nil, how .. ': no default, so never "off"')
+		eq(item.option.noReset, "Blizzard's own setting, and this client gives no default for it.", how .. ': with its reason')
+	end
+end)
+
+test("an extra button's reset re-lays the button", function()
 	fresh()
 	load_test_file('lib/reset_walk.lua')
-	local had = C_CVar.GetCVarDefault
-	C_CVar.GetCVarDefault = nil
-	local r = { ActionBars = AB:GetConfigTable() }
-	local item = row(r, 'all', 'countdown')
-	C_CVar.GetCVarDefault = had
-	eq(OM.DefaultSource(r, item), 'none', 'none')
-	check(type(item.option.noReset) == 'string' and item.option.noReset ~= '', 'with its reason')
+	AB.movers = AB.movers or {}
+	for _, file in ipairs(editmode_files()) do load_saftui(file) end
+	for _, id in ipairs(AB.EXTRA_IDS) do AB:RegisterExtraMover(id) end
+	local r = root()
+	local item = row(r, 'zone', 'scale')
+	OM.Set(r, item, 1.5)
+	eq(st.config.profile.actionbars.zone.scale, 1.5, 'changed')
+	eq(OM.DefaultDiffers(r, item), true, 'differs')
+	calls = {}
+	OM.DefaultReset(r, item)
+	eq(st.config.profile.actionbars.zone.scale, 1, 'reset to the default')
+	local laid = false
+	for _, c in ipairs(calls) do if c == 'LayoutExtra:zone' then laid = true end end
+	check(laid, 'the zone ability was laid out again')
 end)
 
 test("the cooldown numbers: Show is Blizzard's setting on All bars, none on a bar; no Reset button", function()

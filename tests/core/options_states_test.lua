@@ -107,7 +107,6 @@ local function world(client)
 	load_saftui('SaftUI-ActionBars/shared.lua')
 	AB.COUNTDOWN_CVAR = 'countdownForCooldowns' -- skin.lua's, which this world stands in for
 	load_saftui('SaftUI-ActionBars/textoptions.lua')
-	if not SaftUI.Config.SavedIn then load_saftui('SaftUI-Core/Config/optionsdefault.lua') end -- the page's saved paths
 	load_saftui('SaftUI-ActionBars/options.lua')
 	take_errors()
 	return INV
