@@ -237,6 +237,24 @@ test("/sui's Blizzard title bar follows Window titles at once, with no redraw", 
 	end
 end)
 
+test("Theme > Window titles reaches /sui's Blizzard title bar and a header's title at once", function()
+	for _, client in ipairs(CLIENTS) do
+		world(client)
+		switch('blizzard'); st.Config:Open('Loot')
+		local F = OW.GetFrames()
+		local row = st:GetModule('Theme'):GetConfigTable().args.window_titles.args.font
+		local panel = st:CreatePanel('Window titles test', 200, 100)
+		row.set({}, 'subtitle')
+		eq(st.config.profile.headers.font, 'subtitle', client .. ': saved in headers.font')
+		eq(F.titleText:GetFontObject(), st:GetFont('subtitle'), client .. ': the title bar, at once')
+		eq(panel.title:GetFontObject(), st:GetFont('subtitle'), client .. ': a window header, at once')
+		eq(st.config.profile.fonts.normal.font_name, st.defaults.fonts.normal.font_name, client .. ': Text is untouched')
+		row.default.reset({})
+		eq(F.titleText:GetFontObject(), st:GetFont('normal'), client .. ': its reset, at once')
+		eq(#take_errors(), 0, client .. ': no errors')
+	end
+end)
+
 test('/sui under Blizzard: the metal, its title bar and the close button in the socket', function()
 	for _, client in ipairs(CLIENTS) do
 		world(client)

@@ -2,8 +2,8 @@
 -- its top, a section per shared font in FN.FONTS order with its job as the
 -- note, each font's Typeface, Size, Outline, Shadow offset X and Y and Line
 -- spacing (which its font object takes at once) with a reset by each row, and
--- the Kinds of text section last, which says which font window titles, button
--- text and check box labels use. Also /sui's own titles, which take Heading's
+-- the Kinds of text section last, which says which font button text and check
+-- box labels use (Window titles is on the Theme tab). Also /sui's own titles, which take Heading's
 -- face and outline (SaftUI-Core/Config/optionsbody.lua's FONTS). Every row
 -- reads and writes the profile at call time, so a profile switch reaches the
 -- new profile.
@@ -348,7 +348,7 @@ test("Line spacing reads and writes the font's spacing, and its font object take
 	Set('normal', 'spacing', 4)
 end)
 
-test("Kinds of text: Window titles, Button text, Check box labels, each with its reset; Button text's desc names the bag slot bars and the bank's bag slots", function()
+test("Kinds of text: Button text and Check box labels, each with its reset; Window titles has left; Button text's desc names the bag slot bars and the bank's bag slots", function()
 	local section = Tab().args.kinds
 	eq(section.type, 'group')
 	eq(section.inline, true, 'a section, not a tab')
@@ -358,7 +358,8 @@ test("Kinds of text: Window titles, Button text, Check box labels, each with its
 
 	local rows = {}
 	for i, r in ipairs(ByOrder(section.args)) do rows[i] = r.key .. '=' .. r.v.name end
-	eq(table.concat(rows, ','), 'window_titles=Window titles,button_text=Button text,checkbox_labels=Check box labels')
+	eq(table.concat(rows, ','), 'button_text=Button text,checkbox_labels=Check box labels')
+	eq(section.args.window_titles, nil, 'Window titles is on the Theme tab now')
 	for key, option in pairs(section.args) do
 		eq(option.type, 'font', key)
 		check(type(option.desc) == 'string' and #option.desc > 30, key .. ' has a desc')
@@ -377,14 +378,13 @@ test("Kinds of text: Window titles, Button text, Check box labels, each with its
 		end
 		eq(#keys, 6, key .. ' lists every shared font')
 	end
-	check(section.args.window_titles.desc:find("gold and free%-slot"), "Window titles' tooltip names the bags' gold and free-slot text")
 	check(section.args.button_text.desc:find('totem bar', 1, true), "Button text's tooltip names the totem bar")
 	check(section.args.button_text.desc:find('bag slot bars', 1, true), "and the bag slot bars")
 	check(section.args.button_text.desc:find("bank's bag slots", 1, true), "and the bank's bag slots")
 	check(section.args.checkbox_labels.desc:find('check box', 1, true), "Check box labels' tooltip names check boxes")
 
 	-- Each resets to its default: Text, Small text, Text.
-	local DEFAULTS = { window_titles = { 'headers', 'normal', 'Text' }, button_text = { 'buttons', 'pixel', 'Small text' },
+	local DEFAULTS = { button_text = { 'buttons', 'pixel', 'Small text' },
 		checkbox_labels = { 'panels', 'normal', 'Text' } }
 	for key, case in pairs(DEFAULTS) do
 		local profileKey, default, label = unpack(case)
@@ -401,19 +401,12 @@ test("Kinds of text: Window titles, Button text, Check box labels, each with its
 		eq(st.config.profile[profileKey].font, default, key .. ' is back in the profile')
 		eq(OM.DefaultState(root, row).differs, false, key .. ' no longer differs')
 	end
-	check(panel.title:GetFontObject() == st:GetFont('normal'), "Window titles' reset reaches the title at once")
 	eq(#take_errors(), 0, 'no errors')
 end)
 
-test('each kind of text reads and writes its profile font; window titles change at once', function()
-	eq(Get('kinds', 'window_titles'), 'normal', 'headers.font')
+test('each kind of text reads and writes its profile font', function()
 	eq(Get('kinds', 'button_text'), 'pixel', 'buttons.font')
 	eq(Get('kinds', 'checkbox_labels'), 'normal', 'panels.font')
-	check(panel.title:GetFontObject() == st:GetFont('normal'), 'a window title in the normal font')
-
-	Set('kinds', 'window_titles', 'pixel')
-	eq(st.config.profile.headers.font, 'pixel', 'the profile')
-	check(panel.title:GetFontObject() == st:GetFont('pixel'), 'the window title, at once')
 
 	Set('kinds', 'button_text', 'pixel_med')
 	eq(st.config.profile.buttons.font, 'pixel_med')
@@ -421,10 +414,8 @@ test('each kind of text reads and writes its profile font; window titles change 
 	eq(st.config.profile.panels.font, 'subtitle')
 	eq(Get('kinds', 'button_text') .. ',' .. Get('kinds', 'checkbox_labels'), 'pixel_med,subtitle', 'both read back')
 
-	Set('kinds', 'window_titles', 'normal')
 	Set('kinds', 'button_text', 'pixel')
 	Set('kinds', 'checkbox_labels', 'normal')
-	check(panel.title:GetFontObject() == st:GetFont('normal'), 'and back')
 end)
 
 test("Kinds of text: Button text and Check box labels apply at once; the note says nothing of a reload", function()
@@ -472,13 +463,13 @@ test('after a profile switch, the rows reach the new profile, and the font objec
 	Set('pixel', 'shadow_x', 2)
 	Set('pixel', 'shadow_y', -1)
 	Set('pixel', 'spacing', 7)
-	Set('kinds', 'window_titles', 'pixel')
+	st.config.profile.headers.font = 'pixel' -- Window titles, on the Theme tab
 	Set('kinds', 'button_text', 'normal')
 
 	st.config:SetProfile('FontsTestTwo')
 	eq(Get('pixel', 'shadow_x') .. ',' .. Get('pixel', 'shadow_y'), '0,0', "the new profile's shadow")
 	eq(Get('pixel', 'spacing'), 4, "the new profile's spacing")
-	eq(Get('kinds', 'window_titles') .. ',' .. Get('kinds', 'button_text'), 'normal,pixel', "the new profile's fonts")
+	eq(st.config.profile.headers.font .. ',' .. Get('kinds', 'button_text'), 'normal,pixel', "the new profile's fonts")
 	eq(Shadow('pixel'), '0,0', 'the font object takes the new profile')
 	eq(st:GetFont('pixel'):GetSpacing(), 4)
 	check(panel.title:GetFontObject() == st:GetFont('normal'), 'so does the window title')
@@ -497,7 +488,7 @@ test('after a profile switch, the rows reach the new profile, and the font objec
 	Set('pixel', 'shadow_x', 0)
 	Set('pixel', 'shadow_y', 0)
 	Set('pixel', 'spacing', 4)
-	Set('kinds', 'window_titles', 'normal')
+	st.config.profile.headers.font = 'normal'
 	Set('kinds', 'button_text', 'pixel')
 	eq(#take_errors(), 0, 'no errors')
 end)
@@ -528,7 +519,6 @@ test('every set on the Fonts tab runs st:FontsChanged once: a shared font row, S
 		{ 'pixel', 'shadow_x', 1, 0 },
 		{ 'pixel', 'shadow_y', 1, 0 },
 		{ 'pixel', 'spacing', 5, 4 },
-		{ 'kinds', 'window_titles', 'pixel', 'normal' },
 		{ 'kinds', 'button_text', 'normal', 'pixel' },
 		{ 'kinds', 'checkbox_labels', 'pixel', 'normal' },
 	}

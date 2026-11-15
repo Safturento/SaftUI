@@ -190,7 +190,7 @@ function INV:GetConfigTable()
 				categoryTitleHeight = generators.range(4, 'Category title height', 20, 80, 1,
 					'How tall each category title is.'),
 				titles = FontOption(5, 'Title font', 'titles',
-					'The font of the category titles and the search box.'),
+					'The font of the category titles.'),
 				icons = FontOption(6, 'Icon font', 'icons',
 					'The font of the numbers on the item and currency slots: item level and stack count.'),
 			},

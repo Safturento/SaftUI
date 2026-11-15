@@ -102,7 +102,7 @@ function INV:InitializeFooter(container)
 	st:CreateFooter(container)
 
 	local slottext = container.footer:CreateFontString(nil, 'OVERLAY')
-	slottext:SetFontObject(st:GetFont(st.config.profile.headers.font))
+	st:ApplyFont(slottext, 'normal')
 	slottext:SetPoint('LEFT', 10, 0)
 	slottext:SetText('#/# Slots Used')
 	slottext:SetJustifyH('LEFT')
@@ -140,7 +140,7 @@ function INV:CreateGoldString(container)
     goldString:SetWidth(120)
 
     goldString.text = goldString:CreateFontString(nil, 'OVERLAY')
-    goldString.text:SetFontObject(st:GetFont(st.config.profile.headers.font))
+    st:ApplyFont(goldString.text, 'normal')
     goldString.text:SetPoint('RIGHT', goldString, 'RIGHT', -10, 0)
     goldString.text:SetJustifyH('RIGHT')
 

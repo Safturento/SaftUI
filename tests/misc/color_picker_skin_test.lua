@@ -373,6 +373,34 @@ test('the Skinning page toggle goes both ways at once; the font reaches every te
 	clean()
 end)
 
+-- Global settings > Theme > Window titles: the row's own set, as the options
+-- window calls it, reaches the picker's title at once, with no skin update.
+test("a change through Theme > Window titles reaches the picker's title at once; the Skinning font stays", function()
+	for _, client in ipairs({ 'forever', 'retail' }) do
+		world(client)
+		local row = st:GetModule('Theme'):GetConfigTable().args.window_titles.args.font
+		eq(row.type, 'font', client .. ': the Theme tab has the row')
+		eq(CP.frame.Header.Text:GetFontObject(), st:GetFont('normal'), client .. ': Text to start with')
+		row.set({}, 'subtitle')
+		eq(profile.headers.font, 'subtitle', client .. ': saved in headers.font')
+		eq(CP.frame.Header.Text:GetFontObject(), st:GetFont('subtitle'), client .. ': the title, at once')
+		eq(CP.frame.Footer.OkayButton:GetNormalFontObject(), st:GetFont(profile.skinning.font), client .. ': the buttons stay in the Skinning font')
+		local face = { font_name = 'Homespun', font_size = 13, font_outline = 'OUTLINE', shadow_offset = { 0, 0 }, spacing = 4 }
+		row.set({}, face)
+		eq(CP.frame.Header.Text:GetFontObject(), st:FontObject(face), client .. ': a typeface, at once')
+		row.default.reset({})
+		eq(CP.frame.Header.Text:GetFontObject(), st:GetFont('normal'), client .. ': its reset, at once')
+		-- Skinning off: the picker keeps Blizzard's font whatever the setting says.
+		profile.skinning.color_picker = false
+		SK:UpdateConfig()
+		row.set({}, 'subtitle')
+		check(CP.frame.Header.Text:GetFontObject() ~= st:GetFont('subtitle'), client .. ': a picker not skinned keeps its own title font')
+		row.default.reset({})
+		eq(#take_errors(), 0, client .. ': no errors')
+		clean()
+	end
+end)
+
 test('the Skinning page has the toggle, on by default', function()
 	world('forever')
 	eq(profile.skinning.color_picker, true, 'on by default')

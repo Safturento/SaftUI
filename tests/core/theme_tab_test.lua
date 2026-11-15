@@ -80,11 +80,12 @@ test('its rows, in order, with descs', function()
 	for i, r in ipairs(rows) do
 		names[i], types[i] = r.v.name, r.v.type
 		local desc = type(r.v.desc) == 'function' and r.v.desc() or r.v.desc
-		check(type(desc) == 'string' and desc ~= '', r.v.name .. ' has a desc')
+		-- Window titles is a section: its Font row has the desc.
+		if r.v.type ~= 'group' then check(type(desc) == 'string' and desc ~= '', r.v.name .. ' has a desc') end
 		eq(r.v.width, nil, r.v.name .. ' has no Ace width')
 	end
-	eq(table.concat(names, ','), 'Theme,Border,Outer border,Window background,Background,Options windows', 'no Reset row')
-	eq(table.concat(types, ','), 'select,color,color,color,color,select')
+	eq(table.concat(names, ','), 'Theme,Border,Outer border,Window background,Background,Options windows,Window titles', 'no Reset row')
+	eq(table.concat(types, ','), 'select,color,color,color,color,select,group')
 
 	local theme = rows[1].v
 	eq(theme.values.thick, 'Thick'); eq(theme.values.thin, 'Thin')
@@ -425,4 +426,74 @@ test("a saved theme this version doesn't know shows as Thick, and its rows read,
 	Set('theme', 'thin')
 	eq(theme.name, 'thin', 'picking one saves it')
 	Set('theme', 'thick')
+end)
+
+local WINDOW_TITLES_DESC = "The titles of SaftUI's windows: the bags and bank, /sui's title bar under the Blizzard theme, and Blizzard's color picker while Skinning dresses it. Every theme uses it."
+
+local function TitleRow() return st.Config:GetOptionsTable().Fonts.args.theme.args.window_titles end
+
+test('Window titles: a section after Options windows with one Font row, saved in headers.font, reset to Text', function()
+	local section = TitleRow()
+	eq(section.type, 'group'); eq(section.inline, true, 'a section, not a tab')
+	eq(section.name, 'Window titles'); eq(section.order, 7, 'after Options windows')
+	local keys = {}
+	for k in pairs(section.args) do keys[#keys + 1] = k end
+	eq(table.concat(keys, ','), 'font', 'one row')
+	local font = section.args.font
+	eq(font.type, 'font'); eq(font.name, 'Font')
+	eq(font.desc, WINDOW_TITLES_DESC)
+	eq(font.faceOnly, nil, 'a typeface is allowed')
+
+	-- Its row in the model, after Options windows.
+	local root, row = Row('font')
+	check(row, 'the model has the row')
+	eq(row.path[#row.path - 1], 'window_titles')
+	eq(OM.Get(root, row), 'normal', 'headers.font, Text by default')
+	check(not Differs('font'), 'at its default')
+
+	OM.Set(root, row, 'subtitle')
+	eq(st.config.profile.headers.font, 'subtitle', 'saved where it always was')
+	root, row = Row('font')
+	local state = OM.DefaultState(root, row)
+	eq(state.differs, true); eq(state.text, 'Text', 'the reset names Text')
+	local face = { font_name = 'Homespun', font_size = 13, font_outline = 'OUTLINE', shadow_offset = { 0, 0 }, spacing = 4 }
+	OM.Set(root, row, face)
+	root, row = Row('font')
+	eq(OM.DefaultState(root, row).differs, true, 'a typeface always differs')
+	eq(OM.DefaultReset(root, row), true)
+	eq(st.config.profile.headers.font, 'normal', 'back to Text')
+	check(not Differs('font'), 'and no longer differs')
+	eq(#take_errors(), 0)
+end)
+
+test('every theme reads the one Window titles setting', function()
+	for _, name in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		Set('theme', name)
+		local root, row = Row('font')
+		OM.Set(root, row, 'pixel')
+		eq(st.config.profile.headers.font, 'pixel', name)
+		eq(Get('font'), 'pixel', name .. ': the same value')
+		Reset('font')
+	end
+	Set('theme', 'thick')
+end)
+
+test('a Window titles set reaches every header title at once, running FontsChanged once', function()
+	local panel = st:CreatePanel('Theme tab test', 200, 100)
+	check(panel.title:GetFontObject() == st:GetFont('normal'), 'in Text to start with')
+	local changes = 0
+	local Probe = st:GetModule('ThemeTabProbe', true) or st:NewModule('ThemeTabProbe')
+	function Probe:OnFontsChanged() changes = changes + 1 end
+	local root, row = Row('font')
+	OM.Set(root, row, 'subtitle')
+	eq(changes, 1, 'FontsChanged once')
+	check(panel.title:GetFontObject() == st:GetFont('subtitle'), 'a shared font, at once')
+	local face = { font_name = 'Homespun', font_size = 13, font_outline = 'OUTLINE', shadow_offset = { 0, 0 }, spacing = 4 }
+	OM.Set(root, row, face)
+	check(panel.title:GetFontObject() == st:FontObject(face), 'a typeface, at once')
+	changes = 0
+	Reset('font')
+	eq(changes, 1, 'its reset runs FontsChanged once')
+	check(panel.title:GetFontObject() == st:GetFont('normal'), 'back in Text')
+	eq(#take_errors(), 0)
 end)

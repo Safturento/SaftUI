@@ -8,7 +8,7 @@ local st = SaftUI
 st.defaults.tracker = {
 	enable = false, theme = 'theme', background = 'theme',
 	width = 260, height = 560, grow = 'down', header = true, count = true, hide_empty = true,
-	font = 'normal', header_font = 'normal',
+	font = 'normal', header_font = 'heading',
 	quests = {
 		show = 'tracked', zones = true, current_first = true, order = 'game', finished_first = false,
 		level = st.forever, tags = true, difficulty = true, icons = true, hide_finished = false,

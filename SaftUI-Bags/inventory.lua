@@ -212,7 +212,7 @@ function INV:UpdateConfig(id)
 	end
 	if container.search then
 		container.search:SetWidth(inner_width)
-		st:StyleEditBox(container.search, self.config.theme, self.config.background, self.config.fonts.titles)
+		st:StyleEditBox(container.search, self.config.theme, self.config.background, 'normal')
 	end
 
 	st:SetBackdrop(container, self.config.theme, self.config.background, 'window')
