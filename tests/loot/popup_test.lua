@@ -49,6 +49,8 @@ local function world(client, opts)
 	if opts.off then profile.loot.popup.enable = false end
 	if opts.theme then profile.loot.popup.theme = opts.theme end
 	load_saftui('SaftUI-Loot/init.lua')
+	load_saftui('SaftUI-Core/Config/optionsmodel.lua') -- st.Config.SavedIn, which Rolls and Feed use
+	load_saftui('SaftUI-Core/Config/optionsdefault.lua')
 	load_saftui('SaftUI-Loot/options.lua')
 	load_saftui('SaftUI-Loot/popup.lua')
 	LT = st.Loot

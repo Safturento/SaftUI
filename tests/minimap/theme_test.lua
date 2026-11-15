@@ -12,6 +12,10 @@
 -- micromenuart.lua, micromenuitems.lua, micromenuoptions.lua and
 -- microbuttons.lua, Core's helpers and the theme engine.
 load_core_helpers()
+load_editmode()
+load_saftui('SaftUI-Core/Config/optionsmodel.lua')
+load_saftui('SaftUI-Core/Config/optionsdefault.lua')
+load_options_widgets()
 local T = load_test_file('lib/theme_helpers.lua')
 local drawn = T.watch()
 -- Blizzard's minimap: SaftUI sizes and places it, and draws its panel behind it.
@@ -32,6 +36,33 @@ local profile = st.config.profile
 
 test('minimap defaults look as they did', function()
 	T.check_default(profile.minimap, 'thick', 'minimap') -- base commit 7ec1df8
+end)
+
+test('every value row of the Minimap and Micro menu pages has a reset', function()
+	local MicroMenu = st:GetModule('MicroMenu')
+	st:BindModuleConfig(MicroMenu, 'micromenu')
+	MicroMenu.Container = CreateFrame('Frame', nil, UIParent)
+	MicroMenu.Container:SetSize(100, 30)
+	MicroMenu.Container:SetPoint('CENTER')
+	Minimap:SetSize(100, 100)
+	Minimap:SetPoint('CENTER')
+	local update, updateMicro = MM.UpdateConfig, MicroMenu.UpdateConfig
+	function MM:UpdateConfig() end -- the rows' own sets still run; what they apply is not under test
+	function MicroMenu:UpdateConfig() end
+	st:RegisterConfigMover(Minimap, {
+		key = 'minimap', blizzardFrame = true, label = 'Minimap', config = function() return MM.config end,
+		apply = function() end, configPath = { 'Minimap', 'general' }, module = 'Minimap',
+		defaults = function() return st.defaults.minimap end,
+	})
+	st:RegisterConfigMover(MicroMenu.Container, {
+		key = 'micromenu', label = 'Micro Menu', config = function() return MicroMenu.config end,
+		apply = function() end, configPath = { 'MicroMenu', 'general' }, module = 'Minimap',
+		defaults = function() return st.defaults.micromenu end,
+	})
+	local R = load_test_file('lib/reset_walk.lua')
+	R.check_page({ Minimap = MM:GetConfigTable() }, 'Minimap')
+	R.check_page({ MicroMenu = MicroMenu:GetConfigTable() }, 'MicroMenu')
+	MM.UpdateConfig, MicroMenu.UpdateConfig = update, updateMicro
 end)
 
 test('each page offers Theme and Background, not Template', function()

@@ -20,6 +20,8 @@
 local function world(client)
 	use_client(client)
 	load_core_helpers()
+	load_saftui('SaftUI-Core/Config/optionsmodel.lua')
+	load_saftui('SaftUI-Core/Config/optionsdefault.lua') -- st.Config.SavedIn, which the page's groups use
 	load_editmode()
 	load_saftui('SaftUI-Chat/config.lua')
 	apply_defaults()

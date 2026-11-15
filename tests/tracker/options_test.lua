@@ -201,3 +201,38 @@ test('the Quests tab: every setting, in order, saving into tracker.quests and dr
 	eq(tab.get({ 'quests', 'spacing' }), 3, 'and read back')
 	eq(#take_errors(), 0, 'no errors')
 end)
+
+test('every value row of the Tracker page has a reset', function()
+	local st, TR = world(true)
+	local R = load_test_file('lib/reset_walk.lua')
+	R.check_page({ Tracker = TR:GetConfigTable() }, 'Tracker')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("SaftUI's tracker's Position resets to its default spot, and Undo takes it back", function()
+	local st, TR = world(true)
+	local EM = st.EditModeFrames
+	local mover = EM.movers.tracker
+	local default = EM:GetDefaultPosition(mover)
+	check(not EM:CanReset(mover, true), 'at its default spot there is nothing to reset')
+
+	-- A drag, as the mover records it.
+	local before = EM.SavedPosition(mover)
+	local moved = EM.SavedPosition(mover)
+	moved.x_off, moved.y_off = -100, -50
+	mover.def.setPosition(moved)
+	mover.def.apply()
+	EM:RecordMove(mover, 'move', before)
+	check(EM:CanReset(mover, true), 'a moved tracker can reset')
+
+	local ok = EM:Reset(mover)
+	eq(ok, true, 'Reset goes through')
+	local now = mover.def.getPosition()
+	eq(now.x_off .. ',' .. now.y_off, default.x_off .. ',' .. default.y_off, 'to its default spot')
+	check(not EM:CanReset(mover, true), 'and nothing is left to reset')
+
+	EM.History:Undo()
+	now = mover.def.getPosition()
+	eq(now.x_off .. ',' .. now.y_off, '-100,-50', 'Undo takes the reset back')
+	eq(#take_errors(), 0, 'no errors')
+end)

@@ -15,6 +15,9 @@
 -- feed.lua, filter.lua and progress.lua, Core's helpers, the
 -- theme engine and Core's Utilities (the feed's item quality overlay).
 load_core_helpers()
+load_editmode()
+load_saftui('SaftUI-Core/Config/optionsmodel.lua')
+load_saftui('SaftUI-Core/Config/optionsdefault.lua')
 local T = load_test_file('lib/theme_helpers.lua')
 local drawn = T.watch()
 load_saftui('SaftUI-Core/Utilities/utilities.lua')
@@ -55,6 +58,30 @@ test('loot defaults look as they did', function()
 	for key, old in pairs(OLD) do
 		T.check_default(profile.loot[key], old, 'loot.' .. key)
 	end
+end)
+
+test('every value row of the Loot page has a reset', function()
+	-- Rolls and Feed rows, each Position through its mover; the updates the sets run are not under test.
+	LT.rollAnchor = CreateFrame('Frame', nil, UIParent)
+	LT.rollAnchor:SetSize(200, 40)
+	LT.rollAnchor:SetPoint('CENTER')
+	LT.feed = CreateFrame('Frame', nil, UIParent)
+	LT.feed:SetSize(200, 40)
+	LT.feed:SetPoint('CENTER')
+	local updateRolls, updateFeed, updatePopup = LT.UpdateGroupLootConfig, LT.UpdateLootFeedConfig, LT.UpdatePopup
+	function LT:UpdateGroupLootConfig() end
+	function LT:UpdateLootFeedConfig() end
+	function LT:UpdatePopup() end
+	LT:RegisterRollMover()
+	st:RegisterConfigMover(LT.feed, {
+		key = 'lootfeed', label = 'Loot Feed', config = function() return LT.config.feed end,
+		apply = function() end, configPath = { 'Loot', 'feed', 'general' }, module = 'Loot',
+		defaults = function() return st.defaults.loot.feed end,
+	})
+	local R = load_test_file('lib/reset_walk.lua')
+	R.check_page({ Loot = LT:GetConfigTable() }, 'Loot')
+	LT.UpdateGroupLootConfig, LT.UpdateLootFeedConfig, LT.UpdatePopup = updateRolls, updateFeed, updatePopup
+	LT.rollAnchor, LT.feed = nil, nil
 end)
 
 test('each page offers Theme and Background, not Template', function()

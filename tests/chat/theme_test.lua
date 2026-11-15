@@ -10,6 +10,9 @@
 -- Real: SaftUI-Chat's config.lua, chatframe.lua and options.lua, Core's helpers,
 -- the theme engine and edit mode.
 load_core_helpers()
+load_saftui('SaftUI-Core/Config/optionsmodel.lua')
+load_saftui('SaftUI-Core/Config/optionsdefault.lua')
+load_options_widgets()
 local T = load_test_file('lib/theme_helpers.lua')
 local drawn = T.watch()
 load_editmode()
@@ -23,6 +26,18 @@ local st = SaftUI
 local CHT = st:GetModule('Chat')
 st:BindModuleConfig(CHT, 'chat')
 local profile = st.config.profile
+
+test("every value row of the Chat page has a reset", function()
+	CHT.holder = CreateFrame('Frame', nil, UIParent)
+	CHT.holder:SetSize(400, 200)
+	CHT.holder:SetPoint('CENTER')
+	local had = NUM_CHAT_WINDOWS
+	NUM_CHAT_WINDOWS = 0 -- no chat windows: the apply loops have nothing to restyle, the rows' own sets still run
+	CHT:RegisterChatMover() -- the Position's reset is its mover's
+	local R = load_test_file('lib/reset_walk.lua')
+	R.check_page({ Chat = CHT:GetConfigTable() }, 'Chat')
+	NUM_CHAT_WINDOWS = had
+end)
 
 test('chat defaults look as they did', function()
 	T.check_default(profile.chat, 'thicktransparent', 'chat') -- base commit 7ec1df8
