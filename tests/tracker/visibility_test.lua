@@ -839,3 +839,33 @@ both('the item layer\'s driver reaches the nearest button only by the pet battle
 	RW.later(1)
 	eq(TR.nearestButton:GetAlpha(), 1, 'the nearest button never wears the fade')
 end, { nearest = true, visibility = { items = true, combat = 'hide', boss = 'hide' } })
+
+------------------------------------------------------------------ Task 13: leftovers
+
+-- A zone's chevron made while the window is faded to 0, with the mouse on it as
+-- the game makes a Button (the stubs' start without it), takes the mouse again
+-- when the window comes back: only what SetRowMouse turned off is turned on.
+both('a zone row made while the window is faded to 0 gets its chevron\'s mouse back when it returns', function(st, TR)
+	set(TR, { mouseoff = 'fade', fade_alpha = 0 })
+	fade_done(TR)
+	eq(TR.window:GetAlpha(), 0, 'faded out')
+	-- A Button takes the mouse in the game: every one made from here does.
+	local create = CreateFrame
+	CreateFrame = function(...)
+		local frame = create(...)
+		if frame:GetObjectType() == 'Button' then frame:EnableMouse(true) end
+		return frame
+	end
+	local entries = { Q.header('Elwynn Forest'), Q.quest(1), Q.header('Westfall'), Q.quest(2) }
+	Q.set(entries, { 1, 2 })
+	stub.fire_event('QUEST_LOG_UPDATE')
+	RW.later(1)
+	CreateFrame = create
+	local chevron = RW.zone(TR, 'Westfall').chevron
+	check(chevron ~= nil, 'a zone row for the new zone')
+	check(not chevron:IsMouseEnabled(), 'its chevron takes no mouse while faded out')
+	RW.mouse_on(TR.window)
+	stub.fire_script(TR.fader, 'OnUpdate', 0.016)
+	check(chevron:IsMouseEnabled(), 'the mouse arrives: its chevron takes the mouse again')
+	check(RW.zone(TR, 'Westfall'):IsMouseEnabled(), 'and its row')
+end, { ids = { 1 } })
