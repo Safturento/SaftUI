@@ -10,14 +10,15 @@
 --     placed in its owner's lines, Blizzard's insets in whole pixels, a frame
 --     with a scale of its own in its own pixels, a redraw after a scale
 --     change, the close button and st.BACKDROP;
---   - st:SnapDrawn, switched by st.SNAP_DRAWN ('none' shipped, 'round' the
---     one-word switch), and left alone on a protected frame in combat.
+--   - st:SnapDrawn, switched by st.SNAP_DRAWN ('unsnap' shipped, 'round' and
+--     'none' the other values), and left alone on a protected frame in combat.
 --
 -- Real: theme.lua, themeart.lua, panels.lua and uiscale.lua, with Core's
 -- helpers and the profile's defaults, on both clients.
 local T = load_test_file('lib/theme_helpers.lua')
 local P = load_test_file('lib/pixels.lua')
 local S = load_test_file('core/theme_snapshot.lua')
+local SECRETS = load_test_file('lib/secrets.lua')
 local GOLD = load_test_file('core/theme_k1_golden.lua')
 
 local KS = { 0.75, 1.25, 1.55 }
@@ -65,23 +66,20 @@ end
 
 ------------------------------------------------------------------ k = 1
 
-test("k 1: today's drawn state exactly, for every kind under Thick, Thin and Blizzard, on both clients", function()
+test("k 1: today's drawn state exactly, text for text, on both clients: every kind under Thick, Thin and Blizzard, redrawn, in a table, tinted, hosted, None and the close button", function()
 	local seen = 0
 	for _, client in ipairs({ 'forever', 'retail' }) do
 		local st = world(client)
-		for _, theme in ipairs({ 'thick', 'thin', 'blizzard' }) do
-			st.config.profile.theme.name = theme
-			for _, how in ipairs({ 'template', 'backdrop' }) do
-				for _, kind in ipairs(sorted_kinds(st)) do
-					local key = ('%s %s %s %s'):format(client, theme, how, kind)
-					local owner = S.draw(st, how, kind)
-					eq(S.read(st, owner, how), GOLD[key], key)
-					seen = seen + 1
-				end
-			end
+		local rows = S.all(st, client)
+		for key, text in pairs(rows) do
+			eq(text, GOLD[key], key)
+			seen = seen + 1
+		end
+		for key in pairs(GOLD) do
+			if key:sub(1, #client) == client then check(rows[key] ~= nil, key .. ' is drawn') end
 		end
 	end
-	eq(seen, 156, 'every combination was compared')
+	eq(seen, 414, 'every row was compared')
 end)
 
 test("k 1: the numbers the brief names, rawequal: edge 1, insets 2 / 1 / the art's, strips and placement", function()
@@ -608,4 +606,229 @@ test('a pooled frame (no parent) and a plate frame (under WorldFrame) are drawn 
 	local scaled = st:CreateFrame('Frame', nil, UIParent)
 	scaled:SetScale(0.8)
 	eq(st:DrawingFrame(scaled), scaled, 'a frame under UIParent is its own')
+end)
+
+
+------------------------------------------------------------------ Fix round 1
+
+local PIECES = { 'TopLeftCorner', 'TopRightCorner', 'BottomLeftCorner', 'BottomRightCorner',
+	'TopEdge', 'BottomEdge', 'LeftEdge', 'RightEdge', 'Center' }
+
+test('I1: the close button takes a new line in game: its backdrop is applied again, with a table of its own', function()
+	-- Blizzard's SetBackdrop returns at once on the table the frame holds (the
+	-- stub's does too), so a table changed in place would never be applied.
+	local st = world('forever', 'thick')
+	local panel = st:CreateFrame('Frame', nil, UIParent)
+	local close = st:CreateCloseButton(panel)
+	local info = close.backdropInfo
+	local applies = stub.state(close).backdrop_applies
+	check(applies and applies >= 1, 'applied once when made')
+	use_scale(1.55)
+	st:RecolorThemed()
+	check(close.backdropInfo ~= info, 'a new table')
+	eq(stub.state(close).backdrop_applies, applies + 1, 'applied again, once')
+	check(close_to(close.backdropInfo.edgeSize, st.line, 1e-9), 'at the new line')
+	check(close_to(close.backdropInfo.insets.left, st.line, 1e-9), 'and its insets')
+	st:RecolorThemed()
+	eq(stub.state(close).backdrop_applies, applies + 1, 'and not again while the line is the same')
+	-- Back from Blizzard at another scale.
+	st.config.profile.theme.name = 'blizzard'
+	st:RedrawThemed()
+	use_scale(0.75)
+	st.config.profile.theme.name = 'thick'
+	st:RedrawThemed()
+	check(close_to(close.backdropInfo.edgeSize, st.line, 1e-9), 'back from Blizzard at 0.75')
+end)
+
+test('I3: the backdrop\'s own pieces are unsnapped under \'unsnap\', and left alone under \'none\'', function()
+	for _, theme in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		local st = world('forever', theme)
+		stub.backdrop_pieces = true
+		local owner = owner_of(st, 'backdrop', 'small')
+		local bd = owner.backdrop
+		for _, name in ipairs(PIECES) do
+			local piece = bd[name]
+			check(piece ~= nil, theme .. ': the stub makes ' .. name)
+			if piece then
+				eq(snapped(piece), false, theme .. ': ' .. name .. ' does not snap')
+				eq(bias(piece), 0, theme .. ': ' .. name .. ' has a bias of 0')
+			end
+		end
+		st.SNAP_DRAWN = 'none'
+		local second = owner_of(st, 'backdrop', 'small')
+		for _, name in ipairs(PIECES) do
+			if second.backdrop[name] then eq(snapped(second.backdrop[name]), nil, theme .. ' none: ' .. name .. ' as the game has it') end
+		end
+	end
+	-- m3: the close button's lines and the loading overlay's table are SaftUI's own textures too.
+	local st = world('forever', 'thick')
+	stub.backdrop_pieces = true
+	local panel = st:CreateFrame('Frame', nil, UIParent)
+	local close = st:CreateCloseButton(panel)
+	for _, name in ipairs(PIECES) do
+		if close[name] then eq(snapped(close[name]), false, 'close ' .. name) end
+		if close.outline[name] then eq(snapped(close.outline[name]), false, 'outline ' .. name) end
+	end
+	check(close.TopEdge ~= nil and close.outline.TopEdge ~= nil, 'the close button has pieces')
+	stub.backdrop_pieces = nil
+end)
+
+test('a texture is unsnapped once, not on every draw', function()
+	local st = world('forever', 'thick')
+	local owner = owner_of(st, 'backdrop', 'panel')
+	local calls = 0
+	for _, strip in pairs(owner.backdrop.altborder) do
+		local real = strip.SetSnapToPixelGrid
+		strip.SetSnapToPixelGrid = function(...) calls = calls + 1; return real(...) end
+	end
+	st:RedrawThemed()
+	st:RedrawThemed()
+	eq(calls, 0, 'redraws do not unsnap again')
+end)
+
+-- Every method call of a frame and a texture, and the backdrop's, counted over fn.
+local function count_calls(fn)
+	local n, restore, seen = 0, {}, {}
+	local function wrap(methods)
+		if seen[methods] then return end
+		seen[methods] = true
+		for name, f in pairs(methods) do
+			if type(f) == 'function' then
+				restore[#restore + 1] = { methods, name, f }
+				methods[name] = function(...) n = n + 1; return f(...) end
+			end
+		end
+	end
+	for _, w in ipairs({ CreateFrame('Frame'), CreateFrame('Button'), UIParent:CreateTexture(nil, 'ARTWORK') }) do
+		local m = getmetatable(w).__index
+		if type(m) == 'table' then wrap(m) end
+	end
+	wrap(stub.backdrop)
+	fn()
+	for _, r in ipairs(restore) do r[1][r[2]] = r[3] end
+	return n
+end
+
+local COST_KINDS = { 'action', 'aura', 'bar', 'close', 'control', 'header', 'member', 'panel', 'slot', 'small', 'tooltip', 'unitframe', 'window' }
+
+test("m1: a recolor costs what it did before the scale work, and a redraw a little over what it did, not 2.6 times", function()
+	-- Base (8a4ad66f), 26 frames (13 kinds drawn on themselves and with a backdrop):
+	-- recolor 140 / 52 / 118 and redraw 361 / 273 / 1201 widget calls under Thick / Thin / Blizzard.
+	local base = { thick = { 140, 361 }, thin = { 52, 273 }, blizzard = { 118, 1201 } }
+	-- What a redraw may make now: the chain and scale read once a draw, each texture unsnapped once.
+	local most = { thick = 500, thin = 410, blizzard = 1370 }
+	for _, theme in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		local st = world('forever', theme)
+		for _, kind in ipairs(COST_KINDS) do
+			owner_of(st, 'template', kind)
+			owner_of(st, 'backdrop', kind)
+		end
+		local recolor = count_calls(function() st:RecolorThemed() end)
+		local redraw = count_calls(function() st:RedrawThemed() end)
+		eq(recolor, base[theme][1], theme .. ': a recolor makes the calls it made before')
+		check(redraw <= most[theme], ('%s: a redraw makes %d calls, base %d, at most %d'):format(theme, redraw, base[theme][2], most[theme]))
+		print(('  %s: recolor %d, redraw %d'):format(theme, recolor, redraw))
+	end
+end)
+
+test('M9: a protected frame in combat keeps the strips it has after a scale change, and lays them when combat ends', function()
+	local st = world('forever', 'thick')
+	local button = st:CreateFrame('Button', nil, UIParent, 'SecureActionButtonTemplate')
+	button:SetSize(36, 36)
+	button:SetPoint('CENTER')
+	st:SetTemplate(button, 'theme', 'theme', 'action')
+	use_scale(1.55)
+	stub.in_combat = true
+	stub.blocked = {}
+	st:RedrawThemed()
+	eq(#stub.blocked, 0, 'nothing protected was called in combat')
+	eq(button.altborder.LEFT:GetWidth(), 3, 'the strips keep the old line')
+	stub.in_combat = false
+	stub.fire_event('PLAYER_REGEN_ENABLED')
+	st:RedrawThemed()
+	check(close_to(button.altborder.LEFT:GetWidth(), 3 * st.line, 1e-9), 'laid at the new line by the next draw')
+end)
+
+test("M12: a frame drawn on itself under Blizzard takes the record's inset on a redraw after a scale change", function()
+	local st = world('forever', 'blizzard')
+	local f = st:CreateFrame('Frame', nil, UIParent)
+	f:SetSize(36, 36)
+	f:SetPoint('CENTER')
+	st:SetTemplate(f, 'theme', 'theme', 'panel')
+	use_scale(1.55)
+	st:RedrawThemed()
+	local want = math.floor(3 * (1 / st.pixel) + 0.5) * st.pixel
+	check(close_to(st:DrawnInset(f), want, 1e-9), 'the record: 5 pixels, ' .. tostring(st:DrawnInset(f)))
+	check(close_to(f.backdropInfo.insets.left, want, 1e-9), 'and the backdrop drawn with it')
+end)
+
+test("M23: a Blizzard backdrop on a frame with a scale of its own is inset in its own whole pixels", function()
+	local st = world('forever', 'blizzard')
+	local f = st:CreateFrame('Frame', nil, UIParent)
+	f:SetSize(36, 36)
+	f:SetPoint('CENTER')
+	f:SetScale(0.8)
+	st:SetTemplate(f, 'theme', 'theme', 'panel')
+	-- 3 units is 2.4 of its pixels (1.25 units each): 2 pixels, 2.5 units.
+	check(close_to(f.backdropInfo.insets.left, 2.5, 1e-9), 'inset ' .. tostring(f.backdropInfo.insets.left))
+	check(close_to(f.backdropInfo.insets.top, 2.5, 1e-9), 'top ' .. tostring(f.backdropInfo.insets.top))
+	eq(f.backdropInfo.insets.left, st:DrawnInset(f), 'from the record')
+end)
+
+test("M19: a length is at least one pixel on a frame so small a scale that it would round to none", function()
+	local st = world('forever', 'blizzard')
+	local f = st:CreateFrame('Frame', nil, UIParent)
+	f:SetScale(0.3)
+	-- One unit is 0.3 of a pixel: it rounds to 0, and is one pixel (3.33 units).
+	check(close_to(st.ThemeArt.Whole(1, f), 1 / 0.3, 1e-9), 'one unit is one pixel')
+	eq(st.ThemeArt.Whole(0, f), 0, 'nothing stays nothing')
+	f:SetSize(36, 36)
+	f:SetPoint('CENTER')
+	st:SetTemplate(f, 'theme', 'theme', 'small')
+	check(f.backdropInfo.insets.left > 0, 'small keeps its line')
+end)
+
+test("M7: a secret UI scale draws at the token line and the art's own inset, and says nothing", function()
+	local st = world('forever', 'thick')
+	local restore = SECRETS.install()
+	local real = UIParent.GetEffectiveScale
+	UIParent.GetEffectiveScale = function() return SECRETS.secret('UI scale') end
+	local ok, err = pcall(function()
+		local owner = owner_of(st, 'backdrop', 'panel')
+		check(close_to(owner.backdrop.backdropInfo.edgeSize, st.line, 1e-9), 'Thick: the token line')
+		st.config.profile.theme.name = 'blizzard'
+		st:RedrawThemed()
+		eq(st:DrawnInset(owner), st.ThemeArt.Inset('panel'), 'Blizzard: the art inset, unrounded')
+		st.config.profile.theme.name = 'thin'
+		st:RedrawThemed()
+		check(close_to(owner.backdrop.backdropInfo.edgeSize, st.line, 1e-9), 'Thin after a redraw')
+	end)
+	UIParent.GetEffectiveScale = real
+	restore()
+	check(ok, tostring(err))
+	eq(#take_errors(), 0, 'no error was reported')
+end)
+
+test("I2: st:ThemeInset with a frame is its inset in that frame's whole pixels, without one UIParent's", function()
+	local st = world('forever', 'thick')
+	local f = st:CreateFrame('Frame', nil, UIParent)
+	for _, scale in ipairs({ 0.8, 1.25, 1.5 }) do
+		f:SetScale(scale)
+		local pixel = st:GetPixelSize(f)
+		check(close_to(st:ThemeInset('thick', 'theme', 'action', f), 2 * pixel, 1e-9), ('Thick at %s: two of its pixels'):format(scale))
+		check(close_to(st:ThemeInset('thin', 'theme', 'action', f), pixel, 1e-9), 'Thin one')
+		check(close_to(st:ThemeInset('blizzard', 'theme', 'action', f), math.max(1, math.floor(math.floor(3 / pixel * 10000 + 0.5) / 10000 + 0.5)) * pixel, 1e-6), 'Blizzard whole pixels of it')
+		eq(st:ThemeInset('thick', 'theme', 'action'), 2, 'and without a frame UIParent\'s, 2')
+	end
+	eq(st:ThemeInset('none', 'theme', nil, f), 0, 'None is 0')
+end)
+
+test("n5: the title bar's top is whole pixels at other scales and the base number at k 1", function()
+	local st = world('forever', 'blizzard')
+	local owner = owner_of(st, 'backdrop', 'window')
+	eq(pts(owner.backdrop).TOPLEFT.y, st.ThemeArt.Top('window'), 'k 1: the art\'s own top')
+	use_scale(0.75)
+	st:RedrawThemed()
+	local y = pts(owner.backdrop).TOPLEFT.y
+	check(whole_px(st, y, owner), 'whole pixels at 0.75: ' .. tostring(y))
 end)

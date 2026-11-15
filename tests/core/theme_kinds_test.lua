@@ -61,7 +61,7 @@ local DRAWS = {
 	{ name = 'SetTemplate', count = 4, theme = 2, optional = 1 },
 	{ name = 'SetBackdrop', count = 4, theme = 2 },
 	{ name = 'SetBackdropIn', count = 5, theme = 3 },
-	{ name = 'ThemeInset', count = 3, theme = 1 },
+	{ name = 'ThemeInset', count = 3, theme = 1, optional = 1 }, -- the frame its inset is read for
 }
 
 local function IsNone(arg) return arg == "'none'" or arg == '"none"' end

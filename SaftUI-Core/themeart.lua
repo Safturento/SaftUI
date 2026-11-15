@@ -88,9 +88,9 @@ end
 -- anything else is at least one pixel, so a one-unit inset is always its line.
 -- At k = 1 it is the length itself. The art's own sizes (a piece's atlas) are
 -- not rounded: they scale with k, as the art does (call 21).
-function ThemeArt.Whole(value, frame)
+function ThemeArt.Whole(value, frame, pixel)
 	if value == 0 then return 0 end
-	local pixel = st:DrawPixelSize(frame or UIParent)
+	pixel = pixel or st:DrawPixelSize(frame or UIParent)
 	if not pixel then return value end
 	-- The count is trimmed to 1e-4 before it rounds, as the line weight's is
 	-- (UIScale.LineWeight), so a half a pixel that arrives a float short still
@@ -101,12 +101,12 @@ function ThemeArt.Whole(value, frame)
 end
 
 -- ThemeArt.Inset and ThemeArt.Top in whole pixels of frame.
-function ThemeArt.WholeInset(kind, frame)
-	return ThemeArt.Whole(ThemeArt.Inset(kind), frame)
+function ThemeArt.WholeInset(kind, frame, pixel)
+	return ThemeArt.Whole(ThemeArt.Inset(kind), frame, pixel)
 end
 
-function ThemeArt.WholeTop(kind, frame)
-	return ThemeArt.Whole(ThemeArt.Top(kind), frame)
+function ThemeArt.WholeTop(kind, frame, pixel)
+	return ThemeArt.Whole(ThemeArt.Top(kind), frame, pixel)
 end
 
 -- How far the metal's title bar reaches down from a window's drawn frame's
@@ -627,7 +627,7 @@ end
 -- top in whole pixels. A kind that draws nothing is cleared. Then colors it. host is
 -- the button of SaftUI's frame sits behind, whose ring is a texture of its own
 -- (LayButton), or nil.
-function ThemeArt.Paint(frame, look, kind, host)
+function ThemeArt.Paint(frame, look, kind, host, pixel)
 	local blizzard = Kind(kind)
 	ThemeArt.Clear(frame)
 	if not Draws(blizzard) then
@@ -640,9 +640,9 @@ function ThemeArt.Paint(frame, look, kind, host)
 		frame:SetBackdrop({
 			bgFile = st.BLANK_TEX,
 			edgeFile = blizzard.line and st.BLANK_TEX or nil,
-			edgeSize = st:DrawLineSize(frame),
+			edgeSize = pixel and st.lineWeight * pixel or st.line,
 			tile = false, tileSize = 0,
-			insets = { left = inset, right = inset, top = ThemeArt.WholeTop(kind, frame), bottom = inset },
+			insets = { left = inset, right = inset, top = ThemeArt.WholeTop(kind, frame, pixel), bottom = inset },
 		})
 	end
 

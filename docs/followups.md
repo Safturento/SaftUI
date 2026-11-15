@@ -7,6 +7,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-15 — UI scale: a frame drawn parentless and parented later into a frame with a scale of its own keeps UIParent's line](#2026-11-15--ui-scale-a-frame-drawn-parentless-and-parented-later-into-a-frame-with-a-scale-of-its-own-keeps-uiparents-line)
+  - [2026-11-15 — UI scale: the bags' loading overlay holds st.BACKDROP and needs SetBackdrop(nil) to take a new line](#2026-11-15--ui-scale-the-bags-loading-overlay-holds-stbackdrop-and-needs-setbackdropnil-to-take-a-new-line)
   - [2026-11-15 — `/sui` following during a color drag](#2026-11-15--sui-following-during-a-color-drag)
   - [2026-11-15 — The Theme tab's color drag recolors every drawn frame](#2026-11-15--the-theme-tabs-color-drag-recolors-every-drawn-frame)
   - [2026-11-15 — Edit mode: a Theme pass with edit mode on still does the full look and list refresh](#2026-11-15--edit-mode-a-theme-pass-with-edit-mode-on-still-does-the-full-look-and-list-refresh)
@@ -204,6 +206,29 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-15 — UI scale: a frame drawn parentless and parented later into a frame with a scale of its own keeps UIParent's line
+
+**What:** `st:DrawingFrame` measures a frame that hangs under no parent (a pooled widget) or under WorldFrame (a plate's frame) in UIParent's pixel. One drawn parentless and then parented into a frame with a scale of its own (0.8, say) keeps UIParent's line until the next theme pass, then takes the frame's. The engine can't know the parent changed without hooking `SetParent` on frames it does not own.
+
+**Why noticed:** review of UI scaling phase 1, Task 3 (m4). The pooled widgets of `/sui` (`options_states_test`) need the rule; the plates are pinned to UIParent's scale, so it is right for them.
+
+**Anchors:** `SaftUI-Core/theme.lua` (`st:DrawingFrame`), `.agents/architecture.md` (Borders are whole pixels), `tests/core/theme_scale_test.lua`.
+
+**What's been considered:** a `hooksecurefunc(frame, 'SetParent')` on every drawn frame (cost on every drawn frame, and rule 1 for frames not SaftUI's); a redraw from the pool's acquire. Neither is cheap. Draw after parenting is the rule for now.
+
+**Shape of work:** small: the pool's acquire (`SaftUI-Core/Config/optionswidgets` family) redraws its frame once parented, if a case shows a wrong line. Also named here: the other `st:ThemeInset` readers inside frames that may carry a scale of their own (`SaftUI-Misc/totemskin.lua:275`, `SaftUI-Bags/categoriestab.lua:1507`), which should pass the frame as the Cooldown Manager's, the buffs' and `optionstypes.lua`'s now do.
+
+### 2026-11-15 — UI scale: the bags' loading overlay holds st.BACKDROP and needs SetBackdrop(nil) to take a new line
+
+**What:** `SaftUI-Bags/container.lua` sets `st.BACKDROP` on the loading overlay. `UIScale:SetTokens` changes that table in place, and Blizzard's `SetBackdrop` returns at once on the table a frame already holds, so the overlay keeps its old line after a scale change until `SetBackdrop(nil)` and then `SetBackdrop(st.BACKDROP)`.
+
+**Why noticed:** review of UI scaling phase 1, Task 3 (n4), after the close button's same trap (fixed with a new table). Ruling 12 of the plan says the frame takes the table again; it must clear first.
+
+**Anchors:** `SaftUI-Bags/container.lua:81`, `SaftUI-Core/uiscale.lua` (`SetTokens`), plan phase 4c.
+
+**Shape of work:** small: clear and set again in the bags' pass after a scale change (phase 4c).
+
 
 ### 2026-11-15 — `/sui` following during a color drag
 

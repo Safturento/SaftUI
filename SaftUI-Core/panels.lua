@@ -355,6 +355,7 @@ function st:CreateCloseButton(frame)
 	local line = st:DrawLineSize(close)
 	local backdrop = { bgFile = self.BLANK_TEX, edgeFile = self.BLANK_TEX, edgeSize = line, insets = { left = line, right = line, top = line, bottom = line } }
 	close:SetBackdrop(backdrop)
+	st:SnapDrawn(close)
 
 	-- The dark line outside the border.
 	local outline = st:CreateFrame('Frame', nil, close)
@@ -363,6 +364,7 @@ function st:CreateCloseButton(frame)
 	outline:SetFrameLevel(max(0, close:GetFrameLevel() - 1))
 	outline:SetBackdrop({ edgeFile = self.BLANK_TEX, edgeSize = line })
 	outline:SetBackdropBorderColor(unpack(self.BOX_COLORS.alt))
+	st:SnapDrawn(outline)
 	close.outline = outline
 
 	-- Takes a changed line (the scale moved) onto the backdrop and the dark
@@ -372,13 +374,15 @@ function st:CreateCloseButton(frame)
 		local now = st:DrawLineSize(close)
 		if now == line then return false end
 		line = now
-		backdrop.edgeSize = line
-		backdrop.insets.left, backdrop.insets.right, backdrop.insets.top, backdrop.insets.bottom = line, line, line, line
+		-- A new table: Blizzard's SetBackdrop returns at once on the one the
+		-- frame already holds, so the old one changed in place would never apply.
+		backdrop = { bgFile = self.BLANK_TEX, edgeFile = self.BLANK_TEX, edgeSize = line, insets = { left = line, right = line, top = line, bottom = line } }
 		outline:ClearAllPoints()
 		outline:SetPoint('TOPLEFT', close, 'TOPLEFT', -line, line)
 		outline:SetPoint('BOTTOMRIGHT', close, 'BOTTOMRIGHT', line, -line)
 		outline:SetBackdrop({ edgeFile = self.BLANK_TEX, edgeSize = line })
 		outline:SetBackdropBorderColor(unpack(self.BOX_COLORS.alt))
+		st:SnapDrawn(outline)
 		return true
 	end
 
@@ -416,6 +420,7 @@ function st:CreateCloseButton(frame)
 		if want == close.blizzard and changed and not want then
 			-- The same look at a new line: its backdrop takes it.
 			close:SetBackdrop(backdrop)
+			st:SnapDrawn(close)
 			LookClose(close)
 		end
 		if want ~= close.blizzard then
@@ -434,6 +439,7 @@ function st:CreateCloseButton(frame)
 			else
 				for _, texture in pairs(closeArt[close]) do texture:SetTexture(nil) end
 				close:SetBackdrop(backdrop)
+				st:SnapDrawn(close)
 				outline:Show()
 				x:Show()
 				x:SetPoint('CENTER', 0, 0)

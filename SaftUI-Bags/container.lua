@@ -79,6 +79,7 @@ end
 function INV:InitializeLoadingOverlay(container)
 	local loadingOverlay = st:CreateFrame('frame', container:GetName().."LoadingOverlay", container)
 	loadingOverlay:SetBackdrop(st.BACKDROP)
+	st:SnapDrawn(loadingOverlay)
 	loadingOverlay:SetBackdropColor(0, 0, 0, .7)
 	loadingOverlay:SetAllPoints()
 	loadingOverlay:SetFrameStrata('HIGH')
