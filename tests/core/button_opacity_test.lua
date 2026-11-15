@@ -140,7 +140,7 @@ test('a color with no opacity of its own reads as fully opaque', function()
 	st.config.profile.colors.button.hover.a = 1
 end)
 
-test('a reader allocates nothing per read: the thumb under the mouse, ten thousand times', function()
+test('st:ColorRGBA allocates nothing per read, ten thousand times', function()
 	paint(0.5)
 	local bar = scrollBar()
 	st:SkinNewScrollBar(bar)

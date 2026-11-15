@@ -215,13 +215,16 @@ local function Scan(path, source, defaults)
 			end
 		end
 
-		-- F. A Buttons read through st:Color leaves the opacity out.
+		-- F. A Buttons read through st:Color (or self:Color, in a method of st) leaves the opacity out.
 		local from = 1
-		while true do
-			local s, e = code:find('st%s*:%s*Color%s*%(%s*[\'"]button[\'"]', from)
-			if not s then break end
-			if mask:sub(s, s) == 's' then Fail(found, path, 'F button strength', mask, s, source) end -- not inside a string
-			from = e + 1
+		for _, receiver in ipairs({ 'st', 'self' }) do
+			from = 1
+			while true do
+				local s, e = code:find('%f[%w_]' .. receiver .. '%s*:%s*Color%s*%(%s*[\'"]button[\'"]', from)
+				if not s then break end
+				if mask:sub(s, s) == receiver:sub(1, 1) then Fail(found, path, 'F button strength', mask, s, source) end -- not inside a string
+				from = e + 1
+			end
 		end
 
 		-- E. Hue names in code.
@@ -247,12 +250,14 @@ local function Scan(path, source, defaults)
 	-- C. Literal keys.
 	local calls = {}
 	for _, name in ipairs({ 'Color', 'ColorRGBA' }) do
-		local from = 1
-		while true do
-			local s, e = mask:find('%f[%w_]st%s*:%s*' .. name .. '%s*%(', from)
-			if not s then break end
-			calls[#calls + 1] = { s = s, e = e }
-			from = e + 1
+		for _, receiver in ipairs({ 'st', 'self' }) do
+			local from = 1
+			while true do
+				local s, e = mask:find('%f[%w_]' .. receiver .. '%s*:%s*' .. name .. '%s*%(', from)
+				if not s then break end
+				calls[#calls + 1] = { s = s, e = e }
+				from = e + 1
+			end
 		end
 	end
 	for _, call in ipairs(calls) do
@@ -385,10 +390,10 @@ test('the rules, on samples: each fails what it names and passes the rest', func
 	eq(scanD('local c = st.config.profile.colors; return c.threat.bad'), '', 'the same line, a game-named group')
 	eq(scanD("local c = 'a; local x = colors'; return c.text"), '', 'a semicolon in a string is no statement')
 	eq(scanD("return st.config.profile['colors']['text'].danger"), 'D', "the ['colors']['text'] form")
-	eq(scanD("return Colors()['colors']['button']"), 'D', "the ['colors']['button'] form")
+	eq(scanD("return st.config.profile['colors']['button']"), 'D', "the ['colors']['button'] form")
 	eq(scanD("return st.config.profile['colors'].threat, st.config.profile['colors']['class']"), '', "game-named groups by the ['colors'] forms")
 	eq(scanD("return rawget(Colors(), 'roles')"), 'D', 'rawget on Colors()')
-	eq(scanD("return rawget(OB.Colors(), 'button')"), 'D', 'rawget on OB.Colors()')
+	eq(scanD("return rawget(Kit.Colors(), 'button')"), 'D', 'rawget on Kit.Colors()')
 	eq(scanD("return rawget(Colors(), 'class')"), '', 'rawget on a game-named group')
 	eq(scanD("-- rawget(Colors(), 'roles') and profile['colors']['text']\nlocal s = \"rawget(Colors(), 'roles')\""), '', 'a comment and a string')
 	eq(scanD('local t = st.config.profile.theme\nreturn t.name'), '', 'the theme alias read for something else')
@@ -400,6 +405,11 @@ test('the rules, on samples: each fails what it names and passes the rest', func
 	eq(scan("local r, g, b, a = st:ColorRGBA('button', 'normal', 1)"), '', 'st:ColorRGBA at a strength')
 	eq(scan("local c = st:Color('buttons', 'x')"), 'C', 'a longer group is no Buttons read (and has no default)')
 	eq(scan("-- st:Color('button', 'danger')\nlocal s = \"st:Color('button', 'danger')\""), '', 'a comment and a string')
+	eq(scan("local c = self:Color('button', 'normal'):GetRGB()"), 'F', 'self:Color in a method of st')
+	eq(scan("local c = self:ColorRGBA('button', 'normal')"), '', 'self:ColorRGBA at a strength')
+	eq(scan("local c = myself:Color('button', 'normal')"), '', 'a longer receiver is not self')
+	eq(scan("local c = self:Color('hues', 'x')"), 'C', 'rule C reads self:Color too')
+	eq(scan("local c = self:ColorRGBA('text', 'normal2', 1)"), 'C', 'and self:ColorRGBA')
 	-- C
 	eq(scan("local c = st:Color('text', 'normal')"), '')
 	eq(scan("local c = st:Color('text', 'normal2')"), 'C')

@@ -238,11 +238,10 @@ OB.LABEL_HEIGHT = LABEL_HEIGHT
 
 OB.LINE = { 0.18, 0.18, 0.18, 1 } -- #2e2e2e: the lines between parts
 
-local Colors = OM.Colors
 local function Normal() return st:Color('text', 'normal'):GetRGB() end
 local function Muted() return st:Color('text', 'muted'):GetRGB() end
 local function Accent() return st:Color('accent'):GetRGB() end
-OB.Colors, OB.Normal, OB.Muted, OB.Accent = Colors, Normal, Muted, Accent -- the window's files take them
+OB.Normal, OB.Muted, OB.Accent = Normal, Muted, Accent -- the window's files take them
 
 ------------------------------------------------------------------ fonts
 
