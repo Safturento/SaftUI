@@ -275,27 +275,45 @@ end)
 
 test("the game hands scales back in single precision: tokens at a whole k are exactly whole (Fix round 1, I1)", function()
 	local st = world()
-	stub.screen_width, stub.screen_height = 2560, 1440
-	-- 768 / 1440 as the game reads it back: rounded to single precision.
-	local single = 0.53333330154419
-	UIParent.GetEffectiveScale = function() return single end
-	st.pixel, st.lineWeight, st.line = 9, 9, 9
-	st.UIScale:SetTokens()
-	check(rawequal(st.pixel, 1) and rawequal(st.lineWeight, 1) and rawequal(st.line, 1), 'the tokens are exactly 1 1 1: ' .. tostring(st.pixel))
-	check(rawequal(st:GetPixelSize(UIParent), 1), 'GetPixelSize is exactly 1')
-	check(rawequal(st:GetLineSize(UIParent), 1), 'GetLineSize is exactly 1')
-	check(rawequal(st:RoundToPixel(25), 25), 'a helper gives 25 for 25 units, not 24.999998')
-	check(rawequal(st:FloorToPixel(25), 25) and rawequal(st:CeilToPixel(25), 25), 'and Floor and Ceil')
-	-- k 2, from 5120 x 2880 with a scale a hair off 768 / 2880 * 2.
-	stub.screen_width, stub.screen_height = 5120, 2880
-	UIParent.GetEffectiveScale = function() return 0.53333330154419 end
-	st.UIScale:SetTokens()
-	check(rawequal(st.pixel, 0.5) and rawequal(st.lineWeight, 2) and rawequal(st.line, 1), 'k 2: 0.5, 2, 1: ' .. tostring(st.pixel))
-	-- A k that is not whole keeps what is measured.
-	stub.screen_width, stub.screen_height = 1920, 1080
-	UIParent.GetEffectiveScale = function() return single end
-	st.UIScale:SetTokens()
-	check(close(st.pixel, 4 / 3, 1e-6) and not rawequal(st.pixel, 4 / 3 + 0), 'k 0.75 is as measured')
+	-- 768 / 1440 as the game reads it back, rounded to the nearest single
+	-- (0.53333336, a pixel of 0.99999995, k a hair over 1), and the single
+	-- below it (0.5333333, k a hair under 1): both sides of a whole k snap.
+	for _, single in ipairs({ 0.5333333611488342, 0.53333330154419 }) do
+		stub.screen_width, stub.screen_height = 2560, 1440
+		UIParent.GetEffectiveScale = function() return single end
+		st.pixel, st.lineWeight, st.line = 9, 9, 9
+		st.UIScale:SetTokens()
+		local where = tostring(single) .. ': '
+		check(rawequal(st.pixel, 1) and rawequal(st.lineWeight, 1) and rawequal(st.line, 1), where .. 'the tokens are exactly 1 1 1: ' .. tostring(st.pixel))
+		check(rawequal(st:GetPixelSize(UIParent), 1), where .. 'GetPixelSize is exactly 1')
+		check(rawequal(st:GetLineSize(UIParent), 1), where .. 'GetLineSize is exactly 1')
+		check(rawequal(st:RoundToPixel(25), 25), where .. 'a helper gives 25 for 25 units, not 24.999998')
+		check(rawequal(st:FloorToPixel(25), 25) and rawequal(st:CeilToPixel(25), 25), where .. 'and Floor and Ceil')
+		-- k 2, from 5120 x 2880 with the same scale.
+		stub.screen_width, stub.screen_height = 5120, 2880
+		st.UIScale:SetTokens()
+		check(rawequal(st.pixel, 0.5) and rawequal(st.lineWeight, 2) and rawequal(st.line, 1), where .. 'k 2: 0.5, 2, 1: ' .. tostring(st.pixel))
+		-- A k that is not whole keeps what is measured.
+		stub.screen_width, stub.screen_height = 1920, 1080
+		st.UIScale:SetTokens()
+		check(close(st.pixel, 4 / 3, 1e-6) and not rawequal(st.pixel, 4 / 3), where .. 'k 0.75 is as measured')
+	end
+end)
+
+test('the snap band is narrow: the tightest real k that is not whole is left as measured (Fix round 1, r2)', function()
+	local st = world()
+	-- Automatic at 3323 high and 130%: k 2.99993, 2.3e-5 from 3.
+	local r = st.UIScale.Resolve({ mode = 'auto', size = 1.3 }, screen(5907, 3323))
+	check(close(r.k, 2.99993, 1e-5), 'k is just under 3: ' .. tostring(r.k))
+	stub.screen_width, stub.screen_height = 5907, 3323
+	UIParent:SetScale(r.uiScale)
+	check(close(st:GetPixelSize(UIParent), 1 / r.k, 1e-12) and not rawequal(st:GetPixelSize(UIParent), 1 / 3), 'Automatic 3323 at 130%: not snapped to 1/3')
+	-- The game's UI scale at 3167 high and 0.97: k 3.99998698, 3.2e-6 from 4.
+	r = st.UIScale.Resolve({ mode = 'game' }, screen(5630, 3167), 0.97)
+	check(close(r.k, 3.99998698, 1e-7), 'k is just under 4: ' .. tostring(r.k))
+	stub.screen_width, stub.screen_height = 5630, 3167
+	UIParent:SetScale(r.uiScale)
+	check(close(st:GetPixelSize(UIParent), 1 / r.k, 1e-12) and not rawequal(st:GetPixelSize(UIParent), 0.25), "the game's UI scale 3167 at 0.97: not snapped to 1/4")
 end)
 
 test('minPixels raises any non-zero value under it, its sign kept (Fix round 1, I2)', function()
@@ -345,7 +363,7 @@ test('the nits: NaN, a width of 0, the trims, the line weight floor and EvenPixe
 	GetPhysicalScreenSize = function() return 0, 1440 end
 	eq(U.ReadScreen(), nil, 'ReadScreen: a width of 0')
 	GetPhysicalScreenSize = read
-	check(rawequal(U.Resolve({ mode = 'auto', size = 1.1 }, screen(2560, 1440)).size, 1.1), 'the size is trimmed to two decimals')
+	check(rawequal(U.Resolve({ mode = 'auto', size = 0.8 }, screen(2560, 1440)).size, 0.8), 'the size is trimmed to two decimals')
 	eq(U.LineWeight(0.3), 1, 'the line weight is at least 1')
 	use_scale(0.75)
 	eq(st:EvenPixels(45), 45.3333, 'EvenPixels is trimmed')

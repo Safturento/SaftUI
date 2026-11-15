@@ -25,8 +25,8 @@ end
 
 -- Size of one physical pixel in frame's (or UIParent's) coordinate space, or nil if unknown.
 -- The game hands a scale back in single precision (768 / 1440 comes back as
--- 0.53333330154419), so at a whole number of pixels to a unit (k = 1 / pixel,
--- 1 on a 1440p screen) the division would give 1.0000000596 and every line and
+-- 0.5333333611488342, a pixel of 0.99999995), so at a whole number of pixels to a unit (k = 1 / pixel,
+-- 1 on a 1440p screen) the division would give 0.99999995 and every line and
 -- token built from it would carry that noise. Within 1e-6 (relative) of a
 -- whole k the pixel is exactly 1 / k.
 function st:GetPixelSize(frame)
@@ -93,9 +93,12 @@ function st:CeilToPixel(value, frame)
 end
 
 -- A value rounded to the nearest whole pixel, then one more away from zero
--- when that count is odd (-45 pixels is -46): a length whose edges and centre sit on whole pixels, for a frame
--- anchored by its centre (see "Half pixels from centred anchors" in
--- .agents/architecture.md).
+-- when that count is odd (-45 pixels is -46): a length whose edges and centre
+-- sit on whole pixels, for a frame anchored by its centre (see "Half pixels
+-- from centred anchors" in .agents/architecture.md). Lengths are never
+-- negative, but where this goes away from zero on a negative odd count,
+-- EvenIfCentred (SaftUI-ActionBars/bars.lua) goes toward it: a move onto this
+-- must not assume the two agree for negatives.
 function st:EvenPixels(value, frame)
 	local pixel = st:GetPixelSize(frame)
 	if not pixel then return value end
