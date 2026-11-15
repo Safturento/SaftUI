@@ -119,7 +119,7 @@ test("the stubs: a layout's rounding takes a boolean and is remembered; a widget
 	child:SetScale(2)
 	local grandchild = CreateFrame('Frame', nil, child)
 	local texture = grandchild:CreateTexture()
-	check(near(child:GetEffectiveScale(), st.scale), "the parents' scales multiply")
+	check(near(child:GetEffectiveScale(), 768 / stub.screen_height), "the parents' scales multiply")
 	eq(child:IsIgnoringParentScale(), false, 'not ignored until set')
 
 	child:SetIgnoreParentScale(true)
@@ -512,10 +512,10 @@ end)
 test("the plate size is the config's in UIParent pixels", function()
 	local st, UF, P = world('forever')
 	eq(WorldFrame:GetEffectiveScale(), 1, "WorldFrame's scale")
-	eq(UIParent:GetEffectiveScale(), st.scale, "UIParent's: one unit a pixel")
+	eq(UIParent:GetEffectiveScale(), 768 / stub.screen_height, "UIParent's: one unit a pixel")
 	local frame = enemy('nameplate1')
 	local plate = C_NamePlate.GetNamePlateForUnit('nameplate1')
-	check(near(stub.nameplate_size[1], 200 * st.scale) and near(stub.nameplate_size[2], 20 * st.scale),
+	check(near(stub.nameplate_size[1], 200 * 768 / stub.screen_height) and near(stub.nameplate_size[2], 20 * 768 / stub.screen_height),
 		'the size in WorldFrame units: ' .. size())
 
 	-- In physical pixels: a unit times its effective scale is 768ths of the

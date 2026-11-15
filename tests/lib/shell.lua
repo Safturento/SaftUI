@@ -3,7 +3,7 @@
 	runs, without loading Ace3. It stands in for init.lua and the module
 	plumbing Ace3 gives SaftUI (AceAddon modules, AceEvent, AceHook, AceDB's
 	profile), mimicking those libraries' behavior, then loads Core's real
-	constants.lua, api.lua and utilities.lua in their TOC order.
+	constants.lua, api.lua, uiscale.lua and utilities.lua in their TOC order.
 
 	It never fakes what a test checks. SaftUI's own helpers come from its real
 	files: tests that need Core's frame helpers (st:CreateFrame, st:SetBackdrop,
@@ -31,6 +31,10 @@
 	                          editmode_bar_files() lists them
 	  load_string_format()    loads LibStringFormat-1.0 as st.StringFormat, as init.lua takes it
 	  use_client(name, before) a fresh world on 'forever' or 'retail'
+	  st.config.global        an empty table, as AceDB gives
+	  SCALE_SCREENS           the screens use_scale knows, by k: { width, height, mode }
+	  use_scale(k)            puts the world on k's screen at the scale the model gives it
+	                          (0.75, 1, 1.25 or 1.55); nothing is reset; returns UIScale.Resolve's table
 ]]
 
 local function pack(...)
@@ -531,6 +535,7 @@ end
 -- panels.lua and theme.lua between api.lua and utilities.lua).
 load_saftui('SaftUI-Core/constants.lua')
 load_saftui('SaftUI-Core/api.lua')
+load_saftui('SaftUI-Core/uiscale.lua')
 load_saftui('SaftUI-Core/utilities.lua')
 
 -- Config/config.lua's module, made after constants.lua as in game, so it's
@@ -583,6 +588,38 @@ function use_client(name, before)
 	return SaftUI
 end
 
--- What init.lua's OnEnable does: SaftUI's pixel-perfect scale, one UIParent
--- unit per physical pixel.
-UIParent:SetScale(st.scale)
+-- AceDB's global table, which the profile-less settings (st.config.global)
+-- live in.
+st.config.global = {}
+
+-- What the shell sets UIParent to: SaftUI's pixel for pixel scale, one UIParent
+-- unit per physical pixel, worked out by the scale model and read back into
+-- the tokens. The shell never calls UIScale:Start, whose events would set back
+-- the scales a test sets.
+UIParent:SetScale(st.UIScale.Resolve({ mode = 'pixel' }, st.UIScale.ReadScreen()).uiScale)
+st.UIScale:SetTokens()
+
+-- The screens a test can draw on, by the k each makes: { width, height, mode }.
+-- 0.75 and 1 are the stub's 1920 x 1080, in Automatic and Pixel for pixel.
+SCALE_SCREENS = {
+	[0.75] = { 1920, 1080, 'auto' },
+	[1] = { 1920, 1080, 'pixel' },
+	[1.25] = { 3200, 1800, 'auto' },
+	[1.55] = { 3456, 2234, 'auto' },
+}
+
+-- Puts the world on the screen for k (a key of SCALE_SCREENS): the screen,
+-- UIParent's scale as the model gives it and the tokens read back from it.
+-- Nothing is reset. Returns what the model resolved. Any other k is an error.
+function use_scale(k)
+	local row = SCALE_SCREENS[k]
+	if not row then
+		error(("use_scale: no screen for k %s (0.75, 1, 1.25 or 1.55)"):format(tostring(k)), 2)
+	end
+	local width, height, mode = row[1], row[2], row[3]
+	stub.screen_width, stub.screen_height = width, height
+	local resolved = st.UIScale.Resolve({ mode = mode, size = 1 }, { width = width, height = height })
+	UIParent:SetScale(resolved.uiScale)
+	st.UIScale:SetTokens()
+	return resolved
+end

@@ -21,7 +21,7 @@ covers:
 
 - **WoW Forever.** Interface 16001, game type "Camelot". A mainline-family client with Classic-flavored overrides under `*/Camelot/` dirs in Blizzard's source. **The user plays Forever.** Test against it first.
 - **Retail.** Midnight, interface 120000.
-- **Flags** (`SaftUI-Core/constants.lua`): `st.forever` (`GAME_VERSION == 16001`) is true only on Forever and is the only client test. The old `st.retail` flag, which was true on both clients, is gone. "Not Forever" means `not st.forever`. Prefer feature checks (does the frame or API exist?) over version checks where you can.
+- **Flags** (`SaftUI-Core/constants.lua`): `st.forever` (`GAME_VERSION == 16001`) is true only on Forever and is the only client test. `constants.lua` reads nothing from the screen at file load (the scale model, `SaftUI-Core/uiscale.lua`, reads it when it is asked). The old `st.retail` flag, which was true on both clients, is gone. "Not Forever" means `not st.forever`. Prefer feature checks (does the frame or API exist?) over version checks where you can.
 - **Forever specifics found so far:**
   - **Swing timer.** Forever has `Blizzard_SwingTimer` (an Edit Mode system); retail doesn't.
   - **Totem bar.** `MultiCastActionBarFrame` is protected; `TotemFrame` isn't loaded.

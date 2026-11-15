@@ -33,19 +33,65 @@ function st:GetPixelSize(frame)
 	return (768 / physicalHeight) / scale
 end
 
+-- A whole number of pixels as a length: pixel sizes like 0.99999995 leave float
+-- noise (25px -> 24.999998), so it is trimmed to keep stored offsets clean.
+-- 1e-4 is far below a pixel at any UI scale.
+local function PixelsToLength(pixels, pixel)
+	if pixels == 0 then return 0 end -- avoid -0
+	return math.floor(pixels * pixel * 10000 + 0.5) / 10000
+end
+
 -- Rounds a value (in frame's coordinate space) to the nearest physical pixel.
-function st:RoundToPixel(value, frame)
+-- A value that isn't zero but rounds to none is minPixels pixels instead (its
+-- sign kept), when minPixels is given: a line that must show.
+function st:RoundToPixel(value, frame, minPixels)
 	local pixel = st:GetPixelSize(frame)
 	if not pixel then
 		return value
 	end
 	local pixels = math.floor(math.abs(value) / pixel + 0.5)
-	if pixels == 0 then return 0 end -- avoid -0
-
-	-- Pixel sizes like 0.99999995 leave float noise (25px -> 24.999998); trim it
-	-- so stored offsets stay clean. 1e-4 is far below a pixel at any UI scale.
-	local result = math.floor(pixels * pixel * 10000 + 0.5) / 10000
+	if pixels == 0 then
+		if not minPixels or minPixels <= 0 or value == 0 then return 0 end
+		pixels = minPixels
+	end
+	local result = PixelsToLength(pixels, pixel)
 	return value < 0 and -result or result
+end
+
+-- One line in frame's (or UIParent's) coordinate space: st.lineWeight pixels,
+-- never trimmed. nil if the pixel size is unknown.
+function st:GetLineSize(frame)
+	local pixel = st:GetPixelSize(frame)
+	if not pixel then return nil end
+	return st.lineWeight * pixel
+end
+
+-- A value's whole pixel below it, in frame's coordinate space. A value within
+-- 1e-6 of a pixel is on it.
+function st:FloorToPixel(value, frame)
+	local pixel = st:GetPixelSize(frame)
+	if not pixel then return value end
+	return PixelsToLength(math.floor(value / pixel + 1e-6), pixel)
+end
+
+-- A value's whole pixel above it, in frame's coordinate space. A value within
+-- 1e-6 of a pixel is on it.
+function st:CeilToPixel(value, frame)
+	local pixel = st:GetPixelSize(frame)
+	if not pixel then return value end
+	return PixelsToLength(math.ceil(value / pixel - 1e-6), pixel)
+end
+
+-- A value rounded to the nearest whole pixel, then up one when that count is
+-- odd: a length whose edges and centre sit on whole pixels, for a frame
+-- anchored by its centre (see "Half pixels from centred anchors" in
+-- .agents/architecture.md).
+function st:EvenPixels(value, frame)
+	local pixel = st:GetPixelSize(frame)
+	if not pixel then return value end
+	local pixels = math.floor(value / pixel + 0.5)
+	if pixels % 2 == 1 then pixels = pixels + 1 end
+	return PixelsToLength(pixels, pixel)
 end
 
 -- How far across and up a frame each anchor point is.

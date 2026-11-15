@@ -10,7 +10,7 @@ SaftUI:SetDefaultModuleLibraries('AceEvent-3.0', 'AceHook-3.0')
 SaftUI.StringFormat = LibStub('LibStringFormat-1.0')
 
 function SaftUI:OnEnable()
-	UIParent:SetScale(st.scale)
+	st.UIScale:Start()
 	SetCVar('autoLootDefault', 1)
 	--SetCVar('chatStyle', 'classic')
 	--SetCVar('whisperMode', 'inline')

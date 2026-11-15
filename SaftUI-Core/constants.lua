@@ -11,9 +11,6 @@ st.my_name = select(1, UnitName('player'))
 st.my_class = select(2, UnitClass('player'))
 st.my_realm = GetRealmName()
 
-st.screenWidth, st.screenHeight = GetPhysicalScreenSize()
-st.scale = 768/st.screenHeight
-
 st.CLOSE_BUTTON_SIZE = {20, 10} -- a Blizzard close button handed to st:CreateHeader
 st.CLOSE_X_BUTTON_SIZE = {24, 24} -- SaftUI's own (st:CreateCloseButton)
 -- Blizzard's extra action and zone ability buttons at scale 1
