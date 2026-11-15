@@ -96,18 +96,58 @@ function CHT:ApplyChatFont(frame, onlyIfChanged)
 	frame:SetShadowOffset(x, y)
 end
 
+-- Kept apart from Blizzard's frames, which get no field from SaftUI
+-- (.agents/taint.md, rule 1), each keyed weakly by the chat frame:
+--   backdrops: chat frame -> the frame of SaftUI's drawn behind it (st:SetBackdropIn);
+--   pieces: chat frame -> { editbox, tab }, Blizzard's edit box and tab of that window;
+--   hooked: the edit boxes whose scripts and the tabs whose SetAlpha SaftUI has
+--   hooked, so a second skin of the same window adds no second hook.
+local backdrops = setmetatable({}, { __mode = 'k' })
+local pieces = setmetatable({}, { __mode = 'k' })
+local hooked = setmetatable({}, { __mode = 'k' })
+
+-- A chat frame's tab: the one SkinChatFrame found, or for a window it never skinned
+-- (a docked one Blizzard made later) the global its XML names. Only read.
+local function TabOf(frame)
+	local own = pieces[frame]
+	if own then return own.tab end
+	local name = frame.GetName and frame:GetName()
+	return name and _G[name .. 'Tab']
+end
+
+-- With tab fading off (tabs.fade) a tab stays at alpha 1: after Blizzard's own SetAlpha
+-- on it, which UIFrameFade makes at every step of a fade, a post-hook puts 1 back. The
+-- hook reads the profile each time, so turning fading on lets Blizzard's alpha stand. It
+-- calls the widget's own SetAlpha, not the hooked field, so it can't call itself, and it
+-- runs after Blizzard's call, which stays secure (the old code replaced the tab's method
+-- with UIFrameFadeRemoveFrame, a tainted function Blizzard's fade loop then called).
+function CHT:HoldTabAlpha(tab)
+	if not tab or self.config.tabs.fade then return end
+	if not hooked[tab] then
+		hooked[tab] = true
+		local set = getmetatable(tab).__index.SetAlpha
+		hooksecurefunc(tab, 'SetAlpha', function(widget, alpha)
+			if not CHT.config.tabs.fade and alpha ~= 1 then
+				set(widget, 1)
+			end
+		end)
+	end
+	tab:SetAlpha(1)
+end
+
 function CHT:SkinChatFrame(frame)
 	local name = frame:GetName()
 	st:StripTextures(frame)
-	st:SetBackdrop(frame, self.config.theme, self.config.background, 'panel')
+	st:SetBackdropIn(backdrops, frame, self.config.theme, self.config.background, 'panel')
+	local backdrop = backdrops[frame]
 
 	st:Kill(_G[frame:GetName()..'Background'])
 	st:Kill(_G[frame:GetName()..'RightTexture'])
 
 	st:SkinScrollBar(frame.ScrollBar)
 	frame.ScrollBar:ClearAllPoints()
-	frame.ScrollBar:SetPoint('TOPLEFT', frame.backdrop, 'TOPRIGHT', 5, 0)
-	frame.ScrollBar:SetPoint('BOTTOMLEFT', frame.backdrop, 'BOTTOMRIGHT', 5, 0)
+	frame.ScrollBar:SetPoint('TOPLEFT', backdrop, 'TOPRIGHT', 5, 0)
+	frame.ScrollBar:SetPoint('BOTTOMLEFT', backdrop, 'BOTTOMRIGHT', 5, 0)
 
 	frame:SetScript('OnMouseWheel', onMouseScroll)
 	
@@ -118,49 +158,53 @@ function CHT:SkinChatFrame(frame)
 
 	self:ApplyChatFont(frame)
 
-	frame.EditBox = _G[name..'EditBox']
-	frame.EditBox.Header = _G[name..'EditBoxHeader']
-	frame.EditBox.HeaderSuffix = _G[name..'EditBoxHeaderSuffix']
+	-- Blizzard's edit box and tab of this window. Nothing reads the box's Header or
+	-- HeaderSuffix, so they aren't kept at all.
+	local editbox = _G[name..'EditBox']
+	local tab = _G[name..'Tab']
+	pieces[frame] = { editbox = editbox, tab = tab }
 
-	frame.EditBox:SetHeight(self.config.editbox.height)
-	frame.EditBox:SetFrameLevel(frame:GetFrameLevel()+2)
-	frame.EditBox:SetAltArrowKeyMode(false)
-	st:SkinEditBox(frame.EditBox, self.config.theme, self.config.background, self.config.font)
-	frame.EditBox:ClearAllPoints()
-	frame.EditBox:SetPoint('BOTTOMLEFT', frame.backdrop, 'TOPLEFT', 0, 1)
-	frame.EditBox:SetPoint('BOTTOMRIGHT', frame.backdrop, 'TOPRIGHT', 0, 1)
-	frame.EditBox:SetScript('OnShow', function() GeneralDockManager:Hide() end)
-	frame.EditBox:SetScript('OnHide', function() GeneralDockManager:Show() end)
+	editbox:SetHeight(self.config.editbox.height)
+	editbox:SetFrameLevel(frame:GetFrameLevel()+2)
+	editbox:SetAltArrowKeyMode(false)
+	st:SkinEditBox(editbox, self.config.theme, self.config.background, self.config.font)
+	editbox:ClearAllPoints()
+	editbox:SetPoint('BOTTOMLEFT', backdrop, 'TOPLEFT', 0, 1)
+	editbox:SetPoint('BOTTOMRIGHT', backdrop, 'TOPRIGHT', 0, 1)
+	-- Added to Blizzard's own OnShow and OnHide (ChatFrameEditBoxMixin), which run first and
+	-- stay: they reset the chat type, deactivate the box and pick the last active window.
+	if not hooked[editbox] then
+		hooked[editbox] = true
+		editbox:HookScript('OnShow', function() GeneralDockManager:Hide() end)
+		editbox:HookScript('OnHide', function() GeneralDockManager:Show() end)
+	end
 
 	st:Kill(_G[name..'ButtonFrame'])
 	st:Kill(frame.ScrollToBottomButton)
 
-	frame.Tab = _G[name..'Tab']
-	st:StripTextures(frame.Tab)
-	frame.Tab:SetNormalFontObject(st:GetFont('pixel'))
-	frame.Tab:SetDisabledFontObject(st:GetFont('pixel'))
-	frame.Tab.Text:SetPoint("CENTER", 0, 2)
+	st:StripTextures(tab)
+	tab:SetNormalFontObject(st:GetFont('pixel'))
+	tab:SetDisabledFontObject(st:GetFont('pixel'))
+	tab.Text:SetPoint("CENTER", 0, 2)
 
-	if not self.config.tabs.fade then
-		frame.Tab:SetAlpha(1)
-		frame.Tab.SetAlpha = UIFrameFadeRemoveFrame
-	end
+	self:HoldTabAlpha(tab)
 
 	self:UpdateChatFrameDisplay(frame)
 end
 
 function CHT:UpdateChatFrameDisplay(frame)
-	st:SetBackdrop(frame, self.config.theme, self.config.background, 'panel')
+	st:SetBackdropIn(backdrops, frame, self.config.theme, self.config.background, 'panel')
 
 	local offset = 0
 	if frame.CombatLogQuickButtonFrame then
 		offset = frame.CombatLogQuickButtonFrame:GetHeight()
 	end
 	-- No backdrop is made while the theme is None.
-	if frame.backdrop then
-		frame.backdrop:ClearAllPoints()
-		frame.backdrop:SetPoint('TOPLEFT', -self.config.padding, self.config.padding + offset)
-		frame.backdrop:SetPoint('BOTTOMRIGHT', self.config.padding, -self.config.padding)
+	local backdrop = backdrops[frame]
+	if backdrop then
+		backdrop:ClearAllPoints()
+		backdrop:SetPoint('TOPLEFT', -self.config.padding, self.config.padding + offset)
+		backdrop:SetPoint('BOTTOMRIGHT', self.config.padding, -self.config.padding)
 	end
 
 	if frame == ChatFrame1 then
@@ -453,13 +497,16 @@ function CHT:FCFDock_UpdateTabs(dock, forceUpdate)
 
 	local prev
 	for index, frame in ipairs(dock.DOCKED_CHAT_FRAMES) do
-		if prev then
-			frame.Tab:SetPoint('BOTTOMLEFT', prev, 'BOTTOMRIGHT', 0, 0)
-		else
-			frame.Tab:ClearAllPoints()
-			frame.Tab:SetPoint('BOTTOMLEFT', frame, 'TOPLEFT', 0, 10)
+		local tab = TabOf(frame)
+		if tab then
+			if prev then
+				tab:SetPoint('BOTTOMLEFT', prev, 'BOTTOMRIGHT', 0, 0)
+			else
+				tab:ClearAllPoints()
+				tab:SetPoint('BOTTOMLEFT', frame, 'TOPLEFT', 0, 10)
+			end
+			prev = tab
 		end
-		prev = frame.Tab
 	end
 end
 
