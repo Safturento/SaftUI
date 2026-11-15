@@ -448,7 +448,10 @@ end
 -- widget while one of them drags.
 local function Forward(w, ok, err, isDragging)
 	if not w.onChanged then return end
-	if isDragging then return w.onChanged(ok, err, true, w) end
+	if isDragging then
+		if w.startEditorScroll then w.startEditorScroll() end
+		return w.onChanged(ok, err, true, w)
+	end
 	return w.onChanged(ok, err)
 end
 
@@ -810,11 +813,10 @@ end
 -- inside it, EDGE_OUTSIDE outside it, over the list's width), the list
 -- scrolls that way, EDGE_SPEED a second, in whole units: carry keeps the part
 -- of a unit a short frame left.
-local function EdgeScroll(w, elapsed)
-	local scroll = w.listScroll
+local function EdgeStep(w, key, scroll, content, elapsed)
 	local left, right, bottom, top = scroll:GetLeft(), scroll:GetRight(), scroll:GetBottom(), scroll:GetTop()
 	local direction
-	if elapsed and left and ListHeight(w) > scroll:GetHeight() then
+	if elapsed and left and content > scroll:GetHeight() then
 		local x, y = GetCursorPosition()
 		local scale = scroll:GetEffectiveScale()
 		x, y = x / scale, y / scale
@@ -827,14 +829,45 @@ local function EdgeScroll(w, elapsed)
 		end
 	end
 	if not direction then
-		w.carry = 0
+		w[key] = 0
 		return
 	end
-	w.carry = (w.carry or 0) + elapsed * EDGE_SPEED
-	local step = floor(w.carry)
+	w[key] = (w[key] or 0) + elapsed * EDGE_SPEED
+	local step = floor(w[key])
 	if step < 1 then return end
-	w.carry = w.carry - step
-	ScrollList(w, INV.categoryEditor.listOffset + direction * step)
+	w[key] = w[key] - step
+	return direction * step
+end
+
+local function EdgeScroll(w, elapsed)
+	local step = EdgeStep(w, 'carry', w.listScroll, ListHeight(w), elapsed)
+	if step then ScrollList(w, INV.categoryEditor.listOffset + step) end
+end
+
+-- The same for a block held in the rule editor, from the tab's own driver
+-- frame (the rule editor's OnUpdate only draws its line, and has no elapsed
+-- to give): it runs only while a block is held, and takes itself off when
+-- the drag is over or the tab is hidden. The editor then draws its line and
+-- ghost again, from the rows where the scroll has put them.
+local function EditorEdgeScroll(w, elapsed)
+	local dragging
+	for _, cell in ipairs(w.body.cells) do
+		if cell.widget and cell.widget.drag then dragging = cell.widget break end
+	end
+	if not (dragging and w.row) then
+		w.editorCarry = 0
+		w.editorDriver:SetScript('OnUpdate', nil)
+		return
+	end
+	local step = EdgeStep(w, 'editorCarry', w.editorScroll, w.editorHeight or 0, elapsed)
+	if not step then return end
+	ScrollEditor(w, INV.categoryEditor.editorOffset + step)
+	if dragging.drawDrag then dragging.drawDrag() end
+end
+
+local function StartEditorEdgeScroll(w)
+	w.editorCarry = 0
+	w.editorDriver:SetScript('OnUpdate', function(_, elapsed) EditorEdgeScroll(w, elapsed) end)
 end
 
 -- The place the dragged category would take on the mouse up, and the row it
@@ -1161,6 +1194,9 @@ W.Define('bagcategories', {
 		w.pane = CreateFrame('Frame', nil, w.editorScroll)
 		w.pane:SetSize(EDITOR_WIDTH, ROW_HEIGHT)
 		w.editorScroll:SetScrollChild(w.pane)
+		w.editorDriver = CreateFrame('Frame', nil, frame)
+		w.startEditorScroll = function() StartEditorEdgeScroll(w) end
+		w.editorDriver:SetScript('OnHide', function(self) self:SetScript('OnUpdate', nil) end)
 		w.editorScroll:EnableMouseWheel(true)
 		w.editorScroll:SetScript('OnMouseWheel', function(_, delta)
 			if w.row then ScrollEditor(w, INV.categoryEditor.editorOffset - delta * OB.SCROLL_STEP) end

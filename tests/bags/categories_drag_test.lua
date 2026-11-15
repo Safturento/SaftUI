@@ -410,3 +410,84 @@ test("the rule editor's drag and its lists work with the editor scrolled; its li
 	eq(#take_errors(), 0, 'no errors')
 	st.Config:Close()
 end)
+
+test("a block dragged near the rule editor's edge scrolls it: held only, whole pixels at a steady rate, never past an end, the line follows, and nothing keeps running", function()
+	world()
+	tall_rule('Consumables', 25)
+	INV.categoryEditor.selected = 'Consumables'
+	open()
+	local w = tab()
+	local editor = w:EditorCell('rule').widget
+	local scroll = w.editorScroll
+	local scale = scroll:GetEffectiveScale()
+	local function cursor_at(x, y) stub.cursor_x, stub.cursor_y = x * scale, y * scale end
+	local x = scroll:GetLeft() + 50
+	local function frames(n, elapsed)
+		for _ = 1, n do
+			stub.fire_script(w.editorDriver, 'OnUpdate', elapsed)
+			stub.fire_script(editor.frame, 'OnUpdate', elapsed)
+		end
+	end
+
+
+	-- Nothing runs until a block is held.
+	eq(w.editorDriver:GetScript('OnUpdate'), nil, 'nothing runs before a drag')
+	local start = scroll:GetVerticalScroll()
+	local handle
+	for _, row in ipairs(editor.rows) do
+		if row.kind == 'block' then handle = row.handle break end
+	end
+	stub.mouse_buttons.LeftButton = true
+	stub.fire_script(handle, 'OnMouseDown', 'LeftButton')
+	check(editor.drag ~= nil, 'a drag in the editor')
+	check(w.editorDriver:GetScript('OnUpdate') ~= nil, 'the driver runs while it is held')
+
+	-- Resting in the middle: still.
+	cursor_at(x, (scroll:GetTop() + scroll:GetBottom()) / 2)
+	frames(4, 0.125)
+	eq(scroll:GetVerticalScroll(), start, 'in the middle: still')
+
+	-- Near the bottom: down, 33 in an eighth of a second; the same however the frames split.
+	cursor_at(x, scroll:GetBottom() + 3)
+	frames(1, 0.125)
+	eq(scroll:GetVerticalScroll(), start + 33, 'near the bottom: 33 in an eighth of a second')
+	frames(2, 0.0625)
+	eq(scroll:GetVerticalScroll(), start + 66, 'two sixteenths: the same rate, in whole pixels')
+	eq(scroll:GetVerticalScroll() % 1, 0, 'whole pixels')
+
+	-- The line follows the row under the cursor as the content moves.
+	cursor_at(x, scroll:GetBottom() + 40)
+	frames(1, 0.01)
+	local cy, under = stub.cursor_y / scale
+	for _, row in ipairs(editor.rows) do
+		if row.frame:GetTop() >= cy and row.frame:GetBottom() < cy then under = row end
+	end
+	check(under ~= nil, 'a row is under the cursor')
+	check(editor.insert:IsShown(), 'the line shows')
+	local top = editor.insert:GetTop()
+	check(top == under.frame:GetTop() + 1 or top == under.frame:GetBottom() + 1, 'the line is on the row now under the cursor')
+
+	-- Near the top: up.
+	local before = scroll:GetVerticalScroll()
+	cursor_at(x, scroll:GetTop() - 3)
+	frames(1, 0.125)
+	eq(scroll:GetVerticalScroll(), before - 33, 'near the top: up')
+
+	-- Never past either end.
+	frames(200, 0.125)
+	eq(scroll:GetVerticalScroll(), 0, 'stops at the top')
+	cursor_at(x, scroll:GetBottom() + 3)
+	frames(400, 0.125)
+	eq(scroll:GetVerticalScroll(), w.editorHeight - scroll:GetHeight(), 'stops at the bottom')
+
+	-- Let go: no scrolling, and no OnUpdate left.
+	stub.mouse_buttons.LeftButton = nil
+	stub.fire_script(handle, 'OnMouseUp', 'LeftButton')
+	local after = tab().editorScroll:GetVerticalScroll()
+	frames(4, 0.125)
+	eq(tab().editorScroll:GetVerticalScroll(), after, 'after the drop: still')
+	eq(w.editorDriver:GetScript('OnUpdate'), nil, "the tab's driver is off after the drop")
+	eq(editor.frame:GetScript('OnUpdate'), nil, "none on the editor's after the drop")
+	eq(#take_errors(), 0, 'no errors')
+	st.Config:Close()
+end)
