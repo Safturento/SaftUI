@@ -36,7 +36,9 @@ end
 -- The target of an element's Position editor (generators.uf_element_position):
 -- a function returning the element (or the text or icon at element[key]) on
 -- UF:GetConfigFrame(unit), or nil. Looked up on every call, as group buttons
--- come and go.
+-- come and go. Its second return is the page's config unit, which the editor's
+-- check reads the anchors of (UF.PlatePartAnchors): a plate's frame can draw
+-- from the other page's config.
 function UF:ConfigTarget(unit, element, key)
 	return function()
 		local frame = self:GetConfigFrame(unit)
@@ -44,7 +46,7 @@ function UF:ConfigTarget(unit, element, key)
 		if target and key then
 			target = target[key]
 		end
-		return target
+		return target, unit
 	end
 end
 

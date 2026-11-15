@@ -103,7 +103,10 @@ function generators.uf_element_position(order, get, set, target, desc, name)
 		if part ~= 'relative_to' then
 			return ValidatePart(info, part, value)
 		end
-		local frame, unitframe = ResolveTarget(target), UnitFrame()
+		-- The target's second return, when it gives one (UF:ConfigTarget), is the
+		-- page being edited.
+		local frame, page = ResolveTarget(target)
+		local unitframe = UnitFrame()
 		if not (frame and unitframe) then return true end
 		local relative
 		if value == UNIT_FRAME then
@@ -114,7 +117,14 @@ function generators.uf_element_position(order, get, set, target, desc, name)
 			relative = unitframe[value]
 		end
 		if not relative then return true end
-		local ok, err = st:ValidateAnchor(frame, relative)
+		-- A plate's parts are checked against that page's config, not the
+		-- config of the plate that happens to be on screen (UF.PlatePartAnchors):
+		-- set for the check only, and cleared whether it errors or not.
+		local UF = st:GetModule('Unitframes')
+		UF.anchorPage = page
+		local called, ok, err = pcall(st.ValidateAnchor, st, frame, relative)
+		UF.anchorPage = nil
+		if not called then error(ok, 0) end
 		return ok or err
 	end
 

@@ -98,6 +98,32 @@ end
 -- anchored where UF:GetFrame puts it, by its config's position. The plate's own
 -- frame is anchored to the game's plate, outside every unit frame's config:
 -- nothing to follow. Any other frame gets nil, and the live walk.
+-- UF.anchorPage, while a plate page's Position editor checks an anchor
+-- (generators.uf_element_position's validate sets it, and clears it after), is
+-- the config unit of that page: a part's anchors are then read from that
+-- page's config, whichever kind of plate is on screen to check against.
+UF.anchorPage = nil
+
+-- The config of a part of a plate's frame in the config unit page (a plate
+-- config unit's table in the profile): an element's, or a text's or icon's,
+-- found by the key it is stored under. nil when the page has none for it.
+local function PagePartConfig(part, page)
+	local pageConfig = UF:GetProfileConfig()[page]
+	if not pageConfig then return nil end
+	local element = rawget(part, 'element')
+	if element then
+		local elementConfig = pageConfig[string.lower(element.name)]
+		for key, value in pairs(element) do
+			if value == part and type(key) == 'string' then
+				return elementConfig and elementConfig[string.lower(key)]
+			end
+		end
+		return nil
+	end
+	local name = rawget(part, 'name')
+	return type(name) == 'string' and pageConfig[string.lower(name)] or nil
+end
+
 function UF.PlatePartAnchors(frame)
 	if rawget(frame, 'isNamePlate') then
 		return {}
@@ -106,7 +132,8 @@ function UF.PlatePartAnchors(frame)
 	if not (unitframe and rawget(unitframe, 'isNamePlate') and frame.GetConfig) then
 		return nil
 	end
-	local config = frame:GetConfig()
+	local config = UF.anchorPage and UF.IsPlateUnit(UF.anchorPage) and PagePartConfig(frame, UF.anchorPage)
+		or frame:GetConfig()
 	local position = config and config.position
 	if type(position) ~= 'table' then
 		return { unitframe }
