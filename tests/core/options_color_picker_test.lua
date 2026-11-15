@@ -12,6 +12,7 @@
 -- (fired by hand).
 local H = load_test_file('core/options_widgets_helpers.lua')
 local P = load_test_file('lib/pixels.lua')
+local C = load_test_file('lib/color_cost.lua')
 local st = SaftUI
 st.config.profile.colors.text.muted:SetRGB(0.2, 0.4, 0.6) -- not the default, so a reader that draws a grey of its own fails
 local W = st.OptionsWidgets
@@ -1044,5 +1045,59 @@ test('a missed mouse up still ends the move: the strip stops it when the button 
 	stub.fire_script(F.drag, 'OnUpdate', 0.016)
 	check(not moving(F.frame), 'button up: stopped')
 	eq(F.frame:GetLeft(), 300, 'and dropped on whole units')
+	reset()
+end)
+
+------------------------------------------------------------------ following Text and Class while open
+
+test("its captions, box labels and chevron follow Text > Muted and Normal while it is open", function()
+	theme('thick')
+	reset()
+	local muted, normal = st.config.profile.colors.text.muted, st.config.profile.colors.text.normal
+	local keep_muted, keep_normal = { muted:GetRGB() }, { normal:GetRGB() }
+	local _, F = open()
+	local function text(r, g, b) return string.format('%.2f,%.2f,%.2f', r, g, b) end
+	muted:SetRGB(0.9, 0.1, 0.2)
+	st:ColorChanged('text', 'muted') -- the picker's edit is on: the pass comes next frame
+	eq(text(F.shadeCaption:GetTextColor()), '0.20,0.40,0.60', 'not before the frame')
+	C.step(st)
+	eq(text(F.shadeCaption:GetTextColor()), '0.90,0.10,0.20', 'a caption follows Muted')
+	eq(text(F.recentCaption:GetTextColor()), '0.90,0.10,0.20', 'and each other caption')
+	eq(text(F.arrow:GetVertexColor()), '0.90,0.10,0.20', 'the chevron')
+	normal:SetRGB(0.1, 0.8, 0.3)
+	st:ColorChanged('text', 'normal')
+	C.step(st)
+	eq(text(F.red.label:GetTextColor()), '0.10,0.80,0.30', 'a box label follows Normal')
+	eq(text(F.hex.label:GetTextColor()), '0.10,0.80,0.30', 'each box label')
+	muted:SetRGB(unpack(keep_muted))
+	normal:SetRGB(unpack(keep_normal))
+	reset()
+	muted:SetRGB(0.2, 0.4, 0.6)
+end)
+
+test("a class chip follows its class's color while it is open", function()
+	theme('thick')
+	reset()
+	local mage = st.config.profile.colors.class.MAGE
+	local keep = { mage:GetRGB() }
+	local _, F = open()
+	local chip
+	for _, c in ipairs(chips_shown(F.classes)) do if c.class == 'MAGE' then chip = c end end
+	check(chip, 'a Mage chip is shown')
+	mage:SetRGB(0.9, 0.2, 0.1)
+	st:ColorChanged('class', 'MAGE')
+	C.step(st)
+	eq(string.format('%.2f,%.2f,%.2f', unpack(stub.state(chip.color).color_texture)), '0.90,0.20,0.10', 'the Mage chip follows')
+	local other
+	for _, c in ipairs(chips_shown(F.classes)) do if c.class ~= 'MAGE' then other = c end end
+	local before = { unpack(stub.state(other.color).color_texture) }
+	local other_color = st.config.profile.colors.class[other.class]
+	local keep_other = { other_color:GetRGB() }
+	other_color:SetRGB(0.3, 0.3, 0.3)
+	st:ColorChanged('class', 'MAGE')
+	C.step(st)
+	eq(stub.state(other.color).color_texture[1], before[1], "another class's chip waits for its own change")
+	other_color:SetRGB(unpack(keep_other))
+	mage:SetRGB(unpack(keep))
 	reset()
 end)

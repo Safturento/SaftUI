@@ -5,6 +5,8 @@
 	.agents/testing.md. It's all globals:
 
 	  test(name, fn)                 registers a case. Cases run in order once the file has loaded.
+	  scaled_test(name, fn)          a case of the normal run (k = 1, as test is) that also runs in the file's scaled run.
+	  test_scale()                   the k this run's world is at: TEST_SCALE in a scaled run, else 1.
 	  check(cond, message)           records a pass, or a failure with message. Returns cond as a boolean.
 	  eq(actual, expected, message)  check(actual == expected), failing with "expected <e>, got <a>".
 	  near(a, b)                     whether two numbers differ by float drift only (under 1e-6), for check().
@@ -18,9 +20,10 @@
 	  report_error(message)          what the stubbed error handler calls.
 	  debugprofilestop()             WoW's timer, in milliseconds.
 	  REPO_ROOT, TESTS_DIR           absolute paths, without a trailing slash.
+	  TEST_SCALE                     set by runner.py in a scaled run (0.75, 1.25 or 1.55), else nil; the shell builds every world at it.
 ]]
 
-local REPO_ROOT, TESTS_DIR = REPO_ROOT, TESTS_DIR
+local REPO_ROOT, TESTS_DIR, TEST_SCALE = REPO_ROOT, TESTS_DIR, TEST_SCALE
 
 -- Keep our own references, so a test or a SaftUI file replacing a global
 -- can't break the harness.
@@ -134,18 +137,34 @@ local function new_record(name)
 	return { name = name, checks = 0, problems = {}, output = {}, reported = {} }
 end
 
-function test(name, fn)
+local function register(name, fn, scaled, usage)
 	if type(name) ~= 'string' or type(fn) ~= 'function' then
-		error('usage: test(name, function() ... end)', 2)
+		error(usage, 3)
 	end
 	if running_cases then
-		error('test() goes at the top level of a test file, not inside a case', 2)
+		error(format('%s goes at the top level of a test file, not inside a case', scaled and 'scaled_test()' or 'test()'), 3)
 	end
 	if case_names[name] then
-		error(format('there is already a test named %q', name), 2)
+		error(format('there is already a test named %q', name), 3)
 	end
 	case_names[name] = true
-	cases[#cases + 1] = { name = name, fn = fn }
+	cases[#cases + 1] = { name = name, fn = fn, scaled = scaled }
+end
+
+function test(name, fn)
+	register(name, fn, false, 'usage: test(name, function() ... end)')
+end
+
+-- A case of the normal run, as test is (k = 1), that also runs in the file's
+-- scaled run, at TEST_SCALE. Write one only for a case that holds at any
+-- scale: whole pixels, no overlap, inside its window. Its name shares test's.
+function scaled_test(name, fn)
+	register(name, fn, true, 'usage: scaled_test(name, function() ... end)')
+end
+
+-- The k this run's world is at: TEST_SCALE in a scaled run, else 1.
+function test_scale()
+	return TEST_SCALE or 1
 end
 
 -- Counts a check in the running case. depth is the stack level, counted from
@@ -314,9 +333,11 @@ local function limited(label, fn)
 end
 
 -- Loads the test file at path (shown in reports as shown) in a fresh world,
--- runs its cases, and returns the result for runner.py.
-local function run_file(path, shown)
-	local result = { path = shown, ok = false, checks = 0, failures = 0, cases = {} }
+-- runs its cases, and returns the result for runner.py. With a scale (the
+-- runner has also set TEST_SCALE to it, so the world is built at it) only the
+-- scaled cases run. result.scaled is the file's number of scaled cases.
+local function run_file(path, shown, scale)
+	local result = { path = shown, ok = false, checks = 0, failures = 0, cases = {}, scaled = 0 }
 
 	current = new_record('(loading)')
 	local loaded, err = limited('loading ' .. shown, function()
@@ -336,7 +357,12 @@ local function run_file(path, shown)
 
 	if loaded then
 		running_cases = true
+		local selected = {}
 		for _, case in ipairs(cases) do
+			if case.scaled then result.scaled = result.scaled + 1 end
+			if case.scaled or not scale then selected[#selected + 1] = case end
+		end
+		for _, case in ipairs(selected) do
 			current = new_record(case.name)
 			local ok, case_err = limited(shown .. ' case ' .. format('%q', case.name), case.fn)
 			if not ok then

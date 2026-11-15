@@ -37,6 +37,8 @@ local function world(client, build, opts)
 	end)
 	load_core_helpers()
 	load_editmode()
+	load_saftui('SaftUI-Core/Config/optionsmodel.lua') -- the page's saved fields (st.Config.SavedIn)
+	load_saftui('SaftUI-Core/Config/optionsdefault.lua')
 	UIParent:SetScale(768 / 600)
 	st = SaftUI
 	load_saftui('SaftUI-Misc/config.lua')
@@ -467,7 +469,9 @@ end)
 test("the Blizzard's tracker page: the fonts, then Position", function()
 	world('forever')
 	load_test_file('lib/options_walk.lua')
+	local R = load_test_file('lib/reset_walk.lua')
 	local tree = OTP:GetConfigTable()
+	R.check_page({ ObjectiveTracker = tree }, 'ObjectiveTracker')
 	eq(tree.category, 'Info', 'in the Info group')
 	eq(tree.name, "Blizzard's tracker", 'the sidebar names it for what it moves')
 	eq(tree.desc, "Blizzard's objective tracker: its fonts, and its place while SaftUI's tracker is off. Its fonts also style it while it fills in for SaftUI's (Tracker page).", 'its desc')
@@ -492,6 +496,25 @@ test("the Blizzard's tracker page: the fonts, then Position", function()
 	eq(general.args.position.get({}, 'point'), 'TOPRIGHT', 'Position reads the profile')
 	check(general.args.position.validate({}, 'frame', 'ObjectiveTrackerFrame') ~= true,
 		"Position can't be anchored to the tracker")
+	clean()
+end)
+
+test("Blizzard's tracker's Position resets to Blizzard's spot", function()
+	world('forever')
+	local OM = st.OptionsModel
+	local root = { ObjectiveTracker = OTP:GetConfigTable() }
+	local position = root.ObjectiveTracker.args.general.args.position
+	local row = { option = position, path = { 'ObjectiveTracker', 'general', 'position' }, type = 'position', key = 'position' }
+	eq(OM.DefaultSource(root, row), 'mover', 'the mover is its source')
+	check(not OM.DefaultDiffers(root, row), 'at the default spot: no icon')
+	position.set({}, 'y_off', -300)
+	check(OM.DefaultDiffers(root, row), 'moved: the icon shows')
+	check(OM.DefaultReset(root, row), 'the reset runs')
+	local default = st:DefaultTrackerPosition()
+	local saved = profile.objectivetracker.position
+	eq(('%s %s %s %d %d'):format(saved.point, saved.frame, saved.rel_point, saved.x_off, saved.y_off),
+		('%s %s %s %d %d'):format(default.point, default.frame, default.rel_point, default.x_off, default.y_off), "back at Blizzard's spot")
+	check(not OM.DefaultDiffers(root, row), 'and the icon is gone')
 	clean()
 end)
 
