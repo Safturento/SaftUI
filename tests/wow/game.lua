@@ -227,29 +227,6 @@ function UnitClass(unit)
 	local other = OtherUnit(unit)
 	if other then return other.class, other.class end
 end
--- The classes the client has: stub.class_ids, their class IDs. Forever has the
--- nine classic classes, whose IDs are not 1 to 9 (Druid is 11), the default; a
--- test of retail sets all thirteen. GetClassInfo(classID) takes an ID, as the
--- game's does, and gives nothing for one the client lacks; GetNumClasses is how
--- many classes there are, not the highest ID. C_SpecializationInfo.GetAllClassIDs
--- (Forever's, in its SpecializationInfoDocumentation) lists the IDs; retail has
--- none, so a test of retail removes it.
-stub.class_ids = { 1, 2, 3, 4, 5, 7, 8, 9, 11 }
-function GetNumClasses() return #stub.class_ids end
-function GetClassInfo(classID)
-	local has = false
-	for _, id in ipairs(stub.class_ids) do has = has or id == classID end
-	if not has then return end
-	for token, info in pairs(CLASSES) do
-		if info[2] == classID then return info[1], token, classID end
-	end
-end
-C_SpecializationInfo = C_SpecializationInfo or {}
-function C_SpecializationInfo.GetAllClassIDs()
-	local out = {}
-	for i, id in ipairs(stub.class_ids) do out[i] = id end
-	return out
-end
 function UnitRace(unit)
 	if unit == 'player' then return 'Human', 'Human', 1 end
 end

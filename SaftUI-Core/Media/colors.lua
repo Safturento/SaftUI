@@ -786,11 +786,31 @@ local function ColorDefault(section, color)
 	}
 end
 
+-- The color picker's preview of each row that has one (optionspreview.lua):
+-- 'group.key' to a kind's name, or to the kind with its own fields. A row
+-- with none opens the picker with no preview.
+local TEXT_PREVIEW = 'text'
+local PREVIEWS = {
+	['factions.Alliance'] = { kind = 'text', sample = '(Alliance territory)' },
+	['factions.Horde'] = { kind = 'text', sample = '(Horde territory)' },
+	['factions.Neutral'] = { kind = 'text', sample = '(Contested territory)' },
+	['loot.need'] = TEXT_PREVIEW, ['loot.greed'] = TEXT_PREVIEW,
+	['loot.transmog'] = TEXT_PREVIEW, ['loot.pass'] = TEXT_PREVIEW,
+	['objectives.completed'] = { kind = 'text', sample = '8/8 Things slain' },
+	['objectives.failed'] = { kind = 'text', sample = 'Escort failed' },
+}
+
+local function PreviewOf(color)
+	if color.group == 'text' then return TEXT_PREVIEW end
+	return PREVIEWS[color.group .. '.' .. tostring(color.key)]
+end
+
 local function SectionGroup(section, index)
 	local args = {}
 	for i, color in ipairs(section.colors) do
 		args[tostring(color.key or color.group)] = {
 			type = 'color',
+			preview = PreviewOf(color),
 			size = 'small',
 			order = i,
 			name = color.name,

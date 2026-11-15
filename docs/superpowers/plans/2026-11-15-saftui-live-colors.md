@@ -106,7 +106,7 @@ Open branches touch `SaftUI-Core/Config/options*.lua`, `SaftUI-Core/Media/fonts.
 14. **The bags' item level key** (Task 4): `INV.ItemLevelKey(info) -> 'shared' | 'success' | 'strong'`, the rule `slot.lua:138-144` applies today (Warbound, Bind on Equip, else).
 15. **The loot feed** (Task 6): an item entry keeps `plain` (its name) and `quality`, and its text is `LT.FeedItemName(info)` at each draw; a progress entry keeps `colorGroup` (`'reaction'` or `'renown'`) and `colorKey`, and reads its color as it draws, so a profile switch reaches it too.
 16. **Edit mode** fires `ColorsChanged` with `(group, key)`.
-17. **The preview's numbers** (placement A, Task 9): `W.PREVIEW = { CAPTION_Y = 248, Y = 266, HEIGHT = 64, ROOM = 94, GAP = 8, TILE_HEIGHT = 44, CAPTION_GAP = 6 }`. With a preview the picker is 482 tall; Class colors' caption and chips at 342 and 360, Last used's at 388 and 406, the buttons 16 from the bottom as today.
+17. **The preview's numbers** (placement A, Task 9): `W.PREVIEW = { CAPTION_Y = 248, Y = 266, HEIGHT = 64, ROOM = 94, GAP = 8, TILE_HEIGHT = 44, CAPTION_GAP = 6 }`. **Owner's decisions of 2026-11-15: placement A, and no Class colors row in the picker (Last used stays).** Without a preview the picker is 342 tall (410 wide, 442 with an opacity), Last used's caption and chips at 248 and 266; with one it is 436 tall: the caption at 248, the area 370 by 64 (402 with an opacity) at 20, 266, Last used's caption and chips at 342 and 360, the buttons 16 from the bottom as today. (`ROOM = 94` is unchanged.)
 18. **If the owner picks B** (Question 1): `W.PREVIEW` takes B's numbers (the area at the number column's right plus 16, 176 by 172 from 66, its caption at 48, `ROOM = 0`, the panel 192 wider), and each kind's `Build` lays its tiles in rows when the area is taller than wide. Nothing else changes.
 19. **Held button states** (Task 10): `LockHighlight()` and `SetButtonState('PUSHED', true)`. Where the stubs lack one, Task 10 adds it faithfully (`tests/wow/widgets.lua`) with a `tests/lib/harness_self_test.lua` case.
 20. **The preview's file** `SaftUI-Core/Config/optionspreview.lua` loads right after `optionscolorpicker.lua` (before `optionsfont.lua`) in `load.xml` and `tests/lib/shell.lua`'s list. It records its built-in kinds at its end, as `optionsposition.lua` records the built-in types.
@@ -241,7 +241,6 @@ end)
 test("Config:OnColorsChanged('text', 'normal') gives the kit's font objects Text's color; ('text', 'danger') does not", ...)
 -- tests/core/options_color_picker_test.lua
 test("its captions, box labels and chevron follow Text > Muted and Normal while it is open", ...)
-test("a class chip follows its class's color while it is open", ...)
 ```
 
 - [ ] **Step 2: Run them to see them fail.** Run `tests/run tests/core/color_live_test.lua tests/core/options_color_picker_test.lua`. Expected: FAIL, `st.ColorChanged` is nil.
@@ -691,8 +690,8 @@ W.PreviewKinds() -> { [name] = def }    -- for tests
 
 ```lua
 -- tests/core/options_color_preview_test.lua (on options_widgets_helpers.lua's world, as options_color_picker_test.lua)
-test("an option with no preview opens today's picker: 410 by 388, 442 with an opacity, nothing moved", ...)
-test('a text preview: 482 tall; Class colors at 342 and 360, Last used at 388 and 406, the buttons 16 from the bottom; the area 370 by 64 at 20, 266', ...)
+test("an option with no preview opens today's picker less the Class colors row: 342 tall, 410 wide (442 with an opacity), Last used at 248 and 266", ...)
+test('a text preview: 436 tall; Last used at 342 and 360, the buttons 16 from the bottom; the area 370 by 64 at 20, 266', ...)
 test("the text kind: three tiles 118 by 44 at 20, 146, 272, drawn thick/solid, thin/solid and theme/options as panels", function()
 	-- T.watch() drawn(tile) == 'thick,solid,panel', 'thin,solid,panel', 'theme,options,panel'
 	-- each: 'Text' in Text > Normal beside the sample in the picker's color; captions Thick, Thin, Options windows in Muted

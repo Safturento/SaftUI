@@ -426,6 +426,9 @@ define('color', {
 		W.OpenColorPicker(self.frame, {
 			r = self.r, g = self.g, b = self.b, a = self.a,
 			hasAlpha = hasAlpha,
+			-- The option's preview (SaftUI's own field, read raw: never inherited) and the
+			-- row's name, which the picker's preview kind reads (optionspreview.lua).
+			preview = row.option.preview, name = row.name,
 			stale = function() return not Current() end,
 			onChange = function(nr, ng, nb, na)
 				if not Current() then
