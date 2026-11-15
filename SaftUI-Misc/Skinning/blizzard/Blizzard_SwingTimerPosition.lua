@@ -276,6 +276,7 @@ function STP:GetBarOptions(info, order)
 				name = 'General',
 				type = 'group',
 				order = 1,
+				saved = st.Config.SavedIn('swingtimer', key),
 				get = function(i) return self.config[key][i[#i]] end,
 				set = function(i, value)
 					self.config[key][i[#i]] = value

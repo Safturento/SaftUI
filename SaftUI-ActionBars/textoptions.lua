@@ -211,6 +211,28 @@ function AB:GetTextItem(id, kind, order)
 			item.desc = COUNTDOWN_ALL_DESC
 			item.get = function() return self:ShowsCooldownNumbers() end
 			item.set = function(_, value) self:SetShowCooldownNumbers(value) end
+			-- Its reset is Blizzard's own default for the setting (no profile holds it).
+			-- A nil answer (the API's return is Nilable) is no default, never "off".
+			local function answer()
+				local text = C_CVar.GetCVarDefault and C_CVar.GetCVarDefault(self.COUNTDOWN_CVAR)
+				if text == nil then return nil end
+				return text ~= '0'
+			end
+			if answer() ~= nil then
+				item.default = {
+					differs = function()
+						local shipped = answer()
+						return shipped ~= nil and self:ShowsCooldownNumbers() ~= shipped
+					end,
+					reset = function()
+						local shipped = answer()
+						if shipped ~= nil then self:SetShowCooldownNumbers(shipped) end
+					end,
+					value = answer,
+				}
+			else
+				item.noReset = "Blizzard's own setting, and this client gives no default for it."
+			end
 		else
 			item.desc = COUNTDOWN_BAR_DESC
 			item.get, item.reserveBox = false, true -- no box, but its room kept: the names line up

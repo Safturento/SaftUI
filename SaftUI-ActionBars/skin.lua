@@ -211,6 +211,7 @@ end
 
 -- Blizzard's "Show Numbers for Cooldowns" (Options > Gameplay > Action Bars).
 local COUNTDOWN_CVAR = 'countdownForCooldowns'
+AB.COUNTDOWN_CVAR = COUNTDOWN_CVAR -- textoptions.lua reads its default
 
 -- Whether cooldown numbers show: the game's setting, so /sui's Cooldown
 -- numbers and Blizzard's option are one setting.
@@ -384,6 +385,7 @@ function AB:StyleButton(button, config, theme, background)
 	-- ring's footprint, the whole button, with no tint; otherwise SaftUI's flat
 	-- textures over the icon.
 	local state = self:BlizzardState(theme, background)
+	skin.flat = not state
 	if state then
 		local ThemeArt = st.ThemeArt
 		-- The hover stays in its layer, where the client shows it only under
@@ -407,7 +409,7 @@ function AB:StyleButton(button, config, theme, background)
 		skin.pushed:SetVertexColor(0, 0, 0, 0.1)
 		skin.checked:SetVertexColor(1, 1, 1, 0.3)
 		skin.checked:SetBlendMode('ADD')
-		button.Flash:SetColorTexture(st:ColorRGBA('button', 'danger', 0.4))
+		self:ColorFlash(button)
 	end
 
 	-- LibActionButton set the fonts, anchors and the hotkey's and macro name's
@@ -538,13 +540,30 @@ function AB:UpdateEquippedBorder(button)
 	end
 end
 
--- A theme recolor or redraw put the theme's border back on every button
--- (group 'theme'): the equipped ones get their accent again.
-function AB:OnColorsChanged(group)
-	if group ~= 'theme' then return end
-	for button, skin in pairs(skins) do
-		if skin.equipped and button.backdrop then
-			ColorEquipped(button.backdrop)
+-- The attack flash's tint, Buttons > Danger at 0.4, on a button drawn in
+-- SaftUI's flat look (under Blizzard's the flash is Blizzard's art, untinted).
+-- Color only: a region of SaftUI's own button.
+local FLASH_ALPHA = 0.4
+function AB:ColorFlash(button)
+	local skin = skins[button]
+	if not (skin and skin.flat and button.Flash) then return end
+	button.Flash:SetColorTexture(st:ColorRGBA('button', 'danger', FLASH_ALPHA))
+end
+
+-- A color changed. 'theme': a theme recolor or redraw put the theme's border
+-- back on every button, so the equipped ones get their accent again. 'accent':
+-- the equipped buttons' border. 'button' Danger (or the whole group): the
+-- flash. Color only, so it is safe in combat.
+function AB:OnColorsChanged(group, key)
+	if group == 'theme' or group == 'accent' then
+		for button, skin in pairs(skins) do
+			if skin.equipped and button.backdrop then
+				ColorEquipped(button.backdrop)
+			end
+		end
+	elseif group == 'button' and (key == nil or key == 'danger') then
+		for button in pairs(skins) do
+			self:ColorFlash(button)
 		end
 	end
 end

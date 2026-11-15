@@ -595,7 +595,8 @@ end
 
 -- A theme recolor or a color change: the buttons' hover edge takes the color
 -- again (the theme engine redraws the rest).
-function CP:OnColorsChanged()
+function CP:OnColorsChanged(group)
+	if group ~= 'accent' and group ~= 'theme' then return end
 	for button in pairs(buttons) do ColorHover(button) end
 end
 

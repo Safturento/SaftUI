@@ -11,12 +11,16 @@
 load_test_file('core/config_helpers.lua')
 load_test_file('lib/options_walk.lua')
 local st = SaftUI
+load_saftui('SaftUI-Core/Config/optionsmodel.lua')
+load_saftui('SaftUI-Core/Config/optionsdefault.lua') -- a reload of the model drops the kit's hooks
+local R = load_test_file('lib/reset_walk.lua')
 
 CreateFrame('Frame', 'Minimap', UIParent) -- Blizzard's, which experience.lua and the minimap's files find
 for _, file in ipairs({
 	'SaftUI-Misc/experience.lua',
 	'SaftUI-Minimap/minimap.lua', 'SaftUI-Minimap/config.lua', 'SaftUI-Minimap/micromenu.lua',
 	'SaftUI-Minimap/micromenuart.lua', 'SaftUI-Minimap/micromenuitems.lua', 'SaftUI-Minimap/micromenuoptions.lua',
+	'SaftUI-Minimap/microbuttons.lua', 'SaftUI-Minimap/instancedifficulty.lua',
 }) do
 	load_saftui(file)
 end
@@ -106,4 +110,21 @@ test('the check is real: an option without desc fails it, and so does an Ace wid
 		'a missing or empty desc and an Ace width, each named by page and path')
 	eq(table.concat(Problems('Page', page, true), '; '), 'Page.box.wide has an Ace width (full)',
 		'the width check alone')
+end)
+
+-- Global settings (General, Fonts, Colors, Theme and Edit mode) are page 'Fonts':
+-- every value row has a reset, and each derived one round-trips. Theme's
+-- Theme also writes the fonts' version (st:ThemeChanged).
+test('Global settings: every value row has a reset, and each derived one round-trips', function()
+	load_options_widgets()
+	-- The minimap's file is loaded here but the module never enabled: a theme
+	-- change reaches its UpdateConfig, which has no config to read.
+	local minimap = st:GetModule('Minimap')
+	local update = rawget(minimap, 'UpdateConfig')
+	minimap.UpdateConfig = function() end
+	local ok, err = pcall(R.check_page, st.Config:GetOptionsTable(), 'Fonts', {
+		allow = { ['Fonts.theme.theme'] = { 'fonts.version' } },
+	})
+	minimap.UpdateConfig = update
+	if not ok then error(err, 0) end
 end)

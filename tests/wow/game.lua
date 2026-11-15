@@ -944,6 +944,11 @@ end
 --     client lacks (Nilable too). Any value but '0' is true, as Blizzard's own
 --     cached reads take it (CvarUtil.lua, CVarCallbackRegistry:GetCVarValueBool);
 --     the tests set only '0' and '1'.
+--   stub.cvar_defaults: name -> the game's default, a string; only the settings a
+--     test knows the default of ('1' for countdownForCooldowns, Show Numbers for
+--     Cooldowns, as Blizzard's Options > Gameplay > Action Bars ships it, on).
+--   C_CVar.GetCVarDefault(name): stub.cvar_defaults[name], nil for a setting
+--     the stub has no default for.
 --   C_CVar.SetCVar(name, value): sets the string and returns true. An unknown
 --     name returns false (RequiresValidAndPublicCVar). The game protects some
 --     nameplate settings in combat (the documentation's RequiresNonSecureCVar,
@@ -963,6 +968,10 @@ stub.cvars = {
 	nameplateShowFriendlyNpcs = '0',
 }
 
+stub.cvar_defaults = {
+	countdownForCooldowns = '1',
+}
+
 local function set_cvar(name, value)
 	value = tostring(value)
 	local changed = stub.cvars[name] ~= value
@@ -980,6 +989,10 @@ function C_CVar.GetCVarBool(name)
 	local value = stub.cvars[name]
 	if value == nil then return nil end
 	return value ~= '0'
+end
+function C_CVar.GetCVarDefault(name)
+	if type(name) ~= 'string' then error('Usage: local defaultValue = C_CVar.GetCVarDefault(name)', 2) end
+	return stub.cvar_defaults[name]
 end
 function C_CVar.SetCVar(name, value)
 	if type(name) ~= 'string' then error('Usage: local success = C_CVar.SetCVar(name [, value])', 2) end

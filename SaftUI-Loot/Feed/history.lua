@@ -23,6 +23,7 @@ local STALE_AGE = 24 * 3600
 local SAVED_FIELDS = {
 	'name', 'gold', 'icon', 'link', 'count', 'rightText', 'notSelf',
 	'type', 'itemSubType', 'craftQuality', 'when', 'looted',
+	'plain', 'quality', 'suffix', -- an item's plain name, quality and what follows it (LT.FeedItemName)
 }
 
 -- A roll result's summary (LT:SummarizeDrop) and each player's line in it, by
@@ -104,6 +105,14 @@ local function CopyEntry(info)
 			local v = p[key]
 			if type(v) ~= 'number' or issecretvalue(v) then return end
 			progress[key] = v
+		end
+		-- The color the bar names, if it does (LT.ProgressRGB).
+		if type(p.colorGroup) == 'string' and not issecretvalue(p.colorGroup) then
+			progress.colorGroup = p.colorGroup
+			local colorKey = p.colorKey
+			if (type(colorKey) == 'string' or type(colorKey) == 'number') and not issecretvalue(colorKey) then
+				progress.colorKey = colorKey
+			end
 		end
 		copy.progress = progress
 	end

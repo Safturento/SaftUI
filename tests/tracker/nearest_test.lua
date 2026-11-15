@@ -611,7 +611,11 @@ test('the Position row moves the holder and saves nearest_position', function()
 	local _, _, _, x = TR.nearestHolder:GetPoint(1)
 	eq(x, -100, 'the holder follows')
 	eq(position.get({}, 'x_off'), -100, 'and reads it back')
-	position.default.reset()
+	local root = { Tracker = TR:GetConfigTable() }
+	local row = { option = root.Tracker.args.items.args.nearest_position, path = { 'Tracker', 'items', 'nearest_position' },
+		type = 'position', key = 'nearest_position' }
+	eq(st.OptionsModel.DefaultSource(root, row), 'mover', "the row's reset is its mover's")
+	check(st.OptionsModel.DefaultReset(root, row), 'the reset ran')
 	eq(TR.config.items.nearest_position.x_off, -320, 'reset to the default')
 	eq(#take_errors(), 0, 'no errors')
 end)
@@ -850,7 +854,8 @@ test('combat events leave the protected holder alone: UPDATE_BINDINGS, BAG_UPDAT
 	stub.fire_script(TR.nearestWatcher, 'OnUpdate', 1)
 	settle()
 	TR:UpdateConfig()
-	st:ColorsChanged('button')
+	st:ColorsChanged('accent')
+	st:ColorChanged('text', 'danger')
 	eq(TW.snapshot(holder), before, 'the holder is as it was')
 	eq(holder:GetWidth(), 40, 'its size')
 	eq(#stub.blocked, 0, 'nothing was even tried on it')
@@ -971,8 +976,10 @@ test('the holder and the button are one whole-pixel size; the tick stops when th
 	local color = TR.ColorNearest
 	TR.ColorNearest = function(...) colored = colored + 1; return color(...) end
 	st:ColorsChanged('button')
+	eq(colored, 0, "Buttons colors don't reach the tracker (its four groups are Text, Objectives, Accent and Theme)")
+	st:ColorsChanged('accent')
 	TR.ColorNearest = color
-	eq(colored, 1, 'a Colors change reaches the button')
+	eq(colored, 1, 'an Accent change reaches the button')
 	TR.config.items.nearest = false
 	TR:UpdateConfig()
 	RW.later(1)

@@ -46,13 +46,15 @@ local UNIT_FRAME, GLOBAL_FRAME = '__unitframe', '__global'
 	frame's name (nameKey). A key is cleared by writing false, not nil: AceDB
 	would fill a nil key with its default again at the next login.
 
-	get and set are get(key) and set(key, value) functions. target is the frame
+	get and set are get(key) and set(key, value) functions. saved is the
+	option's own saved, where the position is kept in the profile (UF.SavedAt);
+	the reset icon's default and reset go by it. target is the frame
 	being placed, or a function returning it (nil while it doesn't exist). The
 	elements offered come from its unit frame, and every picked or typed anchor
 	is checked with st:ValidateAnchor against it.
 ]]
-function generators.uf_element_position(order, get, set, target, desc, name)
-	local option = generators.position(order, true, get, set, target, desc, name)
+function generators.uf_element_position(order, get, set, target, desc, name, saved)
+	local option = generators.position(order, true, get, set, target, desc, name, saved)
 	local GetPart, SetPart, ValidatePart = option.get, option.set, option.validate
 
 	local function UnitFrame()

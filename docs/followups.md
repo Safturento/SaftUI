@@ -7,6 +7,14 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-15 — Unit frames: a Warrior class pick updates every Warrior NPC plate](#2026-11-15--unit-frames-a-warrior-class-pick-updates-every-warrior-npc-plate)
+  - [2026-11-15 — Unit frames: what a color pass's real element updates cost](#2026-11-15--unit-frames-what-a-color-passs-real-element-updates-cost)
+  - [2026-11-15 — Unit frames: a color oUF lacks is set to the profile's own table](#2026-11-15--unit-frames-a-color-ouf-lacks-is-set-to-the-profiles-own-table)
+  - [2026-11-15 — Unit frames: a vehicle power type with no oUF color falls back to Mana](#2026-11-15--unit-frames-a-vehicle-power-type-with-no-ouf-color-falls-back-to-mana)
+
+  - [2026-11-15 — Two Misc readers break "a pass only colors"](#2026-11-15--two-misc-readers-break-a-pass-only-colors)
+  - [2026-11-15 — A roll result line's All passed and winner color are baked in at push](#2026-11-15--a-roll-result-lines-all-passed-and-winner-color-are-baked-in-at-push)
+  - [2026-11-15 — Forever: Show in > Bank does nothing for the default bank (the combined bank)](#2026-11-15--forever-show-in--bank-does-nothing-for-the-default-bank-the-combined-bank)
   - [2026-11-15 — Auto Vendor counts a fresh purchase in a just-sold slot as a refused sale](#2026-11-15--auto-vendor-counts-a-fresh-purchase-in-a-just-sold-slot-as-a-refused-sale)
   - [2026-11-15 — Auto Vendor's second question overstates the earlier stacks that leave](#2026-11-15--auto-vendors-second-question-overstates-the-earlier-stacks-that-leave)
   - [2026-11-15 — Nameplates: Blizzard's friendly plates key binding and the next login](#2026-11-15--nameplates-blizzards-friendly-plates-key-binding-and-the-next-login)
@@ -44,7 +52,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-14 — The options kit's keybinding widget doesn't know META or Blizzard's ignored keys](#2026-11-14--the-options-kits-keybinding-widget-doesnt-know-meta-or-blizzards-ignored-keys)
   - [2026-11-14 — A first-run setup dialog: UI size, theme, unit frame layout](#2026-11-14--a-first-run-setup-dialog-ui-size-theme-unit-frame-layout)
   - [2026-11-14 — /sui at half with the sidebar collapsed: a validation error is cut or hidden in the footer](#2026-11-14--sui-at-half-with-the-sidebar-collapsed-a-validation-error-is-cut-or-hidden-in-the-footer)
-  - [2026-11-14 — Categories tab at full size: a long "Reset <name> to default" overlaps Delete](#2026-11-14--categories-tab-at-full-size-a-long-reset-name-to-default-overlaps-delete)
   - [2026-11-13 — Design decisions waiting to be built](#2026-11-13--design-decisions-waiting-to-be-built)
   - [2026-11-13 — Objective tracker skin: in-game checks and what was left out](#2026-11-13--objective-tracker-skin-in-game-checks-and-what-was-left-out)
   - [2026-11-13 — Scale SaftUI across resolutions and stay pixel perfect](#2026-11-13--scale-saftui-across-resolutions-and-stay-pixel-perfect)
@@ -117,6 +124,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-14 — Categories tab at full size: a long "Reset <name> to default" overlaps Delete](#2026-11-14--categories-tab-at-full-size-a-long-reset-name-to-default-overlaps-delete)
   - [2026-11-11 — Grays/Auto Vendor: a finished edit that broadens its rule sells at the next merchant](#2026-11-11--graysauto-vendor-a-finished-edit-that-broadens-its-rule-sells-at-the-next-merchant)
   - [2026-11-11 — The disabled loot popup writes nametext onto Blizzard's LootButton](#2026-11-11--the-disabled-loot-popup-writes-nametext-onto-blizzards-lootbutton)
   - [2026-11-09 — st:CreateHeader writes title and close_button onto the Blizzard panels it skins](#2026-11-09--stcreateheader-writes-title-and-close_button-onto-the-blizzard-panels-it-skins)
@@ -184,6 +192,104 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-15 — Unit frames: a Warrior class pick updates every Warrior NPC plate
+
+**What:** `UF.ColorReaches` for Class matches the unit's class token for any unit, so a Class > Warrior (or Paladin, Rogue, Mage) pick also updates every NPC plate whose unit carries that token, though a plate's bar and name don't show NPC class (`colorClassNPC` is off on plates). The spec's L3 ("nothing else updates") doesn't hold near a pack. Nothing visible changes; it is only cost.
+
+**Why noticed:** Review of the live colors Task 3 (unit frames and nameplates), `.superpowers/sdd/2026-11-15-saftui-live-colors/task-3-review.md`, m1. A probe in the cost test's world had Class > Warrior reach 49 frames (35 of 40 plates): Health 49, Power 14, tags 49, 112 calls, against 23 for a Mage.
+
+**Anchors:** `SaftUI-Unitframes/unitframes.lua` (`UF.ColorReaches`, `ColorFrame`), `tests/unitframes/color_cost_test.lua`, `SaftUI-Unitframes/config/default.lua` (`colorClassNPC`, `colorClassPet`).
+
+**What's been considered:** Token matching never misses a frame (party and raid frames color NPCs and pets by class: `colorClassNPC`, `colorClassPet`, on in `party.lua`, `raid10.lua`, `raid40.lua`). The cheap fix is to reach an NPC only if the frame's Health or Power has `colorClassNPC`, and a pet only with `colorClassPet`, read from the frame's own fields as the Reputation rule reads its flags.
+
+**Shape of work:** a small change in `UF.ColorReaches` with a cost case on a plate with the flag off.
+
+**Open questions:** whether `/sui debug` shows the pass costing enough near a pack to be worth it.
+
+### 2026-11-15 — Unit frames: what a color pass's real element updates cost
+
+**What:** The unit frame color pass's cost is measured only with counting stand-ins for oUF's elements, so the tests' `forbidden 0` and `kb < 4` cover the handler, not the real `ForceUpdate`s it calls. The reviewer's probe with real SaftUI callbacks on stub widgets: Health and Power make 1 to 2 setters and no garbage; ClassPower calls `SetShown` once and `SetWidth` five times and makes about 76 KB over 100 calls (two tables in `PostUpdateClassPower`, plus oUF's `unpack(chargedPoints or {})`); the role corner calls `SetTexture` once (oUF adds `SetAtlas` and `Show` or `Hide`). None is protected, and oUF runs them all in combat on its own events. Rough time from counting C calls: Class > Mage 0.3 to 0.5 ms, Text > Danger in a raid with plates 1.5 to 3 ms, a Warrior pick near a pack 1.5 to 3 ms, a whole Class pass of a 40 raid 1 to 2.5 ms.
+
+**Why noticed:** Review of the live colors Task 3, `.superpowers/sdd/2026-11-15-saftui-live-colors/task-3-review.md`, m3. Only `/sui debug` can say whether a pass passes 2 ms, and Test mode with Raid 40 (`UF:UpdateGroupPreview` restyles and lays out 40 preview frames on every pass of Roles and Text too) is probably the heaviest case.
+
+**Anchors:** `SaftUI-Unitframes/unitframes.lua` (`ColorFrame`), `SaftUI-Unitframes/elements/classpower.lua` (`PostUpdateClassPower`), `SaftUI-Unitframes/elements/indicators.lua` (the role corner's `postUpdate`), `SaftUI-Unitframes/grouppreview.lua`, the `<DEBUG:Colors>` line.
+
+**What's been considered:** The spec allows an oUF element's `ForceUpdate` in a pass, so this is not a violation. Possible cuts: a color-only update for ClassPower and the role corner (no `SetShown`, `SetWidth` or `SetTexture`), or a throttle of the previews.
+
+**Shape of work:** an in-game read of the debug line first (Class and Text > Normal in a raid, Test mode with Raid 40), then a ticket only if one is slow.
+
+**Open questions:** the slowest pass the owner sees in game.
+
+### 2026-11-15 — Unit frames: a color oUF lacks is set to the profile's own table
+
+**What:** `CopyColor` (`SaftUI-Unitframes/unitframes.lua`) sets a color oUF has none of to the profile's own table, as `st.tablemerge` did. A later profile switch's merge then writes the new profile's values into the table of the old profile. It matters only if oUF lacks a SaftUI color key in game (the test world lacks every key); which keys, if any, is unchecked.
+
+**Why noticed:** Review of the live colors Task 3, `.superpowers/sdd/2026-11-15-saftui-live-colors/task-3-review.md`, n3. The behavior is older than the task; the commit kept it.
+
+**Anchors:** `UF:UpdateColors`, `CopyColor`, oUF's `Libraries/oUF/colors.lua` (read only), `st.config.profile.colors`.
+
+**What's been considered:** Copying into a new color object (`UF.oUF:CreateColor`) instead of aliasing would make it safe.
+
+**Shape of work:** list the keys SaftUI's Colors page has that oUF's table lacks, and make the fallback a copy.
+
+**Open questions:** whether any key is missing in game.
+
+### 2026-11-15 — Unit frames: a vehicle power type with no oUF color falls back to Mana
+
+**What:** Power reaches a frame by its unit's power token. A unit whose token oUF has no color for (a vehicle's power type) falls back to Mana's color in oUF's `power.lua`, so a Mana pick misses that frame. Rare; the edit's whole pass covers it.
+
+**Why noticed:** Review of the live colors Task 3, `.superpowers/sdd/2026-11-15-saftui-live-colors/task-3-review.md`, n4.
+
+**Anchors:** `UF.ColorReaches` (the `power` branch), oUF's `Libraries/oUF/elements/power.lua` (read only).
+
+**What's been considered:** Treat a token with no oUF color as `MANA`.
+
+**Shape of work:** one line in `UF.ColorReaches` and a test.
+
+**Open questions:** none.
+
+### 2026-11-15 — Two Misc readers break "a pass only colors"
+
+**What:** the zone text's color handler calls `SetPoint` on Blizzard's `SubZoneTextString` and makes about 1 KB a pass; the experience bar's Reputation handler calls `Show` and makes about 1.1 KB a pass. Both break the live colors spec's rule that a pass only colors, and no task owns either file.
+
+**Why noticed:** the review of live colors Task 7 (Misc's skins, the tooltip and SaftUI's tracker) probed every Misc reader with the cost helper (`tests/lib/color_cost.lua`). The spec calls both readers "as today", so neither task 7 nor any other task of that plan changed them.
+
+**Anchors:** `ZT:OnColorsChanged` in `SaftUI-Misc/Skinning/blizzard/ZoneText.lua` (on any Text key or Factions, while the zone text shows, it runs `UpdateZoneLine`: a `SetPoint` on `SubZoneTextString`, a `SetText`, about 1.07 KB a pass, `SetPoint` 100 times over 100 passes); `XP:OnColorsChanged` in `SaftUI-Misc/experience.lua` (on Reputation it runs `UpdateReputation`: `Show`, `SetMinMaxValues`, `SetValue`, about 1.1 KB a pass, `Show` 100 times over 100 passes); `.agents/taint.md` rule 1 on Blizzard frames; the plan `docs/superpowers/plans/2026-11-15-saftui-live-colors.md` ("A pass only colors").
+
+**What's been considered:** neither frame is secure or tainting, so nothing is broken in the game today; the cost is the point. A zone line that only needs its color could set the font string's color (the color is the only thing a Factions or Text pass changes) instead of laying the line out again, and the reputation bar's pass could set the bar's color without `Show` or its range.
+
+**Shape of work:** small: two handlers cut down to color setters, each with a cost case (`C.measure`, forbidden 0, `kb < 4`) in `tests/misc/zone_text_test.lua` and `tests/misc/experience_test.lua`.
+
+**Open questions:** whether the zone line's color is held apart from its text (it may be one `SetText` with an escape), which would decide if the pass can color alone.
+
+### 2026-11-15 — A roll result line's All passed and winner color are baked in at push
+
+**What:** A roll result's feed line (`Feed/rolls.lua`, `ResultText`) builds its right text once, at push: "All passed" in Loot > Pass, or the winner's name in their class color. A shown line, and a saved one after a reload, never follows a change to Loot > Pass or to a class color, though the Pass row's description names "All passed (on the feed line and in its roll tooltip)".
+
+**Why noticed:** Review of the live colors Task 6 (Loot). The audit and the brief didn't list this reader, so the task made the feed's item names and progress bars live and left this one. Context: the plan's goal is that every Colors page color reaches every SaftUI reader on screen as the picker is dragged.
+
+**Anchors:** `SaftUI-Loot/Feed/rolls.lua` (`ResultText`, `BuildRollEntry`), `SaftUI-Loot/Feed/feed.lua` (`LT:ColorFeed`, `LT.FeedItemName`), `docs/superpowers/plans/2026-11-15-saftui-live-colors.md` Ruling 15, `.superpowers/sdd/2026-11-15-saftui-live-colors/task-6-review.md` (m4).
+
+**What's been considered:** The same shape as the item names: the entry already keeps `rolls`, so keep it and build the right text at draw (`LT.RollResultText(info)`), and have `ColorFeed` set it again for `loot` (nil or `pass`) and `class`. A class color change then reaches only the lines with a winner.
+
+**Shape of work:** Small: one function moved out of the push, one branch in `ColorFeed`, a test beside `live_colors_test.lua`'s feed cases; saved entries already hold `rolls`, so restored lines follow too.
+
+**Open questions:** Whether the roll tooltip's lines (colored when shown) need a change: they read the color each time they open, so probably not.
+
+### 2026-11-15 — Forever: Show in > Bank does nothing for the default bank (the combined bank)
+
+**What:** On Forever the bank opens as the combined bank by default (`combinedBank` is on), and that window reads the category's `hide.combinedbank` flag. But Show in in `/sui` > Bags > Categories lists only Bags and Bank there (the warband bank and Combined bank are listed only where `INV:HasWarbandBank()`), so unticking Bank sets `hide.bank`, which the combined bank never reads: the category still shows in the bank the player sees. The flag the combined bank does read can be set only by the window's own Edit view checkbox on a category header (`category.lua`, `INV:SetCategoryHidden(id, categoryName, ...)`), or by a migrated profile.
+
+**Why noticed:** Review of the reset-every-setting Task 5 (2026-11-15). Show in's reset first covered only the listed windows, so a category hidden in the combined bank on Forever stayed "edited" with no reset; the fix there makes Show in's reset and "differs" cover every window a category is hidden in. The older bug (Show in cannot hide a category in the bank Forever actually shows) is separate and unfixed.
+
+**Anchors:** `SaftUI-Bags/categoriestab.lua` (`INV:CategoryEditorOptions`: `windows`, `sorting`), `SaftUI-Bags/categories.lua` (`INV:SetCategoryHidden`, `INV:IsCategoryHidden`, `INV:ShowCategoryEverywhere`), `SaftUI-Bags/category.lua` (the header checkbox), `SaftUI-Bags/movers.lua` (`INV:GetMoverIds`), `tests/bags/categories_editor_test.lua` (Show in's reset test).
+
+**What's been considered:** List the window the bank really is on each client: on Forever, Combined bank in place of (or beside) Bank. Or have Show in > Bank write both `bank` and `combinedbank` while the bank is combined. The reviewer preferred adding the combined bank to Show in on Forever.
+
+**Shape of work:** Small change in `INV:CategoryEditorOptions` (which windows Show in lists and what its labels say) plus a test on Forever that unticking the window the bank is in hides the category there.
+
+**Open questions:** Does Forever's Show in list Combined bank alone, or Bank and Combined bank? What does Bank mean while the bank is combined?
 
 ### 2026-11-15 — Auto Vendor counts a fresh purchase in a just-sold slot as a refused sale
 
@@ -259,11 +365,11 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 ### 2026-11-15 — Unit frame defaults: string offsets left outside the castbars
 
-**What:** The castbar defaults' text offsets are numbers now (merge fu-p3), but other defaults still have string offsets, which the game accepts and the strict stubbed `SetPoint` refuses: the portrait and the additional power position in `SaftUI-Unitframes/config/default.lua`, and buffs in `config/units/arena.lua` and `boss.lua`. A profile that saved the string form keeps it.
+**What:** The castbar defaults' text offsets are numbers now (merge fu-p3), but other defaults still have string offsets, which the game accepts and the strict stubbed `SetPoint` refuses: the portrait and the additional power position in `SaftUI-Unitframes/config/default.lua`, and buffs in `config/units/arena.lua` (boss's are numbers now: the resets task). A profile that saved the string form keeps it.
 
 **Why noticed:** The fu-p3 report, finishing item 2 of [Nameplates: small items left after the build](#2026-11-11--nameplates-small-items-left-after-the-build) for the castbars only (the brief named only those).
 
-**Anchors:** `SaftUI-Unitframes/config/default.lua`, `config/units/arena.lua`, `config/units/boss.lua`; `tests/unitframes/unit_defaults_test.lua` (checks every unit's castbar offsets are numbers).
+**Anchors:** `SaftUI-Unitframes/config/default.lua`, `config/units/arena.lua`; `tests/unitframes/unit_defaults_test.lua` (checks every unit's castbar offsets are numbers).
 
 **Shape of work:** Small: make them numbers and extend the test over every position in the defaults.
 
@@ -662,20 +768,6 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 **Shape of work:** A small design pass on where an error shows when the region is short (a tooltip on the field is the smallest), then a change in `PlaceFooter` or the field plus a test at W4 with the real command set and with one more icon command.
 
 **Open questions:** Where should the message show when the footer has no room: the field's tooltip, a line over the footer, or both? An in-game check at W4 with Keybind mode only (54 wide) decides how often it matters.
-
-### 2026-11-14 — Categories tab at full size: a long "Reset <name> to default" overlaps Delete
-
-**What:** In the bags' Categories editor, the Reset button's label is `Reset <category name> to default`. For a long name the button is wider than its half-line slot and overlaps Delete beside it. The shipped default "Death Knight/Warlock/Demon Hunter" does it, and so does any default the player renames to a long name (renaming keeps the Reset row).
-
-**Why noticed:** Review of the Categories tab at half width (window sizes work, Task 8). At half the label was shortened to "Reset to default" (the button above the editor names the category), but full size was left as it was, to keep it unchanged. Measured at full: under Thick the label is 375 wide in a 264 slot and spills about 55 px over Delete (which spans 276..540); under Blizzard the 403 wide button sits over Delete (290..370). The parent commit of that task (`7cc5acb`) behaves the same, so it isn't a regression.
-
-**Anchors:** `SaftUI-Bags/categoriestab.lua` (`INV:CategoryEditorOptions`, `args.reset`), `SaftUI-Core/Config/optionsbody.lua` (a floating line's buttons fill their slots, `Body:ButtonSlotRect`), `tests/bags/categories_half_test.lua` (the half-width case).
-
-**What's been considered:** Use the same short label at full (the editor's Name box above already shows the category). Or let the body cap a shared-slot button's label to its slot with an ellipsis. Either changes full size, so it is the owner's call.
-
-**Shape of work:** One-line label change plus a test, or a small body change for the cap.
-
-**Open questions:** Short label at full too, or keep the name and truncate?
 
 ### 2026-11-13 — Design decisions waiting to be built
 
@@ -2233,6 +2325,22 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-14 — Categories tab at full size: a long "Reset <name> to default" overlaps Delete
+
+**What:** In the bags' Categories editor, the Reset button's label is `Reset <category name> to default`. For a long name the button is wider than its half-line slot and overlaps Delete beside it. The shipped default "Death Knight/Warlock/Demon Hunter" does it, and so does any default the player renames to a long name (renaming keeps the Reset row).
+
+**Why noticed:** Review of the Categories tab at half width (window sizes work, Task 8). At half the label was shortened to "Reset to default" (the button above the editor names the category), but full size was left as it was, to keep it unchanged. Measured at full: under Thick the label is 375 wide in a 264 slot and spills about 55 px over Delete (which spans 276..540); under Blizzard the 403 wide button sits over Delete (290..370). The parent commit of that task (`7cc5acb`) behaves the same, so it isn't a regression.
+
+**Anchors:** `SaftUI-Bags/categoriestab.lua` (`INV:CategoryEditorOptions`, `args.reset`), `SaftUI-Core/Config/optionsbody.lua` (a floating line's buttons fill their slots, `Body:ButtonSlotRect`), `tests/bags/categories_half_test.lua` (the half-width case).
+
+**What's been considered:** Use the same short label at full (the editor's Name box above already shows the category). Or let the body cap a shared-slot button's label to its slot with an ellipsis. Either changes full size, so it is the owner's call.
+
+**Shape of work:** One-line label change plus a test, or a small body change for the cap.
+
+**Open questions:** Short label at full too, or keep the name and truncate?
+
+**Resolved 2026-11-15:** the button is gone; each field has its own reset (reset-every-setting, Task 5).
 
 ### 2026-11-11 — Grays/Auto Vendor: a finished edit that broadens its rule sells at the next merchant
 

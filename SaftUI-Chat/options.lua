@@ -7,9 +7,11 @@ local generators = st.Config.generators
 -- the text box would otherwise accept 0, negatives or text like "12abc", and a
 -- non-numeric size silently turns off SaftUI's sizing.
 local MIN_WIDTH, MIN_HEIGHT = 250, 120
+local NO_SIZE_DEFAULT = "Blizzard's chat frame's size, taken on first load: there is no default."
 
 local function SizeInput(option, minimum)
 	option.pattern = nil
+	option.noReset = NO_SIZE_DEFAULT
 	option.validate = function(_, value)
 		local number = tonumber(value)
 		if not (value and value:match('^%s*%d+%s*$') and number and number >= minimum) then
@@ -63,6 +65,7 @@ function CHT:GetConfigTable()
 				type = 'group',
 				order = 1,
 				get = function(info) return self.config[info[#info]] end,
+				saved = st.Config.SavedIn('chat'),
 				set = function(info, value)
 					local key = info[#info]
 					self.config[key] = value
@@ -91,6 +94,7 @@ function CHT:GetConfigTable()
 						min = 15,
 						max = 60,
 						step = 1,
+						saved = st.Config.SavedAt('chat', 'editbox', 'height'),
 						get = function() return self.config.editbox.height end,
 						set = function(_, value)
 							self.config.editbox.height = value
@@ -102,6 +106,7 @@ function CHT:GetConfigTable()
 						name = 'Fade tabs',
 						desc = 'Let the chat tabs fade out. Turning it on lets them fade from the next time you hover the chat.',
 						type = 'toggle',
+						saved = st.Config.SavedAt('chat', 'tabs', 'fade'),
 						get = function() return self.config.tabs.fade end,
 						set = function(_, value)
 							self.config.tabs.fade = value

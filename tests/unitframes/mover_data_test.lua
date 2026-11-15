@@ -8,7 +8,8 @@
 -- module's files (uf_world.lua). Stand-ins: the unit frames, the headers and
 -- the preview containers, plain frames put where oUF's spawns would be.
 local UW = load_test_file('unitframes/uf_world.lua')
-local st, UF = UW.world()
+-- position: config/position.lua, for the last case, which builds the page.
+local st, UF = UW.world({ position = true })
 load_editmode()
 local EM = st.EditModeFrames
 
@@ -78,4 +79,31 @@ test('a unit frame mover is hidden while its frame, its boss frames or its heade
 	party:Show()
 	eq(hidden('uf_party'), false, 'the header shown')
 	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("a unit's General Position resets through its real mover: edit mode's own default and reset, one history step", function()
+	local OM = st.OptionsModel
+	local root = { Unitframes = UF:GetConfigTable() }
+	local group = { args = root }
+	local path = { 'Unitframes', 'target', 'general', 'position' }
+	for _, key in ipairs(path) do group = OM.SubOption(group, key) end
+	local row = { option = group, path = path, type = 'position', key = 'position' }
+	eq(OM.DefaultSource(root, row), 'mover', 'the mover, not the derived default, resets it')
+	local position = UF:GetProfileConfig().target.position
+	local was = { point = position.point, rel_point = position.rel_point, x_off = position.x_off, y_off = position.y_off, frame = position.frame }
+	check(not OM.DefaultDiffers(root, row), 'at its default')
+	position.x_off = was.x_off + 40
+	check(OM.DefaultDiffers(root, row), 'moved: it differs')
+	local steps = #EM.History:Steps()
+	-- The mover's apply places the frame from the profile (a spawned frame has GetConfig).
+	local placed = 0
+	target.GetConfig = function() return UF:GetProfileConfig().target end
+	local place = UF.PlaceUnitFrame
+	UF.PlaceUnitFrame = function() placed = placed + 1 end
+	check(OM.DefaultReset(root, row), 'its reset ran')
+	eq(UF:GetProfileConfig().target.position.x_off, was.x_off, 'back at the default place')
+	check(not OM.DefaultDiffers(root, row), 'and no longer differs')
+	UF.PlaceUnitFrame, target.GetConfig = place, nil
+	check(placed > 0, "the mover's apply placed the frame")
+	eq(#EM.History:Steps(), steps + 1, 'as one step of the history')
 end)
