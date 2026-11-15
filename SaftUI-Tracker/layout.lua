@@ -211,9 +211,10 @@ function Layout.BesideSpot(holderLeft, holderRight, holderTop, side, columnWidth
 	return 'TOPLEFT', holderRight + out, holderTop
 end
 
--- A spot's top, in screen pixels, kept at least floor (the least above the screen's
--- bottom, also in pixels).
-function Layout.RevealY(top, floor)
-	if floor and top < floor then return floor end
+-- A spot's top, in screen pixels, kept at least floor and at most ceiling (the
+-- least above the screen's bottom, and the screen's top, in pixels too).
+function Layout.RevealY(top, floor, ceiling)
+	if floor and top < floor then top = floor end
+	if ceiling and top > ceiling then top = ceiling end
 	return top
 end

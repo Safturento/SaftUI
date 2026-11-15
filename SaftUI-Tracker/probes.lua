@@ -78,6 +78,7 @@ end
 
 local Probes = {}
 TR.Probes = Probes
+local NONE = {}
 
 local function Plain(value)
 	return value ~= nil and not issecretvalue(value)
@@ -174,6 +175,14 @@ function Probes.Achievements()
 	local tracked, info = Api('C_ContentTracking', 'GetTrackedIDs'), Global('GetAchievementInfo')
 	local kinds = _G.Enum and _G.Enum.ContentTrackingType
 	if not (tracked and info and kinds and Plain(kinds.Achievement)) then return false end
+	-- Blizzard shows only arena achievements while the arena frames show in an arena
+	-- (Blizzard_AchievementObjectiveTracker.lua:97-112, both branches); SaftUI does not
+	-- ask for the tracker for ones its module may not draw.
+	local inInstance = _G.IsInInstance
+	if type(inInstance) == 'function' then
+		local _, instanceType = inInstance()
+		if Plain(instanceType) and instanceType == 'arena' then return false end
+	end
 	local ids = tracked(kinds.Achievement)
 	if type(ids) ~= 'table' then return false end
 	for _, id in ipairs(ids) do
@@ -218,14 +227,23 @@ function Probes.Endeavors()
 	return AnyUncompleted(Api('C_NeighborhoodInitiative', 'GetTrackedInitiativeTasks'), Api('C_NeighborhoodInitiative', 'GetInitiativeTaskInfo'))
 end
 
--- Collection tracking: any tracked content of a type but achievements
--- (appearances, mounts, decor).
+-- Collection tracking: any tracked content of a type the game collects, while the
+-- game's content tracking is on, as Blizzard's module lays it out
+-- (Blizzard_AdventureObjectiveTracker.lua:288 `IsContentTrackingEnabled`, which is
+-- C_ContentTracking.GetCollectableSourceTrackingEnabled() read when the content
+-- tracking manager starts, ContentTrackingManager.lua:6, and :210 over
+-- GetCollectableSourceTypes(); both calls are in ContentTrackingDocumentation.lua
+-- on both branches). Appearances, mounts and decor, not achievements.
 function Probes.Collections()
 	local tracked = Api('C_ContentTracking', 'GetTrackedIDs')
-	local kinds = _G.Enum and _G.Enum.ContentTrackingType
-	if not (tracked and type(kinds) == 'table') then return false end
-	for _, kind in pairs(kinds) do
-		if Plain(kind) and kind ~= kinds.Achievement and HasAny(tracked(kind)) then return true end
+	local enabled, types = Api('C_ContentTracking', 'GetCollectableSourceTrackingEnabled'), Api('C_ContentTracking', 'GetCollectableSourceTypes')
+	if not (tracked and enabled and types) then return false end
+	local on = enabled()
+	if not (Plain(on) and on == true) then return false end
+	local list = types()
+	if type(list) ~= 'table' then return false end
+	for _, kind in ipairs(list) do
+		if Plain(kind) and HasAny(tracked(kind)) then return true end
 	end
 	return false
 end
@@ -258,6 +276,8 @@ function TR:BuildProbes()
 	self.moduleKeys = setmetatable({}, { __mode = 'k' })
 	self.unknownKeys = {}
 	self.unknownSaid = {}
+	self.probeErrors = {}
+	self.neededList, self.unknownList = {}, {}
 end
 
 -- A module's layout finished (its Update ran, which set state and hasContents):
@@ -289,10 +309,20 @@ local function PassTimer()
 	TR:ProbePass()
 end
 
+-- The hold's end: a pass of its own, since nothing else may happen then.
+local function RetryTimer()
+	if TR.retryAt and TR.retryAt <= GetTime() then TR.retryAt = nil end
+	TR:RunProbes()
+end
+
+-- Passes share the list's throttle (TR.REFRESH_GAP): the first after a quiet gap
+-- runs on the next frame, one soon after waits for the end of the gap.
 function TR:RunProbes()
 	if not self.built or not self.blizzardFrame or self.probePending then return end
 	self.probePending = true
-	C_Timer.After(0, PassTimer)
+	local delay = 0
+	if self.lastPass then delay = math.max(0, TR.REFRESH_GAP - (GetTime() - self.lastPass)) end
+	C_Timer.After(delay, PassTimer)
 end
 
 -- The pass: every section's probe and module signal, in the table's order, then
@@ -301,6 +331,7 @@ end
 function TR:ProbePass()
 	if not self.built or not self.blizzardFrame then return end
 	local now = GetTime()
+	self.lastPass = now
 	self:WatchModules()
 	local seen, last = self.sectionSeen, self.sectionLast
 	local handHover = TR.SectionHandsOver
@@ -309,7 +340,14 @@ function TR:ProbePass()
 		if handHover(key) then
 			local probe = TR.Probes[section.probe]
 			if probe then
-				local ok, result = xpcall(probe, geterrorhandler())
+				-- An error is reported once per probe per session, then counts as no.
+				local ok, result
+				if self.probeErrors[key] then
+					ok, result = pcall(probe)
+				else
+					ok, result = xpcall(probe, geterrorhandler())
+					if not ok then self.probeErrors[key] = true end
+				end
 				has = ok and result == true
 			end
 			has = has or self.moduleContent[key] == true
@@ -334,10 +372,7 @@ function TR:ProbePass()
 		local due = now + soonest
 		if not self.retryAt or self.retryAt > due or self.retryAt <= now then
 			self.retryAt = due
-			C_Timer.After(soonest + 0.05, function()
-				if self.retryAt and self.retryAt <= GetTime() then self.retryAt = nil end
-				self:RunProbes()
-			end)
+			C_Timer.After(soonest + 0.05, RetryTimer)
 		end
 	end
 	self:UpdateHandover()
@@ -347,14 +382,16 @@ end
 -- by name. A section with content counts; one without keeps counting for
 -- TR.HOLD seconds.
 function TR:NeededSections()
-	local needed = {}
-	if not self.sectionSeen then return needed end
+	local needed = self.neededList
+	if not needed then return NONE end
+	for index = #needed, 1, -1 do needed[index] = nil end
 	local now = GetTime()
 	for _, section in ipairs(TR.SECTIONS) do
 		local key = section.key
 		if TR.Probes.Held(self.sectionSeen[key], self.sectionLast[key], now) then needed[#needed + 1] = key end
 	end
-	local unknown = {}
+	local unknown = self.unknownList
+	for index = #unknown, 1, -1 do unknown[index] = nil end
 	for key in pairs(self.unknownKeys) do
 		if TR.Probes.Held(self.sectionSeen[key], self.sectionLast[key], now) then unknown[#unknown + 1] = key end
 	end

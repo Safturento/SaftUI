@@ -88,14 +88,25 @@ function TR:BlizzardSpot()
 end
 
 -- The y a spot is revealed at: SaftUI's tracker's, kept off the bottom of the
--- screen (TR.BLIZZARD_FLOOR). Blizzard works the tracker's height out from
--- its anchor's y, down to the right column's bottom and at least 20, so a low
--- spot would give its modules no room and the game's clamp would push a tall
--- one up. Concealed it is the same y (Ruling 29), so its height is what it will be.
-local function RevealY(screenY)
-	local uiScale, bottom = UIParent:GetEffectiveScale(), UIParent:GetBottom()
-	if not (Plain(uiScale, bottom) and uiScale > 0) then return screenY end
-	return TR.Layout.RevealY(screenY, (bottom + TR.BLIZZARD_FLOOR) * uiScale)
+-- screen (the controller's ruling, for the owner to check: TR.BLIZZARD_FLOOR
+-- above it at the least, so the revealed top may be above SaftUI's). Blizzard
+-- works the tracker's height out from its anchor's y, down to the right
+-- column's bottom and at least 20, so a low spot would give its modules no room
+-- and the game's clamp would push a tall one up. A tracker the player moved in
+-- Blizzard's Edit Mode is a child of UIParent (not of the right column) with a
+-- fixed height, which `GetHeight(true)` gives without lag: its top is raised to
+-- keep that height on screen (the clamp would do the same, but the tracker then
+-- sits where SaftUI put it and the two never fight). Never above the screen's
+-- top. Concealed it is the same y (Ruling 29), so its height is what it will be.
+local function RevealY(tracker, parent, screenY)
+	local uiScale, bottom, top = UIParent:GetEffectiveScale(), UIParent:GetBottom(), UIParent:GetTop()
+	if not (Plain(uiScale, bottom, top) and uiScale > 0) then return screenY end
+	local floor = (bottom + TR.BLIZZARD_FLOOR) * uiScale
+	if parent == UIParent then
+		local height, scale = tracker:GetHeight(true), tracker:GetEffectiveScale()
+		if Plain(height, scale) then floor = math.max(floor, bottom * uiScale + height * scale) end
+	end
+	return TR.Layout.RevealY(screenY, floor, top * uiScale)
 end
 
 -- Where Blizzard's tracker goes for `where`: parent, point, x, y for one
@@ -125,6 +136,10 @@ function TR:BlizzardTarget(where)
 	if spot then top, right, scale = spot:GetTop(), spot:GetRight(), spot:GetEffectiveScale() end
 	local screenY, screenX
 	local point = 'TOPRIGHT'
+	-- The window's top as it was when it was hidden (the handover, handover.lua):
+	-- SaftUI's list goes on changing height behind it, and Blizzard's tracker
+	-- must not move with it.
+	if where == 'place' and self.heldTop and Plain(self.heldTop) then top = self.heldTop end
 	if Plain(top, scale) then screenY = top * scale end
 	if where == 'place' then
 		if not (screenY and Plain(right)) then return end
@@ -150,7 +165,7 @@ function TR:BlizzardTarget(where)
 		if not Plain(uiLeft, uiScale) then return end
 		screenX = (uiLeft - TR.BLIZZARD_OFF) * uiScale
 	end
-	local x, y = st:CornerOffset(tracker, parent, point, screenX, RevealY(screenY))
+	local x, y = st:CornerOffset(tracker, parent, point, screenX, RevealY(tracker, parent, screenY))
 	if not x then return end
 	return parent, point, x, y
 end
@@ -236,8 +251,8 @@ local hooked = setmetatable({}, { __mode = 'k' })
 local QUEST_MODULES = { 'QuestObjectiveTracker', 'CampaignQuestObjectiveTracker' }
 
 -- The post-hook on a module's own Update. It runs inside Blizzard's layout, so it
--- reads two fields and asks for a probe pass on the next frame, nothing else; an
--- error in it goes to the error handler and Blizzard's layout goes on.
+-- reads two fields and asks for a probe pass, nothing else; an error in it goes
+-- to the error handler and Blizzard's layout goes on.
 local function OnModuleUpdate(module)
 	local ok, err = xpcall(TR.ModuleUpdated, geterrorhandler(), TR, module)
 	return ok, err
@@ -255,15 +270,21 @@ local function Watch(self, module, key)
 	self:ModuleUpdated(module, key)
 end
 
+-- The frames SaftUI knows (the nine sections' modules and the two quest ones),
+-- one table kept and refilled, so a pass allocates none.
+local known = {}
+
 -- Called by TR:SetupBlizzard, and by every probe pass for what a patch may add:
--- the eleven modules' Update (the container's own can't be hooked: its dirty
--- update holds a closure of the function), and any frame in the container's
--- `modules` list SaftUI doesn't know, which counts as a section while it has
--- content. Reads and post-hooks only (.agents/taint.md rule 5).
+-- the nine sections' modules' Update (the container's own can't be hooked: its
+-- dirty update holds a closure of the function; the two quest modules are never
+-- hooked), and any frame in the container's `modules` list SaftUI doesn't know,
+-- which counts as a section while it has content; the list is walked only when
+-- its length changes. Reads and post-hooks only (.agents/taint.md rule 5); a
+-- module's name is the C method's, taken from its metatable like the others.
 function TR:WatchModules()
 	local tracker = self.blizzardFrame
 	if not tracker then return end
-	local known = {}
+	for module in pairs(known) do known[module] = nil end
 	for _, section in ipairs(TR.SECTIONS) do
 		local module = _G[section.module]
 		if module then
@@ -275,13 +296,14 @@ function TR:WatchModules()
 		local module = _G[name]
 		if module then known[module] = true end
 	end
-	if type(tracker.modules) ~= 'table' then return end
-	for _, module in ipairs(tracker.modules) do
+	if type(tracker.modules) ~= 'table' or self.moduleCount == #tracker.modules then return end
+	self.moduleCount = #tracker.modules
+	for index, module in ipairs(tracker.modules) do
 		if not known[module] and not hooked[module] then
-			local key = module:GetName()
-			if type(key) ~= 'string' or key == '' then key = 'Unnamed module' end
+			local getName = getmetatable(module).__index.GetName
+			local key = type(getName) == 'function' and getName(module)
+			if type(key) ~= 'string' or key == '' then key = 'Unnamed module ' .. index end
 			Watch(self, module, key)
 		end
 	end
 end
-

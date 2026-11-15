@@ -305,6 +305,7 @@ test('the scanner flags what is off the list and lets the allowed through', func
 		'hooksecurefunc(QuestObjectiveTracker, "Update", f)',
 		'for _, module in ipairs(tracker.modules) do\nlocal name = module:GetName()\nlocal s, h = module.state, module.hasContents\nhooksecurefunc(module, "Update", f)\nend',
 		'local module = _G[section.module]\nif module then hooksecurefunc(module, "Update", f) end\nlocal state = module.state',
+		'for _, module in ipairs(tracker.modules) do\nlocal getName = getmetatable(module).__index.GetName\nlocal key = getName(module)\nend',
 		'local n = ObjectiveTrackerUIWidgetContainer:GetNumWidgetsShowing()', 'local c = ObjectiveTrackerUIWidgetContainer ~= nil',
 		'st:HideEditModeSelection(tracker)\nst:CanMoveNow(tracker)\nlocal x, y = st:CornerOffset(tracker, parent, "TOPRIGHT", 1, 2)',
 		'if type(tracker.UpdateHeight) == "function" then end',

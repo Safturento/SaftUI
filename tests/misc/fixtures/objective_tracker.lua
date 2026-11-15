@@ -795,7 +795,7 @@ local function module(name, tracker)
 	rawset(frame, 'usedTimerBars', lock_table({}, 'module.usedTimerBars'))
 	rawset(frame, 'usedRightEdgeFrames', lock_table({}, 'module.usedRightEdgeFrames'))
 	for key, fn in pairs(MODULE) do rawset(frame, key, fn) end
-	for _, name in ipairs(GUARDED) do guard(frame, 'module ' .. frame:GetName(), name) end
+	for _, name in ipairs(GUARDED) do guard(frame, 'module ' .. tostring(frame:GetName()), name) end
 	if name == 'ScenarioObjectiveTracker' then
 		-- Its fixed ObjectivesBlock (an ObjectiveTrackerBlockTemplate, Init
 		-- and Reset in InitModule).
@@ -1035,9 +1035,10 @@ end
 -- the container's list), named name; returns its frame.
 function OT.add_module(name)
 	local frame = module(name, OT.tracker)
-	OT.modules[name] = frame
+	-- (a nil name: a frame with no name, kept under a label of its own)
+	OT.modules[name or ('unnamed' .. (#OT.tracker.modules + 1))] = frame
 	table.insert(OT.tracker.modules, frame)
-	for _, method in ipairs(STRAY_MODULE) do guard(frame, 'module ' .. name, method) end
+	for _, method in ipairs(STRAY_MODULE) do guard(frame, 'module ' .. tostring(name), method) end
 	return frame
 end
 

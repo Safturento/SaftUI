@@ -142,7 +142,7 @@ local function world(opts)
 	local config = opts.config
 	local misc = opts.misc and MISC or nil
 	local st, TR = RW.world({
-		client = opts.client, blizzard = opts.blizzard or true, misc = misc, screen = { 1000, 600 },
+		client = opts.client, blizzard = opts.blizzard or true, misc = misc, screen = { 1000, 600 }, combat = opts.combat,
 		enabling = function(st)
 			log(ids, items)
 			if config then config(st) end
@@ -153,7 +153,8 @@ local function world(opts)
 	return st, TR, TW.OT
 end
 
-local function settle(seconds) RW.later(seconds or 0) end
+-- (a probe pass waits TR.REFRESH_GAP after the last one, as a refresh does)
+local function settle(seconds) RW.later(seconds or 0.1) end
 
 -- Something Blizzard's tracker would show a section for, as the game says it.
 local function scenario(on)
@@ -223,7 +224,7 @@ both('a need out of combat: Blizzard\'s tracker in SaftUI\'s place on the holder
 	check(TR.nearestHolder == nil or true, 'the nearest button\'s holder is its own and stays')
 
 	scenario(false)
-	settle(0)
+	settle(0.1)
 	eq(TR.handoverState, 'blizzard', 'the need ends but is held for 2 seconds')
 	settle(TR.HOLD - 0.5)
 	eq(TR.handoverState, 'blizzard', 'still held at 1.5 s')
@@ -597,5 +598,139 @@ test('with the switch off nothing of the handover exists or runs', function()
 	eq(TW.snapshot(OT.tracker), before, 'Blizzard\'s tracker untouched')
 	check(TR.handoverState == nil, 'no state')
 	eq(TW.counts.frames, 0, 'no frame')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+
+------------------------------------------------------------------ fix round 1
+
+both('in combat the room kept for the item column is the column as it was placed, never the list\'s current entries', function(client)
+	local st, TR, OT = world({ client = client, config = function(st)
+		st.config.profile.tracker.blizzard.mode = 'beside'
+		st.config.profile.tracker.items.placement = 'beside'
+		st.config.profile.tracker.position = { point = 'TOPRIGHT', frame = 'UIParent', rel_point = 'TOPRIGHT', x_off = -20, y_off = -50 }
+	end })
+	scenario(true)
+	settle()
+	local size = st.config.profile.tracker.items.size
+	local before = OT.tracker:GetRight()
+	check(near(before, TR.holder:GetLeft() - 12 - size - 4), 'out of combat: past the column: ' .. before)
+	local function clear_of_buttons(where)
+		local shown = 0
+		for _, button in ipairs(TR.itemButtons) do
+			if button.column and button.questID and button:IsShown() then
+				shown = shown + 1
+				check(OT.tracker:GetRight() <= button:GetLeft() + 0.01, where .. ': Blizzard\'s right edge ' .. OT.tracker:GetRight() .. ' is clear of the button at ' .. button:GetLeft())
+			end
+		end
+		check(shown > 0, where .. ': the column\'s buttons are still there')
+	end
+	TW.combat(true)
+	settle()
+	-- The group collapses in combat (a zone header click works in combat): the buttons stay.
+	TR:CharData().zones['Elwynn Forest'] = true
+	TR:Redraw()
+	settle(1)
+	clear_of_buttons('group collapsed in combat')
+	-- The quests lose their items in combat.
+	TR:CharData().zones['Elwynn Forest'] = nil
+	log({ 1, 2 }, false)
+	stub.fire_event('QUEST_LOG_UPDATE')
+	settle(1)
+	clear_of_buttons('items gone in combat')
+	TW.combat(false)
+	settle(1)
+	check(near(OT.tracker:GetRight(), TR.holder:GetLeft() - 12), 'after combat it follows the list: no column, 12 out')
+	clean()
+end)
+
+both('Grow up: the handed-over tracker does not move as SaftUI\'s hidden list changes height', function(client)
+	local st, TR, OT = world({ client = client, config = function(st)
+		st.config.profile.tracker.grow = 'up'
+		st.config.profile.tracker.height = 300
+		st.config.profile.tracker.position = { point = 'TOPRIGHT', frame = 'UIParent', rel_point = 'TOPRIGHT', x_off = -20, y_off = -50 }
+	end })
+	scenario(true)
+	settle()
+	eq(TR.handoverState, 'blizzard', 'handed over')
+	local top = OT.tracker:GetTop()
+	check(near(top, TR.heldTop and TR.window:GetTop() or top), 'a spot')
+	for _, ids in ipairs({ { 1, 2, 3, 4, 5, 6 }, { 1 }, { 1, 2, 3 } }) do
+		log(ids, true)
+		stub.fire_event('QUEST_LOG_UPDATE')
+		settle(1)
+		check(near(OT.tracker:GetTop(), top), #ids .. ' quests: Blizzard\'s top stays at ' .. top .. ', not ' .. OT.tracker:GetTop())
+	end
+	-- When SaftUI's tracker comes back and goes again, it takes the window's spot as it then is.
+	scenario(false)
+	settle(TR.HOLD + 1)
+	eq(TR.handoverState, 'own', 'back')
+	scenario(true)
+	settle()
+	eq(TR.handoverState, 'blizzard', 'and again')
+	check(near(OT.tracker:GetTop(), TR.window:GetTop()), 'on the window\'s top as it is now')
+	clean()
+end)
+
+both('a tracker moved in Blizzard\'s Edit Mode keeps its fixed height on screen: the spot is raised to fit it', function(client)
+	local st, TR, OT = world({ client = client, blizzard = { moved = { point = 'TOPLEFT', relativePoint = 'TOPLEFT', offsetX = 100, offsetY = -100 }, height = 400 } })
+	check(OT.tracker:GetParent() == UIParent, 'moved: its parent is UIParent')
+	check(near(OT.tracker:GetTop(), 400), 'concealed at the height\'s top, not SaftUI\'s lower spot: ' .. OT.tracker:GetTop())
+	scenario(true)
+	settle()
+	eq(TR.handoverState, 'blizzard', 'handed over')
+	check(near(OT.tracker:GetTop(), 400) and OT.tracker:GetBottom() >= -0.01, 'revealed with its bottom on the screen: top ' .. OT.tracker:GetTop() .. ' bottom ' .. OT.tracker:GetBottom())
+	clean()
+end)
+
+both('a tracker the game counts as protected, its need ending in combat with no item buttons: it stays until combat ends', function(client)
+	local st, TR, OT = world({ client = client, items = false, blizzard = { protected = true } })
+	scenario(true)
+	settle()
+	eq(TR.handoverState, 'blizzard', 'handed over out of combat')
+	TW.combat(true)
+	settle()
+	scenario(false)
+	settle(TR.HOLD + 0.5)
+	eq(TR.handoverState, 'blizzard', 'it can\'t be concealed in combat, so SaftUI\'s window does not come back over it')
+	check(not TR.window:IsShown(), 'the window stays away')
+	TW.combat(false)
+	settle(1)
+	eq(TR.handoverState, 'own', 'then it goes back')
+	concealed(OT, 'concealed')
+	check(TR.window:IsShown(), 'with the window')
+	eq(#stub.blocked, 0, 'nothing blocked')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+both('TR:ItemsToShow counts only what could be shown: a quest the list draws with an item that has a link', function(client)
+	local st, TR = world({ client = client })
+	check(TR:ItemsToShow(), 'quests with items: yes')
+	Q.set({ Q.header('Elwynn Forest'), Q.quest(1, { item = { texture = 134400 } }) }, { 1 })
+	stub.fire_event('QUEST_LOG_UPDATE')
+	RW.later(1)
+	check(not TR:ItemsToShow(), 'an item with no link makes no button: nothing to show')
+	log({ 1, 2 }, true)
+	stub.fire_event('QUEST_LOG_UPDATE')
+	RW.later(1)
+	check(TR:ItemsToShow(), 'with links: yes')
+	TR:CharData().zones['Elwynn Forest'] = true
+	TR:Redraw()
+	check(not TR:ItemsToShow(), 'a collapsed group draws no row and so no button')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+both('a /reload in combat inside a scenario: both in combat, in place when it ends, the item layer made once, nothing blocked', function(client)
+	local st, TR, OT = world({ client = client, combat = true, config = function() stub.probes.scenario = { stages = 3 } end })
+	settle(1)
+	eq(TR.handoverState, 'both', 'in combat: beside')
+	eq(TW.counts.secure, 0, 'no secure frame made in combat')
+	check(TR.window:IsShown(), 'SaftUI\'s window')
+	TW.combat(false)
+	settle(1)
+	eq(TR.handoverState, 'blizzard', 'combat over: in SaftUI\'s place')
+	check(not TR.window:IsShown() and items_shown(TR) == 0, 'the window and the buttons away')
+	check(TR.itemLayer ~= nil, 'the item layer exists')
+	eq(#stub.blocked, 0, 'nothing blocked')
 	eq(#take_errors(), 0, 'no errors')
 end)

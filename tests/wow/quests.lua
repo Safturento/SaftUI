@@ -84,7 +84,8 @@ stub.quests = { log = {}, watched = {}, focused = 0, popups = {}, titles = {} }
 --     world = { [questID] = true }, -- the task quests that are world quests (C_QuestLog.IsWorldQuest)
 --     world_watches = 0,       -- C_QuestLog.GetNumWorldQuestWatches()
 --     tracked = { [Enum.ContentTrackingType] = { id, ... } }, -- C_ContentTracking.GetTrackedIDs
---     achievements = { [id] = { earned = bool } }, -- GetAchievementInfo's 13th return
+--     achievements = { [id] = { earned = bool, completed = bool } }, -- GetAchievementInfo's 13th and 4th returns
+--     collections_enabled = true, collectable_types = { 0, 1, 3 }, -- C_ContentTracking's gate and types
 --     recipes = { normal = { id }, recraft = { id } }, -- C_TradeSkillUI.GetRecipesTracked(isRecraft)
 --     perks = { ids = {}, info = { [id] = { completed } } },     -- C_PerksActivities
 --     initiative = { ids = {}, info = { [id] = { completed } } }, -- C_NeighborhoodInitiative
@@ -749,6 +750,14 @@ do
 	end
 
 	C_ContentTracking = C_ContentTracking or {}
+	-- isEnabled / collectableSourceTypes (ContentTrackingDocumentation.lua, both
+	-- branches): the gate and the types Blizzard's collection module lays out.
+	function C_ContentTracking.GetCollectableSourceTrackingEnabled() return stub.probes.collections_enabled ~= false end
+	function C_ContentTracking.GetCollectableSourceTypes()
+		local types = {}
+		for i, kind in ipairs(stub.probes.collectable_types or { 0, 1, 3 }) do types[i] = kind end
+		return types
+	end
 	function C_ContentTracking.GetTrackedIDs(trackableType)
 		arg(trackableType, 'number', 'local entryIDs = C_ContentTracking.GetTrackedIDs(trackableType)')
 		local ids = {}
@@ -758,8 +767,11 @@ do
 
 	function GetAchievementInfo(achievementID)
 		arg(achievementID, 'number', 'id, name, points, completed, month, day, year, description, flags, icon, rewardText, isGuild, wasEarnedByMe, earnedBy = GetAchievementInfo(achievementID)')
+		-- `completed` (4th: done by anyone on the account) and `earned` (13th:
+		-- wasEarnedByMe) are separate: an achievement done account-wide on another
+		-- character is completed and not earned by me, which Blizzard still lists.
 		local info = stub.probes.achievements[achievementID] or {}
-		return achievementID, 'Achievement ' .. achievementID, 10, info.earned == true, nil, nil, nil, '', 0, 0, '', false,
+		return achievementID, 'Achievement ' .. achievementID, 10, info.completed == true or info.earned == true, nil, nil, nil, '', 0, 0, '', false,
 			info.earned == true, nil
 	end
 

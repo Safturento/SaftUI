@@ -366,7 +366,7 @@ end
 
 -- Reads the quest log into the model and draws it: the model, the groups, the
 -- entries, the layout, the rows, then each later stage where its file defines
--- it (the item buttons, the probes, the handover, the visibility).
+-- it (the item buttons, the handover, the visibility; the probes run on their own events).
 function TR:Refresh()
 	if not self.built then return end
 	self.lastRefresh = GetTime()

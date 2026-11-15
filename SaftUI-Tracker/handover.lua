@@ -79,11 +79,20 @@ end
 -- What each action does. The state is already the new one when they run.
 local ACTIONS = {
 	hide_items = function(self) self:RefreshItems() end,
-	hide_window = function(self) self:ApplyWindowShown() end,
+	-- The window's top as it is now is where Blizzard's tracker sits while it is
+	-- hidden (TR:BlizzardTarget): the list behind it goes on changing height.
+	hide_window = function(self)
+		local top = self.window:GetTop()
+		self.heldTop = (top ~= nil and not issecretvalue(top)) and top or nil
+		self:ApplyWindowShown()
+	end,
 	reveal_place = function(self) self:PlaceBlizzard('place') end,
 	reveal_beside = function(self) self:PlaceBlizzard('beside') end,
 	conceal = function(self) self:PlaceBlizzard('concealed') end,
-	show_window = function(self) self:ApplyWindowShown() end,
+	show_window = function(self)
+		self.heldTop = nil
+		self:ApplyWindowShown()
+	end,
 	show_items = function(self) self:RefreshItems() end,
 }
 
@@ -103,7 +112,10 @@ function TR:UpdateHandover()
 	if not self.built or not self.blizzardFrame or not self.handoverState then return end
 	local mode = self.config.blizzard.mode == 'beside' and 'beside' or 'place'
 	local combat = InCombatLockdown() and true or false
-	local items = self:ItemsToShow()
+	-- "Buttons to show" also holds Blizzard's tracker up while the game won't let it
+	-- be put away in combat (a protected one: TR:PlaceBlizzard waits for the end),
+	-- so SaftUI's window never comes back over it.
+	local items = self:ItemsToShow() or (combat and not st:CanMoveNow(self.blizzardFrame))
 	if self.handoverMode == nil then
 		self.handoverMode = mode
 	elseif self.handoverMode ~= mode then

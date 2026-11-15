@@ -263,6 +263,8 @@ function TR:ApplyHolder()
 		function() return self:GetPosition() end)
 	st:KeepInScreenMargin(holder)
 	self:PlaceWindow()
+	-- Blizzard's tracker in SaftUI's place follows a holder that moved.
+	if self.handoverState == 'blizzard' then self.heldTop = self.window:GetTop() end
 	-- The rows moved with the window: the quest item buttons follow (or dim).
 	if self.PlaceItems then self:PlaceItems() end
 	-- Blizzard's tracker follows the holder (its y concealed, its corner in place).

@@ -148,7 +148,9 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 				blizzard = { moved = { point = 'TOPLEFT', relativePoint = 'TOPLEFT', offsetX = 100, offsetY = -100 } } })
 			local tracker = OT.tracker
 			check(tracker:GetParent() == UIParent, 'its parent is UIParent')
-			check_concealed(tracker, UIParent:GetTop() + default_y(st), 'moved')
+			-- (a moved tracker has a fixed height, Edit Mode's 800 here, taller than this screen:
+			-- its spot is raised to the screen's top, where the game's clamp would put it)
+			check_concealed(tracker, UIParent:GetTop(), 'moved')
 			clean()
 		end)
 
@@ -279,6 +281,7 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 			check_concealed(tracker, top, 'after a snap break')
 			OT.edit_mode_moves({ point = 'TOPLEFT', relativePoint = 'TOPLEFT', offsetX = 200, offsetY = -50 })
 			check(tracker:GetParent() == UIParent, 'Blizzard put it on UIParent')
+			top = UIParent:GetTop() -- (see the moved case: its 800 high)
 			check_concealed(tracker, top, 'after Edit Mode moved it')
 			TR.PlaceBlizzard = place
 
@@ -551,7 +554,7 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		end
 		-- Moved in Blizzard's Edit Mode (its layout puts it at its saved spot first).
 		local st3 = world({ client = client, misc = MISC, blizzard = { moved = { point = 'TOPLEFT', relativePoint = 'TOPLEFT', offsetX = 100, offsetY = -100 } } })
-		check_concealed(OT.tracker, UIParent:GetTop() + default_y(st3), 'moved')
+		check_concealed(OT.tracker, UIParent:GetTop(), 'moved')
 		eq(st3.config.profile.objectivetracker.position, nil, 'the skin saved nothing of the tracker\'s Edit Mode spot')
 		clean()
 	end)

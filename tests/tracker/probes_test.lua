@@ -276,23 +276,23 @@ both('Blizzard\'s own Update of a module is hooked: it asks for a pass on the ne
 	TR.ProbePass = function(...) passes = passes + 1 return pass(...) end
 	OT.run_update('ScenarioObjectiveTracker', ObjectiveTrackerModuleState.ShownFully, true)
 	eq(passes, 0, 'nothing runs inside Blizzard\'s call')
-	RW.later(0)
+	RW.later(0.1)
 	check(passes >= 1, 'a pass ran on the next frame')
 	eq(keys(TR), 'scenario', 'the scenario module with content: Scenario')
 	-- The widgets module counts the same way, in order.
 	OT.run_update('UIWidgetObjectiveTracker', ObjectiveTrackerModuleState.NotShown, false)
-	RW.later(0)
+	RW.later(0.1)
 	eq(keys(TR), 'scenario,widgets', 'NotShown counts, in the table\'s order')
 	-- An empty module doesn't, and after the hold the section drops.
 	OT.run_update('ScenarioObjectiveTracker', ObjectiveTrackerModuleState.NoObjectives, false)
-	RW.later(0)
+	RW.later(0.1)
 	eq(keys(TR), 'scenario,widgets', 'still held for 2 seconds')
 	RW.later(TR.HOLD + 0.1)
 	eq(keys(TR), 'widgets', 'the scenario dropped after the hold')
 	-- The quest modules are never read.
 	OT.run_update('QuestObjectiveTracker', ObjectiveTrackerModuleState.ShownFully, true)
 	OT.run_update('CampaignQuestObjectiveTracker', ObjectiveTrackerModuleState.ShownFully, true)
-	RW.later(0)
+	RW.later(0.1)
 	eq(keys(TR), 'widgets', 'the two quest modules change nothing')
 	eq(table.concat(OT.stray, ','), '', 'SaftUI called none of the modules\' state-writing methods')
 end)
@@ -306,19 +306,19 @@ both('a module hooked once, however often SaftUI sets up', function(st, TR, OT)
 	local pass = TR.ProbePass
 	TR.ProbePass = function(...) count = count + 1 return pass(...) end
 	OT.run_update('AchievementObjectiveTracker', ObjectiveTrackerModuleState.ShownFully, true)
-	RW.later(0)
+	RW.later(0.1)
 	eq(count, 1, 'one pass for one Update: the hook is not stacked')
 end)
 
 both('a module Skipped for room but with content is found by its probe', function(st, TR, OT)
 	-- Blizzard's quests fill its height: the achievements module is Skipped whatever it holds.
 	OT.run_update('AchievementObjectiveTracker', ObjectiveTrackerModuleState.Skipped, false)
-	RW.later(0)
+	RW.later(0.1)
 	eq(keys(TR), '', 'its state says nothing')
 	stub.probes.tracked = { [ACHIEVEMENT] = { 500 } }
 	stub.probes.achievements = { [500] = { earned = false } }
 	stub.fire_event('TRACKED_ACHIEVEMENT_LIST_CHANGED')
-	RW.later(0)
+	RW.later(0.1)
 	eq(keys(TR), 'achievements', 'the probe finds it')
 end)
 
@@ -328,11 +328,11 @@ both('an unknown module with content hands over, and says so once a session', fu
 		OT.run_update('FuturePatchObjectiveTracker', ObjectiveTrackerModuleState.ShownFully, true)
 		-- Nothing hooks it yet: a pass finds it (the next event, or any module's layout).
 		stub.fire_event('ZONE_CHANGED_NEW_AREA')
-		RW.later(0)
+		RW.later(0.1)
 		-- Hooked now: each later layout asks for a pass, and the line is not said again.
 		for _ = 1, 3 do
 			OT.run_update('FuturePatchObjectiveTracker', ObjectiveTrackerModuleState.ShownFully, true)
-			RW.later(0)
+			RW.later(0.1)
 		end
 		TR:ProbePass()
 		RW.later(1)
@@ -348,7 +348,7 @@ both('an unknown module with content hands over, and says so once a session', fu
 	local lines2 = printed(function()
 		OT.add_module('QuietObjectiveTracker')
 		OT.run_update('QuietObjectiveTracker', ObjectiveTrackerModuleState.NoObjectives, false)
-		RW.later(0)
+		RW.later(0.1)
 	end)
 	eq(#lines2, 0, 'nothing said for an empty one')
 end)
@@ -360,7 +360,7 @@ both('TR.SectionHandsOver false for one key keeps it from handing over (the P4 s
 	OT.run_update('UIWidgetObjectiveTracker', ObjectiveTrackerModuleState.ShownFully, true)
 	stub.probes.scenario = { stages = 2 }
 	stub.fire_event('SCENARIO_UPDATE')
-	RW.later(0)
+	RW.later(0.1)
 	eq(keys(TR), 'scenario', 'zone widgets stay out, the scenario hands over')
 	TR.SectionHandsOver = hands
 end)
@@ -383,11 +383,11 @@ end)
 both('a widget that flickers at an area\'s edge holds the section for 2 seconds', function(st, TR, OT)
 	OT.set_widgets(1)
 	stub.fire_event('ZONE_CHANGED_NEW_AREA')
-	RW.later(0)
+	RW.later(0.1)
 	eq(keys(TR), 'widgets', 'widgets showing: needed')
 	OT.set_widgets(0)
 	stub.fire_event('ZONE_CHANGED_NEW_AREA')
-	RW.later(0)
+	RW.later(0.1)
 	eq(keys(TR), 'widgets', 'gone: held')
 	OT.set_widgets(1)
 	stub.fire_event('ZONE_CHANGED_NEW_AREA')
@@ -411,12 +411,12 @@ both('at most one pass a frame, however many events and module updates', functio
 		TR:RunProbes()
 	end
 	eq(evaluations, 0, 'nothing is read inside the frame itself')
-	RW.later(0)
+	RW.later(0.1)
 	eq(evaluations, 1, 'one pass on the next frame')
-	RW.later(0)
+	RW.later(0.1)
 	eq(evaluations, 1, 'and none after it with nothing asked')
 	stub.fire_event('SCENARIO_UPDATE')
-	RW.later(0)
+	RW.later(0.1)
 	eq(evaluations, 2, 'a later event is a later pass')
 	TR.Probes.Scenario = scenario
 end)
@@ -431,6 +431,7 @@ both('every event of the design\'s list asks for a pass', function(st, TR)
 		'QUEST_WATCH_LIST_CHANGED', 'ZONE_CHANGED_NEW_AREA', 'PLAYER_ENTERING_WORLD',
 	}
 	for _, event in ipairs(events) do
+		RW.later(1)
 		local passes = 0
 		local pass = TR.ProbePass
 		TR.ProbePass = function(...) passes = passes + 1 return pass(...) end
@@ -453,4 +454,154 @@ test('with the switch off no probe, hook or event exists', function()
 	eq(TW.counts.hooks, 0, 'no hook')
 	check(TR.handoverState == nil, 'no handover state')
 	eq(#take_errors(), 0, 'no errors')
+end)
+
+
+------------------------------------------------------------------ fix round 1
+
+both('an error in the module hook is reported once and Blizzard\'s layout goes on; the next layout still asks for a pass', function(st, TR, OT)
+	local real = TR.ModuleUpdated
+	local fail = true
+	TR.ModuleUpdated = function(...)
+		if fail then fail = false error('boom in the hook') end
+		return real(...)
+	end
+	local ok = pcall(OT.run_update, 'ScenarioObjectiveTracker', ObjectiveTrackerModuleState.ShownFully, true)
+	check(ok, 'Blizzard\'s call returned: the error did not escape the hook')
+	local errors = take_errors()
+	eq(#errors, 1, 'one error reported')
+	check(errors[1]:find('boom in the hook', 1, true), 'the hook\'s own')
+	OT.run_update('ScenarioObjectiveTracker', ObjectiveTrackerModuleState.ShownFully, true)
+	RW.later(0.1)
+	eq(keys(TR), 'scenario', 'the next layout asked for a pass')
+	TR.ModuleUpdated = real
+end)
+
+both('TR.SectionHandsOver false for an unknown module keeps it from handing over too', function(st, TR, OT)
+	local hands = TR.SectionHandsOver
+	TR.SectionHandsOver = function(key) return key ~= 'HeldBackObjectiveTracker' end
+	printed(function()
+		OT.add_module('HeldBackObjectiveTracker')
+		OT.run_update('HeldBackObjectiveTracker', ObjectiveTrackerModuleState.ShownFully, true)
+		stub.fire_event('ZONE_CHANGED_NEW_AREA')
+		RW.later(0.1)
+		OT.run_update('HeldBackObjectiveTracker', ObjectiveTrackerModuleState.ShownFully, true)
+		RW.later(0.1)
+	end)
+	eq(keys(TR), '', 'it never counts')
+	TR.SectionHandsOver = hands
+end)
+
+both('Achievements: Blizzard\'s own filter, wasEarnedByMe, not completed; and not while the arena shows only its own', function(st, TR)
+	local P, probes = TR.Probes, stub.probes
+	probes.tracked = { [ACHIEVEMENT] = { 9 } }
+	probes.achievements = { [9] = { completed = true, earned = false } }
+	eq(P.Achievements(), true, 'completed account-wide by another character, not earned by me: Blizzard lists it')
+	probes.achievements = { [9] = { completed = true, earned = true } }
+	eq(P.Achievements(), false, 'earned by me: no')
+	probes.achievements = { [9] = { earned = false } }
+	stub.instance = { type = 'arena' }
+	eq(P.Achievements(), false, 'in an arena Blizzard shows only arena achievements: SaftUI does not ask for the tracker for one it may not draw')
+	stub.instance = nil
+	eq(P.Achievements(), true, 'outside it: yes')
+end)
+
+both('Collections: Blizzard\'s gate and its types, as its module lays them out', function(st, TR)
+	local P, probes = TR.Probes, stub.probes
+	probes.tracked = { [0] = { 5 }, [1] = { 6 }, [3] = { 7 } }
+	eq(P.Collections(), true, 'tracked, enabled')
+	probes.collections_enabled = false
+	eq(P.Collections(), false, 'content tracking off: Blizzard draws nothing')
+	probes.collections_enabled = true
+	probes.collectable_types = { 1 }
+	probes.tracked = { [0] = { 5 } }
+	eq(P.Collections(), false, 'a type the game does not collect: no')
+	probes.tracked = { [1] = { 6 } }
+	eq(P.Collections(), true, 'one it does: yes')
+	local gate = C_ContentTracking.GetCollectableSourceTrackingEnabled
+	C_ContentTracking.GetCollectableSourceTrackingEnabled = nil
+	eq(P.Collections(), false, 'without the gate\'s API: no')
+	C_ContentTracking.GetCollectableSourceTrackingEnabled = gate
+end)
+
+both('two sections held at once: the earlier one drops on time, with no event', function(st, TR, OT)
+	-- Both have content at T; the widgets go at once, the scenario is seen again at T + 1.5.
+	OT.set_widgets(1)
+	stub.probes.scenario = { stages = 2 }
+	stub.fire_event('ZONE_CHANGED_NEW_AREA')
+	RW.later(0.1)
+	OT.set_widgets(0)
+	RW.later(1.4)
+	stub.fire_event('SCENARIO_UPDATE')
+	RW.later(0.1)
+	stub.probes.scenario = { stages = 0 }
+	stub.fire_event('SCENARIO_UPDATE')
+	RW.later(0.1)
+	eq(keys(TR), 'scenario,widgets', 'both held at T + 1.7')
+	RW.later(0.5)
+	eq(keys(TR), 'scenario', 'T + 2.2: the widgets (lost first) dropped when their hold ended, by the retry alone: ' .. keys(TR))
+	RW.later(1.5)
+	eq(keys(TR), '', 'then the scenario, 2 s after it last had content')
+end)
+
+both('a probe that errors is reported once, and counts as no after that', function(st, TR)
+	local real = TR.Probes.Bonus
+	TR.Probes.Bonus = function() error('the API changed') end
+	for _ = 1, 5 do
+		stub.fire_event('QUEST_LOG_UPDATE')
+		RW.later(0.2)
+	end
+	local errors = take_errors()
+	eq(#errors, 1, 'one error for five passes')
+	check(errors[1]:find('the API changed', 1, true), 'the probe\'s')
+	eq(keys(TR), '', 'a no')
+	TR.Probes.Bonus = real
+end)
+
+both('probe passes are throttled with the list: one per TR.REFRESH_GAP however many events', function(st, TR)
+	RW.later(1)
+	local evaluations = 0
+	local scenario = TR.Probes.Scenario
+	TR.Probes.Scenario = function() evaluations = evaluations + 1 return scenario() end
+	for _ = 1, 30 do
+		stub.fire_event('SCENARIO_UPDATE')
+		RW.later(0.01)
+	end
+	check(evaluations <= 4, 'thirty events over 0.3 s: at most four passes, not thirty: ' .. evaluations)
+	check(evaluations >= 2, 'but the stream is not starved: ' .. evaluations)
+	TR.Probes.Scenario = scenario
+end)
+
+both('a pass allocates nothing of SaftUI\'s: its tables are reused', function(st, TR, OT)
+	local needed = TR:NeededSections()
+	stub.fire_event('SCENARIO_UPDATE')
+	RW.later(0.2)
+	check(TR:NeededSections() == needed, 'the needed list is the same table')
+end)
+
+both('a probe-only event marks the list dirty no more than it needs: no refresh', function(st, TR)
+	RW.later(1)
+	local refreshes = 0
+	local refresh = TR.Refresh
+	TR.Refresh = function(...) refreshes = refreshes + 1 return refresh(...) end
+	stub.fire_event('SCENARIO_CRITERIA_UPDATE')
+	RW.later(1)
+	eq(refreshes, 0, 'no refresh for an event only the probes listen to')
+	TR.Refresh = refresh
+end)
+
+both('modules with no name get keys of their own', function(st, TR, OT)
+	printed(function()
+		OT.add_module(nil)
+		OT.add_module(nil)
+		local list = OT.tracker.modules
+		OT.run_update(list[#list - 1], ObjectiveTrackerModuleState.ShownFully, true)
+		OT.run_update(list[#list], ObjectiveTrackerModuleState.NoObjectives, false)
+		stub.fire_event('ZONE_CHANGED_NEW_AREA')
+		RW.later(0.1)
+		OT.run_update(list[#list - 1], ObjectiveTrackerModuleState.ShownFully, true)
+		OT.run_update(list[#list], ObjectiveTrackerModuleState.NoObjectives, false)
+		RW.later(0.2)
+	end)
+	eq(#TR:NeededSections(), 1, 'the one with content counts, and the empty one does not clear it')
 end)
