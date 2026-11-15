@@ -906,3 +906,15 @@ both('Boss fights says the buttons follow the boss frames only with Hide quest i
 	check(desc:find('With Hide quest items with the tracker on, its quest item buttons go by the boss frames', 1, true), 'the desc says the boss frames apply with the setting on')
 	check(desc:find('With it off, they stay.', 1, true), 'and that with it off the buttons stay')
 end)
+
+-- M8: the nearest button is made with its own driver, not the layer's. The next
+-- refresh would put a wrong string right (SyncNearestDriver), so the string is
+-- read straight after the build, before any refresh.
+both('the nearest button is built with the pet battle\'s driver alone, whatever the layer\'s triggers are, before any refresh', function(st, TR)
+	eq(layer_driver(TR), '[petbattle] hide; [combat] hide; [@boss1,exists] hide; show', 'the layer\'s own string has the triggers')
+	TR.config.items.nearest = true
+	local button = TR:BuildNearestButton()
+	check(button ~= nil and TR.nearestDriver ~= nil, 'the button and its driver frame were made')
+	eq(stub.state(TR.nearestDriver).state_drivers['state-visibility'], '[petbattle] hide; show', 'its driver, as built: the pet battle\'s alone')
+	eq(TR.nearestDriverSet, '[petbattle] hide; show', 'and that is what it remembers it set')
+end, { visibility = { items = true, combat = 'hide', boss = 'hide' } })
