@@ -276,7 +276,7 @@ test("a slider arrow steps by the option's step through the same path as a drag,
 	check(not w.forwardArrow:IsEnabled(), 'at the top, forward is disabled'); check(w.backArrow:IsEnabled())
 	check(arrow_texture(w.forwardArrow):IsDesaturated(), 'a disabled arrow is desaturated')
 	check(not arrow_texture(w.backArrow):IsDesaturated())
-	click(w.forwardArrow); eq(get(), 10, 'no step past the end')
+	eq(stub.try_click(w.forwardArrow), false, 'a disabled arrow takes no click'); eq(get(), 10, 'no step past the end')
 	type_into(w.edit, '0')
 	check(not w.backArrow:IsEnabled(), 'at the bottom, back is disabled'); check(w.forwardArrow:IsEnabled())
 	check(not arrow_texture(w.forwardArrow):IsDesaturated(), 'enabled again: in colour')

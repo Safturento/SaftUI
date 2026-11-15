@@ -1399,14 +1399,18 @@ function GameTooltip.GetOwner(self, s) return s.owner end
 function GameTooltip.IsOwned(self, s, frame) return s.owner ~= nil and s.owner == frame end
 -- The lines' texts are kept in stub.state(tooltip).texts (the left text of
 -- each line) and .rights (a double line's right text), by line.
-function GameTooltip.ClearLines(self, s) s.lines, s.texts, s.rights = 0, {}, {} end
+function GameTooltip.ClearLines(self, s) s.lines, s.texts, s.rights, s.colors = 0, {}, {}, {} end
 function GameTooltip.NumLines(self, s) return s.lines or 0 end
 -- SetText starts the tooltip over with one line; AddLine and AddDoubleLine add one.
-function GameTooltip.SetText(self, s, text) s.lines, s.texts, s.rights = 1, { text }, {} end
-function GameTooltip.AddLine(self, s, text)
+function GameTooltip.SetText(self, s, text) s.lines, s.texts, s.rights, s.colors = 1, { text }, {}, {} end
+-- A line's color, if one was given, is kept in stub.state(tooltip).colors[line]
+-- as { r, g, b }.
+function GameTooltip.AddLine(self, s, text, r, g, b)
 	s.lines = (s.lines or 0) + 1
 	s.texts, s.rights = s.texts or {}, s.rights or {}
 	s.texts[s.lines] = text
+	s.colors = s.colors or {}
+	s.colors[s.lines] = r and { r, g, b } or nil
 end
 function GameTooltip.AddDoubleLine(self, s, left, right)
 	s.lines = (s.lines or 0) + 1
@@ -1425,6 +1429,42 @@ end
 function GameTooltip.SetBagItem(self, s, bag, slot)
 	if type(bag) ~= 'number' or type(slot) ~= 'number' then usage(s, 'SetBagItem(): bag and slot must be numbers') end
 	s.lines, s.texts, s.rights = 1, { ('bag item %d %d'):format(bag, slot) }, {}
+end
+-- The party's progress on a quest. In the game this is a tooltip data accessor
+-- (Blizzard_SharedXMLGame/Tooltip/TooltipDataHandler.lua, the same on both
+-- branches: SetQuestPartyProgress is mapped to C_TooltipInfo.GetQuestPartyProgress,
+-- arguments questID, omitTitle, ignoreActivePlayer; MayReturnNothing): like every
+-- Set* accessor it starts the tooltip over, and with no data to show (a party
+-- with no progress on the quest) it hides the tooltip. stub.party_progress =
+-- false is that case. The Blizzard tracker's own OnEnter calls it with the
+-- questID alone. Here the one line it makes is 'party <id>'.
+function GameTooltip.SetQuestPartyProgress(self, s, questID, omitTitle, ignoreActivePlayer)
+	if type(questID) ~= 'number' then usage(s, 'SetQuestPartyProgress(): questID must be a number') end
+	if stub.party_progress == false then
+		s.lines, s.texts, s.rights, s.colors = 0, {}, {}, {}
+		self:Hide()
+		return
+	end
+	s.lines, s.texts, s.rights, s.colors = 1, { ('party %d'):format(questID) }, {}, {}
+end
+-- TooltipDataHandlerMixin:AppendInfo(getterName, ...): the accessor's data added
+-- after what the tooltip has (nothing happens, and nothing is hidden, when there
+-- is none). Only 'GetQuestPartyProgress' is modelled.
+function GameTooltip.AppendInfo(self, s, getter, questID)
+	if getter ~= 'GetQuestPartyProgress' or type(questID) ~= 'number' then
+		usage(s, 'AppendInfo(): only GetQuestPartyProgress, with a questID, is modelled')
+	end
+	if stub.party_progress == false then return end
+	s.lines = (s.lines or 0) + 1
+	s.texts, s.rights = s.texts or {}, s.rights or {}
+	s.texts[s.lines] = ('party %d'):format(questID)
+end
+-- A quest's item by its quest log index (the quest item buttons' own tooltip,
+-- Blizzard_ObjectiveTracker's QuestObjectiveItemButtonMixin:OnEnter): one line,
+-- 'quest item <index>', as SetBagItem makes one.
+function GameTooltip.SetQuestLogSpecialItem(self, s, questLogIndex)
+	if type(questLogIndex) ~= 'number' then usage(s, 'SetQuestLogSpecialItem(): questLogIndex must be a number') end
+	s.lines, s.texts, s.rights = 1, { ('quest item %d'):format(questLogIndex) }, {}
 end
 function GameTooltip.SetItemByID(self, s, itemID)
 	if type(itemID) ~= 'number' then usage(s, 'SetItemByID(): itemID must be a number') end
@@ -1618,9 +1658,43 @@ function stub.fire_script(widget, script, ...)
 	return run_script(widget, script, ...)
 end
 
--- The user clicks a button: its OnClick, with any arguments given (the mouse
--- button, down), through stub.fire_script. Returns what fire_script returns.
-function stub.click(button, ...)
+-- The user clicks a button as the game lets them: its OnClick, with any
+-- arguments given (the mouse button, down), through stub.fire_script, which
+-- returns what it returns. The game delivers no click to a hidden button (or one
+-- under a hidden frame), a disabled one, or for a mouse button the button did not
+-- register (RegisterForClicks: LeftButtonUp until it says otherwise; a
+-- <button>Down or 'AnyDown' registration clicks on the press, 'AnyUp' on any
+-- release). stub.click ERRORS then, so a test that clicks a button it forgot to
+-- show fails loudly instead of passing without its click; a test that means to
+-- show a refusal says so with stub.try_click, which returns false for it.
+local function click_refusal(button, mouse)
+	local s = stub.state(button)
+	local which = mouse or 'LeftButton'
+	if not is_visible(s) then return 'it is hidden (or under a hidden frame)' end
+	if s.enabled == false then return 'it is disabled' end
+	for _, name in ipairs(s.click_buttons or { 'LeftButtonUp' }) do
+		if name == which .. 'Up' or name == which .. 'Down' or name == 'AnyUp' or name == 'AnyDown' then return nil end
+	end
+	return 'it is not registered for ' .. tostring(which)
+end
+
+function stub.click(button, mouse, ...)
+	local why = click_refusal(button, mouse)
+	if why then error('stub.click: the game would not deliver this click: ' .. why .. ' (stub.try_click is for a test that means to show that)', 2) end
+	return stub.fire_script(button, 'OnClick', mouse, ...)
+end
+
+-- stub.click for a refusal that is the point of the test: false when the game
+-- would not deliver the click, else what stub.click returns.
+function stub.try_click(button, mouse, ...)
+	if click_refusal(button, mouse) then return false end
+	return stub.fire_script(button, 'OnClick', mouse, ...)
+end
+
+-- The click of the harness before it played the game's rules: OnClick runs
+-- whatever the button's state, with the arguments as given. For a test whose
+-- window or bar is never shown in the stubs' world; a new test uses stub.click.
+function stub.click_unchecked(button, ...)
 	return stub.fire_script(button, 'OnClick', ...)
 end
 

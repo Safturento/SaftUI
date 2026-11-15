@@ -351,7 +351,8 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		world(client)
 		local header = quest_module().Header
 		local icons = own_regions(header.MinimizeButton)
-		stub.click(header.MinimizeButton)
+		-- (the fixture leaves the module frame hidden: press the button unchecked)
+		stub.click_unchecked(header.MinimizeButton)
 		check(quest_module():IsCollapsed(), 'the click collapses the module')
 		for _, icon in ipairs(icons) do eq(icon:GetTexture(), st.icons.chevronDown, 'the chevron points down') end
 		OT.as_blizzard(quest_module().SetCollapsed, quest_module(), false)

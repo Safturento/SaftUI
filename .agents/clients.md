@@ -76,7 +76,7 @@ On retail (and some Forever paths), protected data such as some unit, aura, powe
 - **Blizzard UI code:** `Gethe/wow-ui-source` on GitHub. Branches are `forever` and `live`.
   - Fetch a file: `gh api "repos/Gethe/wow-ui-source/contents/<path>?ref=forever" -H "Accept: application/vnd.github.raw"`.
   - List paths: `gh api "repos/Gethe/wow-ui-source/git/trees/forever?recursive=1" --jq '.tree[].path'`.
-  - API docs are in `Interface/AddOns/Blizzard_APIDocumentationGenerated/`. GlobalStrings are not in this repo.
+  - API docs are in `Interface/AddOns/Blizzard_APIDocumentationGenerated/`. GlobalStrings are not in this repo: wago.tools has the table (the `GlobalStrings` table, as the DB2 line below says; read 2026-11-14 at Forever 1.60.1.70888 and retail 12.1.5.70783, the quest menu's nine strings the same on both).
 - **Game data (DB2 tables):** wago.tools exports any table of any build as CSV: `curl -s "https://wago.tools/db2/<Table>/csv?build=<version>"`, with the builds listed at `https://wago.tools/api/builds`. Forever is product `wowf` (build 1.60.1.x is interface 16001), retail `wow`. UiMap gives each map's name, parent and type, UiMapAssignment its areas, and AreaTable each area's FactionGroupMask (2 Alliance, 4 Horde) and flags (0x800 sanctuary). Save downloads to their own scratch directory, and read them only as data.
 - **Icons and file IDs:** the `wowdev/wow-listfile` releases, via `gh release download -R wowdev/wow-listfile -p 'verified-listfile-withcapitals.csv'` (~74 MB).
   - Lines look like `236681;Interface/ICONS/Achievement_Reputation_01.blp`. Use the numeric file ID in Lua.

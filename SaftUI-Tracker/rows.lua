@@ -316,7 +316,14 @@ function TR:PartBar(row, part)
 end
 
 local function MakeZoneRow(self)
-	local row = CreateFrame('Frame', nil, self.content)
+	-- A Button: a left click anywhere on the header collapses or expands the
+	-- group, as the chevron does; a right click does nothing.
+	local row = CreateFrame('Button', nil, self.content)
+	row:EnableMouse(true)
+	row:RegisterForClicks('LeftButtonUp', 'RightButtonUp')
+	row:SetScript('OnClick', function(self, button)
+		if button == 'LeftButton' and self.key ~= nil then TR:ToggleZone(self.key) end
+	end)
 	local chevron = self:NewChevron(row, function()
 		return row.collapsed and 'Expand' or 'Collapse'
 	end)
@@ -362,9 +369,35 @@ local function MakeQuestRow(self)
 	row.title = self:NewText(row, 'text')
 	row.title:SetJustifyV('TOP')
 
-	-- The game calls these with a second argument, motion: each is wrapped.
-	row:SetScript('OnEnter', function(self) TR:HoverRow(self, true) end)
-	row:SetScript('OnLeave', function(self) TR:HoverRow(self, false) end)
+	-- The quest's icon is a button of its own over the icon texture: a click
+	-- focuses the quest, or stops focusing it (Blizzard's POI button does the
+	-- same). It takes the mouse from the row there, so it keeps the row's hover.
+	local iconButton = CreateFrame('Button', nil, row)
+	iconButton:SetAllPoints(row.icon)
+	iconButton:Hide()
+	iconButton:SetScript('OnClick', function() TR:ToggleFocus(row.questID) end)
+	iconButton:SetScript('OnEnter', function(self)
+		TR:HoverRow(row, true)
+		TR:ShowIconTooltip(self, row)
+	end)
+	iconButton:SetScript('OnLeave', function(self)
+		TR:HoverRow(row, false)
+		if GameTooltip:IsOwned(self) then GameTooltip:Hide() end
+	end)
+	row.iconButton = iconButton
+
+	-- Both mouse buttons, on release, as Blizzard's blocks take them. The game
+	-- calls the hover scripts with a second argument, motion: each is wrapped.
+	row:RegisterForClicks('LeftButtonUp', 'RightButtonUp')
+	row:SetScript('OnClick', function(self, button) TR:OnQuestClick(self, button) end)
+	row:SetScript('OnEnter', function(self)
+		TR:HoverRow(self, true)
+		TR:ShowRowTooltip(self)
+	end)
+	row:SetScript('OnLeave', function(self)
+		TR:HoverRow(self, false)
+		TR:HideRowTooltip(self)
+	end)
 	return row
 end
 
@@ -553,6 +586,7 @@ local function DrawIcon(self, row, quest, entry)
 		end
 	end
 	Shown(icon, show)
+	Shown(row.iconButton, show)
 end
 
 local function DrawQuest(self, row, entry, p, width)

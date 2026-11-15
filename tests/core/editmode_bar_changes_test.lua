@@ -789,6 +789,7 @@ end)
 
 test("the length box is not refreshed while it has the keyboard: 200 typed across two ticks commits 200", function()
 	reset()
+	EM:Activate() -- the bar shows, as the player clicks its History button
 	stub.click(frame_of('history'))
 	local list = EM:GetHistoryList()
 	local edit = list.box.edit
@@ -813,6 +814,7 @@ end)
 
 test("an arrow pressed while the length box has the keyboard shows its value, and Enter keeps it", function()
 	reset()
+	EM:Activate() -- the bar shows, as the player clicks its History button
 	stub.click(frame_of('history'))
 	local list = EM:GetHistoryList()
 	local box = list.box

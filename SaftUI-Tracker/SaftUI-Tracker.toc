@@ -12,5 +12,6 @@ groups.lua
 layout.lua
 window.lua
 rows.lua
+clicks.lua
 blizzard.lua
 options.lua
