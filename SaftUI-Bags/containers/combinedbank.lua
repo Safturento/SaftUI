@@ -98,6 +98,10 @@ function INV:UpdateContainerBagIds(bagType, filter)
 
 	container.bag_ids = bagIds
 	INV:UpdateContainer('combinedbank')
+	-- The layout makes slots nothing has searched: fade them as the bag
+	-- window's search says (alpha only), as a view switch does.
+	local bag = self.containers.bag
+	if bag and bag.search then self:UpdateSearchFilter(bag.search, false) end
 end
 
 function INV:OpenCombinedBank()
