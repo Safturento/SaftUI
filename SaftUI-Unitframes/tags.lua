@@ -66,7 +66,7 @@ local function NameColor(config, unit, reaction)
 	end
 end
 
-UF.oUF.Tags.Events['st:name'] = 'UNIT_NAME_UPDATE UNIT_LEVEL PLAYER_LEVEL_UP PLAYER_TARGET_CHANGED'
+UF.oUF.Tags.Events['st:name'] = 'UNIT_NAME_UPDATE UNIT_LEVEL PLAYER_LEVEL_UP UNIT_FACTION'
 -- The unit's name, after its level part, in its class or hostile colour. The
 -- name can be secret: it isn't cut or put in capitals then, and the game joins
 -- the parts around it (C_StringUtil.WrapString), so the tag returns a secret.

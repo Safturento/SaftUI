@@ -80,6 +80,15 @@ test('a secret reaction gives no colour and no error', function()
 	check(ok, tostring(text)); eq(text, 'Guard')
 end)
 
+test("the name redraws on a faction change, not on every target change; oUF's target frame updates its own tags", function()
+	local events = {}
+	for event in UF.oUF.Tags.Events['st:name']:gmatch('%S+') do events[event] = true end
+	check(events.UNIT_FACTION, 'a neutral unit turning hostile redraws its name colour')
+	check(not events.PLAYER_TARGET_CHANGED, 'no redraw of every plate on a target change')
+	-- The colour comes from the unit's own reaction, never from the target.
+	check(not read_saftui_source('SaftUI-Unitframes/tags.lua'):find("'target'", 1, true), "tags.lua reads no 'target'")
+end)
+
 test('the secrets are put back', function()
 	stub.units.target = nil
 	restoreSecrets()
