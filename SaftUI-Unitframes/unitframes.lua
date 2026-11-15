@@ -693,6 +693,18 @@ function UF:ApplyConfig(unit, element_name)
 			end
 			for _, frame in pairs(self.nameplates or {}) do
 				if not self:ApplyPlateConfig(frame) then
+					-- A plate that keeps its config unit is placed afresh in a full
+					-- update too (one that changed was, in ApplyPlateConfig): two
+					-- parts anchored each way round across two profiles would
+					-- otherwise close a loop. Only the recorded parts' own points
+					-- are cleared; nothing anchored to the plate is measured. The
+					-- cached configs first: the clear reads their Enable.
+					if not element_name then
+						xpcall(function()
+							self:RefreshFrameConfig(frame)
+							UF.ClearPlacedPoints(frame)
+						end, geterrorhandler())
+					end
 					SafeUpdateUnitFrame(frame, element_name)
 				end
 			end
