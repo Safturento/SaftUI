@@ -8,7 +8,7 @@ The owner's rule, for every page: reset is per setting. A setting whose value di
 
 ## What the consumer provides
 
-What "default" is for the setting (AceDB's default, or the shared value), the reset function, and the tooltip text: "Reset" as the title and one line saying what happens ("Buttons per row follows All bars again. Bar 3's own value is dropped.", "Green goes back to its default, #3CF03C.").
+Where the setting is saved, or a hand default, or why it has none. A group says where its settings are saved once, beside its `get` (`saved = st.Config.SavedIn('chat')`; an option with a `get` of its own `saved = st.Config.SavedAt('chat', 'position')`), and the kit reads the AceDB default at that path, so a page never writes a default twice. A value that is not one profile key (a colour with a toggle, a CVar, the bags' categories) gives a hand `default`; a mover's Position takes its mover's own default; a row with no default by its nature says why in `noReset` (Test mode: not saved; Chat's size). The reset function and the tooltip text are the kit's: "Reset" as the title and one line saying what happens ("Buttons per row follows All bars again. Bar 3's own value is dropped.", "Green goes back to its default, #3CF03C.", "Show in goes back to its default: Bags, Bank.", "Position goes back to its default: Top right of the screen: -320, -275.").
 
 ## Sizes and tokens
 
@@ -29,7 +29,7 @@ A relative of this icon: a row of the edit mode bar's History list ends in a 14p
 
 ## Status
 
-Built for shared settings (`optionsshare.lua:286`). Beside a plain control is the rule, not yet built: this preview shows where it goes.
+Built for every value row in `/sui` (decision 50): a derived default, a mover Position's, or a hand one, with the icon where the control draws, in an item's menu and beside a titled row's title (6 after its text). The kit, `optionsdefault.lua`, is built; each page declares its `saved` as its task lands (`tests/core/reset_coverage_test.lua` lists the pages not yet walked).
 
 ## Blizzard theme
 

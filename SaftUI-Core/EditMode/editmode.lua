@@ -256,6 +256,26 @@ function st:RegisterConfigMover(frame, spec)
 	return st:RegisterMover(spec.key, def)
 end
 
+-- The registered mover whose configPath is path (a list of keys, compared key
+-- by key), or nil: the mover whose section a Position row sits in. length
+-- takes the first keys of path only (a row's group, without its own key); no
+-- table is made. With two movers on one path the lowest key wins.
+function EM:MoverAt(path, length)
+	length = length or #path
+	local found
+	for key, mover in pairs(self.movers) do
+		local at = mover.def.configPath
+		if at and #at == length and (not found or key < found.key) then
+			local same = true
+			for i = 1, length do
+				if at[i] ~= path[i] then same = false; break end
+			end
+			if same then found = mover end
+		end
+	end
+	return found
+end
+
 -- The module name a mover with none is listed under.
 EM.OTHER_MODULE = 'Other'
 

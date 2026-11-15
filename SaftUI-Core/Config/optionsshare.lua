@@ -655,6 +655,7 @@ end
 
 local DEFAULT_GAP = 6 -- the icon's right edge this far left of what the control draws
 local LABEL_ROOM = 4 -- the label (and a hover line) end at least this far before the icon
+local TITLE_BAND = 16 -- a titled bare row's title line, 6 down its cell
 local BLOCK_LINE = 24 -- a position block's first line (its dropdowns), 6 down its cell
 -- Rows with no value of their own to reset: the field is left alone on them.
 local NO_DEFAULT = { execute = true, description = true }
@@ -701,6 +702,23 @@ local function DefaultText(body, row, state)
 		end
 	elseif row.type == 'range' and type(first) == 'number' and OM.Member(body.root, row, 'isPercent') then
 		return floor(first * 100 + 0.5) .. '%'
+	elseif row.type == 'multiselect' then
+		-- The ticked values' labels in the list's order, or none.
+		local names = {}
+		if type(first) == 'table' then
+			for _, entry in ipairs(OM.Values(body.root, row)) do
+				if first[entry.key] then names[#names + 1] = tostring(entry.name) end
+			end
+		end
+		return #names > 0 and table.concat(names, ', ') or 'none'
+	elseif row.type == 'input' then
+		if first == nil or first == '' then return 'empty' end
+	elseif row.type == 'keybinding' then
+		if first == nil or first == '' then return 'Not bound' end
+		return GetBindingText and GetBindingText(first) or tostring(first)
+	elseif row.type == 'position' and type(first) == 'table' then
+		local EM = st.EditModeFrames
+		if EM and EM.CoordinatesText then return EM.CoordinatesText(first, EM.MoverNameOf) end
 	end
 	if type(first) == 'string' or type(first) == 'number' then return tostring(first) end
 end
@@ -752,20 +770,34 @@ function OB.PlaceDefault(cell)
 	local label, cut = cell.label, cell.shareCut or 0
 	if cell.labelWidth then label:SetWidth(max(1, cell.labelWidth - cut)) end
 	cell.lineEnd = cell.ownLineEnd
-	if not (body and widget) or NO_DEFAULT[row.type] or W.CUSTOM[row.type] then return end
+	if not (body and widget) or NO_DEFAULT[row.type] then return end
+	-- A custom type (W.Define) has no control to put it by, except a titled
+	-- bare row, whose title takes it.
+	local custom = W.CUSTOM[row.type]
+	if custom and not custom.titled then return end
 	local share = row.option.share
 	if type(share) == 'table' and share.own ~= nil then return end
 	if widget:IsDisabled() then return end
-	local state = OM.DefaultState(body.root, row)
-	if not (state and state.differs) then return end
+	-- Whether it differs, and nothing else (no words, no value): asked for
+	-- every row on every render. Without optionsdefault.lua, as before.
+	local differs
+	if OM.DefaultDiffers then
+		differs = OM.DefaultDiffers(body.root, row)
+	else
+		local state = OM.DefaultState(body.root, row)
+		differs = state and state.differs
+	end
+	if not differs then return end
 
 	local icon = frame.defaultReset
 	if not icon then
 		icon = ResetIcon(frame, function(self) DefaultTip(self, frame.defaultCell) end, function()
 			local at = frame.defaultCell
 			if not at then return end
-			OM.DefaultReset(at.body.root, at.row)
-			if at.body.onChanged then at.body.onChanged(true) end
+			local ok, message = OM.DefaultReset(at.body.root, at.row)
+			if not at.body.onChanged then return end
+			-- A reset that failed (a validation) says why on the status line, as a failed set does.
+			if ok == false and message then at.body.onChanged(false, message) else at.body.onChanged(true) end
 		end)
 		frame.defaultReset = icon
 	end
@@ -773,6 +805,14 @@ function OB.PlaceDefault(cell)
 	ResetAtRest(icon)
 	icon:ClearAllPoints()
 	icon:Show()
+	if custom then
+		-- A titled bare row: 6 after its title's text, centred on the title's
+		-- band, the title cut to leave it room.
+		local left = min(max(1, ceil(label:GetUnboundedStringWidth())) + DEFAULT_GAP, frame:GetWidth() - RESET_SIZE)
+		icon:SetPoint('TOPLEFT', frame, 'TOPLEFT', left, -(6 + floor((TITLE_BAND - RESET_SIZE) / 2)))
+		if cell.labelWidth then label:SetWidth(max(1, min(cell.labelWidth, left - LABEL_ROOM))) end
+		return
+	end
 	if row.type == 'position' then
 		icon:SetPoint('TOPLEFT', frame, 'TOPLEFT', ceil(widget:GetWidth()) + DEFAULT_GAP,
 			-(6 + floor((BLOCK_LINE - RESET_SIZE) / 2)))

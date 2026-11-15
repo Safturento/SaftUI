@@ -38,6 +38,6 @@ No panels and no hairlines: rows are 34 tall (`row-height-flat`) in two columns 
 ## Do and don't
 
 - Do keep a section's rows together; a line with an empty half is fine, but don't leave a lone quarter where a half would do.
-- Do put a section's Reset where its rule says: per setting, with `ResetIcon`, not a button at the section's end.
+- Do put a section's Reset where its rule says: per setting, with `ResetIcon` on every row that differs from its default, never a button at the section's end or the page's (decision 50: the Categories editor's "Reset <name> to default" and the list's "Reset all" go the same way).
 - Don't put a panel behind a line of buttons alone.
 - Don't stripe rows: the owner chose hairlines (mockup S2) over striped rows (S1).
