@@ -68,6 +68,10 @@ function NP.world(client)
 	-- Not a repeat of T.client's: the files above added the unit frames' defaults.
 	apply_defaults()
 	st.config.global = {}
+	-- AceDB's per-character table, which the shell doesn't have: a profile
+	-- switch (UF:ApplyConfig) sets the game's plate settings, which records
+	-- the user's values in it.
+	st.config.char = {}
 
 	-- C_TooltipInfo.GetUnit(unit) (the same on both clients; it can give
 	-- nothing): stub.tooltips[unit], the tooltip data a test sets ({ lines =

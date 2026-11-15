@@ -627,6 +627,9 @@ function UF:ApplyConfig(unit, element_name)
 			-- (threat.lua), and a box decides which frames fill their plates.
 			if not element_name and self.plateDriver then
 				xpcall(function() self:ApplyPlateSize() end, geterrorhandler())
+				-- And the game's friendly plates, which Friendly plates in the
+				-- new profile sets (it waits out combat itself).
+				xpcall(function() self:ApplyNameplateCVars() end, geterrorhandler())
 			end
 			for _, frame in pairs(self.nameplates or {}) do
 				if not self:ApplyPlateConfig(frame) then
