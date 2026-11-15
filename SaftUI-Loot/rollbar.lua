@@ -188,13 +188,13 @@ local function ApplyBarConfig(bar, config)
 	if bar.choice then ColorLocked(bar) end
 end
 
--- The timer at `sec` seconds left, as GroupLootFrame_OnUpdateTimer shows a
--- skinned bar's.
 -- The timer's bar in the accent (the pass calls this on an Accent change).
 local function ColorBarTimer(bar)
 	bar.Timer:SetStatusBarColor(st:Color('accent'):GetRGB())
 end
 
+-- The timer at `sec` seconds left, as GroupLootFrame_OnUpdateTimer shows a
+-- skinned bar's.
 local function SetBarTimer(bar, sec)
 	bar.Timer:SetValue(sec)
 	ColorBarTimer(bar)

@@ -122,6 +122,7 @@ end
 -- The shown paired counts in Loot color `key` (nil: every one), in their color
 -- as it is now: those of Blizzard's bars (`bars`), the held bars' and the
 -- previews'. Only the color is set. From LT:ColorRollBars.
+local NONE = {} -- what a pass walks when there is nothing: no table per pass
 local function ColorCounts(counts, key)
 	for text, count in pairs(counts) do
 		if count.color and (key == nil or key == count.color) and text:IsShown() then
@@ -133,7 +134,7 @@ end
 function LT:ColorRollCounts(key)
 	for _, state in pairs(bars) do ColorCounts(state.counts, key) end
 	for _, bar in ipairs(self:GetHeldRolls()) do ColorCounts(bar.counts, key) end
-	for _, bar in ipairs(self.rollPreview and self.rollPreview.bars or {}) do ColorCounts(bar.counts, key) end
+	for _, bar in ipairs(self.rollPreview and self.rollPreview.bars or NONE) do ColorCounts(bar.counts, key) end
 end
 
 ------------------------------------

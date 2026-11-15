@@ -143,7 +143,15 @@ function LT.FeedItemName(info)
 	local plain = info.plain
 	if not plain then return info.name end
 	local color = info.quality and st.config.profile.colors.item_quality[info.quality]
-	if color then plain = st.StringFormat:ColorString(plain, color:GetRGB()) end
+	if color then
+		-- The color code LibStringFormat's ColorString makes (the same text), without
+		-- its table per call: a pass runs this for every line of that quality.
+		local r, g, b = color:GetRGB()
+		if r < 0 or r > 1 then r = r / 255 end
+		if g < 0 or g > 1 then g = g / 255 end
+		if b < 0 or b > 1 then b = b / 255 end
+		plain = ('|cff%02x%02x%02x%s|r'):format(r * 255, g * 255, b * 255, plain)
+	end
 	if info.suffix then return plain .. info.suffix end
 	return plain
 end
@@ -308,6 +316,14 @@ function LT:UpdateAllFeedTimers(index)
 	end
 end
 
+-- Two entries are the same item: the plain name and quality when both have them
+-- (`name` keeps the color it was pushed in, which a pick may since have changed),
+-- else the name.
+local function SameName(a, b)
+	if a.plain and b.plain then return a.plain == b.plain and a.quality == b.quality and a.suffix == b.suffix end
+	return a.name == b.name
+end
+
 function LT:LootFeedPush(info)
 	info.time = GetTime()
 	info.when = time()
@@ -330,7 +346,7 @@ function LT:LootFeedPush(info)
 		top.time = info.time
 		top.when = info.when
 		self:SaveFeedEntry(top)
-	elseif top and info.name == top.name and info.craftQuality == top.craftQuality and info.rightText == top.rightText then
+	elseif top and SameName(info, top) and info.craftQuality == top.craftQuality and info.rightText == top.rightText then
 		top.count = (top.count or 1) + (info.count or 1)
 		top.time = info.time
 		-- The merged entry now stands for the latest gain, so it shows that snapshot.

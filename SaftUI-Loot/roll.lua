@@ -23,6 +23,8 @@ local timerTexts = setmetatable({}, { __mode = 'k' })
 -- The held rolls (below) shown, oldest first; and released ones, kept to show
 -- the next held roll.
 local held, heldPool = {}, {}
+-- What a pass walks when there is nothing: no table is made per pass.
+local NONE = {}
 
 -- A roll timer's value in seconds. Blizzard's roll timer runs from the roll's
 -- length (START_LOOT_ROLL's rollTime, its max) down to 0 by GetLootRollTimeLeft.
@@ -617,11 +619,11 @@ function LT:ColorRollBars(group, key)
 			ColorLocked(bar)
 			ColorBarTimer(bar)
 		end
-		for _, bar in ipairs(self.rollPreview and self.rollPreview.bars or {}) do
+		for _, bar in ipairs(self.rollPreview and self.rollPreview.bars or NONE) do
 			if bar.choice then ColorLocked(bar) end
 		end
 	elseif group == 'loot' then
-		for _, frame in ipairs(self.skinnedRollFrames or {}) do
+		for _, frame in ipairs(self.skinnedRollFrames or NONE) do
 			local skin = skins[frame]
 			for _, info in ipairs(roll_buttons) do
 				local text = skin and skin.buttonText[info.name]
@@ -632,7 +634,7 @@ function LT:ColorRollBars(group, key)
 		end
 		self:ColorRollCounts(key)
 	elseif group == 'item_quality' then
-		for _, frame in ipairs(self.skinnedRollFrames or {}) do
+		for _, frame in ipairs(self.skinnedRollFrames or NONE) do
 			local skin = skins[frame]
 			local shown = skin and skin.shown
 			local quality = shown and shown.quality
@@ -644,7 +646,7 @@ function LT:ColorRollBars(group, key)
 		for _, bar in ipairs(held) do
 			ColorQualityName(bar, key)
 		end
-		for _, bar in ipairs(self.rollPreview and self.rollPreview.bars or {}) do
+		for _, bar in ipairs(self.rollPreview and self.rollPreview.bars or NONE) do
 			ColorQualityName(bar, key)
 		end
 	end

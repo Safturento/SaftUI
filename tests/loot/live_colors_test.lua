@@ -34,11 +34,7 @@ st:BindModuleConfig(LT, 'loot')
 st.config.char = {}
 local colors = st.config.profile.colors
 
-local function byte(v) return math.floor(v * 255 + 0.5) end
-st.StringFormat = {
-	ToClock = function(_, sec) return ('%d:%02d'):format(sec / 60, sec % 60) end,
-	ColorString = function(_, text, r, g, b) return ('|cff%02x%02x%02x%s|r'):format(byte(r), byte(g), byte(b), text) end,
-}
+load_string_format() -- the real LibStringFormat, as the game has it
 function ClearItemCraftingQualityOverlay(button) end
 function SetItemCraftingQualityOverlay() end
 st:GetModule('Utilities').ScanItemLink = function() return '' end -- the tooltip scan
@@ -95,12 +91,23 @@ GetLootRollItemInfo = function(rollID)
 end
 GetLootRollItemLink = function() return '|cffa335ee|Hitem:19019::::::::60:::::|h[Drakefire Amulet]|h|r' end
 
+local all_frames = {}
 local function skinned(shown)
 	local frame = roll_frame()
+	all_frames[#all_frames + 1] = frame
 	LT:SkinRollFrame(frame)
 	frame:Show()
 	if shown ~= false then LT:GroupLootFrame_OnShow(frame) end
 	return frame
+end
+
+-- One pass's setter calls: { total, by } (C.measure, once, after a first pass).
+local function pass(group, key)
+	st:ColorChanged(group, key)
+	local m = C.measure(function() st:ColorChanged(group, key) end, 1)
+	eq(m.forbidden.total, 0, group .. ' ' .. tostring(key) .. ': nothing forbidden')
+	eq(m.made, 0, group .. ' ' .. tostring(key) .. ': nothing made')
+	return m.calls
 end
 
 ------------------------------------------------------------------ the rolls
@@ -110,6 +117,9 @@ test("Loot > Need: each roll frame's Need letter and the shown Need counts; Gree
 	local keep = { colors.loot.need:GetRGB() }
 	set(colors.loot.need, 0.1, 0.2, 0.3)
 	st:ColorChanged('loot', 'need')
+	local calls = pass('loot', 'need')
+	eq(calls.total, #LT.skinnedRollFrames, 'one Need letter per skinned frame, and nothing else')
+	eq(calls.by.SetVertexColor, #LT.skinnedRollFrames, 'a letter is a vertex color')
 	for _, frame in ipairs({ a, b }) do
 		local l = letters(frame)
 		eq(l.Need, rgb(0.1, 0.2, 0.3), 'the Need letter')
@@ -136,16 +146,18 @@ test("Loot > Transmog: the paired counts that show Transmog's picks, on a held b
 	end
 	check(shown_paired and other_paired, 'a Greed pick and a Transmog pick show, each as a paired count')
 	-- Register the bar where the pass finds it: the preview's bars.
-	LT.rollPreview = LT.rollPreview or { bars = {}, IsShown = function() return false end }
-	tinsert(LT.rollPreview.bars, bar)
+	LT.rollPreview = { bars = { bar }, IsShown = function() return false end }
 	local keep = { colors.loot.transmog:GetRGB() }
 	set(colors.loot.transmog, 0.9, 0.8, 0.1)
 	st:ColorChanged('loot', 'transmog')
+	eq(pass('loot', 'transmog').by.SetTextColor, 1, "one count: the one that shows Transmog's picks")
+	eq(pass('loot', 'greed').by.SetTextColor, 1, "Loot > Greed: only Greed's count")
+	eq(pass('loot', 'need').by.SetTextColor, nil, 'Loot > Need: no count')
 	eq(rgb(shown_paired:GetTextColor()), rgb(0.9, 0.8, 0.1), "the shown count of Transmog's picks")
 	eq(rgb(other_paired:GetTextColor()), rgb(colors.loot.greed:GetRGB()), "Greed's count is as it was")
 	set(colors.loot.transmog, unpack(keep))
 	st:ColorChanged('loot', 'transmog')
-	LT.rollPreview.bars = {}
+	LT.rollPreview = nil -- no preview is up in the normal state
 	check(frame, 'kept')
 end)
 
@@ -157,6 +169,10 @@ test('Item quality on a shown roll: its name, and only a roll of that quality', 
 	local keep = { colors.item_quality[4]:GetRGB() }
 	set(colors.item_quality[4], 0.5, 0.6, 0.7)
 	st:ColorChanged('item_quality', 4)
+	local epics = 0
+	for _, f in ipairs(all_frames) do if f.rollID % 2 == 1 then epics = epics + 1 end end
+	eq(pass('item_quality', 4).total, epics, 'only the epic rolls\' names')
+	eq(pass('item_quality', 3).total, #all_frames - epics, 'and Item quality > Rare only the rare ones')
 	eq(rgb(epic.Name:GetVertexColor()), rgb(0.5, 0.6, 0.7), 'the epic roll\'s name')
 	eq(rgb(rare.Name:GetVertexColor()), rare_before, "the rare roll's name is as it was")
 	set(colors.item_quality[4], unpack(keep))
@@ -219,7 +235,7 @@ local function loot_match(name, quality, sub)
 	return { link = link, count = 1 }
 end
 
--- 16 lines: 6 epic items, 4 rare, 2 mounts (epic), 3 reputation lines at Friendly, 1 renown.
+-- 20 lines: 6 epic items, 4 rare, 2 mounts (epic), 4 uncommon, 3 reputation lines at Friendly, 1 renown.
 local function fill_feed()
 	wipe(LT:GetAllItems())
 	stub.time = 100
@@ -227,6 +243,7 @@ local function fill_feed()
 	for i = 1, 6 do LT:LootFeedAddItem(loot_match('Epic ' .. i, 4)) end
 	for i = 1, 4 do LT:LootFeedAddItem(loot_match('Rare ' .. i, 3)) end
 	for i = 1, 2 do LT:LootFeedAddItem(loot_match('Mount ' .. i, 4, 'Mount')) end
+	for i = 1, 4 do LT:LootFeedAddItem(loot_match('Uncommon ' .. i, 2)) end
 	local stack = LT:GetAllItems()
 	for i = 1, 3 do
 		tinsert(stack, 1, { name = i .. ' Reputation (Faction)', type = 'Reputation', icon = 1, time = 100,
@@ -241,7 +258,7 @@ local function fill_feed()
 end
 
 local function name_color(text) return text:match('^|cff(%x%x%x%x%x%x)') end
-local function hex(r, g, b) return ('%02x%02x%02x'):format(byte(r), byte(g), byte(b)) end
+local function hex(r, g, b) return ('%02x%02x%02x'):format(r * 255, g * 255, b * 255) end
 
 local function shown_lines()
 	local out = {}
@@ -274,12 +291,14 @@ test('Item quality > Epic: the 6 epic lines set their name again in the new colo
 	fill_feed()
 	local set_texts = {}
 	local lines = shown_lines()
-	eq(#lines, 16, 'sixteen lines are shown')
+	eq(#lines, 20, 'twenty lines are shown')
 	local before = {}
 	for i, line in ipairs(lines) do before[i] = line.text:GetText() end
 	local keep = { colors.item_quality[4]:GetRGB() }
 	set(colors.item_quality[4], 0.25, 0.5, 0.75)
 	st:ColorChanged('item_quality', 4)
+	eq(pass('item_quality', 4).by.SetText, 8, 'only the 6 epic items and 2 mounts set their name again')
+	eq(pass('item_quality', 3).by.SetText, 4, 'Item quality > Rare: only the 4 rare lines')
 	local changed, same = 0, 0
 	for i, line in ipairs(lines) do
 		local now = line.text:GetText()
@@ -294,7 +313,7 @@ test('Item quality > Epic: the 6 epic lines set their name again in the new colo
 		end
 	end
 	eq(changed, 6, 'the 6 epic items')
-	eq(same, 8, 'the rest, reputation lines included')
+	eq(same, 12, 'the rest, reputation lines included')
 	set(colors.item_quality[4], unpack(keep))
 	st:ColorChanged('item_quality', 4)
 end)
@@ -307,6 +326,10 @@ test("Loot > Mount: the 2 shown mount entries' border and 60% fill", function()
 	local keep = { colors.loot.mount:GetRGB() }
 	set(colors.loot.mount, 0.2, 0.3, 0.4)
 	st:ColorChanged('loot', 'mount')
+	local calls = pass('loot', 'mount')
+	eq(calls.by.SetBackdropColor, 2, 'a fill for each of the 2 mount lines')
+	eq(calls.by.SetText, nil, 'no name set again')
+	eq(pass('loot', 'need').by.SetBackdropColor, nil, 'Loot > Need repaints no mount')
 	local want = T.text(0.2, 0.3, 0.4)
 	for _, line in ipairs(mounts) do
 		eq(T.edge(line.backdrop), want .. ',1.00', 'the border')
@@ -330,6 +353,8 @@ test("Reputation > Friendly: the 3 reputation lines' bars; Renown: the renown li
 	local renown_before = rgb(renown.progressBar:GetStatusBarColor())
 	set(colors.reaction[5], 0.1, 0.9, 0.2)
 	st:ColorChanged('reaction', 5)
+	eq(pass('reaction', 5).by.SetStatusBarColor, 3, 'the 3 Friendly bars')
+	eq(pass('reaction', 4).by.SetStatusBarColor, nil, 'Reputation > Neutral: no bar')
 	for _, line in ipairs(rep) do eq(rgb(line.progressBar:GetStatusBarColor()), rgb(0.1, 0.9, 0.2), 'a Friendly bar') end
 	eq(rgb(renown.progressBar:GetStatusBarColor()), renown_before, "the renown bar is as it was")
 	set(colors.reaction[5], unpack(keep))
@@ -338,6 +363,7 @@ test("Reputation > Friendly: the 3 reputation lines' bars; Renown: the renown li
 	local rkeep = { colors.renown.r, colors.renown.g, colors.renown.b }
 	set(colors.renown, 0.3, 0.2, 0.9)
 	st:ColorChanged('renown')
+	eq(pass('renown').by.SetStatusBarColor, 1, "Renown: the renown line's bar only")
 	eq(rgb(renown.progressBar:GetStatusBarColor()), rgb(0.3, 0.2, 0.9), "Renown's bar")
 	eq(rgb(rep[1].progressBar:GetStatusBarColor()), rgb(colors.reaction[5]:GetRGB()), "a Friendly bar is as it was")
 	set(colors.renown, unpack(rkeep))
@@ -368,6 +394,126 @@ test('LootFeedAddCurrency keeps the plain name, quality and counts as a suffix',
 	eq(LT.FeedItemName(info), '|cff' .. hex(colors.item_quality[3]:GetRGB()) .. 'Valor|r (5/10)', 'colored name, then its counts')
 end)
 
+-- The line of an entry on screen, after the entries are made fresh and drawn.
+local function line_of(info)
+	for _, entry in ipairs(LT:GetAllItems()) do entry.time = GetTime() end
+	LT:GetFilteredItems()
+	LT:UpdateFeed()
+	for _, line in ipairs(shown_lines()) do if line.info == info then return line end end
+end
+
+local function reputation_world(major)
+	C_Reputation = {
+		GetFactionDataByID = function(id)
+			return { factionID = id, name = 'Stormwind', reaction = 5, currentStanding = 50,
+				currentReactionThreshold = 0, nextReactionThreshold = 100 }
+		end,
+		GetNumFactions = function() return 1 end,
+		GetFactionDataByIndex = function() return { factionID = 72, name = 'Stormwind' } end,
+		IsMajorFaction = function() return major end,
+	}
+	C_MajorFactions = { GetMajorFactionData = function() return { renownReputationEarned = 5, renownLevelThreshold = 10 } end }
+	LT.FEED_ICONS = LT.FEED_ICONS or { ReputationUp = 1, ReputationDown = 1 }
+end
+
+test('a real reputation gain names its color, and its line follows Reputation (and a renown gain, Renown)', function()
+	wipe(LT:GetAllItems())
+	reputation_world(false)
+	LT:LootFeedAddReputation({ faction = 'Stormwind', count = 10 })
+	local info = LT:GetAllItems()[1]
+	eq(info.progress.colorGroup, 'reaction', 'the snapshot names the reaction group')
+	eq(info.progress.colorKey, 5, 'and Friendly')
+	local line = line_of(info)
+	local keep = { colors.reaction[5]:GetRGB() }
+	set(colors.reaction[5], 0.1, 0.9, 0.2)
+	st:ColorChanged('reaction', 5)
+	eq(rgb(line.progressBar:GetStatusBarColor()), rgb(0.1, 0.9, 0.2), 'the line follows')
+	set(colors.reaction[5], unpack(keep))
+	st:ColorChanged('reaction', 5)
+
+	wipe(LT:GetAllItems())
+	reputation_world(true)
+	LT:LootFeedAddReputation({ faction = 'Stormwind', count = 10 })
+	info = LT:GetAllItems()[1]
+	eq(info.progress.colorGroup, 'renown', 'a major faction names Renown')
+	line = line_of(info)
+	local rkeep = { colors.renown.r, colors.renown.g, colors.renown.b }
+	set(colors.renown, 0.3, 0.2, 0.9)
+	st:ColorChanged('renown')
+	eq(rgb(line.progressBar:GetStatusBarColor()), rgb(0.3, 0.2, 0.9), 'a renown line follows Renown')
+	set(colors.renown, unpack(rkeep))
+	C_Reputation, C_MajorFactions = nil, nil
+end)
+
+test("a roll result's entry keeps its plain name and quality, and its line follows Item quality", function()
+	wipe(LT:GetAllItems())
+	local match = loot_match('Rolled Blade', 4)
+	local entry = LT:BuildRollEntry(match.link, { list = {} }, false)
+	eq(entry.plain, 'Rolled Blade'); eq(entry.quality, 4)
+	LT:LootFeedPush(entry)
+	local line = line_of(entry)
+	local keep = { colors.item_quality[4]:GetRGB() }
+	set(colors.item_quality[4], 0.25, 0.5, 0.75)
+	st:ColorChanged('item_quality', 4)
+	eq(name_color(line.text:GetText()), hex(0.25, 0.5, 0.75), 'the roll result line follows')
+	set(colors.item_quality[4], unpack(keep))
+	st:ColorChanged('item_quality', 4)
+	C_Item.GetItemInfoInstant = function() return 1, 'Armor', 'Plate', '', 1 end
+	local uncached = LT:BuildRollEntry('|cffffffff|Hitem:1|h[Unknown]|h|r', { list = {} }, true)
+	eq(uncached.plain, nil, 'an item with no data keeps no plain name')
+end)
+
+test('a save and restore round trip: the restored lines follow Item quality and Reputation; an older save shows its name', function()
+	wipe(LT:GetAllItems())
+	wipe(LT:GetHistoryStore().feed)
+	reputation_world(false)
+	local match = loot_match('Saved Epic', 4)
+	LT:LootFeedAddItem(match)
+	LT:LootFeedAddReputation({ faction = 'Stormwind', count = 10 })
+	-- An older save: no plain name, no quality.
+	tinsert(LT:GetHistoryStore().feed, { name = '|cffff0000Old Item|r', type = 'Loot', icon = 1, when = 1 })
+	wipe(LT:GetAllItems())
+	LT.feedRestored = false
+	LT:RestoreFeed()
+	eq(#LT:GetAllItems(), 3, 'all three come back')
+	local item, rep, old
+	for _, info in ipairs(LT:GetAllItems()) do
+		if info.plain == 'Saved Epic' then item = info
+		elseif info.progress then rep = info
+		else old = info end
+	end
+	check(item and item.quality == 4, 'the item keeps its plain name and quality')
+	check(rep and rep.progress.colorGroup == 'reaction' and rep.progress.colorKey == 5, 'the bar keeps the color it names')
+	check(old and old.plain == nil, 'the older save has no plain name')
+	local item_line, rep_line, old_line = line_of(item), line_of(rep), line_of(old)
+	eq(old_line.text:GetText(), '|cffff0000Old Item|r', 'the older line shows its saved name')
+
+	local keep, rkeep = { colors.item_quality[4]:GetRGB() }, { colors.reaction[5]:GetRGB() }
+	set(colors.item_quality[4], 0.25, 0.5, 0.75)
+	set(colors.reaction[5], 0.1, 0.9, 0.2)
+	st:ColorChanged('item_quality', 4)
+	st:ColorChanged('reaction', 5)
+	eq(name_color(item_line.text:GetText()), hex(0.25, 0.5, 0.75), 'the restored item follows Item quality')
+	eq(rgb(rep_line.progressBar:GetStatusBarColor()), rgb(0.1, 0.9, 0.2), 'the restored bar follows Reputation')
+	eq(old_line.text:GetText(), '|cffff0000Old Item|r', 'the older line does not follow, and nothing errored')
+	set(colors.item_quality[4], unpack(keep))
+	set(colors.reaction[5], unpack(rkeep))
+	C_Reputation, C_MajorFactions = nil, nil
+	wipe(LT:GetHistoryStore().feed)
+end)
+
+test('the same item looted twice merges after a pick changed its color', function()
+	wipe(LT:GetAllItems())
+	local match = loot_match('Twice Looted', 4)
+	LT:LootFeedAddItem(match)
+	local keep = { colors.item_quality[4]:GetRGB() }
+	set(colors.item_quality[4], 0.25, 0.5, 0.75)
+	LT:LootFeedAddItem(match)
+	set(colors.item_quality[4], unpack(keep))
+	eq(#LT:GetAllItems(), 1, 'one entry')
+	eq(LT:GetAllItems()[1].count, 2, 'with a count of two')
+end)
+
 ------------------------------------------------------------------ the cost
 
 test('a pass makes nothing and allocates under 4 KB over 100', function()
@@ -390,5 +536,16 @@ test('a pass makes nothing and allocates under 4 KB over 100', function()
 		eq(m.forbidden.total, 0, p[1] .. ' ' .. tostring(p[2]) .. ': nothing forbidden')
 		eq(m.made, 0, p[1] .. ' ' .. tostring(p[2]) .. ': nothing made')
 	end
+	-- A drag (a new color each pass) sets each line's new text: the strings are
+	-- made, which a line's SetText may; nothing else is.
+	local n, epic_keep = 0, { colors.item_quality[4]:GetRGB() }
+	local m = C.measure(function()
+		n = n + 1
+		set(colors.item_quality[4], (n % 100) / 100, 0.5, 0.5)
+		st:ColorChanged('item_quality', 4)
+	end, 100)
+	print(('  a drag of Item quality > Epic: %.1f KB over 100 passes'):format(m.kb))
+	eq(m.forbidden.total, 0, 'a drag: nothing forbidden'); eq(m.made, 0, 'a drag: nothing made')
+	set(colors.item_quality[4], unpack(epic_keep))
 	LT:ReleaseHeldRoll(bar)
 end)
