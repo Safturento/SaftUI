@@ -94,6 +94,7 @@ Standard: acceptable by the layout rules, but order and size options so a line f
 **20. "Font" means two things, and the Fonts tab's labels are Title Case.**
 Where: 15 pages' "Font" lists SaftUI's font objects (`generators.font`, `SaftUI-Core/Config/generators.lua:231-239`), while Action Bars' Text and Auras' texts list typefaces (`LSM30_Font`, `ActionBars/options.lua:196-199`, `Blizzard_BuffFramePosition.lua:641-644`). The Fonts tab says "Font Name", "Font Size", "Font Outline" (`fonts.lua:168,172,177`) beside "Shadow offset X" and "Line spacing".
 Standard: one meaning per word after the font roles work; sentence case now ("Font", "Size", "Outline").
+Built (fonts, Task 2): the Fonts tab's rows are Typeface, Size and Outline in sentence case, beside "Shadow offset X" and "Line spacing", and the outline names too. The two meanings of "Font" (a shared font's face and a text's font) wait for the font row (Task 3) and the action bars' and buffs' lists (Task 8).
 
 **21. Sidebar page names mix cases.**
 Where: "Action Bars", "Micro Menu", "Totem Bar", "Swing Timer", "Global settings" against "Unitframes" as one word (`Unitframes/config/config.lua:311`) and sentence-case nameplate pages; descs say "unit frames" (63 strings).

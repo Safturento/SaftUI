@@ -14,7 +14,7 @@ FN.outlines = {
 }
 
 -- The outlines in the order every list of them shows (a select's sorting).
-local OUTLINE_ORDER = { 'NONE', 'OUTLINE', 'THICKOUTLINE', 'MONOCHROME', 'MONOCHROMEOUTLINE', 'MONOCHROMETHICKOUTLINE' }
+FN.OUTLINE_ORDER = { 'NONE', 'OUTLINE', 'THICKOUTLINE', 'MONOCHROME', 'MONOCHROMEOUTLINE', 'MONOCHROMETHICKOUTLINE' }
 
 -- The font flag for a saved outline key (an FN.outlines key): 'NONE' and nil
 -- are no flags, so SetFont takes the result; any other key is its own flag.
@@ -361,6 +361,30 @@ end
 -- of a font row will: Size, Outline, Shadow offset X and Y, Line spacing.
 FN.FIELDS = { 'font_size', 'font_outline', 'shadow_x', 'shadow_y', 'spacing' }
 
+-- One field of a look (st:FontFields' shape, or a profile's or default's
+-- table): shadow_x and shadow_y are the two numbers of its shadow_offset.
+function FN.FieldValue(fields, field)
+	if field == 'shadow_x' then return fields.shadow_offset[1] end
+	if field == 'shadow_y' then return fields.shadow_offset[2] end
+	return fields[field]
+end
+
+-- A copy of a look (st:FontFields' shape) with that one field set: the dots
+-- menu writes this, never the saved table edited in place.
+function FN.WithField(fields, field, value)
+	local copy = {}
+	for key, v in pairs(fields) do copy[key] = v end
+	copy.shadow_offset = { fields.shadow_offset[1], fields.shadow_offset[2] }
+	if field == 'shadow_x' then
+		copy.shadow_offset[1] = value
+	elseif field == 'shadow_y' then
+		copy.shadow_offset[2] = value
+	else
+		copy[field] = value
+	end
+	return copy
+end
+
 -- Per field: its name and its desc for each subject. A 'shared' desc is the
 -- Fonts tab's (it says every text that uses the font); a 'text' desc is the
 -- dots menu's, for one text.
@@ -413,7 +437,7 @@ function FN.FieldOptions(read, write, subject, fields)
 					name = text.name,
 					desc = text[subject],
 					values = FN.outlines,
-					sorting = { unpack(OUTLINE_ORDER) },
+					sorting = { unpack(FN.OUTLINE_ORDER) },
 				}
 			elseif field == 'spacing' then
 				option = generators.range(i + 1, text.name, 0, 20, 1, text[subject])
@@ -490,15 +514,14 @@ local function TextFontsGroup()
 	}
 end
 
-local INTRO = "SaftUI's shared fonts. Every Font row in SaftUI lists these first, and a change here changes every text that uses the font, at once. A Font row can take a typeface of its own instead, with its size and outline in its dots."
+-- What is true today: the Font rows list these and nothing else. Task 4's dots
+-- add a sentence about a typeface's own size and outline.
+local INTRO = "SaftUI's shared fonts. Font rows throughout SaftUI choose from these, and a change here changes every text that uses the font, at once."
 
 -- The look of a shared font at its default, for the row's reset: one field of
--- st.defaults.fonts[key] (an index of shadow_offset for X and Y).
+-- st.defaults.fonts[key].
 local function DefaultField(key, field)
-	local default = st.defaults.fonts[key]
-	if field == 'shadow_x' then return default.shadow_offset[1] end
-	if field == 'shadow_y' then return default.shadow_offset[2] end
-	return default[field]
+	return FN.FieldValue(st.defaults.fonts[key], field)
 end
 
 -- One shared font's section: its Typeface row and FN.FieldOptions' five, each
@@ -507,18 +530,13 @@ end
 local function FontSection(entry, order)
 	local key = entry.key
 	local function read(field)
-		local fields = st:FontFields(key)
-		if field == 'shadow_x' then return fields.shadow_offset[1] end
-		if field == 'shadow_y' then return fields.shadow_offset[2] end
-		return fields[field]
+		return FN.FieldValue(st:FontFields(key), field)
 	end
 	local function write(field, value)
 		local saved = st.config.profile.fonts[key]
 		if field == 'shadow_x' or field == 'shadow_y' then
-			if type(saved.shadow_offset) ~= 'table' then
-				saved.shadow_offset = { DefaultField(key, 'shadow_x'), DefaultField(key, 'shadow_y') }
-			end
-			saved.shadow_offset[field == 'shadow_x' and 1 or 2] = value
+			-- Rebuilt from what is drawn, so a malformed saved shadow is healed.
+			saved.shadow_offset = FN.WithField(st:FontFields(key), field, value).shadow_offset
 		else
 			saved[field] = value
 		end
@@ -546,7 +564,7 @@ local function FontSection(entry, order)
 	end
 	return {
 		name = entry.name,
-		desc = entry.job,
+		desc = entry.job .. '.',
 		order = order,
 		type = 'group',
 		inline = true,

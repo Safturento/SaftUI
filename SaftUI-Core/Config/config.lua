@@ -326,13 +326,13 @@ function Config:UpdateConfig()
 
 	-- An open /sui window's tree was built for the old profile (some getters
 	-- and setters, and values read while building it). Rebuild it; the window
-	-- redraws it next frame and keeps the page, tab and picker. Its fonts take
-	-- the new profile's faces. (optionswindow.lua loads after this file; tests
+	-- redraws it next frame and keeps the page, tab and picker. (Its fonts took
+	-- the new profile's faces in st:FontsChanged above, through
+	-- Config:OnFontsChanged. optionswindow.lua loads after this file; tests
 	-- that build the tree without the window run this too.)
 	local OW = st.OptionsWindow
 	if OW then
 		if OW:IsShown() then OW:SetRoot(self:RegisterOptions()) end
-		OW:UpdateFonts()
 	end
 	self:Refresh()
 

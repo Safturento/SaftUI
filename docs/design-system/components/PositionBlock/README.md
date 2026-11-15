@@ -1,6 +1,6 @@
 # PositionBlock
 
-Where a frame or part sits, in one line: THIS (which point of it), TO (what it's anchored to), AT ITS (which point of that), OFFSET (X over Y, with nudges), each part a Colus caption over a 48px band.
+Where a frame or part sits, in one line: THIS (which point of it), TO (what it's anchored to), AT ITS (which point of that), OFFSET (X over Y, with nudges), each part a caption (Heading's face) over a 48px band.
 
 ## When to use
 

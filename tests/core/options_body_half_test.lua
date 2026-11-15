@@ -304,12 +304,14 @@ test('a note that fits on one line lays out as it did; one that does not wraps t
 	body:Release()
 end)
 
-test('the real Colors, Icons and font notes at half: wrapped, clear of the rows, whole pixels under every look', function()
+test('the real Colors, Icons and font notes at half and full width: wrapped, clear of the rows, whole pixels under every look', function()
 	local views = { { 'Fonts', { tab = 'colors' } }, { 'Fonts', { tab = 'general' } }, { 'Fonts', { tab = 'fonts' } } }
 	local seen = 0
 	for _, name in ipairs({ 'thick', 'thin', 'blizzard' }) do
 		look(name, function()
-			local width = name == 'blizzard' and 368 or 388
+			-- Half (388, or 368 under Blizzard) and the full width, 774.
+			for _, size in ipairs({ { name == 'blizzard' and 368 or 388, true }, { 774, false } }) do
+			local width, half = size[1], size[2]
 			for _, noise in ipairs({ 2 ^ -14, -2 ^ -14, 0 }) do
 				stub.size_noise = noise
 				for _, v in ipairs(views) do
@@ -318,14 +320,15 @@ test('the real Colors, Icons and font notes at half: wrapped, clear of the rows,
 					content:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 100, -100)
 					content:SetSize(width, 4000)
 					local body = OB.New(content, root, nil, 774)
-					body:SetWidth(width, true)
+					body:SetWidth(width, half)
 					body:Draw(OM.BuildView(root, v[1], v[2]).sections)
-					local where = name .. ' ' .. v[2].tab .. ' noise ' .. noise
+					local where = name .. ' ' .. width .. ' ' .. v[2].tab .. ' noise ' .. noise
 					seen = seen + N.check(body, where)
 					local off = P.off(content)
 					eq(#off, 0, where .. ': ' .. P.report(off))
 					body:Release()
 				end
+			end
 			end
 		end)
 	end

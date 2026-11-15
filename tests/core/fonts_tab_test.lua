@@ -21,7 +21,7 @@ load_options_widgets()
 load_saftui('SaftUI-Core/Config/optionsbody.lua')
 local OM, OB, W = st.OptionsModel, st.OptionsBody, st.OptionsWidgets
 
-local INTRO = "SaftUI's shared fonts. Every Font row in SaftUI lists these first, and a change here changes every text that uses the font, at once. A Font row can take a typeface of its own instead, with its size and outline in its dots."
+local INTRO = "SaftUI's shared fonts. Font rows throughout SaftUI choose from these, and a change here changes every text that uses the font, at once."
 local KINDS_NOTE = 'Window titles change at once. The rest is read when SaftUI builds its frames: reload (Reload UI, bottom right) to see a change everywhere.'
 
 local FN = st:GetModule('Fonts')
@@ -62,7 +62,11 @@ local function Sections() return OM.BuildView(st.Config:GetOptionsTable(), 'Font
 -- A module that counts what st:FontsChanged tells it.
 local changes = 0
 local Probe = st:NewModule('FontsTabProbe')
-function Probe:OnFontsChanged() changes = changes + 1 end
+local sawSize -- Small text's object size as the last FontsChanged saw it
+function Probe:OnFontsChanged()
+	changes = changes + 1
+	sawSize = select(2, st:GetFont('pixel'):GetFont())
+end
 
 local panel = st:CreatePanel('Fonts test', 200, 100)
 
@@ -76,7 +80,7 @@ test('the tab: the line at the top, the six fonts in FN.FONTS order with their j
 	eq(intro[1].type, 'description')
 	eq(intro[1].name, INTRO, "the spec's line")
 	for i, entry in ipairs(FN.FONTS) do
-		eq(sections[i + 1].note, entry.job, entry.key .. "'s job is its note")
+		eq(sections[i + 1].note, entry.job .. '.', entry.key .. "'s job is its note, as a sentence")
 	end
 	eq(sections[8].note, KINDS_NOTE, "Kinds of text keeps its note until a later task")
 	local tab = Tab()
@@ -94,7 +98,7 @@ test("each font's rows: Typeface, Size, Outline, Shadow offset X, Shadow offset 
 		eq(group.name, entry.name, fontKey .. ' is named from code')
 		eq(group.order, i, fontKey .. ' is in FN.FONTS order')
 		eq(group.inline, true, fontKey .. ' is a section, not a tab')
-		eq(group.desc, entry.job, fontKey .. "'s job is its note")
+		eq(group.desc, entry.job .. '.', fontKey .. "'s job is its note, as a sentence")
 		local keys, names = {}, {}
 		for j, r in ipairs(ByOrder(group.args)) do keys[j] = r.key; names[j] = r.v.name end
 		eq(table.concat(keys, ','), 'font_name,font_size,font_outline,shadow_x,shadow_y,spacing', fontKey)
@@ -179,7 +183,7 @@ test('FN.FontSettingDefault: differs is any value but the default (a table alway
 	value = { font_name = 'Colus', font_size = 15 }
 	eq(default.differs({}), true, 'a typeface')
 	value = nil
-	eq(default.differs({}), true, 'nothing saved but a default')
+	eq(default.differs({}), true, 'nil, a value that names nothing')
 	eq(default.text, 'Small text', 'the default in words')
 	value = 'normal'
 	changes = 0
@@ -189,6 +193,24 @@ test('FN.FontSettingDefault: differs is any value but the default (a table alway
 	check(FN.FontSettingDefault(read, write, 'normal').text == 'Text', 'a shared font by name')
 	check(FN.FontSettingDefault(read, write, { font_name = 'Colus', font_size = 15, font_outline = 'OUTLINE' }).text == 'Colus 15, outline', 'a typeface by its label')
 	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('FN.FieldValue and FN.WithField: one field of a look, X and Y as the shadow\'s two numbers; a copy with one field changed', function()
+	local look = { font_name = 'Colus', font_size = 15, font_outline = 'OUTLINE', shadow_offset = { 1, -2 }, spacing = 4 }
+	eq(FN.FieldValue(look, 'font_name'), 'Colus')
+	eq(FN.FieldValue(look, 'font_size'), 15)
+	eq(FN.FieldValue(look, 'shadow_x'), 1)
+	eq(FN.FieldValue(look, 'shadow_y'), -2)
+	eq(FN.FieldValue(look, 'spacing'), 4)
+	local copy = FN.WithField(look, 'shadow_y', 3)
+	eq(copy.shadow_offset[1] .. ',' .. copy.shadow_offset[2], '1,3', 'the one axis changed')
+	eq(look.shadow_offset[2], -2, 'the original is untouched')
+	check(copy.shadow_offset ~= look.shadow_offset, 'the shadow is a copy too')
+	eq(FN.WithField(look, 'font_size', 20).font_size, 20)
+	eq(FN.WithField(look, 'font_size', 20).font_name, 'Colus', 'the rest is carried')
+	eq(FN.WithField(look, 'shadow_x', 0).shadow_offset[1], 0)
+	eq(look.font_size, 15, 'the original is untouched')
+	eq(table.concat(FN.OUTLINE_ORDER, ','), 'NONE,OUTLINE,THICKOUTLINE,MONOCHROME,MONOCHROMEOUTLINE,MONOCHROMETHICKOUTLINE')
 end)
 
 test('the outline names in sentence case, in the list order None ... Monochrome thick outline', function()
@@ -207,18 +229,8 @@ end)
 -- A value that differs from each font's default, per field, and what it is
 -- written as.
 local OTHER = { font_name = 'Righteous', font_size = 13, font_outline = 'NONE', shadow_x = 1, shadow_y = 1, spacing = 5 }
-local function Default(fontKey, field)
-	local d = st.defaults.fonts[fontKey]
-	if field == 'shadow_x' then return d.shadow_offset[1] end
-	if field == 'shadow_y' then return d.shadow_offset[2] end
-	return d[field]
-end
-local function Saved(fontKey, field)
-	local f = st.config.profile.fonts[fontKey]
-	if field == 'shadow_x' then return f.shadow_offset[1] end
-	if field == 'shadow_y' then return f.shadow_offset[2] end
-	return f[field]
-end
+local function Default(fontKey, field) return FN.FieldValue(st.defaults.fonts[fontKey], field) end
+local function Saved(fontKey, field) return FN.FieldValue(st.config.profile.fonts[fontKey], field) end
 
 test("every row resets by itself while it differs from st.defaults.fonts, putting the default on its object at once", function()
 	for _, entry in ipairs(FN.FONTS) do
@@ -583,5 +595,54 @@ test("a profile switch redraws /sui's titles from the new profile's Heading", fu
 	eq(select(1, OB.Font('title'):GetFont()), path('Bebas Neue'), "and the first profile's again")
 	local r, rw = Row('heading', 'font_name')
 	OM.DefaultReset(r, rw)
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+------------------------------------------------------------------ what a row shows and writes
+
+test("a raw partial saved table and a malformed one read as they are drawn; only what differs has a reset", function()
+	local fonts = st.config.profile.fonts
+	local function State(field)
+		local root, row = Row('pixel', field)
+		return OM.Get(root, row), OM.DefaultState(root, row).differs
+	end
+	fonts.pixel = { font_name = 'Bebas Neue' }
+	local size, sizeDiffers = State('font_size')
+	local face, faceDiffers = State('font_name')
+	eq(size, 10, 'the size reads the default')
+	eq(sizeDiffers, false, 'and has no reset')
+	eq(face, 'Bebas Neue')
+	eq(faceDiffers, true, 'the face does')
+	eq(State('font_outline'), 'MONOCHROMEOUTLINE')
+	eq(State('shadow_x'), 0)
+	eq(State('spacing'), 4)
+
+	fonts.pixel = { font_size = 500, font_outline = 'BOLD', shadow_offset = 3, spacing = '4' }
+	local size2, differs2 = State('font_size')
+	eq(size2, 100, 'a size of 500 reads the clamp')
+	eq(differs2, true, 'and differs')
+	eq(State('font_outline'), 'MONOCHROMEOUTLINE', 'an unknown outline reads the default')
+	eq(State('shadow_x') .. ',' .. State('shadow_y'), '0,0', 'a shadow that is a number reads 0, 0')
+	eq(State('spacing'), 4, 'a spacing that is a string reads the default')
+
+	-- A set on the malformed shadow rebuilds it from what is drawn, and errors nowhere.
+	Set('pixel', 'shadow_x', 1)
+	eq(table.concat(fonts.pixel.shadow_offset, ','), '1,0', 'X saved with Y as drawn')
+	eq(Shadow('pixel'), '1,0', 'and on the object')
+	-- Put the profile's Small text back as AceDB filled it.
+	local d = st.defaults.fonts.pixel
+	fonts.pixel = { font_name = d.font_name, font_size = d.font_size, font_outline = d.font_outline,
+		shadow_offset = { d.shadow_offset[1], d.shadow_offset[2] }, spacing = d.spacing }
+	FN:UpdateFontConfig('pixel')
+	eq(Saved('pixel', 'font_size'), 10, 'the profile is back to the default')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("a set applies the font's object before st:FontsChanged runs, so a module sees the new look", function()
+	Set('pixel', 'font_size', 12)
+	eq(sawSize, 12, 'FontsChanged saw the object at 12')
+	local root, row = Row('pixel', 'font_size')
+	OM.DefaultReset(root, row)
+	eq(sawSize, 10, 'and a reset the same')
 	eq(#take_errors(), 0, 'no errors')
 end)
