@@ -900,3 +900,9 @@ both('the hover poll stops while a trigger hides the window and starts again whe
 	TW.combat(false)
 	check(TR.fader:GetScript('OnUpdate') == nil, 'hidden again: the watch stops')
 end)
+
+both('Boss fights says the buttons follow the boss frames only with Hide quest items with the tracker on', function(st, TR)
+	local desc = TR.VisibilityTab().args.boss.desc
+	check(desc:find('With Hide quest items with the tracker on, its quest item buttons go by the boss frames', 1, true), 'the desc says the boss frames apply with the setting on')
+	check(desc:find('With it off, they stay.', 1, true), 'and that with it off the buttons stay')
+end)

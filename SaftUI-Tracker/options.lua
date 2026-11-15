@@ -232,7 +232,7 @@ function TR.VisibilityTab()
 			{ 'show', 'fade' }),
 		instance = trigger(4, 'instance', 'In instances',
 			'What the tracker does in a dungeon, raid, battleground, arena or scenario.'),
-		boss = trigger(5, 'boss', 'Boss fights', 'What the tracker does from the start of a boss encounter to its end. Its quest item buttons go by the boss frames showing in combat (and when an encounter starts out of combat), so a boss frame outside an encounter hides them too.'),
+		boss = trigger(5, 'boss', 'Boss fights', 'What the tracker does from the start of a boss encounter to its end. With Hide quest items with the tracker on, its quest item buttons go by the boss frames showing in combat (and when an encounter starts out of combat), so a boss frame outside an encounter hides them too. With it off, they stay.'),
 		mythic = trigger(6, 'mythic', 'Mythic+', 'What the tracker does while a Mythic+ key is running.'),
 		fade_alpha = generators.range(7, 'Faded opacity', 0, 1, 0.05,
 			'How visible the tracker is while it fades. Quest item buttons that fade with it stay at 25% at the least, so they can be seen while they can be clicked.'),
