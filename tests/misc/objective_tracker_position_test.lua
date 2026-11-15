@@ -38,7 +38,6 @@ local function world(client, build, opts)
 	load_core_helpers()
 	load_editmode()
 	load_saftui('SaftUI-Core/Config/optionsmodel.lua') -- the page's saved fields (st.Config.SavedIn)
-	load_saftui('SaftUI-Core/Config/optionsdefault.lua')
 	UIParent:SetScale(768 / 600)
 	st = SaftUI
 	load_saftui('SaftUI-Misc/config.lua')
@@ -471,7 +470,16 @@ test("the Blizzard's tracker page: the fonts, then Position", function()
 	load_test_file('lib/options_walk.lua')
 	local R = load_test_file('lib/reset_walk.lua')
 	local tree = OTP:GetConfigTable()
-	R.check_page({ ObjectiveTracker = tree }, 'ObjectiveTracker')
+	-- The skin the fonts restyle the tracker through, active, so the two Font rows are not disabled: the walk probes them.
+	local SK = st:GetModule('Skinning', true) or st:NewModule('Skinning')
+	local skin = SK:NewModule('Blizzard_ObjectiveTracker')
+	local restyled = 0
+	function skin:IsActive() return true end
+	function skin:UpdateConfig() restyled = restyled + 1 end
+	local walked = R.check_page({ ObjectiveTracker = tree }, 'ObjectiveTracker')
+	check(restyled >= 4, "the walk probed both Font rows: each probe and reset restyled the tracker (" .. restyled .. ')')
+	check(walked >= 3, 'and walked the two fonts and the Position (' .. walked .. ')')
+	function skin:IsActive() return false end -- as without the skin again, for the checks below
 	eq(tree.category, 'Info', 'in the Info group')
 	eq(tree.name, "Blizzard's tracker", 'the sidebar names it for what it moves')
 	eq(tree.desc, "Blizzard's objective tracker: its fonts, and its place while SaftUI's tracker is off. Its fonts also style it while it fills in for SaftUI's (Tracker page).", 'its desc')

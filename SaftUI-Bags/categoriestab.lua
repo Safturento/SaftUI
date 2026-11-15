@@ -427,6 +427,7 @@ function INV:CategoryEditorOptions(id, tab, items)
 			args.rule.default = {
 				differs = function() local e = Entry(); return e and not R.Equal(e.rule, shipped.rule) or false end,
 				reset = function() INV:SetCategoryRule(id, R.Copy(shipped.rule)) end,
+				tipName = 'The rule', -- the row's name, "Catches an item when", is no subject
 				text = 'the rule SaftUI ships',
 			}
 		end
@@ -771,33 +772,15 @@ local function ResetOrder(w)
 	end
 end
 
--- The reset icon of the list's footer: the kit's own look (a 14x14 Lucide
--- rotate-ccw, Text > Muted at rest, the accent under the mouse, each read as
--- it is painted), with the order's tooltip.
+-- The reset icon of the list's footer: the kit's own (OB.ResetIcon), with the
+-- order's tooltip.
 local function OrderResetIcon(parent, run)
-	local button = CreateFrame('Button', nil, parent)
-	button:SetSize(RESET_SIZE, RESET_SIZE)
-	button:EnableMouse(true)
-	button.icon = button:CreateTexture(nil, 'ARTWORK')
-	button.icon:SetAllPoints(button)
-	button.icon:SetTexture(st.icons.rotateCcw)
-	button.icon:SetVertexColor(Muted())
-	button:SetScript('OnEnter', function(self)
+	return OB.ResetIcon(parent, function(self)
 		GameTooltip:SetOwner(self, 'ANCHOR_TOPLEFT')
 		GameTooltip:AddLine('Reset', 1, 1, 1)
 		GameTooltip:AddLine("Order goes back to its default: SaftUI's order, with your own categories where they are.", nil, nil, nil, true)
 		GameTooltip:Show()
-		self.icon:SetVertexColor(st:Color('accent'):GetRGB())
-	end)
-	button:SetScript('OnLeave', function(self)
-		if GameTooltip:IsOwned(self) then GameTooltip:Hide() end
-		self.icon:SetVertexColor(Muted())
-	end)
-	button:SetScript('OnClick', function(self)
-		if GameTooltip:IsOwned(self) then GameTooltip:Hide() end
-		run(self)
-	end)
-	return button
+	end, run)
 end
 
 ------------------------------------------------------------------ the tab: scrolling

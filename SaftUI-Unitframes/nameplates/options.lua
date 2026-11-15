@@ -190,9 +190,7 @@ local function NameplateGeneral()
 		width = G.width(5, "Enemy nameplates' width: the health bar and the area you click. The game stacks every nameplate at this size."),
 		height = G.height(6, "Enemy nameplates' height: the health bar and the area you click. The game stacks every nameplate at this size."),
 	}
-	-- Width and Height have a get of their own, which hands on to the group's.
-	args.width.saved = UF.SavedIn('nameplate')
-	args.height.saved = UF.SavedIn('nameplate')
+	-- Width and Height have a get that hands on to the group's, so its saved reaches them.
 	HideWhileChecked('nameplate', args, PLATE_PAGES.nameplate.keptGeneral)
 
 	return {
@@ -243,8 +241,6 @@ local function FriendlyNameplateGeneral()
 		width = G.width(5, "Friendly nameplates' width, centred on the plate: the area you click. While enemy nameplates use this page, the game stacks every nameplate at this size."),
 		height = G.height(6, "Friendly nameplates' height, centred on the plate: the area you click. While enemy nameplates use this page, the game stacks every nameplate at this size."),
 	}
-	args.width.saved = UF.SavedIn('friendlynameplate')
-	args.height.saved = UF.SavedIn('friendlynameplate')
 	HideWhileChecked('friendlynameplate', args, PLATE_PAGES.friendlynameplate.keptGeneral)
 
 	return {

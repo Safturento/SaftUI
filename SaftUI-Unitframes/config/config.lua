@@ -52,17 +52,14 @@ end
 
 -- An element's size (UF:UpdateElementSize), on one line: Width and its
 -- Relative, Height and its Relative. Untitled, so it reads as part of the
--- options above it. saved, UF.SavedIn of the element's own group (the Width and
--- Height boxes have a get of their own, which hands on to that group's, so
--- each carries it: the reset reads where the element keeps them).
-function UF.GenerateRelativeSizeConfigGroup(order, saved)
+-- options above it. The Width and Height boxes have a get that hands on to the
+-- element group's, and the reset kit reads their saved from that group.
+function UF.GenerateRelativeSizeConfigGroup(order)
 	local G = st.Config.generators
 	local width = G.width(1, "The width in pixels. With Relative on, it's added to the unit frame's width: 0 is as wide as the unit frame, -4 is 4 narrower.")
 	width.size = 'small'
-	width.saved = saved
 	local height = G.height(3, "The height in pixels. With Relative on, it's added to the unit frame's height: 0 is as tall as the unit frame, -4 is 4 shorter.")
 	height.size = 'small'
-	height.saved = saved
 	return {
 		order = order,
 		name = '',
@@ -339,13 +336,6 @@ end
 
 function UF.SavedAt(unit, ...)
 	return st.Config.SavedAt('unitframes', 'profiles', ProfileName, unit, ...)
-end
-
--- option with its own saved, for a Width or Height box (its get hands on to the
--- group's, so the group's saved doesn't reach it).
-local function WithSaved(option, saved)
-	option.saved = saved
-	return option
 end
 
 -- A unit's name, as its page in /sui is named.
@@ -739,8 +729,8 @@ function UF:GetConfigTable()
 						enable = st.Config.generators.enable(0, 'Shows this unit frame. When off, the unit frame is hidden.'),
 						theme = st.Config.generators.theme(1, "How this unit frame's border and background are drawn."),
 						background = st.Config.generators.background(1.5),
-						width = WithSaved(st.Config.generators.width(2, "The unit frame's width."), UF.SavedIn(unit)),
-						height = WithSaved(st.Config.generators.height(3, "The unit frame's height."), UF.SavedIn(unit)),
+						width = st.Config.generators.width(2, "The unit frame's width."),
+						height = st.Config.generators.height(3, "The unit frame's height."),
 						-- Every SetPoint parameter, the relative frame included.
 						-- Passing the mover's frame makes a typed frame go through
 						-- st:ValidateAnchor, which rejects the frame itself and

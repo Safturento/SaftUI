@@ -728,13 +728,9 @@ function AP:GetTextOptions(key, kind, name, order)
 	}
 	options.args.size.hidden = SharedFont
 	options.args.outline.hidden = SharedFont
-	-- Resets: the font to Small text (a reset runs st:FontsChanged, which restyles the
-	-- timers), Size and Outline to what a typeface starts from.
+	-- Resets: the font's comes from the group's `saved`; Size and Outline go back to
+	-- what a typeface starts from.
 	local shipped = st.defaults.auras[key][kind]
-	options.args.font.default = fontsModule and fontsModule.FontSettingDefault(
-		function() return self.config[key][kind].font end,
-		function(_, value) self.config[key][kind].font = value end,
-		shipped.font)
 	for _, field in ipairs({ 'size', 'outline' }) do
 		options.args[field].default = {
 			differs = function() return self.config[key][kind][field] ~= shipped[field] end,

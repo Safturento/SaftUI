@@ -169,7 +169,7 @@ local function GetConfigTable(unit)
 
 	-- Width, Relative | Height, Relative: the shared line, with the row's own
 	-- words for Width and Height.
-	local size = UF.GenerateRelativeSizeConfigGroup(5, UF.SavedIn(unit, 'classpower'))
+	local size = UF.GenerateRelativeSizeConfigGroup(5)
 	size.args.width.desc = "The whole row's width in pixels, shared out among the points. With Relative on, it's added to the unit frame's width: 0 is as wide as the unit frame."
 	size.args.height.desc = "Each point's height in pixels. With Relative on, it's added to the unit frame's height: 0 is as tall as the unit frame, -4 is 4 shorter."
 

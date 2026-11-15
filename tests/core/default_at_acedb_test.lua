@@ -8,7 +8,6 @@
 load_test_file('core/config_helpers.lua')
 local st = SaftUI
 load_saftui('SaftUI-Core/Config/optionsmodel.lua')
-load_saftui('SaftUI-Core/Config/optionsdefault.lua')
 
 -- Every addon's defaults, as the game loads them (Core's came with the helpers).
 local FILES = {
@@ -188,7 +187,6 @@ end)
 -- AceDB's filled profile is at its default, with an element dropdown or without.
 test('the icon\'s read of every position default agrees with AceDB: no row differs on a fresh profile', function()
 	load_saftui('SaftUI-Core/Config/optionsmodel.lua')
-	load_saftui('SaftUI-Core/Config/optionsdefault.lua')
 	local OM = st.OptionsModel
 	local diffs, _, positions = against_acedb('SaftUI')
 	check(#positions > 50, 'it found ' .. #positions .. ' position tables')

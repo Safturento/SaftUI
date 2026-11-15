@@ -111,7 +111,7 @@ local function GetConfigTable(unit)
 			background = G.background(4.5),
 			alpha = G.alpha(5, 'How solid the mana bar is, from see-through to opaque.'),
 			framelevel = G.framelevel(6, 'Draws the bar over the parts of the unit frame with a lower frame level, and under those with a higher one.'),
-			size = UF.GenerateRelativeSizeConfigGroup(8, UF.SavedIn(unit, 'additionalpower')),
+			size = UF.GenerateRelativeSizeConfigGroup(8),
 			-- oUF's AdditionalPower knows only colorPower.
 			colors = UF.GenerateColorsConfigGroup(9, unit, 'additionalpower', { 'colorPower' }, Config, Update, {
 				colorPower = 'Colors the bar and its background in the mana color. With this and Custom both off, nothing colors them: they keep the last color they had.',

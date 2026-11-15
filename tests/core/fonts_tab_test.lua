@@ -17,7 +17,6 @@
 load_test_file('core/config_helpers.lua')
 local st = SaftUI
 load_saftui('SaftUI-Core/Config/optionsmodel.lua')
-load_saftui('SaftUI-Core/Config/optionsdefault.lua')
 load_options_widgets()
 load_saftui('SaftUI-Core/Config/optionsbody.lua')
 local OM, OB, W = st.OptionsModel, st.OptionsBody, st.OptionsWidgets
@@ -182,30 +181,6 @@ test('Button text resets to its AceDB default and applies at once', function()
 	eq(OM.DefaultReset(root, row), true, key .. ' resets')
 	eq(st.config.profile[group].font, default, key .. ' is the AceDB default')
 	eq(changes, 1, key .. ' ran FontsChanged')
-end)
-
-test('FN.FontSettingDefault: differs is any value but the default (a table always does); reset writes the default and runs FontsChanged', function()
-	local value
-	local function read(info) return value end
-	local function write(info, v) value = v end
-	local default = FN.FontSettingDefault(read, write, 'pixel')
-	value = 'pixel'
-	eq(default.differs({}), false, 'the default itself')
-	value = 'normal'
-	eq(default.differs({}), true, 'another shared font')
-	value = { font_name = 'Colus', font_size = 15 }
-	eq(default.differs({}), true, 'a typeface')
-	value = nil
-	eq(default.differs({}), true, 'nil, a value that names nothing')
-	eq(default.text, 'Small text', 'the default in words')
-	value = 'normal'
-	changes = 0
-	default.reset({})
-	eq(value, 'pixel', 'reset wrote the default')
-	eq(changes, 1, 'and ran FontsChanged once')
-	check(FN.FontSettingDefault(read, write, 'normal').text == 'Text', 'a shared font by name')
-	check(FN.FontSettingDefault(read, write, { font_name = 'Colus', font_size = 15, font_outline = 'OUTLINE' }).text == 'Colus 15, outline', 'a typeface by its label')
-	eq(#take_errors(), 0, 'no errors')
 end)
 
 test('FN.FieldValue and FN.WithField: one field of a look, X and Y as the shadow\'s two numbers; a copy with one field changed', function()

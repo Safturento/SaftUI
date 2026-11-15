@@ -43,9 +43,10 @@ local function count(name)
 	return function(_, id) calls[#calls + 1] = name .. (id and (':' .. id) or '') end
 end
 
--- A fresh world (see the top) on a new profile, converted as at login.
-local function fresh()
-	reset_world()
+-- A fresh world (see the top) on a new profile, converted as at login; on a client when one is named
+-- (use_client), else the shell's default (Forever).
+local function fresh(client)
+	if client then use_client(client) else reset_world() end
 	load_core_helpers()
 	st = SaftUI
 	load_test_file('actionbars/fixtures/libactionbutton.lua')
@@ -53,7 +54,6 @@ local function fresh()
 	apply_defaults()
 	for _, file in ipairs(FILES) do load_saftui(file) end
 	load_saftui('SaftUI-Core/Config/optionsmodel.lua')
-	load_saftui('SaftUI-Core/Config/optionsdefault.lua') -- st.Config.SavedIn, the reset sources
 	load_test_file('lib/options_walk.lua')
 	OM = st.OptionsModel
 	AB = st:GetModule('ActionBars')
@@ -422,15 +422,17 @@ test('a text item: own-marked by its menu, its diff lines naming the settings', 
 	no_errors()
 end)
 
-test('every action bar row has a reset or its share, and each derived one round-trips', function()
-	fresh()
-	local R = load_test_file('lib/reset_walk.lua')
-	-- The extras' movers, as AB:SetupExtras registers them: their Position rows reset through them.
-	for _, file in ipairs(editmode_files()) do load_saftui(file) end
-	AB.movers = AB.movers or {}
-	for _, id in ipairs(AB.EXTRA_IDS) do AB:RegisterExtraMover(id) end
-	R.check_page({ ActionBars = AB:GetConfigTable() }, 'ActionBars')
-end)
+for _, client in ipairs({ 'forever', 'retail' }) do
+	test('every action bar row has a reset or its share, and each derived one round-trips, on ' .. client, function()
+		fresh(client)
+		local R = load_test_file('lib/reset_walk.lua')
+		-- The extras' movers, as AB:SetupExtras registers them: their Position rows reset through them.
+		for _, file in ipairs(editmode_files()) do load_saftui(file) end
+		AB.movers = AB.movers or {}
+		for _, id in ipairs(AB.EXTRA_IDS) do AB:RegisterExtraMover(id) end
+		R.check_page({ ActionBars = AB:GetConfigTable() }, 'ActionBars')
+	end)
+end
 
 test("All bars' Cooldown Show resets to Blizzard's default, through the model", function()
 	fresh()

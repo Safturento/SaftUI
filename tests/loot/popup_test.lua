@@ -584,10 +584,18 @@ test('the Loot window page: Enable, Theme, Background and Font, each with its re
 	eq(args.enable.name, 'Enable', 'named Enable')
 	check(type(args.enable.desc) == 'string' and #args.enable.desc > 20, 'with a description')
 	eq(args.position, nil, 'no Position: the window opens where Blizzard says')
+	local OM = st.OptionsModel
+	local root = { Loot = tree }
+	local function Row(key)
+		local path = { 'Loot', 'popup', 'general', key }
+		local option = args[key]
+		return { option = option, path = path, type = option.type, key = key }
+	end
 	for _, key in ipairs({ 'enable', 'theme', 'background', 'font' }) do
 		check(args[key], key .. ' is offered')
-		check(type(args[key].default) == 'table' and args[key].default.differs and args[key].default.reset, key .. ' has its own reset')
-		check(not args[key].default.differs(), key .. ' is at its default')
+		eq(OM.DefaultSource(root, Row(key)), 'derived', key .. ' resets from where the group saves it, with no hand default')
+		eq(args[key].default, nil, key .. ' has no default of its own')
+		check(not OM.DefaultDiffers(root, Row(key)), key .. ' is at its default')
 	end
 	local count = 0
 	local update = LT.UpdatePopup
@@ -596,14 +604,20 @@ test('the Loot window page: Enable, Theme, Background and Font, each with its re
 	eq(profile.loot.popup.enable, false, 'Enable writes the profile')
 	eq(count, 1, 'and applies at once')
 	check_blizzard('Enable unticked')
-	check(args.enable.default.differs(), 'the reset shows while it differs')
-	args.enable.default.reset({ 'enable' })
+	check(OM.DefaultDiffers(root, Row('enable')), 'the reset shows while it differs')
+	count = 0
+	check(OM.DefaultReset(root, Row('enable')), 'its reset runs')
 	eq(profile.loot.popup.enable, true, 'its reset puts it back')
+	eq(count, 1, 'and applies the window at once, through the row\'s own set')
 	check_skinned('reset')
 	general.set({ 'theme' }, 'thin')
-	check(args.theme.default.differs(), 'Theme differs')
-	args.theme.default.reset({ 'theme' })
+	check(OM.DefaultDiffers(root, Row('theme')), 'Theme differs')
+	OM.DefaultReset(root, Row('theme'))
 	eq(profile.loot.popup.theme, 'theme', 'Theme\'s reset')
+	general.set({ 'font' }, 'pixel')
+	check(OM.DefaultDiffers(root, Row('font')), 'Font differs')
+	OM.DefaultReset(root, Row('font'))
+	eq(profile.loot.popup.font, st.defaults.loot.popup.font, 'Font\'s reset puts the default back')
 	T.check_theme_page({
 		group = general, where = 'popup', config = profile.loot.popup,
 		path = 'loot.popup', prefix = 'popup: ',
