@@ -707,6 +707,33 @@ test("the field font takes Text > Normal when /sui's fonts are applied", functio
 	W.UpdateFonts()
 end)
 
+test('an edit ended and another begun inside one due pass, with a single mark: the new edit keeps its mark', function()
+	reset()
+	local o, done = Obj(), false
+	st:FollowColor(o, 'text', 'danger', function()
+		if done then return end
+		done = true
+		st:EndColorEdit()
+		st:BeginColorEdit()
+		st:ColorChanged('class', 'MAGE')
+	end)
+	st:BeginColorEdit()
+	st:ColorChanged('text', 'danger')
+	C.step(st)
+	check(CO.ticker:IsShown(), "the new edit's pass is due")
+	forget()
+	C.step(st)
+	eq(told(), 'class:MAGE', 'it runs next frame')
+	st:EndColorEdit()
+	forget()
+	st:BeginColorEdit()
+	st:ColorChanged('class', 'MAGE')
+	C.step(st)
+	eq(told(), 'class:MAGE', 'and again in a later edit')
+	st:EndColorEdit()
+	st:UnfollowColor(o)
+end)
+
 test('an edit ended and another begun inside one due pass: the new edit keeps its mark and its pass runs next frame', function()
 	reset()
 	local o, done = Obj(), false

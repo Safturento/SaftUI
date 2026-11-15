@@ -566,7 +566,9 @@ function ThemeArt.SetBorder(frame, look, kind, host, r, g, b, a)
 		local own = art.own
 		if own and art.ownStyle == style.border and art.ownHost == host then
 			-- Already textured and placed for this art: only its color (a pass
-			-- recolors every border it holds, and places nothing).
+			-- recolors every border it holds, and places nothing). A frame with no
+			-- host keeps its holder above it, as every call did: Holder raises it.
+			if not host then Holder(frame) end
 			own:SetVertexColor(r, g, b, a)
 			own:Show()
 			return
