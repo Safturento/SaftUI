@@ -133,7 +133,7 @@ test("the paired counts and the feed's roll tooltip read Loot: All passed and Pa
 	eq(T.rgb(paired_color(greed):GetTextColor()), PURPLE, "Greed's bar: Transmog's count in Loot > Transmog")
 	local transmog = counts_for('Transmog')
 	LT:SetRollCounts(transmog, rolls)
-	eq(T.rgb(paired_color(transmog):GetTextColor()), YELLOW, "Transmog's bar: Greed's count in Loot > Greed, not Text > Yellow")
+	eq(T.rgb(paired_color(transmog):GetTextColor()), YELLOW, "Transmog's bar: Greed's count in Loot > Greed, not Text > Caution")
 	set(colors.text.caution, 200/255, 200/255, 100/255)
 
 	-- The tooltip: the headers in their Loot colors, All passed and Pass: in Pass.
