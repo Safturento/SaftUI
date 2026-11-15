@@ -490,7 +490,7 @@ test('the History list: newest first, the current step marked, undone ones grey,
 	eq(table.concat(labels(list), '|'), 'Moved Focus|Moved Target|Moved Player|Before these changes', 'newest first, then the start')
 	check(list.rows[1].mark:IsShown() and not list.rows[2].mark:IsShown(), 'the first row has the mark')
 	eq(list.rows[1].mark:GetWidth(), 2, 'a 2px mark')
-	eq((fill(list.rows[1].mark)), rgb(colors().button.blue), 'in the accent')
+	eq((fill(list.rows[1].mark)), rgb(st.config.profile.theme.accent), 'in the accent')
 	eq(list.rows[1].detail:GetText(), 'now', 'its detail is how long ago')
 	eq(rgb(CreateColor(list.rows[1].label:GetTextColor())), rgb(colors().text.normal), 'applied: normal')
 
@@ -573,7 +573,7 @@ test('a row under the mouse is filled at 25% accent, or with the dropdown list\'
 	stub.fire_script(row, 'OnEnter', true)
 	check(row.hover:IsShown(), 'under the mouse: filled')
 	eq(row.hover:GetAlpha(), 0.25, 'at 25%')
-	eq((fill(row.hover)), rgb(colors().button.blue), 'in the accent')
+	eq((fill(row.hover)), rgb(st.config.profile.theme.accent), 'in the accent')
 	stub.fire_script(row, 'OnLeave', true)
 	check(not row.hover:IsShown(), 'left: no fill')
 	look('blizzard')

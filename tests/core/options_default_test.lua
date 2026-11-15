@@ -233,10 +233,10 @@ test("the icon's tooltip says what it does and names the default by the row's ty
 			item = "Hotkey's Show goes back to its default: on.",
 			position = 'Position goes back to its default: the middle.',
 		}
-		-- Text > Grey at rest; under the mouse it lights, in Button > Blue (the accent).
+		-- Text > Grey at rest; under the mouse it lights, in the accent (Theme > Accent).
 		local function rgb(icon) return string.format('%.2f,%.2f,%.2f', icon.icon:GetVertexColor()) end
 		local grey = string.format('%.2f,%.2f,%.2f', st.config.profile.colors.text.grey:GetRGB())
-		local blue = string.format('%.2f,%.2f,%.2f', st.config.profile.colors.button.blue:GetRGB())
+		local blue = string.format('%.2f,%.2f,%.2f', st.config.profile.theme.accent:GetRGB())
 		check(grey ~= blue, 'two colors')
 		for key, line in pairs(want) do
 			local icon = icon_of(by[key])
@@ -244,7 +244,7 @@ test("the icon's tooltip says what it does and names the default by the row's ty
 			stub.fire_script(icon, 'OnEnter', true)
 			eq(tip.lines[1], 'Reset', key .. ': titled Reset')
 			eq(tip.lines[2], line, key)
-			eq(rgb(icon), blue, key .. ': Button > Blue under the mouse')
+			eq(rgb(icon), blue, key .. ': the accent under the mouse')
 			stub.fire_script(icon, 'OnLeave', true)
 			eq(tip.owner, nil, key .. ': its tooltip goes')
 			eq(rgb(icon), grey, key .. ': grey again')
@@ -627,18 +627,19 @@ test("Global settings' Colors and Theme: no Reset buttons; a changed color's own
 		eq(tip.lines[2], ('Mage goes back to its default: %s.'):format(W.HexText(d.r, d.g, d.b, 1, false)), 'naming its hex')
 		stub.fire_script(icon_of(c), 'OnLeave', true)
 		-- Its colors are read as it's painted: a new Text > Grey at rest once
-		-- drawn again, a new Button > Blue lit on its next hover.
+		-- drawn again, a new Theme > Accent lit on its next hover.
 		local function rgb(icon) return string.format('%.2f,%.2f,%.2f', icon.icon:GetVertexColor()) end
-		local buttonBlue = st.config.profile.colors.button.blue
+		local accent = st.config.profile.theme.accent
 		colorCell('text', 'grey').widget:Commit(0.3, 0.6, 0.9)
 		eq(rgb(icon_of(cell('MAGE'))), '0.30,0.60,0.90', 'a new Text > Grey at rest, drawn again')
-		colorCell('button', 'blue').widget:Commit(0.9, 0.1, 0.2, buttonBlue.a)
+		accent:SetRGB(0.9, 0.1, 0.2)
+		colorCell('text', 'grey').widget:Commit(0.3, 0.6, 0.9) -- drawn again
 		eq(rgb(icon_of(cell('MAGE'))), '0.30,0.60,0.90', 'still grey at rest')
 		stub.fire_script(icon_of(cell('MAGE')), 'OnEnter', true)
-		eq(rgb(icon_of(cell('MAGE'))), '0.90,0.10,0.20', 'the new Button > Blue under the mouse')
+		eq(rgb(icon_of(cell('MAGE'))), '0.90,0.10,0.20', 'the new accent under the mouse')
 		stub.fire_script(icon_of(cell('MAGE')), 'OnLeave', true)
 		stub.click(icon_of(colorCell('text', 'grey')))
-		stub.click(icon_of(colorCell('button', 'blue')))
+		accent:SetRGB(0, 0.68, 0.94)
 		c = cell('MAGE')
 		for i = #changed, 1, -1 do changed[i] = nil end
 		stub.click(icon_of(c))
@@ -648,14 +649,14 @@ test("Global settings' Colors and Theme: no Reset buttons; a changed color's own
 		probe.OnColorsChanged = nil
 
 		-- A Buttons color names its opacity.
-		local blue = st.config.profile.colors.button.blue
-		colorCell('button', 'blue').widget:Commit(blue.r, blue.g, blue.b, 0.5)
-		stub.fire_script(icon_of(colorCell('button', 'blue')), 'OnEnter', true)
-		local db = st.defaults.colors.button.blue
-		eq(tip.lines[2], ('Blue goes back to its default: %s.'):format(W.HexText(db.r, db.g, db.b, db.a, true)), 'with its opacity')
+		local hover = st.config.profile.colors.button.hover
+		colorCell('button', 'hover').widget:Commit(hover.r, hover.g, hover.b, 0.5)
+		stub.fire_script(icon_of(colorCell('button', 'hover')), 'OnEnter', true)
+		local db = st.defaults.colors.button.hover
+		eq(tip.lines[2], ('Hover goes back to its default: %s.'):format(W.HexText(db.r, db.g, db.b, db.a, true)), 'with its opacity')
 		check(tip.lines[2]:find('%%') ~= nil, 'a percent in it')
-		stub.click(icon_of(colorCell('button', 'blue')))
-		eq(blue.a, db.a, 'its opacity back')
+		stub.click(icon_of(colorCell('button', 'hover')))
+		eq(hover.a, db.a, 'its opacity back')
 
 		-- Theme: no Reset; Background names its opacity.
 		OW:Navigate('Fonts', { tab = 'theme' })

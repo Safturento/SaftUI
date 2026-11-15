@@ -118,7 +118,7 @@ local function Refresh()
 	local lines = {}
 	for _, mover in ipairs(stack) do
 		if mover == top then
-			lines[#lines + 1] = ColorCode(colors.button.blue) .. '> ' .. Name(mover) .. '|r'
+			lines[#lines + 1] = ColorCode(st:Color('accent')) .. '> ' .. Name(mover) .. '|r'
 		else
 			lines[#lines + 1] = '  ' .. Name(mover)
 			mover.overlay:SetAlpha(DIM_ALPHA)

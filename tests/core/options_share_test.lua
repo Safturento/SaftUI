@@ -169,7 +169,7 @@ local function hover(region, x)
 end
 
 local function rgb(r, g, b) return string.format('%.2f,%.2f,%.2f', r, g, b) end
-local OWN = rgb(unpack(OB.OWN_TEXT))
+local OWN = rgb(st:Color('accent'):GetRGB())
 local function text_rgb(fs) return rgb(fs:GetTextColor()) end
 local function normal() return rgb(st.config.profile.colors.text.normal:GetRGB()) end
 local function grey() return rgb(st.config.profile.colors.text.grey:GetRGB()) end
@@ -332,7 +332,7 @@ test('Thick: an own row has the mark in the padding and a light blue label; a fo
 		check(rel == spacing.frame, 'on its row')
 		eq(p .. ' ' .. relPoint .. ' ' .. x .. ',' .. y, 'TOPLEFT TOPLEFT -9,-6', '9 left of the row frame')
 		eq(parts.mark:GetLeft() - content:GetLeft(), 5, 'at 5 in the slot: inside the panel\'s padding')
-		eq(rgb(unpack(stub.state(parts.mark).color_texture)), rgb(st.config.profile.colors.button.blue:GetRGB()), 'in Button > Blue')
+		eq(rgb(unpack(stub.state(parts.mark).color_texture)), rgb(st.config.profile.theme.accent:GetRGB()), 'in Button > Blue')
 		eq(text_rgb(spacing.label), OWN, 'its label light blue')
 		eq((select(4, point(spacing.label))), 0, 'no shift under Thick')
 		check(not shown(show.frame.share, 'mark'), 'a following row has no mark')
@@ -469,7 +469,7 @@ test('the hover line: it shows on an offering row and stays while the mouse is o
 		eq(parts.reset.icon:GetTexture(), st.icons.rotateCcw)
 		eq(parts.reset:GetWidth() .. 'x' .. parts.reset:GetHeight(), '14x14')
 		eq(parts.all.text:GetText() .. '|' .. parts.multiple.text:GetText(), 'All|Multiple')
-		eq(rgb(parts.all.text:GetTextColor()), rgb(st.config.profile.colors.text.blue:GetRGB()), 'links in Text > Blue')
+		eq(rgb(parts.all.text:GetTextColor()), rgb(st.config.profile.theme.accent:GetRGB()), 'links in Text > Blue')
 		check(parts.all:IsMouseEnabled() and parts.multiple:IsMouseEnabled() and parts.reset:IsMouseEnabled(), 'links take the mouse')
 		check(parts.all:GetFrameLevel() > c.frame:GetFrameLevel(), 'over the row frame')
 
@@ -1303,8 +1303,8 @@ test("a link's click takes its tooltip away, and leaving a link puts its blue ba
 		local body, by = draw(Page('member'))
 		local parts = by.spacing.frame.share
 		stub.fire_script(by.spacing.frame, 'OnEnter', true)
-		local textBlue = rgb(st.config.profile.colors.text.blue:GetRGB())
-		local buttonBlue = rgb(st.config.profile.colors.button.blue:GetRGB())
+		local textBlue = rgb(st.config.profile.theme.accent:GetRGB())
+		local buttonBlue = rgb(st.config.profile.theme.accent:GetRGB())
 		for _, key in ipairs({ 'all', 'multiple' }) do
 			stub.fire_script(parts[key], 'OnEnter', true)
 			eq(rgb(parts[key].text:GetTextColor()), '1.00,1.00,1.00', key .. ' white under the mouse')

@@ -186,7 +186,7 @@ test('Grid, Snap to grid and Snap to frames toggle their settings, show on in th
 		check(settings()[setting] == true and frame.on == true, key .. ': on')
 		eq(st.config.profile.editmode[setting], true, key .. ': saved in the profile')
 		stub.fire_script(frame, 'OnLeave', true)
-		eq(rgb(CreateColor(frame.icon:GetVertexColor())), rgb(st.config.profile.colors.button.blue), key .. ': its icon in the accent')
+		eq(rgb(CreateColor(frame.icon:GetVertexColor())), rgb(st.config.profile.theme.accent), key .. ': its icon in the accent')
 		if key == 'grid' then check(EM.gridFrame:IsShown(), 'the grid shows') end
 		stub.click(frame)
 		check(settings()[setting] == false and not frame.on, key .. ': off again')
@@ -212,7 +212,7 @@ test('Dim world and Coordinates toggle their settings, light in the accent, are 
 	check(settings().coordinates == true and coordinates.on == true, 'Coordinates on')
 	eq(st.config.profile.editmode.coordinates, true, 'saved in the profile')
 	stub.fire_script(coordinates, 'OnLeave', true)
-	eq(rgb(CreateColor(coordinates.icon:GetVertexColor())), rgb(st.config.profile.colors.button.blue), 'its icon in the accent')
+	eq(rgb(CreateColor(coordinates.icon:GetVertexColor())), rgb(st.config.profile.theme.accent), 'its icon in the accent')
 	stub.click(coordinates)
 	check(settings().coordinates == false and not coordinates.on, 'Coordinates off again')
 
@@ -531,7 +531,7 @@ test('a recolor reaches the bar: Button > Blue changes the accent on an icon tha
 	EM:Activate()
 	EM:SetSetting('grid', true)
 	local frame = frame_of('grid')
-	local blue = st.config.profile.colors.button.blue
+	local blue = st.config.profile.theme.accent
 	local r, g, b = blue:GetRGB()
 	blue:SetRGB(0.9, 0.1, 0.2)
 	st:ColorsChanged('button')
@@ -713,7 +713,7 @@ end)
 test("the sidebar's Edit mode button is on in the accent while edit mode is, never green", function()
 	st.Config:Open('Loot')
 	local button = H.frames().actions[1]
-	local green, blue = rgb(st.config.profile.colors.text.green), rgb(st.config.profile.colors.button.blue)
+	local green, blue = rgb(st.config.profile.colors.text.green), rgb(st.config.profile.theme.accent)
 	check(not button.on, 'off while edit mode is')
 	EM:Activate()
 	eq(button.on, true, 'on while edit mode is')
@@ -748,7 +748,7 @@ test("under Blizzard, on both clients: the panel's art, Blizzard's panel buttons
 			eq(frame_of(key).backdropInfo, nil, where .. key .. ': no box')
 		end
 		local grid = frame_of('grid')
-		eq(rgb(CreateColor(grid.icon:GetVertexColor())), rgb(st.config.profile.colors.button.blue), where .. 'Grid on: the icon in the accent')
+		eq(rgb(CreateColor(grid.icon:GetVertexColor())), rgb(st.config.profile.theme.accent), where .. 'Grid on: the icon in the accent')
 		eq(grid.backdropInfo, nil, where .. 'no blue edge')
 		eq(rgb(CreateColor(frame_of('snapGrid').icon:GetVertexColor())), rgb(st.config.profile.colors.text.grey), where .. 'Snap to grid off: grey')
 		local box = frame_of('gridSize')
@@ -765,7 +765,7 @@ test("under Blizzard, on both clients: the panel's art, Blizzard's panel buttons
 		look('thick')
 		check(box.edit.backdropInfo ~= nil, where .. 'back to Thick: the box has its edges again')
 		check(frame_of('exit').backdropInfo ~= nil, where .. 'and Exit its box')
-		eq(rgb(CreateColor(frame_of('grid'):GetBackdropBorderColor())), rgb(st.config.profile.colors.button.blue), where .. 'Grid on: the accent edge')
+		eq(rgb(CreateColor(frame_of('grid'):GetBackdropBorderColor())), rgb(st.config.profile.theme.accent), where .. 'Grid on: the accent edge')
 		EM:Deactivate()
 	end
 	world()

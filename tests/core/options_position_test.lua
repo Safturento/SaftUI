@@ -129,7 +129,7 @@ test('position: the picked dots show the stored points; clicking a dot sets that
 	eq(picked(w.at), '9', 'AT ITS: BOTTOMRIGHT is picked')
 	eq(w.this[3].dot:GetWidth(), 8, 'the picked dot is 8')
 	eq(w.this[1].dot:GetWidth(), 4, 'the others are 4')
-	local br, bg, bb = st.config.profile.colors.button.blue:GetRGB()
+	local br, bg, bb = st.config.profile.theme.accent:GetRGB()
 	eq(dot_color(w.this[3]), rgb_text(br, bg, bb), 'the picked dot is the profile blue')
 	eq(dot_color(w.this[1]), rgb_text(0.333, 0.333, 0.333), 'the others are #555555')
 

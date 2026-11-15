@@ -252,6 +252,8 @@ function TH:GetConfigTable()
 					end,
 				},
 			},
+			-- One accent for every theme, between Background and Options windows.
+			accent = st:GetModule('Colors'):AccentOption(5.5),
 			optionsbackground = OptionsRow(6),
 			window_titles = WindowTitlesGroup(7),
 		},

@@ -193,10 +193,10 @@ local function LookList()
 			row.hover:SetAtlas(look.rowHover)
 			row.hover:SetAlpha(1)
 		else
-			row.hover:SetColorTexture(OB.Blue())
+			row.hover:SetColorTexture(OB.Accent())
 			row.hover:SetAlpha(0.25)
 		end
-		row.mark:SetColorTexture(OB.Blue())
+		row.mark:SetColorTexture(OB.Accent())
 		row.line:SetColorTexture(unpack(OB.HAIRLINE))
 		row.detail:SetTextColor(OB.Grey())
 		W.LookControl(row.revert, blizzard)

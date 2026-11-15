@@ -93,7 +93,7 @@ end
 
 local function rgb(r, g, b) return string.format('%.2f,%.2f,%.2f', r, g, b) end
 local function text_rgb(fs) return rgb(fs:GetTextColor()) end
-local function blue() return rgb(st.config.profile.colors.text.blue:GetRGB()) end
+local function blue() return rgb(st.config.profile.theme.accent:GetRGB()) end
 local function path(name) return st.LSM:Fetch('font', name) end
 local function face_of(fs) local p, size, flags = fs:GetFont(); return p, size, flags end
 
@@ -663,7 +663,7 @@ test('a share on the row: the own mark, the diff icon and Apply to draw as on a 
 		}))
 		local parts = by.a.frame.share
 		check(parts ~= nil and parts.mark:IsShown(), 'the own mark')
-		eq(text_rgb(by.a.label), rgb(unpack(OB.OWN_TEXT)), 'the label is light blue')
+		eq(text_rgb(by.a.label), rgb(st:Color('accent'):GetRGB()), 'the label is the accent')
 		local src = by.b.frame.share
 		check(src ~= nil and src.diff:IsShown(), 'the diff icon on the source row')
 		check(by.a.widget.frame:GetLeft() + by.a.widget:GetWidth() <= by.a.frame:GetRight() + 0.01, 'the control is inside its cell')

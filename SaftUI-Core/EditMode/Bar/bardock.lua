@@ -291,7 +291,7 @@ end
 
 local function ColorStrip()
 	if not strip then return end
-	local r, g, b = st.config.profile.colors.button.blue:GetRGB()
+	local r, g, b = st:Color('accent'):GetRGB()
 	strip.line:SetColorTexture(r, g, b, 1)
 end
 

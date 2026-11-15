@@ -896,7 +896,7 @@ test('a number box lights its edge under the mouse, as the kit\'s input does', f
 	reset()
 	local _, F = open()
 	stub.fire_script(F.red, 'OnEnter', true)
-	local blue = W.Kit.Colors().button.blue
+	local blue = st.config.profile.theme.accent
 	local r = F.red:GetBackdropBorderColor()
 	eq(r, blue.r, 'blue edge')
 	stub.fire_script(F.red, 'OnLeave', true)

@@ -465,7 +465,7 @@ test('the Show group and the filter under Blizzard: the Settings dropdown and th
 	check(left > 6 + 10, 'the text starts clear of the glass')
 	local blue = frame_of('showHidden')
 	local r, g, b = blue.icon:GetVertexColor()
-	local accent = st.config.profile.colors.button.blue
+	local accent = st.config.profile.theme.accent
 	local ar, ag, ab = accent:GetRGB()
 	check(math.abs(r - ar) < 1e-3 and math.abs(g - ag) < 1e-3 and math.abs(b - ab) < 1e-3, 'Show hidden is on: its icon is in the accent')
 	look('thick')

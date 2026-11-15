@@ -20,7 +20,7 @@ local Kit = W.Kit
 	            top left), the box taking the mouse over the art
 	  w.dots    a 16 x 24 button at the cell's right edge, Lucide's
 	            ellipsis-vertical (st.icons.ellipsisVertical) at 16x16 on it,
-	            Text > Grey; under the mouse Text > Blue, or white under
+	            Text > Grey; under the mouse the accent, or white under
 	            Blizzard. A click opens the menu, or closes it when it's this
 	            item's. Shown only when the option has a menu (a table):
 	            w.hasMenu, which the body reads to end the label at the
@@ -50,7 +50,7 @@ local BOX_ROW = 22 -- the Blizzard check box's art is drawn for a row this tall 
 local LABEL_X = 26 -- the name after the box: its 18 and 8
 local DOTS_WIDTH, DOTS_HEIGHT, DOTS_ICON = 16, 24, 16
 
--- A slot's color: Text > Grey, or under the mouse Text > Blue (white under
+-- A slot's color: Text > Grey, or under the mouse the accent (white under
 -- Blizzard, as its Settings panel lights what's under the mouse). The slot is
 -- the item's dots and the font row's link: one look, so they change together.
 local function PaintSlot(button, over)
@@ -60,7 +60,7 @@ local function PaintSlot(button, over)
 	elseif button.blizzard then
 		icon:SetVertexColor(1, 1, 1)
 	else
-		icon:SetVertexColor(Colors().text.blue:GetRGB())
+		icon:SetVertexColor(st:Color('accent'):GetRGB())
 	end
 end
 

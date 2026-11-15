@@ -21,7 +21,7 @@ local Text, Acquire, ReleaseAll = OB.Text, OB.Acquire, OB.ReleaseAll
 
 -- From optionswindow.lua.
 local F, state, pools = S.F, S.state, S.pools
-local Colors, Normal, Grey, Blue, Button = S.Colors, S.Normal, S.Grey, S.Blue, S.Button
+local Colors, Normal, Grey, Accent, Button = S.Colors, S.Normal, S.Grey, S.Accent, S.Button
 local SetNavScroll, Select = S.SetNavScroll, S.Select
 local PAD, FIELD_HEIGHT, TAB_HEIGHT = S.PAD, S.FIELD_HEIGHT, S.TAB_HEIGHT
 local ACTION_PAD, ACTION_HEIGHT, NAV_ITEM = S.ACTION_PAD, S.ACTION_HEIGHT, S.NAV_ITEM
@@ -96,7 +96,7 @@ local function PickedText()
 	return unpack(st.ThemeArt.Control('optionslist').text.picked)
 end
 
--- A sidebar entry's look: the open page's blue fill and bar, or under
+-- A sidebar entry's look: the open page's accent fill and bar, or under
 -- Blizzard (item.blizzard) the Settings panel's category list, the open page
 -- on its picked art (item.listPicked) with its name white and the others
 -- gold; the one under the mouse is lit by OnEnter (item.listHover). Under
@@ -111,9 +111,9 @@ local function StyleNavItem(item)
 	end
 	item.listPicked:SetShown(item.blizzard and item.active or false)
 	if item.active and not item.blizzard then
-		local r, g, b = Blue()
-		item.bg:SetColorTexture(r, g, b, 0.25)
+		item.bg:SetColorTexture(st:ColorRGBA('accent', nil, st.TINT_ROW))
 		item.bg:Show()
+		item.bar:SetColorTexture(Accent()) -- read at each look, so a new accent shows on a pooled entry
 		item.bar:Show()
 	else
 		item.bg:Hide()
@@ -128,7 +128,7 @@ local function MakeNavItem()
 	item.bg = item:CreateTexture(nil, 'BACKGROUND')
 	item.bg:SetAllPoints(item)
 	item.bar = item:CreateTexture(nil, 'ARTWORK')
-	item.bar:SetColorTexture(Blue())
+	item.bar:SetColorTexture(Accent())
 	item.bar:SetPoint('TOPLEFT', item, 'TOPLEFT', 0, 0)
 	item.bar:SetPoint('BOTTOMLEFT', item, 'BOTTOMLEFT', 0, 0)
 	item.bar:SetWidth(2)
@@ -239,7 +239,7 @@ local function MakeTab()
 	tab.text = Text(tab, 'tab')
 	tab.text:SetPoint('BOTTOMLEFT', tab, 'BOTTOMLEFT', 2, 7)
 	tab.underline = tab:CreateTexture(nil, 'OVERLAY')
-	tab.underline:SetColorTexture(Blue())
+	tab.underline:SetColorTexture(Accent())
 	tab.underline:SetPoint('BOTTOMLEFT', tab, 'BOTTOMLEFT', 0, -1)
 	tab.underline:SetPoint('BOTTOMRIGHT', tab, 'BOTTOMRIGHT', 0, -1)
 	tab.underline:SetHeight(2)
@@ -258,7 +258,7 @@ end
 -- A tab's art under Blizzard: the Settings panel's tab (look,
 -- st.ThemeArt.Control('optionstab')), the picked one for the active tab, at
 -- its art's height (at most the tab's) along the tab's bottom, in place of
--- the blue underline. None under Thick and Thin (look nil).
+-- the accent underline. None under Thick and Thin (look nil).
 local function LookTab(tab, look)
 	if not look then
 		W.HideArt(tab)
@@ -287,6 +287,7 @@ local function DrawTabRow(pool, list, active, top, slot)
 		tab:SetSize(width, TAB_HEIGHT)
 		tab:SetPoint('TOPLEFT', F.main, 'TOPLEFT', PAD + x, -y)
 		if tab.active then tab.text:SetTextColor(Normal()) else tab.text:SetTextColor(Grey()) end
+		if tab.active and not S.blizzard then tab.underline:SetColorTexture(Accent()) end
 		tab.underline:SetShown(tab.active and not S.blizzard)
 		LookTab(tab, look)
 		tab:SetAlpha(entry.disabled and 0.4 or 1)
@@ -745,7 +746,7 @@ function S.BuildCollapsed()
 	arrow:SetSize(TITLE_ARROW, TITLE_ARROW)
 	arrow:SetVertexColor(Grey())
 	button:SetScript('OnEnter', function(self)
-		arrow:SetVertexColor(Blue())
+		arrow:SetVertexColor(Accent())
 		W.ShowTip(self, 'Choose a page')
 	end)
 	button:SetScript('OnLeave', function(self)

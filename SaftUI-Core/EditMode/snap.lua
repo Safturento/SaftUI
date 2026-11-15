@@ -247,8 +247,7 @@ function EM:UpdateSnapGuides(rect, xHit, yHit, xSources, ySources)
 	local g = GetGuides()
 	local pixel = st:GetPixelSize(guideFrame) or 1
 	local width, height = UIParent:GetWidth(), UIParent:GetHeight()
-	local color = st.config.profile.colors.button.blue
-	local cr, cg, cb = color:GetRGB()
+	local cr, cg, cb = st:Color('accent'):GetRGB()
 	local any = false
 
 	local function On(hit, sources, low, high)

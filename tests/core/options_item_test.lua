@@ -123,7 +123,7 @@ local function rgb(r, g, b) return string.format('%.2f,%.2f,%.2f', r, g, b) end
 local function text_rgb(fs) return rgb(fs:GetTextColor()) end
 local function vertex(texture) return rgb(texture:GetVertexColor()) end
 local function color(group, key) return rgb(st.config.profile.colors[group][key]:GetRGB()) end
-local OWN = rgb(unpack(OB.OWN_TEXT))
+local OWN = rgb(st:Color('accent'):GetRGB())
 
 local function x_in(region, frame) return region:GetLeft() - frame:GetLeft() end
 
@@ -204,7 +204,7 @@ test('an item: its Show box, its name, its dots', function()
 		eq(dots.icon:GetWidth() .. 'x' .. dots.icon:GetHeight(), '16x16', 'at 16x16')
 		eq(vertex(dots.icon), color('text', 'grey'), 'Text > Grey')
 		stub.fire_script(dots, 'OnEnter', true)
-		eq(vertex(dots.icon), color('text', 'blue'), 'Text > Blue under the mouse')
+		eq(vertex(dots.icon), rgb(st:Color('accent'):GetRGB()), 'the accent under the mouse')
 		stub.fire_script(dots, 'OnLeave', true)
 		eq(vertex(dots.icon), color('text', 'grey'), 'grey again')
 

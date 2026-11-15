@@ -4,7 +4,7 @@ local Kit = W.Kit
 
 --[[
 	The look the options window's controls share (st.OptionsWidgets,
-	optionswidgets.lua): the field font, Box and its blue edge, each
+	optionswidgets.lua): the field font, Box and its accent edge, each
 	control's Blizzard art under SaftUI's theme Blizzard, and the check box
 	the toggle, the multiselect and the check list draw.
 ]]
@@ -81,16 +81,16 @@ local function Box(frame, fill)
 	return frame
 end
 
--- The border color (the hover and focus look is blue).
-local function Edge(frame, blue)
-	if blue then
-		frame:SetBackdropBorderColor(Colors().button.blue:GetRGB())
+-- The border color (the hover and focus look is the accent).
+local function Edge(frame, lit)
+	if lit then
+		frame:SetBackdropBorderColor(st:Color('accent'):GetRGB())
 	else
 		frame:SetBackdropBorderColor(unpack(EDGE))
 	end
 end
 
--- A box that is blue-bordered under the mouse.
+-- A box that is accent-bordered under the mouse.
 local function HoverEdge(frame, isDisabled)
 	frame:SetScript('OnEnter', function(self) if not isDisabled() then Edge(self, true) end end)
 	frame:SetScript('OnLeave', function(self) Edge(self, false) end)
@@ -471,14 +471,14 @@ W.LookDropdown = LookDropdown
 
 ------------------------------------------------------------------ a check box (toggle, multiselect)
 
--- A box of size with a blue square inside when checked: box.mark.
+-- A box of size with an accent square inside when checked: box.mark.
 local function CheckBox(parent, size)
 	local box = Box(st:CreateFrame('CheckButton', nil, parent))
 	box:SetSize(size, size)
 	box.mark = box:CreateTexture(nil, 'OVERLAY')
 	box.mark:SetPoint('TOPLEFT', box, 'TOPLEFT', 3, -3)
 	box.mark:SetPoint('BOTTOMRIGHT', box, 'BOTTOMRIGHT', -3, 3)
-	box.mark:SetColorTexture(Colors().button.blue:GetRGB())
+	box.mark:SetColorTexture(st:Color('accent'):GetRGB())
 	box.mark:Hide()
 	return box
 end
@@ -507,7 +507,7 @@ local function PlaceCheckArt(box, texture)
 end
 
 -- Puts a check box's look on, when it changed: the window's own (Box and the
--- blue mark), or under Blizzard the Settings panel's check box
+-- accent mark), or under Blizzard the Settings panel's check box
 -- (st.ThemeArt.Control('checkbox'), box.look): box.art, its box, check and
 -- highlight, made the first time, each W.CheckArtSize(rowHeight) in size,
 -- on the box's right (align 'RIGHT', the toggle) or left ('LEFT', a row),
@@ -552,6 +552,7 @@ end
 local function SetCheck(box, checked, disabled)
 	checked = checked and true or false
 	box:SetChecked(checked)
+	if checked and not box.blizzard then box.mark:SetColorTexture(st:Color('accent'):GetRGB()) end
 	box.mark:SetShown(checked and not box.blizzard)
 	if box.art then
 		box.art.check:SetShown(checked and box.blizzard or false)

@@ -49,6 +49,7 @@ local KNOB_WIDTH, KNOB_HEIGHT = 6, 14
 -- at its atlas's size, under which the slider centres it. Its value box is
 -- a text box (LookInput).
 local function LookRange(w, blizzard)
+	w.fill:SetColorTexture(st:Color('accent'):GetRGB()) -- at each bind, so a pooled slider follows the accent
 	local art = Art(w.slider)
 	if Changes(art, blizzard) then
 		for _, texture in ipairs(w.flat) do texture:SetShown(not blizzard) end
@@ -128,7 +129,7 @@ builders.range = function(w)
 	inside:SetPoint('TOPLEFT', track, 'TOPLEFT', 1, -1)
 	inside:SetPoint('BOTTOMRIGHT', track, 'BOTTOMRIGHT', -1, 1)
 	local fill = slider:CreateTexture(nil, 'ARTWORK')
-	fill:SetColorTexture(Colors().button.blue:GetRGB())
+	fill:SetColorTexture(st:Color('accent'):GetRGB())
 	fill:SetPoint('TOPLEFT', track, 'TOPLEFT', 1, -1)
 	fill:SetPoint('BOTTOMLEFT', track, 'BOTTOMLEFT', 1, 1)
 	fill:SetWidth(1)

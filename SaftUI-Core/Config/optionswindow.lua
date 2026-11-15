@@ -219,7 +219,7 @@ S.size, S.sidebar, S.bodyWidth = 'full', true, OB.WIDTH
 -- changed (OW.SIZE_GUARD).
 S.keepRow, S.sizedAt = nil, nil
 
-local Colors, Normal, Grey, Blue = OB.Colors, OB.Normal, OB.Grey, OB.Blue
+local Colors, Normal, Grey, Accent = OB.Colors, OB.Normal, OB.Grey, OB.Accent
 
 -- Whether SaftUI's color picker is open (its keys and its changes are its).
 local function ColorPickerShown() return W.ColorPickerShown() end
@@ -834,7 +834,7 @@ local function SamePath(a, b)
 	return true
 end
 
--- A search result's row, once its page is drawn: scrolled to and marked blue.
+-- A search result's row, once its page is drawn: scrolled to and marked in the accent.
 -- A result in an item's menu leaves the item's widget in menuFor, for Draw
 -- to open its menu once the scroll is set.
 local SECTION_REVEAL_GAP = 6 -- a revealed section's title keeps this much above it
@@ -848,7 +848,7 @@ local function BringIntoView()
 			-- The first row of a titled section brings the title into view too.
 			if cell.sectionY and cell.sectionY - SECTION_REVEAL_GAP < top then top = cell.sectionY - SECTION_REVEAL_GAP end
 			S.scrollOffset = max(0, top)
-			cell.label:SetTextColor(Colors().text.blue:GetRGB())
+			cell.label:SetTextColor(st:Color('accent'):GetRGB())
 			if menu then menuFor = cell.widget end
 			return
 		end
@@ -1655,7 +1655,7 @@ end
 
 -- Opens the page and tab that hold the option at path (a list of option keys,
 -- as OW:Open takes: { 'Fonts', 'fonts', 'heading', 'font_name' }) with its row
--- brought into view and its label in Text > Blue by the next render, as a
+-- brought into view and its label in the accent by the next render, as a
 -- search result's click does: the font row's link to a shared font's section
 -- of Global settings > Fonts. As OW:Navigate it leaves search and closes an
 -- open item's menu. Nothing for a path the tree doesn't hold.
@@ -1724,7 +1724,7 @@ S.F, S.Colors, S.Schedule, S.SavePosition, S.SaveWindow, S.Inside = F, Colors, S
 S.ColorPickerShown, S.EscapeKeys = ColorPickerShown, EscapeKeys
 S.SetScroll, S.SetNavScroll = SetScroll, SetNavScroll
 S.FOOTER_MIN_ROOM = FOOTER_MIN_ROOM
-S.state, S.pools, S.Normal, S.Grey, S.Blue, S.Button, S.Select = state, pools, Normal, Grey, Blue, W.Button, Select
+S.state, S.pools, S.Normal, S.Grey, S.Accent, S.Button, S.Select = state, pools, Normal, Grey, Accent, W.Button, Select
 S.PAD, S.FIELD_HEIGHT, S.TAB_HEIGHT = PAD, FIELD_HEIGHT, TAB_HEIGHT
 S.CLOSE_RIGHT, S.CLOSE_TOP = 16, 14 -- the close X's place under Thick and Thin, from the window's top right corner
 S.MINI_PAD, S.Draggable = 8, Draggable -- the bar's close X 8 in from its right; a frame that moves the window

@@ -153,7 +153,7 @@ test("Coordinates shows the selected mover's position, follows a drag, and hides
 	check(EM.coordinates:IsShown(), 'on with a mover selected: shown')
 	eq(EM.coordinates.text:GetText(), 'Top left of the screen: 120, -330', 'its position in words')
 	eq(EM.coordinates.text:GetFontObject(), st:GetFont('pixel'), 'the pixel font')
-	eq(rgb(CreateColor(EM.coordinates.text:GetTextColor())), rgb(st.config.profile.colors.button.blue), 'in the accent')
+	eq(rgb(CreateColor(EM.coordinates.text:GetTextColor())), rgb(st.config.profile.theme.accent), 'in the accent')
 	-- Above the outline at the anchoring corner (TOPLEFT: left aligned).
 	local l, r, b, t = EM.GetOutlineRect(m1)
 	eq(EM.coordinates:GetLeft(), l, 'left aligned with the outline')
@@ -194,7 +194,7 @@ test("Coordinates shows the selected mover's position, follows a drag, and hides
 	EM:UpdateCoordinates()
 
 	-- A recolor reaches it.
-	local blue = st.config.profile.colors.button.blue
+	local blue = st.config.profile.theme.accent
 	local r, g, b = blue:GetRGB()
 	blue:SetRGB(0.2, 0.9, 0.3)
 	st:ColorsChanged('button')

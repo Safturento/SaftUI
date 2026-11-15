@@ -84,19 +84,19 @@ test('its rows, in order, with descs', function()
 		if r.v.type ~= 'group' then check(type(desc) == 'string' and desc ~= '', r.v.name .. ' has a desc') end
 		eq(r.v.width, nil, r.v.name .. ' has no Ace width')
 	end
-	eq(table.concat(names, ','), 'Theme,Border,Outer border,Window background,Background,Options windows,Window titles', 'no Reset row')
-	eq(table.concat(types, ','), 'select,color,color,color,color,select,group')
+	eq(table.concat(names, ','), 'Theme,Border,Outer border,Window background,Background,Accent,Options windows,Window titles', 'no Reset row')
+	eq(table.concat(types, ','), 'select,color,color,color,color,color,select,group')
 
 	local theme = rows[1].v
 	eq(theme.values.thick, 'Thick'); eq(theme.values.thin, 'Thin')
 	eq(theme.values.blizzard, 'Blizzard')
 	eq(theme.values.none, nil, 'None is a module override, not a theme to choose')
 	eq(theme.default, nil, 'Theme itself has no reset')
-	for i = 2, 5 do
+	for i = 2, 6 do
 		local d = rows[i].v.default
 		check(type(d) == 'table' and d.differs and d.reset and d.value, rows[i].v.name .. ' has its own reset')
 	end
-	for i = 2, 4 do
+	for _, i in ipairs({ 2, 3, 4, 6 }) do
 		eq(rows[i].v.hasAlpha, nil, rows[i].v.name .. ' has no opacity slider')
 	end
 	check(rows[5].v.hasAlpha, 'Background has an opacity: its bar reads #RRGGBB · 85%')
@@ -281,7 +281,7 @@ test('a color set recolors without a config update', function()
 	eq(st.config.profile.theme.opacity, 0.5)
 end)
 
-test('a theme or toggle switch runs ThemeChanged: the profile update, which redraws first, then updates the modules, then ColorsChanged(theme)', function()
+test('a theme or toggle switch runs ThemeChanged: the profile update, which redraws first, then updates the modules, then ColorsChanged(theme) and ColorsChanged(accent)', function()
 	-- A module, so the log shows where the modules update.
 	local probe = st:NewModule('ThemeTabProbe')
 	local log, restore = {}, {}
@@ -295,17 +295,17 @@ test('a theme or toggle switch runs ThemeChanged: the profile update, which redr
 	-- st:ThemeChanged is Config:UpdateConfig, the profile update, which
 	-- redraws once before any module lays itself out around the new border.
 	Set('theme', 'thin')
-	eq(table.concat(log, ','), 'UpdateConfig,RedrawThemed,module,ColorsChanged(theme)', 'a theme switch')
+	eq(table.concat(log, ','), 'UpdateConfig,RedrawThemed,module,ColorsChanged(theme),ColorsChanged(accent)', 'a theme switch')
 	eq(st.config.profile.theme.name, 'thin')
 
 	for i = #log, 1, -1 do log[i] = nil end
 	SetAlpha(1)
-	eq(table.concat(log, ','), 'UpdateConfig,RedrawThemed,module,ColorsChanged(theme)', 'going solid, the old toggle')
+	eq(table.concat(log, ','), 'UpdateConfig,RedrawThemed,module,ColorsChanged(theme),ColorsChanged(accent)', 'going solid, the old toggle')
 	eq(st.config.profile.theme.transparent, false)
 
 	for i = #log, 1, -1 do log[i] = nil end
 	SetAlpha(0.8)
-	eq(table.concat(log, ','), 'UpdateConfig,RedrawThemed,module,ColorsChanged(theme)', 'going see-through')
+	eq(table.concat(log, ','), 'UpdateConfig,RedrawThemed,module,ColorsChanged(theme),ColorsChanged(accent)', 'going see-through')
 	eq(st.config.profile.theme.transparent, true)
 
 	for i = #log, 1, -1 do log[i] = nil end
@@ -510,4 +510,33 @@ test('search finds Window titles on the Theme tab, and Kinds of text no longer l
 	for _, r in ipairs(results) do
 		check(not (r.path and table.concat(r.path, '.'):find('kinds.window_titles', 1, true)), 'no result under Kinds of text')
 	end
+end)
+
+test('Accent: one color for every theme, no opacity, its own reset, and it says accent', function()
+	local log = {}
+	local real = st.ColorsChanged
+	st.ColorsChanged = function(_, group) log[#log + 1] = group; return real(st, group) end
+	local row = Tab().args.accent
+	eq(row.name, 'Accent'); eq(row.type, 'color'); eq(row.size, 'small'); eq(row.order, 5.5); eq(row.hasAlpha, nil)
+	check(row.desc:find('accent', 1, true), 'its desc names what it colors')
+	check(row.desc:find('Reload', 1, true) or row.desc:find('reload', 1, true), 'and the reload note')
+	local default = st.defaults.theme.accent
+	eq(Rgb({ default.r, default.g, default.b }), '0,0.68,0.94'); check(default.a == nil or default.a == 1, 'no alpha: fully opaque')
+	eq(Rgb({ Get('accent') }), '0,0.68,0.94')
+	Set('accent', 0.1, 0.2, 0.3)
+	local c = st:Color('accent')
+	eq(Rgb({ c.r, c.g, c.b }), '0.1,0.2,0.3'); check(c == st.config.profile.theme.accent, 'written in place')
+	eq(table.concat(log, ','), 'accent', 'recorded')
+	for _, name in ipairs({ 'blizzard', 'thin', 'thick' }) do
+		Set('theme', name)
+		eq(Rgb({ Get('accent') }), '0.1,0.2,0.3', name .. ': the same accent')
+	end
+	local d = row.default
+	check(d.differs(), 'differs')
+	for i = #log, 1, -1 do log[i] = nil end
+	d.reset()
+	eq(Rgb({ Get('accent') }), '0,0.68,0.94'); eq(table.concat(log, ','), 'accent', 'the reset says accent')
+	check(not d.differs(), 'and no longer differs')
+	eq(Rgb({ d.value() }), '0,0.68,0.94')
+	st.ColorsChanged = real
 end)

@@ -88,6 +88,10 @@ st.defaults.theme = {
 	transparent = true,
 	opacity = 0.9,
 	optionsbackground = 'theme',
+	-- SaftUI's accent under every theme (Theme > Accent): what is on, picked,
+	-- current or under the mouse in SaftUI's frames and windows, its links and
+	-- the chat prefix. Read through st:Color('accent'); it has no opacity.
+	accent = CreateColor(0, 0.68, 0.94),
 }
 
 -- Each theme's colors, by its name, and the close button's fill. Thick draws
@@ -128,7 +132,6 @@ st.defaults.colors = {
 		yellow		= CreateColor(200/255, 200/255, 100/255),
 		green		= CreateColor( 60/255, 240/255,  60/255),
 		grey		= CreateColor(180/255, 180/255, 180/255),
-		blue		= CreateColor(0.0, 0.68, 0.94, 1),
 		cyan        = CreateColor(120/255, 202/255, 250/255),
 		white		= CreateColor(1, 1, 1),
 	},
@@ -137,8 +140,6 @@ st.defaults.colors = {
 		hover 		=  CreateColor(0.3, 0.5, 0.7, 0.8),
 		pushed		=  CreateColor(0.3, 0.4, 0.5, 0.8),
 		red			=  CreateColor(0.6, 0.1, 0.1, 0.8),
-		green		=  CreateColor(0.1, 0.6, 0.1, 0.8),
-		blue		=  CreateColor(0.0, 0.68, 0.94, 0.8),
 		grey		=  CreateColor(st.normalizeRGB(150, 150,  150)),
 	},
 	roles = {

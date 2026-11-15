@@ -71,8 +71,7 @@ function Draw()
 	local cx, cy = EM:GetGridCenter()
 	local size = settings.grid_size
 
-	local blue = st.config.profile.colors.button.blue
-	local centerR, centerG, centerB = blue:GetRGB()
+	local centerR, centerG, centerB = st:Color('accent'):GetRGB()
 
 	local used = 0
 	local function Place(line, isCenter)

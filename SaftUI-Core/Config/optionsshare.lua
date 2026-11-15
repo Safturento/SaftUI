@@ -17,26 +17,26 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	What each piece draws, from OM.ShareState (rows of a type
 	OB.SHARE_KINDS marks 'row': toggle, range, select, input, color, item, font; a
 	position row, 'mark', gets the mark alone, its title carrying the rest):
-	  - the mark (state.marked): a 2px line in Button > Blue, 6 in from the
+	  - the mark (state.marked): a 2px line in the accent (Theme > Accent), 6 in from the
 	    row's top and bottom, the metrics' markX in from its slot's left
 	    (under Thick and Thin inside the panel's padding), and what it marks
 	    (the label, the position block, the title) moves the metrics'
 	    markShift right (under Blizzard 6, inside the cell). A marked row's
-	    label is OB.OWN_TEXT while the row isn't disabled (cell.ownLabel, so
+	    label is the accent at OB.OWN_STRENGTH while the row isn't disabled (cell.ownLabel, so
 	    the body's Refresh keeps it once the row is enabled mid-drag).
 	  - the diff icon (state.differs): st.icons.diff, 16x16, OB.DIFF_COLOR, 4
 	    after the label's text (its string width, at most the label's
 	    width; the label leaves the icon its room), on a frame that takes
 	    the mouse. Its tooltip: the row's name, '<source>: <shared>' (not
 	    for an item), then a line per page that differs in two columns, the
-	    page on the left and its value on the right in OB.OWN_TEXT.
+	    page on the left and its value on the right in the accent.
 	  - the hover line (state.offers, on a row that isn't disabled): the
 	    small font under the label. On a member page Own (its tooltip: the
 	    name and '<source>: <shared>'), the reset icon (st.icons.rotateCcw,
-	    14x14, grey, lit blue under the mouse; its tooltip says what it
+	    14x14, grey, lit in the accent under the mouse; its tooltip says what it
 	    drops), then '· Apply to: All
 	    | Multiple'; on the source page 'Apply to: All | Multiple'. The links
-	    are frames that take the mouse (Text > Blue, white under it), the
+	    are frames that take the mouse (the accent, white under it), the
 	    line 4 levels over the row frame and they one over the line, so they
 	    are above every part of the control. Reset runs OM.ShareCall(root,
 	    row, 'reset'), All 'applyAll', Multiple opens W.OpenApplyList with
@@ -67,7 +67,7 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	    once the body's view (the content's parent) isn't under the mouse,
 	    or neither the row frame nor the line is (IsMouseOver), unless the
 	    Apply list it opened is open. A row that offers nothing never moves.
-	  - a section title (a position block's): OB.OWN_TEXT when marked (and
+	  - a section title (a position block's): the accent at OB.OWN_STRENGTH when marked (and
 	    markShift right), the diff icon after its text, the hover line
 	    inline 8 after the text (or the icon). It shows while the mouse is
 	    on the title's line (a pooled frame over it), the block's row frame
@@ -113,7 +113,6 @@ local TITLE_GAP = 8 -- a title's line after its text or icon
 
 local Colors = OB.Colors
 local function Grey() return Colors().text.grey:GetRGB() end
-local function LinkBlue() return Colors().text.blue:GetRGB() end
 
 ------------------------------------------------------------------ tooltips
 
@@ -134,7 +133,7 @@ end
 
 -- The reset icon, which a shared row's hover line (Reset) and a setting's
 -- own reset (OB.PlaceDefault) both draw: a 14x14 button holding Lucide's
--- rotate-ccw (st.icons.rotateCcw), Text > Grey at rest, lit in Button > Blue
+-- rotate-ccw (st.icons.rotateCcw), Text > Grey at rest, lit in the accent
 -- (the accent) under the mouse; each read as it's painted, so a color
 -- change shows on its next place or hover. tip(self) shows its tooltip; a
 -- click hides that, then runs onClick(self).
@@ -149,7 +148,7 @@ local function ResetIcon(parent, tip, onClick)
 	ResetAtRest(button)
 	button:SetScript('OnEnter', function(self)
 		tip(self)
-		self.icon:SetVertexColor(Colors().button.blue:GetRGB())
+		self.icon:SetVertexColor(st:Color('accent'):GetRGB())
 	end)
 	button:SetScript('OnLeave', function(self)
 		Untip(self)
@@ -180,14 +179,14 @@ end
 
 -- The diff icon's tooltip: the name, the source's value (not for an item),
 -- then a line per page that differs, the page on the left and its value on
--- the right in light blue, as the mockup's two columns.
+-- the right in the accent, as the mockup's two columns.
 local function DiffTip(host, owner)
 	local state, name = host.shareState, host.shareCell.row.name
 	GameTooltip:SetOwner(owner, 'ANCHOR_TOPLEFT')
 	GameTooltip:AddLine(name, 1, 1, 1)
 	if not state.item then GameTooltip:AddLine(SourceLine(state), Grey()) end
 	for _, entry in ipairs(state.differs) do
-		GameTooltip:AddDoubleLine(entry.name, entry.value, nil, nil, nil, unpack(OB.OWN_TEXT))
+		GameTooltip:AddDoubleLine(entry.name, entry.value, nil, nil, nil, st:Color('accent'):GetRGB())
 	end
 	GameTooltip:Show()
 end
@@ -271,13 +270,13 @@ local function Piece(host, line, key, frameType)
 	end)
 	piece:SetScript('OnLeave', function(self)
 		Untip(self)
-		if self.text and self.lit then self.text:SetTextColor(LinkBlue()) end
-		if self.icon then self.icon:SetVertexColor(Colors().button.blue:GetRGB()) end
+		if self.text and self.lit then self.text:SetTextColor(OB.Accent()) end
+		if self.icon then self.icon:SetVertexColor(st:Color('accent'):GetRGB()) end
 	end)
 	return piece
 end
 
--- A link of the line: its text in Text > Blue, white under the mouse.
+-- A link of the line: its text in the accent, white under the mouse.
 local function Link(host, line, key, label, onClick)
 	local link = Piece(host, line, key, 'Button')
 	link.text = OB.Text(link, 'small')
@@ -404,10 +403,10 @@ local function FillLine(parts, state, room)
 		end
 		x = x + width + (gap or 0)
 	end
-	parts.ownText.text:SetTextColor(unpack(OB.OWN_TEXT))
+	parts.ownText.text:SetTextColor(st:ColorRGBA('accent', nil, OB.OWN_STRENGTH))
 	ResetAtRest(parts.reset)
 	for _, link in ipairs({ parts.all, parts.multiple }) do
-		link.text:SetTextColor(LinkBlue())
+		link.text:SetTextColor(OB.Accent())
 		link:SetWidth(TextWidth(link.text))
 	end
 	parts.sep:SetTextColor(Grey())
@@ -535,7 +534,7 @@ function OB.PlaceShare(cell)
 	local shift = state.marked and metrics.markShift or 0
 	if state.marked then
 		local mark = parts.mark
-		mark:SetColorTexture(Colors().button.blue:GetRGB())
+		mark:SetColorTexture(st:Color('accent'):GetRGB())
 		mark:ClearAllPoints()
 		mark:SetPoint('TOPLEFT', frame, 'TOPLEFT', metrics.markX - metrics.pad, -MARK_INSET)
 		mark:SetSize(MARK_WIDTH, max(1, cell.height - 2 * MARK_INSET))
@@ -546,9 +545,9 @@ function OB.PlaceShare(cell)
 			cell.widget:SetPoint('TOPLEFT', frame, 'TOPLEFT', shift, -6)
 			return
 		end
-		-- Light blue while it isn't disabled; Refresh brings it back once enabled.
+		-- The accent while it isn't disabled; Refresh brings it back once enabled.
 		cell.ownLabel = true
-		if not row.disabled then cell.label:SetTextColor(unpack(OB.OWN_TEXT)) end
+		if not row.disabled then cell.label:SetTextColor(st:ColorRGBA('accent', nil, OB.OWN_STRENGTH)) end
 	end
 	if not isRow then return end
 
@@ -633,7 +632,7 @@ function OB.PlaceShareTitle(body, entry, title)
 
 	local shift = state.marked and metrics.markShift or 0
 	if state.marked then
-		title:SetTextColor(unpack(OB.OWN_TEXT))
+		title:SetTextColor(st:ColorRGBA('accent', nil, OB.OWN_STRENGTH))
 		title:ClearAllPoints()
 		title:SetPoint('TOPLEFT', content, 'TOPLEFT', shift, -entry.titleY)
 	end

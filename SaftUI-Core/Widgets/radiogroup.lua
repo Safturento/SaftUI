@@ -24,7 +24,7 @@ local st = SaftUI
 -- The picked button's blue border. Kept through a theme recolor; a control's
 -- border under Blizzard is left alone (st:SetBorderColor).
 local function ColorPicked(button)
-    st:SetBorderColor(button.backdrop, st.config.profile.colors.button.blue:GetRGB())
+    st:SetBorderColor(button.backdrop, st:Color('accent'):GetRGB())
 end
 
 function st:CreateRadioGroup(name, parent, options)

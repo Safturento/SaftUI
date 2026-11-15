@@ -362,9 +362,9 @@ function OW.MiniShift(L)
 end
 
 -- The name on the sidebar and the bar: "Saft" in the text colour, "UI" in the
--- accent (Button > Blue), read at each draw so a change of colour shows.
+-- accent (Theme > Accent), read at each draw so a change of colour shows.
 function OW.BrandText()
-	local r, g, b = OB.Blue()
+	local r, g, b = OB.Accent()
 	return ('Saft|cff%02x%02x%02xUI|r'):format(floor(r * 255 + 0.5), floor(g * 255 + 0.5), floor(b * 255 + 0.5))
 end
 

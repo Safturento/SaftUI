@@ -255,14 +255,26 @@ function st:ShortBindingKey(key)
 	return prefix .. short
 end
 
-local title = "|cff00adefSaftUI|r"
+-- The chat prefix: SaftUI in the accent (Theme > Accent), read at each print.
+-- While the defaults don't exist yet (Core is still loading) it is the shipped
+-- accent's hex. A channel is rounded to a whole 0-255, as the Colors tab's hex.
+local SHIPPED_ACCENT_HEX = '00adf0'
+local function Title()
+	local defaults = st.defaults
+	local hex = SHIPPED_ACCENT_HEX
+	if defaults and defaults.theme and defaults.theme.accent then
+		local r, g, b = st:Color('accent'):GetRGB()
+		hex = ('%02x%02x%02x'):format(math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5), math.floor(b * 255 + 0.5))
+	end
+	return '|cff' .. hex .. 'SaftUI|r'
+end
 
 function st:Print(...)
-	print(('[%s]: '):format(title), ...)
+	print(('[%s]: '):format(Title()), ...)
 end
 
 function st:Error(...)
-	print(('[%s |cFFFF0000Error|r]: '):format(title), ...)
+	print(('[%s |cFFFF0000Error|r]: '):format(Title()), ...)
 end
 
 function st:Debug(module, ...)

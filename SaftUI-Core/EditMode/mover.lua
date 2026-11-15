@@ -84,7 +84,8 @@ end
 -- takes the highlight color, so the outline sits exactly where a SaftUI
 -- frame's own border line is, and gaps between frames look the same in edit
 -- mode as out of it. The fill stays see-through so the frame shows; the
--- selected frame's is tinted blue, since a 1px line alone is easy to miss.
+-- selected frame's is tinted in the accent, since a 1px line alone is easy to
+-- miss.
 -- The overlay is a control, so under Blizzard SaftUI draws no line or fill and
 -- the selection art above shows instead, the kit for selected or not.
 local function SetBorderColor(mover, selected)
@@ -97,8 +98,8 @@ local function SetBorderColor(mover, selected)
 	local backdrop = overlay.backdrop
 	local r, g, b = 1, 1, 1
 	if selected then
-		r, g, b = st.config.profile.colors.button.blue:GetRGB()
-		backdrop:SetBackdropColor(r, g, b, 0.15)
+		r, g, b = st:Color('accent'):GetRGB()
+		backdrop:SetBackdropColor(st:ColorRGBA('accent', nil, st.TINT_OBJECT))
 	else
 		backdrop:SetBackdropColor(0, 0, 0, 0.3)
 	end
@@ -352,10 +353,11 @@ function EM:CreateMover(key, def)
 end
 
 -- A theme recolor (or redraw) gives every drawn frame the theme's colors; the
--- overlays take their own back. Every group is passed on ('ColorsChanged': the
--- bar's accent follows Button > Blue).
+-- overlays take their own back, and a selected one follows the accent at once.
+-- Every group is passed on ('ColorsChanged': the bar's accent follows
+-- Theme > Accent).
 function EM:OnColorsChanged(group)
-	if group == 'theme' then
+	if group == 'theme' or group == 'accent' then
 		for _, mover in pairs(self.movers) do
 			SetBorderColor(mover, mover == self.selected)
 		end

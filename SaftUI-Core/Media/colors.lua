@@ -5,7 +5,8 @@ local CO = st:NewModule('Colors')
 -- Tells every module that shows profile colors that a group of them changed
 -- (the Colors tab calls this after an edit). group is 'text', 'button',
 -- 'class', 'roles', 'reaction', 'renown', 'factions', 'power', 'item_quality',
--- 'loot', 'status', 'threat' or 'objectives'. Each module's
+-- 'loot', 'status', 'threat' or 'objectives', or 'accent' (Theme > Accent,
+-- which fires after every 'theme' too). Each module's
 -- OnColorsChanged(group) runs in xpcall, so one that errors doesn't stop the
 -- rest.
 function st:ColorsChanged(group)
@@ -120,10 +121,21 @@ CO.MIGRATION_STEPS = {
 		},
 		retire = { 'text.purple', 'button.yellow' },
 	},
+	{
+		-- Blue leaves the Colors tab for the theme's one accent. The accent
+		-- takes Buttons > Blue, never Text > Blue (that went to Tank and
+		-- Alliance at step 1; a change made after it goes nowhere).
+		copy = { { 'button.blue', 'accent' } },
+		retire = { 'button.blue', 'text.blue', 'button.green' },
+	},
 }
 
+-- 'group.key' under profile.colors, or 'accent' for profile.theme.accent
+-- (which has no group: nil, 'accent').
 local function SplitPath(path)
-	return path:match('^([^.]+)%.(.+)$')
+	local group, key = path:match('^([^.]+)%.(.+)$')
+	if group then return group, key end
+	return nil, path
 end
 
 local function Byte(v) return math.floor(v * 255 + 0.5) end
@@ -134,7 +146,7 @@ local function Byte(v) return math.floor(v * 255 + 0.5) end
 -- old value's.
 local function CustomizedColor(profile, path)
 	local group, key = SplitPath(path)
-	local holder = profile.colors[group]
+	local holder = group and profile.colors[group]
 	local saved = type(holder) == 'table' and holder[key]
 	local old = CO.OLD_COLORS[path]
 	if type(saved) ~= 'table' or not old then return nil end
@@ -152,10 +164,19 @@ end
 -- table.
 local function WriteColor(profile, path, c)
 	local group, key = SplitPath(path)
-	local holder = profile.colors[group]
-	if type(holder) ~= 'table' then
-		holder = {}
-		profile.colors[group] = holder
+	local holder
+	if group then
+		holder = profile.colors[group]
+		if type(holder) ~= 'table' then
+			holder = {}
+			profile.colors[group] = holder
+		end
+	else
+		holder = profile.theme
+		if type(holder) ~= 'table' then
+			holder = {}
+			profile.theme = holder
+		end
 	end
 	local dest = holder[key]
 	if type(dest) == 'table' then
@@ -174,7 +195,7 @@ local function RunStep(profile, step)
 	end
 	for _, path in ipairs(step.retire or {}) do
 		local group, key = SplitPath(path)
-		local holder = profile.colors[group]
+		local holder = group and profile.colors[group]
 		if type(holder) == 'table' then holder[key] = nil end
 	end
 end
@@ -227,7 +248,6 @@ CO.SECTIONS = {
 			{ 'orange', 'Orange', "A unit frame's level tag for a somewhat higher level, and the poor end of the micro menu's stats. Also a durability from 20% to 49% in the durability figure's tooltip." },
 			{ 'yellow', 'Yellow', "A unit frame's level tag near your level, unfriendly names, and the micro menu's alert flash and the middle of its stats." },
 			{ 'green', 'Green', "Good things: a lower level's tag, bag item levels for a Bind on Equip item, the winner's roll in the loot feed's roll tooltip, and the good end of the micro menu's stats. Also a durability from 50% up in the durability figure's tooltip." },
-			{ 'blue', 'Blue', "Selected options window tabs and rows." },
 			{ 'cyan', 'Cyan', 'Warbound item levels and the warband bank count in bags.' },
 			{ 'white', 'White', 'Plain item levels and counts in bags, and item levels on the character frame.' },
 		}),
@@ -239,8 +259,6 @@ CO.SECTIONS = {
 			{ 'hover', 'Hover', "A checked check box, a hovered scroll bar thumb, the minimap tracking button's hover, micro menu button highlights and resize handles." },
 			{ 'pushed', 'Pushed', 'A pressed SaftUI button, scroll bar thumb or micro menu button.' },
 			{ 'red', 'Red', "Locked bank slots, and the flash on an action bar or totem button." },
-			{ 'green', 'Green', "The border of an equipped item's action button." },
-			{ 'blue', 'Blue', 'The accent color: hovered and active controls, the options window\'s tabs and slider fill, loot roll timer bars, and the border and label of a loot roll you\'ve chosen on.' },
 			{ 'grey', 'Grey', "The combined bank's visibility toggle and the edit mode picker's hint line." },
 		}),
 	},
@@ -442,6 +460,54 @@ local function SectionGroup(section, index)
 		name = section.name,
 		desc = section.note,
 		args = args,
+	}
+end
+
+------------------------------------------------------------------ the accent
+
+-- The profile's own accent object, the one a set and a reset write into: the
+-- active profile's theme.accent (AceDB's filled color, with its methods), made
+-- when a profile has none. Never the default's object.
+local function ProfileAccent()
+	local theme = st.config.profile.theme
+	local c = theme.accent
+	if type(c) ~= 'table' or not c.GetRGB then
+		c = CreateColor(st.defaults.theme.accent.r, st.defaults.theme.accent.g, st.defaults.theme.accent.b)
+		theme.accent = c
+	end
+	return c
+end
+
+-- The Accent row of Global settings > Theme (Media/theme.lua places it): one
+-- color for every theme, with no opacity and its own reset. A set or a reset
+-- says 'accent', which what draws in the accent listens for.
+function CO:AccentOption(order)
+	return {
+		type = 'color',
+		size = 'small',
+		order = order,
+		name = 'Accent',
+		desc = "SaftUI's accent under every theme: what is on, picked, current or under the mouse in SaftUI's frames and windows, its links, and the chat prefix. " .. RELOAD_NOTE,
+		get = function()
+			return st:Color('accent'):GetRGB()
+		end,
+		set = function(_, r, g, b)
+			local c = ProfileAccent()
+			c.r, c.g, c.b = r, g, b
+			st:ColorsChanged('accent')
+		end,
+		default = {
+			differs = function() return not SameColor(st:Color('accent'), st.defaults.theme.accent) end,
+			reset = function()
+				local from, c = st.defaults.theme.accent, ProfileAccent()
+				c.r, c.g, c.b = from.r, from.g, from.b
+				st:ColorsChanged('accent')
+			end,
+			value = function()
+				local from = st.defaults.theme.accent
+				return from.r, from.g, from.b
+			end,
+		},
 	}
 end
 

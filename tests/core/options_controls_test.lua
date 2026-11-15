@@ -21,7 +21,7 @@ if not _G.GameTooltip then CreateFrame('GameTooltip', 'GameTooltip', UIParent, '
 local function colors() return st.config.profile.colors end
 local function color_of(c) return string.format('%.2f,%.2f,%.2f', c:GetRGB()) end
 local function rgb(r, g, b) return string.format('%.2f,%.2f,%.2f', r, g, b) end
-local BLUE = function() return color_of(colors().button.blue) end
+local BLUE = function() return color_of(st.config.profile.theme.accent) end
 local GREY = function() return color_of(colors().text.grey) end
 local NORMAL = function() return color_of(colors().text.normal) end
 local function vertex(texture) return rgb(texture:GetVertexColor()) end

@@ -56,3 +56,81 @@ test('ColorRGBA returns the color\'s r, g and b first', function()
 	local c = st.config.profile.colors.loot.transmog
 	eq(r, c.r); eq(g, c.g); eq(b, c.b)
 end)
+
+-- The accent: st.config.profile.theme.accent, read through the accessor.
+
+test("Color('accent') is the profile's theme.accent; a key passed is ignored", function()
+	check(st:Color('accent') == st.config.profile.theme.accent)
+	check(st:Color('accent', 'anything') == st.config.profile.theme.accent)
+	st.config:SetProfile('Two'); check(st:Color('accent') == st.config.profile.theme.accent)
+	eq(select(4, st:ColorRGBA('accent', nil, 0.25)), 0.25, 'a strength over the accent, which has no alpha')
+	local r, g, b = st:ColorRGBA('accent')
+	eq(r, 0); eq(g, 0.68); eq(b, 0.94)
+end)
+
+test("a theme.accent that is not a color reads as the default", function()
+	local keep = st.config.profile.theme.accent
+	st.config.profile.theme.accent = 'x'
+	check(st:Color('accent') == st.defaults.theme.accent)
+	st.config.profile.theme.accent = keep
+end)
+
+-- A recording of st:ColorsChanged for fn.
+local function Recorded(fn)
+	local log, real = {}, st.ColorsChanged
+	st.ColorsChanged = function(_, group) log[#log + 1] = group; return real(st, group) end
+	fn()
+	st.ColorsChanged = real
+	return table.concat(log, ',')
+end
+
+test('a profile update fires accent after theme', function()
+	local log = Recorded(function() st.config:SetProfile('Three') end)
+	check(log:find('theme,accent$'), 'theme then accent at the end: ' .. log)
+end)
+
+test('a profile update in combat: migrated at once, theme then accent after combat', function() -- Review Focus 2
+	local old = { colors = { button = { blue = { r = 0.5 } } } }
+	SaftUI_DB.profiles.Combat = old
+	local log = Recorded(function()
+		stub.in_combat = true
+		st.config:SetProfile('Combat')
+		eq(st.config.profile.colors.version, #st:GetModule('Colors').MIGRATION_STEPS, 'migrated at once')
+		eq(st.config.profile.theme.accent.r, 0.5, 'the destination written now')
+		eq(#stub.blocked, 0)
+		stub.in_combat = false
+	end)
+	check(not log:find('theme', 1, true) and not log:find('accent', 1, true), 'neither in combat: ' .. log)
+	log = Recorded(function() stub.fire_event('PLAYER_REGEN_ENABLED') end)
+	check(log:find('theme,accent$'), 'theme then accent after combat: ' .. log)
+	eq(#stub.blocked, 0)
+	st.config:SetProfile('Two')
+end)
+
+-- What st:Print prints first, with the printed arguments.
+local function Printed(fn)
+	local keep, out = print, {}
+	print = function(...) out[#out + 1] = table.concat({ ... }, ' ') end
+	local ok, err = pcall(fn)
+	print = keep
+	check(ok, tostring(err))
+	return out[1]
+end
+
+test("st:Print's prefix is the accent at print time", function()
+	eq(Printed(function() st:Print('x') end), '[|cff00adf0SaftUI|r]:  x')
+	local accent = st.config.profile.theme.accent
+	accent.r, accent.g, accent.b = 1, 0, 0
+	check(Printed(function() st:Print('x') end):find('^%[|cffff0000SaftUI|r%]'), 'the next print is red')
+	check(Printed(function() st:Error('x') end):find('^%[|cffff0000SaftUI|r '), 'st:Error builds the same prefix')
+	accent.r, accent.g, accent.b = 0, 0.68, 0.94
+end)
+
+test('a print before the defaults exist', function() -- Review Focus 3
+	local keep = st.defaults
+	st.defaults = nil
+	local line = Printed(function() st:Print('x') end)
+	check(line:find('|cff00adf0SaftUI|r', 1, true), 'the shipped hex: ' .. tostring(line))
+	check(Printed(function() st:Error('x') end):find('|cff00adf0SaftUI|r', 1, true), 'and for Error')
+	st.defaults = keep
+end)
