@@ -118,7 +118,7 @@ Where: `OB.FLOAT_GAP` = 6, the title's gap (`optionsbody.lua:133`); the small di
 Standard: the owner's rule, `float-gap` 24 above and below.
 
 **26. Two oranges, five reds. (The two light blues and the two blues are one accent now: color roles, Task 2. The diff orange and the Categories "edited" marker's orange are Muted now: Task 3, `OB.DIFF_STRENGTH`. The Error prefix's pure red is Text > Danger and the close hover's fill is read from `templates.close`: Task 4. The Buttons opacity sliders are drawn: Task 5. Resolved.)**
-Where: Text > Warning #dc9664 (rule editor OR) against the Cooldown Manager's #ff8040 (`Blizzard_CooldownViewer.lua:86`); own #8fd8ff against Text > Shared #78cafa; red as Text > Danger, Buttons > Danger, threat bad, the close fill and (until Task 4) `|cFFFF0000` in the Error prefix; blue as the profile's 0/0.68/0.94 and (until Task 2) the chat prefix `|cff00adef` (`api.lua:122`). None of the kit's own colours is on the Colors tab or follows the theme.
+Where: Text > Warning #dc9664 (rule editor OR) against the Cooldown Manager's #ff8040 (`Blizzard_CooldownViewer.lua:86`); own #8fd8ff against Text > Shared #78cafa; red as Text > Danger, Buttons > Danger, threat bad, the close fill and (until Task 4) `|cFFFF0000` in the Error prefix; blue as the profile's 0/0.68/0.94 and (until Task 2) the chat prefix `|cff00adef` (in `api.lua`). None of the kit's own colours is on the Colors tab or follows the theme.
 Standard: the diff icon in `text-muted` (the old `diff` orange token is gone), own values in the `accent` (the old `own` light blue is gone), `accent` read from the profile everywhere (the chat prefix included), `text-danger` for every error.
 
 **27. Two divider colours on one Thick page.**
