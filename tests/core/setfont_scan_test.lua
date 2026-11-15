@@ -94,13 +94,19 @@ test('no file the TOCs load calls SetFont outside the allowed list and its call 
 	for _, path in ipairs(files) do
 		local allowed = ALLOWED[path]
 		if not (allowed and allowed.any) then
-			local left = {}
-			for receiver, count in pairs(allowed and allowed.calls or {}) do left[receiver] = count end
+			local pinned, seen, byReceiver = allowed and allowed.calls or {}, {}, {}
 			for _, call in ipairs(Calls(read_saftui_source(path))) do
-				if (left[call.receiver] or 0) > 0 then
-					left[call.receiver] = left[call.receiver] - 1
-				else
-					failures[#failures + 1] = ('%s:%d: %s'):format(path, call.line, call.text)
+				seen[call.receiver] = (seen[call.receiver] or 0) + 1
+				byReceiver[call.receiver] = byReceiver[call.receiver] or {}
+				table.insert(byReceiver[call.receiver], call)
+			end
+			-- A receiver over its count lists every call on it (which one is new
+			-- is not known from the source's order).
+			for receiver, count in pairs(seen) do
+				if count > (pinned[receiver] or 0) then
+					for _, call in ipairs(byReceiver[receiver]) do
+						failures[#failures + 1] = ('%s:%d: %s'):format(path, call.line, call.text)
+					end
 				end
 			end
 		end

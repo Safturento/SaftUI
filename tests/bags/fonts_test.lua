@@ -42,6 +42,7 @@ end
 -- before, if given, runs once the profile exists and before anything is made.
 local function window(client, before)
 	fresh(client)
+	load_saftui('SaftUI-Core/Widgets/checkbutton.lua') -- the category's filter box
 	if before then before() end
 	container = CreateFrame('Frame', 'SaftUIBagsFontsTestBag', UIParent)
 	container.id = 'bag'
@@ -133,4 +134,31 @@ test("Title font's desc says it is the category titles' font", function()
 	check(found, 'the row exists')
 	eq(found.desc, 'The font of the category titles.')
 	eq(found.type, 'font')
+end)
+
+test("a category made by INV:CreateCategory draws its title in Title font, Heading by default", function()
+	for _, client in ipairs({ 'forever', 'retail' }) do
+		window(client)
+		local function pool() return {} end -- the slot pool is not under test
+		-- The filter box is Blizzard's check button template, which the stubs lack:
+		-- a check button with its Text, as bags/theme_test.lua makes it.
+		local createFrame = CreateFrame
+		_G.CreateFrame = function(frameType, name, parent, template, ...)
+			local rest = tostring(template or ''):gsub(',?UICheckButtonTemplate', '')
+			local frame = createFrame(frameType, name, parent, rest ~= '' and rest or nil, ...)
+			if template and template:find('UICheckButtonTemplate', 1, true) then
+				frame.Text = frame:CreateFontString(name and name .. 'Text', 'ARTWORK')
+			end
+			return frame
+		end
+		local ok, made = pcall(INV.CreateCategory, INV, 'bag', 'Armor', pool)
+		INV.config.fonts.titles = TYPEFACE
+		local ok2, second = pcall(INV.CreateCategory, INV, 'bag', 'Weapons', pool)
+		_G.CreateFrame = createFrame
+		check(ok and ok2, tostring(made) .. tostring(second))
+		eq(made.header.text:GetFontObject(), st:GetFont('heading'), client .. ': Heading by default')
+		eq(second.header.text:GetFontObject(), st:FontObject(TYPEFACE), client .. ': a typeface')
+		INV.config.fonts.titles = 'heading'
+		eq(#take_errors(), 0, client .. ': no errors')
+	end
 end)

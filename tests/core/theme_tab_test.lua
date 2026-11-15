@@ -497,3 +497,17 @@ test('a Window titles set reaches every header title at once, running FontsChang
 	check(panel.title:GetFontObject() == st:GetFont('normal'), 'back in Text')
 	eq(#take_errors(), 0)
 end)
+
+test('search finds Window titles on the Theme tab, and Kinds of text no longer lists it', function()
+	local root = st.Config:GetOptionsTable()
+	local results = OM.Search(root, 'window titles')
+	check(#results >= 1, 'a result')
+	local found
+	for _, r in ipairs(results) do
+		if r.path and table.concat(r.path, '.') == 'Fonts.theme.window_titles.font' then found = r end
+	end
+	check(found, 'Fonts.theme.window_titles.font is a result')
+	for _, r in ipairs(results) do
+		check(not (r.path and table.concat(r.path, '.'):find('kinds.window_titles', 1, true)), 'no result under Kinds of text')
+	end
+end)

@@ -566,7 +566,7 @@ local TEXT_FONTS = {
 		"The labels of SaftUI's check boxes, such as the bags' filters." },
 }
 
-local TEXT_FONTS_NOTE = 'Which font each kind of text uses. A change shows at once, except where its row says otherwise.'
+local TEXT_FONTS_NOTE = 'Which font each kind of text uses. A change shows at once.'
 
 local function TextFontsGroup()
 	local args = {}
