@@ -3,7 +3,8 @@
 -- highlight, a scroll bar thumb, a radio group's picked button, an action
 -- button's hover, the resize corner, a close button, and the edit mode grid's
 -- centre lines. Each case draws the widget, then changes the color as an edit
--- does (C.edit: set the color, one frame) and reads it back; the cost cases
+-- does outside an edit (set the color, say st:ColorChanged: only that color's
+-- pass runs, so a follower under the wrong key fails) and reads it back; the cost cases
 -- measure st:ColorChanged outside an edit (tests/lib/color_cost.lua).
 -- Edit mode's bar, list and status line are in editmode_colors_test.lua; the
 -- /sui grip is in options_resize_test.lua.
@@ -15,36 +16,37 @@ local T = load_test_file('lib/theme_helpers.lua')
 local C = load_test_file('lib/color_cost.lua')
 local text = T.text
 
-local st = T.client('forever')
-load_saftui('SaftUI-Core/Widgets/checkbutton.lua')
-load_saftui('SaftUI-Core/Widgets/scrollbar.lua')
-load_saftui('SaftUI-Core/Widgets/radiogroup.lua')
-load_editmode()
+local st
+-- A fresh world: Core's helpers, the widgets and edit mode's real files.
+local function build()
+	st = T.client('forever')
+	load_saftui('SaftUI-Core/Widgets/checkbutton.lua')
+	load_saftui('SaftUI-Core/Widgets/scrollbar.lua')
+	load_saftui('SaftUI-Core/Widgets/radiogroup.lua')
+	load_editmode()
+end
+build()
 
 local function color(group, key) return st.config.profile.colors[group][key] end
 
--- Theme > Accent, set as its row does inside an edit.
+-- Theme > Accent, set as its row does, outside an edit (only its pass runs).
 local function accent(r, g, b)
-	C.edit(st, function()
-		st.config.profile.theme.accent:SetRGB(r, g, b)
-		st:ColorChanged('accent')
-		C.step(st)
-	end)
+	st.config.profile.theme.accent:SetRGB(r, g, b)
+	st:ColorChanged('accent')
 end
 local function restore_accent()
 	local d = st.defaults.theme.accent
 	st.config.profile.theme.accent:SetRGB(d.r, d.g, d.b)
 end
 
--- Sets a Buttons color and tells the mechanism, as the Colors row does inside an edit.
+-- Sets a color and tells the mechanism outside an edit: only that color's pass
+-- runs, so a follower under the wrong key, or none, is seen (an edit's end
+-- would run the group's whole pass over it).
 local function pick(group, key, r, g, b, a)
-	C.edit(st, function()
-		local c = color(group, key)
-		c:SetRGB(r, g, b)
-		if a then c.a = a end
-		st:ColorChanged(group, key)
-		C.step(st)
-	end)
+	local c = color(group, key)
+	c:SetRGB(r, g, b)
+	if a then c.a = a end
+	st:ColorChanged(group, key)
 end
 
 local function reset_colors()
@@ -103,10 +105,14 @@ test("a check box's checked fill and highlight follow Hover and Normal; a bare o
 	st:SkinCheckButton(bare, 'bare')
 	pick('button', 'hover', 0.9, 0.2, 0.6, 0.5)
 	eq(text(box:GetCheckedTexture():GetVertexColor()), text(0.9, 0.2, 0.6, 0.5), 'the checked fill follows Hover')
-	eq(text(bare:GetCheckedTexture():GetVertexColor()), text(0.9, 0.2, 0.6, 0.5), 'a bare one too')
+	-- A bare one is restyled by its caller (the bags' veil and eye): its checked texture follows nothing.
+	bare:GetCheckedTexture():SetVertexColor(0, 0, 0, 0.6)
 	pick('button', 'normal', 0.1, 0.8, 0.3, 0.4)
 	eq(text(box:GetHighlightTexture():GetVertexColor()), text(0.1, 0.8, 0.3, 0.4), 'the highlight follows Normal')
-	eq(text(bare:GetHighlightTexture():GetVertexColor()), text(0.1, 0.8, 0.3, 0.4), 'a bare one too')
+	eq(text(bare:GetHighlightTexture():GetVertexColor()), text(0.1, 0.8, 0.3, 0.4), 'a bare one: its highlight follows Normal')
+	eq(text(bare:GetCheckedTexture():GetVertexColor()), text(0, 0, 0, 0.6), "a bare one: its caller's checked color stays")
+	st:ColorsChanged('button')
+	eq(text(bare:GetCheckedTexture():GetVertexColor()), text(0, 0, 0, 0.6), 'through a whole Buttons pass too')
 	local before = text(box:GetCheckedTexture():GetVertexColor())
 	pick('button', 'pushed', 0.3, 0.3, 0.3)
 	eq(text(box:GetCheckedTexture():GetVertexColor()), before, 'Pushed is not read')
@@ -119,6 +125,20 @@ test("a check box's checked fill and highlight follow Hover and Normal; a bare o
 	eq(text(box:GetHighlightTexture():GetVertexColor()), text(1, 1, 1, 1), 'nor its highlight')
 	T.theme('thick')
 	eq(text(box:GetCheckedTexture():GetVertexColor()), text(0.5, 0.5, 0.9, 1), 'back under Thick it draws the color as it is now')
+end)
+
+test("a 'button'-style check box (the currency funnel) follows Hover and Normal the same way; none under Blizzard", function()
+	reset_colors()
+	local box = CreateFrame('CheckButton', nil, UIParent)
+	st:SkinCheckButton(box, 'button')
+	pick('button', 'hover', 0.9, 0.2, 0.6, 0.5)
+	eq(text(box:GetCheckedTexture():GetVertexColor()), text(0.9, 0.2, 0.6, 0.5), 'the checked fill: Hover')
+	pick('button', 'normal', 0.1, 0.8, 0.3, 0.4)
+	eq(text(box:GetHighlightTexture():GetVertexColor()), text(0.1, 0.8, 0.3, 0.4), 'the highlight: Normal')
+	T.theme('blizzard')
+	local fill = text(box:GetCheckedTexture():GetVertexColor())
+	pick('button', 'hover', 0.5, 0.5, 0.9)
+	eq(text(box:GetCheckedTexture():GetVertexColor()), fill, 'Blizzard: not painted')
 end)
 
 test('a scroll bar thumb follows the key of its state: Normal at rest, Hover under the mouse, Pushed held', function()
@@ -267,10 +287,23 @@ test("a pass of a color no widget reads paints nothing: Buttons > Danger, Class 
 	eq(m.forbidden.total, 0)
 end)
 
+test('a whole pass paints every reader as the per-key passes do', function()
+	reset_colors()
+	local button = CreateFrame('Button', nil, UIParent); st:SkinButton(button)
+	local frame = CreateFrame('Frame', nil, UIParent)
+	local close = st:CreateCloseButton(frame)
+	color('button', 'normal'):SetRGB(0.3, 0.2, 0.1)
+	color('text', 'muted'):SetRGB(0.6, 0.5, 0.4)
+	st:ColorsChanged('button'); st:ColorsChanged('text')
+	eq(text(button.hover:GetVertexColor()), text(0.3, 0.2, 0.1, 1), 'a button highlight')
+	eq(text(close.icon:GetVertexColor()), text(0.6, 0.5, 0.4, 1), 'a close cross')
+end)
+
 ------------------------------------------------------------------ cost
 
 for _, theme in ipairs({ 'thick', 'thin', 'blizzard' }) do
 	test(('100 passes over 200 widgets make nothing and allocate under 4 KB (%s)'):format(theme), function()
+		build() -- a fresh world per theme: no widgets piling up from the cases before
 		reset_colors()
 		T.theme(theme)
 		local list = {}
@@ -298,7 +331,7 @@ for _, theme in ipairs({ 'thick', 'thin', 'blizzard' }) do
 		end)())
 		check(m.kb < 4, 'garbage over 100 passes: ' .. m.kb .. ' KB')
 		if theme ~= 'blizzard' then check(m.calls.total >= 100 * 100, 'it does color: ' .. m.calls.total) end
-		C.print('core widgets (' .. theme .. ')', m)
+		C.print('core widgets (' .. theme .. ', 200 widgets)', m)
 		local a = C.measure(function() st:ColorChanged('accent') end, 100)
 		eq(a.forbidden.total, 0, 'an Accent pass: nothing forbidden')
 		check(a.kb < 4, 'an Accent pass: garbage ' .. a.kb .. ' KB')

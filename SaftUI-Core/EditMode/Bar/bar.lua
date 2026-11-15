@@ -371,7 +371,9 @@ function EM:RecolorBar()
 	if not bar then return end
 	local blizzard = W.BlizzardLook()
 	for _, group in ipairs(groups) do
-		for _, control in ipairs(group.built or {}) do
+		local built = group.built -- (nil until built: no table made per pass)
+		for i = 1, built and #built or 0 do
+			local control = built[i]
 			if control.Recolor then
 				control:Recolor(blizzard)
 			elseif control.Look then

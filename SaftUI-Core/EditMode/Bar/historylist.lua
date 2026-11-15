@@ -188,6 +188,7 @@ local function LookList()
 	list.foot1:SetTextColor(OB.Muted())
 	list.foot2:SetTextColor(OB.Muted())
 	W.LookNumberBox(list.box, blizzard)
+	EM.RecolorNumberBox(list.box, blizzard)
 	for _, row in ipairs(list.rows) do
 		if blizzard then
 			row.hover:SetAtlas(look.rowHover)

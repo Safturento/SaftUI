@@ -9,23 +9,30 @@
 -- Real: the /sui window's world (core/options_window_helpers.lua), edit
 -- mode's files and the bar's (load_editmode_bar), every module's real
 -- OnColorsChanged (nothing is reduced to a stand-in), the cost helper.
-local H = load_test_file('core/options_window_helpers.lua')
-load_editmode_bar()
 local C = load_test_file('lib/color_cost.lua')
 local T = load_test_file('lib/theme_helpers.lua')
-local st = SaftUI
-local EM, W, OB = st.EditModeFrames, st.OptionsWidgets, st.OptionsBody
-local History = EM.History
-if not _G.GameTooltip then CreateFrame('GameTooltip', 'GameTooltip', UIParent, 'GameTooltipTemplate') end
+local H, st, EM, W, OB, History
+
+-- A fresh world: the /sui window's, edit mode's files and the bar's. Every case
+-- builds its own (a stub never collects the widgets a case made).
+local function build()
+	reset_world()
+	H = load_test_file('core/options_window_helpers.lua')
+	load_editmode_bar()
+	st = SaftUI
+	EM, W, OB = st.EditModeFrames, st.OptionsWidgets, st.OptionsBody
+	History = EM.History
+	if not _G.GameTooltip then CreateFrame('GameTooltip', 'GameTooltip', UIParent, 'GameTooltipTemplate') end
+end
+build()
 
 local function colors() return st.config.profile.colors end
 local function accent_default() return st.defaults.theme.accent end
 
 -- A mover to select, steps to list, the list open.
-local function setup(floating)
-	if EM.active then EM:Deactivate() end
-	H.close_all()
-	st.config.profile.theme.name = 'thick'
+local function setup(floating, theme)
+	build()
+	st.config.profile.theme.name = theme or 'thick'
 	st:ThemeChanged()
 	if not EM.movers.livecolors then
 		local frame = CreateFrame('Frame', nil, UIParent)
@@ -125,12 +132,13 @@ end)
 
 ------------------------------------------------------------------ edit mode on
 
+for _, theme in ipairs({ 'thick', 'thin', 'blizzard' }) do
 for _, floating in ipairs({ false, true }) do
-	local where = floating and 'the bar floating' or 'the bar docked'
+	local where = (floating and 'the bar floating' or 'the bar docked') .. ', ' .. theme
 	for _, case in ipairs({ { 'text', 'muted' }, { 'text', 'normal' }, { 'accent' } }) do
 		local group, key = case[1], case[2]
 		test(('edit mode on, %s, the History list open: 100 passes of %s %s color only'):format(where, group, tostring(key)), function()
-			setup(floating)
+			setup(floating, theme)
 			local refreshed, laid, placed = 0, 0, 0
 			local realRefresh, realLay, realPlace, realList = EM.RefreshHistoryList, EM.LayoutBar, EM.PlaceBar, EM.RefreshBar
 			EM.RefreshHistoryList = function(...) refreshed = refreshed + 1; return realRefresh(...) end
@@ -151,7 +159,7 @@ for _, floating in ipairs({ false, true }) do
 	end
 
 	test(('edit mode on, %s: a group edit mode does not draw (Class > Mage, Loot, Status) colors nothing'):format(where), function()
-		setup(floating)
+		setup(floating, theme)
 		for _, case in ipairs({ { 'class', 'MAGE' }, { 'loot', 'rare' }, { 'status', 'tapped' }, { 'roles', 'TANK' }, { 'text', 'danger' }, { 'button', 'hover' } }) do
 			local ok = pcall(function()
 				local m = C.measure(function() st:ColorChanged(case[1], case[2]) end, 100)
@@ -163,6 +171,7 @@ for _, floating in ipairs({ false, true }) do
 		end
 		off()
 	end)
+end
 end
 
 ------------------------------------------------------------------ what follows
@@ -244,5 +253,82 @@ test('the bar looks again only for the groups it draws: Theme looks, Text (Norma
 	st:ColorsChanged('text')
 	eq(looks .. '/' .. recolors, '1/1', 'a whole pass of Text recolors once')
 	EM.RefreshBar, EM.RecolorBar = realRefresh, realRecolor
+	off()
+end)
+
+------------------------------------------------------------------ what each part shows after a pass
+
+local function muted_set(r, g, b) colors().text.muted:SetRGB(r, g, b) end
+local function rgb3(...) return T.text(...) end
+
+test('the Show filter hint, the number boxes\' arrows and the status line take Muted (docked)', function()
+	setup(false)
+	muted_set(0.2, 0.7, 0.3)
+	st:ColorChanged('text', 'muted')
+	local want = rgb3(0.2, 0.7, 0.3, 1)
+	eq(rgb3(EM:BarControl('filter').frame.hint:GetTextColor()), want, "the filter's hint")
+	eq(rgb3(EM:BarControl('gridSize').frame.pair.up.arrow:GetVertexColor()), want, "the Grid size's up arrow")
+	eq(rgb3(EM:BarControl('gridSize').frame.pair.down.arrow:GetVertexColor()), want, "the Grid size's down arrow")
+	eq(rgb3(EM.historyList.box.pair.up.arrow:GetVertexColor()), want, "the list box's up arrow")
+	eq(rgb3(EM.statusText:GetTextColor()), want, 'the status line')
+	off()
+end)
+
+test("the floating window's heading, captions and dock follow Text; the arrows rest Muted", function()
+	setup(true)
+	colors().text.normal:SetRGB(0.8, 0.8, 0.2)
+	muted_set(0.2, 0.7, 0.3)
+	st:ColorChanged('text', 'normal')
+	st:ColorChanged('text', 'muted')
+	local window = EM.barWindow
+	eq(rgb3(window.heading:GetTextColor()), rgb3(0.8, 0.8, 0.2, 1), 'the heading: Normal')
+	local seen = 0
+	for _, caption in pairs(window.captions) do
+		seen = seen + 1
+		eq(rgb3(caption:GetTextColor()), rgb3(0.2, 0.7, 0.3, 1), 'a caption: Muted')
+	end
+	check(seen > 0, 'there are captions')
+	eq(rgb3(window.dock.icon:GetVertexColor()), rgb3(0.2, 0.7, 0.3, 1), 'the dock icon: Muted')
+	off()
+end)
+
+test("a hidden History row's label takes the color too (it is drawn by its index when it shows again)", function()
+	setup(false)
+	for i = 1, 8 do
+		History:Push({ kind = 'bulk', label = 'Step ' .. i, changes = {
+			{ kind = 'position', where = 'player', old = { point = 'CENTER', x_off = i, y_off = 0 }, new = { point = 'CENTER', x_off = 0, y_off = 0 } } } })
+	end
+	EM:RefreshHistoryList()
+	History:Clear()
+	History:Push({ kind = 'bulk', label = 'Only', changes = {
+		{ kind = 'position', where = 'player', old = { point = 'CENTER', x_off = 1, y_off = 0 }, new = { point = 'CENTER', x_off = 0, y_off = 0 } } } })
+	EM:RefreshHistoryList()
+	colors().text.normal:SetRGB(0.8, 0.8, 0.2)
+	muted_set(0.2, 0.7, 0.3)
+	st:ColorChanged('text', 'normal')
+	st:ColorChanged('text', 'muted')
+	local hidden = 0
+	for _, row in ipairs(EM.historyList.rows) do
+		if not row:IsShown() and row.index then
+			hidden = hidden + 1
+			local undone = row.index > History:Position()
+			eq(rgb3(row.label:GetTextColor()), undone and rgb3(0.2, 0.7, 0.3, 1) or rgb3(0.8, 0.8, 0.2, 1), 'hidden row ' .. row.index)
+		end
+	end
+	check(hidden > 0, 'a hidden row had an index: ' .. hidden)
+	off()
+end)
+
+test('what a pass skipped while edit mode was off: the status line and the number boxes\' arrows take the current Muted as it comes on', function()
+	setup(false)
+	off()
+	muted_set(0.2, 0.7, 0.3)
+	st:ColorChanged('text', 'muted')
+	EM:Activate()
+	local want = rgb3(0.2, 0.7, 0.3, 1)
+	eq(rgb3(EM.statusText:GetTextColor()), want, 'the status line (Enabled)')
+	eq(rgb3(EM:BarControl('gridSize').frame.pair.up.arrow:GetVertexColor()), want, "the bar's Grid size arrows")
+	EM:ShowHistoryList()
+	eq(rgb3(EM.historyList.box.pair.down.arrow:GetVertexColor()), want, "the History list box's arrows, as it opens")
 	off()
 end)

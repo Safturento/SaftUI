@@ -54,6 +54,11 @@ local function Modules(bar)
 			return width
 		end,
 		Look = function(_, blizzard) W.LookSelectFace(face, blizzard) end,
+		-- A color pass: SaftUI's face is painted again; under Blizzard the face is
+		-- Blizzard's art, which has no SaftUI color (its Look places and sets atlases).
+		Recolor = function(_, blizzard)
+			if not blizzard then W.LookSelectFace(face, false) end
+		end,
 		Refresh = function()
 			face.text:SetText(EM.ShowFaceText(EM:GetModules(), function(name) return EM:IsModuleShown(name) end))
 		end,

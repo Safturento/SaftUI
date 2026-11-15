@@ -53,14 +53,13 @@ end
 -- A check box follows Buttons > Hover (its checked fill) and Normal (its
 -- highlight) at once (st:FollowColor), where it draws SaftUI's flat look;
 -- under Blizzard its art is white and a pass leaves it. A bare one wears the
--- flat look in every theme and follows its textures.
+-- flat look in every theme: its highlight follows, its checked texture is its caller's.
 local function PaintChecked(skin)
 	if not skin.blizzard then skin.checked:SetVertexColor(st:ColorRGBA('button', 'hover')) end
 end
 local function PaintHighlight(skin)
 	if not skin.blizzard then skin.hover:SetVertexColor(st:ColorRGBA('button', 'normal')) end
 end
-local function PaintFlatChecked(texture) texture:SetVertexColor(st:ColorRGBA('button', 'hover')) end
 local function PaintFlatHighlight(texture) texture:SetVertexColor(st:ColorRGBA('button', 'normal')) end
 
 -- Puts a check button's look on, when its Theme and Background
@@ -149,7 +148,8 @@ function st:SkinCheckButton(button, style)
 	end
 
 	if style == 'bare' then
-		st:FollowColor(checked, 'button', 'hover', PaintFlatChecked)
+		-- Only its highlight follows: its caller restyles the checked texture (the
+		-- bags' currency veil and bank eye), which no pass may repaint.
 		st:FollowColor(hover, 'button', 'normal', PaintFlatHighlight)
 		return
 	end

@@ -165,14 +165,12 @@ test('a pick reaches every reader at once, at its opacity (live colors)', functi
 	st:SkinNewScrollBar(bar)
 	local frame = resizable()
 	st:EnableResizing(frame)
-	C.edit(st, function()
-		for key, rgb in pairs({ normal = { 0.1, 0.9, 0.2 }, hover = { 0.8, 0.2, 0.7 }, pushed = { 0.6, 0.6, 0.1 } }) do
-			local c = st.config.profile.colors.button[key]
-			c:SetRGB(unpack(rgb)); c.a = 0.5
-			st:ColorChanged('button', key)
-		end
-		C.step(st)
-	end)
+	-- Outside an edit: only each color's own pass runs, so a follower under the wrong key fails.
+	for key, rgb in pairs({ normal = { 0.1, 0.9, 0.2 }, hover = { 0.8, 0.2, 0.7 }, pushed = { 0.6, 0.6, 0.1 } }) do
+		local c = st.config.profile.colors.button[key]
+		c:SetRGB(unpack(rgb)); c.a = 0.5
+		st:ColorChanged('button', key)
+	end
 	eq(text(button.hover:GetVertexColor()), text(0.1, 0.9, 0.2, 0.5), 'a button highlight')
 	eq(text(button.pushed:GetVertexColor()), text(0.6, 0.6, 0.1, 0.5), 'a button pushed fill')
 	eq(text(box:GetCheckedTexture():GetVertexColor()), text(0.8, 0.2, 0.7, 0.5), 'a check box fill')

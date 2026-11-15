@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-15 — Edit mode: a Theme pass with edit mode on still does the full look and list refresh](#2026-11-15--edit-mode-a-theme-pass-with-edit-mode-on-still-does-the-full-look-and-list-refresh)
   - [2026-11-15 — Forever: Show in > Bank does nothing for the default bank (the combined bank)](#2026-11-15--forever-show-in--bank-does-nothing-for-the-default-bank-the-combined-bank)
   - [2026-11-15 — Auto Vendor counts a fresh purchase in a just-sold slot as a refused sale](#2026-11-15--auto-vendor-counts-a-fresh-purchase-in-a-just-sold-slot-as-a-refused-sale)
   - [2026-11-15 — Auto Vendor's second question overstates the earlier stacks that leave](#2026-11-15--auto-vendors-second-question-overstates-the-earlier-stacks-that-leave)
@@ -185,6 +186,20 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-15 — Edit mode: a Theme pass with edit mode on still does the full look and list refresh
+
+**What:** With edit mode on, a Theme color pass (`st:ColorChanged('theme')`) still runs `EM:RefreshBar()`, the History list's `LookList()` and `EM:RefreshHistoryList()`: the Show filter re-anchors and sets its insets, rows are placed, shown and hidden. With the list open that is about 139 setter calls, 51 forbidden calls (`ClearAllPoints`, `SetPoint`, `Hide`, `Show`, `SetWidth`, `SetHeight`, `SetTextInsets`, `SetTexture`, `SetSize`) and about 6.4 KB per pass, and a drag on the Theme tab's colors runs one every frame. Text and Accent passes are already color-only.
+
+**Why noticed:** The review of live colors Task 2 (Core's widgets and edit mode), finding m3, probe P6. The brief and the spec ("`theme` and `accent` as today", the Theme tab's recolor timed, not changed) kept Theme's full look, so it was left.
+
+**Anchors:** `SaftUI-Core/EditMode/Bar/bar.lua` (`EM:RefreshBar`, `EM:RecolorBar`, the `ColorsChanged` listener), `SaftUI-Core/EditMode/Bar/historylist.lua` (`LookList`, `RecolorList`, the `ColorsChanged` listener), `SaftUI-Core/EditMode/mover.lua` (`EM:OnColorsChanged`), `tests/core/editmode_colors_test.lua`, `.superpowers/sdd/2026-11-15-saftui-live-colors/task-2-review.md`.
+
+**What's been considered:** On `'theme'`, run `EM:RecolorBar()` and the list's recolor when `W.BlizzardLook()` has not changed since the last look, and the full look only when it has (a switch to or from Blizzard). The profile update's `SettingsChanged` already refreshes the list, so the list refresh on Theme could go.
+
+**Shape of work:** Small: remember the last look in `bar.lua` and `historylist.lua`, branch the Theme listeners, and run the edit mode cost cases for a Theme pass under Thick, Thin and Blizzard.
+
+**Open questions:** Whether a Theme pass can change anything but the look's color while the art stays the same (a Background change reaches the bar's backdrop through the theme's own recolor, not here).
 
 ### 2026-11-15 — Forever: Show in > Bank does nothing for the default bank (the combined bank)
 
