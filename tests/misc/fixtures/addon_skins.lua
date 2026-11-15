@@ -27,6 +27,7 @@ end
 local function make_frame(owner, parent)
 	local frame = CreateFrame('Frame', nil, parent or UIParent)
 	frame:SetSize(40, 40)
+	frame:SetFrameLevel(10) -- not the lowest, so a level taken off it shows
 	frame.Icon = frame:CreateTexture(nil, 'ARTWORK')
 	frame.icon = frame.Icon
 	return lock(frame, owner)

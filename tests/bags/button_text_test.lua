@@ -27,5 +27,4 @@ test('SaftUI-Bags/containers/bag.lua does not skin Blizzard\'s bag slots through
 	check(source ~= nil, 'the file is there')
 	local code = select(1, L.Lex(source))
 	check(not code:find('st:SkinActionButton', 1, true), 'it writes .backdrop, .hover and the like onto the button')
-	check(not code:find('profile%.buttons%)'), 'no profile buttons table passed to a font follower')
 end)

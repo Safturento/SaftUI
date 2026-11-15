@@ -47,6 +47,21 @@ local function same_keys(frame, before)
 	return true
 end
 
+-- The skinned guard: a region handed out again is not drawn again, nor listed
+-- twice for UpdateConfig (st:SetBackdropIn reuses the backdrop, so only the
+-- number of draws shows it).
+local function count_draws(frame, run)
+	local real, draws = st.SetBackdropIn, 0
+	st.SetBackdropIn = function(self, backdrops, f, ...)
+		if f == frame then draws = draws + 1 end
+		return real(self, backdrops, f, ...)
+	end
+	local ok, err = pcall(run)
+	st.SetBackdropIn = real
+	assert(ok, err)
+	return draws
+end
+
 test('Hekili: a skinned button gets no field written onto it', function()
 	world()
 	local before = A.keys(A.button)
@@ -63,6 +78,11 @@ test('Hekili: a button is skinned once', function()
 	HK:SkinIcon(nil, 1, 1)
 	HK:SkinIcon(nil, 1, 1)
 	eq(select('#', A.button:GetChildren()), 1, 'one backdrop')
+	local draws = count_draws(A.button, function()
+		HK:SkinIcon(nil, 1, 1)
+		HK:UpdateConfig()
+	end)
+	eq(draws, 1, 'a skinned button is drawn only by UpdateConfig, once')
 end)
 
 test('Hekili: Theme None does not error, and the button is drawn once the theme changes', function()
@@ -95,6 +115,11 @@ test('WeakAuras: a region is skinned once', function()
 	WA:SkinIcon(nil, region, {})
 	WA:SkinIcon(nil, region, {})
 	eq(select('#', region:GetChildren()), 1, 'one backdrop')
+	local draws = count_draws(region, function()
+		WA:SkinIcon(nil, region, {})
+		WA:UpdateConfig()
+	end)
+	eq(draws, 1, 'a skinned region is drawn only by UpdateConfig, once')
 end)
 
 test('WeakAuras: Theme None does not error, and the region is drawn once the theme changes', function()

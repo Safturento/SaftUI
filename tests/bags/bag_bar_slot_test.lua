@@ -45,7 +45,18 @@ local function world()
 	local slots, before = {}, {}
 	for _, name in ipairs(SLOTS) do
 		local slot = make_slot(name)
+		-- Blizzard's parentKey icon, served through the lock's __index (not a raw
+		-- key), so a skin that writes slot.icon again, even the same texture,
+		-- reaches __newindex and fails like a new field.
+		local icon = rawget(slot, 'icon')
+		rawset(slot, 'icon', nil)
 		lock(slot, 'Blizzard')
+		local mt = getmetatable(slot)
+		local methods = mt.__index
+		mt.__index = function(_, key)
+			if key == 'icon' then return icon end
+			return methods[key]
+		end
 		slots[#slots + 1] = slot
 		local keys = {}
 		for key in pairs(slot) do keys[key] = true end
@@ -102,6 +113,7 @@ test('under Thin, Blizzard and None the slots are still skinned with no field wr
 			check(slot:GetHighlightTexture(), theme .. ': hover texture set')
 		end
 	end
+	st.config.profile.buttons.theme = 'theme'
 end)
 
 test("a slot's count text follows Button text, at once", function()

@@ -64,8 +64,9 @@ function INV:MovePlayerBagSlots()
 	end
 end
 
--- SaftUI's pieces of each bag slot, which is Blizzard's secure button: nothing is
--- written onto it (.agents/taint.md, rule 1). Weak tables keyed by the slot.
+-- SaftUI's pieces of each bag slot, which is Blizzard's button (a plain ItemButton,
+-- not secure, on both clients): nothing is written onto it (.agents/taint.md,
+-- rule 1). Weak tables keyed by the slot.
 local slotBackdrops = {} -- the backdrop of SaftUI's behind it (st:SetBackdropIn)
 local slotIcons = {} -- its icon, where Blizzard gave the slot none of its own
 local slotTextures = {} -- its hover, pushed and disabled textures
@@ -73,10 +74,17 @@ for _, weak in ipairs({ slotBackdrops, slotIcons, slotTextures }) do
 	setmetatable(weak, { __mode = 'k' })
 end
 
+-- Core's Button text setting, read when a text follows it.
+local function ButtonsFont() return st.config.profile.buttons.font end
+
 -- Skins a bag slot as st:SkinActionButton skins a button with the profile's
 -- Buttons settings, as a 'slot', without its fields: .backdrop, .thick, .hover,
 -- .pushed and .disabled are kept in the tables above. The state textures are
 -- made here and handed to the setters; RestyleBagSlot gives them their look.
+-- This is a local copy of st:SkinActionButton, kept because that writes fields
+-- onto the button (SaftUI-Core is not this file's to change). Its font part
+-- should switch to st:ApplyButtonFonts(slot, config.font, true) once that Core
+-- helper is in.
 local function SkinBagSlot(slot)
 	local config = st.config.profile.buttons
 	local backdrop = st:SetBackdropIn(slotBackdrops, slot, config.theme, config.background, 'slot')
@@ -124,7 +132,7 @@ local function SkinBagSlot(slot)
 
 		for _, region in pairs({ slot:GetRegions() }) do
 			if region:GetObjectType() == 'FontString' then
-				st:FollowFont(region, function() return st.config.profile.buttons.font end)
+				st:FollowFont(region, ButtonsFont)
 			end
 		end
 
@@ -184,6 +192,7 @@ local function SkinBagSlot(slot)
 			pushed:SetTexture(st.BLANK_TEX)
 			pushed:SetVertexColor(0, 0, 0, .1)
 			slot:SetPushedTexture(pushed)
+			pushed:SetDrawLayer('OVERLAY', 0)
 			textures.pushed = pushed
 		end
 		if slot.SetDisabledTexture then
