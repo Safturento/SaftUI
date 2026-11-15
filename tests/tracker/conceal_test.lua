@@ -32,7 +32,11 @@ local MISC = { skinning = true, skin = true, otp = true }
 local OT, shape_before
 
 -- Every key of Blizzard's tables the tracker owns, and its non-function value:
--- a hook replaces a method on the frame, which isn't a write of a field.
+-- a hook replaces a method on the frame, which isn't a write of a field. SetAlpha
+-- is a C method of the frame's metatable, not a field of the frame: the post-hook
+-- on it (the fade, Task 12) puts the game's wrapper in a field of that name, the
+-- way the hooks on SetPoint, ClearAllPoints and UpdateHeight replace Blizzard's
+-- own, so that one key is left out as theirs are by being functions already there.
 local function shape()
 	local out = {}
 	local frames = { tracker = OT.tracker, container = OT.container, header = OT.tracker.Header,
@@ -41,7 +45,11 @@ local function shape()
 	for label, frame in pairs(frames) do
 		local keys = {}
 		for key, value in pairs(frame) do
-			if type(value) ~= 'function' then keys[#keys + 1] = tostring(key) .. '=' .. tostring(value) else keys[#keys + 1] = tostring(key) end
+			if type(value) ~= 'function' then
+				keys[#keys + 1] = tostring(key) .. '=' .. tostring(value)
+			elseif key ~= 'SetAlpha' then
+				keys[#keys + 1] = tostring(key)
+			end
 		end
 		table.sort(keys)
 		out[label] = table.concat(keys, ' ')

@@ -386,6 +386,14 @@ function IsInInstance()
 	local instance = stub.instance
 	return instance ~= nil, instance and instance.type or 'none'
 end
+-- IsEncounterInProgress() -> inProgress: a global function every boss mod calls,
+-- true from ENCOUNTER_START to ENCOUNTER_END (stub.encounter). It is on both
+-- clients (warcraft.wiki.gg, API IsEncounterInProgress); it is not in the
+-- generated API documentation on either branch of Gethe/wow-ui-source (checked
+-- in the Instance, EncounterJournal, Unit and Frame documentation, 2026-11-14),
+-- so the signature is the wiki's, not Blizzard's source.
+stub.encounter = false
+function IsEncounterInProgress() return stub.encounter == true end
 -- name, instanceType, difficultyID, difficultyName, maxPlayers,
 -- dynamicDifficulty, isDynamic, instanceID, instanceGroupSize, lfgDungeonID.
 -- Outside an instance the game names the continent and gives 0s; here the

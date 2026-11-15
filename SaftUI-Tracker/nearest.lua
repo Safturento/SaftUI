@@ -268,6 +268,25 @@ local function OnLeave(button)
 	if GameTooltip:IsOwned(button) then GameTooltip:Hide() end
 end
 
+-- The nearest button's driver: the pet battle's part of the item driver
+-- constant (TR.ITEM_DRIVER, items.lua) and nothing more, so a change to the
+-- constant (a vehicle condition for the layer, say) never reaches it.
+function TR.NearestDriver()
+	return (TR.ITEM_DRIVER:match('%[petbattle%] hide') or TR.PET_BATTLE_HIDE) .. '; show'
+end
+
+-- Keeps its driver as TR.NearestDriver() says: set out of combat, else queued as
+-- 'tracker_nearest' (the pass at the end of combat is TR:RefreshNearest).
+function TR:SyncNearestDriver()
+	local driver = self.nearestDriver
+	if not driver then return end
+	local want = TR.NearestDriver()
+	if self.nearestDriverSet == want then return end
+	if st:QueueAfterCombat('tracker_nearest', QueuedPass) then return end
+	self.nearestDriverSet = want
+	RegisterStateDriver(driver, 'visibility', want)
+end
+
 -- The button, made once, out of combat, the first time the setting is on (in
 -- combat the pass is queued). Every region it can need is made here.
 function TR:BuildNearestButton()
@@ -276,13 +295,18 @@ function TR:BuildNearestButton()
 	local holder = self.nearestHolder
 	-- The button hides in a pet battle by the item layer's own mechanism: its
 	-- parent is a SecureHandlerStateTemplate frame filling the holder under a
-	-- visibility driver (TR.ITEM_DRIVER, set out of combat, here with the button;
-	-- Task 12 builds it from the settings), so the game hides and shows it with no
-	-- addon Lua, in combat too. The holder itself stays a plain frame for the mover.
+	-- visibility driver (TR.NearestDriver(): the pet battle's part and nothing
+	-- else, set out of combat, here with the button), so the game hides and shows
+	-- it with no addon Lua, in combat too. It is an action button: none of the
+	-- tracker's triggers, Hide quest items with the tracker or the fade touch it
+	-- (TR.Visibility.Driver is the layer's alone). The holder itself stays a plain
+	-- frame for the mover.
 	local driver = CreateFrame('Frame', st.name .. 'TrackerNearestDriver', holder, 'SecureHandlerStateTemplate')
 	driver:SetAllPoints(holder)
 	driver:EnableMouse(false)
-	RegisterStateDriver(driver, 'visibility', TR.ITEM_DRIVER)
+	local want = TR.NearestDriver()
+	RegisterStateDriver(driver, 'visibility', want)
+	self.nearestDriverSet = want
 	self.nearestDriver = driver
 	local button = TR.NewItemButton(driver, st.name .. 'TrackerNearestItem')
 	button:SetPoint('TOPLEFT', holder, 'TOPLEFT', 0, 0)
@@ -468,6 +492,7 @@ function TR:RefreshNearest()
 		DimNearest(self)
 		return
 	end
+	self:SyncNearestDriver()
 	if not config.nearest then
 		if self.nearestButton then ClearNearest(self.nearestButton) end
 		return

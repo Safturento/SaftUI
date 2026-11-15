@@ -73,6 +73,9 @@ function TR:Build()
 	self:SetupBlizzard()
 	-- The first probe pass, on the next frame.
 	self:RunProbes()
+	-- The fading and hiding rules from the start, so a window a rule hides never
+	-- shows for a frame.
+	self:ApplyVisibility()
 	-- The first refresh, on the next frame like any other.
 	self:MarkDirty('BUILD')
 end
@@ -128,6 +131,8 @@ function TR:UpdateConfig()
 	-- A new mode (a setting, a profile switch) is handled here, whether or not a
 	-- refresh follows.
 	self:UpdateHandover()
+	-- The fade and the hide rules follow the settings (the Visibility tab).
+	self:ApplyVisibility()
 	-- Each part of the tracker adds its own update below. The rows are read and
 	-- drawn again once a first refresh has run (the build's own is on its way).
 	if self.model then self:Refresh() end
@@ -222,6 +227,14 @@ TR.EVENTS = {
 	-- the log was missing (its title, a popup's) arrives.
 	'QUEST_DETAIL', 'QUEST_DATA_LOAD_RESULT',
 }
+-- The events the fading and hiding rules wait for (visibility.lua): a boss fight's
+-- start and end and a Mythic+ key's start, end and reset. They apply the rules and
+-- mark nothing dirty. An event a client doesn't have is left out like the others.
+TR.VISIBILITY_EVENTS = {
+	'ENCOUNTER_START', 'ENCOUNTER_END', 'CHALLENGE_MODE_START', 'CHALLENGE_MODE_COMPLETED', 'CHALLENGE_MODE_RESET',
+}
+TR.VISIBILITY_EVENT_SET = {}
+for _, event in ipairs(TR.VISIBILITY_EVENTS) do TR.VISIBILITY_EVENT_SET[event] = true end
 TR.UNIT_EVENTS = { UNIT_QUEST_LOG_CHANGED = 'player' }
 -- The set of the above, for the events the probes share.
 TR.EVENT_SET = {}
@@ -255,10 +268,22 @@ function TR:RegisterEvents()
 			frame:RegisterEvent(event)
 		end
 	end
+	for _, event in ipairs(TR.VISIBILITY_EVENTS) do
+		if not (TR.PROBE_EVENTS and TR.PROBE_EVENTS[event]) and not TR.EVENT_SET[event]
+			and not (C_EventUtils and C_EventUtils.IsEventValid and not C_EventUtils.IsEventValid(event)) then
+			frame:RegisterEvent(event)
+		end
+	end
 	self.eventFrame = frame
 end
 
 function TR:OnEvent(event, ...)
+	-- A boss fight or a key: the fading and hiding rules (visibility.lua).
+	if TR.VISIBILITY_EVENT_SET[event] then
+		self:OnVisibilityEvent(event)
+		-- (the Mythic+ events are the probes' too)
+		if not (TR.PROBE_EVENTS and TR.PROBE_EVENTS[event]) then return end
+	end
 	-- The probes' events (probes.lua): a pass on the next frame. One that only the
 	-- probes listen to marks nothing dirty.
 	if TR.PROBE_EVENTS and TR.PROBE_EVENTS[event] then
@@ -290,6 +315,9 @@ function TR:OnEvent(event, ...)
 	-- event's handlers, so a refresh already waiting runs now, the last moment
 	-- the buttons can still be set (the harness starts lockdown first).
 	if event == 'PLAYER_REGEN_DISABLED' then
+		-- The game's word for combat, until the next event: lockdown begins after
+		-- this one's handlers (the fading rules read it, visibility.lua).
+		self.combatNow = true
 		local flushed = false
 		if self.pending then
 			self.pending = false
@@ -303,6 +331,7 @@ function TR:OnEvent(event, ...)
 			self:ProbePass()
 			flushed = true
 		end
+		self:ApplyVisibility()
 		if flushed then
 			-- Nothing runs after lockdown begins unless asked: the next frame draws what
 			-- combat changes (the dimming, the scroll lock's tooltip and bar).
@@ -310,7 +339,14 @@ function TR:OnEvent(event, ...)
 			return -- (it has just read everything this event would mark)
 		end
 	elseif event == 'PLAYER_REGEN_ENABLED' then
+		self.combatNow = false
 		self:UpdateScrollLock()
+		self:ApplyVisibility()
+	elseif event == 'PLAYER_ENTERING_WORLD' then
+		-- A loading screen: what the fight and combat events said is stale, the game's
+		-- own answers stand (an instance, a key, a fight in progress after a /reload).
+		self.combatNow, self.encounterNow = nil, nil
+		self:ApplyVisibility()
 	end
 	self:MarkDirty(event)
 end

@@ -3,8 +3,9 @@
 -- Blizzard's objective tracker, its modules and ObjectiveTrackerManager
 -- (.agents/taint.md rule 5, the design's "What SaftUI must never do to
 -- Blizzard's tracker"). The list of what's allowed, and nothing else:
---   - on the tracker: the three C methods, through getmetatable(tracker).__index
---     (SetClampedToScreen, ClearAllPoints, SetPoint); the reads GetParent,
+--   - on the tracker: the four C methods, through getmetatable(tracker).__index
+--     (SetClampedToScreen, ClearAllPoints, SetPoint, and SetAlpha for the fade
+--     during a handover, Task 12); the reads GetParent,
 --     GetNumPoints, GetPoint, GetEffectiveScale, IsClampedToScreen, IsProtected,
 --     GetWidth(true) and GetHeight(true); `.Selection:Hide()`;
 --   - post-hooks (hooksecurefunc) on its SetPoint, ClearAllPoints, UpdateHeight
@@ -85,7 +86,7 @@ local function Set(list)
 	return set
 end
 
-local C_METHODS = Set({ 'SetClampedToScreen', 'ClearAllPoints', 'SetPoint' })
+local C_METHODS = Set({ 'SetClampedToScreen', 'ClearAllPoints', 'SetPoint', 'SetAlpha' })
 local READS = Set({ 'GetParent', 'GetNumPoints', 'GetPoint', 'GetEffectiveScale', 'IsClampedToScreen', 'IsProtected' })
 local SIZE_READS = Set({ 'GetWidth', 'GetHeight' }) -- with ignoreRect: (true)
 local TRACKER_HOOKS = Set({ 'SetPoint', 'ClearAllPoints', 'UpdateHeight', 'SetAlpha' })
@@ -166,7 +167,7 @@ local function Scan(source)
 			if not after:match('^%s*%.%s*__index') then Flag(s, 'getmetatable(' .. name .. ') is only for .__index') end
 		end)
 		Each(mask, 'getmetatable%(%s*[%w_%.]*' .. name .. '%s*%)%s*%.%s*__index%s*%.%s*([%w_]+)', function(s, method)
-			if not C_METHODS[method] then Flag(s, method .. ' is not one of the three C methods') end
+			if not C_METHODS[method] then Flag(s, method .. ' is not one of the four C methods') end
 		end)
 		-- handed to Core's helpers: only the three that read or hide the box.
 		Each(mask, 'st%s*:%s*([%w_]+)%s*%(%s*' .. name .. '%s*[,%)]', function(s, helper)
@@ -184,7 +185,7 @@ local function Scan(source)
 
 	for bound in pairs(methods) do
 		Each(mask, '%f[%w_]' .. bound .. '%s*%.%s*([%w_]+)%s*%(', function(s, method)
-			if not C_METHODS[method] then Flag(s, method .. ' is not one of the three C methods') end
+			if not C_METHODS[method] then Flag(s, method .. ' is not one of the four C methods') end
 		end)
 		Each(mask, '%f[%w_]' .. bound .. '%s*%.%s*([%w_]+)%s*=[^=]', function(s) Flag(s, 'a method of the frame replaced') end)
 	end
@@ -271,9 +272,9 @@ test('the scanner flags what is off the list and lets the allowed through', func
 		'tracker:ClearAllPoints()', 'tracker:MarkDirty()', 'tracker:Update()', 'tracker:UpdateHeight()',
 		'tracker:SetCollapsed(true)', 'tracker:UnregisterAllEvents()', 'tracker:UnregisterEvent("X")', 'tracker:GetRect()',
 		'tracker:GetRight()', 'tracker:GetWidth()', 'tracker:GetHeight(false)', 'tracker:IsMouseOver()', 'tracker:SetRolesets("x")',
-		'tracker:EnableMouse(false)', 'tracker.foo = 1', 'tracker["foo"] = 1', 'tracker.Update(tracker)', 'tracker.Header:Hide()',
-		'tracker.Selection:Show()', 'getmetatable(tracker).__index.Hide(tracker)', 'getmetatable(tracker).__index.SetAlpha(tracker, 0)',
-		'local m = getmetatable(tracker).__index\nm.Hide(tracker)', 'local m = getmetatable(tracker).__index\nm.SetParent = nil',
+		'tracker:EnableMouse(false)', 'tracker:GetAlpha()', 'tracker.foo = 1', 'tracker["foo"] = 1', 'tracker.Update(tracker)', 'tracker.Header:Hide()',
+		'tracker.Selection:Show()', 'getmetatable(tracker).__index.Hide(tracker)', 'getmetatable(tracker).__index.SetShown(tracker, false)',
+		'local m = getmetatable(tracker).__index\nm.Hide(tracker)', 'local m = getmetatable(tracker).__index\nm.SetParent = nil', 'local m = getmetatable(tracker).__index\nm.SetAlpha = nil',
 		'getmetatable(tracker).__newindex = nil', 'local t = getmetatable(tracker)',
 		'st:SetPointDirect(tracker, "TOPLEFT")', 'st:Kill(tracker)',
 		'hooksecurefunc(tracker, "Show", f)', 'hooksecurefunc(tracker, "Update", f)', 'hooksecurefunc(tracker, name, f)',
@@ -301,6 +302,9 @@ test('the scanner flags what is off the list and lets the allowed through', func
 	for _, good in ipairs({
 		'local methods = getmetatable(tracker).__index\nmethods.SetClampedToScreen(tracker, false)\nmethods.ClearAllPoints(tracker)\nmethods.SetPoint(tracker, "TOPRIGHT", UIParent, "TOPRIGHT", 0, 0)',
 		'getmetatable(tracker).__index.SetPoint(tracker, "TOPRIGHT", UIParent, "TOPRIGHT", 0, 0)',
+		-- the fade during a handover: the C SetAlpha, through the metatable, and its post-hook
+		'getmetatable(tracker).__index.SetAlpha(tracker, 0.3)',
+		'local methods = getmetatable(tracker).__index\nmethods.SetAlpha(tracker, 1)',
 		'local p, r, rp, x, y = tracker:GetPoint(1)\nlocal n = tracker:GetNumPoints()\nlocal parent = tracker:GetParent()',
 		'local s = tracker:GetEffectiveScale()\nlocal c = tracker:IsClampedToScreen()\nlocal q = tracker:IsProtected()',
 		'local w, h = tracker:GetWidth(true), tracker:GetHeight(true)',

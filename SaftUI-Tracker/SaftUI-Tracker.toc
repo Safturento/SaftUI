@@ -18,4 +18,5 @@ nearest.lua
 blizzard.lua
 probes.lua
 handover.lua
+visibility.lua
 options.lua
