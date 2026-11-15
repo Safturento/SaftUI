@@ -8,9 +8,9 @@
   .win { width: var(--window-width); display: flex; position: relative; }
   .side { width: var(--sidebar-width); background: var(--sidebar); border-right: var(--line-width) solid var(--line); display: flex; flex-direction: column; flex: none; }
   .brandbox { height: var(--brand-height); padding: var(--brand-pad) 0 0 var(--brand-pad); border-bottom: var(--line-width) solid var(--line); }
-  .brandbox .small { color: var(--text-grey); }
+  .brandbox .small { color: var(--text-muted); }
   .actions { padding: var(--action-pad) var(--button-gap); display: flex; flex-direction: column; gap: var(--search-gap); border-bottom: var(--line-width) solid var(--line); }
-  .actions .search { width: 100%; color: var(--text-grey); }
+  .actions .search { width: 100%; color: var(--text-muted); }
   .actions .two { display: flex; gap: var(--action-gap); }
   .actions .two .sui-btn { flex: 1; min-width: 0; height: var(--field-height); padding: 0; }
   .nav { padding-top: var(--nav-group); flex: 1; }
@@ -19,15 +19,15 @@
   .nav .entry.on { background: var(--accent-fill); }
   .nav .entry.on::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: var(--mark-width); background: var(--accent); }
   .nav .entry.hover { background: var(--sidebar-hover); }
-  .nav .group { height: var(--nav-group); padding: var(--button-gap) 0 0 var(--brand-pad); color: var(--text-grey); }
+  .nav .group { height: var(--nav-group); padding: var(--button-gap) 0 0 var(--brand-pad); color: var(--text-muted); }
   .nav .gap { height: var(--section-margin); }
-  .profile { height: var(--footer-height); display: flex; align-items: center; padding-left: var(--brand-pad); color: var(--text-grey); }
+  .profile { height: var(--footer-height); display: flex; align-items: center; padding-left: var(--brand-pad); color: var(--text-muted); }
   .profile b { color: var(--text); font-weight: inherit; }
   .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
   .head { padding: var(--head-top) var(--window-pad) 0; height: var(--tabs-top); }
-  .head .desc { color: var(--text-grey); margin-top: var(--note-gap); }
+  .head .desc { color: var(--text-muted); margin-top: var(--note-gap); }
   .tabs { display: flex; gap: var(--tab-gap); margin: 0 var(--window-pad); border-bottom: var(--line-width) solid var(--line); height: var(--tab-height); align-items: flex-start; }
-  .tabs span { color: var(--text-grey); height: var(--tab-height); border-bottom: var(--mark-width) solid transparent; }
+  .tabs span { color: var(--text-muted); height: var(--tab-height); border-bottom: var(--mark-width) solid transparent; }
   .tabs span.on { color: var(--text); border-bottom-color: var(--accent); }
   .picker { margin: var(--picker-gap) var(--window-pad) 0; }
   .body { padding: var(--section-pad) var(--window-pad) 0; flex: 1; }

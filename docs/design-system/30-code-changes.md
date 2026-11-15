@@ -6,7 +6,7 @@ The organisational changes that would make this system real in the addon: one pl
 
 ## 1. One tokens table
 
-- **What.** `SaftUI-Core/tokens.lua`, loaded after `constants.lua`, holding the colours the kit and Core own (field, edge, alt, bg, sidebar, sidebar hover, line, hairline, panel, own, diff, dot, close red), the state alphas (disabled 0.4, hover 0.25, tint 0.15, pressed 0.1, checked 0.3, flash 0.4, overlay 0.4 and 0.7) and the metrics (field 24, button 26, rows 38 and 34, pad 14, gaps 4, 6, 8, 12, icon sizes), named as this system names them. Replace `st.BOX_COLORS`, the `OB.*` colour constants, `SIDEBAR_BG`, `HOVER`, `DOT_GREY` and the literals listed under Discrepancies with reads.
+- **What.** `SaftUI-Core/tokens.lua`, loaded after `constants.lua`, holding the colours the kit and Core own (field, edge, alt, bg, sidebar, sidebar hover, line, hairline, panel, dot, close red; own and diff are the accent and Muted now), the state alphas (disabled 0.4, hover 0.25, tint 0.15, pressed 0.1, checked 0.3, flash 0.4, overlay 0.4 and 0.7) and the metrics (field 24, button 26, rows 38 and 34, pad 14, gaps 4, 6, 8, 12, icon sizes), named as this system names them. Replace `st.BOX_COLORS`, the `OB.*` colour constants, `SIDEBAR_BG`, `HOVER`, `DOT_GREY` and the literals listed under Discrepancies with reads.
 - **Why.** One place to change or theme a value; this system's token names become the code's.
 - **Size.** Medium: about 25 files, mostly one-line swaps.
 - **Risk.** Low. Tests compare exact colours, so values must not change in the move.

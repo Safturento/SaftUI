@@ -128,8 +128,8 @@ local function Filter(bar)
 			-- Blizzard's art carries its own glass; the text starts clear of it.
 			local left = W.LookSearch(box, blizzard, FIELD_HEIGHT) or GLASS_LEFT + GLASS + GLASS_GAP
 			box.icon:SetShown(not blizzard)
-			box.icon:SetVertexColor(OB.Grey())
-			box.hint:SetTextColor(OB.Grey())
+			box.icon:SetVertexColor(OB.Muted())
+			box.hint:SetTextColor(OB.Muted())
 			box:SetTextInsets(left, TEXT_RIGHT, 0, 0)
 			box.hint:ClearAllPoints()
 			box.hint:SetPoint('LEFT', box, 'LEFT', left, 0)

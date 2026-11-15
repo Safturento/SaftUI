@@ -15,7 +15,7 @@ The frame it closes. The icon rule asks for a tooltip, "Close". The `/sui` windo
 | Part | Value | Tokens |
 | --- | --- | --- |
 | Button | 24 x 24 Box: `kit-field` inside a 1px `kit-edge`, a `kit-alt` line outside | `close-size` |
-| Icon | `x` drawn 20 (a 10px cross), `text-grey` | `icon-close`, `text-grey` |
+| Icon | `x` drawn 20 (a 10px cross), `text-muted` | `icon-close`, `text-muted` |
 | Under the mouse | fill `close-fill`, edge and X `text-red` | `close-fill`, `text-red` |
 | Pressed | the X moves down 1px | `line-width` |
 | In a header | 10 in from its right | `close-inset` |

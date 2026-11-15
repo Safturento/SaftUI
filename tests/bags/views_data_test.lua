@@ -44,6 +44,7 @@ end
 -- first). Returns the bag window's container, with a Currencies category.
 local function world(client)
 	INV = W.fresh(client)
+	SaftUI.config.profile.colors.text.muted:SetRGB(0.2, 0.4, 0.6) -- not the default, so a reader that draws a grey of its own fails
 	W.bag(0, 20, 'Backpack')
 	W.bag(1, 10, 'Bag')
 	W.put(0, 1, W.item(1, 'Sword', 'Weapon', 50))
@@ -204,10 +205,10 @@ test('Forever bank in One bag: a herb bag in a bank bag slot has its own section
 	eq(names(one[2].items), 'Mageroyal,<empty x11>', "the herb bag's, in its section")
 end)
 
--- The grey a special bag's type is drawn in (the Colors tab's Text -> Grey), as
+-- The grey a special bag's type is drawn in (the Colors tab's Text > Muted), as
 -- the color code in its title.
 local function grey()
-	local r, g, b = SaftUI.config.profile.colors.text.grey:GetRGB()
+	local r, g, b = SaftUI.config.profile.colors.text.muted:GetRGB()
 	return ('|cff%02x%02x%02x'):format(math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5), math.floor(b * 255 + 0.5))
 end
 

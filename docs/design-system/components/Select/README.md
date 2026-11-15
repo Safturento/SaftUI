@@ -15,7 +15,7 @@ A choice of three or more (Ace `select`), the page picker, the position block's 
 | Part | Value | Tokens |
 | --- | --- | --- |
 | Box | 170 x 24, Box look, text `field` 8 in | `control-width`, `field-height`, `list-text` |
-| Caret | Lucide `chevron-down` drawn 16 (an 8 x 4 chevron), centred 12 in from the right, `text-grey` in every state; an open list doesn't flip it | `icon-chevron`, `caret-right`, `text-grey` |
+| Caret | Lucide `chevron-down` drawn 16 (an 8 x 4 chevron), centred 12 in from the right, `text-muted` in every state; an open list doesn't flip it | `icon-chevron`, `caret-right`, `text-muted` |
 | List | as wide as the box, Box look in `kit-bg` | `kit-bg` |
 | List rows | 22 tall, text 8 in; up to 12 rows, then the kit's 3px scroll bar; the wheel moves 3 rows | `list-row`, `scrollbar-width` |
 | Row under the mouse | `accent-fill` | `accent-fill` |
@@ -25,9 +25,9 @@ A choice of three or more (Ace `select`), the page picker, the position block's 
 ## States
 
 - Under the mouse: the box's edge turns `accent`.
-- Disabled: the box at `alpha-disabled`, label `text-grey`.
+- Disabled: the box at `alpha-disabled`, label `text-muted`.
 - Open: a click outside or Esc closes it; a pick sets and closes.
-- Caption entry (`caption = true`, a heading such as the page list's groups or the font list's "SaftUI fonts" and "Typefaces"): its label in `text-grey` in the headings' style (the sidebar's group font, set on the row outright so a face drawn in that row before never shows), no row under the mouse, a click does nothing and the list stays open. A list opens on its picked entry, or on the nearest caption above it when both fit the rows, so a shared font opens under "SaftUI fonts" with the fonts above it.
+- Caption entry (`caption = true`, a heading such as the page list's groups or the font list's "SaftUI fonts" and "Typefaces"): its label in `text-muted` in the headings' style (the sidebar's group font, set on the row outright so a face drawn in that row before never shows), no row under the mouse, a click does nothing and the list stays open. A list opens on its picked entry, or on the nearest caption above it when both fit the rows, so a shared font opens under "SaftUI fonts" with the fonts above it.
 - Disabled entry (`disabled = true`): the row at `alpha-disabled`, no row under the mouse, not to be picked; the list stays open.
 
 ## Blizzard theme
@@ -48,7 +48,7 @@ A font setting (`generators.font`, type `font`; `SaftUI-Core/Config/optionsfont.
 | Part | Value | Tokens |
 | --- | --- | --- |
 | Face | the Select box, 170 x 24, showing the font's name drawn in its own face at 15, no outline | `control-width`, `field-height` |
-| Slot | 16 x 24 at the row's right edge, a 16 icon in the middle: the `link` for a shared font, the three dots (Lucide `ellipsis-vertical`, as a menu item's) for a typeface, hidden with its room kept on a face-only row | `text-grey`, `accent` (white under Blizzard) |
+| Slot | 16 x 24 at the row's right edge, a 16 icon in the middle: the `link` for a shared font, the three dots (Lucide `ellipsis-vertical`, as a menu item's) for a typeface, hidden with its room kept on a face-only row | `text-muted`, `accent` (white under Blizzard) |
 | Gap | the face ends 4 before the slot (8 under Blizzard, whose dropdown art reaches 7 past the face); the control is 190 wide (194 under Blizzard) | |
 
 - **The list** has two parts: a caption "SaftUI fonts" over the six shared fonts, each in its own face, then a caption "Typefaces" over every face LibSharedMedia lists, each in its own face. The picked entry is `accent`: the shared font, or the typeface by its face.

@@ -16,6 +16,7 @@
 -- themselves.
 local H = load_test_file('core/options_window_helpers.lua')
 local st = SaftUI
+st.config.profile.colors.text.muted:SetRGB(0.2, 0.4, 0.6) -- not the default, so a reader that draws a grey of its own fails
 local W, OW = st.OptionsWidgets, st.OptionsWindow
 local close_all, drawn, cell, click, uf = H.close_all, H.drawn, H.cell, H.click, H.uf
 local frames, tick = H.frames, H.tick
@@ -188,7 +189,7 @@ test('mid-drag the other rows read their rows again in place: values and disable
 	eq(cell('columns_shown').widget.frame:GetText(), '9', "another row's value follows the drag")
 	check(cell('wide').widget:IsDisabled(), 'a row disabled at 8 or more is disabled now')
 	local r, g, b = cell('wide').label:GetTextColor()
-	local gr, gg, gb = st.config.profile.colors.text.grey:GetRGB()
+	local gr, gg, gb = st.config.profile.colors.text.muted:GetRGB()
 	check(r == gr and g == gg and b == gb, 'and its label is grey')
 	eq(drawn(), 'columns,columns_shown,wide,extra,merge', 'a row hidden at 9 or more stays until the drag ends')
 	for i, c in ipairs(OW.GetDrawnRows()) do

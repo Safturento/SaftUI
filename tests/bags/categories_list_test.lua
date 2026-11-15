@@ -121,7 +121,7 @@ test('the list: every category in order, counts from the bag window, the edited 
 	eq(row_of(w, SETS).count:GetText(), '1', "Equipment sets: every set's items")
 	check(row_of(w, MISC).count:IsShown(), 'Miscellaneous has one')
 	check(not row_of(w, 'Armor').count:IsShown(), 'no count when nothing is caught')
-	check(same_rgb({ row_of(w, SELL).count:GetTextColor() }, rgb('text', 'grey')), 'counts are grey')
+	check(same_rgb({ row_of(w, SELL).count:GetTextColor() }, rgb('text', 'muted')), 'counts are grey')
 	local consumables = row_of(w, 'Consumables')
 	eq(consumables.count:GetRight(), consumables.frame:GetRight() - 8, 'at the right')
 
@@ -130,9 +130,21 @@ test('the list: every category in order, counts from the bag window, the edited 
 	eq(wood.name:GetText(), 'Wood', 'a renamed default shows its name')
 	check(wood.marker:IsShown(), 'an edited default has a marker')
 	eq(wood.marker:GetText(), 'edited', 'edited')
-	check(same_rgb({ wood.marker:GetTextColor() }, rgb('text', 'orange')), 'in orange')
+	check(same_rgb({ wood.marker:GetTextColor() }, rgb('text', 'muted')), 'the edited marker is Muted (a listed change from orange)')
 	check(wood.marker:GetLeft() >= wood.name:GetLeft() + wood.name:GetWidth(), 'after the name')
 	eq(row_of(w, mine).marker:GetText(), 'yours', 'one of yours')
+	do -- the handle's six dots are Muted
+		local dots = 0
+		for _, region in ipairs({ wood.handle:GetRegions() }) do
+			local color = region:GetObjectType() == 'Texture' and stub.state(region).color_texture
+			if color then
+				dots = dots + 1
+				check(same_rgb(color, rgb('text', 'muted')), 'a handle dot is Muted')
+			end
+		end
+		eq(dots, 6, 'six dots')
+	end
+	check(same_rgb({ row_of(w, mine).marker:GetTextColor() }, rgb('text', 'muted')), 'and so is the yours marker')
 	check(not row_of(w, 'Armor').marker:IsShown(), 'a default as shipped has none')
 
 	-- Off: grey, with a line through its name.
@@ -141,7 +153,8 @@ test('the list: every category in order, counts from the bag window, the edited 
 	eq(quest.strike:GetHeight(), 1, 'by a 1px line')
 	eq(quest.strike:GetLeft(), quest.name:GetLeft(), 'from the start of its name')
 	eq(quest.strike:GetWidth(), quest.name:GetWidth(), 'across it')
-	check(same_rgb({ quest.name:GetTextColor() }, rgb('text', 'grey')), 'its name is grey')
+	check(same_rgb(stub.state(quest.strike).color_texture, rgb('text', 'muted')), 'in Muted')
+	check(same_rgb({ quest.name:GetTextColor() }, rgb('text', 'muted')), 'its name is grey')
 	check(not row_of(w, 'Armor').strike:IsShown(), 'one that is on is not')
 	check(same_rgb({ row_of(w, 'Armor').name:GetTextColor() }, rgb('text', 'normal')), 'and its name is not grey')
 
@@ -270,7 +283,7 @@ test("under Blizzard the category list is the Settings category list; its handle
 		st:ThemeChanged()
 		open()
 		local w = tab()
-		local grey = string.format('%.2f,%.2f,%.2f', st.config.profile.colors.text.grey:GetRGB())
+		local grey = string.format('%.2f,%.2f,%.2f', st.config.profile.colors.text.muted:GetRGB())
 		local sel, other, off = row_of(w, 'Consumables'), row_of(w, SETS), row_of(w, 'Quest')
 		eq(sel.tint:GetAtlas(), 'Options_List_Active', client .. ': the picked row on the active art')
 		eq(around(sel.tint, sel.frame), '0,0,0,0', client .. ': filling the row')

@@ -22,6 +22,7 @@ local function build()
 	H = load_test_file('core/options_window_helpers.lua')
 	load_editmode_bar()
 	st = SaftUI
+	st.config.profile.colors.text.muted:SetRGB(0.2, 0.4, 0.6) -- not the default, so a reader that draws a grey of its own fails
 	EM, OW, W = st.EditModeFrames, st.OptionsWindow, st.OptionsWidgets
 	EM:Enable()
 	if not _G.GameTooltip then CreateFrame('GameTooltip', 'GameTooltip', UIParent, 'GameTooltipTemplate') end
@@ -750,7 +751,7 @@ test("under Blizzard, on both clients: the panel's art, Blizzard's panel buttons
 		local grid = frame_of('grid')
 		eq(rgb(CreateColor(grid.icon:GetVertexColor())), rgb(st.config.profile.theme.accent), where .. 'Grid on: the icon in the accent')
 		eq(grid.backdropInfo, nil, where .. 'no blue edge')
-		eq(rgb(CreateColor(frame_of('snapGrid').icon:GetVertexColor())), rgb(st.config.profile.colors.text.grey), where .. 'Snap to grid off: grey')
+		eq(rgb(CreateColor(frame_of('snapGrid').icon:GetVertexColor())), rgb(st.config.profile.colors.text.muted), where .. 'Snap to grid off: grey')
 		local box = frame_of('gridSize')
 		eq(atlases_of(box.edit), 'auctionhouse-ui-inputfield-left,auctionhouse-ui-inputfield-middle,auctionhouse-ui-inputfield-right', where .. "the box's input art")
 		eq(atlases_of(box.pair.up), 'minimal-scrollbar-arrow-top', where .. 'and its stepper')

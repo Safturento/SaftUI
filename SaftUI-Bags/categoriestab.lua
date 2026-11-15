@@ -17,9 +17,9 @@ local INV = st:GetModule('Inventory')
 
 	The list, 210 wide: a 22 high row per category in order, each with a
 	handle (6 dots; Miscellaneous has none), its name, an 'edited' or 'yours'
-	marker in orange, and its count in grey at the right when above 0 (what
+	marker in Text > Muted, and its count in Text > Muted at the right when above 0 (what
 	the bag window's Compact header shows: INV:CountCategories). A category
-	that is off is grey, with a 1px line through its name. The selected row is
+	that is off is Muted, with a 1px line through its name. The selected row is
 	tinted in the accent, with a 3px accent bar at its left. Under the list, + New
 	category and Reset all, in the accent. A click on a row selects it. Dragging a
 	handle moves the category (INV:MoveCategory) above the row under the
@@ -92,7 +92,7 @@ local INV = st:GetModule('Inventory')
 	At half width, narrower than 774 (EDITOR_X + EDITOR_WIDTH: w.compact, set by
 	SetWidth), the tab has no list beside the editor. A button row is on top:
 	w.menuButton, a 260 wide W.SelectFace with the list icon, the edited
-	category's name and its place in grey ('3 of 31', counting every row), then
+	category's name and its place in Muted ('3 of 31', counting every row), then
 	w.prevButton and w.nextButton, 24 square and 6 apart (the previous and the
 	next category, each disabled at its end, with a red line saying so, and not
 	wrapping round). Under it the editor and its footer take the whole width
@@ -137,7 +137,7 @@ local INV = st:GetModule('Inventory')
 local W, OB, OM, OW = st.OptionsWidgets, st.OptionsBody, st.OptionsModel, st.OptionsWindow
 -- What the rule editor drags with too (dragparts.lua): text helpers and the drag.
 local D = INV.DragParts
-local Colors, Grey, Text, TextWidth, Inside = D.Colors, D.Grey, D.Text, D.TextWidth, D.Inside
+local Colors, Muted, Text, TextWidth, Inside = D.Colors, D.Muted, D.Text, D.TextWidth, D.Inside
 
 local floor, ceil, max, min = math.floor, math.ceil, math.max, math.min
 local format = string.format
@@ -651,18 +651,18 @@ local function LayListRow(w, i, entry, count, selected)
 
 	local x, right = PAD + D.HANDLE_WIDTH + GAP, LIST_WIDTH - PAD
 	f.count:SetText(count > 0 and tostring(count) or '')
-	f.count:SetTextColor(Grey())
+	f.count:SetTextColor(Muted())
 	f.count:SetShown(count > 0)
 	if count > 0 then right = right - TextWidth(f.count) - GAP end
 	local marker = (not entry.default and 'yours') or (entry.edited and 'edited') or nil
 	f.marker:SetText(marker or '')
-	f.marker:SetTextColor(Colors().text.orange:GetRGB())
+	f.marker:SetTextColor(Muted())
 	f.marker:SetShown(marker ~= nil)
 	if marker then right = right - TextWidth(f.marker) - GAP end
 
 	f.name:SetText(entry.name)
 	if not entry.enabled then
-		f.name:SetTextColor(Grey())
+		f.name:SetTextColor(Muted())
 	elseif look then
 		f.name:SetTextColor(unpack(look.text[selected and 'picked' or 'normal']))
 	else
@@ -675,7 +675,7 @@ local function LayListRow(w, i, entry, count, selected)
 	f.marker:ClearAllPoints()
 	f.marker:SetPoint('LEFT', f, 'LEFT', x + nameWidth + GAP, 0)
 	-- Off: a line through the name, on a whole pixel.
-	f.strike:SetColorTexture(Grey())
+	f.strike:SetColorTexture(Muted())
 	f.strike:ClearAllPoints()
 	f.strike:SetPoint('TOPLEFT', f, 'TOPLEFT', x, -floor(ROW_HEIGHT / 2))
 	f.strike:SetWidth(nameWidth)
@@ -953,7 +953,7 @@ local function LayButtonRow(w, list, place)
 	local face, blizzard = w.menuButton, W.BlizzardLook() or false
 	face.text:SetText(list[place].name)
 	face.place:SetText(format('%d of %d', place, #list))
-	face.place:SetTextColor(Grey())
+	face.place:SetTextColor(Muted())
 	W.LookSelectFace(face, blizzard)
 	PlaceFaceContents(face)
 	W.SetOn(face, w.menu:IsShown())
@@ -1071,7 +1071,7 @@ local function BuildMenu(w)
 	face.icon:SetTexture(st.icons.list)
 	face.icon:SetSize(FACE_ICON, FACE_ICON)
 	face.icon:SetPoint('LEFT', face, 'LEFT', PAD, 0)
-	face.icon:SetVertexColor(Grey())
+	face.icon:SetVertexColor(Muted())
 	face.place = Text(face, OB.Font('small'), 'RIGHT')
 	face.place:SetPoint('RIGHT', face, 'RIGHT', -FACE_PLACE_RIGHT, 0)
 	PlaceFaceContents(face)
@@ -1113,7 +1113,7 @@ local function BuildMenu(w)
 	menu.caption = Text(menu, OB.Font('caption'))
 	menu.caption:SetPoint('TOPLEFT', menu, 'TOPLEFT', MENU_PAD + PAD, -MENU_PAD)
 	menu.caption:SetText('Categories: drag to reorder')
-	menu.caption:SetTextColor(Grey())
+	menu.caption:SetTextColor(Muted())
 	menu.catcher = catcher
 	w.menu = menu
 end
@@ -1387,7 +1387,7 @@ local function ItemButton(w, i)
 	remove.icon:SetSize(16, 16) -- an 8 px cross in the middle
 	remove.icon:SetPoint('CENTER', remove, 'CENTER', 0, 0)
 	remove:SetScript('OnEnter', function(self) self.icon:SetVertexColor(Colors().text.red:GetRGB()) end)
-	remove:SetScript('OnLeave', function(self) self.icon:SetVertexColor(Grey()) end)
+	remove:SetScript('OnLeave', function(self) self.icon:SetVertexColor(Muted()) end)
 	remove:SetScript('OnClick', function() RemoveItem(w, icon) end)
 	icon.remove = remove
 	w.icons[i] = icon
@@ -1421,7 +1421,7 @@ local function LayItems(w)
 		icon.texture:SetTexture(ItemTexture(entry))
 		icon.texture:SetTexCoord(st:IconTexCoords(trim))
 		icon.remove:SetShown(removable)
-		icon.remove.icon:SetVertexColor(Grey())
+		icon.remove.icon:SetVertexColor(Muted())
 		local col, line = (i - 1) % perLine, floor((i - 1) / perLine)
 		icon:ClearAllPoints()
 		icon:SetPoint('TOPLEFT', w.frame, 'TOPLEFT', border + col * step, -(border + line * step))

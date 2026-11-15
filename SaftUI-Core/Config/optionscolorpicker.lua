@@ -891,7 +891,7 @@ local function Look()
 	for _, edit in ipairs(F.edits) do LookInput(edit, blizzard, BOX_HEIGHT) end
 	W.LookControl(F.okay, blizzard)
 	W.LookControl(F.cancel, blizzard)
-	local r, g, b = Colors().text.grey:GetRGB()
+	local r, g, b = Colors().text.muted:GetRGB()
 	for _, caption in ipairs(F.captions) do caption:SetTextColor(r, g, b) end
 	F.arrow:SetVertexColor(r, g, b)
 	r, g, b = Colors().text.normal:GetRGB()

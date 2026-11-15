@@ -163,6 +163,18 @@ test('a plain name is built as before: the level part, then the name in its host
 	stub.units.target = nil
 end)
 
+test('a level far below the player is Text > Muted (it was Grey), at a Muted that is not the default', function()
+	local name = P.target.name
+	name.allCaps, name.showLevel, name.color_hostile, name.colorClass = false, true, false, false
+	stub.units.target = { name = 'Mob', level = 5, classification = 'normal', reaction = 5 } -- 15 below the player's 20
+	local muted = st.config.profile.colors.text.muted
+	local keep = { muted:GetRGB() }
+	muted:SetRGB(0.2, 0.4, 0.6)
+	eq(tag('target', 'target', 'target'), '|cff336699' .. '5|r Mob', 'the level in Muted')
+	muted:SetRGB(unpack(keep))
+	stub.units.target = nil
+end)
+
 ------------------------------------------------------------------ the health text
 
 test('health percent with plain values is unchanged', function()

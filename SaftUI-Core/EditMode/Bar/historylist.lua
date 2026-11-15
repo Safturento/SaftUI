@@ -27,7 +27,7 @@ local Guard = EM.BarGuard
 	The frame is in FULLSCREEN_DIALOG at level LEVEL, over the bar, drawn as a
 	panel in the theme and kept inside the screen margin (st:KeepInScreenMargin).
 	It is WIDTH wide, PAD in on every side: the title "History" (group font,
-	Text > Grey), up to ROWS rows (ROW tall, a hairline between), and the foot,
+	Text > Muted), up to ROWS rows (ROW tall, a hairline between), and the foot,
 	"Keep the last" with a number box for the history's length and "steps (up to
 	1000)". Whole pixels throughout: every part is placed by its top left from
 	the list's, a text is ceil(its width) wide, and the list's height is the sum
@@ -35,8 +35,8 @@ local Guard = EM.BarGuard
 
 	A row is a step (index 1 to #steps) or, last, "Before these changes" (index
 	0). Its parts, left to right: a 2px accent mark when it is the current step
-	(History:Position()), the label (the field font; Text > Grey while the step is
-	undone), a detail in the small font and Text > Grey ('undone', '<n>
+	(History:Position()), the label (the field font; Text > Muted while the step is
+	undone), a detail in the small font and Text > Muted ('undone', '<n>
 	settings' for a bulk step, else how long ago), and a revert, a 14 square
 	rotate-ccw link shown for an applied step whose History:CanRevert says
 	something (true, or the reason it can't) and enabled only on true. A row under
@@ -184,9 +184,9 @@ local function LookList()
 	local blizzard = W.BlizzardLook()
 	list.blizzard = blizzard
 	local look = blizzard and st.ThemeArt.Control('dropdown')
-	list.title:SetTextColor(OB.Grey())
-	list.foot1:SetTextColor(OB.Grey())
-	list.foot2:SetTextColor(OB.Grey())
+	list.title:SetTextColor(OB.Muted())
+	list.foot1:SetTextColor(OB.Muted())
+	list.foot2:SetTextColor(OB.Muted())
 	W.LookNumberBox(list.box, blizzard)
 	for _, row in ipairs(list.rows) do
 		if blizzard then
@@ -198,7 +198,7 @@ local function LookList()
 		end
 		row.mark:SetColorTexture(OB.Accent())
 		row.line:SetColorTexture(unpack(OB.HAIRLINE))
-		row.detail:SetTextColor(OB.Grey())
+		row.detail:SetTextColor(OB.Muted())
 		W.LookControl(row.revert, blizzard)
 	end
 end
@@ -235,7 +235,7 @@ local function FillRow(row, index, position, now)
 	row.index = index
 	local undone = index > position
 	row.label:SetText(step and tostring(History.Label(step)) or EM.HISTORY_START)
-	row.label:SetTextColor((undone and OB.Grey or OB.Normal)())
+	row.label:SetTextColor((undone and OB.Muted or OB.Normal)())
 	local detail = ''
 	if step then
 		if undone then

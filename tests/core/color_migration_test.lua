@@ -156,6 +156,7 @@ local EXPECTED = {
 	['roles.TANK'] = RGB(0, 0.1, 0.94), ['roles.HEALER'] = RGB(0.5, 240/255, 60/255), ['roles.DAMAGER'] = RGB(1, 100/255, 100/255),
 	['factions.Alliance'] = RGB(0, 0.1, 0.94), ['factions.Horde'] = RGB(1, 100/255, 100/255), ['factions.Neutral'] = RGB(200/255, 200/255, 0),
 	['accent'] = RGB(0.7, 0.68, 0.94),
+	['text.muted'] = RGB(0.4, 180/255, 180/255), -- Text > Grey's default was 180 when step 3 shipped
 }
 test('a profile saved before any of this runs every step at once, in order', function()
 	fresh(on(OLD_SAVED()))
@@ -163,18 +164,6 @@ test('a profile saved before any of this runs every step at once, in order', fun
 	eq(st.config.profile.colors.version, LAST())
 end)
 
--- Text > Grey's default is #b4b4b4 (180), brighter than the #969696 it shipped
--- with. CO.OLD_COLORS keeps the old 150 frozen, but no step reads text.grey
--- (it is not a source), so it only serves a profile that predates a step.
-test('Text > Grey: a profile that never changed it gets 180; one that customized it keeps its own', function()
-	fresh(on({}))
-	eq(rgb(st.config.profile.colors.text.grey), RGB(180/255, 180/255, 180/255), 'the new default')
-	fresh(on({ colors = { text = { grey = { r = 0.4, g = 0.5, b = 0.6 } } } }))
-	eq(rgb(st.config.profile.colors.text.grey), RGB(0.4, 0.5, 0.6), 'a customized grey is its own')
-	fresh(on({ colors = { text = { grey = { r = 150/255, g = 150/255, b = 150/255 } } } }))
-	eq(rgb(st.config.profile.colors.text.grey), RGB(150/255, 150/255, 150/255), 'one saved at the old default is a choice and stays')
-	eq(rgb(st:GetModule('Colors').OLD_COLORS['text.grey']), RGB(150/255, 150/255, 150/255), 'the frozen table is never edited')
-end)
 
 -- Step 2: the accent takes Buttons > Blue, never Text > Blue.
 
@@ -241,4 +230,120 @@ test('step 2: a switch to, a copy from and a reset of an unmigrated profile carr
 	eq(rgb(st.config.profile.theme.accent), T.rgb(0, 1, 0.94), 'a copy from a profile at version 1: step 2 alone')
 	st.config.profile.theme.accent.r = 0.5; st.config:ResetProfile()
 	eq(rgb(st.config.profile.theme.accent), BLUE)
+end)
+
+-- Step 3: Text > Grey becomes Text > Muted; Buttons > Grey is dropped.
+--
+-- Text > Grey's default became 180 (#b4b4b4, decision 49) after the frozen
+-- table was written at 150 and before this step shipped, so OLD_COLORS holds
+-- 180 for it: the default in effect when the key retires. Buttons > Grey's
+-- default never changed, and it stays 150.
+local GREY180 = RGB(180/255, 180/255, 180/255)
+
+test("step 3: Muted's default is 180, and the frozen Text > Grey is that default (Buttons > Grey stays 150)", function()
+	fresh(on({}))
+	local CO = st:GetModule('Colors')
+	eq(rgb(st.config.profile.colors.text.muted), GREY180, "Muted's default")
+	eq(rgb(CO.OLD_COLORS['text.grey']), GREY180, "Text > Grey's default at the time it retires")
+	eq(rgb(CO.OLD_COLORS['button.grey']), RGB(150/255, 150/255, 150/255), "Buttons > Grey's default never changed")
+	eq(rawget(st.defaults.colors.text, 'grey'), nil); eq(rawget(st.defaults.colors.button, 'grey'), nil)
+end)
+
+test('step 3: untouched, nothing is written for Muted and nothing is saved', function()
+	fresh(on({}))
+	eq(rgb(st.config.profile.colors.text.muted), GREY180)
+	st.config:SetProfile('Two')
+	eq(SaftUI_DB.profiles.Old.colors.text, nil, 'no Text group saved')
+	eq(SaftUI_DB.profiles.Old.colors.version, LAST())
+	local raw = { colors = {} }
+	st:MigrateColors(raw); eq(raw.colors.text, nil, 'no group made'); eq(raw.colors.version, LAST())
+end)
+
+test('step 3: a customized grey becomes Muted, methods kept, only the changed channel saved', function()
+	fresh(on({ colors = { text = { grey = { r = 0.4, g = 0.5, b = 0.6 } } } }))
+	local colors = st.config.profile.colors
+	eq(rgb(colors.text.muted), RGB(0.4, 0.5, 0.6)); check(colors.text.muted.GetRGB, 'AceDB methods kept')
+	eq(rawget(colors.text, 'grey'), nil, 'Text > Grey is gone')
+	st.config:SetProfile('Two')
+	local saved = SaftUI_DB.profiles.Old.colors.text
+	eq(saved.muted.r, 0.4); eq(saved.muted.g, 0.5); eq(saved.muted.b, 0.6); eq(saved.grey, nil)
+end)
+
+test('step 3: a partial grey has its missing channels filled from 180', function()
+	fresh(on({ colors = { text = { grey = { r = 0.4 } } } }))
+	eq(rgb(st.config.profile.colors.text.muted), RGB(0.4, 180/255, 180/255))
+	local raw = { colors = { text = { grey = { g = 0.2, a = 0.3 } } } }
+	st:MigrateColors(raw)
+	eq(rgb(raw.colors.text.muted), RGB(180/255, 0.2, 180/255), 'g alone'); eq(raw.colors.text.muted.a, nil, 'never an alpha')
+	raw = { colors = { text = { grey = { r = 'x', g = 0.2, b = {} } } } }
+	st:MigrateColors(raw); eq(rgb(raw.colors.text.muted), RGB(180/255, 0.2, 180/255), "channels that aren't numbers take 180")
+end)
+
+test('step 3: a grey still at the default copies nothing (an opacity alone, or 180 to the byte)', function()
+	for _, grey in ipairs({ { a = 0.3 }, { r = 180/255, g = 180/255, b = 180/255 }, { r = 180/255 + 0.001 }, {} }) do
+		local raw = { colors = { text = { grey = grey } } }
+		st:MigrateColors(raw)
+		eq(raw.colors.text.muted, nil, 'no Muted written'); eq(raw.colors.text.grey, nil, 'but the grey is retired')
+	end
+end)
+
+test('step 3: a grey saved at exactly 150 is a customized color and is kept as Muted', function()
+	fresh(on({ colors = { text = { grey = { r = 150/255, g = 150/255, b = 150/255 } } } }))
+	eq(rgb(st.config.profile.colors.text.muted), RGB(150/255, 150/255, 150/255), '150 is not the default now')
+	-- A grey saved at only r = 150 keeps it and takes 180 for the rest.
+	local raw = { colors = { text = { grey = { r = 150/255 } } } }
+	st:MigrateColors(raw); eq(rgb(raw.colors.text.muted), RGB(150/255, 180/255, 180/255))
+end)
+
+test('step 3: a customized Buttons > Grey is dropped, and never reaches Muted', function()
+	fresh(on({ colors = { button = { grey = { r = 0.9, g = 0.1, b = 0.1 } } } }))
+	local colors = st.config.profile.colors
+	eq(rawget(colors.button, 'grey'), nil); eq(rgb(colors.text.muted), GREY180, 'Muted keeps its default')
+	st.config:SetProfile('Two')
+	eq(SaftUI_DB.profiles.Old.colors.text, nil, 'and nothing is saved for Muted')
+	-- Both customized: Text > Grey wins, Buttons > Grey goes.
+	local raw = { colors = { text = { grey = { r = 0.4 } }, button = { grey = { r = 0.9 }, normal = { a = 0.3 } } } }
+	st:MigrateColors(raw)
+	eq(raw.colors.text.muted.r, 0.4); eq(raw.colors.button.grey, nil); eq(raw.colors.button.normal.a, 0.3, 'the rest of Buttons is left alone')
+	raw = { colors = { button = { grey = 5 }, text = { grey = 'x' } } }
+	check(pcall(st.MigrateColors, st, raw)); eq(raw.colors.button.grey, nil, 'retired even when it is not a table'); eq(raw.colors.text.muted, nil)
+end)
+
+test('step 3 by version: 0 runs every step, 1 runs steps 2 and 3, 2 runs step 3 alone, 3 runs nothing', function()
+	local function profile(version)
+		return { colors = { version = version, text = { red = { r = 1 }, grey = { r = 0.4 } }, button = { blue = { r = 0.5 }, grey = { r = 0.9 } } } }
+	end
+	local raw = profile(0); st:MigrateColors(raw)
+	eq(raw.colors.loot.pass.r, 1, 'step 1'); eq(raw.theme.accent.r, 0.5, 'step 2'); eq(raw.colors.text.muted.r, 0.4, 'step 3'); eq(raw.colors.version, LAST())
+	raw = profile(1); st:MigrateColors(raw)
+	eq(raw.colors.loot, nil, 'step 1 is not run again'); eq(raw.theme.accent.r, 0.5); eq(raw.colors.text.muted.r, 0.4)
+	raw = profile(2); st:MigrateColors(raw)
+	eq(raw.colors.loot, nil); eq(raw.theme, nil, 'step 2 is not run again'); eq(raw.colors.text.muted.r, 0.4)
+	eq(raw.colors.text.grey, nil); eq(raw.colors.button.grey, nil); eq(raw.colors.version, LAST())
+	raw = profile(3); st:MigrateColors(raw)
+	eq(raw.colors.text.muted, nil, 'at the last step, nothing runs'); eq(raw.colors.text.grey.r, 0.4, 'and the grey is left as it is')
+	eq(raw.colors.version, 3)
+end)
+
+test('step 3 on a real AceDB at version 0, 1 and 2, and run twice', function()
+	for version, want in pairs({ [0] = 0.4, [1] = 0.4, [2] = 0.4 }) do
+		fresh(on({ colors = { version = version, text = { grey = { r = want } } } }))
+		eq(st.config.profile.colors.text.muted.r, want, 'version ' .. version); eq(st.config.profile.colors.version, LAST())
+		local once = Dump(st.config.profile.colors)
+		st:MigrateColors(st.config.profile); eq(Dump(st.config.profile.colors), once, 'run twice: no change')
+	end
+	local raw = { colors = { text = { grey = { r = 0.4 } }, button = { grey = { r = 0.9 } } } }
+	st:MigrateColors(raw); local once = Dump(raw)
+	st:MigrateColors(raw); eq(Dump(raw), once, 'raw data, run twice')
+end)
+
+test('step 3: a grey changed after the step ran is Muted now, and a switch to an unmigrated profile carries it', function()
+	fresh(on({}))
+	SaftUI_DB.profiles.Two = { colors = { text = { grey = { b = 0.1 } }, button = { grey = { r = 0.9 } } } }
+	st.config:SetProfile('Two')
+	eq(rgb(st.config.profile.colors.text.muted), RGB(180/255, 180/255, 0.1)); eq(st.config.profile.colors.version, LAST())
+	st.config:SetProfile('Old'); st.config:CopyProfile('Two')
+	eq(rgb(st.config.profile.colors.text.muted), RGB(180/255, 180/255, 0.1), 'a copy carries it')
+	st.config.profile.colors.text.muted:SetRGB(0.1, 0.1, 0.1); st.config:ResetProfile()
+	eq(rgb(st.config.profile.colors.text.muted), GREY180, 'a reset puts the default back')
 end)

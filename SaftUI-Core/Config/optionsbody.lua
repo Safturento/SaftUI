@@ -109,9 +109,9 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	and its dots at the right; its label starts its labelX in (26 after a
 	box, else 0), centred on the row, and ends 6 before the dots, and so
 	does its hover line (lineEnd; an item with no menu has no dots, and
-	both end at the cell's right edge); its label is grey while its Show is
+	both end at the cell's right edge); its label is Muted while its Show is
 	off or it's disabled (OB.LabelColor, which a drag's Refresh reads too,
-	so a row a drag enables stays grey while its Show is off). Under its own mark the box
+	so a row a drag enables stays Muted while its Show is off). Under its own mark the box
 	moves markShift right with the label (under Blizzard 6). A position block
 	has no label (its section is titled Position), is as tall as the widget
 	plus 12, and shows the row's desc when the mouse is anywhere on it. A
@@ -145,7 +145,7 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	when it's there. An item is 'row' in OB.SHARE_KINDS: its name is its
 	label. The metrics' markX and markShift place the own mark, and
 	OB.OWN_STRENGTH (the accent's strength on its labels and titles) and
-	OB.DIFF_COLOR are its colors; OB.PlaceLabel puts a label
+	OB.DIFF_STRENGTH (Text > Muted's strength on the diff icon) are its colors; OB.PlaceLabel puts a label
 	where PlaceRow does, cell.labelX plus x in (PlaceRow's label is labelX
 	narrower too).
 
@@ -227,9 +227,10 @@ OB.TITLE_HEIGHT = TITLE_HEIGHT -- a section title's line
 -- A shared setting's marks (optionsshare.lua): an own row's label and a
 -- title, which are the accent at OB.OWN_STRENGTH (an own mark was a lighter
 -- blue than the accent before; at 1 it is the accent itself), and the diff
--- icon (its orange).
+-- icon, which is Text > Muted at OB.DIFF_STRENGTH (it was orange before; at 1
+-- it is Muted itself).
 OB.OWN_STRENGTH = 1
-OB.DIFF_COLOR = { 0.88, 0.63, 0.25 }
+OB.DIFF_STRENGTH = 1
 
 -- A row's label line: its text sits in a band this tall.
 local LABEL_HEIGHT = 16
@@ -239,9 +240,9 @@ OB.LINE = { 0.18, 0.18, 0.18, 1 } -- #2e2e2e: the lines between parts
 
 local Colors = OM.Colors
 local function Normal() return Colors().text.normal:GetRGB() end
-local function Grey() return Colors().text.grey:GetRGB() end
+local function Muted() return Colors().text.muted:GetRGB() end
 local function Accent() return st:Color('accent'):GetRGB() end
-OB.Colors, OB.Normal, OB.Grey, OB.Accent = Colors, Normal, Grey, Accent -- the window's files take them
+OB.Colors, OB.Normal, OB.Muted, OB.Accent = Colors, Normal, Muted, Accent -- the window's files take them
 
 ------------------------------------------------------------------ fonts
 
@@ -766,9 +767,9 @@ end
 -- while its Show is off (widget.value false); else the text color. PlaceRow
 -- and a drag's Refresh both read it.
 function OB.LabelColor(cell, disabled)
-	if disabled then return Grey() end
+	if disabled then return Muted() end
 	if cell.ownLabel then return st:ColorRGBA('accent', nil, OB.OWN_STRENGTH) end
-	if cell.row.type == 'item' and cell.widget and cell.widget.value == false then return Grey() end
+	if cell.row.type == 'item' and cell.widget and cell.widget.value == false then return Muted() end
 	return Normal()
 end
 
@@ -797,7 +798,7 @@ local function PlaceRow(cell, x, y, width)
 		widget:SetPoint('TOPLEFT', frame, 'TOPLEFT', 0, -6)
 	elseif IsTitled(row.type) then
 		label:SetText(row.name)
-		if row.disabled then label:SetTextColor(Grey()) else label:SetTextColor(Normal()) end
+		if row.disabled then label:SetTextColor(Muted()) else label:SetTextColor(Normal()) end
 		label:SetWidth(width)
 		label:SetPoint('TOPLEFT', frame, 'TOPLEFT', 0, -6)
 		label:Show()
@@ -826,7 +827,7 @@ local function PlaceRow(cell, x, y, width)
 		OB.PlaceLabel(cell, 0)
 	else
 		label:SetText(row.name)
-		if row.disabled then label:SetTextColor(Grey()) else label:SetTextColor(Normal()) end
+		if row.disabled then label:SetTextColor(Muted()) else label:SetTextColor(Normal()) end
 		label:Show()
 		label:SetWidth(max(1, width - (cell.labelX or 0) - widget:GetWidth() - LABEL_GAP))
 		OB.PlaceLabel(cell, 0)
@@ -916,7 +917,7 @@ function OB.New(content, root, onChanged, width, opts)
 		end),
 		title = Pool(function()
 			local title = Text(content, 'section')
-			title:SetTextColor(Grey())
+			title:SetTextColor(Muted())
 			title:SetWidth(body.width)
 			return title
 		end),
@@ -924,7 +925,7 @@ function OB.New(content, root, onChanged, width, opts)
 			local note = Text(content, 'note')
 			note:SetWordWrap(true) -- one that doesn't fit the body wraps (Body:NoteHeight)
 			note:SetJustifyV('TOP')
-			note:SetTextColor(Grey())
+			note:SetTextColor(Muted())
 			note:SetWidth(body.width)
 			return note
 		end),
@@ -1227,12 +1228,13 @@ function Body:DrawSections(sections, makeCell, sizeOf, fillHeight)
 			title = Acquire(pools.title)
 			title:SetPoint('TOPLEFT', content, 'TOPLEFT', 0, -entry.titleY)
 			title:SetText(entry.section.title)
-			title:SetTextColor(Grey()) -- a pooled title may last have been marked
+			title:SetTextColor(Muted()) -- a pooled title may last have been marked
 		end
 		if entry.noteY then
 			local note = Acquire(pools.note)
 			note:SetPoint('TOPLEFT', content, 'TOPLEFT', 0, -entry.noteY)
 			note:SetText(entry.section.note)
+			note:SetTextColor(Muted()) -- a pooled note takes a changed Muted at the next draw
 		end
 		-- The rows on the panel, in runs a floating line parts.
 		local onPanel, parts = nil, {}

@@ -11,6 +11,7 @@
 local H = load_test_file('core/options_widgets_helpers.lua')
 local P = load_test_file('lib/pixels.lua')
 local st = SaftUI
+st.config.profile.colors.text.muted:SetRGB(0.2, 0.4, 0.6) -- not the default, so a reader that draws a grey of its own fails
 local W = st.OptionsWidgets
 local Kit = W.Kit
 local click, theme, size_of, atlases_of = H.click, H.theme, H.size_of, H.atlases_of
@@ -22,7 +23,7 @@ local function colors() return st.config.profile.colors end
 local function color_of(c) return string.format('%.2f,%.2f,%.2f', c:GetRGB()) end
 local function rgb(r, g, b) return string.format('%.2f,%.2f,%.2f', r, g, b) end
 local BLUE = function() return color_of(st.config.profile.theme.accent) end
-local GREY = function() return color_of(colors().text.grey) end
+local GREY = function() return color_of(colors().text.muted) end
 local NORMAL = function() return color_of(colors().text.normal) end
 local function vertex(texture) return rgb(texture:GetVertexColor()) end
 local function edge_of(frame) return rgb(frame:GetBackdropBorderColor()) end
@@ -94,7 +95,7 @@ test('W.IconButton: a 26 square with its 16 icon in the middle, grey; it needs i
 	local point, rel, relPoint = b.icon:GetPoint(1)
 	check(point == 'CENTER' and rel == b and relPoint == 'CENTER', 'centred on the button')
 	eq(H.insets(b.icon, b), '5,5,5,5', 'its edges at 5 and 21')
-	eq(vertex(b.icon), GREY(), 'Text > Grey')
+	eq(vertex(b.icon), GREY(), 'Text > Muted')
 	eq(#P.off(b), 0, 'on whole pixels: ' .. P.report(P.off(b)))
 	reset_lines()
 	stub.fire_script(b, 'OnEnter', true)
@@ -423,7 +424,7 @@ test('the nudge pair draws Lucide chevrons, on whole pixels, and Blizzard steppe
 	local upMid = top - (up.arrow:GetTop() + up.arrow:GetBottom()) / 2
 	local downMid = top - (down.arrow:GetTop() + down.arrow:GetBottom()) / 2
 	eq(divider - upMid, downMid - divider, 'the chevrons as far from the divider as each other')
-	eq(vertex(up.arrow), GREY(), 'Text > Grey')
+	eq(vertex(up.arrow), GREY(), 'Text > Muted')
 	eq(#P.off(pair), 0, 'on whole pixels: ' .. P.report(P.off(pair)))
 	stub.fire_script(up, 'OnEnter', true)
 	eq(vertex(up.arrow), NORMAL(), 'Text > Normal under the mouse')

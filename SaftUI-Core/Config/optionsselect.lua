@@ -27,7 +27,7 @@ local SetCheck = Kit.SetCheck
 local function Caret(parent)
 	local t = parent:CreateTexture(nil, 'OVERLAY')
 	t:SetTexture(st.icons.chevronDown)
-	t:SetVertexColor(Colors().text.grey:GetRGB())
+	t:SetVertexColor(Colors().text.muted:GetRGB())
 	t:SetSize(16, 16)
 	t:SetPoint('CENTER', parent, 'RIGHT', -12, 0)
 	return { t }

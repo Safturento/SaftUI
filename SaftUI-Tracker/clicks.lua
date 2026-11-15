@@ -389,7 +389,7 @@ end
 
 -- A quest row's tooltip, with Tooltips on: the game's own quest tooltip (the
 -- quest's link) with the party's progress when grouped, then what the clicks do,
--- in Text > Grey. Blizzard's tracker shows only the party's progress, and only
+-- in Text > Muted. Blizzard's tracker shows only the party's progress, and only
 -- while grouped; the link is SaftUI's addition (design: Tooltips).
 function TR:ShowRowTooltip(row)
 	local quest = row and row.quest
@@ -414,7 +414,7 @@ function TR:ShowRowTooltip(row)
 	elseif Call(QuestUtil, 'CanRemoveQuestWatch') == false then
 		shift = 'none'
 	end
-	local r, g, b = st.config.profile.colors.text.grey:GetRGB()
+	local r, g, b = st.config.profile.colors.text.muted:GetRGB()
 	GameTooltip:AddLine(TR.ClickHint(TR.LeftClick(), TR.ShowOnMapAllowed(), shift), r, g, b, true)
 	GameTooltip:Show()
 end

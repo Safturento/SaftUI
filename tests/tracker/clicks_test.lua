@@ -587,9 +587,9 @@ RW.both('the tooltip: the quest link, party progress when grouped, the click hin
 	eq(s.texts[1], GetQuestLink(1), 'the quest link')
 	eq(s.lines, 2, 'not grouped: no party progress, so the link and the hint')
 	eq(s.texts[2], 'Click: show on map (focus in combat). Shift-click: stop tracking. Right-click: more.', 'the hint')
-	local grey = st.config.profile.colors.text.grey
+	local grey = st.config.profile.colors.text.muted
 	local r, g, b = grey:GetRGB()
-	eq(('%.2f %.2f %.2f'):format(unpack(s.colors[2])), ('%.2f %.2f %.2f'):format(r, g, b), 'in Text > Grey')
+	eq(('%.2f %.2f %.2f'):format(unpack(s.colors[2])), ('%.2f %.2f %.2f'):format(r, g, b), 'in Text > Muted')
 	check(GameTooltip:IsShown(), 'shown')
 	stub.fire_script(row, 'OnLeave', true)
 	check(not GameTooltip:IsOwned(row) or not GameTooltip:IsShown(), 'hidden when the mouse leaves')

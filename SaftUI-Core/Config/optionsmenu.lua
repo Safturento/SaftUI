@@ -39,7 +39,7 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	small dialog's 300), 400 wide, drawn as the small dialog is
 	(st:SetTemplate(frame, 'theme', 'solid', 'panel'): under Blizzard the
 	panel art), kept in the screen edge margin. Its title (the item's
-	menuTitle, else its name; the section font, grey) 12 in and 10 down;
+	menuTitle, else its name; the section font, Text > Muted) 12 in and 10 down;
 	under it a plain content frame (no scroll frame: it is as tall as what it
 	holds, so nothing opened from it is cut off) holding a body of its own,
 	OB.New(content, OM.MenuRoot({ menu = group }), MenuChanged, 376, { oneColumn =
@@ -94,7 +94,7 @@ local S = OW.S
 
 local max = math.max
 
-local Text, Grey = OB.Text, OB.Grey
+local Text, Muted = OB.Text, OB.Muted
 local Inside, EscapeKeys, ColorPickerShown = S.Inside, S.EscapeKeys, S.ColorPickerShown
 
 local MENU_WIDTH, MENU_PAD = 400, 12
@@ -201,8 +201,8 @@ local function Draw(body, row, dots, menu, title)
 	if title == nil then title = OM.Member(body.root, row, 'menuTitle') end
 	if type(title) == 'number' then title = tostring(title) end
 	M.title:SetText(type(title) == 'string' and title ~= '' and title or row.name)
-	-- On each draw: Text > Grey can change, or the profile with it.
-	M.title:SetTextColor(Grey())
+	-- On each draw: Text > Muted can change, or the profile with it.
+	M.title:SetTextColor(Muted())
 	DrawBody()
 	Anchor(dots)
 end

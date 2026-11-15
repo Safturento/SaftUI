@@ -1,14 +1,16 @@
 -- The color scan: every SaftUI Lua file the TOCs load is read for a color the
 -- profile no longer has, or a read of one that has no default. The rules (each
 -- grows as the colors' renaming goes on):
---   A  a retired key (text.purple, button.yellow): read as `group.key` or
+--   A  a retired key (text.purple, text.grey, button.yellow): read as `group.key` or
 --      `group['key']`;
 --   B  a local bound to colors.text or colors.button, read for a retired key
 --      of that group;
 --   C  an st:Color or st:ColorRGBA call with a literal group or key that has
 --      no default, or a key given with 'accent';
 --   E  a retired wrapper or constant, by its hue name in code (Blue, LinkBlue,
---      OWN_TEXT: the accent is OB.Accent and OB.OWN_STRENGTH).
+--      OWN_TEXT: the accent is OB.Accent and OB.OWN_STRENGTH; Grey, GreyRGB,
+--      DIFF_COLOR: Text > Muted is OB.Muted, and the diff icon is Muted at
+--      OB.DIFF_STRENGTH).
 -- SaftUI-Core/Media/colors.lua, which holds the retired keys' old values and
 -- the migration, is exempt from every rule but C (it holds strings of the retired keys today, and from Task 4 the one direct read, rule D's, that the accessor makes: don't remove the exemption as dead). Real: the source files, and
 -- Core's defaults (core/config_helpers.lua).
@@ -21,12 +23,12 @@ local EXEMPT = 'SaftUI-Core/Media/colors.lua'
 
 -- Retired keys by group; a task adds its own.
 local RETIRED = {
-	text = { 'purple', 'blue' },
-	button = { 'yellow', 'blue', 'green' },
+	text = { 'purple', 'blue', 'grey' },
+	button = { 'yellow', 'blue', 'green', 'grey' },
 }
 
 -- Rule E's identifiers, word-bounded, in code (comments and strings blanked).
-local HUE_NAMES = { 'Blue', 'LinkBlue', 'OWN_TEXT' }
+local HUE_NAMES = { 'Blue', 'LinkBlue', 'OWN_TEXT', 'Grey', 'GreyRGB', 'DIFF_COLOR' }
 
 local function LineText(source, position)
 	local from = (source:sub(1, position):match('.*\n()') or 1)
@@ -161,10 +163,16 @@ test('the rules, on samples: each fails what it names and passes the rest', func
 	eq(scan("local c = colors.button['green']"), 'A')
 	eq(scan('local c = colors.text.green:GetRGB()'), '', 'Text > Green stays until Task 4')
 	eq(scan('local c = colors.text.bluegreen'), '', 'a longer name is not the key')
+	eq(scan('local c = colors.text.grey:GetRGB()'), 'A')
+	eq(scan("local c = colors.button['grey']"), 'A')
+	eq(scan('local c = colors.text.greyish'), '', 'a longer name is not the key')
+	eq(scan('local c = colors.text.muted:GetRGB()'), '', 'the new key')
 	-- B
 	eq(scan('local textColors = st.config.profile.colors.text\nlocal c = textColors.purple'), 'B')
 	eq(scan("local Buttons = Colors().button\nlocal c = Buttons['yellow']"), 'B')
 	eq(scan('local textColors = st.config.profile.colors.text\nlocal c = textColors.blue'), 'B')
+	eq(scan('local textColors = st.config.profile.colors.text\nlocal c = textColors.grey'), 'B')
+	eq(scan("local Buttons = Colors().button\nlocal c = Buttons['grey']"), 'B')
 	eq(scan('local textColors = st.config.profile.colors.text\nlocal c = textColors.normal'), '')
 	eq(scan('local textColors = st.config.profile.colors.loot\nlocal c = textColors.purple'), '', 'only text and button')
 	-- E
@@ -174,6 +182,13 @@ test('the rules, on samples: each fails what it names and passes the rest', func
 	eq(scan('local r, g, b = OB.Accent()\nlocal s = OB.OWN_STRENGTH'), '', 'the new names')
 	eq(scan("-- OB.Blue and OWN_TEXT\nlocal s = 'LinkBlue'"), '', 'a comment and a string')
 	eq(scan('local Blues = 1\nlocal NotBlue = 2'), '', 'a longer name is not the word')
+	eq(scan('local r, g, b = OB.Grey()'), 'E')
+	eq(scan('local function Grey() return 1 end'), 'E')
+	eq(scan('local function GreyRGB() return 1 end'), 'E')
+	eq(scan('icon:SetVertexColor(unpack(OB.DIFF_COLOR))'), 'E')
+	eq(scan('local r, g, b = OB.Muted()\nlocal s = OB.DIFF_STRENGTH'), '', 'the new names')
+	eq(scan("-- OB.Grey and DIFF_COLOR\nlocal s = 'GreyRGB'"), '', 'a comment and a string')
+	eq(scan('local DOT_GREY = 1\nlocal Greyed = 2'), '', 'a longer name is not the word')
 	-- C
 	eq(scan("local c = st:Color('text', 'normal')"), '')
 	eq(scan("local c = st:Color('text', 'normal2')"), 'C')

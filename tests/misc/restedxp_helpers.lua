@@ -19,6 +19,7 @@ function H.fresh()
 	H.drawn = load_test_file('lib/theme_helpers.lua').watch()
 	load_saftui('SaftUI-Chat/config.lua')
 	apply_defaults()
+	SaftUI.config.profile.colors.text.muted:SetRGB(0.2, 0.4, 0.6) -- not the default, so a reader that draws a grey of its own fails
 	load_saftui('SaftUI-Misc/Skinning/skinning.lua')
 	load_saftui('SaftUI-Misc/Skinning/addons/restedxp.lua')
 end
@@ -27,9 +28,9 @@ function H.get_rx()
 	return SaftUI:GetModule('Skinning'):GetModule('RestedXP')
 end
 
--- The profile's text grey, which the skin's grey text should be.
-function H.is_grey(r, g, b)
-	local gr, gg, gb = SaftUI.config.profile.colors.text.grey:GetRGB()
+-- The profile's Text > Muted, which the skin's dimmed text should be.
+function H.is_muted(r, g, b)
+	local gr, gg, gb = SaftUI.config.profile.colors.text.muted:GetRGB()
 	return H.near(r, gr) and H.near(g, gg) and H.near(b, gb)
 end
 

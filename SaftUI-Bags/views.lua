@@ -189,7 +189,7 @@ local function BagTitle(info)
 	local typeName = info.special and BagTypeName(info.id)
 	local named = ''
 	if typeName and typeName ~= info.name then
-		local r, g, b = st.config.profile.colors.text.grey:GetRGB()
+		local r, g, b = st.config.profile.colors.text.muted:GetRGB()
 		named = (' |cff%02x%02x%02x\194\183 %s|r'):format(math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5), math.floor(b * 255 + 0.5), typeName)
 	end
 	return ('%s%s (%d / %d)'):format(info.name, named, info.total - info.free, info.total)

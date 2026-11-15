@@ -23,7 +23,7 @@ Any number with a sensible range (Ace `range`): sizes, counts, spacing, opacity.
 ## States
 
 - Dragging sets as it goes; the window's other rows follow, and a dialog re-renders after the drag.
-- Disabled: the whole range at `alpha-disabled`, label `text-grey`.
+- Disabled: the whole range at `alpha-disabled`, label `text-muted`.
 - A percent reads "30%"; numbers show without float drift (0.065, 12, 33.5).
 
 ## Mockup difference

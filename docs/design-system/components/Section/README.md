@@ -17,8 +17,8 @@ Every group of options on a page or in a dialog. An Ace inline group (`inline = 
 | Part | Value | Tokens |
 | --- | --- | --- |
 | Gap before the title | 16 | `section-pad` |
-| Title | Heading's face, 15, in `text-grey`, 15 tall | `section-title`, `text-grey` |
-| Note | `note` 15 in `text-grey`, 4 under the title; wraps to the body's width in whole pixels | `note`, `note-gap` |
+| Title | Heading's face, 15, in `text-muted`, 15 tall | `section-title`, `text-muted` |
+| Note | `note` 15 in `text-muted`, 4 under the title; wraps to the body's width in whole pixels | `note`, `note-gap` |
 | Title to panel | 6 | `title-gap` |
 | Panel | black at 28% over the window, as wide as the body | `panel-fill`, `content-width` |
 | Rows | 38 tall, padded 14 each side, no gap between columns | `row-height`, `panel-pad` |

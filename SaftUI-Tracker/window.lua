@@ -100,12 +100,12 @@ end
 -- Every chevron NewChevron made, so a color change paints them again.
 local chevrons = setmetatable({}, { __mode = 'k' })
 
--- Text > Grey at rest, white under the mouse (the skin's chevrons).
+-- Text > Muted at rest, white under the mouse (the skin's chevrons).
 local function PaintChevron(button)
 	if button.hovered then
 		button.icon:SetVertexColor(1, 1, 1, 1)
 	else
-		local r, g, b = Colors().text.grey:GetRGB()
+		local r, g, b = Colors().text.muted:GetRGB()
 		button.icon:SetVertexColor(r, g, b, 1)
 	end
 end
@@ -550,7 +550,7 @@ function TR:ColorHeader()
 	if not header then return end
 	local text = Colors().text
 	header.title:SetTextColor(text.normal:GetRGB())
-	header.count:SetTextColor(text.grey:GetRGB())
+	header.count:SetTextColor(text.muted:GetRGB())
 	header.line:SetVertexColor(LineColor())
 	for chevron in pairs(chevrons) do PaintChevron(chevron) end
 end

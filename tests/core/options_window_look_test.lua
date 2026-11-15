@@ -14,6 +14,7 @@
 -- themselves.
 local H = load_test_file('core/options_window_helpers.lua')
 local st = SaftUI
+st.config.profile.colors.text.muted:SetRGB(0.2, 0.4, 0.6) -- not the default, so a reader that draws a grey of its own fails
 local OW = st.OptionsWindow
 local frames, theme, close_all, size_of, click = H.frames, H.theme, H.close_all, H.size_of, H.click
 local rgba = H.rgba
@@ -424,7 +425,7 @@ test('a disabled tab stays in its place, faded and taking no click, under Thick,
 		eq(st.OptionsWindow:GetState().tab, 'one', name .. ': a click on a disabled tab opens nothing')
 		stub.fire_script(now.two, 'OnEnter')
 		local function rgb(r, g, b) return string.format('%.2f,%.2f,%.2f', r, g, b) end
-		eq(rgb(now.two.text:GetTextColor()), rgb(st.config.profile.colors.text.grey:GetRGB()), name .. ': nor lights it')
+		eq(rgb(now.two.text:GetTextColor()), rgb(st.config.profile.colors.text.muted:GetRGB()), name .. ': nor lights it')
 		stub.fire_script(now.two, 'OnLeave')
 	end
 	theme('thick')

@@ -104,7 +104,7 @@ local function Paint(control)
 	end
 	if control.icon then
 		local lit = on or ((control.link or control.hoverIcon) and hovered)
-		local color = lit and st:Color('accent') or Colors().text.grey
+		local color = lit and st:Color('accent') or Colors().text.muted
 		control.icon:SetVertexColor(color:GetRGB())
 	end
 	-- A label's colour is written only to light it (a button with no icon
@@ -179,7 +179,7 @@ local function NewIcon(button, path, size)
 	local icon = button:CreateTexture(nil, 'OVERLAY')
 	icon:SetTexture(path)
 	icon:SetSize(size or ICON, size or ICON)
-	icon:SetVertexColor(Colors().text.grey:GetRGB())
+	icon:SetVertexColor(Colors().text.muted:GetRGB())
 	return icon
 end
 
@@ -259,7 +259,7 @@ function W.Button(parent, label, onClick, opts)
 	return button
 end
 
--- A square button with only its icon, in Text > Grey: 26 square with a 16
+-- A square button with only its icon, in Text > Muted: 26 square with a 16
 -- icon in the middle (its edges at 5 and 21), or size square with an iconSize
 -- icon (the window's header arrows: 24 and 20). Both are whole numbers and
 -- (size - iconSize) / 2 is whole, so the icon's edges are. The icon sits 1
@@ -303,7 +303,7 @@ function W.IconLink(parent, icon, size, tip, extra)
 	link.icon = link:CreateTexture(nil, 'OVERLAY')
 	link.icon:SetTexture(icon)
 	link.icon:SetAllPoints(link)
-	link.icon:SetVertexColor(Colors().text.grey:GetRGB())
+	link.icon:SetVertexColor(Colors().text.muted:GetRGB())
 	Wire(link)
 	Paint(link)
 	return link
@@ -361,7 +361,7 @@ local function PaintNudge(button)
 end
 
 -- One half of the nudge pair: a 14x11 button (a clickable region of the
--- pair's box) with its chevron, button.arrow: Lucide's, 12x12, Text > Grey
+-- pair's box) with its chevron, button.arrow: Lucide's, 12x12, Text > Muted
 -- and Text > Normal under the mouse while enabled. Both halves' arrows sit 1
 -- above their half's top (a middle 5 down it), whole pixels: 5.5 from the
 -- divider's middle either side. owner.disabled stops it, and owner:Tip(on) shows
@@ -373,7 +373,7 @@ local function NudgeButton(owner, parent, up, onClick)
 	arrow:SetTexture(up and st.icons.chevronUp or st.icons.chevronDown)
 	arrow:SetSize(CHEVRON, CHEVRON)
 	arrow:SetPoint('TOP', button, 'TOP', 0, 1)
-	arrow:SetVertexColor(Colors().text.grey:GetRGB())
+	arrow:SetVertexColor(Colors().text.muted:GetRGB())
 	button.arrow = arrow
 	button:SetScript('OnClick', function()
 		if owner.disabled then return end
@@ -384,7 +384,7 @@ local function NudgeButton(owner, parent, up, onClick)
 		owner:Tip(true)
 	end)
 	button:SetScript('OnLeave', function(self)
-		self.arrow:SetVertexColor(Colors().text.grey:GetRGB())
+		self.arrow:SetVertexColor(Colors().text.muted:GetRGB())
 		owner:Tip(false)
 	end)
 	-- Under Blizzard its stepper art follows the mouse (PaintNudge).

@@ -15,6 +15,7 @@
 local H = load_test_file('core/options_window_helpers.lua')
 local P = load_test_file('lib/pixels.lua')
 local st = SaftUI
+st.config.profile.colors.text.muted:SetRGB(0.2, 0.4, 0.6) -- not the default, so a reader that draws a grey of its own fails
 local OW, W, EM, OB = st.OptionsWindow, st.OptionsWidgets, st.EditModeFrames, st.OptionsBody
 local theme, close_all, frames, click, tick = H.theme, H.close_all, H.frames, H.click, H.tick
 if not _G.GameTooltip then CreateFrame('GameTooltip', 'GameTooltip', UIParent) end
@@ -110,8 +111,8 @@ test('Shrink at half: a 42 tall bar at the same corner with the name, the page, 
 	eq(F.miniBrand:GetFontObject(), OB.Font('mini'), 'the name in the mini font')
 	eq(F.miniPage:GetFontObject(), OB.Font('group'), 'the page in group')
 	eq(F.miniTab:GetFontObject(), OB.Font('field'), 'the tab in field')
-	eq(rgb(F.miniPage), color_of(st.config.profile.colors.text.grey), 'the page in Text > Grey')
-	eq(rgb(F.miniTab), color_of(st.config.profile.colors.text.grey), 'the tab in Text > Grey')
+	eq(rgb(F.miniPage), color_of(st.config.profile.colors.text.muted), 'the page in Text > Muted')
+	eq(rgb(F.miniTab), color_of(st.config.profile.colors.text.muted), 'the tab in Text > Muted')
 	eq(st:DrawnKind(w), 'panel', 'drawn as a panel')
 	eq(st.config.global.optionsWindow.size, 'half', 'a bar comes back as half')
 	-- 12 in; each part 8 after the last; close 8 in from the right; grow and close centred on the 42.

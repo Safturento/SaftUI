@@ -11,6 +11,7 @@
 local H = load_test_file('core/options_window_helpers.lua')
 local P = load_test_file('lib/pixels.lua')
 local st = SaftUI
+st.config.profile.colors.text.muted:SetRGB(0.2, 0.4, 0.6) -- not the default, so a reader that draws a grey of its own fails
 local OW = st.OptionsWindow
 local theme, close_all, frames = H.theme, H.close_all, H.frames
 
@@ -447,14 +448,14 @@ test("the arrows: the close X's size, minimize-2 and maximize-2 at 16, grey at r
 	eq(F.grow.icon:GetWidth() .. 'x' .. F.grow.icon:GetHeight(), '16x16', 'at 16')
 	eq(F.shrink:GetTop(), F.close:GetTop(), 'top-aligned with the close X')
 	eq(F.shrink:GetRight(), F.close:GetLeft() - 6, '6 left of the close X')
-	eq(vertex(F.shrink.icon), color_of(st.config.profile.colors.text.grey), 'grey at rest')
+	eq(vertex(F.shrink.icon), color_of(st.config.profile.colors.text.muted), 'grey at rest')
 	stub.fire_script(F.shrink, 'OnEnter', true)
 	eq(vertex(F.shrink.icon), color_of(st.config.profile.theme.accent), 'accent under the mouse')
 	check(GameTooltip:IsOwned(F.shrink) and GameTooltip:IsShown(), 'its tooltip, owned by it')
 	eq(stub.state(GameTooltip).texts[1], 'Shrink to half', 'shown with its title')
 	eq(tip_text(F.shrink), "Shrink to half | The page in one column. The window's right edge stays.")
 	stub.fire_script(F.shrink, 'OnLeave', true)
-	eq(vertex(F.shrink.icon), color_of(st.config.profile.colors.text.grey), 'grey again')
+	eq(vertex(F.shrink.icon), color_of(st.config.profile.colors.text.muted), 'grey again')
 	check(not GameTooltip:IsShown(), 'the tooltip is gone')
 	-- At half.
 	click(F.shrink)

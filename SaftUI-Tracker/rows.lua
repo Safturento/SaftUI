@@ -114,14 +114,14 @@ end
 ------------------------------------------------------------------ colors
 
 -- The color of a state of a text: Text > Normal, the two Objectives colors,
--- Text > Grey, white, the accent (Theme > Accent), or the quest's difficulty
+-- Text > Muted, white, the accent (Theme > Accent), or the quest's difficulty
 -- color. Read at draw time and never kept, so a Colors tab change is seen by
 -- the next draw and by TR:ColorRows.
 local function StateColor(state, difficulty)
 	local colors = Colors()
 	if state == 'completed' then return colors.objectives.completed:GetRGB() end
 	if state == 'failed' then return colors.objectives.failed:GetRGB() end
-	if state == 'grey' then return colors.text.grey:GetRGB() end
+	if state == 'muted' then return colors.text.muted:GetRGB() end
 	if state == 'white' then return 1, 1, 1 end
 	if state == 'accent' then return st:Color('accent'):GetRGB() end
 	if state == 'difficulty' and difficulty then return difficulty.r, difficulty.g, difficulty.b end
@@ -640,9 +640,9 @@ local function DrawZone(self, row, entry, p, width)
 		row.chevron:SetDown(group.collapsed)
 	end
 	TR.SetText(row.title, group.title)
-	Paint(row.title, group.current and 'normal' or 'grey')
+	Paint(row.title, group.current and 'normal' or 'muted')
 	TR.SetText(row.count, tostring(group.count))
-	Paint(row.count, 'grey')
+	Paint(row.count, 'muted')
 	Shown(row.pin, group.current and true or false)
 	-- The title is as wide as its text up to the room the pin and the count
 	-- leave, so the pin follows its last letter.
@@ -662,7 +662,7 @@ local function DrawPopup(self, row, entry, p, width)
 end
 
 local function DrawEmpty(self, row, entry, p, width)
-	Paint(row.title, 'grey')
+	Paint(row.title, 'muted')
 end
 
 local function TitleState(quest, settings)

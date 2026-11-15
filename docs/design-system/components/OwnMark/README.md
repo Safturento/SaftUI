@@ -17,14 +17,14 @@ The option's SaftUI-only share fields: whether it is the member's own, how to re
 | Mark | 2px wide, `accent`, 6 in from the row's top and bottom, 5 in from the cell's left (inside the panel's padding) | `mark-width`, `mark-inset`, `mark-x`, `accent` |
 | Label | `accent` while the row isn't disabled | `accent` |
 | Hover line | `small` 13 on a 14 line under the label, which lifts so both are centred in the row | `small`, `hover-line` |
-| Line content | "Own" in `accent` (its tooltip: the name and the All value), the reset icon (`ResetIcon`), "· Apply to:" in `text-grey`, the links "All" and "Multiple" in `accent`, white under the mouse, "\|" in `text-grey`; 4 between words | `accent`, `white`, `text-grey`, `diff-gap`, `reset-gap` |
+| Line content | "Own" in `accent` (its tooltip: the name and the All value), the reset icon (`ResetIcon`), "· Apply to:" in `text-muted`, the links "All" and "Multiple" in `accent`, white under the mouse, "\|" in `text-muted`; 4 between words | `accent`, `white`, `text-muted`, `diff-gap`, `reset-gap` |
 
 ## States
 
 - At rest: the mark and the accent label, no hover line.
 - Under the mouse (anywhere on the row, its control and the line's links included): the hover line shows.
 - A `MenuItem` is marked when its Show or anything in its menu is own.
-- Disabled: the label goes `text-grey` like any disabled row's.
+- Disabled: the label goes `text-muted` like any disabled row's.
 
 ## Blizzard theme
 

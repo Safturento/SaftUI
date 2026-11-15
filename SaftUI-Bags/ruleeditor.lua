@@ -18,8 +18,8 @@ local INV = st:GetModule('Inventory')
 	line (2 wide, at its indent plus 12; AND the accent, OR orange), with its AND or
 	OR badge on the line's middle (a click flips it) and an 18 connector from
 	the line to each row. Rows:
-	  - a block: its handle (6 dots), NOT, its grey label, its fields, the X;
-	  - a group's title: handle, NOT, 'group' in grey, the X;
+	  - a block: its handle (6 dots), NOT, its Muted label, its fields, the X;
+	  - a group's title: handle, NOT, 'group' in Muted, the X;
 	  - an add row, last in every group: + Block (a list of the block types)
 	    and + Group (an empty group of the other operator);
 	  - a node this version can't read: 'Unknown block' and the X.
@@ -85,7 +85,7 @@ local FIELD_WIDTH, MODE_WIDTH, YES_NO_WIDTH, COUNT_WIDTH = 150, 80, 60, 90
 -- INV.DragParts (dragparts.lua): what the rule editor and the Categories tab
 -- both draw and drag with.
 local D = INV.DragParts
-local Colors, Grey, Text, TextWidth, Inside = D.Colors, D.Grey, D.Text, D.TextWidth, D.Inside
+local Colors, Muted, Text, TextWidth, Inside = D.Colors, D.Muted, D.Text, D.TextWidth, D.Inside
 
 -- A group's color: AND the accent, OR orange (Text > Orange).
 local function OpColor(op)
@@ -98,7 +98,7 @@ end
 local function Caret(parent)
 	local t = parent:CreateTexture(nil, 'OVERLAY')
 	t:SetTexture(st.icons.chevronDown)
-	t:SetVertexColor(Grey())
+	t:SetVertexColor(Muted())
 	t:SetSize(16, 16)
 	t:SetPoint('CENTER', parent, 'RIGHT', -12, 0)
 	return { t }
@@ -497,7 +497,7 @@ function Lay:Check(name, caption, checked, toggle)
 	check.mark:SetColorTexture(st:Color('accent'):GetRGB())
 	check.mark:SetShown(checked)
 	check.caption:SetText(caption)
-	check.caption:SetTextColor(Grey())
+	check.caption:SetTextColor(Muted())
 	-- The box and its caption go together.
 	local width = CHECK_SIZE + 6 + TextWidth(check.caption)
 	local top = self:Fit(width)
@@ -507,11 +507,11 @@ function Lay:Check(name, caption, checked, toggle)
 	return check
 end
 
--- Grey words between the controls (a field of the row's when named).
+-- Muted words between the controls (a field of the row's when named).
 function Lay:Caption(text, name)
 	local caption = Take(self.f, 'caption', MakeCaption)
 	caption:SetText(text)
-	caption:SetTextColor(Grey())
+	caption:SetTextColor(Muted())
 	local width = TextWidth(caption)
 	local top = self:Fit(width)
 	caption:SetPoint('LEFT', self.f, 'TOPLEFT', self.x, -(top + ROW_HEIGHT / 2))
@@ -711,7 +711,7 @@ local function NotLook(box, on)
 	if on then
 		box.text:SetTextColor(st:Color('accent'):GetRGB())
 	else
-		box.text:SetTextColor(Grey())
+		box.text:SetTextColor(Muted())
 	end
 	W.Edge(box, on)
 end
@@ -780,7 +780,7 @@ local function RowFrame(w, i)
 	remove.icon:SetSize(20, 20) -- a 10 px cross in the middle
 	remove.icon:SetPoint('CENTER', remove, 'CENTER', 0, 0)
 	remove:SetScript('OnEnter', function(self) self.icon:SetVertexColor(Colors().text.red:GetRGB()) end)
-	remove:SetScript('OnLeave', function(self) self.icon:SetVertexColor(Grey()) end)
+	remove:SetScript('OnLeave', function(self) self.icon:SetVertexColor(Muted()) end)
 	remove:SetScript('OnClick', function()
 		local record = w.rows[i]
 		if record then Edit(w, function(rule) return R.Remove(rule, record.path) ~= nil end) end
@@ -830,7 +830,7 @@ local function LayRow(w, i, row, top)
 	f.notBox:SetShown(known)
 	f.remove:SetShown(row.kind ~= 'add')
 	f.label:SetShown(row.kind ~= 'add')
-	f.remove.icon:SetVertexColor(Grey())
+	f.remove.icon:SetVertexColor(Muted())
 	for _, part in ipairs({ f.handle, f.notBox, f.remove }) do part:SetFrameLevel(level + 2) end
 
 	if known then
@@ -854,7 +854,7 @@ local function LayRow(w, i, row, top)
 			label = R.BlockType(row.node.block).label
 		end
 		f.label:SetText(label)
-		f.label:SetTextColor(Grey())
+		f.label:SetTextColor(Muted())
 		f.label:ClearAllPoints()
 		f.label:SetPoint('LEFT', f, 'TOPLEFT', x, -ROW_HEIGHT / 2)
 		x = x + TextWidth(f.label) + 8

@@ -164,8 +164,8 @@ local function MakeDivider(frame)
 	return tex
 end
 
-local function GreyRGB()
-	return st.config.profile.colors.text.grey:GetRGB()
+local function MutedRGB()
+	return st.config.profile.colors.text.muted:GetRGB()
 end
 
 -- SaftUI's header strip fill.
@@ -176,7 +176,7 @@ end
 -- The thumb is RestedXP's, re-textured by it on every UpdateScrollBar.
 local function ColorThumb(bar)
 	local thumb = bar:GetThumbTexture()
-	if thumb then thumb:SetVertexColor(GreyRGB()) end
+	if thumb then thumb:SetVertexColor(MutedRGB()) end
 end
 
 local function MakePanel(parent)
@@ -234,7 +234,7 @@ local function SkinStep(frame, isFirst)
 
 	HookFont(frame.text, 'text')
 	HookFont(frame.number.text, 'text')
-	frame.number.text:SetTextColor(GreyRGB())
+	frame.number.text:SetTextColor(MutedRGB())
 
 	-- The first step sits under the title line already. The line is a region
 	-- of its step, so it fades with a hidden one.
@@ -312,7 +312,7 @@ local function SkinCurrentStep(frame)
 
 	local title = frame.number.text
 	HookFont(title, 'text')
-	title:SetTextColor(GreyRGB())
+	title:SetTextColor(MutedRGB())
 	title:ClearAllPoints()
 	title:SetPoint('TOPRIGHT', frame, 'TOPRIGHT', -5, -1)
 	title:SetJustifyH('RIGHT')

@@ -20,6 +20,7 @@ local function build()
 	H = load_test_file('core/options_window_helpers.lua')
 	load_editmode_bar()
 	st = SaftUI
+	st.config.profile.colors.text.muted:SetRGB(0.2, 0.4, 0.6) -- not the default, so a reader that draws a grey of its own fails
 	EM, W = st.EditModeFrames, st.OptionsWidgets
 	History = EM.History
 	EM:Enable()
@@ -329,7 +330,7 @@ test('the docked bar has no status line: the text is kept, small and grey, never
 	local text = EM.statusText
 	eq(text:GetText(), 'Undid: Moved Player', 'the message is kept')
 	check(not text:IsShown(), 'but not drawn on the bar')
-	eq(rgb(CreateColor(text:GetTextColor())), rgb(colors().text.grey), 'Text > Grey')
+	eq(rgb(CreateColor(text:GetTextColor())), rgb(colors().text.muted), 'Text > Muted')
 	eq(text:GetFontObject(), st.OptionsBody.Font('small'), 'the small font')
 	check(not text:IsMouseEnabled(), 'takes no mouse')
 	check(EM.statusCut and tip_on(bar), 'with no control to put it under, the tooltip is under the bar')
@@ -504,8 +505,9 @@ test('the History list: newest first, the current step marked, undone ones grey,
 
 	stub.click(frame_of('undo'))
 	check(not list.rows[1].mark:IsShown() and list.rows[2].mark:IsShown(), 'undo: the mark moves to the second')
-	eq(rgb(CreateColor(list.rows[1].label:GetTextColor())), rgb(colors().text.grey), 'the undone one is grey')
+	eq(rgb(CreateColor(list.rows[1].label:GetTextColor())), rgb(colors().text.muted), 'the undone one is grey')
 	eq(list.rows[1].detail:GetText(), 'undone', 'and says undone')
+	eq(rgb(CreateColor(list.rows[1].detail:GetTextColor())), rgb(colors().text.muted), 'in Text > Muted')
 	eq(list.rows[2].detail:GetText(), 'now', 'the applied ones do not')
 
 	stub.click(list.rows[3])
@@ -925,9 +927,10 @@ test('the list is placed 6 under the bar (the History button is on its first row
 	check(list:IsMouseEnabled(), 'it takes the mouse')
 	eq(list.title:GetText(), 'History', 'titled')
 	eq(list.title:GetFontObject(), st.OptionsBody.Font('group'), 'in the group font')
-	eq(rgb(CreateColor(list.title:GetTextColor())), rgb(colors().text.grey), 'Text > Grey')
+	eq(rgb(CreateColor(list.title:GetTextColor())), rgb(colors().text.muted), 'Text > Muted')
 	eq(list.foot1:GetText(), 'Keep the last', 'the foot')
 	eq(list.foot2:GetText(), 'steps (up to 1000)', 'and its end')
+	eq(rgb(CreateColor(list.foot1:GetTextColor())), rgb(colors().text.muted), 'the foot is Text > Muted'); eq(rgb(CreateColor(list.foot2:GetTextColor())), rgb(colors().text.muted), 'and its end')
 	eq(list.box:GetWidth(), 54, 'a 54 wide box')
 	-- The rows: 26 tall with the hairline between.
 	eq(list.rows[1]:GetHeight(), 26, 'a row is 26 tall')

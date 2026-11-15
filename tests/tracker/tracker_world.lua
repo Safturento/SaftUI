@@ -171,6 +171,7 @@ function TW.world(opts)
 	if not _G.GameTooltip then CreateFrame('GameTooltip', 'GameTooltip', UIParent, 'GameTooltipTemplate') end
 	GameTooltip:Hide()
 	st.config.char = {}
+	st.config.profile.colors.text.muted:SetRGB(0.2, 0.4, 0.6) -- not the default, so a reader that draws a grey of its own fails
 	InstallCounters()
 	if opts.addons then
 		for _, name in ipairs(opts.addons) do stub.loaded_addons[name] = true end

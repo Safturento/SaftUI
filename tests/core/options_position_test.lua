@@ -11,6 +11,7 @@
 -- options_widgets_helpers.lua's.
 local H = load_test_file('core/options_widgets_helpers.lua')
 local st = SaftUI
+st.config.profile.colors.text.muted:SetRGB(0.2, 0.4, 0.6) -- not the default, so a reader that draws a grey of its own fails
 local W = st.OptionsWidgets
 local click, type_into, check_no_box, check_box, shown_textures = H.click, H.type_into, H.check_no_box, H.check_box, H.shown_textures
 local parent, around, rebind, art_inside, atlas_exact = H.parent, H.around, H.rebind, H.art_inside, H.atlas_exact
@@ -291,7 +292,7 @@ test('position: the caption font is the title face at 11, in grey', function()
 	eq(path, st.LSM:Fetch('font', config.font_name), 'the title face')
 	eq(size, 11, 'at 11')
 	local r, g, b = w.captions[1]:GetTextColor()
-	local gr, gg, gb = st.config.profile.colors.text.grey:GetRGB()
+	local gr, gg, gb = st.config.profile.colors.text.muted:GetRGB()
 	check(r == gr and g == gg and b == gb, 'grey')
 	w:Release()
 end)

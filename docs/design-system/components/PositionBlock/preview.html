@@ -7,7 +7,7 @@
 <style>
   .block { display: flex; gap: var(--pos-gap); align-items: flex-start; padding: var(--title-gap) var(--panel-pad) var(--panel-pad); }
   .part { display: flex; flex-direction: column; align-items: center; gap: var(--pos-caption-gap); position: relative; }
-  .part > .caption { color: var(--text-grey); }
+  .part > .caption { color: var(--text-muted); }
   .dots { width: var(--pos-band); height: var(--pos-band); padding: calc(var(--pos-dot-margin) - var(--line-width)); display: grid; grid-template-columns: repeat(3, var(--pos-dot-cell)); grid-auto-rows: var(--pos-dot-cell); place-items: center; }
   .dots i { width: var(--pos-dot); height: var(--pos-dot); background: var(--dot-grey); }
   .dots i.on { width: var(--pos-dot-picked); height: var(--pos-dot-picked); background: var(--accent); }
@@ -18,7 +18,7 @@
   .offs .nudge { width: var(--pos-nudge); height: var(--pos-box); margin-left: calc(var(--line-width) * -1); display: flex; flex-direction: column; }
   .nudge span { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; }
   .nudge span + span { border-top: var(--line-width) solid var(--kit-edge); }
-  .nudge u { display: block; height: var(--line-width); background: var(--text-grey); }
+  .nudge u { display: block; height: var(--line-width); background: var(--text-muted); }
   .nudge u:nth-child(1) { width: calc(var(--line-width) * 2); } .nudge u:nth-child(2) { width: calc(var(--line-width) * 4); } .nudge u:nth-child(3) { width: calc(var(--line-width) * 6); }
   .nudge span.down { flex-direction: column-reverse; }
 </style>

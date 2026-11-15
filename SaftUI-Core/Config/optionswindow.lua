@@ -219,7 +219,7 @@ S.size, S.sidebar, S.bodyWidth = 'full', true, OB.WIDTH
 -- changed (OW.SIZE_GUARD).
 S.keepRow, S.sizedAt = nil, nil
 
-local Colors, Normal, Grey, Accent = OB.Colors, OB.Normal, OB.Grey, OB.Accent
+local Colors, Normal, Muted, Accent = OB.Colors, OB.Normal, OB.Muted, OB.Accent
 
 -- Whether SaftUI's color picker is open (its keys and its changes are its).
 local function ColorPickerShown() return W.ColorPickerShown() end
@@ -668,6 +668,7 @@ local function DrawFooterControl(footer)
 	local view = OM.BuildView(tree, FOOTER_KEY)
 	if not view then return end -- hidden
 	F.footerLabel:SetText(view.title)
+	F.footerLabel:SetTextColor(Muted())
 	CreateControlWidgets(view, tree, F.footerControl, F.footerWidgets)
 	F.footerControl:SetShown(#F.footerWidgets > 0)
 end
@@ -857,6 +858,7 @@ end
 
 local function Placeholder(text)
 	F.placeholder:SetText(text)
+	F.placeholder:SetTextColor(Muted())
 	F.placeholder:Show()
 end
 
@@ -879,6 +881,8 @@ local function Heading(title, desc)
 	end
 	S.PlaceTitle() -- its arrow and button while the sidebar is collapsed
 	F.desc:SetText(desc or '')
+	F.desc:SetTextColor(Muted()) -- the description and the search hint are read again at each draw
+	if F.search then F.search.hint:SetTextColor(Muted()) end
 	local height = 0
 	if (desc or '') ~= '' then
 		-- One line reads a font height or so, whatever the game's rounding; more
@@ -1300,7 +1304,7 @@ local function BuildSearch(parent)
 	search:SetAutoFocus(false)
 	search.hint = Text(search, 'field')
 	search.hint:SetPoint('LEFT', search, 'LEFT', SEARCH_TEXT_INSET, 0)
-	search.hint:SetTextColor(Grey())
+	search.hint:SetTextColor(Muted())
 	search.hint:SetText('Search settings...')
 	search:SetScript('OnEnter', function(self) W.Edge(self, true) end)
 	search:SetScript('OnLeave', function(self) W.Edge(self, self:HasFocus()) end)
@@ -1363,7 +1367,7 @@ local function BuildSidebar(window)
 	F.brandName = name
 	local sub = Text(brand, 'small')
 	sub:SetPoint('TOPLEFT', name, 'BOTTOMLEFT', 0, -2)
-	sub:SetTextColor(Grey())
+	sub:SetTextColor(Muted())
 	sub:SetText('Options')
 	F.sideLines[#F.sideLines + 1] = EdgeLine(brand, 'BOTTOM')
 	F.brand = brand
@@ -1382,7 +1386,7 @@ local function BuildSidebar(window)
 	F.sideLines[#F.sideLines + 1] = EdgeLine(foot, 'TOP')
 	F.profile = Text(foot, 'small')
 	F.profile:SetPoint('LEFT', foot, 'LEFT', 18, 0)
-	F.profile:SetTextColor(Grey())
+	F.profile:SetTextColor(Muted())
 	F.foot = foot
 
 	local nav = CreateFrame('ScrollFrame', nil, side)
@@ -1417,7 +1421,7 @@ local function BuildMain(window)
 	F.desc:SetWidth(CONTENT_WIDTH)
 	F.desc:SetWordWrap(true)
 	F.desc:SetJustifyV('TOP')
-	F.desc:SetTextColor(Grey())
+	F.desc:SetTextColor(Muted())
 
 	F.close = st:CreateCloseButton(window)
 	-- Its tooltip, with the arrows'.
@@ -1454,7 +1458,7 @@ local function BuildMain(window)
 	F.bar = OB.ScrollBar(main, SetScroll, { step = SCROLL_STEP })
 	F.placeholder = Text(content, 'label')
 	F.placeholder:SetPoint('TOPLEFT', content, 'TOPLEFT', 0, -OB.TOP)
-	F.placeholder:SetTextColor(Grey())
+	F.placeholder:SetTextColor(Muted())
 	F.placeholder:Hide()
 
 	pageBody = OB.New(content, root, Changed, CONTENT_WIDTH)
@@ -1488,7 +1492,7 @@ local function BuildFooter()
 	F.footerControl, F.footerWidgets = control, {}
 	F.footerLabel = Text(control, 'field')
 	F.footerLabel:SetPoint('LEFT', control, 'LEFT', 0, 0)
-	F.footerLabel:SetTextColor(Grey())
+	F.footerLabel:SetTextColor(Muted())
 end
 
 -- Under Blizzard: the metal's title bar, the window's drag strip, with the
@@ -1724,7 +1728,7 @@ S.F, S.Colors, S.Schedule, S.SavePosition, S.SaveWindow, S.Inside = F, Colors, S
 S.ColorPickerShown, S.EscapeKeys = ColorPickerShown, EscapeKeys
 S.SetScroll, S.SetNavScroll = SetScroll, SetNavScroll
 S.FOOTER_MIN_ROOM = FOOTER_MIN_ROOM
-S.state, S.pools, S.Normal, S.Grey, S.Accent, S.Button, S.Select = state, pools, Normal, Grey, Accent, W.Button, Select
+S.state, S.pools, S.Normal, S.Muted, S.Accent, S.Button, S.Select = state, pools, Normal, Muted, Accent, W.Button, Select
 S.PAD, S.FIELD_HEIGHT, S.TAB_HEIGHT = PAD, FIELD_HEIGHT, TAB_HEIGHT
 S.CLOSE_RIGHT, S.CLOSE_TOP = 16, 14 -- the close X's place under Thick and Thin, from the window's top right corner
 S.MINI_PAD, S.Draggable = 8, Draggable -- the bar's close X 8 in from its right; a frame that moves the window

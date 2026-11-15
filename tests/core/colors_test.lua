@@ -57,8 +57,8 @@ test('the sections and their colors, in order, as small color swatches with tool
 	eq(table.concat(names, ','), 'Text,Buttons,Class,Roles,Reputation,Factions,Power,Item quality,Loot,Status,Threat,Objectives')
 
 	local expected = {
-		text = 'Text,Grey,Red,Orange,Yellow,Green,Cyan,White',
-		button = 'Normal,Hover,Pushed,Red,Grey',
+		text = 'Text,Muted,Red,Orange,Yellow,Green,Cyan,White',
+		button = 'Normal,Hover,Pushed,Red',
 		class = 'Death Knight,Demon Hunter,Druid,Evoker,Hunter,Mage,Monk,Paladin,Priest,Rogue,Shaman,Warlock,Warrior',
 		roles = 'Tank,Healer,Damage',
 		factions = 'Alliance,Horde,Neutral',

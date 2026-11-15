@@ -16,7 +16,7 @@ Free text (a name, a frame to anchor to) and numbers with no sensible range (wid
 | --- | --- | --- |
 | Box | 170 x 24 (small: 60), Box look | `control-width`, `input-small`, `field-height` |
 | Text | `field` in `text`, 8 in from each side | `list-text` |
-| Hint (search only) | `field` in `text-grey` | `text-grey` |
+| Hint (search only) | `field` in `text-muted` | `text-muted` |
 
 ## States
 

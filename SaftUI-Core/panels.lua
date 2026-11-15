@@ -362,7 +362,7 @@ function st:CreateCloseButton(frame)
 		else
 			close:SetBackdropColor(unpack(self.BOX_COLORS.field))
 			close:SetBackdropBorderColor(unpack(self.BOX_COLORS.edge))
-			x:SetVertexColor(colors.text.grey:GetRGB())
+			x:SetVertexColor(colors.text.muted:GetRGB())
 		end
 	end
 	Look(false)

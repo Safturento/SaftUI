@@ -126,7 +126,7 @@ local function Refresh()
 			dimmed[mover] = true
 		end
 	end
-	lines[#lines + 1] = ColorCode(colors.button.grey) .. 'Alt: next|r'
+	lines[#lines + 1] = ColorCode(colors.text.muted) .. 'Alt: next|r'
 
 	text:SetText(table.concat(lines, '\n'))
 	list:SetSize(text:GetStringWidth() + 12, text:GetStringHeight() + 12)

@@ -15,6 +15,7 @@
 local H = load_test_file('core/options_window_helpers.lua')
 local T = load_test_file('lib/theme_helpers.lua')
 local st = SaftUI
+st.config.profile.colors.text.muted:SetRGB(0.2, 0.4, 0.6) -- not the default, so a reader that draws a grey of its own fails
 local OM, W, OB, OW = st.OptionsModel, st.OptionsWidgets, st.OptionsBody, st.OptionsWindow
 local close_all, frames, click, cell, tick, theme = H.close_all, H.frames, H.click, H.cell, H.tick, H.theme
 local drawn = T.watch() -- before the menu is first built, so its draw is seen
@@ -666,10 +667,10 @@ test('the mouse wheel stops at the menu and its catcher', function()
 	close_all()
 end)
 
-test("the menu's title takes Text > Grey on each draw", function()
+test("the menu's title takes Text > Muted on each draw", function()
 	open_items()
 	click(dots('hotkey'))
-	local grey = st.config.profile.colors.text.grey
+	local grey = st.config.profile.colors.text.muted
 	local r, g, b = grey.r, grey.g, grey.b
 	grey.r, grey.g, grey.b = 0.2, 0.4, 0.6
 	OW:Render()
@@ -736,7 +737,7 @@ test('a drag in the menu: another of its rows follows it, and a render meanwhile
 	slider.dragging = true
 	slider:Commit(18)
 	check(outline.widget.disabled, 'Outline follows the drag: disabled at 18')
-	eq(T.rgb(outline.label:GetTextColor()), T.rgb(st.config.profile.colors.text.grey:GetRGB()), 'its label grey')
+	eq(T.rgb(outline.label:GetTextColor()), T.rgb(st.config.profile.colors.text.muted:GetRGB()), 'its label grey')
 	OW:Render() -- a render from elsewhere (a ConfigTableChange)
 	eq(menuCell('outline'), outline, 'its rows kept under the held slider')
 	eq(menuCell('size').widget, slider, 'the slider not taken from under the mouse')

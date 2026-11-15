@@ -7,7 +7,7 @@ SaftUI replaces World of Warcraft's interface with flat, dark frames that sit qu
 - Colour tokens have two themes, **Thick** (the default, first) and **Thin**. Only the theme's own colours change between them: `backdrop`, `border`, `border-alt`, `header-strip`. The options kit's colours (`kit-field`, `kit-edge`, `kit-alt`, `kit-bg`, `sidebar`, `line`) hold one value in both, because the code fixes them today (see Discrepancies). The **Blizzard** theme is not a colour theme: it draws Blizzard's own art, and each component's guidelines say what it keeps.
 - Type styles are classes (`.label`, `.field`, `.section-title`, `.pixel`); families are `--font-colus`, `--font-agency`, `--font-pixel`.
 - `size`, `spacing`, `opacity`, `strata` and `frameLevel` hold the code's exact numbers; each usage note names the constant or the file.
-- In the addon a colour is an RGB triple from the profile (`st.config.profile.colors.text.grey`) or a constant (`st.BOX_COLORS.field`). Read the profile's colours at call time, never cache them, so a Colors tab change reaches your frame.
+- In the addon a colour is an RGB triple from the profile (`st.config.profile.colors.text.muted`) or a constant (`st.BOX_COLORS.field`). Read the profile's colours at call time, never cache them, so a Colors tab change reaches your frame.
 
 ## Content
 
@@ -26,9 +26,9 @@ SaftUI replaces World of Warcraft's interface with flat, dark frames that sit qu
 ### Colour
 
 - **Surfaces.** In-world frames take `backdrop` at `alpha-theme` (0.9) with a `border` line; Thick adds `border-alt` lines outside and inside it. The options window draws `backdrop` solid, its sidebar `sidebar`, and each section's rows sit on `panel-fill` with `hairline` lines between them. Controls are Boxes: `kit-field` inside a `kit-edge` line with a `kit-alt` line outside; buttons and open lists fill with `kit-bg`.
-- **Text.** `text` for labels, values, titles and the tab you are on; `text-grey` for section titles, notes, captions, other tabs, carets and anything dimmed; `white` for a tooltip's title and the colour bar's hex code; `text-red` for errors and why something is disabled. Under Thin, `text-grey` and `text-red` miss 4.5:1 on `backdrop` (4.3:1 and 3.6:1); on `panel-fill` grey passes (5.2:1) and red is still short (4.4:1).
+- **Text.** `text` for labels, values, titles and the tab you are on; `text-muted` for section titles, notes, captions, other tabs, carets and anything dimmed; `white` for a tooltip's title and the colour bar's hex code; `text-red` for errors and why something is disabled. Under Thin, `text-muted` and `text-red` miss 4.5:1 on `backdrop` (4.3:1 and 3.6:1); on `panel-fill` grey passes (5.2:1) and red is still short (4.4:1).
 - **Accent.** `accent` is the only accent: the check mark, slider fill, picked dot, the selected sidebar entry's bar and the tab underline, a hovered or focused control's edge, links, the own mark, a selected mover. `accent-fill` (25%) sits behind a selected or hovered row. Never use a second blue for these.
-- **Shared settings.** The `accent` marks a member's own value (the bar and the label); `diff` (orange) marks a setting some member changed. Use them for nothing else on these rows.
+- **Shared settings.** The `accent` marks a member's own value (the bar and the label); the diff icon, in `text-muted`, marks a setting some member changed. Use them for nothing else on these rows.
 - **Data colours.** `class-*`, `reaction-*`, `power-*`, `quality-*` (through `st:QualityColor`), `threat-*` and `status-offline` colour bars, names and borders by what they show. They are profile settings: never hard-code them, never use them as decoration.
 - **Profile Buttons colours.** `button-normal` is a Core button's highlight and `button-hover` a checked Core check box, despite their names. New work uses the kit's states below instead.
 
@@ -39,7 +39,7 @@ SaftUI replaces World of Warcraft's interface with flat, dark frames that sit qu
 | Page title | `page-title` 34 | Heading's face (Colus) | the `/sui` page's name |
 | Brand, dialog title | `brand` 26 | Heading's face (Colus) | sidebar brand, small dialog |
 | Bar brand | `brand-mini` 18 | Heading's face (Colus) | the mini bar's name: Saft in the text colour, UI in the accent |
-| Section title | `section-title` 15 | Heading's face (Colus) | over each panel, in `text-grey` |
+| Section title | `section-title` 15 | Heading's face (Colus) | over each panel, in `text-muted` |
 | Group title | `group-title` 13 | Heading's face (Colus) | sidebar groups, a menu's title |
 | Caption | `caption` 11 | Heading's face (Colus) | position block parts |
 | Heading | `heading` 15 | Colus | the bags' category titles, SaftUI's tracker's header line and zone headers, RestedXP's guide title |
@@ -47,7 +47,7 @@ SaftUI replaces World of Warcraft's interface with flat, dark frames that sit qu
 | Label | `label` 16 | AgencyFB Bold | row labels, sidebar entries |
 | Field | `field` 15 | AgencyFB Bold | values, list rows, buttons, page description |
 | Small | `small` 13 | AgencyFB Bold | hover line |
-| Note | `note` 15 | AgencyFB Bold | section notes, in `text-grey` |
+| Note | `note` 15 | AgencyFB Bold | section notes, in `text-muted` |
 | In-world text | `normal` 16 | AgencyFB Bold | window titles (Theme > Window titles can change them), unit frame names and values, tooltip lines, the bag search box, the bags' gold and free-slot texts |
 | Pixel text | `pixel` 10, `pixel-med` 18 | Homespun | hotkeys, counts, mover labels, cooldown numbers (`pixel-med` on buttons of `countdown-large` and up) |
 
@@ -72,9 +72,9 @@ All lines are `line-width` (1px); marks and underlines are `mark-width` (2px). A
 | Focus | the box's edge stays accent | `accent` |
 | On | an accent square inside the check box | `accent`, `check-inset` |
 | Selected | accent fill with an accent bar (sidebar), accent underline (tab) | `accent-fill`, `mark-width` |
-| Disabled | the control at 40%, its label grey; the tooltip says why | `alpha-disabled`, `text-grey`, `text-red` |
+| Disabled | the control at 40%, its label `text-muted`; the tooltip says why | `alpha-disabled`, `text-muted`, `text-red` |
 | Own | 2px accent bar, label in the accent | `accent` |
-| Differs | orange diff icon after the label | `diff` |
+| Differs | the diff icon after the label, in `text-muted` | `text-muted` |
 | Error | the status line or tooltip line in red | `text-red` |
 
 State is always visible; hover only offers actions. In-world icon buttons keep their own set: hover `accent` added, pressed `pressed-fill`, checked `checked-fill`, flash `flash-fill`, equipped `accent` border.
@@ -86,7 +86,7 @@ Frames stack by strata, lowest first: `strata-grid`, `strata-skins`, `strata-fra
 ## Iconography
 
 - Lucide (lucide.dev, ISC) wherever an icon fits. In the addon each is a 32x32 white TGA (`st.icons`, made by `tools/lucide-to-tga.cjs`), Lucide's 24 grid with the glyph in its middle half, so draw it at twice the glyph: `icon-close` 20 for a 10px cross, `icon-chevron` 16 for an 8px caret, `icon-diff` 16, `icon-reset` 14. In HTML, inline the SVG on a 24 viewBox, stroke 2, round caps and joins, no fill.
-- Tint an icon with a colour token (`SetVertexColor`), never bake colour into the file: carets and the close X rest in `text-grey`, reset is `accent` and white under the mouse, diff is `diff`, the close X turns `text-red` under the mouse.
+- Tint an icon with a colour token (`SetVertexColor`), never bake colour into the file: carets and the close X rest in `text-muted`, reset is `accent` and white under the mouse, diff is `text-muted`, the close X turns `text-red` under the mouse.
 - In use: `x`, `chevron-down`, `rotate-ccw`, `diff`; registered for the menus and nudges: `ellipsis-vertical`, `ellipsis`, `chevron-up`, `settings`. Still hand-made, to be replaced by Lucide: the loot feed's "F" and "V" letters, the bag view glyphs, the drag handle's dots, the resize corner, and the funnel, eye and mail TGAs.
 - No emoji, ever.
 
