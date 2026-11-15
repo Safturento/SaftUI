@@ -519,6 +519,7 @@ test('Accent: one color for every theme, no opacity, its own reset, and it says 
 	local row = Tab().args.accent
 	eq(row.name, 'Accent'); eq(row.type, 'color'); eq(row.size, 'small'); eq(row.order, 5.5); eq(row.hasAlpha, nil)
 	check(row.desc:find('accent', 1, true), 'its desc names what it colors')
+	check(row.desc:find('reads it when it builds its frames', 1, true) and not row.desc:find('these', 1, true), 'and its reload note is for one color')
 	check(row.desc:find('Reload', 1, true) or row.desc:find('reload', 1, true), 'and the reload note')
 	local default = st.defaults.theme.accent
 	eq(Rgb({ default.r, default.g, default.b }), '0,0.68,0.94'); check(default.a == nil or default.a == 1, 'no alpha: fully opaque')

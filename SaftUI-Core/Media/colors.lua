@@ -254,6 +254,8 @@ function st:MigrateColors(profile)
 end
 
 local RELOAD_NOTE = 'Most of SaftUI reads these when it builds its frames: reload (Reload UI, bottom right) to see a change everywhere.'
+-- The same, for the Accent, which is one color.
+local ACCENT_RELOAD_NOTE = 'Most of SaftUI reads it when it builds its frames: reload (Reload UI, bottom right) to see a change everywhere.'
 
 -- The Colors tab's sections, in order. A section is { key, name, note,
 -- hasAlpha, colors }: key is its group's key, note shows under its title,
@@ -521,7 +523,7 @@ function CO:AccentOption(order)
 		size = 'small',
 		order = order,
 		name = 'Accent',
-		desc = "SaftUI's accent under every theme: what is on, picked, current or under the mouse in SaftUI's frames and windows, its links, and the chat prefix. " .. RELOAD_NOTE,
+		desc = "SaftUI's accent under every theme: what is on, picked, current or under the mouse in SaftUI's frames and windows, its links, and the chat prefix. " .. ACCENT_RELOAD_NOTE,
 		get = function()
 			return st:Color('accent'):GetRGB()
 		end,
