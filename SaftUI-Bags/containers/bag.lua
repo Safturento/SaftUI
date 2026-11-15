@@ -64,6 +64,139 @@ function INV:MovePlayerBagSlots()
 	end
 end
 
+-- SaftUI's pieces of each bag slot, which is Blizzard's secure button: nothing is
+-- written onto it (.agents/taint.md, rule 1). Weak tables keyed by the slot.
+local slotBackdrops = {} -- the backdrop of SaftUI's behind it (st:SetBackdropIn)
+local slotIcons = {} -- its icon, where Blizzard gave the slot none of its own
+local slotTextures = {} -- its hover, pushed and disabled textures
+for _, weak in ipairs({ slotBackdrops, slotIcons, slotTextures }) do
+	setmetatable(weak, { __mode = 'k' })
+end
+
+-- Skins a bag slot as st:SkinActionButton skins a button with the profile's
+-- Buttons settings, as a 'slot', without its fields: .backdrop, .thick, .hover,
+-- .pushed and .disabled are kept in the tables above. The state textures are
+-- made here and handed to the setters; RestyleBagSlot gives them their look.
+local function SkinBagSlot(slot)
+	local config = st.config.profile.buttons
+	local backdrop = st:SetBackdropIn(slotBackdrops, slot, config.theme, config.background, 'slot')
+
+	local inset = config.trueSize and st:CalculateSpacing(slot) or 0
+	if config.trueSize and backdrop then
+		backdrop:ClearAllPoints()
+		backdrop:SetAllPoints()
+	end
+
+	local name = slot:GetName() or ''
+	local icon = _G[name .. 'Icon'] or _G[name .. 'IconTexture'] or slot.icon or slot.Icon
+	local count = _G[name .. 'Count'] or slot.count or slot.Count
+	local flash = _G[name .. 'Flash'] or slot.flash or slot.Flash
+	local hotkey = _G[name .. 'HotKey'] or slot.hotkey or slot.HotKey
+	local normal = _G[name .. 'NormalTexture'] or slot.NormalTexture
+	local item_level = slot.item_level
+	local bg = _G[name .. 'FloatingBG']
+	local cooldown = _G[name .. 'Cooldown'] or slot.cooldown or slot.Cooldown
+
+	for _, region in pairs({
+		'Left', 'Middle', 'Right',
+		'TopLeft', 'TopMiddle', 'TopRight',
+		'MiddleLeft', 'MiddleMiddle', 'MiddleRight',
+		'BottomLeft', 'BottomMiddle', 'BottomRight',
+		'LeftSeparator', 'RightSeparator',
+	}) do if slot[region] then slot[region]:SetAlpha(0) end end
+
+	if bg then bg:SetTexture(nil) end
+
+	if flash then
+		flash:SetTexture('')
+		st:SetInside(flash, inset)
+	end
+
+	if icon then
+		st:SkinIcon(icon)
+		st:SetInside(icon, inset)
+	end
+
+	st:Kill(slot.CircleMask)
+
+	if config.font then
+		local font_object = st:FontObject(config.font)
+
+		for _, region in pairs({ slot:GetRegions() }) do
+			if region:GetObjectType() == 'FontString' then
+				st:FollowFont(region, function() return st.config.profile.buttons.font end)
+			end
+		end
+
+		if cooldown then st:SkinCooldown(slot, cooldown) end
+
+		if count and type(count) == 'table' then
+			count:ClearAllPoints()
+			count:SetPoint('BOTTOMRIGHT', 2 - inset, 1 + inset)
+			count:SetJustifyH('RIGHT')
+			count:SetJustifyV('BOTTOM')
+		end
+
+		if item_level then
+			item_level:ClearAllPoints()
+			item_level:SetPoint('BOTTOMRIGHT', 2 - inset, 1 + inset)
+			item_level:SetJustifyH('RIGHT')
+			item_level:SetJustifyV('BOTTOM')
+		end
+
+		if hotkey then
+			hotkey:ClearAllPoints()
+			hotkey:SetPoint('TOPRIGHT', 2, 2)
+			hotkey:SetPoint('TOPLEFT', 4, 0)
+			hotkey:SetJustifyH('RIGHT')
+			hotkey:SetJustifyV('TOP')
+		end
+
+		if slot.SetNormalFontObject then
+			slot:SetNormalFontObject(font_object)
+			slot:SetHighlightFontObject(font_object)
+			slot:SetDisabledFontObject(font_object)
+			slot:SetPushedTextOffset(0, 0)
+		end
+	end
+
+	if normal and slot.SetNormalTexture then
+		slot:SetNormalTexture('')
+		st:SetInside(normal, inset)
+	end
+
+	-- The state textures are SaftUI's own, made on the slot and given to the
+	-- setters. The hover stays in the layer the client shows only under the
+	-- mouse (st.ThemeArt.HOVER_LAYER), in every look.
+	local textures = slotTextures[slot]
+	if not textures then
+		textures = {}
+		slotTextures[slot] = textures
+		if slot.SetHighlightTexture then
+			local hover = slot:CreateTexture(nil, 'OVERLAY')
+			hover:SetTexture(st.BLANK_TEX)
+			slot:SetHighlightTexture(hover)
+			hover:SetDrawLayer(st.ThemeArt.HOVER_LAYER, 0)
+			textures.hover = hover
+		end
+		if slot.SetPushedTexture then
+			local pushed = slot:CreateTexture(nil, 'OVERLAY')
+			pushed:SetTexture(st.BLANK_TEX)
+			pushed:SetVertexColor(0, 0, 0, .1)
+			slot:SetPushedTexture(pushed)
+			textures.pushed = pushed
+		end
+		if slot.SetDisabledTexture then
+			local disabled = slot:CreateTexture(nil, 'OVERLAY')
+			disabled:SetTexture(st.BLANK_TEX)
+			disabled:SetVertexColor(0, 0, 0, .4)
+			slot:SetDisabledTexture(disabled)
+			textures.disabled = disabled
+		end
+	end
+	if textures.disabled then st:SetInside(textures.disabled, inset) end
+end
+
 -- Re-apply SaftUI styling on top of Blizzard's BaseBagSlotButtonMixin:UpdateTextures.
 local function RestyleBagSlot(slot)
 	slot:GetNormalTexture():SetAlpha(0)
@@ -77,13 +210,13 @@ local function RestyleBagSlot(slot)
 	hover:SetBlendMode('ADD')
 	hover:SetAlpha(1)
 	hover:ClearAllPoints()
-	hover:SetAllPoints(slot.icon)
+	hover:SetAllPoints(slot.icon or slotIcons[slot])
 
 	local pushed = slot:GetPushedTexture()
 	pushed:SetTexture(st.BLANK_TEX)
 	pushed:SetVertexColor(0, 0, 0, .1)
 	pushed:ClearAllPoints()
-	pushed:SetAllPoints(slot.icon)
+	pushed:SetAllPoints(slot.icon or slotIcons[slot])
 end
 
 function INV:InitializePlayerBagSlots()
@@ -94,11 +227,11 @@ function INV:InitializePlayerBagSlots()
 	local BagSlots = {}
 	for i=0,3 do
 		local slot = _G['CharacterBag'..i..'Slot']
-		slot.icon = _G['CharacterBag'..i..'SlotIconTexture']
+		if not slot.icon then slotIcons[slot] = _G['CharacterBag'..i..'SlotIconTexture'] end
 		tinsert(BagSlots, slot)
 	end
 
-	CharacterReagentBag0Slot.icon = CharacterReagentBag0SlotIconTexture
+	if not CharacterReagentBag0Slot.icon then slotIcons[CharacterReagentBag0Slot] = CharacterReagentBag0SlotIconTexture end
 	tinsert(BagSlots, CharacterReagentBag0Slot)
 
 	-- Forever has a keyring bag button on the bags bar
@@ -131,7 +264,7 @@ function INV:InitializePlayerBagSlots()
 		slot:SetSize(self:GetButtonWidth(), self:GetButtonHeight())
 		-- Blizzard's button: the Blizzard theme makes none of its art on it.
 		st:MarkForeign(slot)
-		st:SkinActionButton(slot, nil, 'slot')
+		SkinBagSlot(slot)
 
 		st:Kill(slot.AnimIcon)
 
