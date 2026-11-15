@@ -98,6 +98,12 @@ end
 -- anchored where UF:GetFrame puts it, by its config's position. The plate's own
 -- frame is anchored to the game's plate, outside every unit frame's config:
 -- nothing to follow. Any other frame gets nil, and the live walk.
+-- UF.anchorPage, while a plate page's Position editor checks an anchor
+-- (generators.uf_element_position's validate sets it, and clears it after), is
+-- the config unit of that page: a part's anchors are then read from that
+-- page's config, whichever kind of plate is on screen to check against.
+UF.anchorPage = nil
+
 function UF.PlatePartAnchors(frame)
 	if rawget(frame, 'isNamePlate') then
 		return {}
@@ -106,7 +112,11 @@ function UF.PlatePartAnchors(frame)
 	if not (unitframe and rawget(unitframe, 'isNamePlate') and frame.GetConfig) then
 		return nil
 	end
-	local config = frame:GetConfig()
+	-- Read through the part's own getter with the page, so a part whose config
+	-- isn't the page's (the Threat text's is the Enemy page's on every plate)
+	-- keeps its own, and nothing is read that the page doesn't have (AceDB
+	-- would make a table for it).
+	local config = frame:GetConfig(UF.anchorPage and UF.IsPlateUnit(UF.anchorPage) and UF.anchorPage or nil)
 	local position = config and config.position
 	if type(position) ~= 'table' then
 		return { unitframe }
@@ -158,7 +168,9 @@ function UF.ConstructUnit(self, unit)
 	self.TextOverlay = textoverlay
 
 	self.config = UF:GetProfileConfig()[self.base_unit]
-	self.GetConfig = function() return UF:GetProfileConfig()[self.base_unit]  end
+	-- unit, when given, is the config unit to read in place of the frame's own
+	-- (the plate pages' Position editor checks a page's config: UF.PlatePartAnchors).
+	self.GetConfig = function(_, unit) return UF:GetProfileConfig()[unit or self.base_unit] end
 	
 	-- Since oUF doesn't give us access to a table of active elements
 	-- we can keep track of them here to easily loop and update through them later.
@@ -533,6 +545,53 @@ local function ClearUnitFramePoints(self)
 	return previous
 end
 
+-- Clears the points of the parts a full update of frame places: each element
+-- its new config has on, and that element's texts and icons that are on (the
+-- rule of ClearPlacedPoints in nameplates/nameplates.lua, which clears a
+-- plate's before a switch of its config). Read from the profile now, not from
+-- the configs the parts cache, which still belong to the profile switched
+-- away from. Two parts anchored each way round across two profiles would
+-- otherwise close an anchor loop as they're placed one by one in pairs()
+-- order. A part whose update then fails is left with no points. Unit frames
+-- are secure: out of combat only.
+local function ClearPartPoints(frame)
+	local function On(part)
+		local config = part.GetConfig and part:GetConfig()
+		return config and config.enable
+	end
+	for _, element in pairs(frame.elements or {}) do
+		if On(element) then
+			element:ClearAllPoints()
+			for _, text in pairs(element.textElements or {}) do
+				if On(text) then text:ClearAllPoints() end
+			end
+			for _, icon in pairs(element.icons or {}) do
+				if On(icon) then icon:ClearAllPoints() end
+			end
+		end
+	end
+end
+
+-- Every unit frame ApplyConfig places that has parts: the single and numbered
+-- frames and the group headers' buttons.
+local function ClearAllPartPoints(self)
+	for unit, frame in pairs(self.units) do
+		if unit == 'boss' or unit == 'arena' then
+			for _, numbered in pairs(frame) do
+				ClearPartPoints(numbered)
+			end
+		else
+			ClearPartPoints(frame)
+		end
+	end
+	for _, header in pairs(self.groups or {}) do
+		for i = 1, header:GetNumChildren() do
+			local frame = select(i, header:GetChildren())
+			if frame and frame.Health then ClearPartPoints(frame) end
+		end
+	end
+end
+
 --[[
 	Wrapper function for UpdateUnitFrame that allows you to update
 		using unit string instead of the frame object. Also used 
@@ -548,6 +607,7 @@ function UF:ApplyConfig(unit, element_name)
 		local previous
 		if not element_name and not InCombatLockdown() then
 			previous = ClearUnitFramePoints(self)
+			ClearAllPartPoints(self)
 		end
 
 		for unit, frame in pairs(self.units) do
@@ -627,9 +687,30 @@ function UF:ApplyConfig(unit, element_name)
 			-- (threat.lua), and a box decides which frames fill their plates.
 			if not element_name and self.plateDriver then
 				xpcall(function() self:ApplyPlateSize() end, geterrorhandler())
+				-- And the game's friendly plates, when the new profile's Friendly
+				-- plates differs from what they were set to (it waits out combat
+				-- itself). Not on every update of the plates: a Width drag, a
+				-- Theme change or Copy from sets nothing, so a key press of
+				-- Blizzard's own friendly plates binding stands.
+				local friendly = self:GetProfileConfig().nameplate.friendly and true or false
+				if friendly ~= self.appliedFriendly then
+					xpcall(function() self:ApplyNameplateCVars() end, geterrorhandler())
+				end
 			end
 			for _, frame in pairs(self.nameplates or {}) do
 				if not self:ApplyPlateConfig(frame) then
+					-- A plate that keeps its config unit is placed afresh in a full
+					-- update too (one that changed was, in ApplyPlateConfig): two
+					-- parts anchored each way round across two profiles would
+					-- otherwise close a loop. Only the recorded parts' own points
+					-- are cleared; nothing anchored to the plate is measured. The
+					-- cached configs first: the clear reads their Enable.
+					if not element_name then
+						xpcall(function()
+							self:RefreshFrameConfig(frame)
+							UF.ClearPlacedPoints(frame)
+						end, geterrorhandler())
+					end
 					SafeUpdateUnitFrame(frame, element_name)
 				end
 			end

@@ -156,6 +156,13 @@ local function StylePreviewFrame(frame)
 	frame.config = config
 	st:SetSize(frame, config.width, config.height)
 	st:SetBackdrop(frame, config.theme, config.background, UF.SizedKind(frame.base_unit, config.width, config.height))
+	-- The parts are placed one by one: two anchored each way round across two
+	-- profiles would close a loop against the old points (as for the real
+	-- frames, UF:ApplyConfig). A preview is SaftUI's own, so in combat too.
+	for _, element in ipairs(frame.previewElements) do
+		element:ClearAllPoints()
+		for _, text in pairs(element.textElements or {}) do text:ClearAllPoints() end
+	end
 	for _, element in ipairs(frame.previewElements) do
 		UF:UpdateElement(element)
 	end

@@ -286,3 +286,37 @@ test("a preview's custom power color also colors the power background, as the re
 	UF.testGroups.boss = nil
 	UF:UpdateGroupPreview('boss')
 end)
+
+-- The previews' parts are placed one by one too: two parts anchored each way
+-- round across two profiles must not close a loop on a switch.
+test("a profile switch places the previews' parts against the new anchors, whichever way they were", function()
+	local boss = UF:GetProfileConfig().boss
+	local toggle = general().args.layout.args.test_mode
+	toggle.set({ 'boss', 'general', 'layout', 'test_mode' }, true)
+	if not check(previews_shown(), 'the previews show') then return end
+	boss.health.enable, boss.name.enable = true, true
+	local function a()
+		boss.health.position = { point = 'CENTER', element = '', rel_point = 'CENTER', x_off = 0, y_off = 0 }
+		boss.name.position = { point = 'CENTER', element = 'Health', rel_point = 'CENTER', x_off = 0, y_off = 0 }
+	end
+	local function b()
+		boss.name.position = { point = 'CENTER', element = '', rel_point = 'CENTER', x_off = 0, y_off = 0 }
+		boss.health.position = { point = 'TOP', element = 'Name', rel_point = 'BOTTOM', x_off = 0, y_off = -2 }
+	end
+	a()
+	UF:UpdateConfig()
+	take_errors()
+	for round = 1, 2 do
+		b()
+		UF:UpdateConfig()
+		local errors = take_errors()
+		eq(#errors, 0, 'to B, round ' .. round .. ': no error ' .. tostring(errors[1]))
+		eq(select(2, previews()[1].Health:GetPoint(1)), previews()[1].Name, 'the preview bar under its name')
+		a()
+		UF:UpdateConfig()
+		errors = take_errors()
+		eq(#errors, 0, 'back to A, round ' .. round .. ': no error ' .. tostring(errors[1]))
+		eq(select(2, previews()[1].Name:GetPoint(1)), previews()[1].Health, 'the preview name on its bar')
+	end
+	toggle.set({ 'boss', 'general', 'layout', 'test_mode' }, false)
+end)

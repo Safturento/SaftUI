@@ -213,6 +213,9 @@ local function ClearPlacedPoints(frame)
 		end
 	end
 end
+-- Shared with UF:ApplyConfig (unitframes.lua), which clears the plates that
+-- keep their config unit before a full update on a profile switch.
+UF.ClearPlacedPoints = ClearPlacedPoints
 
 -- Points a plate's frame at the config unit its kind draws from
 -- (UF.PlateConfigKey of frame.friendly) through its base_unit, which the

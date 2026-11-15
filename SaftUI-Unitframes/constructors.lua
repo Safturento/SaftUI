@@ -4,7 +4,7 @@ local UF = st:GetModule('Unitframes')
 function UF:AddElement(frameType, unitframe, elementName, postInit)
     local element = CreateFrame(frameType, ('%s_%s'):format(unitframe:GetName(), elementName), unitframe)
     element.config = unitframe.config[string.lower(elementName)]
-    element.GetConfig = function(self) return unitframe:GetConfig()[string.lower(elementName)] end
+    element.GetConfig = function(self, unit) return unitframe:GetConfig(unit)[string.lower(elementName)] end
     element.name = elementName
     element.unitframe = unitframe
 
@@ -31,7 +31,7 @@ end
 function UF:AddTextElement(unitframe, elementName)
     local text = unitframe.TextOverlay:CreateFontString(nil, 'OVERLAY')
     text.config = unitframe.config[string.lower(elementName)]
-    text.GetConfig = function(self) return unitframe:GetConfig()[string.lower(elementName)] end
+    text.GetConfig = function(self, unit) return unitframe:GetConfig(unit)[string.lower(elementName)] end
     text.name = elementName
 	text.unitframe = unitframe
     text.noSize = true
@@ -44,7 +44,7 @@ end
 function UF:AddTextureElement(unitframe, elementName)
     local text = unitframe.TextOverlay:CreateTexture(nil, 'OVERLAY')
     text.config = unitframe.config[string.lower(elementName)]
-    text.GetConfig = function(self) return unitframe:GetConfig()[string.lower(elementName)] end
+    text.GetConfig = function(self, unit) return unitframe:GetConfig(unit)[string.lower(elementName)] end
     text.name = elementName
 	text.unitframe = unitframe
 	unitframe[elementName] = text
@@ -58,7 +58,7 @@ function UF:AddText(unitframe, element, key, parent)
 
     local text = (parent or unitframe.TextOverlay):CreateFontString(('%s_%s'):format(element:GetName(), key), 'OVERLAY')
     text.config = element.config[string.lower(key)]
-    text.GetConfig = function() return element:GetConfig()[string.lower(key)] end
+    text.GetConfig = function(_, unit) return element:GetConfig(unit)[string.lower(key)] end
     text.element = element
     text.unitframe = unitframe
 
@@ -78,7 +78,7 @@ function UF:AddIcon(unitframe, element, key)
 
     local icon = CreateFrame('frame', ('%s_%s'):format(element:GetName(), key), element)
     icon.config = element.config[string.lower(key)]
-    icon.GetConfig = function() return element:GetConfig()[string.lower(key)] end
+    icon.GetConfig = function(_, unit) return element:GetConfig(unit)[string.lower(key)] end
     icon.element = element
     icon.unitframe = unitframe
 

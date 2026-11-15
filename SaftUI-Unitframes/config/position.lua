@@ -18,6 +18,20 @@ local function ResolveTarget(target)
 	return target
 end
 
+-- Runs check() (a call of st:ValidateAnchor) with the page being edited set
+-- as UF.anchorPage, so a plate's parts are checked against that page's config
+-- and not the config of the plate that happens to be on screen
+-- (UF.PlatePartAnchors). Cleared whether check errors or not; an error goes on
+-- with the traceback of where it happened.
+local function WithAnchorPage(page, check)
+	local UF = st:GetModule('Unitframes', true)
+	if UF then UF.anchorPage = page end
+	local ok, a, b = xpcall(check, function(err) return debug.traceback(tostring(err), 2) end)
+	if UF then UF.anchorPage = nil end
+	if not ok then error(a, 0) end
+	return a, b
+end
+
 -- The relative_to choices that aren't an element name.
 local UNIT_FRAME, GLOBAL_FRAME = '__unitframe', '__global'
 
@@ -100,10 +114,14 @@ function generators.uf_element_position(order, get, set, target, desc, name)
 	end
 
 	option.validate = function(info, part, value)
+		-- The target's second return, when it gives one (UF:ConfigTarget), is the
+		-- page being edited.
+		local frame, page = ResolveTarget(target)
 		if part ~= 'relative_to' then
-			return ValidatePart(info, part, value)
+			-- A typed global frame name is checked against the page too.
+			return WithAnchorPage(page, function() return ValidatePart(info, part, value) end)
 		end
-		local frame, unitframe = ResolveTarget(target), UnitFrame()
+		local unitframe = UnitFrame()
 		if not (frame and unitframe) then return true end
 		local relative
 		if value == UNIT_FRAME then
@@ -114,7 +132,7 @@ function generators.uf_element_position(order, get, set, target, desc, name)
 			relative = unitframe[value]
 		end
 		if not relative then return true end
-		local ok, err = st:ValidateAnchor(frame, relative)
+		local ok, err = WithAnchorPage(page, function() return st:ValidateAnchor(frame, relative) end)
 		return ok or err
 	end
 

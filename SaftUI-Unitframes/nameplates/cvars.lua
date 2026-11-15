@@ -55,7 +55,12 @@ function UF:SetNameplateCVar(name, value)
 	if char.nameplateCVars[name] == nil then
 		char.nameplateCVars[name] = current
 	end
-	C_CVar.SetCVar(name, value)
+	-- Only a setting that differs: one the user toggled themselves (Blizzard's
+	-- friendly plates key binding toggles players alone) stays as they left it
+	-- until Friendly plates itself changes.
+	if current ~= value then
+		C_CVar.SetCVar(name, value)
+	end
 end
 
 -- Sets every UF.NAMEPLATE_CVARS setting from the nameplate config, while
@@ -76,6 +81,9 @@ function UF:ApplyNameplateCVars()
 			self:SetNameplateCVar(name, value(config, current))
 		end
 	end
+	-- What Friendly plates was when they were set (UF:ApplyConfig sets them
+	-- again only when a profile switch changes it).
+	self.appliedFriendly = config.friendly and true or false
 	-- Blizzard re-anchors its plates' widgets and sets their click areas when
 	-- the friendly NPC setting changes (UpdateWidgetsOnlyMode is a CVar
 	-- callback, which the game runs as the setting is set): put both back on
@@ -88,6 +96,7 @@ end
 -- isn't lost; the record goes once it's empty.
 function UF:RestoreNameplateCVars()
 	if st:QueueAfterCombat('NameplateCVars', function() UF:RestoreNameplateCVars() end) then return end
+	self.appliedFriendly = nil
 	local record = st.config.char.nameplateCVars
 	if not record then return end
 	local kept = {}

@@ -308,7 +308,7 @@ local function Constructor(unitframe, aura_type)
 	UF.auraContainers[auras] = true
 
 	auras.config = unitframe.config[string.lower(aura_type)]
-	auras.GetConfig = function() return unitframe:GetConfig()[string.lower(aura_type)] end
+	auras.GetConfig = function(_, unit) return unitframe:GetConfig(unit)[string.lower(aura_type)] end
 	auras.name = aura_type
 	auras.unitframe = unitframe
 	auras.PostCreateButton = PostCreateButton

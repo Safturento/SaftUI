@@ -160,6 +160,13 @@ test('Copy from opens a SaftUI dialog whose rows come from its table, and copies
 	eq(d.title:GetText(), 'Copy to Player from Target', 'the title says so')
 	check(not cell('accept').widget:IsDisabled(), 'Confirm copy is on')
 
+	-- Only what Target's page names too is offered now: Additional power and
+	-- Class power are Player's alone, and have no value on Target to copy.
+	local offered = rows()
+	check(#offered < #keys, 'the settings only Player has are gone')
+	keys = offered
+	check(cell('additionalpower') == nil and cell('classpower') == nil, 'Additional power and Class power are not offered')
+
 	-- All, then None, then width and health.
 	click(cell('toggle_all').widget.frame)
 	local all = true
@@ -1142,7 +1149,9 @@ end)
 
 test("Copy from carries a text's color with its element: the whole health or power table is copied", function()
 	local P = UF:GetProfileConfig()
-	for _, key in ipairs({ 'health', 'power', 'additionalpower' }) do
+	-- Additional power is Player's alone (its ValidUnit): Copy from offers only
+	-- what both pages name, so it isn't among these.
+	for _, key in ipairs({ 'health', 'power' }) do
 		P.target[key].text.colorCustom, P.target[key].text.customColor = true, { 0.2, 0.7, 0.4 }
 		P.focus[key].text.colorCustom, P.focus[key].text.customColor = false, { 1, 1, 1 }
 		UF:CopySettings('focus', 'target', { key })
