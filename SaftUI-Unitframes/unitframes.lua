@@ -104,26 +104,6 @@ end
 -- page's config, whichever kind of plate is on screen to check against.
 UF.anchorPage = nil
 
--- The config of a part of a plate's frame in the config unit page (a plate
--- config unit's table in the profile): an element's, or a text's or icon's,
--- found by the key it is stored under. nil when the page has none for it.
-local function PagePartConfig(part, page)
-	local pageConfig = UF:GetProfileConfig()[page]
-	if not pageConfig then return nil end
-	local element = rawget(part, 'element')
-	if element then
-		local elementConfig = pageConfig[string.lower(element.name)]
-		for key, value in pairs(element) do
-			if value == part and type(key) == 'string' then
-				return elementConfig and elementConfig[string.lower(key)]
-			end
-		end
-		return nil
-	end
-	local name = rawget(part, 'name')
-	return type(name) == 'string' and pageConfig[string.lower(name)] or nil
-end
-
 function UF.PlatePartAnchors(frame)
 	if rawget(frame, 'isNamePlate') then
 		return {}
@@ -132,8 +112,11 @@ function UF.PlatePartAnchors(frame)
 	if not (unitframe and rawget(unitframe, 'isNamePlate') and frame.GetConfig) then
 		return nil
 	end
-	local config = UF.anchorPage and UF.IsPlateUnit(UF.anchorPage) and PagePartConfig(frame, UF.anchorPage)
-		or frame:GetConfig()
+	-- Read through the part's own getter with the page, so a part whose config
+	-- isn't the page's (the Threat text's is the Enemy page's on every plate)
+	-- keeps its own, and nothing is read that the page doesn't have (AceDB
+	-- would make a table for it).
+	local config = frame:GetConfig(UF.anchorPage and UF.IsPlateUnit(UF.anchorPage) and UF.anchorPage or nil)
 	local position = config and config.position
 	if type(position) ~= 'table' then
 		return { unitframe }
@@ -185,7 +168,9 @@ function UF.ConstructUnit(self, unit)
 	self.TextOverlay = textoverlay
 
 	self.config = UF:GetProfileConfig()[self.base_unit]
-	self.GetConfig = function() return UF:GetProfileConfig()[self.base_unit]  end
+	-- unit, when given, is the config unit to read in place of the frame's own
+	-- (the plate pages' Position editor checks a page's config: UF.PlatePartAnchors).
+	self.GetConfig = function(_, unit) return UF:GetProfileConfig()[unit or self.base_unit] end
 	
 	-- Since oUF doesn't give us access to a table of active elements
 	-- we can keep track of them here to easily loop and update through them later.

@@ -219,3 +219,38 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		eq(UF.anchorPage, nil, 'and the page is not kept')
 	end)
 end
+
+-- The Threat text's config is the Enemy page's on every plate (threat.lua),
+-- the Friendly page has none: a part hung on it from the Friendly page is a
+-- loop when the Threat text hangs on that part, and the check never writes
+-- into a profile (AceDB makes a table for a key it is asked for).
+for _, client in ipairs({ 'forever', 'retail' }) do
+	test(client .. ': the Friendly page refuses Health relative to Threat, with an enemy up and with a friend up', function()
+		for _, up in ipairs({ 'enemy', 'friend' }) do
+			local st, UF = plate_world(client)
+			NP[up]('nameplate1')
+			NP.add('nameplate1')
+			local P = UF:GetProfileConfig()
+			eq(P.nameplate.threat.position.element, 'Health', up .. ': the Threat text hangs on Health')
+			local config = P.friendlynameplate.health
+			local option = st.Config.generators.uf_element_position(1,
+				function(k) return config.position[k] end,
+				function(k, v) config.position[k] = v end,
+				UF:ConfigTarget('friendlynameplate', 'Health'))
+			eq(rawget(P.friendlynameplate, 'threat'), nil, up .. ': no threat table before the check')
+			local ok, res = validate(option, 'Threat')
+			is(ok, res, true, 'Anchor would create a loop', up .. ': Health on Threat, which hangs on Health: refused')
+			eq(rawget(P.friendlynameplate, 'threat'), nil, up .. ': no threat table made on the Friendly page')
+
+			-- The Enemy page refuses it too, and writes nothing either.
+			local enemyConfig = P.nameplate.health
+			local enemyOption = st.Config.generators.uf_element_position(1,
+				function(k) return enemyConfig.position[k] end,
+				function(k, v) enemyConfig.position[k] = v end,
+				UF:ConfigTarget('nameplate', 'Health'))
+			ok, res = validate(enemyOption, 'Threat')
+			is(ok, res, true, 'Anchor would create a loop', up .. ': the Enemy page refuses it')
+			eq(rawget(P.friendlynameplate, 'threat'), nil, up .. ': still no table made')
+		end
+	end)
+end
