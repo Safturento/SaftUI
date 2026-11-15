@@ -231,6 +231,7 @@ OB.TITLE_HEIGHT = TITLE_HEIGHT -- a section title's line
 -- it is Muted itself).
 OB.OWN_STRENGTH = 1
 OB.DIFF_STRENGTH = 1
+OB.MARK_WIDTH = 2 -- the own mark's bar (optionsshare.lua draws it; the color picker's preview shows it)
 
 -- A row's label line: its text sits in a band this tall.
 local LABEL_HEIGHT = 16

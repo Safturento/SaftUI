@@ -382,7 +382,7 @@ function apply_defaults()
 end
 
 -- Core's frame helpers and what they need, in TOC order: LibSharedMedia and
--- its libraries, Widgets/button.lua (st:CreateButton), skinning.lua
+-- its libraries, Widgets/button.lua (st:CreateButton), checkbutton.lua (st:SkinCheckButton), statusbar.lua (st:CreateStatusBar), skinning.lua
 -- (st:SkinIcon and st:IconTexCoords, which the General tab's Icon zoom
 -- preview cuts its icon with), panels.lua (st:CreateFrame,
 -- st:CreateFontString), theme.lua (st:SetTemplate, st:SetBackdrop and the
@@ -398,6 +398,8 @@ function load_core_helpers()
 	load_saftui('SaftUI-Core/Libraries/CallbackHandler-1.0/CallbackHandler-1.0.lua')
 	load_saftui('SaftUI-Core/Libraries/LibSharedMedia-3.0/LibSharedMedia-3.0.lua')
 	load_saftui('SaftUI-Core/Widgets/button.lua')
+	load_saftui('SaftUI-Core/Widgets/checkbutton.lua') -- Widgets/load.xml's order
+	load_saftui('SaftUI-Core/Widgets/statusbar.lua')
 	load_saftui('SaftUI-Core/skinning.lua')
 	load_saftui('SaftUI-Core/panels.lua')
 	load_saftui('SaftUI-Core/theme.lua')

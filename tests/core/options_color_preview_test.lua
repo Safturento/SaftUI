@@ -12,7 +12,6 @@
 -- Real: the widget files, the theme, the picker, the preview file. The mouse is
 -- played with stub.cursor_x/cursor_y and the frames' scripts.
 local H = load_test_file('core/options_widgets_helpers.lua')
-load_saftui('SaftUI-Core/Widgets/checkbutton.lua') -- st:SkinCheckButton, which the button kind's check box uses
 local P = load_test_file('lib/pixels.lua')
 local C = load_test_file('lib/color_cost.lua')
 local T = load_test_file('lib/theme_helpers.lua')
@@ -770,7 +769,7 @@ test("the button kind: the held states are the button's own: LockHighlight on Ho
 	for i = 1, 3 do
 		check(b[i].text and b[i].text:GetText() ~= nil, 'a SaftUI button (st:CreateButton) in tile ' .. i)
 		eq(drawn(b[i]), 'theme,solid,control', 'drawn as a control, tile ' .. i)
-		eq(b[i]:IsMouseEnabled(), false, 'it takes no mouse, tile ' .. i)
+		eq(stub.state(b[i]).mouse_enabled, false, 'it takes no mouse (turned off, not left at the stub default), tile ' .. i)
 	end
 	eq(stub.state(b[1]).highlight_locked or false, false, 'Rest holds nothing')
 	eq(b[1]:GetButtonState(), 'NORMAL', 'Rest is at rest')
@@ -778,8 +777,10 @@ test("the button kind: the held states are the button's own: LockHighlight on Ho
 	eq(b[2]:GetButtonState(), 'NORMAL', 'and is not pushed')
 	eq(b[3]:GetButtonState(), 'PUSHED', 'Pressed is pushed')
 	eq(stub.state(b[3]).button_state_locked, true, 'and held')
-	eq(F.previewPieces.button.check:IsMouseEnabled(), false, 'the check box takes no mouse')
-	for _, thumb in ipairs(F.previewPieces.button.thumbs) do eq(thumb:IsMouseEnabled(), false, 'a thumb takes no mouse') end
+	eq(stub.state(F.previewPieces.button.check).mouse_enabled, false, 'the check box takes no mouse')
+	for _, thumb in ipairs(F.previewPieces.button.thumbs) do eq(stub.state(thumb).mouse_enabled, false, 'a thumb takes no mouse') end
+	_, F = open({ preview = 'accent' })
+	eq(stub.state(F.previewPieces.accent.box).mouse_enabled, false, "the accent's check box takes no mouse")
 	reset()
 end)
 
@@ -880,13 +881,18 @@ test('the button kind under Blizzard: its pieces drawn as Thick, the note on the
 	for i, button in ipairs(p.buttons) do eq(drawn(button), 'thick,solid,control', 'button ' .. i .. ' drawn Thick') end
 	for i, thumb in ipairs(p.thumbs) do eq(drawn(thumb), 'thick,solid,control', 'thumb ' .. i .. ' drawn Thick') end
 	eq(drawn(p.check), 'thick,solid,control', 'the check box drawn Thick')
+	eq(drawn(p.flashSlot) .. ' ' .. drawn(p.lockedSlot), 'thick,solid,slot thick,solid,slot', 'the slots drawn Thick')
 	check(not st:IsBlizzardLook('thick', 'solid'), 'which is not Blizzard\'s look')
-	check(F.previewNote:GetLeft() >= F.previewCaption:GetLeft() + F.previewCaption:GetStringWidth(), 'the note stays to the right of the Preview caption, however wide the font')
+	eq(F.previewNote:GetWidth(), F.preview:GetWidth() - math.ceil(F.previewCaption:GetStringWidth()) - 8, 'the note has the room right of Preview and no more')
+	eq(F.previewNote:CanWordWrap(), false, 'it does not wrap')
+	check(F.previewNote:IsTruncated(), 'and a note wider than that (the stub measures it at 448) is cut at its end')
+	check(F.previewNote:GetLeft() >= F.previewCaption:GetLeft() + F.previewCaption:GetStringWidth(), 'clear of the Preview caption')
 	-- The theme flips with the picker open: Thick -> Blizzard -> back.
 	T.theme('thick')
 	check(not F.previewNote:IsShown(), 'back under Thick: the note goes')
 	eq(drawn(p.tiles[1]), 'theme,solid,panel', 'the tiles follow the theme again')
 	eq(drawn(p.buttons[2]), 'theme,solid,control', 'and the buttons')
+	eq(drawn(p.flashSlot) .. ' ' .. drawn(p.lockedSlot) .. ' ' .. drawn(p.check), 'theme,solid,slot theme,solid,slot theme,solid,control', 'and the slots and the check box')
 	T.theme('blizzard')
 	check(F.previewNote:IsShown(), 'Blizzard again: the note')
 	eq(drawn(p.buttons[2]), 'thick,solid,control', 'drawn Thick')
@@ -952,7 +958,7 @@ test('the accent kind: four tiles 88 by 44 (370 wide), a field edge, a ticked ch
 	reset()
 end)
 
-test('the accent kind under Blizzard: a link, a picked list entry, an own mark and a selected mover\'s edge; the flat controls are hidden', function()
+test('the accent kind under Blizzard: a link, a picked list entry, an own mark and the grid\'s centre lines; the flat controls are hidden', function()
 	T.theme('blizzard')
 	reset()
 	local _, F = open({ preview = 'accent', name = 'Accent' })
@@ -970,8 +976,13 @@ test('the accent kind under Blizzard: a link, a picked list entry, an own mark a
 	eq(rgb3(p.picked:GetTextColor()), picked, 'the picked entry')
 	eq(rgb3(p.markLabel:GetTextColor()), picked, "the own mark's label")
 	eq(rgb3(unpack(stub.state(p.mark).color_texture)), picked, "and its mark")
-	eq(rgb3(p.mover.backdrop:GetBackdropBorderColor()), picked, "the mover's edge")
-	local names = { 'Link', 'Picked entry', 'Own mark', 'Mover' }
+	eq(texture_color(p.gridV), rgba(0.2, 0.4, 0.6, 0.9), "the grid's vertical centre line, at the grid's 0.9")
+	eq(texture_color(p.gridH), rgba(0.2, 0.4, 0.6, 0.9), 'and the horizontal one')
+	eq(p.mark:GetWidth(), st.OptionsBody.MARK_WIDTH, "the own mark is the kit's width")
+	eq(p.mark:GetWidth(), 2, 'which is 2')
+	eq(p.gridV:GetLeft() - p.altTiles[4]:GetLeft(), 44, 'the centre lines cross at the tile\'s centre')
+	eq(p.altTiles[4]:GetTop() - p.gridH:GetTop(), 22, 'both ways')
+	local names = { 'Link', 'Picked entry', 'Own mark', 'Grid centre' }
 	for i, caption in ipairs(p.altCaptions) do eq(caption:GetText(), names[i], 'caption ' .. i) end
 	T.theme('thick')
 	for i, tile in ipairs(p.tiles) do check(tile:IsVisible(), 'back under Thick: the flat tile ' .. i .. ' shows') end
@@ -1004,6 +1015,81 @@ test('a theme recolor with the picker open puts the button and accent kinds\' ow
 	p.edge:SetBackdropBorderColor(1, 1, 1, 1)
 	st:RecolorThemed()
 	eq(rgb3(p.edge:GetBackdropBorderColor()), '0.20,0.40,0.60', "and the field edge's")
+	reset()
+end)
+
+local function rel(piece, tile) return piece:GetLeft() - tile:GetLeft() .. ',' .. tile:GetTop() - piece:GetTop() end
+
+test("the button kind's pieces sit where the mockup puts them (button 44 by 20 at 8, 12; thumb 6 by 28 at 60, 8; box 12 at 14, 16; slots 30 at 8, 7 and 20 at 44, 12)", function()
+	T.theme('thick')
+	reset()
+	local _, F = open({ preview = { kind = 'button', key = 'hover' }, hasAlpha = true })
+	local p = F.previewPieces.button
+	for i = 1, 3 do
+		eq(rel(p.buttons[i], p.tiles[i]) .. ' ' .. p.buttons[i]:GetWidth() .. 'x' .. p.buttons[i]:GetHeight(), '8,12 44x20', 'button ' .. i)
+		eq(rel(p.thumbs[i], p.tiles[i]) .. ' ' .. p.thumbs[i]:GetWidth() .. 'x' .. p.thumbs[i]:GetHeight(), '60,8 6x28', 'thumb ' .. i)
+	end
+	eq(rel(p.check, p.tiles[4]) .. ' ' .. p.check:GetWidth() .. 'x' .. p.check:GetHeight(), '14,16 12x12', 'the check box')
+	eq(rel(p.flashSlot, p.tiles[5]) .. ' ' .. p.flashSlot:GetWidth(), '8,7 30', 'the flash button')
+	eq(rel(p.lockedSlot, p.tiles[5]) .. ' ' .. p.lockedSlot:GetWidth(), '44,12 20', 'the bank slot')
+	reset()
+end)
+
+test('the button kind with no opacity centers its five tiles in the strip (the spare units split)', function()
+	reset()
+	local _, F = open({ preview = { kind = 'button', key = 'hover' } })
+	local tiles = F.previewPieces.button.tiles
+	local first = at(F, tiles[1]) - 20
+	local right = 370 - (at(F, tiles[5]) - 20 + tiles[5]:GetWidth())
+	check(math.abs(first - right) <= 1, ('left %d and right %d spare differ by one at most'):format(first, right))
+	reset()
+end)
+
+test("the labels and the knob are in Text > Normal; the field edge is opaque; the Bags label follows Text", function()
+	reset()
+	local normal = st.config.profile.colors.text.normal
+	local keep = { normal:GetRGB() }
+	local _, F = open({ preview = { kind = 'button', key = 'hover' }, hasAlpha = true, a = 0.7 })
+	eq(rgb3(F.previewPieces.button.checkLabel:GetTextColor()), rgb3(st:Color('text', 'normal'):GetRGB()), 'Bags is in Text > Normal')
+	normal:SetRGB(0.1, 0.8, 0.3)
+	st:ColorChanged('text', 'normal')
+	C.step(st)
+	eq(rgb3(F.previewPieces.button.checkLabel:GetTextColor()), '0.10,0.80,0.30', 'and follows it')
+	_, F = open({ preview = 'accent' })
+	local p = F.previewPieces.accent
+	eq(texture_color(p.knob), rgba(0.1, 0.8, 0.3, 1), "the slider's knob is Text > Normal, opaque")
+	eq(rgba(p.edge:GetBackdropBorderColor()), rgba(0.2, 0.4, 0.6, 1), "the field's edge is opaque")
+	eq(texture_color(p.rowBar), rgba(0.2, 0.4, 0.6, 1), "the row's bar is opaque")
+	eq(rgb3(p.rowText:GetTextColor()), '0.10,0.80,0.30', "the row's name is Text > Normal")
+	normal:SetRGB(unpack(keep))
+	reset()
+end)
+
+test('0% opacity draws the edited pieces at alpha 0', function()
+	T.theme('thick')
+	with_buttons(function()
+		reset()
+		local _, F = open({ preview = { kind = 'button', key = 'danger' }, hasAlpha = true, r = 0.9, g = 0.3, b = 0.1, a = 0 })
+		local p = F.previewPieces.button
+		eq(texture_color(p.flash), rgba(0.9, 0.3, 0.1, 0), 'the flash')
+		eq(texture_color(p.locked), rgba(0.9, 0.3, 0.1, 0), 'the tint')
+		_, F = open({ preview = { kind = 'button', key = 'hover' }, hasAlpha = true, r = 0.4, g = 0.5, b = 0.6, a = 0 })
+		eq(thumb_color(F.previewPieces.button.thumbs[2]), rgba(0.4, 0.5, 0.6, 0), 'the thumb')
+		reset()
+	end)
+end)
+
+test('every tile caption has word wrap off, so a wide face cuts it at its end', function()
+	reset()
+	local _, F = open({ preview = 'text', name = 'Danger' })
+	for i, caption in ipairs(F.previewPieces.text.captions) do eq(caption:CanWordWrap(), false, 'text kind caption ' .. i) end
+	_, F = open({ preview = { kind = 'button', key = 'hover' }, hasAlpha = true })
+	for i, caption in ipairs(F.previewPieces.button.captions) do eq(caption:CanWordWrap(), false, 'button kind caption ' .. i) end
+	_, F = open({ preview = 'accent' })
+	for i = 1, 4 do
+		eq(F.previewPieces.accent.captions[i]:CanWordWrap(), false, 'accent caption ' .. i)
+		eq(F.previewPieces.accent.altCaptions[i]:CanWordWrap(), false, 'accent Blizzard caption ' .. i)
+	end
 	reset()
 end)
 

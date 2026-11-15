@@ -150,6 +150,7 @@ function text.Build(area)
 		local caption = TextFont(Kit.NewText(area, 'CENTER'))
 		caption:SetPoint('TOP', tile, 'BOTTOM', 0, -PV.CAPTION_GAP)
 		caption:SetWidth(tileWidth)
+		caption:SetWordWrap(false) -- a wide Text face cuts a caption at its end, never onto a second line
 		caption:SetText(entry.caption)
 		pieces.captions[i] = caption
 	end
@@ -243,6 +244,7 @@ local function NewTile(area, width, theme, caption)
 	local label = TextFont(Kit.NewText(area, 'CENTER'))
 	label:SetPoint('TOP', tile, 'BOTTOM', 0, -PV.CAPTION_GAP)
 	label:SetWidth(width)
+	label:SetWordWrap(false) -- as the text kind's captions
 	label:SetText(caption)
 	return tile, label
 end
@@ -355,9 +357,10 @@ function button.Layout(pieces, width)
 	-- Five tiles 8 apart (74 wide with an opacity, narrower in a strip without one).
 	local tw = math.min(BUTTON_TILE, floor((width - 4 * PV.GAP) / 5))
 	local gap = floor((width - 5 * tw) / 4)
+	local left = floor((width - (5 * tw + 4 * gap)) / 2) -- spare units split either side
 	for i, tile in ipairs(pieces.tiles) do
 		tile:SetSize(tw, PV.TILE_HEIGHT)
-		Put(tile, pieces.area, (i - 1) * (tw + gap), 0)
+		Put(tile, pieces.area, left + (i - 1) * (tw + gap), 0)
 		pieces.captions[i]:SetWidth(tw)
 	end
 	local thumbX = tw - 8 - THUMB_WIDTH
@@ -410,13 +413,16 @@ kinds.button = button
 	selected sidebar row (its 25% tint and 2 wide bar, as optionsnav.lua).
 	Under Blizzard, where those controls wear Blizzard's art and draw no accent:
 	a link, a picked list entry, an own mark (an option you changed) and a
-	selected mover's edge. Tile captions are in Muted. Four tiles 88 wide,
+	the edit mode grid's centre lines (a selected mover wears Blizzard's art
+	there, not the accent). Tile captions are in Muted. Four tiles 88 wide,
 	the first at the strip's left edge and the last at its right.
 ]]
 local ACCENT_TILE = 88
 local ACCENT_NAMES = { 'Field edge', 'Check box', 'Slider', 'Sidebar row' }
-local ACCENT_ALT_NAMES = { 'Link', 'Picked entry', 'Own mark', 'Mover' }
-local TRACK_WIDTH, KNOB_WIDTH, KNOB_HEIGHT = 64, 6, 14
+local ACCENT_ALT_NAMES = { 'Link', 'Picked entry', 'Own mark', 'Grid centre' }
+-- The slider's track is shorter than the range's (116); the knob and the own mark are the kit's.
+local TRACK_WIDTH = 64
+local GRID_CENTER_ALPHA, GRID_LINE = 0.9, { 1, 1, 1, 0.12 } -- EditMode/grid.lua's CENTER_ALPHA and LINE_COLOR (copies: it exports none)
 
 local accent = {}
 
@@ -462,7 +468,7 @@ function accent.Build(area)
 	Texture(tiles[3], 'BORDER', 0, TRACK_WIDTH, 6, sx, 19):SetColorTexture(unpack(Kit.EDGE))
 	Texture(tiles[3], 'BORDER', 1, TRACK_WIDTH - 2, 4, sx + 1, 20):SetColorTexture(unpack(Kit.FIELD))
 	pieces.fill = Texture(tiles[3], 'ARTWORK', 0, floor((TRACK_WIDTH - 2) / 2), 4, sx + 1, 20)
-	pieces.knob = Texture(tiles[3], 'OVERLAY', 0, KNOB_WIDTH, KNOB_HEIGHT, sx + 1 + floor((TRACK_WIDTH - 2) / 2) - KNOB_WIDTH / 2, 15)
+	pieces.knob = Texture(tiles[3], 'OVERLAY', 0, Kit.KNOB_WIDTH, Kit.KNOB_HEIGHT, sx + 1 + floor((TRACK_WIDTH - 2) / 2) - Kit.KNOB_WIDTH / 2, 15)
 
 	-- A selected sidebar row: the tint over it and the bar at its left.
 	pieces.rowTint = Texture(tiles[4], 'ARTWORK', 0, ACCENT_TILE - 12, 22, 6, 11)
@@ -479,15 +485,17 @@ function accent.Build(area)
 	pieces.picked = AccentText(alt[2], 'Picked')
 	pieces.picked:SetPoint('TOPLEFT', alt[2], 'TOPLEFT', 14, -24)
 	-- An own mark: the mark at a changed option's left, and its label.
-	pieces.mark = Texture(alt[3], 'ARTWORK', 0, 3, 22, 10, 11)
+	pieces.mark = Texture(alt[3], 'ARTWORK', 0, st.OptionsBody.MARK_WIDTH, 22, 10, 11)
 	pieces.markLabel = AccentText(alt[3], 'Changed')
 	pieces.markLabel:SetPoint('LEFT', alt[3], 'LEFT', 20, 0)
-	-- A selected mover: its edge and tint.
-	local mover = st:CreateFrame('Frame', nil, alt[4])
-	mover:SetSize(60, 26)
-	Put(mover, alt[4], 14, 9)
-	st:SetBackdrop(mover, 'thick', 'solid', 'small')
-	pieces.mover = mover
+	-- Edit mode's grid: faint lines and the two centre lines in the accent (the
+	-- accent under every theme; a selected mover wears Blizzard's art instead).
+	local cx, cy = floor(ACCENT_TILE / 2), floor(PV.TILE_HEIGHT / 2)
+	for _, x in ipairs({ cx - 22, cx + 22 }) do
+		Texture(alt[4], 'ARTWORK', 0, 1, PV.TILE_HEIGHT - 8, x, 4):SetColorTexture(unpack(GRID_LINE))
+	end
+	pieces.gridV = Texture(alt[4], 'ARTWORK', 1, 1, PV.TILE_HEIGHT - 8, cx, 4)
+	pieces.gridH = Texture(alt[4], 'ARTWORK', 1, ACCENT_TILE - 8, 1, 4, cy)
 	return pieces
 end
 
@@ -515,8 +523,8 @@ function accent.Paint(pieces, r, g, b, a)
 		pieces.picked:SetTextColor(r, g, b)
 		pieces.mark:SetColorTexture(r, g, b, 1)
 		pieces.markLabel:SetTextColor(r, g, b)
-		pieces.mover.backdrop:SetBackdropColor(r, g, b, st.TINT_OBJECT)
-		st:SetBorderColor(pieces.mover.backdrop, r, g, b, 1)
+		pieces.gridV:SetColorTexture(r, g, b, GRID_CENTER_ALPHA)
+		pieces.gridH:SetColorTexture(r, g, b, GRID_CENTER_ALPHA)
 		return
 	end
 	for i = 1, 4 do pieces.captions[i]:SetTextColor(mr, mg, mb) end

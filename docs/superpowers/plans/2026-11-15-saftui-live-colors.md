@@ -730,7 +730,7 @@ git commit -m "options: a preview strip in the color picker, chosen by the optio
 
 **Files:**
 - Modify:
-  - `SaftUI-Core/Config/optionspreview.lua`: the `button` kind (five tiles 74 by 44, the states as the spec tables, each piece at its reader's strength times the opacity; the captions of the tiles the edited key reaches in Text, the rest Muted; under Blizzard drawn as Thick with the note "Shown as Thick: under Blizzard, SaftUI's buttons wear Blizzard's art.") and the `accent` kind (four tiles: a field's edge as under the mouse (`W.Box`, `W.Edge`), a ticked `Kit.CheckBox`, a slider's track and fill, a selected sidebar row's 25% tint and bar; under Blizzard a link, a picked list entry, an own mark and a selected mover's edge).
+  - `SaftUI-Core/Config/optionspreview.lua`: the `button` kind (five tiles 74 by 44, the states as the spec tables, each piece at its reader's strength times the opacity; the captions of the tiles the edited key reaches in Text, the rest Muted; under Blizzard drawn as Thick with the note "Shown as Thick: under Blizzard, SaftUI's buttons wear Blizzard's art.") and the `accent` kind (four tiles: a field's edge as under the mouse (`W.Box`, `W.Edge`), a ticked `Kit.CheckBox`, a slider's track and fill, a selected sidebar row's 25% tint and bar; under Blizzard a link, a picked list entry, an own mark and the edit mode grid's centre lines).
   - `SaftUI-Core/Media/colors.lua`: the Buttons rows' `{ kind = 'button', key = <key> }`; the Accent row's `'accent'`.
   - `tests/wow/widgets.lua`: `LockHighlight` and `SetButtonState`, if missing (Ruling 19).
 - Test, modify: `tests/core/options_color_preview_test.lua`, `tests/lib/harness_self_test.lua` (the stubs, if added).

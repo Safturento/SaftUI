@@ -42,6 +42,7 @@ end
 ------------------------------------------------------------------ range
 
 local KNOB_WIDTH, KNOB_HEIGHT = 6, 14
+Kit.KNOB_WIDTH, Kit.KNOB_HEIGHT = KNOB_WIDTH, KNOB_HEIGHT -- read by the color picker's preview (optionspreview.lua)
 
 -- The range's look, when it changed: its flat track and knob, or Blizzard's
 -- minimal slider (st.ThemeArt.Control('slider')): the track's ends and
