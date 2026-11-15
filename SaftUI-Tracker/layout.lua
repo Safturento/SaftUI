@@ -73,9 +73,10 @@ end
 -- from measure, which the tracker answers from the real font strings.
 --
 -- entries are { kind = 'popup' | 'zone' | 'quest' | 'empty', first, lines,
--- item = 'row' | nil }: first is a quest's title (or the empty line's text),
+-- item = 'row' | 'beside' | nil }: first is a quest's title (or the empty line's text),
 -- lines a quest's lines, each { text } or { kind = 'bar' } (model.lua's lines
--- are this shape); item says a quest's button sits in its row.
+-- are this shape); item says a quest's button sits in its row, or is in the
+-- column beside the tracker (its number takes the end of the title).
 -- metrics is { width, spacing, icons, itemSize, dash }: width the scroll child's,
 -- dash the room an objective's dash takes before its text (nil for none).
 -- measure(text, width, font, entry, slot) -> height gives a text's height
@@ -91,7 +92,8 @@ end
 -- Gaps (Ruling 18): a zone header is 10 under what's above it, a row
 -- 4 under a zone header, and rows spacing apart (popups too). Title width is
 -- the child width, less ICON + ICON_GAP with icons, less itemSize + 4 with the
--- button in the row; line width is the title width less INDENT (Ruling 11). A
+-- button in the row, less metrics.tagRoom (the number's room) with its button in
+-- the column beside the tracker; line width is the title width less INDENT (Ruling 11). A
 -- bar takes 3 above and 3 below and no line gap of its own. out, when given,
 -- is a table of an earlier call to fill again, so a refresh makes none.
 function Layout.Rows(entries, metrics, measure, out)
@@ -139,6 +141,8 @@ function Layout.Rows(entries, metrics, measure, out)
 			local titleWidth = width
 			if metrics.icons then titleWidth = titleWidth - L.ICON - L.ICON_GAP end
 			if entry.item == 'row' then titleWidth = titleWidth - metrics.itemSize - L.ITEM_GAP end
+			-- Beside the tracker the title leaves room for the column's number at its end.
+			if entry.item == 'beside' then titleWidth = titleWidth - (metrics.tagRoom or 0) end
 			local lineWidth = titleWidth - L.INDENT
 			row.titleWidth, row.lineWidth = titleWidth, lineWidth
 			local titleHeight = measure(entry.first, titleWidth, 'text', entry, 'title')

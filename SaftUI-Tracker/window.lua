@@ -431,10 +431,11 @@ local function OnWheel(_, delta)
 	TR:ScrollTo(Layout.Wheel(TR:GetScroll(), delta, TR.scrollRange or 0))
 end
 
--- Whether the mouse is over the tracker: the window (Task 9 adds the item
--- column beside it).
+-- Whether the mouse is over the tracker: the window, or the item column beside
+-- it.
 function TR:IsHovered()
-	return self.window ~= nil and self.window:IsMouseOver() or false
+	if self.window == nil then return false end
+	return self.window:IsMouseOver() or self:IsColumnHovered() or false
 end
 
 -- The bar rule: shown while Scroll bar under the mouse only is off, or the

@@ -38,6 +38,16 @@ local L = TR.LAYOUT
 	  TR.itemWatcher    a plain frame: the range timer (an OnUpdate, set only
 	                    while a button shows) and the quest area's event
 
+	Beside the tracker (placement 'beside') the same buttons sit in a column
+	4 outside the window, on the side nearer the screen's middle, each level
+	with its quest's title, and numbered 1 to n in list order (the pure
+	Items.Side and Items.Column). A column button is as secure as a row's, and
+	in combat it follows the same rules, except for what the list does: the
+	list scrolls freely, the column stays as it was (a button is not tied to its
+	row, the number is), and a button dims only when its quest left the list or
+	its item changed. The numbers are only set out of combat, so a button, its
+	number and its row's tag always name the same quest.
+
 	The one function that holds how a button is told what to use is
 	TR.ItemAttributes (experiment P3).
 ]]
@@ -92,6 +102,70 @@ function Items.CombatAlpha(placedTop, rowTop)
 	if placedTop == nil or rowTop == nil then return TR.DIM_ALPHA end
 	if math.abs(rowTop - placedTop) > TR.MOVE_TOLERANCE then return TR.DIM_ALPHA end
 	return 1
+end
+
+-- Which side of the tracker the column is on: left when the holder's centre is
+-- right of the screen's middle, else right (the beside spot's rule).
+function Items.Side(holderCenterX, screenCenterX)
+	if holderCenterX > screenCenterX then return 'left' end
+	return 'right'
+end
+
+-- Where each column button goes, as { left, top, number } or nil, one for each
+-- entry in list order. Each entry is { top = the title's top or nil }, y up (nil:
+-- no row to follow: collapsed, hidden or gone). left is 4 outside the window on
+-- side ('left' or 'right'); top is the title's, or 2 under the place above when
+-- the button would overlap it; nil while the title's button would have its centre
+-- outside the scroll view (viewTop and viewBottom). Numbers run 1 to n in list
+-- order, counting the entries out of view, so a number never changes as the list
+-- scrolls. round is the caller's rounding (default a unit), out a table of an
+-- earlier call to fill again, so a scroll makes none.
+function Items.Column(entries, size, side, windowLeft, windowRight, viewTop, viewBottom, round, out)
+	round = round or Round
+	local places = out or {}
+	local spare = places.spare
+	if not spare then
+		spare = {}
+		places.spare = spare
+	end
+	local left
+	if side == 'left' then
+		left = round(windowLeft - L.COLUMN_GAP - size)
+	else
+		left = round(windowRight + L.COLUMN_GAP)
+	end
+	local count = #entries
+	local bottom -- the bottom of the place above, once there is one
+	for index = 1, count do
+		local top = entries[index].top
+		local place
+		if top ~= nil and viewTop ~= nil and viewBottom ~= nil then
+			local centre = top - size / 2
+			if centre <= viewTop and centre >= viewBottom then
+				top = round(top)
+				if bottom ~= nil and top > bottom then top = bottom - L.COLUMN_STACK end
+				place = spare[index]
+				if not place then
+					place = {}
+					spare[index] = place
+				end
+				place.left, place.top, place.number = left, top, index
+				bottom = top - size
+			end
+		end
+		places[index] = place
+	end
+	for index = count + 1, places.count or 0 do places[index] = nil end
+	places.count = count
+	return places
+end
+
+-- The room the column takes beside the tracker, for the beside spot (Task 11):
+-- Button size while the column shows (the placement is Beside the tracker and a
+-- quest has an item), else 0. Its 4 gap is the caller's.
+function TR:ColumnWidth()
+	if not self:ItemsToShow() or self.config.items.placement ~= 'beside' then return 0 end
+	return self.config.items.size
 end
 
 ------------------------------------------------------------------ P3: what a button uses
@@ -301,10 +375,20 @@ end
 
 ------------------------------------------------------------------ tooltips
 
--- The tooltip's place: its top right 8 left of the row's top left (Ruling 30).
+-- The tooltip's place: its top right 8 left of the row's top left (Ruling 30); a
+-- column button's is 8 outside the column, away from the window.
 local function PlaceTip(owner, row)
 	GameTooltip:SetOwner(owner, 'ANCHOR_NONE')
 	GameTooltip:ClearAllPoints()
+	if owner.column then
+		-- A column button's tooltip goes outward from the column, off the window.
+		if owner.columnSide == 'right' then
+			GameTooltip:SetPoint('TOPLEFT', owner, 'TOPRIGHT', L.PAD, 0)
+		else
+			GameTooltip:SetPoint('TOPRIGHT', owner, 'TOPLEFT', -L.PAD, 0)
+		end
+		return
+	end
 	GameTooltip:SetPoint('TOPRIGHT', row or TR.window, 'TOPLEFT', -L.PAD, 0)
 end
 
@@ -408,6 +492,13 @@ local function MakeButton(self)
 	button.count:SetJustifyH('RIGHT')
 	button.count:SetPoint('BOTTOMRIGHT', over, 'BOTTOMRIGHT', -2, 2)
 	button.count:Hide()
+	-- The column's number (Beside the tracker), made with the button like the count:
+	-- the Pixel font, at the bottom left.
+	button.numberText = over:CreateFontString(nil, 'OVERLAY')
+	button.numberText:SetFontObject(st:GetFont('pixel'))
+	button.numberText:SetJustifyH('LEFT')
+	button.numberText:SetPoint('BOTTOMLEFT', over, 'BOTTOMLEFT', 2, 2)
+	button.numberText:Hide()
 
 	-- The button takes the mouse from its row, so it keeps the row's hover too.
 	button:SetScript('OnEnter', function(self)
@@ -545,31 +636,61 @@ function TR:ItemsToShow()
 end
 
 -- Whether any button sits in a row (shown), which is what holds the list still
--- in combat (TR:IsScrollLocked, window.lua).
+-- in combat (TR:IsScrollLocked, window.lua). A column button doesn't: it is not
+-- over a row, so the list scrolls freely and the column stays.
 function TR:RowButtonShown()
 	for _, button in ipairs(self.itemButtons or {}) do
-		if button.questID and button:IsShown() then return true end
+		if button.questID and not button.column and button:IsShown() then return true end
 	end
 	return false
 end
 
--- The quests the layer draws in rows, in the list's order: each quest with an
--- item and a row, as { quest, row }.
+-- Whether the mouse is over a shown button of the column (the tracker counts it
+-- as itself: TR:IsHovered, window.lua).
+function TR:IsColumnHovered()
+	for _, button in ipairs(self.itemButtons or {}) do
+		if button.column and button.questID and button:IsShown() and button:IsMouseOver() then return true end
+	end
+	return false
+end
+
+-- The quests the layer draws buttons for, in the list's order, as { quest, row }
+-- (a beside entry also has the quest's number, its place in the list among the
+-- quests with an item to click). In the row: each quest with an item and a row
+-- that says its item sits there. Beside the tracker: the quests the list draws
+-- (collapsed groups' have no row) with an item that has a link, in the order
+-- they are drawn.
 local NONE = {}
 
 local function Wanted(self)
 	local wanted = self.itemWanted
 	local n = 0
-	for _, quest in ipairs(self.model.quests) do
-		local row = quest.item and self:GetQuestRow(quest.id)
-		if row and row.item == 'row' then
-			n = n + 1
-			local entry = wanted[n]
-			if not entry then
-				entry = {}
-				wanted[n] = entry
+	if self.config.items.placement == 'beside' then
+		for _, entry in ipairs(self.entries) do
+			local quest = entry.kind == 'quest' and entry.quest
+			local row = quest and quest.item and quest.item.link and self:GetQuestRow(quest.id)
+			if row and row.item == 'beside' then
+				n = n + 1
+				local slot = wanted[n]
+				if not slot then
+					slot = {}
+					wanted[n] = slot
+				end
+				slot.quest, slot.row, slot.number = quest, row, n
 			end
-			entry.quest, entry.row = quest, row
+		end
+	else
+		for _, quest in ipairs(self.model.quests) do
+			local row = quest.item and self:GetQuestRow(quest.id)
+			if row and row.item == 'row' then
+				n = n + 1
+				local slot = wanted[n]
+				if not slot then
+					slot = {}
+					wanted[n] = slot
+				end
+				slot.quest, slot.row, slot.number = quest, row, nil
+			end
 		end
 	end
 	for index = n + 1, #wanted do wanted[index] = nil end
@@ -589,10 +710,10 @@ local function Place(self, row, size)
 	return Items.RowPlace(row:GetTop(), row:GetRight(), self.scroll:GetTop(), self.scroll:GetBottom(), size, RoundToPixel)
 end
 
--- Puts a button at its row's place, or hides it while the row is out of view,
--- collapsed or gone. Secure calls, so out of combat only, and only on a change.
-local function PlaceButton(self, button, row, size)
-	local left, top = Place(self, row, size)
+-- Puts a button at left and top, or hides it while there is none (its row is out of
+-- view, collapsed or gone). Secure calls, so out of combat only, and only on a
+-- change.
+local function ShowAt(self, button, left, top)
 	if left then
 		if button.placedLeft ~= left or button.placedTop ~= top then
 			button.placedLeft, button.placedTop = left, top
@@ -608,15 +729,71 @@ local function PlaceButton(self, button, row, size)
 	end
 end
 
+local function PlaceButton(self, button, row, size)
+	ShowAt(self, button, Place(self, row, size))
+end
+
+-- What a button is: a row's (its place is its row's top right) or the column's (its
+-- place is the list's, and it wears its number). Regions of the button's child
+-- frame only, so a change is free; the kind is set out of combat anyway.
+local function SetKind(button, column, number, side)
+	button.column, button.columnSide = column, side
+	if column and number then
+		if button.number ~= number then
+			button.number = number
+			button.numberText:SetText(tostring(number))
+		end
+		if not button.numberText:IsShown() then button.numberText:Show() end
+	else
+		button.number = nil
+		if button.numberText:IsShown() then button.numberText:Hide() end
+	end
+end
+
+-- Each wanted quest's place in the column, in list order: the title's top (the
+-- row's, whole pixels, nil while the row isn't visible) against the window's edge
+-- on the side nearer the screen's middle, the scroll view as the rows' buttons
+-- use it. The table is the same each call.
+local function ColumnPlaces(self, wanted, size)
+	local entries = self.columnEntries
+	if not entries then
+		entries = {}
+		self.columnEntries, self.columnPlaces = entries, {}
+	end
+	for index, slot in ipairs(wanted) do
+		local entry = entries[index]
+		if not entry then
+			entry = {}
+			entries[index] = entry
+		end
+		local row = slot.row
+		local top = row:IsVisible() and row:GetTop() or nil
+		entry.top = top and RoundToPixel(top) or nil
+	end
+	for index = #wanted + 1, #entries do entries[index] = nil end
+	local window, scroll = self.window, self.scroll
+	local holderX, screenX = self.holder:GetCenter(), UIParent:GetCenter()
+	local side = (holderX and screenX) and Items.Side(holderX, screenX) or 'left'
+	self.columnSide = side
+	local left, right = window:GetLeft(), window:GetRight()
+	if not (left and right) then
+		for index = 1, #entries do entries[index] = nil end
+		return Items.Column(entries, size, side, 0, 0, nil, nil, RoundToPixel, self.columnPlaces)
+	end
+	return Items.Column(entries, size, side, RoundToPixel(left), RoundToPixel(right), scroll:GetTop(), scroll:GetBottom(), RoundToPixel, self.columnPlaces)
+end
+
 -- Out of combat: the pool is handed out and each button told its item, set up
--- and placed at its row. Buttons are made on need, up to the cap. This is the
--- refresh's, not a scroll's: it tells buttons their items and styles them.
+-- and placed (at its row, or in the column). Buttons are made on need, up to the
+-- cap. This is the refresh's, not a scroll's: it tells buttons their items and
+-- styles them.
 local function AssignItems(self, wanted)
 	local config = self.config
 	local byQuest = self.itemByQuest
-	local row = config.items.placement == 'row'
-	if row and not self.itemLayer then self:BuildItemLayer() end
-	if not (row and self.itemLayer) then
+	local placement = config.items.placement
+	local column = placement == 'beside'
+	if (placement == 'row' or column) and not self.itemLayer then self:BuildItemLayer() end
+	if not ((placement == 'row' or column) and self.itemLayer) then
 		-- Off, or the layer can't be made now: nothing is wanted of a button.
 		wanted = NONE
 	end
@@ -634,7 +811,8 @@ local function AssignItems(self, wanted)
 
 	local look = st:ResolveTheme(config.theme, config.background, 'action')
 	local size = config.items.size
-	for _, entry in ipairs(wanted) do
+	local places = column and wanted ~= NONE and ColumnPlaces(self, wanted, size) or nil
+	for index, entry in ipairs(wanted) do
 		local quest = entry.quest
 		local button = byQuest[quest.id]
 		if not button and quest.item.link then
@@ -652,7 +830,13 @@ local function AssignItems(self, wanted)
 			button.cd, button.range = quest.item.cooldown, quest.item.range
 			button.inside = ReadInside(quest.id)
 			StyleButton(button, look)
-			PlaceButton(self, button, entry.row, size)
+			SetKind(button, column, entry.number, self.columnSide)
+			if column then
+				local place = places[index]
+				if place then ShowAt(self, button, place.left, place.top) else ShowAt(self, button) end
+			else
+				PlaceButton(self, button, entry.row, size)
+			end
 		end
 	end
 	-- Spare buttons go.
@@ -662,10 +846,11 @@ local function AssignItems(self, wanted)
 end
 
 -- In combat: nothing secure. A button stays where it was; it dims to DIM_ALPHA
--- when its row moved by more than MOVE_TOLERANCE, is out of view or is gone, or
--- its quest's item is another one now, and goes on using its own quest's item.
--- What a drawing may change (the count, the cooldown) follows the quest while its
--- item is the same one.
+-- when its quest's item is another one now or the quest is gone, and a row's also
+-- when its row moved by more than MOVE_TOLERANCE or is out of view, and goes on
+-- using its own quest's item. What a drawing may change (the count, the
+-- cooldown) follows the quest while its item is the same one. A column button
+-- is not tied to its row: the list scrolls, the column stays.
 local function DimItems(self)
 	local size = self.config.items.size
 	for _, button in ipairs(self.itemButtons) do
@@ -673,14 +858,25 @@ local function DimItems(self)
 			local row = self:GetQuestRow(button.questID)
 			local quest = row and row.quest
 			local item = quest and quest.item
-			local rowTop
-			if item and row.item == 'row' and item.link == (button.item and button.item.link) then
-				local _, top = Place(self, row, button.sizeSet or size)
-				rowTop = top
-				button.item, button.title = item, quest.title
-				button.cd, button.range = item.cooldown, item.range
+			local sameItem = item and item.link == (button.item and button.item.link)
+			local alpha
+			if button.column then
+				local same = sameItem and row.item == 'beside'
+				if same then
+					button.item, button.title = item, quest.title
+					button.cd, button.range = item.cooldown, item.range
+				end
+				alpha = same and 1 or TR.DIM_ALPHA
+			else
+				local rowTop
+				if sameItem and row.item == 'row' then
+					local _, top = Place(self, row, button.sizeSet or size)
+					rowTop = top
+					button.item, button.title = item, quest.title
+					button.cd, button.range = item.cooldown, item.range
+				end
+				alpha = Items.CombatAlpha(button.placedTop, rowTop)
 			end
-			local alpha = Items.CombatAlpha(button.placedTop, rowTop)
 			button.dimmed = alpha < 1
 			self:SetItemAlpha(button, alpha)
 			PaintButton(button)
@@ -724,6 +920,24 @@ local function DrawSlots(self, combat)
 	end
 end
 
+-- Each beside quest row's tag: the number of its quest's own button while that
+-- button is for the row's item, else none (a new quest has no button until combat
+-- ends, and one whose item changed is not what the button holds). Text only, so it
+-- runs in combat too.
+local function DrawTags(self)
+	for _, row in ipairs(self.pools.quest.rows) do
+		if row.inUse and row.item == 'beside' then
+			local button = self.itemByQuest[row.questID]
+			local item = row.quest and row.quest.item
+			local number
+			if button and button.column and button.number and item and button.item and button.item.link == item.link then
+				number = button.number
+			end
+			self:SetTag(row, number)
+		end
+	end
+end
+
 -- The item stage of the refresh (init.lua's RunStages) and of the end of combat.
 -- Out of combat it hands out the pool, sets, places, shows and hides the
 -- buttons; in combat it only dims and draws, and queues itself for the end of
@@ -731,21 +945,37 @@ end
 function TR:RefreshItems()
 	if not self.built or not self.model or not self.itemButtons then return end
 	local combat = InCombatLockdown()
-	local wanted = Wanted(self)
 	if combat then
 		st:QueueAfterCombat('tracker_items', QueuedPass)
 		DimItems(self)
 	else
-		AssignItems(self, wanted)
+		AssignItems(self, Wanted(self))
 	end
 	DrawSlots(self, combat)
+	DrawTags(self)
 	self:UpdateScrollLock()
 	self:UpdateRangeWatch()
 end
 
+-- The column's buttons, placed again where the list has them now: their places
+-- and numbers, hiding the ones whose title is out of view.
+local function PlaceColumn(self)
+	local wanted = Wanted(self)
+	local places = ColumnPlaces(self, wanted, self.config.items.size)
+	for index, slot in ipairs(wanted) do
+		local button = self.itemByQuest[slot.quest.id]
+		if button and button.column then
+			SetKind(button, true, slot.number, self.columnSide)
+			local place = places[index]
+			if place then ShowAt(self, button, place.left, place.top) else ShowAt(self, button) end
+		end
+	end
+end
+
 -- The rows moved without a refresh (a scroll, the window collapsing, hiding or
 -- being moved, the screen changing size, an edit mode drag): out of combat the
--- buttons follow them, in combat they dim. Only places: it tells no button its
+-- buttons follow them, in combat a row's dim and the column stays (and asks to
+-- be placed again at the end of combat). Only places: it tells no button its
 -- item and styles none (the refresh does), so a thumb drag's scroll events cost
 -- a few reads and no allocation.
 function TR:PlaceItems()
@@ -753,13 +983,21 @@ function TR:PlaceItems()
 	local combat = InCombatLockdown()
 	if combat then
 		DimItems(self)
+		for _, button in ipairs(self.itemButtons) do
+			if button.column and button.questID then
+				st:QueueAfterCombat('tracker_items', QueuedPass)
+				break
+			end
+		end
 	else
 		local size = self.config.items.size
 		for _, button in ipairs(self.itemButtons) do
-			if button.questID then PlaceButton(self, button, self:GetQuestRow(button.questID), size) end
+			if button.questID and not button.column then PlaceButton(self, button, self:GetQuestRow(button.questID), size) end
 		end
+		if self.config.items.placement == 'beside' then PlaceColumn(self) end
 	end
 	DrawSlots(self, combat)
+	DrawTags(self)
 	self:UpdateScrollLock()
 	self:UpdateRangeWatch()
 end
