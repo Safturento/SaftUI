@@ -369,17 +369,17 @@ test("under Blizzard a bag slot's pushed and highlight are Blizzard's files", fu
 	local PUSHED, HIGHLIGHT = [[Interface\Buttons\UI-Quickslot-Depress]], [[Interface\Buttons\ButtonHilight-Square]]
 
 	-- The blend SetHighlightTexture gives a texture handed with none, which
-	-- st:SkinActionButton's flat hover keeps: a blue tint, not an opaque square.
+	-- st:SkinActionButton's flat hover keeps: an accent tint, not an opaque square.
 	local probe = CreateFrame('Button')
 	local probeTexture = probe:CreateTexture()
 	probe:SetHighlightTexture(probeTexture)
 	local made = probeTexture:GetBlendMode()
 
-	-- Under Thick: the pushed art is cleared and the hover a flat blue over the icon, as before.
+	-- Under Thick: the pushed art is cleared and the hover a flat accent over the icon, as before.
 	local slot = slots[1]
 	eq(slot:GetPushedTexture():GetTexture(), '', 'Thick: the pushed art is cleared')
 	eq(slot.hover:GetTexture(), st.BLANK_TEX, 'Thick: the hover is the flat texture')
-	eq(T.text(slot.hover:GetVertexColor()), T.text(st.config.profile.theme.accent:GetRGB()) .. ',1.00', 'Thick: blue')
+	eq(T.text(slot.hover:GetVertexColor()), T.text(st.config.profile.theme.accent:GetRGB()) .. ',1.00', 'Thick: the accent')
 	eq(slot.hover:GetBlendMode(), made, 'Thick: the blend the setter gave it when the slot was made')
 	-- The client shows a button's highlight only in the HIGHLIGHT layer, under
 	-- the mouse; moved out of it, it shows all the time.
@@ -412,7 +412,7 @@ test("under Blizzard a bag slot's pushed and highlight are Blizzard's files", fu
 	eq(slot:GetPushedTexture():GetTexture(), '', 'Thick again: the pushed art is cleared')
 	eq(slot:GetHighlightTexture():GetTexture(), st.BLANK_TEX, 'Thick again: the flat hover')
 	eq(T.around(slot:GetHighlightTexture(), slot.icon), '0,0,0,0', 'Thick again: over the icon')
-	eq(T.text(slot:GetHighlightTexture():GetVertexColor()), T.text(st.config.profile.theme.accent:GetRGB()) .. ',1.00', 'Thick again: blue')
+	eq(T.text(slot:GetHighlightTexture():GetVertexColor()), T.text(st.config.profile.theme.accent:GetRGB()) .. ',1.00', 'Thick again: the accent')
 	eq(slot:GetHighlightTexture():GetBlendMode(), made, 'Thick again: the blend the setter gave it when the slot was made')
 	eq(select(1, slot:GetHighlightTexture():GetDrawLayer()), 'HIGHLIGHT', 'Thick again: the hover shows only under the mouse')
 	eq(#take_errors(), 0, 'no errors')
@@ -642,7 +642,7 @@ local function panel(button)
 	return table.concat(out, ',')
 end
 
-test("the window's view button is pressed under Blizzard, through a recolor, a redraw and a view change, and lit Blue under Thick", function()
+test("the window's view button is pressed under Blizzard, through a recolor, a redraw and a view change, and lit in the accent under Thick", function()
 	local container = bags()
 	INV:CreateViewButtons(container)
 	INV:UpdateConfig('bag')
@@ -657,7 +657,7 @@ test("the window's view button is pressed under Blizzard, through a recolor, a r
 			else
 				eq(panel(button), '', label .. ': ' .. view .. ' is no panel button')
 				if view == current then
-					eq(T.edge(button.backdrop), blue, label .. ': ' .. view .. ' (the current view) lit Blue')
+					eq(T.edge(button.backdrop), blue, label .. ': ' .. view .. ' (the current view) lit in the accent')
 				else
 					check(T.edge(button.backdrop) ~= blue, label .. ': ' .. view .. ' not lit')
 				end

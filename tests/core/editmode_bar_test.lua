@@ -527,17 +527,17 @@ test('Pressed fires with the mover when the mouse goes down on its outline, and 
 	reset_edit_mode()
 end)
 
-test('a recolor reaches the bar: Button > Blue changes the accent on an icon that is on', function()
+test('a recolor reaches the bar: Theme > Accent changes the accent on an icon that is on', function()
 	EM:Activate()
 	EM:SetSetting('grid', true)
 	local frame = frame_of('grid')
 	local blue = st.config.profile.theme.accent
 	local r, g, b = blue:GetRGB()
 	blue:SetRGB(0.9, 0.1, 0.2)
-	st:ColorsChanged('button')
+	st:ColorsChanged('accent')
 	eq(rgb(CreateColor(frame.icon:GetVertexColor())), '0.90,0.10,0.20', 'the new accent')
 	blue:SetRGB(r, g, b)
-	st:ColorsChanged('button')
+	st:ColorsChanged('accent')
 	reset_edit_mode()
 end)
 

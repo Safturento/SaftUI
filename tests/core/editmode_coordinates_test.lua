@@ -197,10 +197,10 @@ test("Coordinates shows the selected mover's position, follows a drag, and hides
 	local blue = st.config.profile.theme.accent
 	local r, g, b = blue:GetRGB()
 	blue:SetRGB(0.2, 0.9, 0.3)
-	st:ColorsChanged('button')
+	st:ColorsChanged('accent')
 	eq(rgb(CreateColor(EM.coordinates.text:GetTextColor())), '0.20,0.90,0.30', 'the accent follows a recolor')
 	blue:SetRGB(r, g, b)
-	st:ColorsChanged('button')
+	st:ColorsChanged('accent')
 
 	-- Parent named by its mover.
 	local pos = m1.def.getPosition()

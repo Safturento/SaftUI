@@ -48,7 +48,7 @@ local W = st.OptionsWidgets
 	Hide until hovered. While the choice is on (and edit mode is on, in no
 	combat, with the bar docked) the bar is hidden (bar:Hide(): no animation) and
 	EM.barStrip, a frame as wide as the bar and HOT (6) tall at the top edge
-	where it sits, shows a 2 px line in the accent (Button > Blue). The strip
+	where it sits, shows a 2 px line in the accent (Theme > Accent). The strip
 	takes no mouse, so it takes no click from a mover under it: the mouse's place
 	is read with IsMouseOver from EM.barWatch's OnUpdate, which runs only while
 	the choice is active. The bar comes down at once when the mouse is over the

@@ -630,7 +630,7 @@ local function LayListRow(w, i, entry, count, selected)
 	f.handle:SetFrameLevel(f:GetFrameLevel() + 1)
 	f:Show()
 	-- Under Blizzard the Settings category list: the hover and the picked
-	-- row on its art, no blue bar, the name gold (white when picked). Else the
+	-- row on its art, no accent bar, the name gold (white when picked). Else the
 	-- accent tint and bar. Read on each layout, so a theme switch shows at once.
 	local look = W.BlizzardLook() and st.ThemeArt.Control('optionslist')
 	if look then

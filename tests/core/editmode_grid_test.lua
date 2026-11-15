@@ -115,6 +115,19 @@ test('drawing', function()
 			check(colorEq(colorOf(line), otherColor), 'other lines all same color')
 		end
 	end
+	do -- the center lines are the accent: a non-default one, so a literal blue fails
+		local accent = SaftUI.config.profile.theme.accent
+		accent:SetRGB(0.9, 0.1, 0.2)
+		EM:UpdateGrid()
+		for _, line in ipairs(shownLines()) do
+			local c = colorOf(line)
+			if not colorEq(c, otherColor) then
+				check(math.abs(c[1] - 0.9) < 1e-3 and math.abs(c[2] - 0.1) < 1e-3 and math.abs(c[3] - 0.2) < 1e-3, 'a center line in the accent')
+			end
+		end
+		accent:SetRGB(0, 0.68, 0.94)
+		EM:UpdateGrid()
+	end
 	local first = shownLines()[1]
 	check(first:GetWidth() == 1 or first:GetHeight() == 1, 'lines 1 pixel thick')
 

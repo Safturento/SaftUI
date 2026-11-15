@@ -472,7 +472,7 @@ test('the guide frame: above the overlays, under the bar, no mouse, in the accen
 	local r, g, b = unpack(stub.state(EM.snapGuides.x).color_texture)
 	local blue = st.config.profile.theme.accent
 	local br, bg, bb = blue:GetRGB()
-	check(math.abs(r - br) < 1e-3 and math.abs(g - bg) < 1e-3 and math.abs(b - bb) < 1e-3, 'Button > Blue')
+	check(math.abs(r - br) < 1e-3 and math.abs(g - bg) < 1e-3 and math.abs(b - bb) < 1e-3, 'the accent')
 	EM:StopDrag(me)
 	local saved = st.config.profile.theme.accent
 	st.config.profile.theme.accent = { GetRGB = function() return 0.25, 0.5, 0.75 end }

@@ -872,6 +872,13 @@ test('keybinding: a click waits, the next key (with modifiers) is set, Esc clear
 
 	click(w.frame)
 	eq(text_of(w.text), 'Press a key', 'waiting')
+	do -- "Press a key" is the accent: a non-default one, so a literal blue fails
+		local accent = st.config.profile.theme.accent
+		accent:SetRGB(0.9, 0.1, 0.2)
+		click(w.frame); click(w.frame) -- stop waiting, wait again: drawn again
+		eq(string.format('%.2f,%.2f,%.2f', w.text:GetTextColor()), '0.90,0.10,0.20', 'Press a key in the accent')
+		accent:SetRGB(0, 0.68, 0.94)
+	end
 	check(w.frame:IsKeyboardEnabled(), 'takes the keyboard')
 	stub.fire_script(w.frame, 'OnKeyDown', 'LSHIFT')
 	eq(#sets, 0, 'a lone modifier is ignored')

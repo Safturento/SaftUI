@@ -70,7 +70,8 @@ local Name = EM.MoverName -- the label's first line (mover.lua)
 
 local function ColorCode(color)
 	local r, g, b = color:GetRGB()
-	return ('|cff%02x%02x%02x'):format(r * 255, g * 255, b * 255)
+	local function byte(v) return math.floor(v * 255 + 0.5) end -- rounded, as the chat prefix and the brand text are
+	return ('|cff%02x%02x%02x'):format(byte(r), byte(g), byte(b))
 end
 
 local stack = {} -- the outlines under the cursor, in registration order

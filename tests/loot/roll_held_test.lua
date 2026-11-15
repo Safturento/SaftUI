@@ -1435,7 +1435,8 @@ test('the roll timer bars fill in the accent, in the skinned frame and in a held
 	choose(roll, 'Greed', drop)
 	local bar = held_bar(roll)
 	tick(1)
-	if bar then eq(T.text(bar.Timer:GetStatusBarColor()), '0.90,0.30,0.10,1.00', "and the held bar's timer") end
+	check(bar, 'held')
+	eq(T.text(bar.Timer:GetStatusBarColor()), '0.90,0.30,0.10,1.00', "and the held bar's timer")
 	accent:SetRGB(0, 0.68, 0.94)
 end)
 

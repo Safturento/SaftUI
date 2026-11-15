@@ -209,6 +209,15 @@ test('while on, the bar is hidden and a 2 px accent strip as wide as the bar sho
 	eq(strip.line:GetLeft(), bar:GetLeft(), 'where the bar sits')
 	local c = stub.state(strip.line).color_texture
 	eq(string.format('%.2f,%.2f,%.2f', c[1], c[2], c[3]), rgb(st.config.profile.theme.accent), 'in the accent')
+	do -- a non-default accent reaches the strip on 'accent'
+		local accent = st.config.profile.theme.accent
+		accent:SetRGB(0.9, 0.1, 0.2)
+		st:ColorsChanged('accent')
+		c = stub.state(strip.line).color_texture
+		eq(string.format('%.2f,%.2f,%.2f', c[1], c[2], c[3]), '0.90,0.10,0.20', 'the strip follows the accent')
+		accent:SetRGB(0, 0.68, 0.94)
+		st:ColorsChanged('accent')
+	end
 	check(not strip:IsMouseEnabled(), 'the hot zone takes no clicks: movers under it keep theirs')
 	check(strip:GetHeight() > 2 and strip:GetHeight() <= 8, 'the hot zone is a few pixels tall: ' .. strip:GetHeight())
 	eq(strip:GetWidth(), bar:GetWidth(), 'and as wide as the bar')

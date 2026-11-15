@@ -42,7 +42,7 @@ local CP = SK:NewModule('Blizzard_ColorPicker')
 	    at 331 wide and 40 at 388, and a box stays inside its button), placed
 	    again by post-hooks on the picker's OnShow and OnSizeChanged when Blizzard
 	    changes its width, whose edge turns the
-	    accent blue under the mouse, as the kit's buttons do, and the text in
+	    the accent under the mouse, as the kit's buttons do, and the text in
 	    the Skinning font (the button's three state fonts). The label stays
 	    Blizzard's, uncovered.
 	  - .Content.HexBox (InputBoxInstructionsTemplate): its Left, Middle and Right
@@ -329,7 +329,7 @@ local function StyleHeader(frame, active)
 	StyleTitle(frame, header, active)
 end
 
--- The kit's hover: the box's edge turns the accent blue under the mouse.
+-- The kit's hover: the box's edge turns the the accent under the mouse.
 local function ColorHover(button)
 	local entry = buttons[button]
 	if not entry or not Active() then return end

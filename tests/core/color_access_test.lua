@@ -91,10 +91,10 @@ end)
 
 test('a profile update in combat: migrated at once, theme then accent after combat', function() -- Review Focus 2
 	local old = { colors = { button = { blue = { r = 0.5 } } } }
-	SaftUI_DB.profiles.Combat = old
+	SaftUI_DB.profiles.Old = old
 	local log = Recorded(function()
 		stub.in_combat = true
-		st.config:SetProfile('Combat')
+		st.config:SetProfile('Old')
 		eq(st.config.profile.colors.version, #st:GetModule('Colors').MIGRATION_STEPS, 'migrated at once')
 		eq(st.config.profile.theme.accent.r, 0.5, 'the destination written now')
 		eq(#stub.blocked, 0)

@@ -523,9 +523,10 @@ test('Accent: one color for every theme, no opacity, its own reset, and it says 
 	local default = st.defaults.theme.accent
 	eq(Rgb({ default.r, default.g, default.b }), '0,0.68,0.94'); check(default.a == nil or default.a == 1, 'no alpha: fully opaque')
 	eq(Rgb({ Get('accent') }), '0,0.68,0.94')
+	local before = st.config.profile.theme.accent
 	Set('accent', 0.1, 0.2, 0.3)
 	local c = st:Color('accent')
-	eq(Rgb({ c.r, c.g, c.b }), '0.1,0.2,0.3'); check(c == st.config.profile.theme.accent, 'written in place')
+	eq(Rgb({ c.r, c.g, c.b }), '0.1,0.2,0.3'); check(c == before, 'written in place: the profile\'s own object')
 	eq(table.concat(log, ','), 'accent', 'recorded')
 	for _, name in ipairs({ 'blizzard', 'thin', 'thick' }) do
 		Set('theme', name)

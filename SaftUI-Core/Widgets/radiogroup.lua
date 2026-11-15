@@ -19,9 +19,9 @@ local st = SaftUI
 -- The buttons draw as controls. Under the Blizzard theme they're Blizzard's
 -- top tabs (st:SetButtonTab), the picked one active, with no border of
 -- SaftUI's to color; under Thick and Thin, SaftUI's buttons, the picked one
--- with a blue border.
+-- with an accent border.
 
--- The picked button's blue border. Kept through a theme recolor; a control's
+-- The picked button's accent border. Kept through a theme recolor; a control's
 -- border under Blizzard is left alone (st:SetBorderColor).
 local function ColorPicked(button)
     st:SetBorderColor(button.backdrop, st:Color('accent'):GetRGB())

@@ -63,7 +63,7 @@ test('a changed accent reaches each of them after the window draws again, and Ro
 	end)
 end)
 
-test('a list row under the mouse is the accent at 0.25, and the own marks are the accent at OB.OWN_STRENGTH', function()
+test('a list row under the mouse is the accent at 0.25 (the own marks at OB.OWN_STRENGTH are options_share_test.lua\'s)', function()
 	theme('thick')
 	local values = { a = 'Alpha', b = 'Beta' }
 	local w = bind('select', 'pick', opt('select', 'Pick', { values = values, get = function() return 'a' end, set = function() end }))
@@ -77,14 +77,6 @@ test('a list row under the mouse is the accent at 0.25, and the own marks are th
 	stub.fire_script(list.rows[1], 'OnLeave')
 	W.CloseList(); w:Release()
 
-	-- An own label: the accent's color at OB.OWN_STRENGTH.
-	local keep = OB.OWN_STRENGTH
-	OB.OWN_STRENGTH = 0.5
-	local fs = UIParent:CreateFontString(nil, 'OVERLAY', 'GameFontNormal')
-	fs:SetTextColor(st:ColorRGBA('accent', nil, OB.OWN_STRENGTH))
-	local _, _, _, a = fs:GetTextColor()
-	eq(string.format('%.2f', a), '0.50', 'at the strength')
-	OB.OWN_STRENGTH = keep
 end)
 
 -- Edit mode.
@@ -121,7 +113,7 @@ test('edit mode: a selected mover is the accent border and the accent at TINT_OB
 	EM:Deactivate()
 end)
 
-test('every live recolor of the accent: the edit mode bar follows at once, the Coordinates label and the History list too', function()
+test('every live recolor of the accent: the edit mode bar follows at once (Coordinates, the strip and the History list are in their own files)', function()
 	theme('thick')
 	EM:Activate()
 	EM:SetSetting('grid', true)

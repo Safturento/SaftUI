@@ -491,6 +491,14 @@ test('the History list: newest first, the current step marked, undone ones grey,
 	check(list.rows[1].mark:IsShown() and not list.rows[2].mark:IsShown(), 'the first row has the mark')
 	eq(list.rows[1].mark:GetWidth(), 2, 'a 2px mark')
 	eq((fill(list.rows[1].mark)), rgb(st.config.profile.theme.accent), 'in the accent')
+	do -- a non-default accent: a literal blue fails
+		local accent = st.config.profile.theme.accent
+		accent:SetRGB(0.9, 0.1, 0.2)
+		st:ColorsChanged('accent')
+		eq((fill(EM:GetHistoryList().rows[1].mark)), '0.90,0.10,0.20', 'the current step follows the accent')
+		accent:SetRGB(0, 0.68, 0.94)
+		st:ColorsChanged('accent')
+	end
 	eq(list.rows[1].detail:GetText(), 'now', 'its detail is how long ago')
 	eq(rgb(CreateColor(list.rows[1].label:GetTextColor())), rgb(colors().text.normal), 'applied: normal')
 
@@ -574,6 +582,14 @@ test('a row under the mouse is filled at 25% accent, or with the dropdown list\'
 	check(row.hover:IsShown(), 'under the mouse: filled')
 	eq(row.hover:GetAlpha(), 0.25, 'at 25%')
 	eq((fill(row.hover)), rgb(st.config.profile.theme.accent), 'in the accent')
+	do
+		local accent = st.config.profile.theme.accent
+		accent:SetRGB(0.9, 0.1, 0.2)
+		st:ColorsChanged('accent')
+		eq((fill(EM:GetHistoryList().rows[2].hover)), '0.90,0.10,0.20', 'the hover follows the accent')
+		accent:SetRGB(0, 0.68, 0.94)
+		st:ColorsChanged('accent')
+	end
 	stub.fire_script(row, 'OnLeave', true)
 	check(not row.hover:IsShown(), 'left: no fill')
 	look('blizzard')

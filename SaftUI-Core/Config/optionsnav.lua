@@ -21,7 +21,7 @@ local Text, Acquire, ReleaseAll = OB.Text, OB.Acquire, OB.ReleaseAll
 
 -- From optionswindow.lua.
 local F, state, pools = S.F, S.state, S.pools
-local Colors, Normal, Grey, Accent, Button = S.Colors, S.Normal, S.Grey, S.Accent, S.Button
+local Normal, Grey, Accent, Button = S.Normal, S.Grey, S.Accent, S.Button
 local SetNavScroll, Select = S.SetNavScroll, S.Select
 local PAD, FIELD_HEIGHT, TAB_HEIGHT = S.PAD, S.FIELD_HEIGHT, S.TAB_HEIGHT
 local ACTION_PAD, ACTION_HEIGHT, NAV_ITEM = S.ACTION_PAD, S.ACTION_HEIGHT, S.NAV_ITEM

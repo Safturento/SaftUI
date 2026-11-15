@@ -164,7 +164,9 @@ end
 
 ------------------------------------------------------------------ the outline
 
-test('a row per block and group, a badge per group, AND blue and OR orange', function()
+test('a row per block and group, a badge per group, AND the accent and OR orange', function()
+	local pinned = st.config.profile.theme.accent -- a non-default accent: a literal blue fails
+	pinned:SetRGB(0.9, 0.1, 0.2)
 	local rule = grp('and', {
 		blk('class', { class = 7 }),
 		grp('or', { blk('subclass', { class = 7, subclasses = { 7, 9 } }), t('Mote of') }),
@@ -257,6 +259,7 @@ test('a row per block and group, a badge per group, AND blue and OR orange', fun
 	eq(w.rows[1].notBox.text:GetText(), 'NOT', 'the NOT box')
 	eq(#take_errors(), 0, 'no errors')
 	w:Release()
+	pinned:SetRGB(0, 0.68, 0.94)
 end)
 
 test('a row too wide for the editor wraps its fields onto more lines, clear of the X', function()

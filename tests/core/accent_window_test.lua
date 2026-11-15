@@ -32,6 +32,20 @@ test("Theme > Accent's swatch recolors the open /sui window at once, and its res
 	row.widget:Commit(0.9, 0.1, 0.2)
 	eq(text(st:Color('accent'):GetRGB()), '0.90,0.10,0.20', 'the swatch wrote the profile accent')
 	eq(texture_rgb(nav_bar()), '0.90,0.10,0.20', "the sidebar's open page follows at once")
+	for _, child in ipairs({ OW.GetFrames().navContent:GetChildren() }) do
+		if child.bar and child.bar:IsShown() then
+			local c = stub.state(child.bg).color_texture
+			eq(text(c[1], c[2], c[3]) .. ' ' .. string.format('%.2f', c[4]), '0.90,0.10,0.20 0.25', "the open page's fill, at TINT_ROW")
+		end
+	end
+	local underlined = 0
+	for _, child in ipairs({ OW.GetFrames().main:GetChildren() }) do
+		if child.underline and child.underline:IsShown() then
+			underlined = underlined + 1
+			eq(texture_rgb(child.underline), '0.90,0.10,0.20', "the active tab's underline follows the accent")
+		end
+	end
+	check(underlined >= 1, 'a tab is underlined')
 	-- Its reset: a click on the reset icon by the swatch.
 	local icon = cell('accent').frame.defaultReset
 	check(icon and icon:IsShown(), 'its own reset shows while it differs')

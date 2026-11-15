@@ -207,7 +207,7 @@ end
 
 -- While a drag is snapped to a line from Snap to frames (a mover's edge or
 -- middle, or the screen's center), a 1 physical pixel line in the accent
--- (Button > Blue, as the grid's center lines) shows what it snapped to: along
+-- (the accent, as the grid's center lines) shows what it snapped to: along
 -- the snapped line, from the far edge of the dragged outline to the far edge of
 -- the target's (the screen's whole height or width for the center line). One
 -- for each axis. Snap to grid draws none, the grid is on screen. They are
