@@ -17,7 +17,7 @@ The option's SaftUI-only share fields: whether it is the member's own, how to re
 | Mark | 2px wide, `accent`, 6 in from the row's top and bottom, 5 in from the cell's left (inside the panel's padding) | `mark-width`, `mark-inset`, `mark-x`, `accent` |
 | Label | `accent` while the row isn't disabled | `accent` |
 | Hover line | `small` 13 on a 14 line under the label, which lifts so both are centred in the row | `small`, `hover-line` |
-| Line content | "Own" in `accent` (its tooltip: the name and the All value), the reset icon (`ResetIcon`), "· Apply to:" in `text-grey`, the links "All" and "Multiple" in `accent`, white under the mouse, "\|" in `text-grey`; 4 between words | `own`, `accent`, `white`, `text-grey`, `diff-gap`, `reset-gap` |
+| Line content | "Own" in `accent` (its tooltip: the name and the All value), the reset icon (`ResetIcon`), "· Apply to:" in `text-grey`, the links "All" and "Multiple" in `accent`, white under the mouse, "\|" in `text-grey`; 4 between words | `accent`, `white`, `text-grey`, `diff-gap`, `reset-gap` |
 
 ## States
 
