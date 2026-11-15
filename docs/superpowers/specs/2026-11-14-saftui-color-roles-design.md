@@ -618,17 +618,40 @@ Ordered by how much the owner is likely to care.
 21. **Threat's Warning and Bad keep their names.**
 22. **Six phases in this order**, docs of the design system last.
 
-## Questions for the owner
+## Questions for the owner (answered)
 
 The blue that isn't theme coloring, which you asked to hear about. Each changes what phase 2 builds.
+All four are answered: see "Settled with the owner after the draft (2026-11-14)", below.
 
 1. **"Category: <name>"**, the first line SaftUI adds to a bag item's tooltip, is Text > Blue today.
    Recommended: the accent (SaftUI's own line, like the chat prefix). Or Strong, or Text?
+   **Answered:** the accent.
 2. **The rule editor's AND groups** are blue and OR groups orange. Recommended: AND the accent, OR
    Warning (each badge also says AND or OR). Or should the two get a pair of their own colors, so the
    accent can be any color without meeting OR's?
+   **Answered:** AND the accent, OR Warning.
 3. **The bags' loading bar and the loot roll timer bars** fill in blue. Recommended: the accent. Or a color
    of their own?
+   **Answered:** the accent.
 4. **Three blues that are the game's own, not SaftUI's:** the quest progress bars in both trackers
    (Blizzard's progress blue), the out-of-mana tint on action buttons, and Heroic on the zone text's
    difficulty. Recommended: leave all three as they are. Or should any follow the accent?
+   **Answered:** all three are left as they are.
+
+## Settled with the owner after the draft (2026-11-14)
+
+The owner, on this draft: "I'm good with all of those suggestions, if any feel off we can adjust". These
+override anything above that they contradict.
+
+1. **The design is approved**, with every recommendation as written.
+2. **Question 1:** "Category: <name>" in a bag item's tooltip takes the accent.
+3. **Question 2:** the rule editor's AND groups (their line, connectors and badge) take the accent, and its
+   OR groups Warning. They get no pair of colors of their own.
+4. **Question 3:** the bags' loading bar and the loot roll timer bars fill in the accent. They get no color of
+   their own.
+5. **Question 4:** the three blues that are the game's own stay as they are: the quest progress bars in
+   SaftUI's tracker and in Blizzard's skinned tracker, the out-of-mana tint on action buttons, and Heroic on
+   the zone text's difficulty.
+6. **Every call** under "Calls made while writing this" (1 to 22) stands as written.
+7. **"if any feel off we can adjust":** a call that looks wrong in game is changed then, with a dated note
+   added here.
