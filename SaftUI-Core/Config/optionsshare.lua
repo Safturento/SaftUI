@@ -159,6 +159,7 @@ local function ResetIcon(parent, tip, onClick)
 	end)
 	return button
 end
+OB.ResetIcon = ResetIcon -- the Categories list's order icon draws the same one
 
 -- name's possessive: just an apostrophe after a final s, so none reads "s's".
 local function Possessive(name)
