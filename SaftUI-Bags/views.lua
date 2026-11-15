@@ -195,6 +195,23 @@ local function BagTitle(info)
 	return ('%s%s (%d / %d)'):format(info.name, named, info.total - info.free, info.total)
 end
 
+-- Text > Muted changed: the shown special bags' titles set again with the new
+-- grey (BagTitle), cut to the room they were laid out in. Nothing is laid out.
+function INV:RetitleSections()
+	for _, container in pairs(self.containers) do
+		for name, frame in pairs(container.categories or {}) do
+			local titleText = frame.titleText
+			local id = type(name) == 'string' and name:match('^view:bag(-?%d+)$')
+			-- Only a title with the grey part ("name · type (n / m)") has anything to recolor.
+			if id and titleText and titleText:find('\194\183', 1, true) and frame:IsShown() then
+				local title = BagTitle(self:GetBagInfo(tonumber(id)))
+				frame.titleText = title
+				self.FitTitle(frame.header.text, title, frame.titleRoom, true)
+			end
+		end
+	end
+end
+
 -- The items of some bag records, in bag order.
 local function ItemsOf(bags)
 	local items = {}

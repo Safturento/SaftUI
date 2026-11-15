@@ -78,6 +78,9 @@ function INV:SelectBankCategory(clickedHeader)
         BankFrame.BankPanel:SetBankType(Enum.BankType.Account)
 	end
 
+	-- Which window wears the accent: ColorSelectedBank relights it when the accent changes.
+	self.selectedBank = selectedContainer.id
+
     for containerName, container in pairs(self.containers) do
         if containerName == selectedContainer.id then
             if container.backdrop then
@@ -87,6 +90,14 @@ function INV:SelectBankCategory(clickedHeader)
             st:SetBackdrop(container, self.config.theme, self.config.background, 'window')
         end
     end
+end
+
+-- The accent changed: the selected bank window's border in it, nothing drawn again.
+function INV:ColorSelectedBank()
+	local container = self.selectedBank and self.containers[self.selectedBank]
+	if container and container.backdrop then
+		st:SetBorderColor(container.backdrop, st:Color('accent'):GetRGB())
+	end
 end
 
 -- The filter tables bag updates index, and the category store and pins

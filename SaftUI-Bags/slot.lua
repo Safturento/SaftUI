@@ -101,38 +101,100 @@ function INV:SkinSlot(slot)
 	end
 end
 
--- A quality color changed in the options, or a theme recolor or redraw put the
--- theme's border back on every slot (group 'theme'): redraw the borders of the
--- filled slots and the shown currencies.
-function INV:OnColorsChanged(group)
-	-- The accent lights the view buttons; Text -> Normal draws their icons.
-	if group == 'accent' or group == 'text' then self:ColorViewButtons(group) end
-	if group ~= 'item_quality' and group ~= 'theme' then return end
+-- The borders of the filled slots (and the shown currencies) that wear the
+-- item quality key's color: every one when key is nil. Nothing is laid out,
+-- sorted or filed: a border's color is all that is set.
+function INV:ColorQualityBorders(key)
 	for _, container in pairs(self.containers) do
 		for _, category in pairs(container.categories) do
 			for _, slot in pairs(category.slots) do
-				if slot.info and not slot.info.empty then
+				local info = slot.info
+				if info and not info.empty and (key == nil or info.quality == key) then
 					self:SetSlotQualityBorder(slot)
 				end
 			end
 		end
 	end
-	self:UpdateCurrencyBorders()
+	self:UpdateCurrencyBorders(key)
 end
 
--- An item level's color by what the slot holds: Warbound, BoE, or strong.
+-- A color changed in the options (a pass only colors: nothing is laid out,
+-- sorted, filed or made, so it is safe in combat), key the one that changed,
+-- nil for any of the group (the whole pass).
+--   item_quality   the borders of the slots and currencies of that quality;
+--   theme          a theme recolor or redraw put the theme's border back on
+--                  every slot: every filled slot and shown currency again;
+--   accent         the view buttons lit, the selected bank window's border
+--                  (the loading bars and the bag bar's hover follow it);
+--   text           the glyphs (Normal), item levels, reagent markers and
+--                  currency counts (Strong, Success, Shared), the footers'
+--                  counts (Success, Shared), a special bag's title (Muted),
+--                  a bank tab's price (Danger, Strong);
+--   button         the bank's unbought slots (Danger).
+function INV:OnColorsChanged(group, key)
+	if group == 'item_quality' then
+		self:ColorQualityBorders(key)
+	elseif group == 'theme' then
+		self:ColorQualityBorders()
+	elseif group == 'accent' then
+		self:ColorViewButtons(group)
+		self:ColorSelectedBank()
+	elseif group == 'text' then
+		self:ColorViewButtons(group, key)
+		self:ColorTexts(key)
+	elseif group == 'button' then
+		if self.ColorBankBars then self:ColorBankBars(group, key) end
+	end
+end
+
+-- The key of the Text color an item level is drawn in, for a piece of gear:
+-- Warbound shared, Bind on Equip success, else strong.
+function INV.ItemLevelKey(info)
+	if info.isWarbound then return 'shared' end
+	if info.isBoE then return 'success' end
+	return 'strong'
+end
+
+local function IsGear(info)
+	return info and (info.class == 'Armor' or info.class == 'Weapon')
+end
+
+-- An item level's color by what the slot holds (INV.ItemLevelKey).
 -- Also put back after the Icon font changes (INV:ApplyFonts): a font object
 -- may bring its own color with it.
 function INV:ColorItemLevel(slot)
 	local info = slot.info
-	if not (info and (info.class == 'Armor' or info.class == 'Weapon')) then return end
-	if info.isWarbound then
-		slot.itemLevel:SetTextColor(st:Color('text', 'shared'):GetRGB())
-	elseif info.isBoE then
-		slot.itemLevel:SetTextColor(st:Color('text', 'success'):GetRGB())
-	else
-		slot.itemLevel:SetTextColor(st:Color('text', 'strong'):GetRGB())
+	if not IsGear(info) then return end
+	slot.itemLevel:SetTextColor(st:Color('text', self.ItemLevelKey(info)):GetRGB())
+end
+
+-- The state colors on a slot's texts: its item level by its key and the
+-- reagent marker (Success). With a key, only what that Text color draws.
+function INV:ColorSlotTexts(slot, key)
+	if slot.reagentMarker and (key == nil or key == 'success') then
+		slot.reagentMarker:SetVertexColor(st:Color('text', 'success'):GetRGB())
 	end
+	local info = slot.info
+	if IsGear(info) and (key == nil or self.ItemLevelKey(info) == key) then
+		self:ColorItemLevel(slot)
+	end
+end
+
+-- A Text color changed: what each window draws in it, by key (nil is any).
+function INV:ColorTexts(key)
+	if key == nil or key == 'strong' or key == 'success' or key == 'shared' then
+		for _, container in pairs(self.containers) do
+			for _, category in pairs(container.categories) do
+				for _, slot in pairs(category.slots) do self:ColorSlotTexts(slot, key) end
+			end
+		end
+		self:ColorCurrencyCounts(key)
+	end
+	-- The footers' counts: the bag window's reagent count is Success, the combined bank's warband count Shared.
+	if self.ColorBagFooter and (key == nil or key == 'success') then self:ColorBagFooter() end
+	if self.ColorCombinedFooter and (key == nil or key == 'shared') then self:ColorCombinedFooter() end
+	if self.RetitleSections and (key == nil or key == 'muted') then self:RetitleSections() end
+	if self.ColorBankBars and (key == nil or key == 'danger' or key == 'strong') then self:ColorBankBars('text', key) end
 end
 
 function INV:AssignSlot(container, slot, slotInfo)
