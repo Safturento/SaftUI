@@ -7,6 +7,9 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-15 — Nameplates: Blizzard's friendly plates key binding and the next login](#2026-11-15--nameplates-blizzards-friendly-plates-key-binding-and-the-next-login)
+  - [2026-11-15 — Unit frames: a part switched off in the new profile keeps its old points](#2026-11-15--unit-frames-a-part-switched-off-in-the-new-profile-keeps-its-old-points)
+  - [2026-11-15 — Two lines of the profile switch fix that no test pins](#2026-11-15--two-lines-of-the-profile-switch-fix-that-no-test-pins)
   - [2026-11-15 — getHealthPercentText's floor branch is never used](#2026-11-15--gethealthpercenttexts-floor-branch-is-never-used)
   - [2026-11-15 — Unit frame defaults: string offsets left outside the castbars](#2026-11-15--unit-frame-defaults-string-offsets-left-outside-the-castbars)
   - [2026-11-15 — Bag search box: the magnifier and the clear button](#2026-11-15--bag-search-box-the-magnifier-and-the-clear-button)
@@ -40,7 +43,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-14 — A first-run setup dialog: UI size, theme, unit frame layout](#2026-11-14--a-first-run-setup-dialog-ui-size-theme-unit-frame-layout)
   - [2026-11-14 — /sui at half with the sidebar collapsed: a validation error is cut or hidden in the footer](#2026-11-14--sui-at-half-with-the-sidebar-collapsed-a-validation-error-is-cut-or-hidden-in-the-footer)
   - [2026-11-14 — Categories tab at full size: a long "Reset <name> to default" overlaps Delete](#2026-11-14--categories-tab-at-full-size-a-long-reset-name-to-default-overlaps-delete)
-  - [2026-11-14 — Copy from writes default tables into keys the source unit doesn't have](#2026-11-14--copy-from-writes-default-tables-into-keys-the-source-unit-doesnt-have)
   - [2026-11-13 — Design decisions waiting to be built](#2026-11-13--design-decisions-waiting-to-be-built)
   - [2026-11-13 — Objective tracker skin: in-game checks and what was left out](#2026-11-13--objective-tracker-skin-in-game-checks-and-what-was-left-out)
   - [2026-11-13 — Scale SaftUI across resolutions and stay pixel perfect](#2026-11-13--scale-saftui-across-resolutions-and-stay-pixel-perfect)
@@ -53,14 +55,11 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-12 — Codebase cleanup: the items waiting on a decision](#2026-11-12--codebase-cleanup-the-items-waiting-on-a-decision)
   - [2026-11-12 — Cooldown Manager skin: in-game checks](#2026-11-12--cooldown-manager-skin-in-game-checks)
   - [2026-11-12 — Cooldown Manager skin: a tracked debuff's dispel type on SaftUI's border](#2026-11-12--cooldown-manager-skin-a-tracked-debuffs-dispel-type-on-saftuis-border)
-  - [2026-11-12 — Nameplates: a plate page's Position editor checks anchors against whichever plate has the lowest number](#2026-11-12--nameplates-a-plate-pages-position-editor-checks-anchors-against-whichever-plate-has-the-lowest-number)
-  - [2026-11-12 — Unit frames: a profile switch places a frame's parts against the old profile's anchors](#2026-11-12--unit-frames-a-profile-switch-places-a-frames-parts-against-the-old-profiles-anchors)
   - [2026-11-12 — Nameplates: the Friendly page's aura borders and cooldown never reach plate buttons](#2026-11-12--nameplates-the-friendly-pages-aura-borders-and-cooldown-never-reach-plate-buttons)
   - [2026-11-12 — Nameplates: what a kind change costs in oUF updates](#2026-11-12--nameplates-what-a-kind-change-costs-in-ouf-updates)
   - [2026-11-12 — Nameplates: a box toggled in combat leaves shown plates on the old config until combat ends](#2026-11-12--nameplates-a-box-toggled-in-combat-leaves-shown-plates-on-the-old-config-until-combat-ends)
   - [2026-11-12 — Nameplates: friendly players and friendly NPCs configured apart](#2026-11-12--nameplates-friendly-players-and-friendly-npcs-configured-apart)
   - [2026-11-11 — Nameplates: in-game checks](#2026-11-11--nameplates-in-game-checks)
-  - [2026-11-11 — Nameplates: a profile switch doesn't set the game's friendly plates](#2026-11-11--nameplates-a-profile-switch-doesnt-set-the-games-friendly-plates)
   - [2026-11-11 — UIParent's scale is set once, at login, so plates leave whole pixels after a UI scale or display change](#2026-11-11--uiparents-scale-is-set-once-at-login-so-plates-leave-whole-pixels-after-a-ui-scale-or-display-change)
   - [2026-11-11 — Nameplates: a plate that turns widgets-only, or back, without a new add](#2026-11-11--nameplates-a-plate-that-turns-widgets-only-or-back-without-a-new-add)
   - [2026-11-11 — Nameplates: small items left after the build](#2026-11-11--nameplates-small-items-left-after-the-build)
@@ -119,6 +118,10 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-11 — Nameplates: a profile switch doesn't set the game's friendly plates](#2026-11-11--nameplates-a-profile-switch-doesnt-set-the-games-friendly-plates)
+  - [2026-11-12 — Unit frames: a profile switch places a frame's parts against the old profile's anchors](#2026-11-12--unit-frames-a-profile-switch-places-a-frames-parts-against-the-old-profiles-anchors)
+  - [2026-11-14 — Copy from writes default tables into keys the source unit doesn't have](#2026-11-14--copy-from-writes-default-tables-into-keys-the-source-unit-doesnt-have)
+  - [2026-11-12 — Nameplates: a plate page's Position editor checks anchors against whichever plate has the lowest number](#2026-11-12--nameplates-a-plate-pages-position-editor-checks-anchors-against-whichever-plate-has-the-lowest-number)
   - [2026-11-09 — st:CreateButton's SetText and SetFont aliases break when called as methods](#2026-11-09--stcreatebuttons-settext-and-setfont-aliases-break-when-called-as-methods)
   - [2026-11-13 — Colour swatches read as checkboxes, and the colour picker](#2026-11-13--colour-swatches-read-as-checkboxes-and-the-colour-picker)
   - [2026-11-13 — Character frame slots: SaftUI writes fields onto Blizzard's buttons](#2026-11-13--character-frame-slots-saftui-writes-fields-onto-blizzards-buttons)
@@ -179,6 +182,44 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-15 — Nameplates: Blizzard's friendly plates key binding and the next login
+
+**What:** Blizzard's own friendly plate options (Interface > Nameplates) and its key binding for them change `nameplateShowFriendlyPlayers` and `nameplateShowFriendlyNpcs`, the settings SaftUI's Friendly plates drives, without Friendly plates following. Since the profile switch fix, a key press stands until Friendly plates itself changes, and the next login sets the game's plates to the profile's value again.
+
+**Why noticed:** Left open by the first entry of the fu-p2 fix (a profile switch not setting the game's friendly plates, now under Resolved), whose open question it was.
+
+**Anchors:** `SaftUI-Unitframes/nameplates/cvars.lua` (`UF:ApplyNameplateCVars`, `UF.appliedFriendly`), `SaftUI-Unitframes/unitframes.lua` (`UF:ApplyConfig`'s plate branch), `tests/unitframes/profile_switch_test.lua`.
+
+**What's been considered:** Leave it (SaftUI's value wins at the next login), or have Friendly plates follow the game's setting through a `CVAR_UPDATE` listener that writes the profile, which would make a key press change the profile.
+
+**Shape of work:** Small if left; a listener and a test if Friendly plates follows the game.
+
+**Open questions:** Should Blizzard's friendly plates key binding change SaftUI's Friendly plates, or be undone at the next login?
+
+### 2026-11-15 — Unit frames: a part switched off in the new profile keeps its old points
+
+**What:** A part switched off in the new profile keeps its old points on a unit frame and can still close an anchor loop (profile A: Power on, under Health; profile B: Power off, Health hung from Power: Health's `SetPoint` errors and it is left with no points). Pre-existing. Test mode's previews have the opposite edge: `StylePreviewFrame` clears every preview element and all its texts, but a preview places only the parts that are on, so a preview part hung from a switched-off part is left anchored to a region with no points and won't draw (inferred: the stubs don't model the rect), while the real boss frame keeps the old points and shows that part. Test mode only, and it needs a part hung from a switched-off one.
+
+**Why noticed:** The fu-p2 review (finding m1, and N1 of its re-review), after the fix that clears each frame's enabled parts before a profile switch places them. The comment at `grouppreview.lua:160` ("as for the real frames") doesn't hold for it.
+
+**Anchors:** `SaftUI-Unitframes/unitframes.lua` (`ClearPartPoints`, `ClearAllPartPoints`), `SaftUI-Unitframes/updaters.lua` (`UF:UpdateElement`, the `unitframe.isNamePlate` condition), `SaftUI-Unitframes/nameplates/nameplates.lua` (`ClearPlacedPoints`), `SaftUI-Unitframes/grouppreview.lua` (`StylePreviewFrame`), `tests/unitframes/profile_switch_test.lua`, `tests/unitframes/boss_preview_test.lua`.
+
+**What's been considered:** Place a disabled named part by its config on unit frames too (drop the `unitframe.isNamePlate` condition in `UF:UpdateElement`) and clear every element, as `ClearPlacedPoints` does for plates. For the previews, use the real frames' rule: clear an element only when `element:GetConfig().enable` is true, and its texts only when theirs is (export `ClearPartPoints` and call it on the preview frame, whose elements would need to be `previewElements`); or only note the case here.
+
+**Shape of work:** Small: one rule for which parts a clear touches, shared by frames and previews, and a test with a part hung from a switched-off one.
+
+**Open questions:** Whether a disabled part should be placed at all, or the clear should skip it as the real frames do.
+
+### 2026-11-15 — Two lines of the profile switch fix that no test pins
+
+**What:** Two lines of the fu-p2 fix round pass every test when removed. (1) `RestoreNameplateCVars` clearing `UF.appliedFriendly` (`SaftUI-Unitframes/nameplates/cvars.lua`): the case it guards is Nameplates turned off with the reload declined (the user's values go back), then a switch to a profile with Nameplates on and the same Friendly plates; SaftUI's settings should be set again, and without the line they stay the user's while SaftUI's plates are up. (2) `RefreshFrameConfig` before `UF.ClearPlacedPoints` in the plate loop of `UF:ApplyConfig` (`SaftUI-Unitframes/unitframes.lua`): without it the clear reads the old profile's cached Enable for a text or icon, which matters only for a loop through a text or icon (typed by frame name), so it is low value.
+
+**Why noticed:** The fu-p2 re-review of the fix round (its N2). The code is right in both cases; only the tests are missing.
+
+**Anchors:** `tests/unitframes/profile_switch_test.lua`, `tests/unitframes/nameplate_page_test.lua`, `tests/unitframes/friendly_plate_test.lua`, `tests/unitframes/friendly_plate_size_test.lua`.
+
+**Shape of work:** Small: the Nameplates off then on case in `profile_switch_test.lua`, and a case where a text is on in one profile and off in the other.
 
 ### 2026-11-15 — getHealthPercentText's floor branch is never used
 
@@ -610,20 +651,6 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 
 **Open questions:** Short label at full too, or keep the name and truncate?
 
-### 2026-11-14 — Copy from writes default tables into keys the source unit doesn't have
-
-**What:** Unit frames' Copy from lists the destination unit's settings, but the source unit may not have them. Reading a key the source lacks gives AceDB's `['**']` default (a fresh table), so the copy writes that junk table onto the destination and also creates the key on the source.
-
-**Why noticed:** Reviewing Task 7 of the edit mode bar plan (Copy from as one undoable step). The reviewer's probe: "Copy to Party from Target" with Layout ticked, `spacing` and `growthDirection` ticked, put `number`/`string` values on Party's side as old and element-default tables as new, and made `target.spacing` appear. Pre-existing behaviour of Copy from, not caused by the history work (Undo now restores the destination exactly, but the source keeps the created keys).
-
-**Anchors:** `SaftUI-Unitframes/config/config.lua` (`UF:CopySettings`, `UF:OpenCopyTable`, `CopyNames`); `SaftUI-Unitframes/config/default.lua` (the `['**']` defaults at unit level); `tests/unitframes/copy_from_history_test.lua`.
-
-**What's been considered:** Offering only keys both units have (the dialog already lists only parts the destination's page names), or skipping a key whose source value is not stored (`rawget` nil) so nothing is written.
-
-**Shape of work:** small change in `UF:CopySettings` and the dialog's list, plus a test per case (a group unit as destination, a single unit as source).
-
-**Open questions:** whether a key the source never stored should copy the source's default (what the player sees there) or be left alone.
-
 ### 2026-11-13 — Design decisions waiting to be built
 
 **What:** The design system's Decisions page (`docs/design-system/05-decisions.md`) records choices the owner has made that no task has built yet. This entry is the list, so none is lost between sessions. Each line names its decision number there.
@@ -923,32 +950,6 @@ What's left needs evidence from the game. In the order they'd be checked:
 **What's been considered:** The buff skin's way carries over: post-hook the border texture's `SetAtlas` and its frame's `Show` and `Hide`, map the atlas to a color through `AuraUtil.GetDebuffDisplayInfoTable()`, put it on SaftUI's border with `st:SetBorderColor` and again in `OnColorsChanged('theme')`, fade Blizzard's art by alpha under Thick and Thin, and fall back on it for a secret atlas (on retail the aura data, and so the atlas, can be secret in combat).
 
 **Shape of work:** Small: one function and a test on the fixture, after the in-game check (step 4 of "Cooldown Manager skin: in-game checks") says whether Blizzard's border over SaftUI's reads badly.
-### 2026-11-12 — Nameplates: a plate page's Position editor checks anchors against whichever plate has the lowest number
-
-**What:** A Position editor on Enemy nameplates or Friendly nameplates checks a new anchor against live frames: `st:ValidateAnchor` (`SaftUI-Core/api.lua`), from the `validate` of `uf_element_position` (`SaftUI-Unitframes/config/position.lua`), asks whether the part chosen to anchor to already depends on the part being moved, on the frame `UF:GetConfigFrame(unit)` gives, which for either plate key is the frame on the lowest-numbered plate (`SaftUI-Unitframes/config/config.lua`), whichever page that plate draws from now. So with an enemy on the lowest plate, the Friendly page refuses Health → Name with "Anchor would create a loop", though the friendly config has none (it's the enemy's name that sits on its bar). With a friend there, the Enemy page accepts Health → Name, which does loop in the enemy config (its name is on its bar), and every update of an enemy plate then errors. Which answer you get depends on which plate has the lowest number. Anchors that loop only across the two pages no longer error at run time (the final fix wave places a switching plate's parts afresh), so the refusal is only a wrong answer in the options; the acceptance lets a loop inside one config through.
-
-**Why noticed:** The final review of the friendly nameplates build (2026-11-12, its M1), filed here by that build's final fix wave, which changed no code for it.
-
-**Anchors:** `SaftUI-Unitframes/config/config.lua` (`UF:GetConfigFrame`, `UF:ConfigTarget`), `SaftUI-Unitframes/config/position.lua` (`generators.uf_element_position`: `ResolveTarget`, `UnitFrame`, `GetElementNames`, `validate`), `SaftUI-Core/api.lua` (`st:ValidateAnchor`), `SaftUI-Unitframes/nameplates/nameplates.lua` (`UF.nameplates`, `frame.base_unit`, `ClearPlacedPoints`), `tests/unitframes/nameplate_page_test.lua` and `friendly_page_test.lua` (the plate pages).
-
-**What's been considered:** For a plate page, return the lowest plate whose `base_unit` is that page's key, and nil when there's none, so the validator allows, as it does before any plate exists. With nil, the element dropdown falls back to every registered element (`GetElementNames`), Power and Class power among them, so it may want the lowest plate of either kind for the list and only the page's for the check. A check against the page's config (the anchors as its positions set them, not the live frame's) would give the same answer whatever plates are up, and would suit every unit's editor.
-
-**Shape of work:** Small: `UF:GetConfigFrame` (or a variant for the validator) and a test in `nameplate_page_test.lua` with an enemy and a friend up in either order.
-
-**Partly fixed 2026-11-14 (branch fb-plateanchor):** the check no longer measures the live plate (a plate part's anchors are read from its config, `UF.PlatePartAnchors`, since the game refuses `GetPoint` on one), and `UF:GetConfigFrame(unit)` now picks the lowest plate that draws from that page, with an enemy and a friend up in either order (`tests/unitframes/nameplate_anchor_test.lua`). What's left: with only the other kind of plate up, the part's config is still that plate's (`frame:GetConfig()` reads its `base_unit`), so the Enemy page checks against the friendly config. A check on the page's own config, whatever plates are up, would close it.
-
-### 2026-11-12 — Unit frames: a profile switch places a frame's parts against the old profile's anchors
-
-**What:** A full update places a unit frame's parts one by one in `pairs()` order (`UF:UpdateUnitFrame`, `SaftUI-Unitframes/unitframes.lua`), each `SetPoint` made against the others where they are then. So two parts anchored each way round across two profiles (Name on Health in one, Health under Name in the other) close an anchor loop on a profile switch whenever the one placed first is anchored to the other: the game errors "Cannot anchor to a region dependent on it", `SafeUpdateUnitFrame` reports it, and the rest of that frame's update is cut short, its later parts keeping the old profile's look until its next full update. `UF:ApplyConfig` with no unit clears only the frames' points first (`ClearUnitFramePoints`), not their parts'. A plate's parts are cleared before a switch between Enemy and Friendly nameplates (`ClearPlacedPoints` in `nameplates/nameplates.lua`), but not on a profile switch that keeps a plate's config unit. Pre-existing for every unit.
-
-**Why noticed:** The friendly nameplates' final fix wave (2026-11-12) resolved "Nameplates: a plate switching config can trip an anchor loop in a user's config" (now under Resolved) for a switch between the two plate configs only, as its brief ruled. That entry's open question (clear on a config switch only, or before every full update?) and its note that a profile switch does the same to any unit are what's left, kept here.
-
-**Anchors:** `SaftUI-Unitframes/unitframes.lua` (`UF:UpdateUnitFrame`, `UF:ApplyConfig`, `ClearUnitFramePoints`, `SafeUpdateUnitFrame`), `SaftUI-Unitframes/nameplates/nameplates.lua` (`ClearPlacedPoints`, `UF:ApplyPlateConfig`), `SaftUI-Unitframes/updaters.lua` (`UF:UpdateElement`, `UF:UpdateElementPosition`), `tests/unitframes/friendly_plate_size_test.lua` (the switch's tests, whose helpers say which parts an update places).
-
-**What's been considered:** Clear each frame's parts in `UF:ApplyConfig`'s full pass, out of combat where it clears the frames', with `ClearPlacedPoints`' rule for which texts and icons; or clear a plate's parts before every full update of it, which covers the plates alone. Either way a part whose update then fails, and the parts after it, are left with no points (as a plate's are today when a switch's update fails, say on a loop inside one config), where `UF:ApplyConfig` gives a failed frame its old points back (`st:RestorePoints`).
-
-**Shape of work:** Small: the clearing in the full pass, and a test with two parts anchored each way round across two profiles.
-
 ### 2026-11-12 — Nameplates: the Friendly page's aura borders and cooldown never reach plate buttons
 
 **What:** An aura area's group is made once per frame, on its first update with the area on, and a plate's frame always gets its first update from Enemy nameplates (`nameplate`, its unit token's config). Which borders a button shows (Buffs' Stealable border, Debuffs' Dispel type border) and whether it has a cooldown swipe (Cooldown → Show) are baked into each button by oUF's `CreateButton` from the group's options. So while Enemy nameplates has an aura area on (both are, by default), Friendly nameplates' border and Cooldown → Show for that area never reach a plate's buttons, not even after a reload. With the Enemy page's area off, the group is made from whichever config first turns it on on that frame, so the Enemy page's can be the ones left out. With the Enemy page's box checked (enemies drawn from the Friendly page) the Enemy page's area Enable still decides, though the page hides it then: to make the Friendly page's reach the plates, uncheck the box, turn the Enemy page's area off, check the box again and reload. Since the final fix wave the two options' notes on both plate pages say which page's settings a plate's buttons take (`ReloadNote`); before, they said "Reload to apply", untrue on the Friendly page.
@@ -1080,20 +1081,6 @@ What's left needs evidence from the game. In the order they'd be checked:
 44. Restricted content (a dungeon with friendly NPC plates; a battleground with Enemy nameplates' NPC titles on): no Lua error from `subtext.lua` or `C_TooltipInfo.GetUnit`; a line the game hides is simply missing. Does a friendly NPC's title go missing and stay missing after such content ends, until its plate is re-added? (The tag checks the unit's kind each time it runs, and a secret answer blanks the line until the next name or guild event or full update.)
 
 **Open questions:** Are the friendly plate settings kept per account (step 15)? If the borders still shimmer after a reload (step 2), are borders built from SaftUI's own textures worth it? Does a targeted name-only plate need a mark (step 26)? Does the game's click area follow the frame, or take a snapshot (step 32)? Is under the castbar's row the right default place for an enemy's subtext (step 40)? Does a plate widget overlap the subtext (step 42)?
-
-### 2026-11-11 — Nameplates: a profile switch doesn't set the game's friendly plates
-
-**What:** Friendly plates (`/sui` → Unitframes → Friendly nameplates → General since 2026-11-12, saved as `nameplate.friendly`) is a unit frame profile setting, but the game's two friendly plate settings it drives (`nameplateShowFriendlyPlayers`, `nameplateShowFriendlyNpcs`) are set only at login (`UF:OnEnable` runs `UF:ApplyNameplateCVars`) and when the toggle is clicked. Switching to a profile (a SaftUI profile or a unit frame profile) whose Friendly plates differs leaves the game's friendly plates as they were until the toggle is clicked or the UI reloads. Nameplates itself changes only at a reload anyway, since oUF makes its nameplate driver once. A related gap: Blizzard's own friendly plate options (Interface → Nameplates) and its key binding for them change the same settings without SaftUI's toggle following, and the next login or toggle sets them back to the toggle.
-
-**Why noticed:** Task 6 of the nameplates plan (branch `np-6`), its concerns 2 and 3. Its brief named only the toggle and login as the places to set them, and Task 11 was changing the same part of `UF:ApplyConfig` at the time, so the profile switch was left out.
-
-**Anchors:** `SaftUI-Unitframes/nameplates/cvars.lua` (`UF:ApplyNameplateCVars`), `SaftUI-Unitframes/unitframes.lua` (`UF:ApplyConfig`'s plate branch, which sets the plates' size again when no element is named; `UF:OnEnable`), `SaftUI-Unitframes/nameplates/options.lua` (`FriendlyNameplateGeneral`, Friendly plates' `set`), `tests/unitframes/nameplate_page_test.lua`.
-
-**What's been considered:** One `UF:ApplyNameplateCVars()` in `UF:ApplyConfig`'s plate branch with no element, beside `UF:ApplyPlateSize()`, makes it follow every profile switch, copy and reset (`UF:UpdateConfig()` runs `UF:ApplyConfig()`, which includes the plates). It does nothing without SaftUI's driver or with Nameplates off, and waits out combat. For Blizzard's own toggle: leave it (SaftUI's toggle wins at the next login), or have SaftUI's toggle follow the game's setting (a `CVAR_UPDATE` listener writing the profile), which would make a key press change the profile.
-
-**Shape of work:** Small: one call, and a profile switch case in `nameplate_page_test.lua`.
-
-**Open questions:** Should Blizzard's friendly plate key binding change SaftUI's Friendly plates, or be undone at the next login?
 
 ### 2026-11-11 — UIParent's scale is set once, at login, so plates leave whole pixels after a UI scale or display change
 
@@ -2258,6 +2245,68 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-11 — Nameplates: a profile switch doesn't set the game's friendly plates
+
+**What:** Friendly plates (`/sui` → Unitframes → Friendly nameplates → General since 2026-11-12, saved as `nameplate.friendly`) is a unit frame profile setting, but the game's two friendly plate settings it drives (`nameplateShowFriendlyPlayers`, `nameplateShowFriendlyNpcs`) are set only at login (`UF:OnEnable` runs `UF:ApplyNameplateCVars`) and when the toggle is clicked. Switching to a profile (a SaftUI profile or a unit frame profile) whose Friendly plates differs leaves the game's friendly plates as they were until the toggle is clicked or the UI reloads. Nameplates itself changes only at a reload anyway, since oUF makes its nameplate driver once. A related gap: Blizzard's own friendly plate options (Interface → Nameplates) and its key binding for them change the same settings without SaftUI's toggle following, and the next login or toggle sets them back to the toggle.
+
+**Why noticed:** Task 6 of the nameplates plan (branch `np-6`), its concerns 2 and 3. Its brief named only the toggle and login as the places to set them, and Task 11 was changing the same part of `UF:ApplyConfig` at the time, so the profile switch was left out.
+
+**Anchors:** `SaftUI-Unitframes/nameplates/cvars.lua` (`UF:ApplyNameplateCVars`), `SaftUI-Unitframes/unitframes.lua` (`UF:ApplyConfig`'s plate branch, which sets the plates' size again when no element is named; `UF:OnEnable`), `SaftUI-Unitframes/nameplates/options.lua` (`FriendlyNameplateGeneral`, Friendly plates' `set`), `tests/unitframes/nameplate_page_test.lua`.
+
+**What's been considered:** One `UF:ApplyNameplateCVars()` in `UF:ApplyConfig`'s plate branch with no element, beside `UF:ApplyPlateSize()`, makes it follow every profile switch, copy and reset (`UF:UpdateConfig()` runs `UF:ApplyConfig()`, which includes the plates). It does nothing without SaftUI's driver or with Nameplates off, and waits out combat. For Blizzard's own toggle: leave it (SaftUI's toggle wins at the next login), or have SaftUI's toggle follow the game's setting (a `CVAR_UPDATE` listener writing the profile), which would make a key press change the profile.
+
+**Shape of work:** Small: one call, and a profile switch case in `nameplate_page_test.lua`.
+
+**Open questions:** Should Blizzard's friendly plate key binding change SaftUI's Friendly plates, or be undone at the next login?
+
+**Resolved 2026-11-15:** a profile switch sets the game's friendly plates when the new profile's Friendly plates differs from what was last set (`UF.appliedFriendly`; `UF:ApplyConfig`'s plate branch, `SaftUI-Unitframes/unitframes.lua`, `tests/unitframes/profile_switch_test.lua`, merge fu-p2). The Blizzard key binding question is [its own entry](#2026-11-15--nameplates-blizzards-friendly-plates-key-binding-and-the-next-login).
+
+### 2026-11-12 — Unit frames: a profile switch places a frame's parts against the old profile's anchors
+
+**What:** A full update places a unit frame's parts one by one in `pairs()` order (`UF:UpdateUnitFrame`, `SaftUI-Unitframes/unitframes.lua`), each `SetPoint` made against the others where they are then. So two parts anchored each way round across two profiles (Name on Health in one, Health under Name in the other) close an anchor loop on a profile switch whenever the one placed first is anchored to the other: the game errors "Cannot anchor to a region dependent on it", `SafeUpdateUnitFrame` reports it, and the rest of that frame's update is cut short, its later parts keeping the old profile's look until its next full update. `UF:ApplyConfig` with no unit clears only the frames' points first (`ClearUnitFramePoints`), not their parts'. A plate's parts are cleared before a switch between Enemy and Friendly nameplates (`ClearPlacedPoints` in `nameplates/nameplates.lua`), but not on a profile switch that keeps a plate's config unit. Pre-existing for every unit.
+
+**Why noticed:** The friendly nameplates' final fix wave (2026-11-12) resolved "Nameplates: a plate switching config can trip an anchor loop in a user's config" (now under Resolved) for a switch between the two plate configs only, as its brief ruled. That entry's open question (clear on a config switch only, or before every full update?) and its note that a profile switch does the same to any unit are what's left, kept here.
+
+**Anchors:** `SaftUI-Unitframes/unitframes.lua` (`UF:UpdateUnitFrame`, `UF:ApplyConfig`, `ClearUnitFramePoints`, `SafeUpdateUnitFrame`), `SaftUI-Unitframes/nameplates/nameplates.lua` (`ClearPlacedPoints`, `UF:ApplyPlateConfig`), `SaftUI-Unitframes/updaters.lua` (`UF:UpdateElement`, `UF:UpdateElementPosition`), `tests/unitframes/friendly_plate_size_test.lua` (the switch's tests, whose helpers say which parts an update places).
+
+**What's been considered:** Clear each frame's parts in `UF:ApplyConfig`'s full pass, out of combat where it clears the frames', with `ClearPlacedPoints`' rule for which texts and icons; or clear a plate's parts before every full update of it, which covers the plates alone. Either way a part whose update then fails, and the parts after it, are left with no points (as a plate's are today when a switch's update fails, say on a loop inside one config), where `UF:ApplyConfig` gives a failed frame its old points back (`st:RestorePoints`).
+
+**Shape of work:** Small: the clearing in the full pass, and a test with two parts anchored each way round across two profiles.
+
+**Resolved 2026-11-15:** a full `UF:ApplyConfig` clears every enabled part of each unit frame, boss and arena frame and group button before placing them (`ClearAllPartPoints`), plates that keep their config unit are cleared too (`UF.ClearPlacedPoints`), and test mode's previews clear in `StylePreviewFrame` (`tests/unitframes/profile_switch_test.lua`, `boss_preview_test.lua`, merge fu-p2). A part the new profile switches off is [its own entry](#2026-11-15--unit-frames-a-part-switched-off-in-the-new-profile-keeps-its-old-points).
+
+### 2026-11-14 — Copy from writes default tables into keys the source unit doesn't have
+
+**What:** Unit frames' Copy from lists the destination unit's settings, but the source unit may not have them. Reading a key the source lacks gives AceDB's `['**']` default (a fresh table), so the copy writes that junk table onto the destination and also creates the key on the source.
+
+**Why noticed:** Reviewing Task 7 of the edit mode bar plan (Copy from as one undoable step). The reviewer's probe: "Copy to Party from Target" with Layout ticked, `spacing` and `growthDirection` ticked, put `number`/`string` values on Party's side as old and element-default tables as new, and made `target.spacing` appear. Pre-existing behaviour of Copy from, not caused by the history work (Undo now restores the destination exactly, but the source keeps the created keys).
+
+**Anchors:** `SaftUI-Unitframes/config/config.lua` (`UF:CopySettings`, `UF:OpenCopyTable`, `CopyNames`); `SaftUI-Unitframes/config/default.lua` (the `['**']` defaults at unit level); `tests/unitframes/copy_from_history_test.lua`.
+
+**What's been considered:** Offering only keys both units have (the dialog already lists only parts the destination's page names), or skipping a key whose source value is not stored (`rawget` nil) so nothing is written.
+
+**Shape of work:** small change in `UF:CopySettings` and the dialog's list, plus a test per case (a group unit as destination, a single unit as source).
+
+**Open questions:** whether a key the source never stored should copy the source's default (what the player sees there) or be left alone.
+
+**Resolved 2026-11-15:** `UF:CopySettings` skips any key not named by both units' pages and the dialog hides settings the chosen source's page lacks (`SaftUI-Unitframes/config/config.lua`, `tests/unitframes/copy_from_history_test.lua`, merge fu-p2).
+
+### 2026-11-12 — Nameplates: a plate page's Position editor checks anchors against whichever plate has the lowest number
+
+**What:** A Position editor on Enemy nameplates or Friendly nameplates checks a new anchor against live frames: `st:ValidateAnchor` (`SaftUI-Core/api.lua`), from the `validate` of `uf_element_position` (`SaftUI-Unitframes/config/position.lua`), asks whether the part chosen to anchor to already depends on the part being moved, on the frame `UF:GetConfigFrame(unit)` gives, which for either plate key is the frame on the lowest-numbered plate (`SaftUI-Unitframes/config/config.lua`), whichever page that plate draws from now. So with an enemy on the lowest plate, the Friendly page refuses Health → Name with "Anchor would create a loop", though the friendly config has none (it's the enemy's name that sits on its bar). With a friend there, the Enemy page accepts Health → Name, which does loop in the enemy config (its name is on its bar), and every update of an enemy plate then errors. Which answer you get depends on which plate has the lowest number. Anchors that loop only across the two pages no longer error at run time (the final fix wave places a switching plate's parts afresh), so the refusal is only a wrong answer in the options; the acceptance lets a loop inside one config through.
+
+**Why noticed:** The final review of the friendly nameplates build (2026-11-12, its M1), filed here by that build's final fix wave, which changed no code for it.
+
+**Anchors:** `SaftUI-Unitframes/config/config.lua` (`UF:GetConfigFrame`, `UF:ConfigTarget`), `SaftUI-Unitframes/config/position.lua` (`generators.uf_element_position`: `ResolveTarget`, `UnitFrame`, `GetElementNames`, `validate`), `SaftUI-Core/api.lua` (`st:ValidateAnchor`), `SaftUI-Unitframes/nameplates/nameplates.lua` (`UF.nameplates`, `frame.base_unit`, `ClearPlacedPoints`), `tests/unitframes/nameplate_page_test.lua` and `friendly_page_test.lua` (the plate pages).
+
+**What's been considered:** For a plate page, return the lowest plate whose `base_unit` is that page's key, and nil when there's none, so the validator allows, as it does before any plate exists. With nil, the element dropdown falls back to every registered element (`GetElementNames`), Power and Class power among them, so it may want the lowest plate of either kind for the list and only the page's for the check. A check against the page's config (the anchors as its positions set them, not the live frame's) would give the same answer whatever plates are up, and would suit every unit's editor.
+
+**Shape of work:** Small: `UF:GetConfigFrame` (or a variant for the validator) and a test in `nameplate_page_test.lua` with an enemy and a friend up in either order.
+
+**Partly fixed 2026-11-14 (branch fb-plateanchor):** the check no longer measures the live plate (a plate part's anchors are read from its config, `UF.PlatePartAnchors`, since the game refuses `GetPoint` on one), and `UF:GetConfigFrame(unit)` now picks the lowest plate that draws from that page, with an enemy and a friend up in either order (`tests/unitframes/nameplate_anchor_test.lua`). What's left: with only the other kind of plate up, the part's config is still that plate's (`frame:GetConfig()` reads its `base_unit`), so the Enemy page checks against the friendly config. A check on the page's own config, whatever plates are up, would close it.
+
+**Resolved 2026-11-15:** a plate page's Position editor checks a part against that page's own config whatever plates are up (`UF.anchorPage`, set by `WithAnchorPage` in `SaftUI-Unitframes/config/position.lua`; a part's `GetConfig(unit)` takes the page), and the Threat text keeps the Enemy page's config (`tests/unitframes/nameplate_anchor_test.lua`, merge fu-p2).
 
 ### 2026-11-09 — st:CreateButton's SetText and SetFont aliases break when called as methods
 
