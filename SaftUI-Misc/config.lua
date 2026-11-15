@@ -112,6 +112,8 @@ st.defaults.swingtimer = {
 -- button_spacing the gap between neighbouring buttons (3, as on SaftUI's action bars;
 -- Blizzard has 3 or 8). timer_bar and timer_text show a draining bar and a countdown above
 -- each element button while that element has a totem down (SaftUI-Misc/totemtimers.lua).
+-- timer_font is the countdown's font (a shared font's key or a typeface; Small text by
+-- default, which is what the timers drew while they followed Button text).
 -- timer_text_position is 'above' (a thin bar with the text above it) or 'on' (a taller bar
 -- with the text on it); it only applies while both show. timer_text_x and timer_text_y
 -- move the text from its centred spot, in pixels. timer_bar_height is the bar's
@@ -130,6 +132,7 @@ st.defaults.totembar = {
 	timer_bar = true,
 	timer_text = true,
 	timer_text_position = 'above',
+	timer_font = 'pixel',
 	timer_text_x = 0,
 	timer_text_y = 0,
 	timer_bar_height = 8,
@@ -151,7 +154,8 @@ st.defaults.totembar = {
 --   - The first buff's top-right corner is 270px in from the screen's top-right corner and
 --     10px down. That's Blizzard's BuffFrame anchor (-255, -10) less its 15px-wide
 --     collapse button. The first debuff is at Blizzard's DebuffFrame anchor (-270, -155).
---   - Text in the skin's font (the default 'pixel' font). The duration sits 3px under the
+--   - Text in the skin's font (the default 'pixel' font: Small text, the shared font, whose
+--     size and outline are what the Size and Outline below keep for a typeface). The duration sits 3px under the
 --     icon, clearing the thick backdrop. The stack count sits in the icon's bottom-right
 --     corner, 1px up.
 -- size is the icon's edge. spacing_x and spacing_y are the gaps between icons. perrow is
@@ -172,8 +176,8 @@ st.defaults.auras = {
 		wrap = 'DOWN',
 		-- The screen edge margin in from the top, so its clamp doesn't push the buffs.
 		position = { point = 'TOPRIGHT', frame = 'UIParent', rel_point = 'TOPRIGHT', x_off = -270, y_off = -st.CLAMP_INSET },
-		duration = { font = pixel.font_name, size = pixel.font_size, outline = pixel.font_outline, point = 'TOP', rel_point = 'BOTTOM', x_off = 0, y_off = -3 },
-		count = { font = pixel.font_name, size = pixel.font_size, outline = pixel.font_outline, point = 'BOTTOMRIGHT', rel_point = 'BOTTOMRIGHT', x_off = 0, y_off = 1 },
+		duration = { font = 'pixel', size = pixel.font_size, outline = pixel.font_outline, point = 'TOP', rel_point = 'BOTTOM', x_off = 0, y_off = -3 },
+		count = { font = 'pixel', size = pixel.font_size, outline = pixel.font_outline, point = 'BOTTOMRIGHT', rel_point = 'BOTTOMRIGHT', x_off = 0, y_off = 1 },
 	},
 	debuffs = {
 		size = 30,
@@ -184,7 +188,7 @@ st.defaults.auras = {
 		grow = 'LEFT',
 		wrap = 'DOWN',
 		position = { point = 'TOPRIGHT', frame = 'UIParent', rel_point = 'TOPRIGHT', x_off = -270, y_off = -155 },
-		duration = { font = pixel.font_name, size = pixel.font_size, outline = pixel.font_outline, point = 'TOP', rel_point = 'BOTTOM', x_off = 0, y_off = -3 },
-		count = { font = pixel.font_name, size = pixel.font_size, outline = pixel.font_outline, point = 'BOTTOMRIGHT', rel_point = 'BOTTOMRIGHT', x_off = 0, y_off = 1 },
+		duration = { font = 'pixel', size = pixel.font_size, outline = pixel.font_outline, point = 'TOP', rel_point = 'BOTTOM', x_off = 0, y_off = -3 },
+		count = { font = 'pixel', size = pixel.font_size, outline = pixel.font_outline, point = 'BOTTOMRIGHT', rel_point = 'BOTTOMRIGHT', x_off = 0, y_off = 1 },
 	},
 }

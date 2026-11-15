@@ -464,6 +464,39 @@ end
 
 local fonts = {} -- 'buffs' / 'debuffs' -> { duration = Font, count = Font }
 
+-- What the two texts' font, size and outline shipped as before Small text became
+-- their default font: a copy of its face, size and outline, so a profile saved
+-- then has a face only where it chose one and a size or an outline only where it
+-- changed them (AceDB keeps what differs from a default). A record of the past.
+AP.OLD_TEXT_FONT = { font = 'Homespun', size = 10, outline = 'MONOCHROMEOUTLINE' }
+AP.FONTS_VERSION = 1
+
+-- The one-time step for a profile saved before that (auras.fontsVersion, no
+-- default, in the module's own profile table, so a copy carries it and a reset
+-- clears it): a text on the default font whose size or outline is not the old
+-- copy's drew the old face at that size or outline, so it keeps the face (as a
+-- typeface); a text left alone follows Small text. Whether a text's 'pixel' was
+-- never set or was picked from the Font row can't be told once AceDB has put the
+-- defaults back, so a size or an outline kept beside it reads as the first: a
+-- face and a size picked in the old build, then Small text, draws the old face
+-- at that size. Table writes only; run first by OnEnable, UpdateConfig and
+-- OnFontsChanged (the profile update calls that before UpdateConfig, with the new
+-- profile bound).
+function AP:ConvertFonts()
+	local config = self.config
+	if not config or config.fontsVersion ~= nil then return end
+	local old = AP.OLD_TEXT_FONT
+	for _, key in ipairs({ 'buffs', 'debuffs' }) do
+		for _, kind in ipairs({ 'duration', 'count' }) do
+			local text = config[key] and config[key][kind]
+			if type(text) == 'table' and text.font == 'pixel' and (text.size ~= old.size or text.outline ~= old.outline) then
+				text.font = old.font
+			end
+		end
+	end
+	config.fontsVersion = AP.FONTS_VERSION
+end
+
 -- Applies one text's font settings to its font object. Every font string set to the
 -- object follows. The setting is a face (a LibSharedMedia name, taken at this text's
 -- size and outline) or, as its Font row offers them, a shared font's key (taken whole:
@@ -489,6 +522,7 @@ end
 -- objects take their settings again, and the buttons that show them restyle (a text's
 -- height decides the debuffs' layout).
 function AP:OnFontsChanged()
+	self:ConvertFonts()
 	self:UpdateFonts()
 	self:UpdateText()
 end
@@ -554,6 +588,7 @@ end
 -- that one still points back would be a loop. A holder that can't move now
 -- (st:CanMoveNow) keeps its anchors, and ApplyHolder leaves it for after combat.
 function AP:UpdateConfig()
+	self:ConvertFonts()
 	self:UpdateFonts()
 	if not self.holders then return end
 	for _, info in ipairs(FRAMES) do
@@ -622,6 +657,7 @@ end
 
 function AP:OnEnable()
 	st:BindModuleConfig(self, 'auras')
+	self:ConvertFonts()
 	if _G.BuffFrame and BuffFrame.auraFrames then
 		self:Setup()
 	else
@@ -681,6 +717,23 @@ function AP:GetTextOptions(key, kind, name, order)
 	}
 	options.args.size.hidden = SharedFont
 	options.args.outline.hidden = SharedFont
+	-- Resets: the font to Small text (a reset runs st:FontsChanged, which restyles the
+	-- timers), Size and Outline to what a typeface starts from.
+	local shipped = st.defaults.auras[key][kind]
+	options.args.font.default = fontsModule and fontsModule.FontSettingDefault(
+		function() return self.config[key][kind].font end,
+		function(_, value) self.config[key][kind].font = value end,
+		shipped.font)
+	for _, field in ipairs({ 'size', 'outline' }) do
+		options.args[field].default = {
+			differs = function() return self.config[key][kind][field] ~= shipped[field] end,
+			reset = function()
+				self.config[key][kind][field] = shipped[field]
+				Apply()
+			end,
+			value = function() return shipped[field] end,
+		}
+	end
 	return options
 end
 

@@ -459,6 +459,8 @@ test("a shared font a bar's text uses changing on the Fonts tab restyles that ba
 	fresh()
 	local b = bar('bar1', button('CooldownTestFonts'))
 	local other = bar('bar2', button('CooldownTestFontsTwo'))
+	-- The texts ship Small text: bar 2's are given faces, so it names no shared font.
+	for _, kind in ipairs({ 'hotkey', 'count', 'macro' }) do AB:SetSetting('all', kind .. '.font', 'Homespun') end
 	AB:SetSetting('bar1', 'hotkey.font', 'pixel')
 	AB:UpdateBar('bar1')
 	local before, otherBefore = b.configs, other.configs
@@ -582,5 +584,37 @@ test('the pet and stance bars have the Cooldown item too, the extra buttons none
 	for _, id in ipairs(AB.EXTRA_IDS) do
 		eq(AB:GetExtraOptions(id, 1).args.text, nil, id .. ': no Text tab')
 	end
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("a font change that leaves the texts looking the same restyles no bar: Text's or Heading's with every bar on Small text", function()
+	fresh()
+	local b = bar('bar1', button('CooldownTestLooksOne'))
+	local pet = bar('bar2', button('CooldownTestLooksTwo'))
+	local before, petBefore = b.configs, pet.configs
+	for _, key in ipairs({ 'normal', 'heading' }) do
+		st.config.profile.fonts[key].font_size = 22
+		st:GetModule('Fonts'):UpdateFontConfig(key)
+		st:FontsChanged()
+		stub.run_timers()
+	end
+	eq(b.configs, before, 'a Text and a Heading change restyle nothing')
+	eq(pet.configs, petBefore, 'another bar either')
+	st.config.profile.fonts.normal.font_size, st.config.profile.fonts.heading.font_size = nil, nil
+	-- Small text's Size drag: each bar once per frame, the last step's look.
+	for size = 11, 15 do
+		st.config.profile.fonts.pixel.font_size = size
+		st:GetModule('Fonts'):UpdateFontConfig('pixel')
+		st:FontsChanged()
+	end
+	stub.run_timers()
+	eq(b.configs, before + 1, 'a Small text drag restyles the bar once')
+	eq(pet.configs, petBefore + 1, 'and another bar once')
+	eq(select(2, b.HotKey:GetFont()), 15, 'at the last size')
+	-- And a change back to the same look restyles nothing more.
+	stub.run_timers()
+	st:FontsChanged()
+	stub.run_timers()
+	eq(b.configs, before + 1, 'an unchanged look is left alone')
 	eq(#take_errors(), 0, 'no errors')
 end)

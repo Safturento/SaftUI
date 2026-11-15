@@ -128,24 +128,41 @@ local function shows(id, read)
 	return out
 end
 
--- Today's: the bar's own stored (or default) values.
+-- The texts' font, size and outline as what they draw (the font setting's path,
+-- size and flags), in place of the three keys: a profile saved before Small text
+-- was the texts' default font has no face saved where it never chose one, and
+-- reads Small text now, so only the look says whether it still draws what it did.
+local function drawn(out, face)
+	for _, kind in ipairs({ 'hotkey', 'count', 'macro' }) do
+		local font, size, outline = out[kind .. '.font'], out[kind .. '.size'], out[kind .. '.outline']
+		if font ~= nil then
+			if face and font == 'pixel' then font = 'Homespun' end -- the copy the default used to be
+			out[kind .. '.font'] = table.concat({ st:FontValues(st:FaceFont(font, size, outline)) }, ',')
+			out[kind .. '.size'], out[kind .. '.outline'] = nil, nil
+		end
+	end
+	return out
+end
+
+-- Today's: the bar's own stored (or default) values, the unsaved face being the
+-- old default's (the copy of Small text).
 local function before(id)
-	return shows(id, function(bar, key, part)
+	return drawn(shows(id, function(bar, key, part)
 		local config = AB.config[bar]
 		local kind, field = key:match('^(%a+)%.(%a+)$')
 		if kind then return config.text[kind][part or field] end
 		return config[key]
-	end)
+	end), true)
 end
 
 -- Through the effective config.
 local function after(id)
 	local config = AB:GetBarConfig(id)
-	return shows(id, function(_, key, part)
+	return drawn(shows(id, function(_, key, part)
 		local kind, field = key:match('^(%a+)%.(%a+)$')
 		if kind then return config.text[kind][part or field] end
 		return config[key]
-	end)
+	end))
 end
 
 test('a new profile: every bar follows All bars but the shipped own settings', function()
@@ -377,6 +394,7 @@ test('every reader takes the effective config', function()
 	AB:SetSetting('bar2', 'visibility', 'combat')
 	eq(AB:GetVisibilityDriver('bar2'), '[petbattle][vehicleui][overridebar] hide; [combat] show; hide', 'combat only')
 
+	AB:SetSetting('all', 'hotkey.font', 'Homespun') -- a face: Small text brings its own size
 	AB:SetSetting('all', 'hotkey.size', 14)
 	eq(AB:GetButtonConfig('bar1', 1).text.hotkey.font.size, 14, "bar1's hotkey takes All bars' size")
 	local cfg = AB:GetBarConfig('bar3')
@@ -470,6 +488,7 @@ test('readers: the button count, the visibility driver and StyleBar follow All b
 
 	local b = button('SharedStyleBar')
 	bar('bar2', b)
+	AB:SetSetting('all', 'hotkey.font', 'Homespun') -- a face: Small text brings its own size
 	AB:SetSetting('all', 'hotkey.size', 14)
 	AB:UpdateBar('bar2')
 	eq(b.labConfig.text.hotkey.font.size, 14, 'a button is styled from All bars')
@@ -547,7 +566,7 @@ end)
 test("a shared font on All bars' hotkey reaches every bar that follows it; Apply to and the diff icon name it 'Small text'", function()
 	fresh()
 	local face = AB:GetSetting('all', 'hotkey.font')
-	check(not st:IsSharedFont(face), "today's hotkey font is a face, not a key")
+	check(st:IsSharedFont(face), "the shipped hotkey font is Small text's key (a face was the copy of it)")
 	AB:SetSetting('bar6', 'hotkey.font', 'Colus')
 	AB:SetSetting('all', 'hotkey.font', 'pixel')
 	local small = st.config.profile.fonts.pixel

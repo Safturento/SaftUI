@@ -38,7 +38,7 @@ These six depend on how the game behaves, and each has a fallback written down.
 - Change Small text's size: its reset icon shows ("Size goes back to its default: 10."); click it and the size and every text on it return at once. Same for Shadow offset X (Y alone shows no icon) and Outline ("... default: Monochrome outline."). The Typeface reset tooltip names the face ("... default: Homespun.").
 - Hotkeys and counts that are on Small text follow at once; the totem timers and the tracker re-lay out at once. Drag Text's Size on the Fonts tab and watch for a stutter.
 - G4: change Heading's Typeface: `/sui`'s page title, section and group titles change at once, nothing clipped, under Thick, Thin and Blizzard. Change Heading's Size: they stay. Change Huge title's face: `/sui` does not change. Change Text's Typeface: labels, tabs and fields follow, and a profile switch redraws them.
-- Kinds of text: change Button text and see it reach the totem bar's texts and timers and the bag slot bars; change Check box labels and see the bags' filters follow. Both reset tooltips name "Small text".
+- Kinds of text: change Button text and see it reach the totem bar's key bindings, counts and names and the bag slot bars (not the totem timers, which have their own Timer font), and the bags' and keybind mode's buttons (section N). Its reset tooltip names "Small text". There is no Check box labels row.
 
 ## D. The font row and its list (Task 3)
 
@@ -75,10 +75,10 @@ These six depend on how the game behaves, and each has a fallback written down.
 - **G7, from a text's menu:** on `/sui` > Action Bars, open Hotkey's dots, and click the link beside a shared font (pick Small text first): the menu closes and the Fonts tab shows Small text's Typeface row.
 - **G2, from the hotkey's Font row:** Small text, then Colus, then Small text. Each draws at once with no reload, on bars 1 to 8 and on the pet and stance bars. Size and Outline are hidden while Small text is picked and come back, holding the values they had, when Colus is.
 - A hotkey on Small text follows a Small text change on the Fonts tab (size, outline, shadow) within a frame. Out of combat only: in combat the restyle waits for the end of it.
-- A fresh profile's texts look exactly as before (they ship a face, so their Font rows read "Homespun" and show Size and Outline). The reset arrow on All bars' text Font row says "default: Homespun" until Small text is made the default (a followup).
+- A fresh profile's texts look exactly as before, and they are Small text (so their Font rows read "Small text" with the link, and Size and Outline are hidden); the reset arrow on All bars' text Font row says "default: Small text" (section N).
 - All bars' Apply to with a shared font reaches the chosen bars: set Bar 3's hotkey to Heading, Apply to > Multiple > Bar 5, and Bar 5 shows Heading. The orange diff icon on All bars' Hotkey names a bar that owns a font by its name ("Bar 3: Heading").
 - Cooldown numbers: on a 45 px bar the Font row shows "Large numbers" with the link, on the 30 px pet bar "Small text", and Size and Outline are hidden. To reach a size alone, pick a typeface in the Font row, set Size, then reset Font (All bars' reset arrow, or a bar's share Reset): the row then shows the face drawn, with Size and Outline shown, and resetting Size too puts the shared font back. On All bars Size and Outline stay shown while any bar owns one, so a bar that owns only a size or outline is named by the orange icon and can be made to follow with Apply to. The numbers look as before on 30, 36 and 45 px buttons, with a custom size or font on a bar and back to none.
-- Hotkeys, counts and macro names show no shadow while they are typefaces (the shipped copy): Small text's shadow shows only on a text that picked Small text (see section A, 3).
+- Hotkeys, counts and macro names show no shadow by default: they are Small text, whose shadow is 0, 0. Give Small text a shadow on the Fonts tab and they show it (section N); a face picked on a text shows none.
 - Re-click the entry the cooldown Font row already shows on All bars (Large numbers): nothing changes, and no reset arrow appears; the 30 px pet and stance bars stay on Small text.
 - The Outline rows list None first, as the Fonts tab does.
 - **Buffs:** `/sui` > Buffs and debuffs (the Auras page) > Text: Duration's and Stack count's Font lists the shared fonts. Pick Small text: Size and Outline hide, and the timers on the buff and debuff icons draw in Small text and follow a Small text change on the Fonts tab. Pick a face: Size and Outline return and apply.
@@ -122,8 +122,37 @@ Each of these is a call made while building, and the tests pin it as it stands. 
 7. **Chat keeps Blizzard's line spacing.** Chat takes the face, size, outline and shadow and leaves the spacing at Blizzard's 0 (Text's is 4), so chat's dots list four rows and the tooltip's two (section A, 1).
 8. **Size and Outline hide while a shared font is picked.** On the action bars' and buffs' texts, and on a bar's own page. On All bars they stay shown while any bar owns one, so the diff icon and Apply to name that bar.
 9. **The Fonts tab's top line** keeps its Task 2 wording ("Font rows throughout SaftUI choose from these") where the spec says "Every Font row in SaftUI lists these first"; it also says a typeface's size and outline are in its dots, or beside the row on the action bars' and buffs' texts.
-10. **A shared font in a text's Font row replaces the text's own size and outline** (they stay saved and come back with a face). The defaults stay a copy of Small text's look until the owner decides on the followup.
+10. **A shared font in a text's Font row replaces the text's own size and outline** (they stay saved and come back with a face). The defaults are now Small text itself (section N), with a conversion for a profile saved with a copy.
 
 ## M. Design System
 
 `docs/design-system/` changed across the plan (README's Type table, `tokens.json`, the Select, Icons, Options window and Position block pages, discrepancies 2 and 20, Code change 3): republish the Design System artifact.
+
+## N. Feedback round: Kinds of text, the totem timers' font, the action bars' defaults (branch fb-fontfeat)
+
+Kinds of text does what its rows say:
+
+- Global settings > Fonts > Kinds of text > Button text: pick Heading. The labels of the bags' Bag Slots button (open a bag), the bank's Warband Bank and Deposit buttons and its category tabs, and keybind mode's Done (`/sui kb`) change at once, in size and face, with no reload. Pick a typeface: the same. Reset: they are back in Small text (Homespun 10, monochrome outline, no shadow), exactly as before the change. The micro menu's clock does not change (it keeps Small text).
+- The same Button text pick still changes the totem bar's key bindings, counts and names and the bag slot bars' texts, and no longer the totem timers.
+- Check box labels has no row on the Fonts tab (no visible check box label exists; see the followup "Check box labels: no font setting until a SaftUI check box has a visible label"). The hidden Edit toggle is styled as a button and follows Button text.
+- Pick Text, then a typeface of 24: Warband Bank, Deposit, Withdraw, Buy and keybind mode's Done (16 px tall) still show a label (cut at the sides if too wide, never blank), and the buttons do not grow.
+
+The totem timers' font (Totem bar page > Timer font):
+
+- A fresh profile: the countdown over each element button looks exactly as it did (Small text: Homespun 10, monochrome outline, no shadow). The Timer font row sits under Show timer bar and Show timer text, beside Text position, with its reset arrow absent; Text X offset and Text Y offset stay a pair.
+- Pick Large numbers, then a typeface with its dots (Size, Outline, Shadow offset X and Y, Line spacing): the countdowns change at once, the bar under or behind them gets taller or shorter with the text, and the flyout arrow moves with it. Reset puts Small text back (its tooltip says "Small text").
+- A profile that had changed Button text before this build: the totem timers now draw Small text (Button text no longer reaches them; they used to follow it). Pick the font again on the Timer font row if it is wanted. The key bindings, counts and names on the totem buttons still follow Button text.
+- Totem bar in combat: change the Timer font from a profile switch if you can: nothing is blocked (only fonts on regions of SaftUI's own timer frames, which are children of the secure slot buttons).
+- The Timer font row is greyed out while Show timer text is off.
+
+The action bars' and buffs' texts default to Small text:
+
+- A profile you have never changed (or a new one): hotkeys, stack counts and macro names on bars 1 to 8 and the pet and stance bars, and the buff and debuff durations and stack counts, look exactly as before (Homespun 10, monochrome outline, no shadow, the macro names too). Their Font rows read "Small text" with the link, Size and Outline are hidden, and the reset arrows are absent.
+- Fonts > Small text: change its Size, Outline or Typeface. All of those texts follow within a frame (out of combat; in combat once it ends), on every bar. Give Small text a shadow: they show it (that is the one thing that now differs from a typeface, which has none).
+- A profile that had a customised text before this build (a hotkey size changed, an outline changed, a face picked, on All bars or on one bar, or on a buff's Duration): after the first login on this build each draws exactly as before. A size or outline changed without a face now shows Homespun in its Font row as a typeface, with its Size and Outline shown. A face picked stays. Try one bar that had only its size changed while All bars was left alone: it shows Homespun at its size and the others follow Small text.
+- A profile in which you had picked Small text on a text while an old size was still saved beside it: it now shows Homespun at that size (the one case the conversion reads the other way, see `docs/followups.md`, Resolved). Pick Small text again to follow it.
+- A profile in which you changed Small text itself before this build: the action bars' and buffs' texts now show that change (they used to ignore it).
+- Reset arrows: on All bars, a text's Font after a face is picked says "default: Small text" and puts it back; on a buff's Duration or Stack count the Font, Size and Outline rows have a reset that puts Small text, 10 and monochrome outline back.
+- The cooldown numbers are as before: Large numbers on buttons of 36 pixels and up, Small text below, unset by default.
+
+- Drag Small text's Size, then Heading's Size and Text's Size, with every bar shown: only a Small text change restyles the bars (once per frame); Heading and Text leave them alone, with no stutter beyond the drag itself.

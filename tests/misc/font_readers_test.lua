@@ -1,9 +1,10 @@
 -- SaftUI-Misc's readers of font settings on the one rule (st:ApplyFont,
 -- st:FollowFont, st:FontValues, st:FontObject; a Fonts tab change, a profile
 -- update or an option runs st:FontsChanged):
---   - the totem bar's texts and timers follow Button text, and their shadow is no
---     longer forced off: a Small text change reaches them at once; Button text set
---     on the Fonts tab reaches them and the bag slot bars' texts at once;
+--   - the totem bar's texts follow Button text, and their shadow is no longer
+--     forced off: a Small text change reaches them at once; Button text set on the
+--     Fonts tab reaches them and the bag slot bars' texts at once (the timers have
+--     their own font: totem_timer_font_test.lua);
 --   - the buff and debuff timers on a shared font follow it; on a face they keep
 --     their own size and outline;
 --   - the tooltip's lines take the face, size and outline of st:FontValues, a
@@ -153,7 +154,7 @@ local function totem_world()
 	return st, TB, summon, slots
 end
 
-test('a Small text change reaches the totem texts and timers at once, with their shadow no longer forced off', function()
+test('a Small text change reaches the totem texts and timers at once, with their shadow no longer forced off; Button text reaches the texts only', function()
 	local st, TB, summon = totem_world()
 	local profile = st.config.profile
 	eq(profile.buttons.font, 'pixel', 'Button text starts as Small text')
@@ -179,7 +180,8 @@ test('a Small text change reaches the totem texts and timers at once, with their
 	profile.fonts.pixel.font_size = nil
 	st:GetModule('Fonts'):UpdateFontConfig('pixel')
 
-	-- The timers: made with the bar, in Button text's font, laid out again.
+	-- The timers: made with the bar, in their own font (tests/misc/totem_timer_font_test.lua),
+	-- which Button text does not reach.
 	local slot = _G.MultiCastSlotButton1
 	TB.config.timer_bar_height = 12
 	TB:SetupTimers()
@@ -198,10 +200,11 @@ test('a Small text change reaches the totem texts and timers at once, with their
 	end
 	local timer = find(slot, 3)
 	check(timer ~= nil, 'a timer text was made on a slot button')
-	check(timer:GetFontObject() == st:GetFont('pixel'), 'the timer text starts in Button text')
+	check(timer:GetFontObject() == st:GetFont('pixel'), 'the timer text starts in Small text, its own font')
 	profile.buttons.font = 'pixel_med'
 	st:FontsChanged()
-	check(timer:GetFontObject() == st:GetFont('pixel_med'), 'Button text reaches the timer text at once')
+	check(timer:GetFontObject() == st:GetFont('pixel'), 'Button text does not reach the timer text')
+	profile.buttons.font = 'pixel'
 	-- The text on the bar decides how tall the bar is: Large numbers (18) lay it
 	-- out taller than Small text (10).
 	TB.config.timer_bar, TB.config.timer_text, TB.config.timer_text_position = true, true, 'on'
@@ -212,17 +215,17 @@ test('a Small text change reaches the totem texts and timers at once, with their
 		end
 		return tall
 	end
+	TB.config.timer_font = 'pixel_med'
 	st:FontsChanged()
 	local large = tallest()
-	profile.buttons.font = 'pixel'
+	TB.config.timer_font = 'pixel'
 	st:FontsChanged()
 	check(large > tallest(), 'a taller font lays the timers out taller: ' .. large .. ' against ' .. tallest())
-	profile.buttons.font = 'pixel_med'
 	local face = { font_name = 'Colus', font_size = 13, font_outline = 'OUTLINE', shadow_offset = { 0, 0 }, spacing = 4 }
 	profile.buttons.font = face
 	st:FontsChanged()
-	check(timer:GetFontObject() == st:FontObject(face), "a typeface in Button text reaches the timer text, and the buttons' texts")
-	check(summon.Count:GetFontObject() == st:FontObject(face), 'the count too')
+	check(timer:GetFontObject() == st:GetFont('pixel'), 'a typeface in Button text leaves the timer text')
+	check(summon.Count:GetFontObject() == st:FontObject(face), "and reaches the buttons' texts: the count")
 	profile.buttons.font = 'pixel'
 	st:FontsChanged()
 	eq(#take_errors(), 0, 'no errors')

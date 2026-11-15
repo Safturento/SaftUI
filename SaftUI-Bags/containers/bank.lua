@@ -95,8 +95,8 @@ local function CreateBankBagPurchaseButton(bar)
 	button:SetAttribute('overrideBankType', Enum.BankType.Character)
 	button:SetSize(INV:GetButtonWidth(), INV:GetButtonHeight())
 
-	button.text = st:CreateFontString(button, 'pixel', 'Buy')
-	button.text:SetAllPoints()
+	button.text = st:CreateFontString(button, nil, 'Buy')
+	st:SkinButtonLabel(button.text, button) -- follows Button text
 	local buttons = st.config.profile.buttons
 	st:SkinButton(button, buttons.theme, buttons.background)
 

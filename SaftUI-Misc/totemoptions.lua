@@ -35,6 +35,22 @@ function TB:GetConfigTable()
 		disabled = function() return not (self.config.timer_bar and self.config.timer_text) end,
 	}
 
+	-- The countdown's font: one of SaftUI's fonts with the link to the Fonts tab, or a
+	-- typeface with its dots. Its height is the text's height (TB:OnFontsChanged lays
+	-- the timers out again), and a pick runs st:FontsChanged so it reaches them at once.
+	local FN = st:GetModule('Fonts')
+	local timerFont = generators.font(5.5,
+		"The font of the time left on each element's totem. The totem bar's key bindings, counts and names follow Button text (Global settings > Fonts); the timers have their own.")
+	timerFont.name = 'Timer font'
+	timerFont.get = function() return self.config.timer_font end
+	timerFont.set = function(_, value)
+		self.config.timer_font = value
+		st:FontsChanged()
+	end
+	timerFont.disabled = function() return not self.config.timer_text end
+	timerFont.default = FN.FontSettingDefault(timerFont.get,
+		function(_, value) self.config.timer_font = value end, st.defaults.totembar.timer_font)
+
 	-- Offsets for the time, from the spot Text position puts it in.
 	local timerTextX = generators.range(6, 'Text X offset', -20, 20, 1,
 		'Moves the time left or right from the middle of its button, in pixels.')
@@ -43,7 +59,7 @@ function TB:GetConfigTable()
 		'Moves the time up or down from where Text position puts it, in pixels. Moving it up also moves the flyout arrow up to make room.')
 	timerTextY.disabled = function() return not self.config.timer_text end
 
-	local timerBarHeight = generators.range(8, 'Timer bar height', 2, 20, 1,
+	local timerBarHeight = generators.range(5.6, 'Timer bar height', 2, 20, 1,
 		"The timer bar's height, its border included. It always leaves room for the bar inside its border, and with the text on the bar it's never shorter than the text needs.")
 	timerBarHeight.disabled = function() return not self.config.timer_bar end
 
@@ -55,6 +71,7 @@ function TB:GetConfigTable()
 		button_spacing = buttonSpacing,
 		timer_bar = timerBar,
 		timer_text = timerText,
+		timer_font = timerFont,
 		timer_text_position = timerTextPosition,
 		timer_text_x = timerTextX,
 		timer_text_y = timerTextY,

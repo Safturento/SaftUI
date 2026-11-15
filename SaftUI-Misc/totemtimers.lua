@@ -114,12 +114,12 @@ local flyoutBaseHeight
 -- if this client has it.
 local PostHook = TB.PostHook
 
--- The text's font setting: the profile's Button text.
-local function ButtonsFont() return st.config.profile.buttons.font end
+-- The text's font setting: the Totem bar page's Timer font (not Button text).
+local function TimerFont() return TB.config.timer_font end
 
 -- The text's height in its font: the size the setting gives.
 local function TextHeight()
-	local _, size = st:FontValues(ButtonsFont())
+	local _, size = st:FontValues(TimerFont())
 	return math.ceil(size or DEFAULT_TEXT_HEIGHT)
 end
 
@@ -421,10 +421,10 @@ local function CreateTimer(button)
 	cover:SetAllPoints(frame)
 	cover:SetFrameLevel(bar:GetFrameLevel() + 1)
 
-	-- The text follows Button text (Global settings > Fonts), so it always has a
-	-- font (SetText errors without) and a change reaches it at once.
+	-- The text follows the Timer font setting, so it always has a font (SetText
+	-- errors without) and a change reaches it at once.
 	local text = cover:CreateFontString(nil, 'OVERLAY')
-	st:FollowFont(text, ButtonsFont)
+	st:FollowFont(text, TimerFont)
 
 	local timer = {
 		frame = frame,

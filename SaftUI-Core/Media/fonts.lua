@@ -405,30 +405,44 @@ end
 -- ephemerons: the entry would keep the region alive).
 local followers = setmetatable({}, { __mode = 'k' })
 
+-- Followers that are not a text: region -> apply(region, fontObject), for a key
+-- that has no SetFontObject of its own (a Button, whose normal, highlight and
+-- disabled font objects are what draw its label). Weak keys, like followers.
+local appliers = setmetatable({}, { __mode = 'k' })
+
 -- Puts getValue()'s font on the region now, and again on every
 -- st:RefollowFonts. A region kept twice keeps the last getter; a nil getValue
 -- forgets the region. A getter that errors on this first apply is not kept.
-function st:FollowFont(region, getValue)
+-- apply, if given, puts the font object on the key in place of
+-- key:SetFontObject; it must not close over the key either.
+function st:FollowFont(region, getValue, apply)
 	if getValue then
-		st:ApplyFont(region, getValue())
+		local object = st:FontObject(getValue())
+		if apply then apply(region, object) else region:SetFontObject(object) end
 		followers[region] = getValue
+		appliers[region] = apply
 	else
 		followers[region] = nil
+		appliers[region] = nil
 	end
 end
 
 -- Forgets a region (a pool releasing it).
 function st:UnfollowFont(region)
 	followers[region] = nil
+	appliers[region] = nil
 end
 
 -- Every kept region again, reading its getter now. One that errors is reported
 -- (xpcall) and the rest still follow.
 function st:RefollowFonts()
 	local regions = {}
-	for region, getValue in pairs(followers) do regions[#regions + 1] = { region, getValue } end
+	for region, getValue in pairs(followers) do regions[#regions + 1] = { region, getValue, appliers[region] } end
 	for _, kept in ipairs(regions) do
-		xpcall(function() st:ApplyFont(kept[1], kept[2]()) end, geterrorhandler())
+		xpcall(function()
+			local object = st:FontObject(kept[2]())
+			if kept[3] then kept[3](kept[1], object) else kept[1]:SetFontObject(object) end
+		end, geterrorhandler())
 	end
 end
 
@@ -592,9 +606,7 @@ end
 -- (st:FollowFont), so a change reaches them at once.
 local TEXT_FONTS = {
 	{ 'button_text', 'buttons', 'Button text', 'pixel',
-		"The text on the totem bar's buttons (key bindings, counts and names) and its totem timers, and on the bag slot bars and the bank's bag slots." },
-	{ 'checkbox_labels', 'panels', 'Check box labels', 'normal',
-		"The labels of SaftUI's check boxes, such as the bags' filters." },
+		"The labels of SaftUI's buttons (such as the bags' Bag Slots and Warband Bank and keybind mode's Done), the totem bar's key bindings, counts and names, and the bag slot bars' and the bank's bag slots' texts. The totem timers have a font of their own on the Totem bar's page." },
 }
 
 local TEXT_FONTS_NOTE = 'Which font each kind of text uses. A change shows at once.'
