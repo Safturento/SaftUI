@@ -869,3 +869,19 @@ both('a zone row made while the window is faded to 0 gets its chevron\'s mouse b
 	check(chevron:IsMouseEnabled(), 'the mouse arrives: its chevron takes the mouse again')
 	check(RW.zone(TR, 'Westfall'):IsMouseEnabled(), 'and its row')
 end, { ids = { 1 } })
+
+-- F10: the driver is cached by the settings it reads; a change of Boss fights alone
+-- must make a new string.
+both('Boss fights alone changes the item layer\'s driver, both ways (the cache is keyed by it)', function(st, TR)
+	eq(layer_driver(TR), '[petbattle] hide; show', 'start: the pet battle\'s alone')
+	set(TR, { boss = 'hide' })
+	eq(layer_driver(TR), '[petbattle] hide; [@boss1,exists] hide; show', 'Boss fights Hide alone adds the boss frames')
+	set(TR, { boss = 'fade' })
+	eq(layer_driver(TR), '[petbattle] hide; show', 'Fade is not a hide: the string goes back')
+	set(TR, { boss = 'hide' })
+	eq(layer_driver(TR), '[petbattle] hide; [@boss1,exists] hide; show', 'and Hide again')
+	local v = setmetatable({ items = true, boss = 'show' }, { __index = st.defaults.tracker.visibility })
+	eq(TR.Visibility.Driver(v), '[petbattle] hide; show', 'the pure function: Show')
+	v.boss = 'hide'
+	eq(TR.Visibility.Driver(v), '[petbattle] hide; [@boss1,exists] hide; show', 'then Hide, with nothing else changed')
+end, { visibility = { items = true } })
