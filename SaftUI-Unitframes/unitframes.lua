@@ -320,6 +320,8 @@ UF.COLOR_TAGS = { class = true, reaction = true, text = true }
 UF.PREVIEW_GROUPS = { class = true, reaction = true, power = true, status = true, roles = true, text = true }
 -- The Text colors the tags read (tags.lua: the level's colors and the hostile
 -- and unfriendly names'); Normal, Strong and Shared reach no tag.
+-- The Text colors the test previews read (grouppreview.lua: names by reaction).
+local TEXT_PREVIEW_KEYS = { danger = true, caution = true }
 local TEXT_TAG_KEYS = { danger = true, warning = true, caution = true, success = true, muted = true }
 -- The power colors ClassPower reads (oUF's classpower.lua).
 local CLASS_POWER_KEYS = { ARCANE_CHARGES = true, CHI = true, COMBO_POINTS = true, ESSENCE = true,
@@ -404,7 +406,8 @@ local function ColorFrame(frame)
 	if frame.isNamePlate and not UF:PlateShowsUnit(frame) then return end
 	-- A hidden frame (a header's children while another layout shows) takes the
 	-- color when it shows: oUF's OnShow updates every element.
-	if frame.IsVisible and not frame:IsVisible() then return end
+	-- A plate has no OnShow in oUF (it updates on each add), so it is not skipped.
+	if not frame.isNamePlate and frame.IsVisible and not frame:IsVisible() then return end
 	local group, key = passGroup, passKey
 	local reached = UF.ColorReaches(frame, group, key)
 	local elements = UF.COLOR_ELEMENTS[group]
@@ -457,7 +460,7 @@ function UF:OnColorsChanged(group, key)
 		end
 	end
 	local testGroups = self.testGroups
-	if testGroups and UF.PREVIEW_GROUPS[group] then
+	if testGroups and UF.PREVIEW_GROUPS[group] and (group ~= 'text' or key == nil or TEXT_PREVIEW_KEYS[key]) then
 		for testGroup in pairs(testGroups) do
 			self:UpdateGroupPreview(testGroup)
 		end

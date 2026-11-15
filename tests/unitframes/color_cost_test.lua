@@ -340,7 +340,14 @@ test("Text > Danger: UpdateTags on every frame showing a unit, no element update
 		reset()
 		st:ColorChanged('text', key)
 		eq(totals().tags, 0, 'no tag reads ' .. key)
+		eq(previews.party, nil, 'and no preview does')
 	end
+	reset()
+	st:ColorChanged('text', 'caution')
+	eq(previews.party, 1, 'Caution is read by the previews')
+	reset()
+	st:ColorChanged('text', 'success')
+	eq(previews.party, nil, 'Success is read by tags but not the previews')
 	reset()
 	missing.raid3 = true
 	st:ColorChanged('text', 'danger')
@@ -513,6 +520,11 @@ test('Reputation reaches a player whose bar or name shows its standing, and no o
 	st:ColorChanged('reaction', 5)
 	eq(singles.focus.Power.updates, 1, 'a player whose Power shows its standing')
 	singles.focus.Power.colorReaction = nil
+	reset()
+	singles.focus.Power.colorReaction, singles.focus.Power.colorPower = true, true
+	st:ColorChanged('reaction', 5)
+	eq(singles.focus.Power.updates, 0, 'a player whose Power has Power type on as well is not')
+	singles.focus.Power.colorReaction, singles.focus.Power.colorPower = nil, nil
 	eq(#take_errors(), 0)
 end)
 
@@ -532,6 +544,13 @@ test('a hidden frame and an element its config turns off are not updated', funct
 	eq(raid[1].Health.updates + raid[1].tags, 0, 'a hidden frame: oUF updates it when it shows')
 	eq(raid[9].Health.updates, 1, 'a shown one')
 	raid[1].IsVisible = nil
+	-- oUF gives a plate no OnShow: a plate showing its unit is updated though
+	-- the game has hidden it.
+	reset()
+	plates[37].IsVisible = function() return false end
+	st:ColorChanged('class', 'MAGE')
+	eq(plates[37].Health.updates, 1, 'a hidden plate that shows its unit takes the color in the pass')
+	plates[37].IsVisible = nil
 	reset()
 	raid[9].Power.config = { enable = false }
 	st:ColorChanged('class', 'MAGE')
