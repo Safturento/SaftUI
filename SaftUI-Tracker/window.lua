@@ -204,6 +204,63 @@ local function ConvertSkinPosition(self, skin, saved)
 	return st:RoundToPixel(holderLeft + width - right, self.holder), st:RoundToPixel(holderBottom + height - top, self.holder)
 end
 
+-- Where the player's tracker was in Blizzard's Edit Mode, as the TOPRIGHT form
+-- (x_off, y_off from the screen's top right, whole pixels), for a profile with
+-- no position of its own. Read through the C_EditMode API alone: no field or
+-- method of Blizzard's tracker frame is touched (taint.md rule 5). Returns
+-- known, x, y: `known` false when the answer isn't there yet (no API on this
+-- client, or the layouts not loaded: they arrive with EDIT_MODE_LAYOUTS_UPDATED),
+-- and `known` with no x when the tracker is where Blizzard's default puts it.
+-- Source (Gethe/wow-ui-source, `forever` and `live` alike): C_EditMode.GetLayouts()
+-- returns EditModeLayouts { layouts = the SAVED layouts, activeLayout }; Blizzard's
+-- EditModeManager puts the preset layouts (Enum.EditModePresetLayoutsMeta.NumValues
+-- of them: 3 on Forever, 2 on retail) in front of the saved ones, so activeLayout
+-- counts them; a preset layout is Blizzard's default spot. A layout's `systems`
+-- holds an EditModeSystemInfo per system, the tracker's with `system` equal to
+-- Enum.EditModeSystem.ObjectiveTracker, `isInDefaultPosition` and an
+-- `anchorInfo` { point, relativeTo, relativePoint, offsetX, offsetY } (relativeTo
+-- is a frame name). Only a spot hung from the screen by a top point is used: the
+-- tracker's height isn't known without reading its frame, its width is taken
+-- from Misc's skin when it has one, else 260 (Blizzard's tracker's, as Misc's
+-- own fallback). Offsets are in the tracker's scale, which is 1.
+local TRACKER_WIDTH = 260
+local function EditModeSpot(self, skin)
+	if not (C_EditMode and type(C_EditMode.GetLayouts) == 'function'
+		and Enum and Enum.EditModeSystem and Enum.EditModePresetLayoutsMeta) then return false end
+	local trackerSystem = Number(Enum.EditModeSystem.ObjectiveTracker)
+	local presets = Number(Enum.EditModePresetLayoutsMeta.NumValues)
+	if not (trackerSystem and presets) then return false end
+	local ok, info = pcall(C_EditMode.GetLayouts)
+	if not (ok and type(info) == 'table' and type(info.layouts) == 'table') then return false end
+	local active = Number(info.activeLayout)
+	if not active then return false end
+	if active <= presets then return true end
+	local layout = info.layouts[active - presets]
+	if type(layout) ~= 'table' or type(layout.systems) ~= 'table' then return false end
+	for _, system in ipairs(layout.systems) do
+		if type(system) == 'table' and system.system == trackerSystem then
+			if system.isInDefaultPosition ~= false then return true end
+			local anchor = system.anchorInfo
+			if type(anchor) ~= 'table' then return true end
+			local relativeTo = anchor.relativeTo
+			if not (relativeTo == 'UIParent' or relativeTo == UIParent) then return true end
+			local px, py = POINT_X[anchor.point], POINT_Y[anchor.point]
+			local rx, ry = POINT_X[anchor.relativePoint], POINT_Y[anchor.relativePoint]
+			local xo, yo = Number(anchor.offsetX), Number(anchor.offsetY)
+			local width = Number(skin and skin.width) or TRACKER_WIDTH
+			local left, right = Number(UIParent:GetLeft()), Number(UIParent:GetRight())
+			local bottom, top = Number(UIParent:GetBottom()), Number(UIParent:GetTop())
+			if not (py == 1 and px and rx and ry and xo and yo and left and right and bottom and top) then return true end
+			local cornerX = left + (right - left) * rx + xo + width * (1 - px)
+			local cornerY = bottom + (top - bottom) * ry + yo
+			return true, st:RoundToPixel(cornerX - right, self.holder), st:RoundToPixel(cornerY - top, self.holder)
+		end
+	end
+	return true
+end
+
+-- Returns the position, and whether Edit Mode's answer is still to come (so the
+-- caller can ask again when the layouts arrive).
 local function FirstPosition(self)
 	local position = st:DefaultTrackerPosition()
 	-- Only while Misc's tracker mover exists: AceDB keeps the profile's table
@@ -211,7 +268,12 @@ local function FirstPosition(self)
 	local skin = st:GetModule('ObjectiveTracker', true)
 	local profile = skin and st.config.profile.objectivetracker
 	local saved = profile and profile.position
-	if type(saved) ~= 'table' then return position end
+	if type(saved) ~= 'table' then
+		-- No skin position to copy: where Blizzard's Edit Mode had the tracker.
+		local known, x, y = EditModeSpot(self, skin)
+		if x then position.x_off, position.y_off = x, y end
+		return position, not known and C_EditMode ~= nil
+	end
 	if TOP_POINTS[saved.point or position.point] then
 		for _, key in ipairs(POSITION_KEYS) do
 			if saved[key] ~= nil then position[key] = saved[key] end
@@ -223,6 +285,42 @@ local function FirstPosition(self)
 	return position
 end
 
+-- Edit Mode's layouts arrived after the first position was written (the game
+-- sends them around login): if the position is still exactly what was written
+-- and Edit Mode has the tracker moved, it moves there, once. A position the
+-- player has set since is never touched.
+local function OnLayoutsUpdated(self)
+	local written = self.firstWritten
+	if not written then return end
+	local position = self.config.position
+	-- (the very table that was written: another profile's, with the same values, is not it)
+	if position ~= self.firstTable then self.firstWritten, self.firstTable = nil, nil return end
+	for key, value in pairs(written) do
+		if not (position and position[key] == value) then
+			self.firstWritten, self.firstTable = nil, nil
+			return
+		end
+	end
+	local known, x, y = EditModeSpot(self, st:GetModule('ObjectiveTracker', true))
+	if not known then return end
+	self.firstWritten, self.firstTable = nil, nil
+	if x then
+		position.x_off, position.y_off = x, y
+		self:ApplyHolder()
+	end
+end
+
+local function WatchLayouts(self, position)
+	local copy = {}
+	for key, value in pairs(position) do copy[key] = value end
+	self.firstWritten, self.firstTable = copy, position
+	if self.layoutsFrame or (C_EventUtils and C_EventUtils.IsEventValid and not C_EventUtils.IsEventValid('EDIT_MODE_LAYOUTS_UPDATED')) then return end
+	local frame = CreateFrame('Frame')
+	frame:RegisterEvent('EDIT_MODE_LAYOUTS_UPDATED')
+	frame:SetScript('OnEvent', function() OnLayoutsUpdated(self) end)
+	self.layoutsFrame = frame
+end
+
 -- The holder's position: the profile's. A profile with none (a new or reset
 -- one) gets the first position written once the tracker is built (Ruling 7);
 -- with the switch off it's only read, so the profile is never written. A saved
@@ -232,8 +330,12 @@ function TR:GetPosition()
 	local config = self.config
 	local position = config.position
 	if not position then
-		position = FirstPosition(self)
-		if self.holder then config.position = position end
+		local pending
+		position, pending = FirstPosition(self)
+		if self.holder then
+			config.position = position
+			if pending then WatchLayouts(self, position) end
+		end
 		return position
 	end
 	for key, value in pairs(st:DefaultTrackerPosition()) do
