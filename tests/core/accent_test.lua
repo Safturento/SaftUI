@@ -75,7 +75,17 @@ test('a list row under the mouse is the accent at 0.25 (the own marks at OB.OWN_
 	local picked = list.rows[1].text
 	eq(text(picked:GetTextColor()), DEFAULT, 'the picked entry in the accent')
 	stub.fire_script(list.rows[1], 'OnLeave')
-	W.CloseList(); w:Release()
+	W.CloseList()
+	do -- at the row tint, by its name, not a number of its own (the list is drawn again when its look changes)
+		local keep = st.TINT_ROW
+		st.TINT_ROW = 0.4
+		theme('blizzard'); click(w.frame); W.CloseList()
+		theme('thick'); click(w.frame)
+		eq(string.format('%.2f', W.GetListFrames().rows[1].hover:GetAlpha()), '0.40', 'at st.TINT_ROW')
+		st.TINT_ROW = keep
+		W.CloseList()
+	end
+	w:Release()
 
 end)
 
