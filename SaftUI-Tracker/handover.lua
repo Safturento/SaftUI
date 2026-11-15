@@ -54,6 +54,7 @@ local NONE = {}
 --   blizzard not needed, out of combat                  -> own (conceal; the window, the buttons)
 --   blizzard not needed, in combat, no buttons to show  -> own
 --   blizzard not needed, in combat, buttons to show     -> stays: own when combat ends
+--   blizzard needed, Beside SaftUI's (the mode changed)  -> both (Blizzard's beside, the window back)
 function Handover.Next(state, needed, inCombat, mode, itemsToShow)
 	if state == 'own' then
 		if not needed then return 'own', NONE end
@@ -67,7 +68,18 @@ function Handover.Next(state, needed, inCombat, mode, itemsToShow)
 		return 'both', NONE
 	end
 	-- blizzard
-	if needed then return 'blizzard', NONE end
+	if needed then
+		-- The mode went to Beside while handed over in place (a profile switch can
+		-- come in combat): Blizzard's moves beside at once (TR:PlaceBlizzard waits
+		-- for the end of combat only for a protected tracker) and SaftUI's window
+		-- is back; the buttons come back only out of combat (the pass at the end of
+		-- combat, otherwise).
+		if mode == 'beside' then
+			if inCombat or not itemsToShow then return 'both', { 'reveal_beside', 'show_window' } end
+			return 'both', { 'reveal_beside', 'show_window', 'show_items' }
+		end
+		return 'blizzard', NONE
+	end
 	if inCombat then
 		if itemsToShow then return 'blizzard', NONE end
 		return 'own', { 'conceal', 'show_window' }
