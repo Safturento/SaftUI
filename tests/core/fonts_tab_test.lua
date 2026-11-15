@@ -255,3 +255,55 @@ test("a font saved with the outline NONE reaches SetFont with no flags", functio
 	check(#flags > 0, 'SetFont ran')
 	for i, f in ipairs(flags) do eq(f, '', 'SetFont call ' .. i) end
 end)
+
+-- A module that counts what st:FontsChanged tells it.
+local changes = 0
+local Probe = st:NewModule('FontsTabProbe')
+function Probe:OnFontsChanged() changes = changes + 1 end
+
+test('every set on the Fonts tab runs st:FontsChanged once: a shared font row, Shadow offset, each Kinds of text row', function()
+	local cases = {
+		{ 'pixel', 'font_size', 11, 10 },
+		{ 'pixel', 'font_name', 'Colus', 'Homespun' },
+		{ 'pixel', 'font_outline', 'NONE', 'MONOCHROMEOUTLINE' },
+		{ 'pixel', 'shadow_x', 1, 0 },
+		{ 'pixel', 'shadow_y', 1, 0 },
+		{ 'pixel', 'spacing', 5, 4 },
+		{ 'kinds', 'window_titles', 'pixel', 'normal' },
+		{ 'kinds', 'button_text', 'normal', 'pixel' },
+		{ 'kinds', 'checkbox_labels', 'pixel', 'normal' },
+	}
+	for _, case in ipairs(cases) do
+		local section, key, value, back = unpack(case)
+		changes = 0
+		Set(section, key, value)
+		eq(changes, 1, section .. '.' .. key .. ' ran FontsChanged once')
+		changes = 0
+		Set(section, key, back)
+		eq(changes, 1, section .. '.' .. key .. ' back: once')
+	end
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a profile with a saved fonts.pixel_huge and a saved name: no section for it, names from code, nothing errors', function()
+	local fonts = st.config.profile.fonts
+	fonts.pixel_huge = { font_size = 40 }
+	fonts.normal.name = 'Mine'
+	local tab = Tab()
+	check(tab.args.pixel_huge == nil, 'no section for the dropped font')
+	eq(tab.args.normal.name, 'Text', 'the section is named from code, not from the saved name')
+	local count = 0
+	for key, v in pairs(tab.args) do
+		if key ~= 'kinds' then count = count + 1 end
+	end
+	eq(count, 6, 'six sections')
+	for key, option in pairs(tab.args.kinds.args) do
+		local values = type(option.values) == 'function' and option.values() or option.values
+		eq(values.pixel_huge, nil, key .. " does not list the dropped font")
+	end
+	FN:UpdateFontConfig()
+	eq(FN.font_objects.pixel_huge, nil, 'and no object')
+	eq(#take_errors(), 0, 'no errors')
+	fonts.pixel_huge = nil
+	fonts.normal.name = nil
+end)

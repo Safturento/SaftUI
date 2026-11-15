@@ -49,7 +49,7 @@ SaftUI replaces World of Warcraft's interface with flat, dark frames that sit qu
 | In-world text | `normal` 16 | AgencyFB Bold | window titles, unit frame names and values, tooltip lines |
 | Pixel text | `pixel` 10, `pixel-med` 18 | Homespun | hotkeys, counts, mover labels, cooldown numbers (`pixel-med` on buttons of `countdown-large` and up) |
 
-Every text in SaftUI's font objects carries a 1px black outline (`text-outline`; Homespun's is MONOCHROMEOUTLINE). On SaftUI's dark grounds the outline only shows where text crosses colour: the colour bar's hex, texts on icons and bars. The faces come from the profile's font objects (Huge title, Text, Small text); the kit uses the Title and Normal faces at its own fixed sizes. Use a role, not a face: today that means passing the right font object key, and the font roles change (Code changes) will make it a role name.
+Every text in SaftUI's font objects carries a 1px black outline (`text-outline`; Homespun's is MONOCHROMEOUTLINE). On SaftUI's dark grounds the outline only shows where text crosses colour: the colour bar's hex, texts on icons and bars. The faces come from the profile's font objects (Huge title, Text, Small text); the kit uses the Heading and Text faces at its own fixed sizes. Use a role, not a face: today that means passing the right font object key, and the font roles change (Code changes) will make it a role name.
 
 ### Spacing and layout
 

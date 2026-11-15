@@ -992,11 +992,22 @@ RW.both('a profile change redraws the tracker once through st:FontsChanged, a Fo
 		counted = counted + 1
 		return redraw(self, ...)
 	end
-	st:GetModule('Fonts'):UpdateFontConfig()
+	-- The profile change itself: the new profile holds another size for Text, and
+	-- the profile update (Config:UpdateConfig) sets every font object, then runs
+	-- st:FontsChanged.
+	local before = RW.quest(TR, 1):GetHeight()
+	st.config.profile.fonts.normal.font_size = 24
+	st:GetModule('Fonts'):UpdateConfig()
 	st:FontsChanged()
 	RW.later(1)
 	check(counted <= 1, 'every font of a profile change: one redraw, not one each: ' .. counted)
 	check(counted >= 1, 'but it does redraw')
+	check(RW.quest(TR, 1):GetHeight() > before, 'and the rows read the new size')
+	st.config.profile.fonts.normal.font_size = 16
+	st:GetModule('Fonts'):UpdateConfig()
+	st:FontsChanged()
+	RW.later(1)
+	eq(RW.quest(TR, 1):GetHeight(), before, 'and back')
 end)
 
 RW.both('an offer and a complete popup of the same quest each get a row', function(st, TR)

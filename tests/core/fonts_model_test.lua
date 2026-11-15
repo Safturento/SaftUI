@@ -98,10 +98,11 @@ test('a typeface table: one object per look, white, made once and never changed'
 	check(st:GetFont('pixel_huge') ~= st:GetFont('pixel'), 'and not its shared font')
 	-- Another shadow, another spacing, another outline: each a look.
 	local base = { font_name = 'Colus', font_size = 15 }
-	for field, value in pairs({ font_outline = 'NONE', shadow_offset = { 1, 0 }, spacing = 9, font_name = 'Homespun' }) do
+	for _, change in ipairs({ { 'font_outline', 'NONE' }, { 'shadow_offset', { 1, 0 } }, { 'shadow_offset', { 0, 1 } },
+		{ 'spacing', 9 }, { 'font_name', 'Homespun' } }) do
 		local look = { font_name = 'Colus', font_size = 15 }
-		look[field] = value
-		check(st:GetFont(look) ~= st:GetFont(base), field .. ' makes another look')
+		look[change[1]] = change[2]
+		check(st:GetFont(look) ~= st:GetFont(base), change[1] .. ' ' .. tostring(change[2]) .. ' makes another look')
 	end
 	eq(#take_errors(), 0, 'no errors')
 end)
@@ -156,7 +157,10 @@ test('a malformed typeface (Review Focus 2)', function()
 	eq(size({ font_size = 400 }), 100, 'a size over 100 is 100')
 	eqlist(list(unpack(st:FontFields({ shadow_offset = 3 }).shadow_offset)), { 0, 0 }, 'a shadow that is no table')
 	eqlist(list(unpack(st:FontFields({ shadow_offset = { 9, -9 } }).shadow_offset)), { 5, -5 }, 'a shadow clamped')
-	eqlist(list(unpack(st:FontFields({ shadow_offset = { 'a', 2 } }).shadow_offset)), { 0, 0 }, 'a shadow with a non-number')
+	eqlist(list(unpack(st:FontFields({ shadow_offset = { 'a', 2 } }).shadow_offset)), { 0, 2 }, 'a shadow with a non-number on one axis: the other axis is kept')
+	eqlist(list(unpack(st:FontFields({ shadow_offset = { 2 } }).shadow_offset)), { 2, 0 }, 'a shadow with only X')
+	eqlist(list(unpack(st:FontFields({ shadow_offset = { [2] = -1 } }).shadow_offset)), { 0, -1 }, 'a shadow with only Y')
+	eq(size({ font_size = 0 / 0 }), 16, 'a NaN size is no number')
 	eq(st:FontFields({ font_outline = 'BOLD' }).font_outline, 'OUTLINE', 'an outline that is no key')
 	eq(st:FontFields({ font_name = '' }).font_name, 'AgencyFB Bold', 'an empty face')
 	eq(st:FontFields({ font_name = 7 }).font_name, 'AgencyFB Bold', 'a face that is no string')
@@ -424,4 +428,137 @@ test('every face SaftUI registers is preloaded on a font object of its own at lo
 		seen[object] = true
 		check(object:GetName():match('^SaftUI_Preload%d+Font$'), 'named for the preload: ' .. tostring(object:GetName()))
 	end
+end)
+
+test("a table's missing fields read Text's default and an unknown value reads the profile's Text", function()
+	fonts().normal.font_size = 20
+	eq(st:FontFields({ font_name = 'Colus' }).font_size, 16, "a typeface's missing size is Text's default, not the profile's Text")
+	eq(select(2, st:FontValues(nil)), 20, "nil reads the profile's Text")
+	eq(select(2, st:FontValues('nope')), 20, "an unknown key too")
+	eq(select(2, st:FontValues({ font_name = 'Colus' })), 16, 'a typeface table again')
+	fonts().normal.font_size = 16
+end)
+
+test('UpdateFontConfig for a key that is no shared font makes no object', function()
+	FN:UpdateFontConfig('pixel_huge')
+	FN:UpdateFontConfig('nope')
+	eq(FN.font_objects.pixel_huge, nil, 'no object for a dropped key')
+	eq(FN.font_objects.nope, nil, 'or an unknown one')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('the Heading step moves the face only, not the outline', function()
+	fonts().title.font_outline = 'NONE'
+	Unmarked('Bebas Neue')
+	FN:ConvertHeadingFace()
+	eq(fonts().heading.font_name, 'Bebas Neue', 'the face moved')
+	eq(fonts().heading.font_outline, 'OUTLINE', "Huge title's outline did not")
+	fonts().title.font_outline = 'OUTLINE'
+	fonts().title.font_name = 'Colus'
+	fonts().heading.font_name = 'Colus'
+	FN:UpdateConfig()
+end)
+
+test('the login path takes the Heading step: FN:OnEnable converts an unmarked profile and marks it', function()
+	Unmarked('Bebas Neue')
+	FN:OnEnable()
+	eq(fonts().heading.font_name, 'Bebas Neue', 'Heading took the face')
+	eq(fonts().version, 1, 'and the profile is marked')
+	eq(st:GetFont('heading'):GetFont(), path('Bebas Neue'), 'and its object draws it')
+	fonts().title.font_name = 'Colus'
+	fonts().heading.font_name = 'Colus'
+	FN:UpdateConfig()
+end)
+
+test('an error in the Heading step at login is reported and the objects are still set', function()
+	local real = FN.ConvertHeadingFace
+	FN.ConvertHeadingFace = function() error('step failed') end
+	fonts().pixel.spacing = 9
+	FN:OnEnable()
+	FN.ConvertHeadingFace = real
+	eq(st:GetFont('pixel'):GetSpacing(), 9, 'UpdateFontConfig still ran')
+	eq(#take_errors(), 1, 'and the error was reported')
+	fonts().pixel.spacing = 4
+	FN:UpdateFontConfig('pixel')
+end)
+
+test('a face registered after a typeface was asked for is picked up the next time the look is asked for', function()
+	local look = { font_name = 'LateFace', font_size = 14 }
+	local before = st:GetFont(look)
+	eq(before:GetFont(), st.LSM:Fetch('font', st.LSM:GetDefault('font')), 'unlisted: the default face')
+	st.LSM:Register('font', 'LateFace', [[Interface\AddOns\Late\late.ttf]])
+	local after = st:GetFont(look)
+	check(after ~= before, 'another object now')
+	eq(after:GetFont(), [[Interface\AddOns\Late\late.ttf]], 'in the new face')
+	eq(st:GetFont(look), after, 'and that one is kept')
+end)
+
+test('FollowFont: a getter that errors on its first apply is not kept; UnfollowFont forgets', function()
+	local fs = CreateFrame('Frame'):CreateFontString()
+	check(not pcall(st.FollowFont, st, fs, function() error('first apply') end), 'the error comes out of FollowFont')
+	st:RefollowFonts()
+	eq(#take_errors(), 0, 'and the region is not followed')
+	local value = 'pixel'
+	st:FollowFont(fs, function() return value end)
+	st:UnfollowFont(fs)
+	value = 'title'
+	st:RefollowFonts()
+	eq(fs:GetFontObject(), st:GetFont('pixel'), 'a forgotten region stays as it was')
+end)
+
+test('a followed region nothing else holds is let go', function()
+	local calls = 0
+	do
+		-- A plain table, not a stub widget (the stubs keep every widget they make).
+		local region = { SetFontObject = function() end }
+		st:FollowFont(region, function() calls = calls + 1; return 'pixel' end)
+	end
+	calls = 0
+	collectgarbage()
+	collectgarbage()
+	st:RefollowFonts()
+	eq(calls, 0, 'a region nothing else holds is not applied again')
+end)
+
+-- Memory the reader helpers allocate: the shared-key path and a typeface already
+-- seen allocate nothing (the readers call them on hot paths: tooltips, unit
+-- frame updates).
+local function Allocated(fn)
+	collectgarbage()
+	collectgarbage('stop')
+	local before = collectgarbage('count')
+	for _ = 1, 2000 do fn() end
+	local after = collectgarbage('count')
+	collectgarbage('restart')
+	return after - before
+end
+
+test('the value helpers allocate nothing on a shared key, or on a typeface already seen', function()
+	local face = { font_name = 'Colus', font_size = 15 }
+	st:GetFont(face)
+	st:GetFont('pixel_huge')
+	local fs = CreateFrame('Frame'):CreateFontString()
+	local cases = {
+		{ 'st:GetFont(key)', function() return st:GetFont('pixel') end },
+		{ 'st:FontObject(key)', function() return st:FontObject('pixel') end },
+		{ 'st:FontValues(key)', function() return st:FontValues('pixel') end },
+		{ 'st:FontValues(nil)', function() return st:FontValues(nil) end },
+		{ 'st:GetFont(table)', function() return st:GetFont(face) end },
+		{ 'st:FontValues(table)', function() return st:FontValues(face) end },
+		{ 'st:GetFont(dropped key)', function() return st:GetFont('pixel_huge') end },
+		{ 'st:FontValues(dropped key)', function() return st:FontValues('pixel_huge') end },
+		{ 'st:FontLabel(key)', function() return st:FontLabel('pixel') end },
+		{ 'st:IsSharedFont', function() return st:IsSharedFont('pixel') end },
+	}
+	for _, case in ipairs(cases) do
+		local kb = Allocated(case[2])
+		check(kb < 4, case[1] .. ' allocates nothing: ' .. kb .. ' KB over 2000 calls')
+	end
+end)
+
+test('a Size drag makes one typeface object per whole size, and the same one again when it comes back', function()
+	local made = {}
+	for size = 20, 60 do made[size] = st:GetFont({ font_name = 'Colus', font_size = size }) end
+	for size = 60, 20, -1 do eq(st:GetFont({ font_name = 'Colus', font_size = size }), made[size], 'size ' .. size .. ' again') end
+	eq(st:GetFont({ font_name = 'Colus', font_size = 30.7 }), made[30], 'a size between is the whole size below')
 end)

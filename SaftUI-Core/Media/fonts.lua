@@ -64,15 +64,18 @@ local function IsNumber(n) return type(n) == 'number' and n == n end
 
 -- A font setting's look, whichever of its two shapes it holds: a key of a
 -- shared font (a string) or a typeface (a table of a shared font's fields).
--- Always { font_name, font_size, font_outline, shadow_offset = { x, y },
--- spacing }, a fresh table, never written to the profile. A field the setting
--- has that isn't valid (a wrong type, an unknown outline) reads as the base's,
--- and a number is held to the range of the row that sets it.
+-- Returns font_name, font_size, font_outline, shadow X, shadow Y and spacing,
+-- and builds no table, so a reader on a hot path (a tooltip line, a unit frame
+-- update) costs no garbage. A field the setting has that isn't valid (a wrong
+-- type, an unknown outline) reads as the base's, and a number is held to the
+-- range of the row that sets it. The shadow is read per axis: AceDB saves only
+-- the axis that differs from a default, so a dropped font's saved
+-- shadow_offset may hold one number.
 --   a shared font's key: its default, with the profile's fonts[key] over it;
 --   a dropped key: its old look, with the profile's fonts[key] over it;
 --   a table: Text's default, with the table over it;
 --   anything else (nil, an unknown key, a number): Text, as the profile has it.
-function st:FontFields(value)
+local function Resolve(value)
 	local defaults, profile = st.defaults.fonts, st.config.profile.fonts
 	local base, overlay
 	if type(value) == 'string' and BY_KEY[value] then
@@ -84,21 +87,30 @@ function st:FontFields(value)
 	else
 		base, overlay = defaults.normal, profile.normal
 	end
-	if type(overlay) ~= 'table' then overlay = {} end
+	if type(overlay) ~= 'table' then overlay = base end
 
-	local fields = {}
 	local name = overlay.font_name
-	fields.font_name = (type(name) == 'string' and name ~= '') and name or base.font_name
-	fields.font_size = IsNumber(overlay.font_size) and st.Clamp(overlay.font_size, 1, 100) or base.font_size
-	fields.font_outline = (type(overlay.font_outline) == 'string' and FN.outlines[overlay.font_outline]) and overlay.font_outline or base.font_outline
-	local shadow = overlay.shadow_offset
-	if type(shadow) == 'table' and IsNumber(shadow[1]) and IsNumber(shadow[2]) then
-		fields.shadow_offset = { st.Clamp(shadow[1], -5, 5), st.Clamp(shadow[2], -5, 5) }
-	else
-		fields.shadow_offset = { base.shadow_offset[1], base.shadow_offset[2] }
+	if type(name) ~= 'string' or name == '' then name = base.font_name end
+	local size = overlay.font_size
+	if IsNumber(size) then size = st.Clamp(size, 1, 100) else size = base.font_size end
+	local outline = overlay.font_outline
+	if type(outline) ~= 'string' or not FN.outlines[outline] then outline = base.font_outline end
+	local shadow, x, y = overlay.shadow_offset, base.shadow_offset[1], base.shadow_offset[2]
+	if type(shadow) == 'table' then
+		if IsNumber(shadow[1]) then x = st.Clamp(shadow[1], -5, 5) end
+		if IsNumber(shadow[2]) then y = st.Clamp(shadow[2], -5, 5) end
 	end
-	fields.spacing = IsNumber(overlay.spacing) and st.Clamp(overlay.spacing, 0, 20) or base.spacing
-	return fields
+	local spacing = overlay.spacing
+	if IsNumber(spacing) then spacing = st.Clamp(spacing, 0, 20) else spacing = base.spacing end
+	return name, size, outline, x, y, spacing
+end
+
+-- The same as a table, for a caller that wants one (the dots menu, a font
+-- object's setter): { font_name, font_size, font_outline, shadow_offset =
+-- { x, y }, spacing }. A fresh table every call, never written to the profile.
+function st:FontFields(value)
+	local name, size, outline, x, y, spacing = Resolve(value)
+	return { font_name = name, font_size = size, font_outline = outline, shadow_offset = { x, y }, spacing = spacing }
 end
 
 -- Sets a font object to a look (st:FontFields' shape): the face from
@@ -164,7 +176,9 @@ function FN:ConvertHeadingFace()
 end
 
 function FN:OnEnable()
-	self:ConvertHeadingFace()
+	-- In xpcall, as the colors' migration is at login: a step that fails is
+	-- reported and the objects are still set.
+	xpcall(self.ConvertHeadingFace, geterrorhandler(), self)
 	self:UpdateFontConfig()
 end
 
@@ -200,17 +214,26 @@ end
 -- One font object per typeface look (a table, or a dropped key), made the first
 -- time the look is asked for: SaftUI_Typeface<n>Font, white like the shared
 -- fonts (so SetFontObject keeps giving texts white), set once and never again.
--- The game can't free a font object, so they last the session.
+-- The look is its resolved fields and the file the face fetches (so a face
+-- another addon registers after the first ask is a new look, and the next
+-- ask gets an object that draws it; a reader that wants it at once runs
+-- st:FontsChanged from LibSharedMedia's registration callback). A look already
+-- seen costs no garbage: the key is one concatenation, which Lua interns.
+-- The game can't free a font object, so they last the session. A Size slider
+-- dragged across its range makes at most one object per whole size (100) for
+-- each face, outline, shadow and spacing it is dragged at, and the same one
+-- again when it comes back.
 local typefaces, typefaceCount = {}, 0
-local function Typeface(fields)
-	local key = table.concat({ fields.font_name, fields.font_size, fields.font_outline,
-		fields.shadow_offset[1], fields.shadow_offset[2], fields.spacing }, '\31')
+local function Typeface(value)
+	local name, size, outline, x, y, spacing = Resolve(value)
+	local path = st.LSM:Fetch('font', name)
+	local key = path .. '\31' .. size .. '\31' .. outline .. '\31' .. x .. '\31' .. y .. '\31' .. spacing
 	local object = typefaces[key]
 	if not object then
 		typefaceCount = typefaceCount + 1
 		object = CreateFont('SaftUI_Typeface' .. typefaceCount .. 'Font')
 		object:SetTextColor(1, 1, 1)
-		FN:SetObject(object, fields)
+		FN:SetObject(object, { font_name = name, font_size = size, font_outline = outline, shadow_offset = { x, y }, spacing = spacing })
 		typefaces[key] = object
 	end
 	return object
@@ -222,10 +245,10 @@ end
 function st:GetFont(value)
 	if type(value) == 'string' then
 		if BY_KEY[value] then return FN.font_objects[value] end
-		if FN.DROPPED[value] then return Typeface(st:FontFields(value)) end
+		if FN.DROPPED[value] then return Typeface(value) end
 		return nil
 	end
-	if type(value) == 'table' then return Typeface(st:FontFields(value)) end
+	if type(value) == 'table' then return Typeface(value) end
 	return nil
 end
 
@@ -239,16 +262,14 @@ end
 -- names nothing draws Text. No skip when the text already has the object: a
 -- caller that sets a color of its own puts it back after.
 function st:ApplyFont(fontString, value)
-	local object = st:FontObject(value)
-	if object then fontString:SetFontObject(object) end
+	fontString:SetFontObject(st:FontObject(value))
 end
 
 -- For a reader that takes values, not an object: path, size, flags, shadow X,
 -- shadow Y and spacing of a font setting.
 function st:FontValues(value)
-	local fields = st:FontFields(value)
-	return st.LSM:Fetch('font', fields.font_name), fields.font_size, st.OutlineFlag(fields.font_outline),
-		fields.shadow_offset[1], fields.shadow_offset[2], fields.spacing
+	local name, size, outline, x, y, spacing = Resolve(value)
+	return st.LSM:Fetch('font', name), size, st.OutlineFlag(outline), x, y, spacing
 end
 
 -- The words for a font setting: a shared font's name ("Heading"), a typeface as
@@ -280,15 +301,29 @@ function st:FaceFont(font, size, outline)
 end
 
 -- Texts with no module to apply them again when a font setting changes, kept
--- weakly: region -> the function that gives the setting's value now.
+-- weakly: region -> the function that gives the setting's value now. Weak keys
+-- do not free a frame's regions in the game, so a pool that releases a region
+-- must call st:UnfollowFont(region) (or st:FollowFont(region, nil)) then, else
+-- the next change puts the old setting's font on a region reused for something
+-- else. A getter must not close over its own region either (Lua 5.1 has no
+-- ephemerons: the entry would keep the region alive).
 local followers = setmetatable({}, { __mode = 'k' })
 
 -- Puts getValue()'s font on the region now, and again on every
 -- st:RefollowFonts. A region kept twice keeps the last getter; a nil getValue
--- forgets the region.
+-- forgets the region. A getter that errors on this first apply is not kept.
 function st:FollowFont(region, getValue)
-	followers[region] = getValue
-	if getValue then st:ApplyFont(region, getValue()) end
+	if getValue then
+		st:ApplyFont(region, getValue())
+		followers[region] = getValue
+	else
+		followers[region] = nil
+	end
+end
+
+-- Forgets a region (a pool releasing it).
+function st:UnfollowFont(region)
+	followers[region] = nil
 end
 
 -- Every kept region again, reading its getter now. One that errors is reported

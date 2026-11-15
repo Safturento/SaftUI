@@ -99,7 +99,7 @@ Where both touch a file, merge by hand and keep both sides. The font row paints 
    - `font_name`: a non-empty string;
    - `font_size`: a number, then `st.Clamp(n, 1, 100)`;
    - `font_outline`: a key of `FN.outlines`;
-   - `shadow_offset`: a table whose `[1]` and `[2]` are numbers, each `st.Clamp(n, -5, 5)`;
+   - `shadow_offset`: a table, read per axis: each of `[1]` and `[2]` that is a number is taken, `st.Clamp(n, -5, 5)`, and one that is not reads as the base's axis (AceDB saves only the axis that differs from a default, so a dropped font's saved shadow may hold one number);
    - `spacing`: a number, then `st.Clamp(n, 0, 20)`.
 
    It returns a fresh table every call, and never writes to the profile.
