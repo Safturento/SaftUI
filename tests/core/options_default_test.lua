@@ -261,6 +261,24 @@ test("the icon's tooltip says what it does and names the default by the row's ty
 	end)
 end)
 
+test("a font list's reset tooltip names the face, not the file its list maps the name to", function()
+	in_look('thick', function(tip)
+		fresh()
+		differs.font = true
+		local args = { font = { type = 'select', name = 'Typeface', desc = 'x', order = 1, dialogControl = 'LSM30_Font',
+			values = { Homespun = 'Interface\\AddOns\\SaftUI-Core\\Media\\Fonts\\homespun.ttf', Colus = 'colus.otf' },
+			get = function() return 'Colus' end, set = function() end,
+			default = Default({ value = function() return 'Homespun' end }) } }
+		local body, by = draw({ page = { type = 'group', name = 'Page', args = args } })
+		local icon = icon_of(by.font)
+		stub.fire_script(icon, 'OnEnter', true)
+		eq(tip.lines[1], 'Reset')
+		eq(tip.lines[2], 'Typeface goes back to its default: Homespun.')
+		stub.fire_script(icon, 'OnLeave', true)
+		body:Release()
+	end)
+end)
+
 test('no reset on a disabled row, nor on a member page row (its share Resets it); a source page row has it, its hover line short of it', function()
 	in_look('thick', function()
 		fresh()

@@ -242,20 +242,21 @@ OB.Colors, OB.Normal, OB.Grey, OB.Blue = Colors, Normal, Grey, Blue -- the windo
 
 ------------------------------------------------------------------ fonts
 
--- The window's own font objects: the profile's title (Colus) and normal
--- (Agency FB) faces and outlines, at the window's sizes. 'field' is the
--- widgets' (15).
+-- The window's own font objects: Heading's face and outline for the titles
+-- ('heading') and Text's for the rest ('normal'), each at the window's own
+-- size. Heading's size is not read: the window lays out its header and its
+-- section title lines around these numbers. 'field' is the widgets' (15).
 local FONTS = {
-	title = { 'title', 34 }, brand = { 'title', 26 }, section = { 'title', 15 }, group = { 'title', 13 },
-	caption = { 'title', 11 }, tab = { 'normal', 17 }, label = { 'normal', 16 }, small = { 'normal', 13 },
-	mini = { 'title', 18 }, -- the name on the options window's bar
+	title = { 'heading', 34 }, brand = { 'heading', 26 }, section = { 'heading', 15 }, group = { 'heading', 13 },
+	caption = { 'heading', 11 }, tab = { 'normal', 17 }, label = { 'normal', 16 }, small = { 'normal', 13 },
+	mini = { 'heading', 18 }, -- the name on the options window's bar
 }
 local fontObjects = {}
 
 local function ApplyFont(key)
 	local face, size = FONTS[key][1], FONTS[key][2]
-	local config = st.config.profile.fonts[face]
-	fontObjects[key]:SetFont(st.LSM:Fetch('font', config.font_name), size, st.OutlineFlag(config.font_outline))
+	local path, _, flags = st:FontValues(face)
+	fontObjects[key]:SetFont(path, size, flags)
 	fontObjects[key]:SetTextColor(Normal())
 end
 

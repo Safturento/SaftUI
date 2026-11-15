@@ -983,7 +983,7 @@ RW.both('a collapsed tracker redraws no rows: its count updates, and the rows ar
 	again.stop()
 end)
 
-RW.both('a profile change redraws the tracker once through st:FontsChanged, a Fonts-tab change once', function(st, TR)
+RW.both('a profile change (the Fonts module\'s update, then st:FontsChanged) redraws the tracker once, and the rows follow Text\'s size', function(st, TR)
 	Q.set({ Q.header('A'), Q.quest(1) }, { 1 })
 	TR:Refresh()
 	local counted = 0

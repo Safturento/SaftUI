@@ -1,5 +1,9 @@
 -- The totem bar's timers lay out again when a font changes (TB:OnFontsChanged,
 -- run by st:FontsChanged): after SetupTimers has run, and not before.
+--
+-- Stand-in: TB:ApplyTimerLayout is a counter. The real one lays out the
+-- timers' frames, which need Blizzard's multi-cast slot buttons; what is
+-- checked here is only that OnFontsChanged asks for the layout, and when.
 
 load_core_helpers()
 local st = SaftUI

@@ -691,6 +691,8 @@ local function DefaultText(body, row, state)
 		return W.HexText(value[1] or 0, value[2] or 0, value[3] or 0, value[4] or 1, hasAlpha)
 	elseif row.type == 'toggle' or row.type == 'item' then
 		return first and 'on' or 'off'
+	elseif row.type == 'select' and row.option.dialogControl == 'LSM30_Font' then
+		return tostring(first) -- a font list is labeled by its names (name -> file)
 	elseif row.type == 'select' then
 		for _, entry in ipairs(OM.Values(body.root, row)) do
 			if entry.key == first then return tostring(entry.name) end

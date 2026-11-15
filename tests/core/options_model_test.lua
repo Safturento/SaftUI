@@ -925,8 +925,9 @@ test('Experience on the real tree: the General page with its rows, then its Posi
 	eq(fonts.title, 'Global settings', 'the Fonts page is Global settings')
 	eq(fonts.tab, 'general', 'it opens on its General tab')
 	fonts = OM.BuildView(root, 'Fonts', { tab = 'fonts' })
-	check(#fonts.sections > 0 and fonts.sections[1].title ~= nil and row(fonts, 'font_size') ~= nil,
-		'each font is a titled section of rows')
+	-- The first section is the line at the top (no title); each font follows it.
+	check(#fonts.sections > 1 and fonts.sections[1].title == nil and fonts.sections[2].title ~= nil and row(fonts, 'font_size') ~= nil,
+		'each font is a titled section of rows, after the line at the top')
 end)
 
 test("the profiles table: AceDBOptions' real table on a real AceDB reads and sets through its handler", function()

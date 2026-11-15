@@ -18,7 +18,7 @@ local FIELD, EDGE, ALT, BG = st.BOX_COLORS.field, st.BOX_COLORS.edge, st.BOX_COL
 
 local Colors = st.OptionsModel.Colors
 
--- The window's font for fields and lists: the profile's normal face, at 15.
+-- The window's font for fields and lists: Text's face and outline, at 15.
 local fieldFont
 local FIELD_FONT_SIZE = 15
 function W.GetFont()
@@ -29,11 +29,11 @@ function W.GetFont()
 	return fieldFont
 end
 
--- Applies the profile's face and outline to the font (a profile change).
+-- Applies Text's face and outline to the font (a font or profile change).
 function W.UpdateFonts()
 	if not fieldFont then return end
-	local config = st.config.profile.fonts.normal
-	fieldFont:SetFont(st.LSM:Fetch('font', config.font_name), FIELD_FONT_SIZE, st.OutlineFlag(config.font_outline))
+	local path, _, flags = st:FontValues('normal')
+	fieldFont:SetFont(path, FIELD_FONT_SIZE, flags)
 	fieldFont:SetTextColor(Colors().text.normal:GetRGB())
 end
 

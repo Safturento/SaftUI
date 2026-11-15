@@ -261,6 +261,15 @@ function Config:OnColorsChanged(group)
 	if group == 'theme' and OW then OW:PaintSidebar() end
 end
 
+-- After a font setting or a shared font changed (st:FontsChanged): /sui's own
+-- font objects take Heading's and Text's faces and outlines again, as
+-- OW:UpdateFonts does on a profile change. It asks the body, not the window,
+-- so a world with the body and no window follows too.
+function Config:OnFontsChanged()
+	local OB = st.OptionsBody
+	if OB then OB.UpdateFonts() end
+end
+
 -- Runs on every profile change, copy or reset, and on a change of the theme or
 -- going solid or see-through (st:ThemeChanged, Media/theme.lua).
 function Config:UpdateConfig()
@@ -317,13 +326,13 @@ function Config:UpdateConfig()
 
 	-- An open /sui window's tree was built for the old profile (some getters
 	-- and setters, and values read while building it). Rebuild it; the window
-	-- redraws it next frame and keeps the page, tab and picker. Its fonts take
-	-- the new profile's faces. (optionswindow.lua loads after this file; tests
+	-- redraws it next frame and keeps the page, tab and picker. (Its fonts took
+	-- the new profile's faces in st:FontsChanged above, through
+	-- Config:OnFontsChanged. optionswindow.lua loads after this file; tests
 	-- that build the tree without the window run this too.)
 	local OW = st.OptionsWindow
 	if OW then
 		if OW:IsShown() then OW:SetRoot(self:RegisterOptions()) end
-		OW:UpdateFonts()
 	end
 	self:Refresh()
 

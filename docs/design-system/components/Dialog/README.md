@@ -18,7 +18,7 @@ Two dialogs float over the `/sui` window: the small dialog, a titled panel of ro
 | --- | --- | --- |
 | Width | 568, two columns of 240 inside 24 padding (`dialog-width`, `dialog-pad`) | 320, text 290 wide (`confirm-width`) |
 | Drawn as | `panel` kind in the theme (a `sui-frame`) | a Box in `kit-bg` with its `kit-alt` line (fixed palette) |
-| Title | `brand` (Colus 26), 24 in, 18 down (`dialog-title-top`), a `line` rule at 52 | none |
+| Title | `brand` (Heading's face, 26), 24 in, 18 down (`dialog-title-top`), a `line` rule at 52 | none |
 | Head | 58 (`dialog-head`), close 14 in and 14 down | text 16 from the top (`confirm-top`) |
 | Body | up to 600, then it scrolls | the text, then a prompt's box 290 x 24 |
 | Buttons | float under the panel, centred | Yes and No, 80 x 24 in `kit-field`, 12 apart (`button-gap`), 14 from the bottom |

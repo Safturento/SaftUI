@@ -178,12 +178,13 @@ end)
 
 test("the window's fonts draw a profile outline of None with no font flags", function()
 	local fonts = st.config.profile.fonts
-	local old = { fonts.normal.font_outline, fonts.title.font_outline }
+	-- The titles take Heading's outline, the field font Text's.
+	local old = { fonts.normal.font_outline, fonts.heading.font_outline }
 	local OB = st.OptionsBody
 	for _, case in ipairs({
 		{ 'NONE', '' }, { 'OUTLINE', 'OUTLINE' }, { 'MONOCHROMETHICKOUTLINE', 'MONOCHROMETHICKOUTLINE' },
 	}) do
-		fonts.normal.font_outline, fonts.title.font_outline = case[1], case[1]
+		fonts.normal.font_outline, fonts.heading.font_outline = case[1], case[1]
 		W.UpdateFonts()
 		local _, _, flags = W.GetFont():GetFont()
 		eq(flags, case[2], case[1] .. ': the field font')
@@ -192,7 +193,7 @@ test("the window's fonts draw a profile outline of None with no font flags", fun
 		_, _, flags = font:GetFont()
 		eq(flags, case[2], case[1] .. ': the title font')
 	end
-	fonts.normal.font_outline, fonts.title.font_outline = old[1], old[2]
+	fonts.normal.font_outline, fonts.heading.font_outline = old[1], old[2]
 	OB.UpdateFonts()
 	eq(#take_errors(), 0, 'no errors')
 end)
