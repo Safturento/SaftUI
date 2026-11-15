@@ -284,7 +284,7 @@ test("the editor's footer: Caught now above Pinned items at the pane's bottom, a
 	eq(w.footerPane:GetHeight(), w.footerContent, 'as tall as the strips drawn')
 	eq(w.editorScroll:GetHeight(), height - w.footer:GetHeight(), "the editor's view the rest of the pane")
 	eq(w.editorScroll:GetBottom(), w.footer:GetTop(), 'right above the footer')
-	eq(editor_keys(w), 'name,enabled,show,rule,reset,delete', 'the rest in the editor, Reset and Delete at its end')
+	eq(editor_keys(w), 'name,enabled,show,rule,delete', 'the rest in the editor, Delete at its end')
 	eq(w.footerLine:GetTop(), w.footer:GetTop(), 'its edge at its top')
 	eq(w.footerLine:GetWidth(), 540, 'across it')
 	eq(w.footerLine:GetHeight(), 1, '1 tall')
