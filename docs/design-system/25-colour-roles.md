@@ -40,7 +40,7 @@ Read-only pass over `/mnt/c/Github/wow-addons/SaftUI-Modular` (every `SaftUI-*` 
 | `orange` | 220, 150, 100 | `pushed` | 0.3, 0.4, 0.5, 0.8 |
 | `yellow` | 200, 200, 100 | `red` | 0.6, 0.1, 0.1, 0.8 |
 | `green` | 60, 240, 60 | `green` | 0.1, 0.6, 0.1, 0.8 |
-| `grey` | 150, 150, 150 | `blue` | 0, 0.68, 0.94, 0.8 |
+| `grey` | 180, 180, 180 (150 until 2026-11-14) | `blue` | 0, 0.68, 0.94, 0.8 |
 | `blue` | 0, 0.68, 0.94, 1 (#00adf0) | `yellow` | 0.6, 0.6, 0.1, 0.8 |
 | `purple` | 197, 128, 255 | `grey` | 150, 150, 150 |
 | `cyan` | 120, 202, 250 | | |
@@ -338,7 +338,7 @@ Category 2 and the identity sets are exactly where a player who changes "Red" aw
 
 **Duplicates by default and role.**
 - `text.blue` and `button.blue`: the same RGB (0, 0.68, 0.94); `button.blue` adds alpha 0.8 that nothing reads. Same role: accent.
-- `text.grey` and `button.grey`: both 150/255 grey.
+- `text.grey` (180/255 since 2026-11-14, decision 49) and `button.grey` (150/255).
 - `text.red` and `button.red` and `threat.bad` (1, 0.1, 0.1): "five reds" (`docs/design-system/10-discrepancies.md:116-118`).
 - `text.white` against `text.normal` (1, 1, 1 versus 0.9, 0.9, 0.8): nearly the same role, plain text.
 - `text.cyan` against the hardcoded `OB.OWN_TEXT` (0.56, 0.85, 1): two light blues.

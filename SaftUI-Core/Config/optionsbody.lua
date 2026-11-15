@@ -178,7 +178,7 @@ local WIDTH = 774 -- the window's body: under Blizzard two columns of 367 with a
 local BODY_TOP, BODY_BOTTOM = 4, 24
 local SECTION_PAD, SECTION_MARGIN = 16, 14
 local TITLE_HEIGHT, TITLE_GAP = 15, 6
-local NOTE_HEIGHT, NOTE_GAP = 13, 4
+local NOTE_HEIGHT, NOTE_GAP = 15, 4
 local CONTINUE_GAP = 4 -- an untitled section after another: a continuation
 -- A section's closing buttons under its panel: as far as the body's (and a
 -- dialog's) bottom margin is under them, so they sit midway between the rows
@@ -249,6 +249,7 @@ OB.Colors, OB.Normal, OB.Grey, OB.Blue = Colors, Normal, Grey, Blue -- the windo
 local FONTS = {
 	title = { 'heading', 34 }, brand = { 'heading', 26 }, section = { 'heading', 15 }, group = { 'heading', 13 },
 	caption = { 'heading', 11 }, tab = { 'normal', 17 }, label = { 'normal', 16 }, small = { 'normal', 13 },
+	note = { 'normal', 15 }, -- a section's note; small stays the hover line's 13
 	mini = { 'heading', 18 }, -- the name on the options window's bar
 }
 local fontObjects = {}
@@ -918,7 +919,7 @@ function OB.New(content, root, onChanged, width, opts)
 			return title
 		end),
 		note = Pool(function()
-			local note = Text(content, 'small')
+			local note = Text(content, 'note')
 			note:SetWordWrap(true) -- one that doesn't fit the body wraps (Body:NoteHeight)
 			note:SetJustifyV('TOP')
 			note:SetTextColor(Grey())
@@ -1011,7 +1012,7 @@ end
 function Body:NoteHeight(section)
 	local measure = self.measure
 	if not measure then
-		measure = Text(self.content, 'small')
+		measure = Text(self.content, 'note')
 		measure:SetWordWrap(true)
 		measure:SetJustifyV('TOP')
 		measure:Hide()

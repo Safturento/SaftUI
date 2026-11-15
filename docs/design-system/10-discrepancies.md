@@ -59,9 +59,9 @@ Standard: unsettled; see unknown 9.
 ## Seen in /sui, every time it opens
 
 **13. Grey and red text miss contrast under Thin.**
-Where: `text-grey` (#969696) on Thin's `backdrop` (#333333) is 4.3:1 and `text-red` 3.6:1: the page description, section titles and notes outside the panels, and the status line. On `panel-fill` grey passes (5.2:1) and red is still short (4.4:1).
-Two ways: the colours were chosen against Thick's #1f1f1f (5.6:1, 4.8:1).
-Standard: keep the colours exact (they are the profile's); if the owner wants Thin readable, lighten Thin's backdrop a step or let small grey text sit on panels only.
+Where: `text-red` on Thin's `backdrop` (#333333) is 3.6:1: the page description, section titles and notes outside the panels, and the status line. On `panel-fill` red is still short (4.4:1). `text-grey` (#b4b4b4 since 2026-11-14, decision 49) now passes on both (8.0:1 Thick, 6.1:1 Thin, 7.4:1 on `panel-fill`).
+Two ways: the colours were chosen against Thick's #1f1f1f (4.8:1 for red).
+Standard: keep the colours exact (they are the profile's); if the owner wants Thin's red readable, lighten Thin's backdrop a step or let small red text sit on panels only.
 
 **14. The kit's controls are Thick's colours, frozen.**
 Where: every control, the list, the confirm and the close X use `st.BOX_COLORS` (`SaftUI-Core/constants.lua:32-37`; `optionslook.lua:17`), equal to Thick's default colours but not linked to them.
@@ -170,7 +170,7 @@ These are the code's colours and stay as they are here; the owner decides whethe
 
 | Pair | Thick | Thin | Floor |
 | --- | --- | --- | --- |
-| `text-grey` on `backdrop` | 5.6:1 | 4.3:1 | 4.5:1 |
+| `text-grey` on `backdrop` | 8.0:1 | 6.1:1 | 4.5:1 |
 | `text-red` on `backdrop` | 4.8:1 | 3.6:1 | 4.5:1 |
 | `border` against `backdrop` | 1.9:1 | 1.7:1 | 3:1 for a line that carries meaning |
 | `kit-edge` against `kit-field` | 2.2:1 | 2.2:1 | 3:1 for a control border |
