@@ -163,17 +163,14 @@ end
 -- (st:FollowFont), and so does the color picker's (its skin's OnFontsChanged),
 -- through st:FontsChanged(). Its default is Text.
 local function WindowTitlesGroup(order)
-	local FN = st:GetModule('Fonts')
 	local font = st.Config.generators.font(1,
 		"The titles of SaftUI's windows: the bags and bank, /sui's title bar under the Blizzard theme, and Blizzard's color picker while Skinning dresses it. Every theme uses it.")
-	local function read() return st.config.profile.headers.font end
-	local function write(_, value) st.config.profile.headers.font = value end
-	font.get = read
-	font.set = function(info, value)
-		write(info, value)
+	font.get = function() return st.config.profile.headers.font end
+	font.set = function(_, value)
+		st.config.profile.headers.font = value
 		st:FontsChanged()
 	end
-	font.default = FN.FontSettingDefault(read, write, 'normal')
+	font.saved = st.Config.SavedAt('headers', 'font')
 	return {
 		type = 'group',
 		inline = true,
@@ -196,6 +193,7 @@ function TH:GetConfigTable()
 				desc = "How SaftUI's frames are drawn: Thick has a dark line on each side of its border, Thin just the border. Blizzard draws them in Blizzard's own art. A module can use another theme or none in its own settings. Each theme keeps its own colors.",
 				values = NAMES,
 				sorting = SORTING,
+				saved = st.Config.SavedAt('theme', 'name'),
 				get = function() return Name() end,
 				set = function(_, value)
 					Theme().name = value

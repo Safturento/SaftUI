@@ -17,6 +17,7 @@
 load_test_file('core/config_helpers.lua')
 local st = SaftUI
 load_saftui('SaftUI-Core/Config/optionsmodel.lua')
+load_saftui('SaftUI-Core/Config/optionsdefault.lua')
 load_options_widgets()
 load_saftui('SaftUI-Core/Config/optionsbody.lua')
 local OM, OB, W = st.OptionsModel, st.OptionsBody, st.OptionsWidgets
@@ -169,6 +170,23 @@ test('FN.FIELDS and FN.FieldOptions: five options at orders 2 to 6, a subset on 
 	eq(some.font_size.order, 2, 'and keeps the orders')
 	eq(some.font_outline.order, 3)
 	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('Button text resets to its AceDB default and applies at once', function()
+	for _, case in ipairs({ { 'button_text', 'buttons' } }) do
+		local key, group = case[1], case[2]
+		local root, row = Row('kinds', key)
+		if row then
+			local default = st.defaults[group].font
+			local other = default == 'normal' and 'pixel' or 'normal'
+			OM.Set(root, row, other)
+			eq(OM.DefaultState(root, row).differs, true, key .. ' differs')
+			changes = 0
+			eq(OM.DefaultReset(root, row), true, key .. ' resets')
+			eq(st.config.profile[group].font, st.defaults[group].font, key .. ' is the AceDB default')
+			eq(changes, 1, key .. ' ran FontsChanged')
+		end
+	end
 end)
 
 test('FN.FontSettingDefault: differs is any value but the default (a table always does); reset writes the default and runs FontsChanged', function()
@@ -366,7 +384,8 @@ test("Kinds of text: Button text alone, with its reset (no Check box labels row 
 		check(type(option.desc) == 'string' and #option.desc > 30, key .. ' has a desc')
 		eq(option.width, nil, key .. ' has no Ace width')
 		eq(option.size, nil, key .. ' takes the normal size')
-		eq(type(option.default), 'table', key .. ' resets by itself')
+		eq(option.default, nil, key .. ' has no hand default')
+		eq(type(option.saved), 'function', key .. ' resets by where it is saved')
 		eq(option.values, nil, key .. ' lists no values: the font row builds its own list')
 		-- Its list: the shared fonts by name, from code, in FN.FONTS order.
 		local entries = W.FontEntries(nil, false)
@@ -393,7 +412,7 @@ test("Kinds of text: Button text alone, with its reset (no Check box labels row 
 		root, row = Row('kinds', key)
 		local state = OM.DefaultState(root, row)
 		eq(state.differs, true, key .. ' differs')
-		eq(state.text, label, key .. ' names its default in words')
+		eq(st:FontLabel(state.value[1]), label, key .. ' names its default in words')
 		changes = 0
 		eq(OM.DefaultReset(root, row), true, key .. ' resets')
 		eq(changes, 1, key .. ': FontsChanged once')
