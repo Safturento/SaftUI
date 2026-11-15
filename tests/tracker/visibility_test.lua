@@ -885,3 +885,18 @@ both('Boss fights alone changes the item layer\'s driver, both ways (the cache i
 	v.boss = 'hide'
 	eq(TR.Visibility.Driver(v), '[petbattle] hide; [@boss1,exists] hide; show', 'then Hide, with nothing else changed')
 end, { visibility = { items = true } })
+
+-- F5: the mouse is watched only while the window is shown.
+both('the hover poll stops while a trigger hides the window and starts again when it shows', function(st, TR)
+	set(TR, { mouseoff = 'fade' })
+	check(TR.fader:GetScript('OnUpdate') ~= nil, 'Mouse off: the mouse is watched')
+	set(TR, { nocombat = 'hide' })
+	check(not TR.window:IsShown(), 'out of combat the window is hidden')
+	check(not TR.hoverWatch, 'nothing is hovered while it is hidden: no watch')
+	check(TR.fader:GetScript('OnUpdate') == nil, 'and the fader runs nothing')
+	TW.combat(true)
+	check(TR.window:IsShown(), 'in combat it is shown')
+	check(TR.fader:GetScript('OnUpdate') ~= nil, 'and the mouse is watched again')
+	TW.combat(false)
+	check(TR.fader:GetScript('OnUpdate') == nil, 'hidden again: the watch stops')
+end)
