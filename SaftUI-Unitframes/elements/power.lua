@@ -94,6 +94,7 @@ local function GetConfigTable(unit)
 		type = 'group',
 		name = 'Power',
 		order = 2,
+		saved = UF.SavedIn(unit, 'power'),
 		get = function(info)
 			return UnitConfig().power[info[#info]]
 		end,
@@ -110,7 +111,7 @@ local function GetConfigTable(unit)
 			background = G.background(4.5),
 			alpha = G.alpha(5, 'How solid the power bar is, from see-through to opaque.'),
 			framelevel = G.framelevel(6, 'Draws the bar over the parts of the unit frame with a lower frame level, and under those with a higher one.'),
-			size = UF.GenerateRelativeSizeConfigGroup(8),
+			size = UF.GenerateRelativeSizeConfigGroup(8, UF.SavedIn(unit, 'power')),
 			colors = UF.GenerateColorsConfigGroup(9, unit, 'power',
 				{ 'colorDisconnected', 'colorTapping', 'colorPower', 'colorClass', 'colorClassNPC', 'colorClassPet', 'colorReaction' },
 				function() return UnitConfig().power end, Update),
@@ -119,6 +120,7 @@ local function GetConfigTable(unit)
 				name = 'Text',
 				type = 'group',
 				inline = true,
+				saved = UF.SavedIn(unit, 'power', 'text'),
 				get = function(info)
 					return UnitConfig().power.text[info[#info]]
 				end,
@@ -152,7 +154,7 @@ local function GetConfigTable(unit)
 						end,
 						UF:ConfigTarget(unit, 'Power', 'text'),
 						"Where the power text sits: which of its points goes to which point of what it's attached to, then moved by X and Y.",
-						'Text position'
+						'Text position', UF.SavedAt(unit, 'power', 'text', 'position')
 					),
 				},
 			},
@@ -161,6 +163,7 @@ local function GetConfigTable(unit)
 				name = 'Bar background',
 				type = 'group',
 				inline = true,
+				saved = UF.SavedIn(unit, 'power', 'bg'),
 				get = function(info)
 					return UnitConfig().power.bg[info[#info]]
 				end,
@@ -182,7 +185,8 @@ local function GetConfigTable(unit)
 					Update()
 				end,
 				UF:ConfigTarget(unit, 'Power'),
-				"Where the power bar sits: which of its points goes to which point of what it's attached to, then moved by X and Y."
+				"Where the power bar sits: which of its points goes to which point of what it's attached to, then moved by X and Y.",
+				nil, UF.SavedAt(unit, 'power', 'position')
 			),
 		}
 	}

@@ -52,13 +52,17 @@ end
 
 -- An element's size (UF:UpdateElementSize), on one line: Width and its
 -- Relative, Height and its Relative. Untitled, so it reads as part of the
--- options above it.
-function UF.GenerateRelativeSizeConfigGroup(order)
+-- options above it. saved, UF.SavedIn of the element's own group (the Width and
+-- Height boxes have a get of their own, which hands on to that group's, so
+-- each carries it: the reset reads where the element keeps them).
+function UF.GenerateRelativeSizeConfigGroup(order, saved)
 	local G = st.Config.generators
 	local width = G.width(1, "The width in pixels. With Relative on, it's added to the unit frame's width: 0 is as wide as the unit frame, -4 is 4 narrower.")
 	width.size = 'small'
+	width.saved = saved
 	local height = G.height(3, "The height in pixels. With Relative on, it's added to the unit frame's height: 0 is as tall as the unit frame, -4 is 4 shorter.")
 	height.size = 'small'
+	height.saved = saved
 	return {
 		order = order,
 		name = '',
@@ -315,6 +319,38 @@ function UF.GenerateColorsConfigGroup(order, unit, element, flags, config, updat
 	}
 end
 
+
+-- The name of the unit frame profile in use: a part of a saved path, looked up
+-- on every read (a profile change replaces the profile's tables).
+local function ProfileName() return UF:GetProfile() end
+
+-- Where a unit frame setting is saved, for the options kit's reset
+-- (st.Config.SavedIn and SavedAt, SaftUI-Core/Config/optionsdefault.lua): in the
+-- profile in use, `unitframes.profiles.<profile>.<unit>`, then the parts.
+--   UF.SavedIn(unit, 'health')            a group whose get reads
+--                                         UnitConfig().health[info[#info]]
+--   UF.SavedAt(unit, 'health', 'position') an option with a get of its own
+-- The default at that path is AceDB's merged one: the unit's own table over
+-- the '**' one (st:DefaultAt). Both give a function(info), and are made when
+-- the page's table is built.
+-- Core's kit is always loaded first in game; a test that builds a page without
+-- it gets no saved, and so no reset to ask for.
+function UF.SavedIn(unit, ...)
+	local build = st.Config.SavedIn
+	return build and build('unitframes', 'profiles', ProfileName, unit, ...) or nil
+end
+
+function UF.SavedAt(unit, ...)
+	local build = st.Config.SavedAt
+	return build and build('unitframes', 'profiles', ProfileName, unit, ...) or nil
+end
+
+-- option with its own saved, for a Width or Height box (its get hands on to the
+-- group's, so the group's saved doesn't reach it).
+local function WithSaved(option, saved)
+	option.saved = saved
+	return option
+end
 
 -- A unit's name, as its page in /sui is named.
 local function UnitName(unit)
@@ -693,6 +729,7 @@ function UF:GetConfigTable()
 					order = 0,
 					name = 'General',
 					type = 'group',
+					saved = UF.SavedIn(unit),
 					get = function(info)
 						return UnitConfig()[info[#info]]
 					end,
@@ -706,15 +743,15 @@ function UF:GetConfigTable()
 						enable = st.Config.generators.enable(0, 'Shows this unit frame. When off, the unit frame is hidden.'),
 						theme = st.Config.generators.theme(1, "How this unit frame's border and background are drawn."),
 						background = st.Config.generators.background(1.5),
-						width = st.Config.generators.width(2, "The unit frame's width."),
-						height = st.Config.generators.height(3, "The unit frame's height."),
+						width = WithSaved(st.Config.generators.width(2, "The unit frame's width."), UF.SavedIn(unit)),
+						height = WithSaved(st.Config.generators.height(3, "The unit frame's height."), UF.SavedIn(unit)),
 						-- Every SetPoint parameter, the relative frame included.
 						-- Passing the mover's frame makes a typed frame go through
 						-- st:ValidateAnchor, which rejects the frame itself and
 						-- anything anchored back to it (e.g. Pet for Player).
 						-- Last in General, after a group's Layout too.
 						position = st.Config.generators.position(1000, true, frame_position_get, frame_position_set,
-							self:GetMoverFrame(unit)),
+							self:GetMoverFrame(unit), nil, nil, UF.SavedAt(unit, 'position')),
 					}
 				}
 			}

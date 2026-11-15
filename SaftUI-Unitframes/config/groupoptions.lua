@@ -40,6 +40,7 @@ local function GetGroupLayoutConfig(unit, order)
 			desc = TEST_MODE_DESCS[unit] or TEST_MODE_DESCS.group,
 			type = 'toggle',
 			size = 'small',
+			noReset = 'Test mode lasts this session: it is off at every login.',
 			-- Not a config value: a plain module field, never saved.
 			get = function() return UF.testGroups[unit] and true or false end,
 			set = function(_, value) UF:SetGroupTestMode(unit, value) end,
@@ -95,6 +96,7 @@ function UF:AddGroupOptions(unit, config_table)
 			name = 'Range',
 			type = 'group',
 			inline = true,
+			saved = UF.SavedIn(unit, 'range_alpha'),
 			get = function(info)
 				return UnitConfig().range_alpha[info[#info]]
 			end,
