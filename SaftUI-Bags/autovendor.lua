@@ -198,8 +198,8 @@ local function QuestionText(v, stacks, pendingTail)
 		names[i] = Name(info) .. ((info.count or 1) > 1 and (' x' .. info.count) or '')
 	end
 	local more = #byValue - #names
-	return ("Auto Vendor would sell %d stacks%s, worth %s at a vendor, and a merchant's buyback holds only the last %d you sell%s. Most valuable by vendor price: %s%s. Sell them, or keep them in your bags this visit?")
-		:format(#stacks, junk and '' or " that aren't junk", Gold(total), INV:BuybackSize(),
+	return ("Auto Vendor would sell %d stack%s%s, worth %s at a vendor, and a merchant's buyback holds only the last %d you sell%s. Most valuable by vendor price: %s%s. Sell them, or keep them in your bags this visit?")
+		:format(#stacks, #stacks == 1 and '' or 's', junk and '' or " that aren't junk", Gold(total), INV:BuybackSize(),
 			pushed > 0 and (' (and %d stack%s sold earlier this visit will leave the buyback)'):format(pushed, pushed == 1 and '' or 's') or '',
 			table.concat(names, ', '), more > 0 and (' and ' .. more .. ' more') or '')
 end

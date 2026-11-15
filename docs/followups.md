@@ -7,6 +7,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-15 — Auto Vendor counts a fresh purchase in a just-sold slot as a refused sale](#2026-11-15--auto-vendor-counts-a-fresh-purchase-in-a-just-sold-slot-as-a-refused-sale)
+  - [2026-11-15 — Auto Vendor's second question overstates the earlier stacks that leave](#2026-11-15--auto-vendors-second-question-overstates-the-earlier-stacks-that-leave)
   - [2026-11-15 — Option descriptions that say "red" or "yellow" for what Danger and Caution color](#2026-11-15--option-descriptions-that-say-red-or-yellow-for-what-danger-and-caution-color)
   - [2026-11-15 — Keybind mode's hint line could read Muted](#2026-11-15--keybind-modes-hint-line-could-read-muted)
   - [2026-11-15 — The action bars' and buffs' texts default to Small text](#2026-11-15--the-action-bars-and-buffs-texts-default-to-small-text)
@@ -166,6 +168,30 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-15 — Auto Vendor counts a fresh purchase in a just-sold slot as a refused sale
+
+**What:** `Account` (`SaftUI-Bags/autovendor.lua`) decides a stack was sold when its slot is empty or holds another item or count. A stack bought from the merchant that is the same item in the same count as one just sold, landing in the slot that stack left before the next pass (2 seconds), reads as a refused sale. `tailSold` is one short, the purchase is sold again with no question, and at a visit already at 12 one stack leaves the buyback list unasked.
+
+**Why noticed:** The re-review of Auto Vendor's fix round 1 (probe L3, "Check of fix round 2", 2026-11-15). All five conditions must hold together: a caught item the merchant sells, the same count, the first free slot being the one just emptied, inside one pass window, and a visit already at 12. The reviewer called it rare and costing one stack, and the owner accepted it for the merge.
+
+**Anchors:** `SaftUI-Bags/autovendor.lua` (`Account`, `Sell`); `tests/bags/autovendor_sale_test.lua`.
+
+**What's been considered:** A bought-back stack in the same slot is harmless to the count (its buyback entry is removed, so the list still matches) but it is sold again, which undoes the buyback. A fresh purchase removes no entry, which is why only it breaks the promise.
+
+**Shape of work:** Small. Record `C_Item.GetItemGUID(ItemLocation:CreateFromBagAndSlot(bag, slot))` in `Sell` and compare it in `Account`: a different GUID counts as sold. `GetItemGUID` is in `ItemDocumentation.lua` on both branches. A purchase has a new GUID; a bought-back stack keeps its GUID (counted as now, correct) or gets a new one (counted twice, which only asks sooner), so the count is never short. Optionally also a post-hook (`hooksecurefunc`, `.agents/taint.md` rule 2) on `BuyMerchantItem` and `BuybackItem` to end the unasked part of a visit once the player starts buying, which would also stop SaftUI selling back what the player just bought back. Tests need a stub GUID per item.
+
+**Open questions:** Whether to also end the unasked sales when the player buys.
+
+### 2026-11-15 — Auto Vendor's second question overstates the earlier stacks that leave
+
+**What:** The second question of a visit says how many stacks sold earlier this visit will leave the buyback ("... and N stacks sold earlier this visit will leave the buyback"). Once a visit has already sold more than 12 (after a Sell them to 13 stacks, say) the number is too high: with a 14th stack the question says 2 and the true number is 1. The formula `min(earlier + in flight, earlier + in flight + its own - size)` is right while `earlier + in flight` is 12 or fewer.
+
+**Why noticed:** The re-review of Auto Vendor's fix round 1 (probe N7b, 2026-11-15). It errs on the safe side (the question warns of more than will happen), so it was left for later.
+
+**Anchors:** `SaftUI-Bags/autovendor.lua` (`QuestionText`, the `pushed` figure); `tests/bags/autovendor_sale_test.lua` ("N-2").
+
+**Shape of work:** Small. With `e = tailSold + pendingTail` and `n` the new stacks, only `min(e, size)` of the earlier stacks are still in the buyback, so the number that leave is `min(e, size) - min(min(e, size), max(0, size - n))`; or cap it at `min(n, ...)`. Add a test for a visit past 12.
 
 ### 2026-11-15 — Option descriptions that say "red" or "yellow" for what Danger and Caution color
 

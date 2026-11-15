@@ -715,6 +715,8 @@ test('N-1: a sale still in flight counts, so a stack that appears meanwhile cann
 	step()
 	eq(#used, 12, 'the 13th is not sold')
 	check(prompt ~= nil, 'it asks')
+	check(prompt.text:find('1 stack sold earlier this visit will leave the buyback', 1, true),
+		'a sale in flight counts in what leaves: ' .. prompt.text)
 	W.flush()
 	step()
 	eq(#used, 12, 'and still not, once the last one lands')
@@ -805,4 +807,52 @@ test('m-4: Sell them while a gray is still being retried waits for the gray', fu
 		if id < 700 then last_gray = i elseif not first_other then first_other = i end
 	end
 	check(last_gray and first_other and last_gray < first_other, 'the gray sells before the named stacks: ' .. csv(order))
+end)
+
+------------------------------------------------------------------ fix round 3
+
+test("n-3: the question says '1 stack' and 'N stacks'", function()
+	world({}, 13)
+	open_merchant()
+	step()
+	check(prompt.text:find('would sell 13 stacks', 1, true), prompt.text)
+	check(not prompt.text:find('1 stacks', 1, true), 'no "1 stacks": ' .. prompt.text)
+	-- One late gray over a visit of 12.
+	world({}, 12)
+	open_merchant()
+	step()
+	W.put(1, 21, W.item(698, 'Late Gray', 'Miscellaneous', 1, { quality = 0, vendorPrice = 10 }))
+	step()
+	check(prompt.text:find('would sell 1 stack,', 1, true), prompt.text)
+	check(not prompt.text:find('1 stacks', 1, true), 'no "1 stacks": ' .. prompt.text)
+end)
+
+test("n-3: the summary says '1 stack' and 'N stacks'", function()
+	world({ { 601, 10 } }, 0)
+	open_merchant()
+	step()
+	step()
+	check(prints[#prints]:find('Sold 1 stack for', 1, true), prints[#prints])
+	check(not prints[#prints]:find('1 stacks', 1, true), prints[#prints])
+end)
+
+test("n-4: a question of non-grays says 'that aren't junk'", function()
+	world({}, 13)
+	open_merchant()
+	step()
+	check(prompt.text:find("stacks that aren't junk", 1, true), prompt.text)
+end)
+
+test('n-4: a refused stack is not a sale in flight: it is not counted twice', function()
+	-- Twelve pinned; one is refused on the first pass. Eleven sold, so the retry
+	-- of the twelfth still fits the buyback list: no question.
+	world({}, 12)
+	W.refused[701] = true
+	open_merchant()
+	step()
+	eq(#used, 12, 'twelve asked')
+	W.refused[701] = nil
+	step()
+	eq(prompt, nil, 'no question for the retry')
+	eq(#used, 13, 'the refused one is sold on the next pass')
 end)
