@@ -590,6 +590,12 @@ test('the value helpers allocate nothing on a shared key, or on a typeface alrea
 		{ 'st:FontValues(dropped key)', function() return st:FontValues('pixel_huge') end },
 		{ 'st:FontLabel(key)', function() return st:FontLabel('pixel') end },
 		{ 'st:IsSharedFont', function() return st:IsSharedFont('pixel') end },
+		-- The hot path of every reader: a text put on a font (a unit frame's
+		-- update, a tooltip line) allocates nothing either.
+		{ 'st:ApplyFont(key)', function() return st:ApplyFont(fs, 'pixel') end },
+		{ 'st:ApplyFont(nil)', function() return st:ApplyFont(fs, nil) end },
+		{ 'st:ApplyFont(table)', function() return st:ApplyFont(fs, face) end },
+		{ 'st:ApplyFont(dropped key)', function() return st:ApplyFont(fs, 'pixel_huge') end },
 	}
 	for _, case in ipairs(cases) do
 		local kb = Allocated(case[2])
