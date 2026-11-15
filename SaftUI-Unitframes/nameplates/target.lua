@@ -6,7 +6,7 @@ local UF = st:GetModule('Unitframes')
 	target's health bar, so it stands out among the plates. Under Thick and Thin
 	it's a white line (the border st:SetBorderColor colours); under the Blizzard
 	theme it's Blizzard's own target art (the control 'nameplatetarget',
-	SaftUI-Core/themeart.lua), drawn round the bar on a frame of SaftUI's.
+	SaftUI-Core/themeart_data.lua), drawn round the bar on a frame of SaftUI's.
 
 	The target's plate is found by its frame (C_NamePlate.GetNamePlateForUnit),
 	never by UnitIsUnit, which the game may answer with a secret value for a

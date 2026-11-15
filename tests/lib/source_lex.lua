@@ -1,9 +1,10 @@
 -- The lexer tests that scan SaftUI's source share (tests/core/color_reads_test.lua):
 -- a Lua file's text with its comments blanked (code), and with its comments and
 -- the contents of its strings blanked too (mask), and the line a position is on.
--- A copy of the one in tests/core/theme_kinds_test.lua (see docs/followups.md,
--- "Three copies of the source lexer in tests"). Not a test (no _test suffix),
--- so the runner doesn't run it. Load it with
+-- The one lexer the scans share (core/color_reads_test.lua,
+-- core/setfont_scan_test.lua, core/theme_kinds_test.lua,
+-- tracker/source_scan_test.lua). Not a test (no _test suffix), so the runner
+-- doesn't run it. Load it with
 -- `local L = load_test_file('lib/source_lex.lua')`; it makes no globals.
 local L = {}
 
