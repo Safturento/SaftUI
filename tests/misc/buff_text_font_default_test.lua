@@ -164,3 +164,43 @@ test('the source: the shipped texts name the key', function()
 	local code = select(1, load_test_file('lib/source_lex.lua').Lex(read_saftui_source('SaftUI-Misc/config.lua')))
 	check(not code:find('font = pixel.font_name', 1, true), 'no copy of the face in the defaults')
 end)
+
+test("the buffs' Size and Outline resets: differs, value and reset put the shipped 10 and monochrome outline back", function()
+	fresh()
+	AP:ConvertFonts()
+	local real = { UpdateText = AP.UpdateText, GetGeometry = AP.GetGeometry }
+	AP.holders = { buffs = CreateFrame('Frame', nil, UIParent), debuffs = CreateFrame('Frame', nil, UIParent) }
+	AP.maxAuras = { buffs = 32, debuffs = 16 }
+	function AP:GetGeometry() return { horizontal = true, grow = 'LEFT', wrap = 'DOWN' } end
+	function AP:UpdateText() end
+	local tree = AP:GetConfigTable()
+	for _, key in ipairs(FRAMES) do
+		for _, kind in ipairs(KINDS) do
+			local group = tree.args[key].args.text.args[kind]
+			local size, outline = group.args.size.default, group.args.outline.default
+			eq(size.differs(), false, 'Size at its default')
+			eq(outline.differs(), false, 'Outline at its default')
+			group.set({ 'size' }, 14)
+			group.set({ 'outline' }, 'OUTLINE')
+			eq(size.differs(), true, key .. ' ' .. kind .. ': Size differs')
+			eq(outline.differs(), true, 'Outline differs')
+			eq(size.value(), 10, "Size's default value")
+			eq(outline.value(), 'MONOCHROMEOUTLINE', "Outline's default value")
+			size.reset()
+			outline.reset()
+			eq(AP.config[key][kind].size, 10, 'Size reset')
+			eq(AP.config[key][kind].outline, 'MONOCHROMEOUTLINE', 'Outline reset')
+		end
+	end
+	for name, fn in pairs(real) do AP[name] = fn end
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('AP:OnEnable converts the profile before anything is drawn', function()
+	fresh({ buffs = { duration = { size = 14 } } })
+	AP.config = nil
+	AP:OnEnable()
+	eq(AP.config.fontsVersion, 1, 'marked at login')
+	eq(AP.config.buffs.duration.font, 'Homespun', 'the size-only text keeps its face')
+	eq(select(2, AP:GetFont('buffs', 'duration'):GetFont()), 14, 'and its size, in the first draw')
+end)

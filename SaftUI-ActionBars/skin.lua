@@ -440,12 +440,28 @@ function AB:StyleButton(button, config, theme, background)
 	self:UpdateEquippedBorder(button)
 end
 
+-- What a bar's hotkey, count and macro name draw (face, size, flags, shadow), as
+-- one string: kept when a bar is styled, so a font change that leaves a bar's
+-- texts looking the same (Heading's or Text's, with the bar on Small text)
+-- restyles nothing. id -> string.
+local drawnLooks = {}
+local function TextLooks(config)
+	local out = {}
+	for _, kind in ipairs({ 'hotkey', 'count', 'macro' }) do
+		local text = config.text[kind]
+		local path, size, flags, x, y = st:FontValues(st:FaceFont(text.font, text.size, text.outline))
+		out[#out + 1] = path .. '|' .. size .. '|' .. flags .. '|' .. x .. '|' .. y
+	end
+	return table.concat(out, ';')
+end
+
 -- Every button of bar id, re-configured and re-styled from the profile. Protected
 -- (LibActionButton sets attributes), so out of combat only.
 function AB:StyleBar(id)
 	local bar = self.bars[id]
 	if not bar then return end
 	local config = self:GetBarConfig(id)
+	drawnLooks[id] = TextLooks(config)
 	local theme, background = self.config.theme, self.config.background
 	for i, button in ipairs(bar.buttons) do
 		button:UpdateConfig(self:GetButtonConfig(id, i, config))
@@ -472,7 +488,8 @@ end
 function AB:RestyleSharedFontBars()
 	local restyle = {}
 	for id, bar in pairs(self.bars) do
-		if bar.buttons and UsesSharedFont(self:GetBarConfig(id)) then restyle[#restyle + 1] = id end
+		local config = bar.buttons and self:GetBarConfig(id)
+		if config and UsesSharedFont(config) and TextLooks(config) ~= drawnLooks[id] then restyle[#restyle + 1] = id end
 	end
 	-- In combat only when there is something to restyle: a profile of typefaces
 	-- queues nothing.

@@ -337,3 +337,62 @@ test('the source: the shipped texts name the key, and the library is not touched
 	check(code:find("font = 'pixel'", 1, true), "Text() ships font = 'pixel'")
 	check(not code:find('font = pixel.font_name', 1, true), 'no copy of the face')
 end)
+
+-- A bar that owned its font where the owned font was the old default face: AceDB
+-- never saved it, so it reads Small text now beside the size it owned or follows.
+test('a bar that owned the old default face (unsaved) and its own size keeps what it drew', function()
+	fresh({ version = 1, all = { text = { hotkey = { font = 'Colus' } } },
+		bar2 = { own = { ['hotkey.font'] = true, ['hotkey.size'] = true }, text = { hotkey = { size = 14 } } } }, false)
+	AB:ConvertProfile()
+	eq(look('bar2', 'hotkey'), face_look('Homespun', 14, 'MONOCHROMEOUTLINE'), 'bar2 draws Homespun 14')
+	eq(look('bar3', 'hotkey'), face_look('Colus', 10, 'MONOCHROMEOUTLINE'), 'bar3 follows All bars')
+	eq(AB:IsOwn('bar2', 'hotkey.font'), true, 'bar2 still owns the font')
+end)
+
+test("a bar that owned the old default face (unsaved) and followed All bars' size keeps what it drew", function()
+	fresh({ version = 1, all = { text = { hotkey = { font = 'Colus', size = 14 } } },
+		bar2 = { own = { ['hotkey.font'] = true }, text = { hotkey = {} } } }, false)
+	AB:ConvertProfile()
+	eq(look('bar2', 'hotkey'), face_look('Homespun', 14, 'MONOCHROMEOUTLINE'), 'bar2 draws Homespun 14')
+end)
+
+test('a bar that owned the old default face and only an outline keeps what it drew', function()
+	fresh({ version = 1, all = { text = { hotkey = { font = 'Colus' } } },
+		bar2 = { own = { ['hotkey.font'] = true, ['hotkey.outline'] = true }, text = { hotkey = { outline = 'OUTLINE' } } } }, false)
+	AB:ConvertProfile()
+	eq(look('bar2', 'hotkey'), face_look('Homespun', 10, 'OUTLINE'), 'bar2 draws Homespun with an outline')
+end)
+
+test('a bar that owns only an outline, following All bars Small text, owns the face too', function()
+	fresh({ version = 1, bar2 = { own = { ['hotkey.outline'] = true }, text = { hotkey = { outline = 'THICKOUTLINE' } } } }, false)
+	AB:ConvertProfile()
+	eq(look('bar2', 'hotkey'), face_look('Homespun', 10, 'THICKOUTLINE'), 'bar2')
+	eq(look('bar3', 'hotkey'), old_look(), 'bar3 is on Small text')
+end)
+
+test('a bar that owns a typeface keeps it, and a reset flag with stale values follows All bars', function()
+	fresh({ version = 1, all = { text = { hotkey = { size = 14 } } },
+		bar2 = { own = { ['hotkey.font'] = true }, text = { hotkey = { font = 'Colus' } } },
+		bar3 = { own = { ['hotkey.font'] = false, ['hotkey.size'] = false }, text = { hotkey = { font = 'Colus', size = 20 } } } }, false)
+	AB:ConvertProfile()
+	eq(look('bar2', 'hotkey'), face_look('Colus', 14, 'MONOCHROMEOUTLINE'), "bar2 keeps Colus at All bars' size")
+	eq(look('bar3', 'hotkey'), look('bar1', 'hotkey'), 'bar3 follows All bars')
+	eq(AB:IsOwn('bar3', 'hotkey.font'), false, 'and still does')
+end)
+
+test('the cooldown numbers: a bar that owns a size or font alone is not touched by the step', function()
+	fresh({ version = 1, bar2 = { own = { ['countdown.size'] = true }, text = { countdown = { size = 22 } } } }, false)
+	AB:ConvertProfile()
+	eq(AB.config.bar2.text.countdown.font, nil, 'no font written')
+	eq(AB:IsOwn('bar2', 'countdown.font'), false, 'none owned')
+	eq(AB:GetBarConfig('bar2').text.countdown.size, 22, 'its size stays')
+end)
+
+test('a drawn button on a converted profile: bar 2 owning the old face and a size draws it, library and object', function()
+	fresh({ version = 1, bar2 = { own = { ['hotkey.size'] = true }, text = { hotkey = { size = 14 } } } }, false)
+	AB:ConvertProfile()
+	local b = bar('bar2', button('TextFontShapeButton'))
+	eq(select(2, b.HotKey:GetFont()), 14, 'the hotkey draws 14')
+	eq(b.labConfig.text.hotkey.font.size, 14, 'and the library is given 14')
+	eq(b.HotKey:GetFontObject(), st:FontObject({ font_name = 'Homespun', font_size = 14, font_outline = 'MONOCHROMEOUTLINE' }), 'on the typeface object')
+end)

@@ -3,10 +3,11 @@
 --     by st:CreateButton and every button st:SkinButton skins with no font of
 --     its own: its text, and the button's own normal, highlight and disabled
 --     font objects, follow a change at once, a shared font or a typeface.
---   - Check box labels (profile panels.font) is the label of every check box
---     st:SkinCheckButton skins, until a caller puts a font on it. The bags' Edit
---     toggle is the one check box with a label; it puts none of its own.
---   - Neither row reaches the other's widgets, nor the totem bar's timers
+--   - Check box labels (profile panels.font) has no row on the Fonts tab (nothing
+--     visible reads it), but a check box label still follows a saved value until a
+--     caller puts a font on it. The bags' Edit toggle, styled as a button, follows
+--     Button text.
+--   - Button text does not reach the totem bar's timers
 --     (tests/misc/totem_timer_font_test.lua).
 --
 -- Every case sets a font that is not the default, so a hard-coded Pixel fails.
@@ -124,40 +125,60 @@ test('st:SkinButton on a plain frame follows Button text through its label regio
 	ButtonText('pixel')
 end)
 
-test('the shipped Button text draws what the buttons drew before: Small text', function()
+test('the shipped Button text draws what the buttons drew before: Small text, as literals', function()
 	Fresh()
 	eq(st.config.profile.buttons.font, 'pixel', 'the default is Small text')
 	local button = st:CreateButton('ButtonTextD', UIParent, 'Go', 'theme', 'solid')
 	local obj = button.text:GetFontObject()
 	local path, size, flags = obj:GetFont()
-	local want = st:FontValues('pixel')
-	local _, wantSize, wantFlags = st:FontValues('pixel')
-	eq(size, wantSize, 'size')
-	eq(flags, wantFlags, 'outline')
+	eq(path, st.LSM:Fetch('font', 'Homespun'), 'face: Homespun')
+	eq(size, 10, 'size 10')
+	eq(flags, 'MONOCHROMEOUTLINE', 'monochrome outline')
 	local x, y = obj:GetShadowOffset()
 	eq(x .. ',' .. y, '0,0', 'no shadow')
-	check(path == want, 'face')
+	eq(obj:GetSpacing(), 4, 'spacing 4')
+	check(obj == st:GetFont('pixel'), 'the object the old hard-coded font was')
+	check(button:GetNormalFontObject() == st:GetFont('pixel'), 'and the state fonts')
 end)
 
-test('Button text does not reach a check box, and Check box labels not a button', function()
+test("a button's label takes its own height and the button's width: a larger font cuts it at the sides, never blanks it", function()
+	Fresh()
+	for _, label in ipairs({ 'plain', 'given' }) do
+		local button = st:CreateButton('ButtonTextAnchor' .. label, UIParent, 'Warband Bank', 'theme', 'solid', label == 'given' and 'normal' or nil)
+		button:SetSize(80, 16)
+		local points = {}
+		for i = 1, button.text:GetNumPoints() do points[#points + 1] = (button.text:GetPoint(i)) end
+		table.sort(points)
+		eq(table.concat(points, ','), 'LEFT,RIGHT', label .. ': anchored by its sides only, so its height is its own')
+		eq(button.text:CanWordWrap(), false, label .. ': one line')
+	end
+	ButtonText('title') -- Huge title, 72
+	local button = st:CreateButton('ButtonTextHuge', UIParent, 'Done', 'theme', 'solid')
+	button:SetSize(60, 16)
+	eq(button:GetHeight(), 16, 'the button does not grow')
+	check(button.text:GetHeight() > 0 or button.text:GetStringHeight() > 0, 'the label keeps a height of its own')
+	ButtonText('pixel')
+end)
+
+test('Button text does not reach a check box label, which follows a saved panels.font', function()
 	Fresh()
 	local button = st:CreateButton('ButtonTextE', UIParent, 'Go', 'theme', 'solid')
 	local box = CreateFrame('CheckButton', 'ButtonTextBox', UIParent)
 	box.Text = box:CreateFontString(nil, 'ARTWORK')
 	st:SkinCheckButton(box)
-	check(box.text:GetFontObject() == st:GetFont('normal'), 'a label starts in Check box labels')
+	check(box.text:GetFontObject() == st:GetFont('normal'), 'a label starts in panels.font')
 
 	ButtonText('heading')
 	check(box.text:GetFontObject() == st:GetFont('normal'), 'Button text leaves the label')
 	CheckLabels('subtitle')
-	check(box.text:GetFontObject() == st:GetFont('subtitle'), 'Check box labels reach the label')
-	AllOn(button, st:GetFont('heading'), 'and leave the button')
+	check(box.text:GetFontObject() == st:GetFont('subtitle'), 'a saved panels.font reaches the label')
+	AllOn(button, st:GetFont('heading'), 'and leaves the button')
 	CheckLabels(TYPEFACE)
 	check(box.text:GetFontObject() == st:FontObject(TYPEFACE), 'a typeface reaches the label')
 	Fresh()
 end)
 
-test("a check box label the caller sets a font on follows no more; the bags' Edit toggle sets none", function()
+test("a check box label the caller sets a font on follows no more; the bags' Edit toggle follows Button text", function()
 	Fresh()
 	local box = CreateFrame('CheckButton', 'ButtonTextBox2', UIParent)
 	box.Text = box:CreateFontString(nil, 'ARTWORK')
@@ -170,26 +191,40 @@ test("a check box label the caller sets a font on follows no more; the bags' Edi
 	local source = read_saftui_source('SaftUI-Bags/header.lua')
 	check(source ~= nil, 'the bags header is there')
 	local code = select(1, load_test_file('lib/source_lex.lua').Lex(source))
-	check(not code:find('SetTextFont', 1, true), "the Edit toggle's label is left to Check box labels")
+	check(not code:find('SetTextFont', 1, true), "the Edit toggle sets no font of its own")
+	check(code:find('SkinButtonLabel(filterButton.text', 1, true), 'it follows Button text, as a button does')
 end)
 
 test('the Kinds of text rows say what they change', function()
-	local button, check_labels = Kinds().args.button_text, Kinds().args.checkbox_labels
+	local button = Kinds().args.button_text
+	eq(Kinds().args.checkbox_labels, nil, 'no Check box labels row')
 	check(button.desc:find('and its totem timers', 1, true) == nil, "Button text no longer claims the totem bar's timers: " .. button.desc)
 	check(button.desc:find('own on the Totem bar', 1, true), 'it says where the timers went: ' .. button.desc)
 	check(button.desc:find('Bag Slots', 1, true) and button.desc:find('Done', 1, true), 'it names the buttons: ' .. button.desc)
 	check(button.desc:find('totem', 1, true), "and the totem bar's key bindings, counts and names: " .. button.desc)
-	check(check_labels.desc:find('Edit', 1, true), "Check box labels names the one label there is: " .. check_labels.desc)
 end)
 
-test('every SaftUI button is made by Core, so no module hard-codes Small text on one', function()
-	-- A hard-coded Pixel on a button's label would not follow Button text. The
-	-- Core widget takes it from the profile (a given font: the clock's, which the
-	-- micro menu keeps in Small text).
-	local source = read_saftui_source('SaftUI-Core/Widgets/button.lua')
-	local code = select(1, load_test_file('lib/source_lex.lua').Lex(source))
-	check(not code:find("font or 'pixel'", 1, true), "st:SkinButton has no hard-coded 'pixel' left")
-	check(not code:find("CreateFontString(button, 'pixel'", 1, true), "st:CreateButton's label has none either")
+test('no addon file hard-codes Small text on the label of a button it skins', function()
+	local T = load_test_file('lib/theme_helpers.lua')
+	local lex = load_test_file('lib/source_lex.lua')
+	local scanned = 0
+	for _, file in ipairs(T.saftui_files()) do
+		local source = read_saftui_source(file)
+		if source then
+			scanned = scanned + 1
+			local code = select(1, lex.Lex(source))
+			-- Only a file that skins its buttons with Core's: a label drawn on something
+			-- else (the minimap's difficulty badge) is Small text by its own job.
+			if code:find('SkinButton(', 1, true) or code:find('CreateButton(', 1, true) then
+				for line in code:gmatch('[^\n]+') do
+					if line:find("CreateFontString(button, 'pixel'", 1, true) or line:find("font or 'pixel'", 1, true) then
+						check(false, file .. ': ' .. line)
+					end
+				end
+			end
+		end
+	end
+	check(scanned > 50, 'scanned every TOC-loaded file: ' .. scanned)
 end)
 
 test("the micro menu's clock keeps Small text: it is given the font, since the bar sets it on every layout", function()

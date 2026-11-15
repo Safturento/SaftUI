@@ -4,6 +4,19 @@ local st = SaftUI
 -- label is drawn or follows.
 local function ButtonsFont() return st.config.profile.buttons.font end
 
+-- Makes a label a SaftUI button shows (a font string of the module's own, not the
+-- button's own text) follow Button text, one line, centred between the button's
+-- sides: it takes its own height, so a larger font can't leave it shorter than a
+-- line, and a label too wide for the button is cut at the sides, never blanked
+-- or growing the button.
+function st:SkinButtonLabel(label, button)
+	label:ClearAllPoints()
+	label:SetPoint('LEFT', button, 'LEFT', 2, 0)
+	label:SetPoint('RIGHT', button, 'RIGHT', -2, 0)
+	label:SetWordWrap(false)
+	st:FollowFont(label, ButtonsFont)
+end
+
 -- Puts a font object on a button's own normal, highlight and disabled states,
 -- which is what draws its label. Passed to st:FollowFont, since a Button has
 -- no SetFontObject to follow with.
@@ -22,8 +35,13 @@ end
 function st:CreateButton(name, parent, text, theme, background, font)
 	local button = self:CreateFrame('Button', name and 'SaftUI_'..name or nil, parent)
 	button.text = self:CreateFontString(button, font or ButtonsFont(), text)
-	button.text:SetAllPoints()
-	if not font then st:FollowFont(button.text, ButtonsFont) end
+	if font then
+		button.text:SetPoint('LEFT', button, 'LEFT', 2, 0)
+		button.text:SetPoint('RIGHT', button, 'RIGHT', -2, 0)
+		button.text:SetWordWrap(false)
+	else
+		st:SkinButtonLabel(button.text, button)
+	end
 
     self:SkinButton(button, theme, background, font)
 

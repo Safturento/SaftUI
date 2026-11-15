@@ -606,9 +606,7 @@ end
 -- (st:FollowFont), so a change reaches them at once.
 local TEXT_FONTS = {
 	{ 'button_text', 'buttons', 'Button text', 'pixel',
-		"The text on SaftUI's buttons: the bags' Bag Slots, Warband Bank, Deposit and bank tab buttons, keybind mode's Done, the totem bar's key bindings, counts and names, and the bag slot bars' and the bank's bag slots' texts. The totem timers have a font of their own on the Totem bar's page." },
-	{ 'checkbox_labels', 'panels', 'Check box labels', 'normal',
-		"The labels of SaftUI's check boxes. Today only the bags' Edit toggle has one, and it isn't shown yet, so this changes nothing you can see." },
+		"The labels of SaftUI's buttons (such as the bags' Bag Slots and Warband Bank and keybind mode's Done), the totem bar's key bindings, counts and names, and the bag slot bars' and the bank's bag slots' texts. The totem timers have a font of their own on the Totem bar's page." },
 }
 
 local TEXT_FONTS_NOTE = 'Which font each kind of text uses. A change shows at once.'

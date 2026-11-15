@@ -320,9 +320,9 @@ end
 --   - In a profile not yet converted to All bars, each bar's own text tables
 --     (the values a bar shows, with no flags yet).
 --   - In one converted, All bars' text tables, and then each bar's effective
---     values: a bar that follows All bars' Small text but owns a size or an
---     outline owns the old face too, so it draws what it did. A bar that owns
---     its font (a shared font picked from the Font row) keeps it.
+--     values: a bar whose effective font is Small text (followed, or owned but
+--     never saved because it was the old default face) with a size or an outline
+--     that is not the old copy's owns the old face, so it draws what it did.
 function AB:ConvertFonts()
 	local config = self.config
 	if not config or config.fontsVersion ~= nil then return end
@@ -349,11 +349,13 @@ function AB:ConvertFonts()
 			local bar = config[id]
 			for _, kind in ipairs(FONT_KINDS) do
 				local key = kind .. '.'
-				if bar and bar.text and type(bar.text[kind]) == 'table' and self:HasSetting(id, key .. 'font')
-					and not self:IsOwn(id, key .. 'font') then
+				if bar and bar.text and type(bar.text[kind]) == 'table' and self:HasSetting(id, key .. 'font') then
 					local all = config.all and config.all.text and config.all.text[kind] or {}
-					if all.font == AB.DEFAULT_TEXT_FONT then
-						local text = bar.text[kind]
+					local text = bar.text[kind]
+					-- The effective font: an owned font that is the old default face was never
+					-- saved, so it reads Small text here too.
+					local font = self:IsOwn(id, key .. 'font') and text.font or all.font
+					if font == AB.DEFAULT_TEXT_FONT then
 						local size = self:IsOwn(id, key .. 'size') and text.size or all.size
 						local outline = self:IsOwn(id, key .. 'outline') and text.outline or all.outline
 						if size ~= old.size or outline ~= old.outline then

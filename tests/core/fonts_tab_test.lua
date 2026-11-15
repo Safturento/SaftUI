@@ -348,7 +348,7 @@ test("Line spacing reads and writes the font's spacing, and its font object take
 	Set('normal', 'spacing', 4)
 end)
 
-test("Kinds of text: Button text and Check box labels, each with its reset; Window titles has left; Button text's desc names the bag slot bars and the bank's bag slots", function()
+test("Kinds of text: Button text alone, with its reset (no Check box labels row until a check box has a visible label); Window titles has left; Button text's desc names the bag slot bars and the bank's bag slots", function()
 	local section = Tab().args.kinds
 	eq(section.type, 'group')
 	eq(section.inline, true, 'a section, not a tab')
@@ -358,7 +358,8 @@ test("Kinds of text: Button text and Check box labels, each with its reset; Wind
 
 	local rows = {}
 	for i, r in ipairs(ByOrder(section.args)) do rows[i] = r.key .. '=' .. r.v.name end
-	eq(table.concat(rows, ','), 'button_text=Button text,checkbox_labels=Check box labels')
+	eq(table.concat(rows, ','), 'button_text=Button text')
+	eq(section.args.checkbox_labels, nil, 'no Check box labels row: nothing visible reads it')
 	eq(section.args.window_titles, nil, 'Window titles is on the Theme tab now')
 	for key, option in pairs(section.args) do
 		eq(option.type, 'font', key)
@@ -381,11 +382,9 @@ test("Kinds of text: Button text and Check box labels, each with its reset; Wind
 	check(section.args.button_text.desc:find('totem bar', 1, true), "Button text's tooltip names the totem bar")
 	check(section.args.button_text.desc:find('bag slot bars', 1, true), "and the bag slot bars")
 	check(section.args.button_text.desc:find("bank's bag slots", 1, true), "and the bank's bag slots")
-	check(section.args.checkbox_labels.desc:find('check box', 1, true), "Check box labels' tooltip names check boxes")
 
 	-- Each resets to its default: Text, Small text, Text.
-	local DEFAULTS = { button_text = { 'buttons', 'pixel', 'Small text' },
-		checkbox_labels = { 'panels', 'normal', 'Text' } }
+	local DEFAULTS = { button_text = { 'buttons', 'pixel', 'Small text' } }
 	for key, case in pairs(DEFAULTS) do
 		local profileKey, default, label = unpack(case)
 		local root, row = Row('kinds', key)
@@ -406,19 +405,16 @@ end)
 
 test('each kind of text reads and writes its profile font', function()
 	eq(Get('kinds', 'button_text'), 'pixel', 'buttons.font')
-	eq(Get('kinds', 'checkbox_labels'), 'normal', 'panels.font')
+	eq(st.config.profile.panels.font, 'normal', "panels.font stays in the defaults, so a saved value does no harm")
 
 	Set('kinds', 'button_text', 'pixel_med')
 	eq(st.config.profile.buttons.font, 'pixel_med')
-	Set('kinds', 'checkbox_labels', 'subtitle')
-	eq(st.config.profile.panels.font, 'subtitle')
-	eq(Get('kinds', 'button_text') .. ',' .. Get('kinds', 'checkbox_labels'), 'pixel_med,subtitle', 'both read back')
+	eq(Get('kinds', 'button_text'), 'pixel_med', 'read back')
 
 	Set('kinds', 'button_text', 'pixel')
-	Set('kinds', 'checkbox_labels', 'normal')
 end)
 
-test("Kinds of text: Button text and Check box labels apply at once; the note says nothing of a reload", function()
+test("Kinds of text: Button text applies at once; a saved panels.font still reaches a check box label; the note says nothing of a reload", function()
 	load_saftui('SaftUI-Core/Widgets/checkbutton.lua')
 	local note = Tab().args.kinds.desc
 	check(not note:find('reload', 1, true), 'the note: ' .. note)
@@ -435,8 +431,9 @@ test("Kinds of text: Button text and Check box labels apply at once; the note sa
 	st:SkinActionButton(slot, nil, 'slot')
 	check(slot.Count:GetFontObject() == st:GetFont('pixel'), 'a button text starts in Button text')
 
-	Set('kinds', 'checkbox_labels', 'subtitle')
-	check(box.text:GetFontObject() == st:GetFont('subtitle'), 'Check box labels reach the label at once')
+	st.config.profile.panels.font = 'subtitle' -- no row sets it; a saved value is still read
+	st:FontsChanged()
+	check(box.text:GetFontObject() == st:GetFont('subtitle'), 'a saved panels.font reaches the label')
 	Set('kinds', 'button_text', 'pixel_med')
 	check(slot.Count:GetFontObject() == st:GetFont('pixel_med'), 'Button text reaches the button text at once')
 	check(box.text:GetFontObject() == st:GetFont('subtitle'), 'and not the label')
@@ -445,13 +442,15 @@ test("Kinds of text: Button text and Check box labels apply at once; the note sa
 	local face = { font_name = 'Homespun', font_size = 13, font_outline = 'OUTLINE', shadow_offset = { 0, 0 }, spacing = 4 }
 	Set('kinds', 'button_text', face)
 	check(slot.Count:GetFontObject() == st:FontObject(face), "a typeface in Button text reaches it too")
-	Set('kinds', 'checkbox_labels', face)
-	check(box.text:GetFontObject() == st:FontObject(face), 'and in Check box labels')
+	st.config.profile.panels.font = face
+	st:FontsChanged()
+	check(box.text:GetFontObject() == st:FontObject(face), 'and a typeface in it')
 
 	-- A label given a font of its own with SetTextFont follows no more.
 	box:SetTextFont('pixel')
 	check(box.text:GetFontObject() == st:GetFont('pixel'), 'SetTextFont puts a font on the label')
-	Set('kinds', 'checkbox_labels', 'normal')
+	st.config.profile.panels.font = 'normal'
+	st:FontsChanged()
 	check(box.text:GetFontObject() == st:GetFont('pixel'), 'which a Fonts tab change then leaves')
 
 	Set('kinds', 'button_text', 'pixel')
@@ -520,7 +519,6 @@ test('every set on the Fonts tab runs st:FontsChanged once: a shared font row, S
 		{ 'pixel', 'shadow_y', 1, 0 },
 		{ 'pixel', 'spacing', 5, 4 },
 		{ 'kinds', 'button_text', 'normal', 'pixel' },
-		{ 'kinds', 'checkbox_labels', 'pixel', 'normal' },
 	}
 	for _, case in ipairs(cases) do
 		local section, key, value, back = unpack(case)

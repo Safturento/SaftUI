@@ -9,6 +9,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 - [Active](#active)
   - [2026-11-15 — Option descriptions that say "red" or "yellow" for what Danger and Caution color](#2026-11-15--option-descriptions-that-say-red-or-yellow-for-what-danger-and-caution-color)
   - [2026-11-15 — Keybind mode's hint line could read Muted](#2026-11-15--keybind-modes-hint-line-could-read-muted)
+  - [2026-11-15 — Check box labels: no font setting until a SaftUI check box has a visible label](#2026-11-15--check-box-labels-no-font-setting-until-a-saftui-check-box-has-a-visible-label)
   - [2026-11-15 — A reset on every font row](#2026-11-15--a-reset-on-every-font-row)
   - [2026-11-15 — A window title font per theme](#2026-11-15--a-window-title-font-per-theme)
   - [2026-11-15 — The tooltip lines take SaftUI's shadow and spacing](#2026-11-15--the-tooltip-lines-take-saftuis-shadow-and-spacing)
@@ -185,9 +186,21 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **Shape of work:** one line plus a test that sets Muted to a non-default value; it belongs with Task 4's pass over direct reads, or after it.
 
+### 2026-11-15 — Check box labels: no font setting until a SaftUI check box has a visible label
+
+**What:** Global settings > Fonts > Kinds of text had a Check box labels row (`panels.font`). It was removed in the feedback round because nothing visible reads it: the only SaftUI check box with a label is the bags' Edit toggle, which is never shown, and it is styled as a button, so it follows Button text. `panels.font` stays in `st.defaults.panels` and `st:SkinCheckButton` still follows it, so a saved value does no harm. When a SaftUI check box gets a visible label, put the row back in `TEXT_FONTS` (`SaftUI-Core/Media/fonts.lua`: `{ 'checkbox_labels', 'panels', 'Check box labels', 'normal', desc }`) with a test that the label follows it.
+
+**Why noticed:** The owner's in-game test (2026-11-15): "The 'Check box labels' item doesn't seem to change anything". Every `st:CreateCheckButton` call site is in `SaftUI-Bags` and none has a visible label; `/sui`'s own check boxes are the kit's and don't read it.
+
+**Anchors:** `SaftUI-Core/Widgets/checkbutton.lua` (`PanelsFont`, `st:SkinCheckButton`, `button.SetTextFont`), `SaftUI-Core/Config/defaults.lua` (`st.defaults.panels.font`), `SaftUI-Bags/header.lua` (`INV:CreateEditToggle`), `tests/core/fonts_tab_test.lua`, `tests/core/button_text_test.lua`.
+
+**What's been considered:** Hiding the row, or keeping it with a description that says it does nothing: both leave a dead control. Removing it and keeping the setting's reader costs nothing and lets the row come back with the first label.
+
+**Shape of work:** Small: one `TEXT_FONTS` entry and its tests, with the first visible label.
+
 ### 2026-11-15 — A reset on every font row
 
-**What:** `generators.font` takes no default, so a font row has a reset icon only where its page builds `default` by hand (`FN.FontSettingDefault`: the Fonts tab's Kinds of text rows, Theme > Window titles, and All bars' texts through the action bars' own `TextDefault`). Every other Font row (the tooltip's, chat's, Skinning's, the bags', the loot's, the tracker's, the unit frame elements', the buffs') has none. Give `generators.font` the default, and have it build `default` through the inherited `get` and `set`, as the number inputs do.
+**What:** `generators.font` takes no default, so a font row has a reset icon only where its page builds `default` by hand (`FN.FontSettingDefault`: the Fonts tab's Kinds of text rows, Theme > Window titles, and All bars' texts through the action bars' own `TextDefault`). Every other Font row (the tooltip's, chat's, Skinning's, the bags', the loot's, the tracker's, the unit frame elements') has none. The buffs' Duration and Stack count rows and the totem bar's Timer font row got one in the feedback round (2026-11-15). Give `generators.font` the default, and have it build `default` through the inherited `get` and `set`, as the number inputs do.
 
 **Why noticed:** The fonts design's "Later" list. The rule is a reset per setting (`docs/design-system/10-discrepancies.md`, 17), and a font row is a setting like any other.
 

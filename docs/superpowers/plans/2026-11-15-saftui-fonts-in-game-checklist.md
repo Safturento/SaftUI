@@ -38,7 +38,7 @@ These six depend on how the game behaves, and each has a fallback written down.
 - Change Small text's size: its reset icon shows ("Size goes back to its default: 10."); click it and the size and every text on it return at once. Same for Shadow offset X (Y alone shows no icon) and Outline ("... default: Monochrome outline."). The Typeface reset tooltip names the face ("... default: Homespun.").
 - Hotkeys and counts that are on Small text follow at once; the totem timers and the tracker re-lay out at once. Drag Text's Size on the Fonts tab and watch for a stutter.
 - G4: change Heading's Typeface: `/sui`'s page title, section and group titles change at once, nothing clipped, under Thick, Thin and Blizzard. Change Heading's Size: they stay. Change Huge title's face: `/sui` does not change. Change Text's Typeface: labels, tabs and fields follow, and a profile switch redraws them.
-- Kinds of text: change Button text and see it reach the totem bar's texts and timers and the bag slot bars; change Check box labels and see the bags' filters follow. Both reset tooltips name "Small text".
+- Kinds of text: change Button text and see it reach the totem bar's key bindings, counts and names and the bag slot bars (not the totem timers, which have their own Timer font), and the bags' and keybind mode's buttons (section N). Its reset tooltip names "Small text". There is no Check box labels row.
 
 ## D. The font row and its list (Task 3)
 
@@ -134,11 +134,12 @@ Kinds of text does what its rows say:
 
 - Global settings > Fonts > Kinds of text > Button text: pick Heading. The labels of the bags' Bag Slots button (open a bag), the bank's Warband Bank and Deposit buttons and its category tabs, and keybind mode's Done (`/sui kb`) change at once, in size and face, with no reload. Pick a typeface: the same. Reset: they are back in Small text (Homespun 10, monochrome outline, no shadow), exactly as before the change. The micro menu's clock does not change (it keeps Small text).
 - The same Button text pick still changes the totem bar's key bindings, counts and names and the bag slot bars' texts, and no longer the totem timers.
-- Check box labels: SaftUI has only one label, the bags' Edit toggle, and it is hidden, so changing the row shows nothing. The row says so. (The Edit toggle drew Small text before this change and draws Check box labels, Text by default, now; nothing shows it today.)
+- Check box labels has no row on the Fonts tab (no visible check box label exists; see the followup "Check box labels: no font setting until a SaftUI check box has a visible label"). The hidden Edit toggle is styled as a button and follows Button text.
+- Pick Text, then a typeface of 24: Warband Bank, Deposit, Withdraw, Buy and keybind mode's Done (16 px tall) still show a label (cut at the sides if too wide, never blank), and the buttons do not grow.
 
 The totem timers' font (Totem bar page > Timer font):
 
-- A fresh profile: the countdown over each element button looks exactly as it did (Small text: Homespun 10, monochrome outline, no shadow). The Timer font row sits beside Show timer text, its reset arrow absent.
+- A fresh profile: the countdown over each element button looks exactly as it did (Small text: Homespun 10, monochrome outline, no shadow). The Timer font row sits under Show timer bar and Show timer text, beside Text position, with its reset arrow absent; Text X offset and Text Y offset stay a pair.
 - Pick Large numbers, then a typeface with its dots (Size, Outline, Shadow offset X and Y, Line spacing): the countdowns change at once, the bar under or behind them gets taller or shorter with the text, and the flyout arrow moves with it. Reset puts Small text back (its tooltip says "Small text").
 - A profile that had changed Button text before this build: the totem timers now draw Small text (Button text no longer reaches them; they used to follow it). Pick the font again on the Timer font row if it is wanted. The key bindings, counts and names on the totem buttons still follow Button text.
 - Totem bar in combat: change the Timer font from a profile switch if you can: nothing is blocked (only fonts on regions of SaftUI's own timer frames, which are children of the secure slot buttons).
@@ -153,3 +154,5 @@ The action bars' and buffs' texts default to Small text:
 - A profile in which you changed Small text itself before this build: the action bars' and buffs' texts now show that change (they used to ignore it).
 - Reset arrows: on All bars, a text's Font after a face is picked says "default: Small text" and puts it back; on a buff's Duration or Stack count the Font, Size and Outline rows have a reset that puts Small text, 10 and monochrome outline back.
 - The cooldown numbers are as before: Large numbers on buttons of 36 pixels and up, Small text below, unset by default.
+
+- Drag Small text's Size, then Heading's Size and Text's Size, with every bar shown: only a Small text change restyles the bars (once per frame); Heading and Text leave them alone, with no stutter beyond the drag itself.

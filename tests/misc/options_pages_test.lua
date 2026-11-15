@@ -154,8 +154,8 @@ test('Totem bar: one small color per element, read and written as the bar reads 
 
 	local got, view = layout({ TotemBar = tree }, 'TotemBar')
 	eq(got, 'button_size:normal 1, button_spacing:normal 2, timer_bar:small 1/1, timer_text:small 1/2, '
-		.. 'timer_font:normal 2, timer_text_position:normal 1, timer_text_x:normal 2, timer_text_y:normal 1, '
-		.. 'timer_bar_height:normal 2, hide:normal 1', 'the settings in pairs')
+		.. 'timer_text_position:normal 2, timer_font:normal 1, timer_bar_height:normal 2, '
+		.. 'timer_text_x:normal 1, timer_text_y:normal 2, hide:normal 1', 'the settings in pairs: Text X and Y stay a pair')
 	local colors = view.sections[2]
 	eq(colors.title, 'Element colors', 'the colors have a section')
 	local placed = OB.LayoutRows(colors.rows)
