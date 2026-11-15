@@ -12,6 +12,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-15 — Unit frames: a color oUF lacks is set to the profile's own table](#2026-11-15--unit-frames-a-color-ouf-lacks-is-set-to-the-profiles-own-table)
   - [2026-11-15 — Unit frames: a vehicle power type with no oUF color falls back to Mana](#2026-11-15--unit-frames-a-vehicle-power-type-with-no-ouf-color-falls-back-to-mana)
 
+  - [2026-11-15 — Two Misc readers break "a pass only colors"](#2026-11-15--two-misc-readers-break-a-pass-only-colors)
   - [2026-11-15 — A roll result line's All passed and winner color are baked in at push](#2026-11-15--a-roll-result-lines-all-passed-and-winner-color-are-baked-in-at-push)
   - [2026-11-15 — Forever: Show in > Bank does nothing for the default bank (the combined bank)](#2026-11-15--forever-show-in--bank-does-nothing-for-the-default-bank-the-combined-bank)
   - [2026-11-15 — Auto Vendor counts a fresh purchase in a just-sold slot as a refused sale](#2026-11-15--auto-vendor-counts-a-fresh-purchase-in-a-just-sold-slot-as-a-refused-sale)
@@ -247,6 +248,20 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 **Shape of work:** one line in `UF.ColorReaches` and a test.
 
 **Open questions:** none.
+
+### 2026-11-15 — Two Misc readers break "a pass only colors"
+
+**What:** the zone text's color handler calls `SetPoint` on Blizzard's `SubZoneTextString` and makes about 1 KB a pass; the experience bar's Reputation handler calls `Show` and makes about 1.1 KB a pass. Both break the live colors spec's rule that a pass only colors, and no task owns either file.
+
+**Why noticed:** the review of live colors Task 7 (Misc's skins, the tooltip and SaftUI's tracker) probed every Misc reader with the cost helper (`tests/lib/color_cost.lua`). The spec calls both readers "as today", so neither task 7 nor any other task of that plan changed them.
+
+**Anchors:** `ZT:OnColorsChanged` in `SaftUI-Misc/Skinning/blizzard/ZoneText.lua` (on any Text key or Factions, while the zone text shows, it runs `UpdateZoneLine`: a `SetPoint` on `SubZoneTextString`, a `SetText`, about 1.07 KB a pass, `SetPoint` 100 times over 100 passes); `XP:OnColorsChanged` in `SaftUI-Misc/experience.lua` (on Reputation it runs `UpdateReputation`: `Show`, `SetMinMaxValues`, `SetValue`, about 1.1 KB a pass, `Show` 100 times over 100 passes); `.agents/taint.md` rule 1 on Blizzard frames; the plan `docs/superpowers/plans/2026-11-15-saftui-live-colors.md` ("A pass only colors").
+
+**What's been considered:** neither frame is secure or tainting, so nothing is broken in the game today; the cost is the point. A zone line that only needs its color could set the font string's color (the color is the only thing a Factions or Text pass changes) instead of laying the line out again, and the reputation bar's pass could set the bar's color without `Show` or its range.
+
+**Shape of work:** small: two handlers cut down to color setters, each with a cost case (`C.measure`, forbidden 0, `kb < 4`) in `tests/misc/zone_text_test.lua` and `tests/misc/experience_test.lua`.
+
+**Open questions:** whether the zone line's color is held apart from its text (it may be one `SetText` with an escape), which would decide if the pass can color alone.
 
 ### 2026-11-15 — A roll result line's All passed and winner color are baked in at push
 
