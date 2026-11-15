@@ -5,6 +5,8 @@
 #   tests/run PATH...          those files, or the *_test.lua files in those folders
 #   tests/run -v ...           also list every case and show what tests printed
 #   tests/run -jN ...          run N files at once (default: the CPU count; -j1 is serial)
+#   tests/run --scales=all ... run each file's scaled_test cases at 0.75, 1.25 and 1.55, not at the one
+#                              its path picks (SAFTUI_TEST_SCALE=<scale> puts them all at one scale)
 #
 # Paths are relative to the current directory, or absolute, so this works from
 # any folder. Lua comes from Python's lupa package (lupa.lua51). The first run

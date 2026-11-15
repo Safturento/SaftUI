@@ -228,7 +228,7 @@ function BackdropTemplateMixin:ApplyBackdrop()
 	self:SetupTextureCoordinates()
 end
 
-function BackdropTemplateMixin:SetBackdrop(backdropInfo)
+local function SetBackdrop(self, backdropInfo)
 	if backdropInfo then
 		if self:HasBackdropInfo(backdropInfo) then
 			return
@@ -250,20 +250,42 @@ function BackdropTemplateMixin:GetBackdropColor()
 	return unpack(stub.state(self).backdrop_color)
 end
 
-function BackdropTemplateMixin:SetBackdropColor(r, g, b, a)
-	if not self.backdropInfo then return end
-	stub.state(self).backdrop_color = { r, g, b, a or 1 }
+-- Writes into the table the state already has: a color setter makes nothing per
+-- call (a reader's cost case counts garbage).
+local function put_color(state, field, r, g, b, a)
+	local c = state[field]
+	if not c then
+		c = {}
+		state[field] = c
+	end
+	c[1], c[2], c[3], c[4] = r, g, b, a or 1
 end
+
+-- The mixin's setters, one level down, so tests/lib/color_cost.lua can count
+-- them: Mixin copies the mixin's functions onto each frame, where no method
+-- table is left to wrap, so the copies call these by name at each call.
+stub.backdrop = {
+	SetBackdrop = SetBackdrop,
+	SetBackdropColor = function(self, r, g, b, a)
+		if not self.backdropInfo then return end
+		put_color(stub.state(self), 'backdrop_color', r, g, b, a)
+	end,
+	SetBackdropBorderColor = function(self, r, g, b, a)
+		if not self.backdropInfo then return end
+		put_color(stub.state(self), 'backdrop_border_color', r, g, b, a)
+	end,
+}
+
+function BackdropTemplateMixin:SetBackdrop(...) return stub.backdrop.SetBackdrop(self, ...) end
+
+function BackdropTemplateMixin:SetBackdropColor(...) return stub.backdrop.SetBackdropColor(self, ...) end
 
 function BackdropTemplateMixin:GetBackdropBorderColor()
 	if not self.backdropInfo then return end
 	return unpack(stub.state(self).backdrop_border_color)
 end
 
-function BackdropTemplateMixin:SetBackdropBorderColor(r, g, b, a)
-	if not self.backdropInfo then return end
-	stub.state(self).backdrop_border_color = { r, g, b, a or 1 }
-end
+function BackdropTemplateMixin:SetBackdropBorderColor(...) return stub.backdrop.SetBackdropBorderColor(self, ...) end
 
 ------------------------------------------------------------------ atlases
 
