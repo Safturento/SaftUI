@@ -180,6 +180,7 @@ test('resets on a unit frame profile of another name write that profile, and lea
 	local root = { Unitframes = UF:GetConfigTable() }
 	local row = RowAt(root, { 'Unitframes', 'player', 'Health', 'enable' })
 	local _, defaultValue = st:DefaultAt('unitframes', 'profiles', 'Healer', 'player', 'health', 'enable')
+	eq(select(3, UF.SavedAt('player', 'health', 'enable')({})), 'Healer', "the row's saved path names the profile in use")
 	check(not OM.DefaultDiffers(root, row), 'a fresh Healer profile has the default')
 	local firstValue = profiles[first].player.health.enable
 	healer.player.health.enable = not defaultValue

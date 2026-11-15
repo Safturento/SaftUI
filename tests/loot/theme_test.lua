@@ -77,6 +77,12 @@ test('every value row of the Loot page has a reset', function()
 		apply = function() end, configPath = { 'Loot', 'feed', 'general' }, module = 'Loot',
 		defaults = function() return st.defaults.loot.feed end,
 	})
+	-- The feed's mover is registered inline in feed.lua's setup, so this copy is pinned against the source:
+	-- the Position row's reset is the mover's only while the key and configPath are the real ones.
+	local feedSource = read_saftui_source('SaftUI-Loot/Feed/feed.lua')
+	for _, line in ipairs({ "key = 'lootfeed',", "configPath = { 'Loot', 'feed', 'general' },", "defaults = function() return st.defaults.loot.feed end," }) do
+		check(feedSource:find(line, 1, true) ~= nil, "feed.lua registers its mover with " .. line)
+	end
 	local R = load_test_file('lib/reset_walk.lua')
 	local ok, err = pcall(R.check_page, { Loot = LT:GetConfigTable() }, 'Loot')
 	if ok then
