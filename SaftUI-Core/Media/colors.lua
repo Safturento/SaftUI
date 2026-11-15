@@ -800,8 +800,16 @@ local PREVIEWS = {
 	['objectives.failed'] = { kind = 'text', sample = 'Escort failed' },
 }
 
+-- A Buttons color's preview names its key (the states it reaches are lit);
+-- one table per key, kept (the picker reads it as constants).
+local BUTTON_PREVIEWS = {}
 local function PreviewOf(color)
 	if color.group == 'text' then return TEXT_PREVIEW end
+	if color.group == 'button' then
+		local key = tostring(color.key)
+		BUTTON_PREVIEWS[key] = BUTTON_PREVIEWS[key] or { kind = 'button', key = key }
+		return BUTTON_PREVIEWS[key]
+	end
 	return PREVIEWS[color.group .. '.' .. tostring(color.key)]
 end
 
@@ -859,6 +867,7 @@ end
 function CO:AccentOption(order)
 	return {
 		type = 'color',
+		preview = 'accent',
 		size = 'small',
 		order = order,
 		name = 'Accent',
