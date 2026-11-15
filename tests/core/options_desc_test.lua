@@ -20,6 +20,7 @@ for _, file in ipairs({
 	'SaftUI-Misc/experience.lua',
 	'SaftUI-Minimap/minimap.lua', 'SaftUI-Minimap/config.lua', 'SaftUI-Minimap/micromenu.lua',
 	'SaftUI-Minimap/micromenuart.lua', 'SaftUI-Minimap/micromenuitems.lua', 'SaftUI-Minimap/micromenuoptions.lua',
+	'SaftUI-Minimap/microbuttons.lua', 'SaftUI-Minimap/instancedifficulty.lua',
 }) do
 	load_saftui(file)
 end

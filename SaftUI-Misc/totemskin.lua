@@ -108,6 +108,9 @@ local function ButtonsFont() return st.config.profile.buttons.font end
 -- below it rather than over it, and the panel is as wide as the element button.
 local PANEL_PADDING = 3
 
+-- The flash's opacity over the icon, times Buttons > Danger's own.
+local FLASH_ALPHA = 0.4
+
 -- The size SaftUI's arrow art is drawn at.
 local ARROW_SIZE = 16
 
@@ -279,6 +282,7 @@ local function StyleButton(button, skin, theme, background)
 	-- in SkinButton, is out of combat).
 	local look = st:ResolveTheme(theme, background, 'action')
 	local state = look and look.name == 'blizzard' and st.ThemeArt.State('action') or nil
+	skin.flat = state == nil
 	if skin.ring then StyleRing(button, skin, state ~= nil, theme, background) end
 	if state then
 		-- The hover stays in its layer, where the client shows it only under
@@ -303,7 +307,7 @@ local function StyleButton(button, skin, theme, background)
 			skin.checked:SetBlendMode('ADD')
 		end
 		if button.Flash then
-			button.Flash:SetColorTexture(st:ColorRGBA('button', 'danger', 0.4))
+			button.Flash:SetColorTexture(st:ColorRGBA('button', 'danger', FLASH_ALPHA))
 			button.Flash:ClearAllPoints()
 			button.Flash:SetAllPoints(icon)
 		end
@@ -650,13 +654,39 @@ function TB:ApplySkin()
 	ColorFlyout()
 end
 
--- After a theme recolor (st:RecolorThemed gave every backdrop the theme's border): the
--- slot buttons and the open flyout's "none" choice take their element colour back. Only
--- SaftUI's backdrops are touched.
-function TB:OnColorsChanged(group)
-	if group ~= 'theme' or not skinned then return end
-	for frame, skin in pairs(skins) do
-		if skin.style == StyleSlotButton then ColorSlotButton(frame) end
+-- A color changed. 'theme' (st:RecolorThemed gave every backdrop the theme's border):
+-- the slot buttons and the open flyout's "none" choice take their element colour
+-- back. 'button' Danger: the buttons' flash. 'accent': the buttons' hover. 'text'
+-- Normal: the arrows the text colour colors (the summon button's flyout's), and
+-- 'text' Normal or Danger the timers (TB:ColorTimers). Only SaftUI's pieces and
+-- the colors of Blizzard's regions are touched, so it runs in combat too.
+function TB:OnColorsChanged(group, key)
+	if not skinned then return end
+	if group == 'theme' then
+		for frame, skin in pairs(skins) do
+			if skin.style == StyleSlotButton then ColorSlotButton(frame) end
+		end
+		ColorFlyout()
+	elseif group == 'button' and (key == nil or key == 'danger') then
+		for frame, skin in pairs(skins) do
+			if skin.style == StyleButton and skin.flat and frame.Flash then
+				frame.Flash:SetColorTexture(st:ColorRGBA('button', 'danger', FLASH_ALPHA))
+			end
+		end
+	elseif group == 'accent' then
+		for _, skin in pairs(skins) do
+			if skin.style == StyleButton and skin.flat then
+				skin.hover:SetVertexColor(st:Color('accent'):GetRGB())
+			end
+		end
+	elseif group == 'text' then
+		if key == nil or key == 'normal' then
+			for frame, skin in pairs(skins) do
+				if skin.style == StyleArrow then ColorArrow(frame, skin.slot) end
+			end
+		end
+		if key == nil or key == 'normal' or key == 'danger' then
+			self:ColorTimers()
+		end
 	end
-	ColorFlyout()
 end

@@ -601,6 +601,25 @@ test('the threat text shows only where the tint would: in a group, or solo with 
 	eq(frame.threatState, 'bad', 'the tint stays: it has no switch of its own')
 end)
 
+test("Text > Normal recolors a good threat text on the plates showing a unit at once; Danger does not touch it", function()
+	local st, UF = world()
+	local normal = st.config.profile.colors.text.normal
+	local shown = add_enemy('nameplate1', { status = 0, percent = 40 })
+	local hidden = add_enemy('nameplate2', { status = 0, percent = 40 })
+	NP.remove('nameplate2')
+	local r = normal.r
+	normal.r = r == 0.25 and 0.5 or 0.25
+	st:ColorChanged('text', 'danger')
+	check(rgb(shown.Threat:GetTextColor()) ~= color(normal), 'Danger leaves it')
+	st:ColorChanged('text', 'normal')
+	eq(rgb(shown.Threat:GetTextColor()), color(normal), 'Normal: the shown plate takes it')
+	check(rgb(hidden.Threat:GetTextColor()) ~= color(normal), 'a plate showing no unit is left alone')
+	normal.r = r
+	st:ColorsChanged('text')
+	eq(rgb(shown.Threat:GetTextColor()), color(normal), 'the whole Text pass: it takes it back')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
 test('the threat text is written only when its state, percent or colour changed, and always after a threat colour change, a kind change or a config update', function()
 	local st, UF = world()
 	local frame = add_enemy('nameplate1', { status = 3, percent = 100 })
@@ -631,8 +650,9 @@ test('the threat text is written only when its state, percent or colour changed,
 	UF:UpdateConfig('nameplate', 'Threat')
 	check(writes > before, 'a config update: written')
 
-	-- Good shows the normal text colour, which the Colors tab's text section
-	-- changes without telling the plates: the next threat event writes it.
+	-- Good shows the normal text colour; a change on the Colors tab's Text
+	-- section reaches it at once (the test above), and the next threat event
+	-- writes it too.
 	stub.threat.nameplate1.player = { status = 0, percent = 90 }
 	threat_changed('nameplate1')
 	before = writes

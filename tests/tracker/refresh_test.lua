@@ -335,7 +335,7 @@ RW.both('with the switch off no event is registered and nothing refreshes', func
 	stub.run_timers()
 	eq(TR2.model, nil, 'nothing was read')
 	eq(TR2.pools, nil, 'no row pools')
-	eq(TR2:OnColorsChanged('button'), nil, 'a color change does nothing')
+	eq(TR2:OnColorsChanged('accent'), nil, 'a color change does nothing')
 end)
 
 RW.both('a refresh in combat draws, makes no secure frame and blocks nothing', function(st, TR)

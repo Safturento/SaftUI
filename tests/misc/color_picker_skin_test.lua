@@ -873,3 +873,23 @@ test('the picker\'s panel is solid whatever the Skinning Background; the boxes k
 	eq(alpha(panel_of(frame)), 1, 'solid Background: opaque too')
 	clean()
 end)
+
+test('the skin repaints for its groups only: a Class pass touches nothing', function()
+	local C = load_test_file('lib/color_cost.lua')
+	world('forever')
+	for group, key in pairs({ class = 'MAGE', reaction = 4, power = 'MANA', text = 'muted', button = 'normal', status = 'tapped' }) do
+		st:ColorChanged(group, key)
+		local m = C.measure(function() st:ColorChanged(group, key) end)
+		eq(m.calls.total, 0, group .. ': no color set')
+		eq(m.forbidden.total, 0, group .. ': nothing forbidden')
+	end
+	for _, group in ipairs({ 'accent', 'theme' }) do
+		st:ColorsChanged(group)
+		local m = C.measure(function() st:ColorChanged(group) end, 100)
+		check(m.calls.total > 0, group .. ': the hover edges are colored')
+		eq(m.forbidden.total, 0, group .. ': nothing forbidden')
+		eq(m.made, 0, group .. ': nothing made')
+		check(m.kb < 4, group .. ': no table per pass: ' .. m.kb .. ' KB over 100 passes')
+	end
+	clean()
+end)

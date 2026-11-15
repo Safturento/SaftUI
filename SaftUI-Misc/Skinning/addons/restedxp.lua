@@ -168,6 +168,14 @@ local function MutedRGB()
 	return st:Color('text', 'muted'):GetRGB()
 end
 
+-- RestedXP's texts the skin colors Text > Muted (the step numbers and the titles),
+-- so a Colors tab change can color them again.
+local mutedTexts = setmetatable({}, { __mode = 'k' })
+local function ColorMuted(fs)
+	mutedTexts[fs] = true
+	fs:SetTextColor(MutedRGB())
+end
+
 -- SaftUI's header strip fill.
 local function ColorHighlight(tex)
 	tex:SetColorTexture(st:ThemeHeaderColor())
@@ -234,7 +242,7 @@ local function SkinStep(frame, isFirst)
 
 	HookFont(frame.text, 'text')
 	HookFont(frame.number.text, 'text')
-	frame.number.text:SetTextColor(MutedRGB())
+	ColorMuted(frame.number.text)
 
 	-- The first step sits under the title line already. The line is a region
 	-- of its step, so it fades with a hidden one.
@@ -312,7 +320,7 @@ local function SkinCurrentStep(frame)
 
 	local title = frame.number.text
 	HookFont(title, 'text')
-	title:SetTextColor(MutedRGB())
+	ColorMuted(title)
 	title:ClearAllPoints()
 	title:SetPoint('TOPRIGHT', frame, 'TOPRIGHT', -5, -1)
 	title:SetJustifyH('RIGHT')
@@ -662,8 +670,14 @@ end
 
 -- After a theme recolor (st:RecolorThemed recolored the panels and timer boxes): the
 -- dividers and hover highlights follow it. Skinning passes it on.
-function RX:OnColorsChanged(group)
-	if group == 'theme' then ColorLines() end
+function RX:OnColorsChanged(group, key)
+	if group == 'theme' then
+		ColorLines()
+	elseif group == 'text' and (key == nil or key == 'muted') then
+		for fs in pairs(mutedTexts) do fs:SetTextColor(MutedRGB()) end
+		local bar = self.frames and self.frames.ScrollFrame.ScrollBar
+		if bar then ColorThumb(bar) end
+	end
 end
 
 function RX:OnEnable()
