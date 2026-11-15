@@ -272,6 +272,12 @@ function INV:ApplyFonts(which)
 			for _, category in pairs(type(container) == 'table' and container.categories or {}) do
 				if category.header and category.header.text then
 					st:ApplyFont(category.header.text, fonts.titles)
+					-- A title is cut to its column at the size it has: cut again
+					-- (a larger font cuts more, a smaller one less), with no sort or
+					-- layout (UpdateCategory made it, in every view).
+					if category.titleText then
+						INV.FitTitle(category.header.text, category.titleText, category.titleRoom)
+					end
 				end
 			end
 		end
@@ -279,8 +285,17 @@ function INV:ApplyFonts(which)
 		for _, container in pairs(self.containers) do
 			for _, category in pairs(type(container) == 'table' and container.categories or {}) do
 				for _, slot in pairs(category.slots or {}) do
-					st:ApplyButtonFonts(slot, fonts.icons)
-					if slot.itemLevel then st:ApplyFont(slot.itemLevel, fonts.icons) end
+					-- Only the two texts the bags put on a slot (the count is
+					-- Blizzard's, the item level SaftUI's), not every region and
+					-- font object of the button as SkinSlot does: a drag over
+					-- hundreds of slots (the spare ones too) runs this on every
+					-- step. A font object may bring its own color with it, so the
+					-- item level's is put back.
+					if slot.Count then st:ApplyFont(slot.Count, fonts.icons) end
+					if slot.itemLevel then
+						st:ApplyFont(slot.itemLevel, fonts.icons)
+						self:ColorItemLevel(slot)
+					end
 				end
 			end
 		end

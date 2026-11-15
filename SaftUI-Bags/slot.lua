@@ -120,6 +120,21 @@ function INV:OnColorsChanged(group)
 	self:UpdateCurrencyBorders()
 end
 
+-- An item level's color by what the slot holds: Warbound, BoE, or strong.
+-- Also put back after the Icon font changes (INV:ApplyFonts): a font object
+-- may bring its own color with it.
+function INV:ColorItemLevel(slot)
+	local info = slot.info
+	if not (info and (info.class == 'Armor' or info.class == 'Weapon')) then return end
+	if info.isWarbound then
+		slot.itemLevel:SetTextColor(st:Color('text', 'shared'):GetRGB())
+	elseif info.isBoE then
+		slot.itemLevel:SetTextColor(st:Color('text', 'success'):GetRGB())
+	else
+		slot.itemLevel:SetTextColor(st:Color('text', 'strong'):GetRGB())
+	end
+end
+
 function INV:AssignSlot(container, slot, slotInfo)
 	self:ClearSlot(slot)
 	slot:SetParent(container.bags[slotInfo.bagID])
@@ -135,13 +150,7 @@ function INV:AssignSlot(container, slot, slotInfo)
 	end
 
 	if (slot.info.class == 'Armor' or slot.info.class == 'Weapon') then
-		if slot.info.isWarbound then
-			slot.itemLevel:SetTextColor(st:Color('text', 'shared'):GetRGB())
-		elseif slot.info.isBoE then
-			slot.itemLevel:SetTextColor(st:Color('text', 'success'):GetRGB())
-		else
-			slot.itemLevel:SetTextColor(st:Color('text', 'strong'):GetRGB())
-		end
+		self:ColorItemLevel(slot)
 
 		slot.itemLevel:SetFormattedText('%s',slot.info.ilvl)
 		slot.itemLevelBG:Show()

@@ -219,6 +219,34 @@ test('Title font: a step of the Size drag restyles the titles and nothing else (
 	close_all()
 end)
 
+test('Title font: a title cut to its column is cut again at the new size, no UpdateContainer (I1)', function()
+	local text = things.header.text
+	-- UpdateCategory as an update makes it (in combat, so it makes no slot button).
+	stub.in_combat = true
+	things.slotLine = nil -- the line this update asks for, not the one the slots were laid at
+	INV.config.fonts.titles = look(8)
+	INV:ApplyFonts('titles')
+	INV:UpdateCategory('bag', 'Things', {}, 'Consumables and reagents (3)', 8)
+	stub.in_combat = false
+	local room = things.titleRoom
+	check(room and room > 0, 'the room it was fitted in is kept')
+	eq(text:GetText(), 'Consumables and reagents (3)', 'whole at size 8')
+	INV.config.fonts.titles = look(60)
+	INV:ApplyFonts('titles')
+	check(text:GetUnboundedStringWidth() <= room, 'cut to fit at size 60: ' .. text:GetText())
+	check(text:GetText():find('%.%.%.'), 'with dots')
+	check(text:GetText():find('%(3%)$'), 'and its count kept')
+	INV.config.fonts.titles = look(8)
+	INV:ApplyFonts('titles')
+	eq(text:GetText(), 'Consumables and reagents (3)', 'back to 8: whole again, no dots left over')
+	-- A title with no text (untitled) has nothing to fit.
+	stub.in_combat = true
+	INV:UpdateCategory('bag', 'Things', {}, false, 8)
+	stub.in_combat = false
+	eq(things.titleText, nil)
+	INV:ApplyFonts('titles')
+end)
+
 test('Icon font: a step restyles the slots\' texts and nothing else (bug 3)', function()
 	open_menu('icons')
 	local slot = things.slots[1]
@@ -227,7 +255,6 @@ test('Icon font: a step restyles the slots\' texts and nothing else (bug 3)', fu
 		eq(slot.itemLevel:GetFontObject(), st:GetFont(look(size)), 'the item level, ' .. size)
 		eq(slot.Count:GetFontObject(), st:GetFont(look(size)), 'the count')
 		eq(other.Count:GetFontObject(), st:GetFont(look(size)), 'every slot of every category')
-		eq(slot:GetNormalFontObject(), st:GetFont(look(size)), 'and its button font')
 	end)
 	for _, name in ipairs({ 'UpdateConfig', 'StyleContainerContents', 'StyleSlot', 'SkinSlot', 'CategoriesChanged', 'QueueUpdate',
 		'ReleaseLayout', 'StyleCurrencySlots', 'RegisterMovers' }) do
@@ -237,6 +264,40 @@ test('Icon font: a step restyles the slots\' texts and nothing else (bug 3)', fu
 	eq(counted('Render'), 0)
 	check(counted('CreateFont') <= 10, 'at most a font object for each new size')
 	close_all()
+end)
+
+-- In game a font object may bring its own color with it (SetFontObject). The
+-- stubs keep an explicit color, so a text here is made to lose it as the game
+-- may make it.
+local function forgetful(fs)
+	local real = fs.SetFontObject
+	fs.SetFontObject = function(self, object)
+		real(self, object)
+		self:SetTextColor(1, 1, 1, 1)
+	end
+end
+
+test('Icon font: an item level and a currency count keep their colors (M1)', function()
+	local slot = things.slots[1]
+	slot.info = { class = 'Armor', ilvl = 200, isWarbound = true }
+	local boe = things.slots[2]
+	boe.info = { class = 'Weapon', ilvl = 100, isBoE = true }
+	local plain = things.slots[3]
+	plain.info = { class = 'Armor', ilvl = 50 }
+	for _, s in ipairs({ slot, boe, plain }) do
+		forgetful(s.itemLevel)
+		INV:ColorItemLevel(s)
+	end
+	local function rgb(fs) return string.format('%.2f,%.2f,%.2f', fs:GetTextColor()) end
+	local function color(name) return string.format('%.2f,%.2f,%.2f', st:Color('text', name):GetRGB()) end
+	eq(rgb(slot.itemLevel), color('shared'))
+	INV.config.fonts.icons = look(19)
+	INV:ApplyFonts('icons')
+	eq(slot.itemLevel:GetFontObject(), st:GetFont(look(19)))
+	eq(rgb(slot.itemLevel), color('shared'), 'Warbound keeps its color')
+	eq(rgb(boe.itemLevel), color('success'), 'BoE keeps its color')
+	eq(rgb(plain.itemLevel), color('strong'), 'the rest keep theirs')
+	for _, s in ipairs({ slot, boe, plain }) do s.info = nil end
 end)
 
 test('Icon font reaches a currency slot too', function()
@@ -267,6 +328,13 @@ test('Icon font reaches a currency slot too', function()
 	INV:ApplyFonts('icons')
 	stop_counting()
 	eq(slot.Count:GetFontObject(), st:GetFont(look(21)), "the currency slot's count")
+	-- Its color survives a font object that brings its own (account-wide: shared).
+	forgetful(slot.Count)
+	slot.elementData = { id = 1, isAccountWide = true }
+	INV:ColorCurrencyCount(slot)
+	INV.config.fonts.icons = look(22)
+	INV:ApplyFonts('icons')
+	eq(string.format('%.2f,%.2f,%.2f', slot.Count:GetTextColor()), string.format('%.2f,%.2f,%.2f', st:Color('text', 'shared'):GetRGB()), 'a currency count keeps its color')
 	eq(counted('StyleCurrencySlots'), 0)
 	eq(counted('UpdateConfig'), 0)
 end)
