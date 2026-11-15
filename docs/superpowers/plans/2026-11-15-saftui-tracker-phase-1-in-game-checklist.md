@@ -2,7 +2,7 @@
 
 The one list to run before the switch turns on. Everything SaftUI's own objective tracker (`SaftUI-Tracker`) can't prove on stubs is here, in the order a player does it. It folds in every task's checks (Tasks 1 to 12), the experiments P1 to P7 (`docs/superpowers/specs/2026-11-14-saftui-objective-tracker-design.md`, "Experiments to run before the build"; the plan's "Experiment seams") and the spec's G1 to G12 ("What only the game can confirm").
 
-The tracker ships **off** (`tracker.enable = false`). Until you turn it on and these pass, nothing about either tracker changes. Turning the default on is the last step, one line (Part 7).
+The tracker shipped **off** (`tracker.enable = false`) until these passed; it is now on by default (2026-11-15, see "Results so far" at the end). The text below is the list as it was run.
 
 **Marks.** `[F]` is WoW Forever (interface 16001, the client you play), `[R]` is retail (Midnight, 120000), `[F+R]` is both. Check Forever first, then retail. A step with no mark is for both clients.
 
@@ -25,7 +25,7 @@ The switch is off. Reload and check on `[F+R]`:
 
 1. No Lua errors. `/sui` has **Tracker** under Info, and its General tab has the switch "SaftUI's tracker", off. No other tab is usable while it is off.
 2. Blizzard's tracker, its skin and its mover in `/sui edit` behave as before. The skin's page now reads **Blizzard's tracker** (it was "Objective tracker"; Task 6's rename).
-3. Key Bindings → AddOns → **SaftUI** lists "Use the nearest quest item" (Task 1).
+3. Key Bindings → **SaftUI** (its own section, not under AddOns) lists "Use the nearest quest item" (Task 1).
 4. **The colors moved (Task 2, G11).** Global Settings → Colors → Objectives has Completed and Failed. If you had custom Completed or Failed colors on the old skin page, they are there now, and Blizzard's tracker's lines keep them. Change a swatch: Blizzard's tracker's lines recolor at once; its reset icon returns the default; no blocked-action message in combat. The skin's page has no color section any more, only a line pointing to Colors → Objectives; Font, Header font and Position are as before. With the skin off or under the Blizzard theme, Blizzard's own colors, as before.
 5. With the switch off, tick it and answer **No** to the reload question: nothing changes, and a later theme change doesn't ask again. (Untick it afterwards if you want it off for the experiments.)
 
@@ -139,7 +139,7 @@ Taint log on for all of Part 4. Do the steps on `[F]`, then `[R]`.
 5. Focus a quest from the map or Blizzard's list: the accent bar to the left of its row; the list scrolls it in view. Track a new quest: the list scrolls to it only if the mouse is off the tracker and you have not scrolled in the last few seconds.
 6. Log out fully and back in: the list opens at the top or at the focused quest, not scrolled into the middle; titles that arrive late don't move it. Scroll to the bottom, turn in a quest, accept the follow-up at once: it scrolls into view.
 7. Kill quest mobs fast (an AoE pack): no stutter, no flicker. After a quiet moment, one change shows at once. **Allocation (the followup "Tracker: a refresh allocates about 175 KB, measure it in game"; Ruling 36 says it is measured in game first):** with a full quest log, out of combat and then in a fight, run a few times `/run local m=collectgarbage('count') local t=debugprofilestop() SaftUI.Tracker:Refresh() print(debugprofilestop()-t, collectgarbage('count')-m)` and paste the milliseconds and KB, in and out of a fight, so the followup is resolved as accepted or its table reuse is done.
-8. Hover a row: accent tint. Change Objectives and Buttons → Blue on the Colors tab: rows recolor at once (G11).
+8. Hover a row: accent tint. Change Objectives on the Colors tab, and the Accent on Global settings → Theme: rows recolor at once (G11).
 9. **Auto quest popups (G8)** `[F]` if Forever has any, `[R]` otherwise: accept an auto quest or finish one: a popup row above the zones, its label over its title with no overlap. Click it in and out of combat: the quest frame opens and the popup goes; no blocked-action message (P7, section D, step 11, with the taint log on). Right-click an item that begins a quest: its "Quest discovered" row appears at once. An auto-complete quest's "Click to complete" turns it in.
 10. Collapse the whole tracker with a timed quest, expand: the timer counts again. With a popup showing, the header chevron does nothing and the window shows expanded.
 11. Untrack everything: the window hides (Hide when empty) or shows "No tracked quests.".
@@ -204,7 +204,7 @@ Items tab: placement **Beside the tracker**.
 Items tab: **Nearest quest item button** on, with a tracked quest that has an item.
 
 1. The button shows at its spot with the item's icon. In `/sui edit` its outline ("Nearest quest item") appears only with the setting on and only while it has an item; the Position row and Reset work; a reload keeps the spot.
-2. Set the key on the Items tab: the key shows at the button's top right (Pixel font); Key Bindings → AddOns → SaftUI → "Use the nearest quest item" shows it; set it from there too and the button's text follows. Esc on the Items tab's Key row clears it. A key already bound to another action is taken and says so in chat ("F bound to Use the nearest quest item (was Action Button 1)."; a key the game refuses says "Can't bind F to ...").
+2. Set the key on the Items tab: the key shows at the button's top right (Pixel font); Key Bindings → SaftUI → "Use the nearest quest item" shows it; set it from there too and the button's text follows. Esc on the Items tab's Key row clears it. A key already bound to another action is taken and says so in chat ("F bound to Use the nearest quest item (was Action Button 1)."; a key the game refuses says "Can't bind F to ...").
 3. **G1 by the key:** with `ActionButtonUseKeyDown` 1 and 0, one press uses the item once, not twice and not zero times, out of combat and in it. In combat the key works with the button shown.
 4. Walk into a quest's area: it switches to that quest's item (accent border); out again, to the focus or the nearest. Focus another quest: it follows when no area is entered.
 5. **P4 on Forever:** whether `C_Minimap.IsInsideQuestBlob` and `GetDistanceSqToQuest` answer in the open world; if not, `TR.ChooseNearest` skips steps 1 and 3 on Forever (Part 2, P4).
@@ -309,3 +309,4 @@ Short list. Each was decided while building, and each is easy to change; say if 
 - **P5: nothing from SaftUI was blocked.** No `Logs/taint.log` was written (the file had not appeared by the end of the session), so this rests on BugGrabber: its only blocked action that session named another addon's quest log, not SaftUI.
 - **P6 and P7: skipped by the owner.** The seams stay as built: watch changes out of combat only; popup clicks allowed in combat.
 - **G2 with the tracker on: `true true true`.** The refresh's time and allocation were "basically nothing"; the allocation followup can be closed as accepted.
+- **2026-11-15: the default is on.** P2 passed (the owner had misread the step: with SaftUI's tracker on, Blizzard's is off screen). The owner approved switching the tracker on by default ("Everything looks good ... we can enable it by default"), and `SaftUI-Tracker/config.lua` now has `enable = true` (Part 7 done). Still to do: P4's dungeon and battleground runs. At upgrade: AceDB drops a saved value equal to the default, so a profile that had the switch off while the default was off has nothing saved and is on after the flip, and one that had ticked it on has `true` saved, now dropped, and stays on; only the owner has this build, so there is no migration.

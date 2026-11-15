@@ -39,7 +39,7 @@ local OTP = st:NewModule('ObjectiveTracker')
 	Blizzard's re-places (post-hooks on the tracker's ClearAllPoints and
 	SetPoint), and after the screen edge margin changes.
 
-	While SaftUI's own tracker is on (SaftUI-Tracker, switched off by default:
+	While SaftUI's own tracker is on (SaftUI-Tracker, switched on by default:
 	Owned() below, asked at call time), this module stands down: SaftUI's
 	tracker conceals Blizzard's one off screen (SaftUI-Tracker/blizzard.lua)
 	and this file places nothing of Blizzard's and reads none of it. PlaceTracker,

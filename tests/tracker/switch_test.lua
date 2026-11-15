@@ -1,4 +1,5 @@
--- SaftUI-Tracker's switch (tracker.enable, off by default):
+-- SaftUI-Tracker's switch (tracker.enable, on by default; TW.world turns it off
+-- unless a test says on, or on = 'default' for the shipped value):
 --   - the TOC (both clients, Core required, Misc optional), every file it
 --     lists, Bindings.xml and the binding's strings;
 --   - off: enabling builds no frame, hooks nothing, registers no event or
@@ -9,6 +10,9 @@
 --   - another tracker addon loaded: on builds nothing, and the page says which;
 --   - a profile whose switch differs says once in chat that it changes after a
 --     reload, and not again on a theme change;
+--   - on by default: a profile with no tracker keys at all comes up with the
+--     tracker built, with another tracker addon present it stands down, and
+--     with Misc's Blizzard tracker skin on the skin's mover stands down;
 --   - Level's default: on on Forever, off on retail.
 -- On both clients where it matters.
 --
@@ -70,17 +74,17 @@ test('the TOC: both clients, Core required, Misc first, every listed file exists
 	eq(_G['BINDING_NAME_' .. TR.NEAREST_COMMAND], 'Use the nearest quest item', 'the binding name')
 end)
 
-test('off by default: enabling builds no frame, hooks nothing, registers no event or mover', function()
+test('with the switch off: enabling builds no frame, hooks nothing, registers no event or mover', function()
 	for _, client in ipairs({ 'forever', 'retail' }) do
 		local before, timers
-		local st, TR = TW.world({ client = client, misc = { skinning = true, skin = true, otp = true }, blizzard = true,
+		local st, TR = TW.world({ client = client, on = false, misc = { skinning = true, skin = true, otp = true }, blizzard = true,
 			enabling = function() before, timers = TW.snapshot(ObjectiveTrackerFrame), #stub.timers end })
 		local where = client .. ': '
 		eq(TW.snapshot(ObjectiveTrackerFrame), before, where .. "Blizzard's tracker: points, shown, parent, alpha and scripts as before")
 		eq(TW.counts.scripts, 0, where .. 'no script set')
 		eq(TW.counts.timers, 0, where .. 'no timer')
 		eq(#stub.timers, timers, where .. 'no timer pending')
-		eq(st.config.profile.tracker.enable, false, where .. 'the switch defaults off')
+		eq(st.config.profile.tracker.enable, false, where .. 'the switch is off')
 		eq(TW.counts.frames, 0, where .. 'no frame')
 		eq(TW.counts.hooks, 0, where .. 'no hook')
 		eq(TW.counts.events, 0, where .. 'no event')
@@ -91,6 +95,39 @@ test('off by default: enabling builds no frame, hooks nothing, registers no even
 		eq(#take_errors(), 0, where .. 'no errors')
 		check(TW.OTP and TW.OTP.holder, where .. "Blizzard's tracker keeps its mover")
 	end
+end)
+
+test('on by default: a profile with no tracker keys at all comes up with the tracker on, built, without errors', function()
+	for _, client in ipairs({ 'forever', 'retail' }) do
+		local st, TR = TW.world({ client = client, on = 'default', blizzard = true,
+			misc = { skinning = true, skin = true, otp = true },
+			before = function(st) st.config.profile.tracker = nil end })
+		local where = client .. ': '
+		eq(st.defaults.tracker.enable, true, where .. 'the shipped default is on')
+		eq(st.config.profile.tracker.enable, true, where .. 'a profile that saved nothing reads on')
+		eq(TR:IsOn(), true, where .. 'on')
+		check(TR.built, where .. 'built')
+		check(st.EditModeFrames.movers.tracker ~= nil, where .. "SaftUI's mover is there")
+		check(TR:CharData() ~= nil, where .. 'its per-character data is made on first use')
+		eq(TR:TrackerAddon(), nil, where .. 'no other tracker addon')
+		check(TW.OTP and TW.OTP.holder, where .. "the skin's holder is there")
+		local mover = st.EditModeFrames.movers.objectivetracker
+		check(mover ~= nil, where .. "the skin's mover is registered")
+		eq(st.EditModeFrames:IsMoverDisabled(mover), true, where .. "and stands down while SaftUI's tracker owns Blizzard's")
+		eq(#take_errors(), 0, where .. 'no errors')
+	end
+end)
+
+test('on by default with another tracker addon: it stands down, the switch greyed with the reason', function()
+	local st, TR = TW.world({ on = 'default', addons = { '!KalielsTracker' } })
+	eq(st.config.profile.tracker.enable, true, 'the profile reads on')
+	eq(TR:IsOn(), false, 'stood down')
+	check(not TR.built, 'not built')
+	eq(TW.counts.frames, 0, 'no frame')
+	local page = TR:GetConfigTable()
+	eq(page.disabled(), true, 'the page is disabled')
+	eq(page.args.tracked_by.name, "Quests are tracked by Kaliel's Tracker. Turn it off to use SaftUI's.", 'with its reason')
+	eq(#take_errors(), 0, 'no errors')
 end)
 
 test('the switch is read once: set on in /sui it saves, asks to reload, and builds nothing now', function()
@@ -294,14 +331,14 @@ test('answering No to the reload question: a later theme change does not say it 
 end)
 
 test("the switch's reset asks about a reload as ticking does, and says nothing after", function()
-	local st, TR = TW.world({ on = true })
+	local st, TR = TW.world({ on = false })
 	load_saftui('SaftUI-Core/Config/optionsmodel.lua')
 	load_options_widgets()
 	local enable = TR:GetConfigTable().args.general.args.enable
-	check(enable.default.differs(), 'on differs from the default')
+	check(enable.default.differs(), 'off differs from the default')
 	local lines = printed(function()
 		enable.default.reset()
-		eq(st.config.profile.tracker.enable, false, 'reset to off')
+		eq(st.config.profile.tracker.enable, true, 'reset to on')
 		eq(st.OptionsWidgets.ConfirmText(), "SaftUI's tracker changes after a reload. Reload now?", 'asked')
 		st.OptionsWidgets.CancelConfirm()
 		TR:UpdateConfig()

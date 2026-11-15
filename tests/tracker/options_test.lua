@@ -38,7 +38,7 @@ test('the page: Tracker under Info, its tabs in order, General first with the sw
 	eq(enable.type, 'toggle')
 	eq(enable.name, "SaftUI's tracker")
 	eq(enable.desc, "Draws your quests in SaftUI's own tracker, grouped by zone, in place of Blizzard's objective tracker. Changes after a reload.")
-	eq(enable.default.value(), false, 'its default')
+	eq(enable.default.value(), true, 'its default: on')
 	local orders = { quests = 2, items = 3, visibility = 4, blizzard = 5 }
 	local seen = 0
 	for key, tab in pairs(page.args) do
@@ -58,6 +58,7 @@ end)
 
 test('every option has a desc and no width; every value option has a default that resets it to st.defaults.tracker', function()
 	local st, TR = world(false)
+	st.config.profile.tracker.enable = true -- the shipped default: the walk starts from every option at its default (this session's switch is still off)
 	local tree = TR:GetConfigTable()
 	local values = 0
 	each_option(tree, function(option, path)

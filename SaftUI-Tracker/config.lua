@@ -6,7 +6,7 @@ local st = SaftUI
 -- saved one when that module is loaded and the profile has one, else
 -- Blizzard's default spot.
 st.defaults.tracker = {
-	enable = false, theme = 'theme', background = 'theme',
+	enable = true, theme = 'theme', background = 'theme',
 	width = 260, height = 560, grow = 'down', header = true, count = true, hide_empty = true,
 	font = 'normal', header_font = 'heading',
 	quests = {

@@ -15,7 +15,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-15 — The tooltip lines take SaftUI's shadow and spacing](#2026-11-15--the-tooltip-lines-take-saftuis-shadow-and-spacing)
   - [2026-11-15 — Title bar height beside Window titles on the Theme tab](#2026-11-15--title-bar-height-beside-window-titles-on-the-theme-tab)
   - [2026-11-15 — Search into the dots menus](#2026-11-15--search-into-the-dots-menus)
-  - [2026-11-15 — SaftUI's tracker: experiments and in-game checks before the switch turns on](#2026-11-15--saftuis-tracker-experiments-and-in-game-checks-before-the-switch-turns-on)
+  - [2026-11-15 — SaftUI's tracker: what the in-game pass left open](#2026-11-15--saftuis-tracker-what-the-in-game-pass-left-open)
   - [2026-11-15 — SaftUI's tracker phase 2: task quests (bonus objectives and world quests)](#2026-11-15--saftuis-tracker-phase-2-task-quests-bonus-objectives-and-world-quests)
   - [2026-11-15 — SaftUI's tracker phase 3: scenarios and dungeons](#2026-11-15--saftuis-tracker-phase-3-scenarios-and-dungeons)
   - [2026-11-15 — SaftUI's tracker phase 4: Mythic+](#2026-11-15--saftuis-tracker-phase-4-mythic)
@@ -29,7 +29,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-14 — Three copies of the source lexer in tests](#2026-11-14--three-copies-of-the-source-lexer-in-tests)
   - [2026-11-14 — Tracker: a tracker moved in Blizzard's Edit Mode isn't the first position](#2026-11-14--tracker-a-tracker-moved-in-blizzards-edit-mode-isnt-the-first-position)
   - [2026-11-14 — A first-run setup dialog: UI size, theme, unit frame layout](#2026-11-14--a-first-run-setup-dialog-ui-size-theme-unit-frame-layout)
-  - [2026-11-14 — Tracker: a refresh allocates about 175 KB, measure it in game](#2026-11-14--tracker-a-refresh-allocates-about-175-kb-measure-it-in-game)
   - [2026-11-14 — /sui at half with the sidebar collapsed: a validation error is cut or hidden in the footer](#2026-11-14--sui-at-half-with-the-sidebar-collapsed-a-validation-error-is-cut-or-hidden-in-the-footer)
   - [2026-11-14 — Categories tab at full size: a long "Reset <name> to default" overlaps Delete](#2026-11-14--categories-tab-at-full-size-a-long-reset-name-to-default-overlaps-delete)
   - [2026-11-14 — Copy from writes default tables into keys the source unit doesn't have](#2026-11-14--copy-from-writes-default-tables-into-keys-the-source-unit-doesnt-have)
@@ -128,6 +127,9 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-15 — SaftUI's tracker: experiments and in-game checks before the switch turns on](#2026-11-15--saftuis-tracker-experiments-and-in-game-checks-before-the-switch-turns-on)
+  - [2026-11-14 — Tracker: a refresh allocates about 175 KB, measure it in game](#2026-11-14--tracker-a-refresh-allocates-about-175-kb-measure-it-in-game)
+  - [2026-11-13 — Objective tracker skin: zone grouping, max height and a scroll frame](#2026-11-13--objective-tracker-skin-zone-grouping-max-height-and-a-scroll-frame)
   - [2026-11-15 — All bars' Cooldown diff icon misses a bar that owns a size or outline alone](#2026-11-15--all-bars-cooldown-diff-icon-misses-a-bar-that-owns-a-size-or-outline-alone)
   - [2026-11-10 — Fonts: separate the fonts users pick per kind of text from SaftUI's internal font objects](#2026-11-10--fonts-separate-the-fonts-users-pick-per-kind-of-text-from-saftuis-internal-font-objects)
   - [2026-11-13 — Theme change errors in the theme engine: can't measure restricted regions](#2026-11-13--theme-change-errors-in-the-theme-engine-cant-measure-restricted-regions)
@@ -272,39 +274,20 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **Open questions:** Whether a hit on a row whose value is a shared font should still list the typeface fields.
 
-### 2026-11-15 — SaftUI's tracker: experiments and in-game checks before the switch turns on
+### 2026-11-15 — SaftUI's tracker: what the in-game pass left open
 
-**What:** SaftUI's own objective tracker (`SaftUI-Tracker`, Phase 1: quests) is built, reviewed and green on stubs, and ships **off** (`tracker.enable = false`). Nothing about either tracker changes until the owner has run the experiments and checks below in game and flipped the default. The steps for each are in `docs/superpowers/plans/2026-11-15-saftui-tracker-phase-1-in-game-checklist.md`, in the order a player does them, with what to look for and, for each experiment, the one function that changes on a failure. **Flipping the default (`enable = true` in `SaftUI-Tracker/config.lua`) is the last step, a one-line change** (the checklist's Part 7 lists what moves with it).
+**What:** SaftUI's tracker went on by default after the owner's in-game pass on Forever (see the Resolved entry "SaftUI's tracker: experiments and in-game checks before the switch turns on"). Three things were not settled by it.
 
-**Why noticed:** The owner approved the design with the switch off and building before the experiments ("if you want to start building the core quest tracker we can handle the finer details after", the spec's Settled 4). The last task of the Phase 1 plan (`docs/superpowers/plans/2026-11-14-saftui-objective-tracker-phase-1.md`, Task 13) wrote the checklist and this entry. The parts that decide whether the tracker is safe (the secure item buttons, the concealment of Blizzard's tracker, the handover) can only be confirmed in the game, and a taint bug there blocks quest items in combat for the session.
+**Why noticed:** The owner's pass, 2026-11-15, recorded in the checklist's "Results so far" (`docs/superpowers/plans/2026-11-15-saftui-tracker-phase-1-in-game-checklist.md`). The owner said everything looked good and approved the default, skipping some experiments.
 
-**Anchors:** `docs/superpowers/specs/2026-11-14-saftui-objective-tracker-design.md` ("What only the game can confirm", "Experiments to run before the build"), the plan's "Experiment seams" table, `.agents/taint.md` rules 5 and 14 to 17, `tests/tracker/states_test.lua`, the task reports and reviews in `.superpowers/sdd/2026-11-14-saftui-objective-tracker-phase-1/` (git-excluded).
+**Anchors:** that checklist's P4, P6, P7 and "Results so far"; `SaftUI-Tracker/probes.lua` (`TR.SectionHandsOver`), `SaftUI-Tracker/clicks.lua` (`TR.WatchChangeAllowed`, popup clicks), `SaftUI-Tracker/groups.lua` (the current zone first).
 
-**Shape of work:** Run in order, Forever first and then retail, with `/console taintLog 1`. Each experiment is one function, so a failure is a small change plus its tests.
+**Shape of work:**
+- **P4 inside a dungeon and a battleground** (and with an achievement or recipe tracked): which Blizzard sections fill in, for `TR.SectionHandsOver`. Only the open world was run.
+- **P6 and P7 were skipped by the owner.** Their seams stay as built: watch changes out of combat only; popup clicks allowed in combat. Run them if a taint line ever names them.
+- **The current zone first when the zone text is a sub-area name.** The owner's zone text printed "Shen'dralas" while the quests' header was "Desolace", so a match on the zone text may not list the current zone first. Check what `groups.lua` compares and whether it should use the parent zone.
 
-Experiments, before turning the switch on (with today's skin and mover), each with the task that built what it decides:
-1. **P1.** A quest item used in combat from Blizzard's tracker with today's skin, and `issecurevariable` on `dirty` and `isDirty`. The baseline everything else assumes. A failure stops the work. (Task 6's concealment depends on it.)
-2. **P2.** Concealing Blizzard's tracker by the C methods only (clamp off, one `SetPoint` off screen), quest progress and a quest item in combat while it is concealed. Built in Task 6 (`TR:PlaceBlizzard`); on failure only its `'concealed'` branch changes.
-3. **P3.** A secure `item` button made before combat uses a quest item in combat, and by a key. Built in Tasks 8 to 10; on failure `TR.ItemAttributes` (`items.lua`) returns the `macro` form.
-4. **P4.** What Forever has: which Blizzard sections fill in the open world and in a dungeon, that headers match `GetRealZoneText()`, that distance and the quest area answer. Used by Tasks 11 (`TR.SectionHandsOver`, `probes.lua`) and 10 (`TR.ChooseNearest`, `nearest.lua`); on failure each seam is one function. Decides which Phase comes next.
-5. **P5.** Opening the map, quest details and Abandon from addon code, in and out of combat. Built in Task 7 (`TR.ShowOnMapAllowed`, `TR.QuestDetailsAllowed`, `TR.AbandonAllowed`, `clicks.lua`); on failure the one constant becomes false.
-6. **P6.** Track and untrack from SaftUI's clicks leave no lasting taint (Task 7, `TR.WatchChangeAllowed`, `clicks.lua`); run with the tracker on. (Added by Task 7's review; the spec has P1 to P5.)
-
-Then, with the switch on, the spec's G1 to G12, each with the task that built it:
-- **G1** a quest item used from a row button, the column and the nearest button by its key, with nothing in the taint log (Tasks 8, 9, 10).
-- **G2** `issecurevariable` on `dirty`, `isDirty` and `isCollapsed` prints `true true true` after an hour of questing, a dungeon and a handover in combat (Tasks 6, 11).
-- **G3** the handover: Blizzard's tracker in place and beside, and in combat (Task 11).
-- **G4** row buttons and the column in combat: dimming, the wheel (Tasks 8, 9).
-- **G5** every visibility trigger and choice, with Hide quest items on and off (Task 12).
-- **G6** the look under Thick, Thin and Blizzard, Width, Max height, Grow up, the scroll bar, zone groups, collapse states after `/reload` (Tasks 4, 5).
-- **G7** `/reload` in combat (Task 8).
-- **G8** an auto quest popup clicked in combat, and an auto-complete quest (Tasks 5, 7).
-- **G9** the right-click menu, Abandon's confirm, Share (Task 7).
-- **G10** edit mode: the outline, drag, `/reload`, the first position (Task 4).
-- **G11** the Colors tab's Objectives colors recolor both trackers, old custom colors carried over (Task 2).
-- **G12** the right column's frames against the tracker's header at the default spot (Task 4).
-
-**Open questions:** The results. Rulings made for the owner to check are in the checklist's Part 5: the spot's floor (Ruling 33), the hover area including Blizzard's revealed tracker, watch changes held out of combat, Shift-click on an item button using the item, the nearest button's refused anchors, numbers counting only expanded groups, the column clamped to the scroll view, and the menu using the game's strings.
+**Open questions:** Whether the current-zone match needs the parent zone's name.
 
 ### 2026-11-15 — SaftUI's tracker phase 2: task quests (bonus objectives and world quests)
 
@@ -475,20 +458,6 @@ Then, with the switch on, the spec's G1 to G12, each with the task that built it
 **Settled 2026-11-14:** the owner builds each unit frame layout in game as a unit frame profile, and it is migrated from the game's saved settings (SaftUI's SavedVariables in the WTF folder) into built-in defaults that ship with the addon. "yep I'd build them myself in game and you can just migrate the settings from the wtf folder to actual defaults". When migrating, only the settings go into the repo: no account, realm or character names from the file or its path.
 
 **Open questions:** How a shipped layout is stored and named (data files under `SaftUI-Unitframes/config/`, listed beside the player's own profiles and not editable in place?), and how one is refreshed when the owner changes it. Whether existing players see it after the update or only fresh installs. Whether it is per account or per character. What else belongs in it (action bar layout, bags view, the tracker switch).
-### 2026-11-14 — Tracker: a refresh allocates about 175 KB, measure it in game
-
-**What:** SaftUI's tracker (`SaftUI-Tracker`) allocates about 175 KB of Lua tables per refresh in the stub world with 25 tracked quests of 3 objectives (about 240 KB with 6 objectives each). At the throttle's ceiling of ten refreshes a second (`TR.REFRESH_GAP` 0.1 s) that is about 2 MB/s of garbage while quest events stream, for example in a fight. An idle refresh (nothing changed) allocates no frame and sets no text. The question is whether the real numbers matter in game.
-
-**Why noticed:** Review of tracker Task 5 (rows and the refresh), `.superpowers/sdd/2026-11-14-saftui-objective-tracker-phase-1/task-5-review.md`, which measured it and recommended accepting it for Phase 1 and measuring in game. The split in the stub world: the model read (`TR.Model.Read`) about 150 KB, of which about 70 KB is the stub's own API tables (30 `C_QuestLog.GetInfo` results, 25 `GetQuestObjectives` results), which the game makes too; the redraw (`TR.QuestLines`, `TR.Groups.Build`, title strings) about 25 KB.
-
-**Anchors:** `SaftUI-Tracker/model.lua` (`Model.Read`, `ReadQuest`, `ReadObjectives`, `TR.QuestLines`), `SaftUI-Tracker/groups.lua` (`Groups.Build`), `SaftUI-Tracker/init.lua` (`TR:MarkDirty`, `TR:Refresh`, `TR:Redraw`), `tests/tracker/refresh_test.lua`.
-
-**What's been considered:** Skipping the read when an event can't have changed the model, or reading only the quests an event names, does little in a fight: the stream there is `QUEST_LOG_UPDATE`, which names no quest and can change any of them. `PLAYER_REGEN_ENABLED` and `PLAYER_REGEN_DISABLED` need no re-read until the item buttons (Task 8) use them, a free micro-cut. The cheapest real cut, if the numbers call for one: `TR.Model.Read` fills last refresh's per-quest and objective tables in place, keyed by quest ID, instead of making new ones (most of the model's own share), and `TR.QuestLines` and `TR.Groups.Build` reuse their line and group tables (the redraw's share).
-
-**Shape of work:** First measure: with a full log in a fight, run `/run local m=collectgarbage('count') local t=debugprofilestop() SaftUI.Tracker:Refresh() print(debugprofilestop()-t, collectgarbage('count')-m)` a few times and note the milliseconds and KB, here. If they are small (a refresh well under a millisecond, garbage collected without a visible hitch), resolve this as accepted. If not, one small change in `model.lua` and `groups.lua` (reuse the tables), with the idle-refresh test kept.
-
-**Open questions:** The in-game milliseconds and KB per refresh on the owner's client with a full log, in and out of a fight.
-
 ### 2026-11-14 — /sui at half with the sidebar collapsed: a validation error is cut or hidden in the footer
 
 **What:** With the sidebar collapsed at half width (W4), the footer's status line, where a validation error such as "Size: a number, please" shows, has a region about 54 wide under Thick and Thin (96 under Blizzard), so the message is cut after two lines, and with one more icon command registered the region is 22, under `FOOTER_MIN_ROOM` (24), so the status line is hidden and no message shows anywhere. The page's field then keeps only the typed text.
@@ -578,8 +547,7 @@ Then, with the switch on, the spec's G1 to G12, each with the task that built it
 **Asked for next (the owner, 2026-11-13):** "I'll probably want some additional enhancements like zone grouping, objective status coloring, is it possible to set a max height and a scroll frame on it? I'd also love the mover to fill the full height of the tracker not just the header."
 - ~~*The mover filling the tracker's height*~~ **Built 2026-11-13** (`OTP:UpdateFootprint`): in edit mode the outline is as tall as the tracker, from the holder's top; the holder and what is saved are unchanged.
 - ~~*Objective status colouring*~~ **Built 2026-11-13** (completed and failed lines): two colours on the tracker's page, Objective colors (Completed default Blizzard's dim green, Failed the text red). In-game: a failed line shows Blizzard's brighter red while hovered; "in progress" keeps Blizzard's normal color, as there is no third state to colour.
-- *Zone grouping:* Blizzard's tracker groups by module (Quests, Campaign, ...), not zone. Regrouping its blocks means changing its layout, which the skin never does today (taint: a tainted layout makes the quest item buttons it creates tainted). Needs a design and a taint study; it may only be safe as a SaftUI-drawn list beside or in place of Blizzard's. **Taken up 2026-11-15 by SaftUI's own tracker (`SaftUI-Tracker`, Phase 1): a SaftUI-drawn list grouped by zone, the current zone first. It moves to Resolved when the switch is on and the checks in the entry "SaftUI's tracker: experiments and in-game checks before the switch turns on" pass.**
-- *A max height and a scroll frame:* the same hazard. Blizzard already limits the tracker's height (its Edit Mode Height) and collapses modules that don't fit; putting its container in a scroll frame means re-parenting or sizing it from addon code. To be studied with zone grouping. **Taken up 2026-11-15 by SaftUI's own tracker (Phase 1): Width and Max height, and a scroll frame with its bar shown under the mouse, on a SaftUI-drawn list (Blizzard's tracker is never put in a scroll frame). Resolved with the zone grouping above.**
+- *Zone grouping, a max height and a scroll frame:* taken up 2026-11-15 by SaftUI's own tracker (`SaftUI-Tracker`) and resolved with its switch on by default; see the Resolved entry "Objective tracker skin: zone grouping, max height and a scroll frame".
 
 **Left out, for later:** a Height setting (sizing the tracker from addon code may taint its layout; only the game can show whether it is safe) and Blizzard's Opacity and Text Size, which SaftUI's edit mode now hides; the large art panels (auto quest popups, the scenario stage, challenge mode and proving grounds banners), the bars' round reward icon, the map pin and find group buttons; standing down for another tracker addon; a default spot clear of SaftUI's minimap and experience bars.
 
@@ -2382,6 +2350,68 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-15 — SaftUI's tracker: experiments and in-game checks before the switch turns on
+
+**What:** SaftUI's own objective tracker (`SaftUI-Tracker`, Phase 1: quests) is built, reviewed and green on stubs, and ships **off** (`tracker.enable = false`). Nothing about either tracker changes until the owner has run the experiments and checks below in game and flipped the default. The steps for each are in `docs/superpowers/plans/2026-11-15-saftui-tracker-phase-1-in-game-checklist.md`, in the order a player does them, with what to look for and, for each experiment, the one function that changes on a failure. **Flipping the default (`enable = true` in `SaftUI-Tracker/config.lua`) is the last step, a one-line change** (the checklist's Part 7 lists what moves with it).
+
+**Why noticed:** The owner approved the design with the switch off and building before the experiments ("if you want to start building the core quest tracker we can handle the finer details after", the spec's Settled 4). The last task of the Phase 1 plan (`docs/superpowers/plans/2026-11-14-saftui-objective-tracker-phase-1.md`, Task 13) wrote the checklist and this entry. The parts that decide whether the tracker is safe (the secure item buttons, the concealment of Blizzard's tracker, the handover) can only be confirmed in the game, and a taint bug there blocks quest items in combat for the session.
+
+**Anchors:** `docs/superpowers/specs/2026-11-14-saftui-objective-tracker-design.md` ("What only the game can confirm", "Experiments to run before the build"), the plan's "Experiment seams" table, `.agents/taint.md` rules 5 and 14 to 17, `tests/tracker/states_test.lua`, the task reports and reviews in `.superpowers/sdd/2026-11-14-saftui-objective-tracker-phase-1/` (git-excluded).
+
+**Shape of work:** Run in order, Forever first and then retail, with `/console taintLog 1`. Each experiment is one function, so a failure is a small change plus its tests.
+
+Experiments, before turning the switch on (with today's skin and mover), each with the task that built what it decides:
+1. **P1.** A quest item used in combat from Blizzard's tracker with today's skin, and `issecurevariable` on `dirty` and `isDirty`. The baseline everything else assumes. A failure stops the work. (Task 6's concealment depends on it.)
+2. **P2.** Concealing Blizzard's tracker by the C methods only (clamp off, one `SetPoint` off screen), quest progress and a quest item in combat while it is concealed. Built in Task 6 (`TR:PlaceBlizzard`); on failure only its `'concealed'` branch changes.
+3. **P3.** A secure `item` button made before combat uses a quest item in combat, and by a key. Built in Tasks 8 to 10; on failure `TR.ItemAttributes` (`items.lua`) returns the `macro` form.
+4. **P4.** What Forever has: which Blizzard sections fill in the open world and in a dungeon, that headers match `GetRealZoneText()`, that distance and the quest area answer. Used by Tasks 11 (`TR.SectionHandsOver`, `probes.lua`) and 10 (`TR.ChooseNearest`, `nearest.lua`); on failure each seam is one function. Decides which Phase comes next.
+5. **P5.** Opening the map, quest details and Abandon from addon code, in and out of combat. Built in Task 7 (`TR.ShowOnMapAllowed`, `TR.QuestDetailsAllowed`, `TR.AbandonAllowed`, `clicks.lua`); on failure the one constant becomes false.
+6. **P6.** Track and untrack from SaftUI's clicks leave no lasting taint (Task 7, `TR.WatchChangeAllowed`, `clicks.lua`); run with the tracker on. (Added by Task 7's review; the spec has P1 to P5.)
+
+Then, with the switch on, the spec's G1 to G12, each with the task that built it:
+- **G1** a quest item used from a row button, the column and the nearest button by its key, with nothing in the taint log (Tasks 8, 9, 10).
+- **G2** `issecurevariable` on `dirty`, `isDirty` and `isCollapsed` prints `true true true` after an hour of questing, a dungeon and a handover in combat (Tasks 6, 11).
+- **G3** the handover: Blizzard's tracker in place and beside, and in combat (Task 11).
+- **G4** row buttons and the column in combat: dimming, the wheel (Tasks 8, 9).
+- **G5** every visibility trigger and choice, with Hide quest items on and off (Task 12).
+- **G6** the look under Thick, Thin and Blizzard, Width, Max height, Grow up, the scroll bar, zone groups, collapse states after `/reload` (Tasks 4, 5).
+- **G7** `/reload` in combat (Task 8).
+- **G8** an auto quest popup clicked in combat, and an auto-complete quest (Tasks 5, 7).
+- **G9** the right-click menu, Abandon's confirm, Share (Task 7).
+- **G10** edit mode: the outline, drag, `/reload`, the first position (Task 4).
+- **G11** the Colors tab's Objectives colors recolor both trackers, old custom colors carried over (Task 2).
+- **G12** the right column's frames against the tracker's header at the default spot (Task 4).
+
+**Open questions:** The results. Rulings made for the owner to check are in the checklist's Part 5: the spot's floor (Ruling 33), the hover area including Blizzard's revealed tracker, watch changes held out of combat, Shift-click on an item button using the item, the nearest button's refused anchors, numbers counting only expanded groups, the column clamped to the scroll view, and the menu using the game's strings.
+
+**Resolved 2026-11-15:** the owner ran the checks in game on Forever and approved the switch on by default ("Everything looks good ... we can enable it by default"): P1, P3 and P5 passed, P2 passed (the owner had misread the step: with SaftUI's tracker on, Blizzard's is off screen), G2 printed `true true true` with it on, and `SaftUI-Tracker/config.lua` now has `enable = true`. What is still open moved to the entry "SaftUI's tracker: what the in-game pass left open". Results: the checklist's "Results so far".
+
+### 2026-11-14 — Tracker: a refresh allocates about 175 KB, measure it in game
+
+**What:** SaftUI's tracker (`SaftUI-Tracker`) allocates about 175 KB of Lua tables per refresh in the stub world with 25 tracked quests of 3 objectives (about 240 KB with 6 objectives each). At the throttle's ceiling of ten refreshes a second (`TR.REFRESH_GAP` 0.1 s) that is about 2 MB/s of garbage while quest events stream, for example in a fight. An idle refresh (nothing changed) allocates no frame and sets no text. The question is whether the real numbers matter in game.
+
+**Why noticed:** Review of tracker Task 5 (rows and the refresh), `.superpowers/sdd/2026-11-14-saftui-objective-tracker-phase-1/task-5-review.md`, which measured it and recommended accepting it for Phase 1 and measuring in game. The split in the stub world: the model read (`TR.Model.Read`) about 150 KB, of which about 70 KB is the stub's own API tables (30 `C_QuestLog.GetInfo` results, 25 `GetQuestObjectives` results), which the game makes too; the redraw (`TR.QuestLines`, `TR.Groups.Build`, title strings) about 25 KB.
+
+**Anchors:** `SaftUI-Tracker/model.lua` (`Model.Read`, `ReadQuest`, `ReadObjectives`, `TR.QuestLines`), `SaftUI-Tracker/groups.lua` (`Groups.Build`), `SaftUI-Tracker/init.lua` (`TR:MarkDirty`, `TR:Refresh`, `TR:Redraw`), `tests/tracker/refresh_test.lua`.
+
+**What's been considered:** Skipping the read when an event can't have changed the model, or reading only the quests an event names, does little in a fight: the stream there is `QUEST_LOG_UPDATE`, which names no quest and can change any of them. `PLAYER_REGEN_ENABLED` and `PLAYER_REGEN_DISABLED` need no re-read until the item buttons (Task 8) use them, a free micro-cut. The cheapest real cut, if the numbers call for one: `TR.Model.Read` fills last refresh's per-quest and objective tables in place, keyed by quest ID, instead of making new ones (most of the model's own share), and `TR.QuestLines` and `TR.Groups.Build` reuse their line and group tables (the redraw's share).
+
+**Shape of work:** First measure: with a full log in a fight, run `/run local m=collectgarbage('count') local t=debugprofilestop() SaftUI.Tracker:Refresh() print(debugprofilestop()-t, collectgarbage('count')-m)` a few times and note the milliseconds and KB, here. If they are small (a refresh well under a millisecond, garbage collected without a visible hitch), resolve this as accepted. If not, one small change in `model.lua` and `groups.lua` (reuse the tables), with the idle-refresh test kept.
+
+**Open questions:** The in-game milliseconds and KB per refresh on the owner's client with a full log, in and out of a fight.
+
+**Resolved 2026-11-15:** accepted. The owner measured a refresh in game with a full log: "the cost is basically nothing". No table reuse needed.
+
+### 2026-11-13 — Objective tracker skin: zone grouping, max height and a scroll frame
+
+**What:** Asked for on the skin of Blizzard's objective tracker: group quests by zone, set a max height and put the list in a scroll frame. Blizzard's tracker groups by module and putting its container in a scroll frame or sizing it from addon code risks taint, so these were left to a design and taint study.
+
+**Why noticed:** The owner, 2026-11-13: "I'll probably want some additional enhancements like zone grouping, objective status coloring, is it possible to set a max height and a scroll frame on it?" The rest of that entry (the in-game checks, what was left out) stays in Active: [Objective tracker skin: in-game checks and what was left out](#2026-11-13--objective-tracker-skin-in-game-checks-and-what-was-left-out).
+
+**Anchors:** `SaftUI-Tracker/` (`groups.lua`, `window.lua`, `rows.lua`), `docs/superpowers/specs/2026-11-14-saftui-objective-tracker-design.md`.
+
+**Resolved 2026-11-15:** SaftUI's own tracker draws a list grouped by zone (the current zone first), with Width and Max height and a scroll frame with its bar shown under the mouse; Blizzard's tracker is never put in a scroll frame. It ships on by default after the owner's in-game pass.
 
 ### 2026-11-15 — All bars' Cooldown diff icon misses a bar that owns a size or outline alone
 

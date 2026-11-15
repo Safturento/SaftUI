@@ -4,7 +4,7 @@ st.Tracker = TR
 
 --[[
 	SaftUI's own objective tracker. While the switch (tracker.enable, General)
-	is off, which is its default, this addon makes no frame, hook, event, mover
+	is off, this addon makes no frame, hook, event, mover
 	or binding change, and Blizzard's tracker, its skin and its mover behave as
 	they do without it.
 
