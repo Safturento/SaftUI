@@ -472,6 +472,43 @@ test('ResetCategory and ResetAllCategories: as shipped; your categories and thei
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+test('a default the list build finds new gets a number after it when one of your categories has its name', function()
+	world('compact')
+	local function ids()
+		local out = {}
+		for _, entry in ipairs(INV:GetCategoryList()) do out[#out + 1] = entry.id end
+		return out
+	end
+	-- A profile saved by a version without Toys, whose user called one of
+	-- their categories "toys" (any case).
+	local mine = INV:AddUserCategory()
+	INV:RenameCategory(mine, 'toys')
+	local order = {}
+	for _, id in ipairs(ids()) do
+		if id ~= 'Toys' then order[#order + 1] = id end
+	end
+	INV:CategoryStore().order = order
+	INV:CategoriesChanged()
+	local list = INV:GetCategoryList()
+	eq(list.byId[mine].name, 'toys', 'your category keeps its name')
+	eq(list.byId.Toys.name, 'Toys (2)', 'the new default is numbered')
+	eq(list.byId.Toys.edited, false, 'and is no edit: it is only how the list shows it')
+	eq(INV:CategoryStore().edits.Toys, nil, 'nothing is written to the profile')
+	-- No two share a name, and a name numbered already is skipped.
+	local other = INV:AddUserCategory()
+	INV:RenameCategory(other, 'Toys (2)')
+	list = INV:GetCategoryList()
+	eq(list.byId.Toys.name, 'Toys (3)', 'a number your category has is skipped')
+	-- Once your category is renamed, the default shows its own name again.
+	INV:RenameCategory(mine, 'Playthings')
+	INV:RenameCategory(other, 'More')
+	eq(INV:GetCategoryList().byId.Toys.name, 'Toys', 'the shipped name when nothing has it')
+	-- A default you renamed yourself is not renumbered.
+	INV:RenameCategory('Toys', 'Playthings')
+	eq(INV:GetCategoryList().byId.Toys.name, 'Playthings', 'your rename stands, even beside another with that name')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
 test('a default restored or reset when another category has its name gets a number after it, so no two share a name', function()
 	world('compact')
 	local function names_unique()
