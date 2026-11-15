@@ -211,7 +211,21 @@ local function BuildList()
 		row.hover:SetColorTexture(st:Color('accent'):GetRGB())
 		row.hover:SetAlpha(st.TINT_ROW)
 		row.hover:Hide()
-		row.text = NewText(row, 'LEFT')
+		-- One line, cut at the row. A font string wraps unless told not to, so a
+		-- name wider than the list ran onto a second line over the next entry
+		-- (without wrapping the game cuts it, as every face's text is cut). An
+		-- entry drawn in its own face can be taller than the row too: the text
+		-- is in a frame inside one that clips its children, whose rect is the
+		-- row's, so a glyph never reaches the rows beside it. (Clipping is the
+		-- cut a face's glyphs need; shrinking a face to fit would show it at a
+		-- size it is not picked at.)
+		row.clip = CreateFrame('Frame', nil, row)
+		row.clip:SetAllPoints(row)
+		row.clip:SetClipsChildren(true)
+		row.view = CreateFrame('Frame', nil, row.clip)
+		row.view:SetAllPoints(row.clip)
+		row.text = NewText(row.view, 'LEFT')
+		row.text:SetWordWrap(false)
 		row.text:SetPoint('LEFT', row, 'LEFT', 8, 0)
 		row.text:SetPoint('RIGHT', row, 'RIGHT', -10, 0)
 		-- A caption and a disabled entry are not lit, and do nothing when clicked:

@@ -1451,3 +1451,79 @@ test("a font row's dots menu, the page changed, then an item menu with a face-on
 		end)
 	end
 end)
+
+------------------------------------------------------------------ long names in the list
+
+local LONG_NAMES = { 'AR CrystalzcuheiGBK Demibold', 'AR ZhongkaiGBK Medium (Combat)' }
+
+-- What keeps an entry on its own row: its text never wraps, and what it draws
+-- (a face taller than the row) is cut at the row, so it can't reach the rows
+-- beside it. A font string wraps unless told not to; the stubs lay out one line
+-- either way, so the setting is what is read, and the clip frame's place.
+local function check_rows_hold(list, where)
+	local shown = 0
+	for i, row in ipairs(list.rows) do
+		if row:IsShown() then
+			shown = shown + 1
+			local label = where .. ', row ' .. i
+			eq(row.text:CanWordWrap(), false, label .. ': the text never wraps')
+			check(row.clip ~= nil and row.clip:DoesClipChildren(), label .. ': a frame cuts what the text draws at the row')
+			if row.clip then
+				eq(row.clip:GetParent(), row, label .. ': the clip is the row\'s')
+				eq(row.clip:GetNumPoints(), 2, label .. ': the clip is anchored by two corners')
+				for p = 1, 2 do
+					local _, relative = row.clip:GetPoint(p)
+					eq(relative, row, label .. ': both on the row')
+				end
+				local view = row.text:GetParent()
+				eq(view:GetParent(), row.clip, label .. ': the text is in a child of the clip, the frame that is cut')
+			end
+		end
+	end
+	check(shown > 0, where .. ': rows are shown')
+end
+
+test('a font list with names too wide for it: every entry is one line, cut at its row, under Thick, Thin and Blizzard (bug 1)', function()
+	for _, look in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		in_look(look, function()
+			for _, name in ipairs(LONG_NAMES) do st.LSM:Register('font', name, 'Fonts\\ARIALN.TTF') end
+			local w = row_widget('header', 'Text')
+			local list = open(w)
+			-- Scroll to the long names: they sort among the typefaces.
+			local found = {}
+			for i, entry in ipairs(list.entries) do
+				for _, name in ipairs(LONG_NAMES) do
+					if entry.label == name then found[name] = i end
+				end
+			end
+			for _, name in ipairs(LONG_NAMES) do check(found[name] ~= nil, look .. ': ' .. name .. ' is listed') end
+			check_rows_hold(list, look .. ' top')
+			stub.fire_script(list.frame, 'OnMouseWheel', -1)
+			list.offset = found[LONG_NAMES[1]] - 1
+			stub.fire_script(list.frame, 'OnMouseWheel', 0)
+			check_rows_hold(list, look .. ' at the long names')
+			local off = P.off(list.frame)
+			eq(#off, 0, look .. ': whole pixels ' .. P.report(off))
+			W.CloseList()
+		end)
+	end
+end)
+
+test('a plain select list with a long label is one line cut at its row too', function()
+	for _, look in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		in_look(look, function()
+			fresh()
+			vals.pick = 'a'
+			local pick = {
+				order = 1, type = 'select', name = 'Pick', desc = 'Pick one.',
+				values = { a = 'Short', b = 'A label far too long for a list a hundred and seventy wide' },
+				get = function() return vals.pick end, set = function(_, v) vals.pick = v end,
+			}
+			local _, by = draw(Page({ pick = pick }))
+			stub.click(by.pick.widget.frame)
+			local list = W.GetListFrames()
+			check_rows_hold(list, look .. ' select')
+			W.CloseList()
+		end)
+	end
+end)
