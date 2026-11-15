@@ -271,7 +271,9 @@ test("Action bars: tooltips, Position last on each bar and extra, Theme and Back
 	AB.UpdateBar, AB.UpdateBars, AB.LayoutBar = count('UpdateBar'), count('UpdateBars'), count('LayoutBar')
 	AB.LayoutExtra, AB.UpdateConfig = count('LayoutExtra'), count('UpdateConfig')
 	load_saftui('SaftUI-ActionBars/shared.lua')
+	AB.COUNTDOWN_CVAR = 'countdownForCooldowns' -- skin.lua's, which this world stands in for
 	load_saftui('SaftUI-ActionBars/textoptions.lua')
+	if not SaftUI.Config.SavedIn then load_saftui('SaftUI-Core/Config/optionsdefault.lua') end -- the page's saved paths
 	load_saftui('SaftUI-ActionBars/options.lua')
 	AB:ConvertProfile() -- the world the game reaches: a converted profile
 	-- All bars' places differ from what any bar stores, so a bar that follows

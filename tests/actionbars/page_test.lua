@@ -53,6 +53,7 @@ local function fresh()
 	apply_defaults()
 	for _, file in ipairs(FILES) do load_saftui(file) end
 	load_saftui('SaftUI-Core/Config/optionsmodel.lua')
+	load_saftui('SaftUI-Core/Config/optionsdefault.lua') -- st.Config.SavedIn, the reset sources
 	load_test_file('lib/options_walk.lua')
 	OM = st.OptionsModel
 	AB = st:GetModule('ActionBars')
@@ -419,6 +420,46 @@ test('a text item: own-marked by its menu, its diff lines naming the settings', 
 	eq(AB:GetSetting('bar2', 'hotkey.position', 'point'), 'TOPRIGHT', "the rest copied from All bars'")
 	eq(table.concat(calls, ','), 'UpdateBar:bar2', 'Bar 2 is updated')
 	no_errors()
+end)
+
+test('every action bar row has a reset or its share, and each derived one round-trips', function()
+	fresh()
+	local R = load_test_file('lib/reset_walk.lua')
+	-- The extras' movers, as AB:SetupExtras registers them: their Position rows reset through them.
+	for _, file in ipairs(editmode_files()) do load_saftui(file) end
+	AB.movers = AB.movers or {}
+	for _, id in ipairs(AB.EXTRA_IDS) do AB:RegisterExtraMover(id) end
+	R.check_page({ ActionBars = AB:GetConfigTable() }, 'ActionBars')
+end)
+
+test("All bars' Cooldown Show resets to Blizzard's default", function()
+	fresh()
+	load_test_file('lib/reset_walk.lua')
+	local r = root()
+	local item = row(r, 'all', 'countdown')
+	eq(AB.COUNTDOWN_CVAR, CVAR, 'one name for the setting')
+	eq(C_CVar.GetCVarDefault(CVAR), '1', "the stub knows Blizzard's default")
+	eq(OM.DefaultSource(r, item), 'default', 'a hand default')
+	eq(item.option.default.differs(), false, 'on, as the game ships it: no icon')
+	C_CVar.SetCVar(CVAR, '0')
+	eq(item.option.default.differs(), true, 'off differs')
+	eq(item.option.default.value(), true, "the value it goes back to")
+	item.option.default.reset()
+	eq(C_CVar.GetCVarBool(CVAR), true, 'reset: on')
+	eq(stub.cvars[CVAR], '1', "reset: '1'")
+	eq(item.option.default.differs(), false, 'and no icon again')
+end)
+
+test("All bars' Cooldown Show has no reset on a client with no CVar default", function()
+	fresh()
+	load_test_file('lib/reset_walk.lua')
+	local had = C_CVar.GetCVarDefault
+	C_CVar.GetCVarDefault = nil
+	local r = { ActionBars = AB:GetConfigTable() }
+	local item = row(r, 'all', 'countdown')
+	C_CVar.GetCVarDefault = had
+	eq(OM.DefaultSource(r, item), 'none', 'none')
+	check(type(item.option.noReset) == 'string' and item.option.noReset ~= '', 'with its reason')
 end)
 
 test("the cooldown numbers: Show is Blizzard's setting on All bars, none on a bar; no Reset button", function()
