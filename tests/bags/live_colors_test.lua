@@ -253,17 +253,19 @@ test("the Accent: the bag bar's slots, the loading bars, the selected bank windo
 end)
 
 test('100 Accent passes over every slot of the world allocate under 4 KB; in combat the same (Review Focus 4)', function()
-	-- TODO after Task 2 (Core's widgets) merges: st:SkinActionButton then follows the Accent on every
-	-- item, currency and bank bar slot's hover (about 1300 SetVertexColor calls in this world). Count
-	-- them here (setters(m, 'SetVertexColor') >= the slots made), keep the 4 KB check, and add the
-	-- brief's "every item slot's hover once" assertion.
 	world()
 	INV:SelectBankCategory(INV.containers.bank.header)
 	local accent = st.config.profile.theme.accent
+	local slots = 0
+	each_slot(function() slots = slots + 1 end)
 	for _, combat in ipairs({ false, true }) do
 		stub.in_combat = combat
 		-- Each border is given a color once first (a stub widget's first call makes its table).
 		st:ColorChanged('accent')
+		local once = pass('accent', nil, 1)
+		-- Core's st:SkinActionButton follows the Accent on each slot's hover (item, currency and
+		-- bank bar slots): every item slot's hover is painted, once.
+		check(setters(once, 'SetVertexColor') >= slots, 'every item slot hover once: ' .. setters(once, 'SetVertexColor') .. ' SetVertexColor calls for ' .. slots .. ' slots')
 		local m = pass('accent', nil, 100)
 		C.print('bags, accent' .. (combat and ', in combat' or ''), m)
 		check(m.kb < 4, 'garbage over 100 passes: ' .. m.kb .. ' KB' .. (combat and ' in combat' or ''))
