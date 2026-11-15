@@ -265,6 +265,9 @@ function TR:OnEvent(event, ...)
 		if self.pending then
 			self.pending = false
 			self:Refresh()
+			-- Nothing runs after lockdown begins unless asked: the next frame draws what
+			-- combat changes (the dimming, the scroll lock's tooltip and bar).
+			C_Timer.After(0, function() self:RefreshItems() end)
 			return -- (it has just read everything this event would mark)
 		end
 	elseif event == 'PLAYER_REGEN_ENABLED' then

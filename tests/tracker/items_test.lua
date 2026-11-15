@@ -55,9 +55,14 @@ local function secure_frames(TR)
 	return list
 end
 
--- A mouse click as the game delivers it: the template acts on the release,
--- whatever "cast on key down" says (SecureActionButton_OnClick, isSecureMousePress).
-local function use(b) return stub.click(b, 'LeftButton', false) end
+-- A mouse click as the game delivers it to an addon's secure button: the press,
+-- then the release, each one OnClick(button, down); the template acts on one of
+-- them by ActionButtonUseKeyDown (SecureActionButton_OnClick, which an addon's
+-- button calls without isKeyPress or isSecureAction).
+local function use(b)
+	stub.click(b, 'LeftButton', true)
+	return stub.click(b, 'LeftButton', false)
+end
 
 -- Every region and frame under a frame, to see that nothing was made.
 local function count_parts(frame)
@@ -143,23 +148,30 @@ test('out of combat: the layer and a button per quest with an item, set up by TR
 	eq(#take_errors(), 0, 'no errors')
 end)
 
-test('a click uses the quest item, on the release, as Blizzard\'s own quest item button does (AnyUp)', function()
+test('a click uses the quest item once, on the press or the release as ActionButtonUseKeyDown says: it registers AnyUp and AnyDown', function()
 	local st, TR = world({ 1 })
 	local b = button(TR, 1)
-	stub.secure_clicks = {}
-	use(b)
-	eq(#stub.secure_clicks, 1, 'the release used it once')
-	eq(last_use().type, 'item', 'by its type')
-	eq(last_use().item, 'item:1001', 'and its item')
-	eq(stub.try_click(b, 'LeftButton', true), false, 'a press is never delivered: it registers for AnyUp only, as Blizzard\'s quest item button does on both clients')
-	eq(#stub.secure_clicks, 1, 'so a press uses nothing')
-	for _, setting in ipairs({ true, false }) do
-		stub.cast_on_key_down = setting
+	for _, key_down in ipairs({ true, false }) do
+		stub.cast_on_key_down = key_down
+		stub.secure_clicks = {}
 		use(b)
+		eq(#stub.secure_clicks, 1, 'cast on key down ' .. tostring(key_down) .. ': one click, one use')
+		eq(stub.secure_clicks[1].down, key_down, 'on the ' .. (key_down and 'press' or 'release'))
+		eq(stub.secure_clicks[1].type, 'item', 'by its type')
+		eq(stub.secure_clicks[1].item, 'item:1001', 'and its item')
+		-- Each half alone is delivered too, or the setting could not be honored.
+		stub.secure_clicks = {}
+		stub.click(b, 'LeftButton', true)
+		stub.click(b, 'LeftButton', false)
+		eq(#stub.secure_clicks, 1, 'a second click is a second use, not two')
 	end
-	eq(#stub.secure_clicks, 3, 'a mouse click is the release whatever ActionButtonUseKeyDown says')
 	stub.cast_on_key_down = true
-	check(stub.try_click(b, 'RightButton', false) ~= false, 'every mouse button is delivered: AnyUp')
+	check(stub.try_click(b, 'RightButton', true) ~= false and stub.try_click(b, 'RightButton', false) ~= false, 'every mouse button, both halves, is delivered')
+	-- A key binding's click (Task 10's nearest button) follows the setting the same way.
+	stub.secure_clicks = {}
+	stub.press_key(b, true)
+	stub.press_key(b, false)
+	eq(#stub.secure_clicks, 1, 'a key press uses it once')
 	eq(#take_errors(), 0, 'no errors')
 end)
 
@@ -843,18 +855,10 @@ test('the buttons follow the window when the screen or the UI scale changes, and
 	stub.screen_width, stub.screen_height = 1280, 1024
 	stub.fire_script(TR.itemWatcher, 'OnSizeChanged', 1280, 1024)
 	follows('a smaller screen')
-	-- An edit mode drag: the holder moves every frame, the mover tells edit mode, which tells its listeners.
+	-- An edit mode drag: the mover sets the holder's point every frame.
 	TR.holder:ClearAllPoints()
 	TR.holder:SetPoint('TOPRIGHT', UIParent, 'TOPRIGHT', -200, -300)
-	st.EditModeFrames:Fire('PositionChanged', { def = { frame = TR.holder } })
 	follows('a drag')
-	-- A mover that is not the tracker's changes nothing.
-	local calls = 0
-	local place = TR.PlaceItems
-	TR.PlaceItems = function(...) calls = calls + 1; return place(...) end
-	st.EditModeFrames:Fire('PositionChanged', { def = { frame = UIParent } })
-	eq(calls, 0, 'another frame\'s move is none of its business')
-	TR.PlaceItems = place
 	-- The drop: the mover's apply.
 	TR.config.position = { point = 'TOPRIGHT', frame = 'UIParent', rel_point = 'TOPRIGHT', x_off = -60, y_off = -100 }
 	TR:ApplyHolder()
@@ -1034,4 +1038,53 @@ test('a scroll event runs the placement pass only: no attributes told, no style,
 	TR.ItemAttributes, st.SetBorderColor = attributes, border
 	eq(calls.attributes, 0, 'a refresh that changed nothing tells no button its item again')
 	eq(calls.border, 0, 'and draws no border')
+end)
+
+test('combat starting with a refresh waiting, in the game\'s order: lockdown begins after PLAYER_REGEN_DISABLED, the lock is drawn once it has', function()
+	local st, TR = world({ 1 })
+	TR.config.visibility.scrollbar_hover = false
+	TR:UpdateConfig()
+	log({ 1, 2 })
+	stub.fire_event('QUEST_LOG_UPDATE') -- a refresh is waiting
+	stub.fire_event('PLAYER_REGEN_DISABLED') -- the handlers run out of lockdown
+	check(button(TR, 2) ~= nil, 'the waiting refresh ran then: the new quest got its button')
+	stub.in_combat = true -- and now lockdown begins
+	stub.run_timers()
+	RW.later(1)
+	check(TR:IsScrollLocked(), 'locked')
+	check(TR.window.barLock:IsShown(), 'barLock shows')
+	eq(TR.scroll.ScrollBar:GetAlpha(), TR.DIM_ALPHA, 'the bar at 40%')
+	eq(#stub.blocked, 0, 'nothing blocked')
+	TW.combat(false)
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('under the Blizzard theme the ring\'s holder is over the cooldown and under the count, on purpose', function()
+	local st, TR = RW.world({ enabling = function() log({ 1 }) end })
+	T.theme('blizzard', function() TR:UpdateConfig(); st:ColorsChanged('theme') end)
+	local b = button(TR, 1)
+	local cooldown, count = b.cooldown:GetFrameLevel(), b.count:GetParent():GetFrameLevel()
+	local holder
+	for _, child in ipairs({ b.backdrop:GetChildren() }) do holder = child end
+	check(holder ~= nil, 'the ring has a holder frame')
+	check(cooldown < holder:GetFrameLevel(), 'the ring is over the swipe')
+	check(holder:GetFrameLevel() < count, 'and the count over the ring')
+end)
+
+test('a drag of the holder moves the buttons with it every frame, with no edit mode event', function()
+	local st, TR = world({ 1 })
+	TR.holder:ClearAllPoints()
+	TR.holder:SetPoint('TOPRIGHT', UIParent, 'TOPRIGHT', -240, -330)
+	check(math.abs(button(TR, 1):GetRight() - RW.quest(TR, 1):GetRight()) <= 1, 'the button is at its row at once')
+	check(math.abs(button(TR, 1):GetTop() - RW.quest(TR, 1):GetTop()) <= 1, 'and its top')
+end)
+
+test('the stubs refuse the ScriptRegion functions on a region of a secure frame in combat too', function()
+	local b = CreateFrame('Button', nil, UIParent, 'SecureActionButtonTemplate')
+	local t = b:CreateTexture(nil, 'ARTWORK')
+	stub.in_combat = true
+	t:EnableMouse(true)
+	t:SetParent(UIParent)
+	stub.in_combat = false
+	eq(#stub.blocked, 2, 'EnableMouse and SetParent on the region are refused')
 end)

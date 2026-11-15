@@ -373,11 +373,13 @@ end
 local function MakeButton(self)
 	local index = #self.itemButtons + 1
 	local button = CreateFrame('Button', st.name .. 'TrackerItem' .. index, self.itemLayer, 'SecureActionButtonTemplate')
-	-- AnyUp, as Blizzard's own quest item button registers on both clients
-	-- (QuestObjectiveItemButtonMixin:OnLoad). The template acts on the release for
-	-- every mouse click whatever ActionButtonUseKeyDown says (SecureActionButton_
-	-- OnClick: isSecureMousePress), so a press registration would add nothing.
-	button:RegisterForClicks('AnyUp')
+	-- AnyUp and AnyDown, as SaftUI's own secure buttons register
+	-- (SaftUI-ActionBars/buttons.lua) and LibActionButton-1.0 does: an addon's
+	-- secure action button gets no isKeyPress or isSecureAction from the game
+	-- (SecureTemplates.xml), so SecureActionButton_OnClick acts on the press when
+	-- ActionButtonUseKeyDown is on (its default) and on the release when off. A
+	-- button registered for AnyUp alone would never act with the setting on.
+	button:RegisterForClicks('AnyUp', 'AnyDown')
 	button:Hide()
 	-- The Blizzard theme draws a button's ring and its own-color piece as textures
 	-- of the button it sits behind, which for a secure button would be regions of a
@@ -391,12 +393,16 @@ local function MakeButton(self)
 	button.hover:SetAllPoints(button.icon)
 	self:NewAccent(button.hover, 0.4)
 
+	-- The levels are ordered on purpose: the cooldown at the button's own level,
+	-- the Blizzard theme's ring (a holder frame one over the backdrop's and the
+	-- button's, so one level up) over the swipe, and the count on a frame over
+	-- that, two up.
 	button.cooldown = CreateFrame('Cooldown', nil, button, 'CooldownFrameTemplate')
 	button.cooldown:SetAllPoints(button.icon)
-	-- The count sits on a frame over the cooldown, which would draw over it.
+	button.cooldown:SetFrameLevel(button:GetFrameLevel())
 	local over = CreateFrame('Frame', nil, button)
 	over:SetAllPoints(button)
-	over:SetFrameLevel(button.cooldown:GetFrameLevel() + 1)
+	over:SetFrameLevel(button:GetFrameLevel() + 2)
 	button.count = over:CreateFontString(nil, 'OVERLAY')
 	button.count:SetFontObject(st:GetFont('pixel'))
 	button.count:SetJustifyH('RIGHT')
@@ -430,8 +436,8 @@ end
 -- screen's size or the UI scale (the window hangs from one corner, the buttons
 -- from another) places the buttons again, hears the quest-area event, and runs
 -- the range timer. Edit mode's drag moves the holder every frame without a
--- refresh: its 'PositionChanged' places them again too (edit mode is never open
--- in combat). Called by TR:Build, so with the switch off nothing exists. The
+-- refresh: a hook on the holder's SetPoint places them again (edit mode is never
+-- open in combat). Called by TR:Build, so with the switch off nothing exists. The
 -- layer and the buttons are made by the first pass out of combat.
 function TR:BuildItems()
 	self.itemButtons, self.itemByQuest, self.itemWanted = {}, {}, {}
@@ -446,12 +452,9 @@ function TR:BuildItems()
 		watcher:RegisterEvent('PLAYER_INSIDE_QUEST_BLOB_STATE_CHANGED')
 	end
 	self.itemWatcher = watcher
-	local editMode = st.EditModeFrames
-	if editMode and type(editMode.On) == 'function' then
-		editMode:On('PositionChanged', function(mover)
-			if mover and mover.def and mover.def.frame == TR.holder then TR:PlaceItems() end
-		end)
-	end
+	-- Edit mode's drag sets the holder's point every frame (its 'PositionChanged'
+	-- only comes every 0.1 s): a post-hook on SaftUI's own holder follows it.
+	hooksecurefunc(self.holder, 'SetPoint', function() TR:PlaceItems() end)
 end
 
 -- The game says the player is inside a quest's area, or left it.

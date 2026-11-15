@@ -1540,6 +1540,10 @@ local PROTECTED_IN_COMBAT = {
 	-- Gethe/wow-ui-source, 2026-11-14), the ones the stubs have: a secure button's
 	-- strata and level, its mouse, hit rect, scale, ID, raising, its enabled state
 	-- and the mouse buttons it takes can't change in combat either.
+	-- SimpleScriptRegionAPIDocumentation's, which a region has too.
+	EnableMouseMotion = true, SetPassThroughButtons = true, SetPropagateMouseClicks = true,
+	SetPropagateMouseMotion = true, SetMouseClickEnabled = true, SetMouseMotionEnabled = true,
+	SetCollapsesLayout = true,
 	SetFrameStrata = true, SetFrameLevel = true, EnableMouseWheel = true, SetHitRectInsets = true,
 	SetScale = true, SetID = true, Raise = true, Lower = true, SetToplevel = true,
 	RegisterForClicks = true, Enable = true, Disable = true, SetEnabled = true,
@@ -1570,6 +1574,11 @@ local PROTECTED_IN_COMBAT = {
 -- The functions of PROTECTED_IN_COMBAT that are also a region's (not only a
 -- frame's): the anchor family and scale, as the region docs mark them.
 local REGION_PROTECTED = {
+	-- (the ScriptRegion functions too: SimpleScriptRegionAPIDocumentation marks them
+	-- for every ScriptRegion, and textures are ScriptRegions)
+	SetParent = true, EnableMouse = true, EnableMouseMotion = true, SetPassThroughButtons = true,
+	SetPropagateMouseClicks = true, SetPropagateMouseMotion = true, SetMouseClickEnabled = true,
+	SetMouseMotionEnabled = true, SetCollapsesLayout = true, SetRoundLayoutToNearestPixel = true,
 	SetPoint = true, SetAllPoints = true, ClearAllPoints = true,
 	SetSize = true, SetWidth = true, SetHeight = true,
 	SetScale = true, SetIgnoreParentScale = true,
@@ -1658,14 +1667,24 @@ local FRAME_TYPES = {
 -- acts on the press when useOnKeyDown is true (its attribute, else the
 -- "cast on key down" setting) and on the release otherwise; a button with no
 -- type does nothing. Only noted (stub.secure_clicks): nothing is used or cast.
-local function secure_action_click(self, mouse, down, is_key_press)
-	-- SecureActionButton_OnClick (SecureTemplates.lua, both branches):
-	-- isSecureMousePress = not isKeyPress and isSecureAction, and a mouse press
-	-- never uses useOnKeyDown, so a mouse click acts on the release; a key press
-	-- (a CLICK binding) acts on the press when useOnKeyDown (the attribute, else
-	-- the ActionButtonUseKeyDown setting) is on, and on the release when not.
+local function secure_action_click(self, mouse, down, is_key_press, is_secure_action)
+	-- SecureActionButton_OnClick (Blizzard_FrameXML/SecureTemplates.lua, line 802
+	-- on forever and 805 on live):
+	--   isSecureMousePress = not isKeyPress and isSecureAction
+	--   useOnKeyDown = not isSecureMousePress and (ShouldUseOnKeyDown(self) or pressAndHoldAction)
+	--   clickAction = (down and useOnKeyDown) or (not down and not useOnKeyDown)
+	-- ShouldUseOnKeyDown is the useOnKeyDown attribute, else the
+	-- ActionButtonUseKeyDown setting (SecureTemplates.lua, line 792). The template's
+	-- XML (SecureTemplates.xml, both branches) says an addon's button never gets the
+	-- two extra arguments ("for now AddOns won't be able to have isKeyPress or
+	-- isSecureAction set"): Blizzard's own action buttons pass them
+	-- (ActionBarActionButtonMixin:TriggerSecureClick, TryUseActionButton). So for an
+	-- addon's button, a mouse click and a key press alike act on the press when the
+	-- setting is on and on the release when it is off. Only a caller that passes
+	-- isSecureAction without isKeyPress (a Blizzard-style mouse click) acts on the
+	-- release whatever the setting says.
 	local on_key_down = false
-	if is_key_press then
+	if not (is_secure_action and not is_key_press) then
 		on_key_down = self:GetAttribute('useOnKeyDown')
 		if on_key_down == nil then on_key_down = stub.cast_on_key_down end
 	end
@@ -1786,7 +1805,7 @@ end
 function stub.press_key(button, down)
 	local why = click_refusal(button, 'LeftButton', down)
 	if why then error('stub.press_key: the game would not deliver this click: ' .. why, 2) end
-	return stub.fire_script(button, 'OnClick', 'LeftButton', down and true or false, true)
+	return stub.fire_script(button, 'OnClick', 'LeftButton', down and true or false, true, false)
 end
 
 -- stub.click for a refusal that is the point of the test: false when the game

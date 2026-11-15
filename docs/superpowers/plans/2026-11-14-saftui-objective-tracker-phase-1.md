@@ -125,7 +125,7 @@ Both edit `.agents/architecture.md`, so merge by hand, keeping both sides. Tasks
    - With Show set to Tracked and the current zone's, the model also reads every log quest whose header is the current zone (by `TR.Groups.IsCurrent`), using the same display rule.
    - Untracked ones come after the tracked in that group, in log order. "The game's order" has no watch index for them.
    - The menu offers `TRACK_QUEST` (or "Track quest" where the client lacks the string) in place of Stop tracking, which calls `C_QuestLog.AddQuestWatch`. Shift-click tracks.
-   - They get item buttons as any row does, so the pool's cap is 35, the log's most (`TR.ITEM_POOL_MAX`).
+   - They get item buttons as any row does, so the pool's cap is the log's most, read from the game (`TR.ItemPoolMax()`, 40 on Forever), never a literal.
    - The nearest button chooses among tracked quests only.
 10. **Bounties.** Blizzard's `ShouldDisplayQuest` tests `quest.isBounty and not isComplete`, where `isComplete` is an undefined global (both branches), so Blizzard never shows a bounty. SaftUI leaves bounties out too. Hidden quests are left out as the spec says.
 11. **A quest row's lines, in order:**
@@ -799,12 +799,12 @@ git commit -m "tracker: add the quest clicks, Blizzard's menu and the quest tool
 **Interfaces:**
 - Consumes: Task 5's placed rows (rects read from SaftUI's own row frames).
 - Produces:
-  - `TR.BUTTON_MIN_ALPHA = 0.25`, `TR.DIM_ALPHA = 0.4`, `TR.MOVE_TOLERANCE = 2`, `TR.ITEM_POOL_MAX = 35` (Ruling 9) and `TR.RANGE_INTERVAL = 0.2`.
+  - `TR.BUTTON_MIN_ALPHA = 0.25`, `TR.DIM_ALPHA = 0.4`, `TR.MOVE_TOLERANCE = 2` and `TR.RANGE_INTERVAL = 0.2`, with `TR.ItemPoolMax()` (the log's most, Ruling 9) in place of a pool constant.
   - `TR.ItemAttributes(item)`, the P3 seam, and `TR:SetButtonItem(button, item) -> boolean`, which refuses in combat.
   - `TR:BuildItemLayer()`: `SaftUITrackerItems` (`SecureHandlerStateTemplate`, UIParent, `LOW`, level 30, Ruling 20). Out of combat only; else queued as `'tracker_items'`. The driver comes later (Task 12: `'[petbattle] hide; show'` until then).
   - `TR.Items.RowPlace(rowTop, rowRight, viewTop, viewBottom, size) -> left, top | nil` (pure, whole). Nil while the button's centre is outside the view, or the row is collapsed or gone.
   - `TR.Items.CombatAlpha(placedTop, rowTop) -> 1 | TR.DIM_ALPHA`: dims when the row is gone or has moved more than `MOVE_TOLERANCE`.
-  - `TR:RefreshItems()`. Out of combat it assigns pooled buttons (made on need, at most `ITEM_POOL_MAX`, never freed), sets items through `SetButtonItem`, and places, shows or hides them. In combat it only sets alpha and draws, and queues `'tracker_items'`. A quest whose item has no button shows a greyed icon in its row (desaturated, alpha 0.4) with the tooltip "Its button comes when combat ends.".
+  - `TR:RefreshItems()`. Out of combat it assigns pooled buttons (made on need, at most `TR.ItemPoolMax()`, never freed), sets items through `SetButtonItem`, and places, shows or hides them. In combat it only sets alpha and draws, and queues `'tracker_items'`. A quest whose item has no button shows a greyed icon in its row (desaturated, alpha 0.4) with the tooltip "Its button comes when combat ends.".
   - `TR:ItemsToShow() -> boolean`, for the handover: placement row or beside, and a quest with an item.
   - The look:
     - `st:IconTexCoords`;
