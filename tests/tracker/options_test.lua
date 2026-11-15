@@ -63,7 +63,9 @@ test('every option has a desc and no width; every value option has a default tha
 	each_option(tree, function(option, path)
 		local where = table.concat(path, '.')
 		if not NO_DESC[option.type] then
-			check(type(option.desc) == 'string' and option.desc ~= '', where .. ' has a desc')
+			-- A desc may be a function (Left click's follows P5), read as the page does.
+			local desc = type(option.desc) == 'function' and option.desc() or option.desc
+			check(type(desc) == 'string' and desc ~= '', where .. ' has a desc')
 		end
 		check(option.width == nil, where .. ' has no Ace width')
 		check(not (option.type == 'execute' and tostring(option.name):find('Reset')), where .. ' is no Reset button')
@@ -163,7 +165,13 @@ test('the Quests tab: every setting, in order, saving into tracker.quests and dr
 	TR.SHOW_ON_MAP = false
 	check(tab.args.left_click.values().map == nil, 'Focus only once Show on map is not allowed')
 	eq(tab.args.left_click.get(), 'focus', 'and the saved map reads as focus')
+	local default = tab.args.left_click.default
+	check(not default.differs(), 'no reset icon: the saved map reads as focus, which is its default as it acts here')
+	eq(default.value(), 'focus', 'its default as it acts')
+	check(tab.args.left_click.desc():find('focuses the quest', 1, true) and not tab.args.left_click.desc():find('opens the quest on the map', 1, true), 'its desc stops describing Show on map')
 	TR.SHOW_ON_MAP = true
+	eq(default.value(), 'map', 'and Show on map when allowed')
+	check(tab.args.left_click.desc():find('opens the quest on the map', 1, true), 'with its desc')
 	eq(tab.args.show.values.tracked, 'Tracked quests', 'Show: tracked quests')
 	eq(tab.args.show.values.zone, "Tracked and the current zone's", "or the current zone's")
 	eq(tab.args.order.values.game, "The game's order", 'Order: the game\'s')

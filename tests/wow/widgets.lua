@@ -1402,7 +1402,7 @@ function GameTooltip.IsOwned(self, s, frame) return s.owner ~= nil and s.owner =
 function GameTooltip.ClearLines(self, s) s.lines, s.texts, s.rights, s.colors = 0, {}, {}, {} end
 function GameTooltip.NumLines(self, s) return s.lines or 0 end
 -- SetText starts the tooltip over with one line; AddLine and AddDoubleLine add one.
-function GameTooltip.SetText(self, s, text) s.lines, s.texts, s.rights = 1, { text }, {} end
+function GameTooltip.SetText(self, s, text) s.lines, s.texts, s.rights, s.colors = 1, { text }, {}, {} end
 -- A line's color, if one was given, is kept in stub.state(tooltip).colors[line]
 -- as { r, g, b }.
 function GameTooltip.AddLine(self, s, text, r, g, b)
@@ -1430,22 +1430,34 @@ function GameTooltip.SetBagItem(self, s, bag, slot)
 	if type(bag) ~= 'number' or type(slot) ~= 'number' then usage(s, 'SetBagItem(): bag and slot must be numbers') end
 	s.lines, s.texts, s.rights = 1, { ('bag item %d %d'):format(bag, slot) }, {}
 end
--- The party's progress on a quest (Blizzard's tracker's own tooltip: it calls
--- GameTooltip:SetQuestPartyProgress(questID) while grouped; omitTitle, the
--- second argument, leaves the quest's title out). Not in the generated
--- documentation: the arguments are Blizzard's callers' and the Warcraft wiki's.
--- Here, with no title omitted it starts the tooltip over with a line naming the
--- quest, 'party <id>'; with it, it adds that line to what the tooltip has.
+-- The party's progress on a quest. In the game this is a tooltip data accessor
+-- (Blizzard_SharedXMLGame/Tooltip/TooltipDataHandler.lua, the same on both
+-- branches: SetQuestPartyProgress is mapped to C_TooltipInfo.GetQuestPartyProgress,
+-- arguments questID, omitTitle, ignoreActivePlayer; MayReturnNothing): like every
+-- Set* accessor it starts the tooltip over, and with no data to show (a party
+-- with no progress on the quest) it hides the tooltip. stub.party_progress =
+-- false is that case. The Blizzard tracker's own OnEnter calls it with the
+-- questID alone. Here the one line it makes is 'party <id>'.
 function GameTooltip.SetQuestPartyProgress(self, s, questID, omitTitle, ignoreActivePlayer)
 	if type(questID) ~= 'number' then usage(s, 'SetQuestPartyProgress(): questID must be a number') end
-	local text = ('party %d'):format(questID)
-	if omitTitle then
-		s.lines = (s.lines or 0) + 1
-		s.texts, s.rights = s.texts or {}, s.rights or {}
-		s.texts[s.lines] = text
-	else
-		s.lines, s.texts, s.rights = 1, { text }, {}
+	if stub.party_progress == false then
+		s.lines, s.texts, s.rights, s.colors = 0, {}, {}, {}
+		self:Hide()
+		return
 	end
+	s.lines, s.texts, s.rights, s.colors = 1, { ('party %d'):format(questID) }, {}, {}
+end
+-- TooltipDataHandlerMixin:AppendInfo(getterName, ...): the accessor's data added
+-- after what the tooltip has (nothing happens, and nothing is hidden, when there
+-- is none). Only 'GetQuestPartyProgress' is modelled.
+function GameTooltip.AppendInfo(self, s, getter, questID)
+	if getter ~= 'GetQuestPartyProgress' or type(questID) ~= 'number' then
+		usage(s, 'AppendInfo(): only GetQuestPartyProgress, with a questID, is modelled')
+	end
+	if stub.party_progress == false then return end
+	s.lines = (s.lines or 0) + 1
+	s.texts, s.rights = s.texts or {}, s.rights or {}
+	s.texts[s.lines] = ('party %d'):format(questID)
 end
 -- A quest's item by its quest log index (the quest item buttons' own tooltip,
 -- Blizzard_ObjectiveTracker's QuestObjectiveItemButtonMixin:OnEnter): one line,
@@ -1647,8 +1659,30 @@ function stub.fire_script(widget, script, ...)
 end
 
 -- The user clicks a button: its OnClick, with any arguments given (the mouse
--- button, down), through stub.fire_script. Returns what fire_script returns.
-function stub.click(button, ...)
+-- button, down), through stub.fire_script. Returns what fire_script returns, or
+-- false when the game would not have delivered the click.
+-- The user clicks a button as the game lets them: nothing happens for a hidden
+-- button (or one under a hidden frame), a disabled one, or a mouse button the
+-- button wasn't registered for (RegisterForClicks; a button registers only
+-- LeftButtonUp until it says otherwise). The mouse button is the first argument
+-- ('LeftButton' by default); 'AnyUp' and 'AnyDown' register every button.
+function stub.click(button, mouse, ...)
+	local s = stub.state(button)
+	local which = mouse or 'LeftButton'
+	if not is_visible(s) or s.enabled == false then return false end
+	local registered = s.click_buttons or { 'LeftButtonUp' }
+	local ok = false
+	for _, name in ipairs(registered) do
+		if name == which .. 'Up' or name == 'AnyUp' then ok = true end
+	end
+	if not ok then return false end
+	return stub.fire_script(button, 'OnClick', mouse, ...)
+end
+
+-- The click of the harness before it played the game's rules: OnClick runs
+-- whatever the button's state, with the arguments as given. For a test whose
+-- window or bar is never shown in the stubs' world; a new test uses stub.click.
+function stub.click_unchecked(button, ...)
 	return stub.fire_script(button, 'OnClick', ...)
 end
 

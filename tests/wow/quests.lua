@@ -85,6 +85,10 @@ stub.modified = {}
 stub.chat_open = false
 stub.chat_inserted = {}
 stub.npe_restricted = false
+-- The game's red error line (UIErrorsFrame:AddMessage), the messages in order as
+-- { text, r, g, b }.
+stub.ui_errors = {}
+UIErrorsFrame = { AddMessage = function(_, text, r, g, b) table.insert(stub.ui_errors, { text, r, g, b }) end }
 stub.money = 0
 stub.real_zone_text = ''
 
@@ -99,7 +103,6 @@ Enum.QuestClassification = {
 }
 Enum.QuestFrequency = { Default = 0, Daily = 1, Weekly = 2, ResetByScheduler = 3 }
 Enum.RelativeContentDifficulty = { Trivial = 0, Easy = 1, Fair = 2, Difficult = 3, Impossible = 4 }
-Enum.QuestWatchType = { Automatic = 0, Manual = 1 } -- QuestLogDocumentation.lua, both clients
 Enum.UIMapType = Enum.UIMapType
 	or { Cosmic = 0, World = 1, Continent = 2, Zone = 3, Dungeon = 4, Micro = 5, Orphan = 6 }
 
@@ -116,17 +119,20 @@ QUEST_WATCH_QUEST_READY = 'Ready for turn-in'
 QUEST_WATCH_QUEST_COMPLETE = 'Quest complete'
 QUEST_WATCH_CLICK_TO_COMPLETE = 'Click to complete'
 -- The quest menu's (Blizzard_QuestObjectiveTracker.lua names them; TRACK_QUEST is
--- the quest log's own menu's, Mainline/QuestMapFrame.lua). The English is from
--- memory: GlobalStrings are not in the source repo.
+-- the quest log's own menu's, Mainline/QuestMapFrame.lua), with the game's own
+-- English: wago.tools GlobalStrings at Forever 1.60.1.70888 and retail
+-- 12.1.5.70783, the same on both. OBJECTIVES_WATCH_TOO_MANY is what Blizzard's
+-- QuestMapQuestOptions_TrackQuest shows (UIErrorsFrame) for a 26th watch.
 SUPER_TRACK_QUEST = 'Focus'
-STOP_SUPER_TRACK_QUEST = 'Stop focusing'
-OBJECTIVES_VIEW_IN_QUESTLOG = 'Open quest details'
-OBJECTIVES_HIDE_VIEW_IN_QUESTLOG = 'Hide quest details'
-OBJECTIVES_SHOW_QUEST_MAP = 'Show on map'
-OBJECTIVES_STOP_TRACKING = 'Stop tracking'
-SHARE_QUEST = 'Share quest'
+STOP_SUPER_TRACK_QUEST = 'Remove Focus'
+OBJECTIVES_VIEW_IN_QUESTLOG = 'Open Quest Details'
+OBJECTIVES_HIDE_VIEW_IN_QUESTLOG = 'Close Quest Details'
+OBJECTIVES_SHOW_QUEST_MAP = 'Open Quest Map'
+OBJECTIVES_STOP_TRACKING = 'Untrack'
+SHARE_QUEST = 'Share Quest'
 ABANDON_QUEST_ABBREV = 'Abandon'
-TRACK_QUEST = 'Track quest'
+TRACK_QUEST = 'Track Quest'
+OBJECTIVES_WATCH_TOO_MANY = "You can't track any more quests."
 
 -- Blizzard_FrameXMLBase/Constants.lua (forever branch).
 QuestDifficultyColors = {
@@ -565,12 +571,7 @@ do
 		menu (Blizzard_ObjectiveTracker/Blizzard_QuestObjectiveTracker.lua:
 		QuestObjectiveTrackerMixin:OnBlockHeaderClick, the same on both branches
 		of Gethe/wow-ui-source, read 2026-11-14), each function recording its call
-		in stub.quest_calls. The two C_QuestLog functions are in
-		QuestLogDocumentation.lua on both branches: GetQuestWatchType(questID) ->
-		watchType (an Enum.QuestWatchType, Automatic 0 or Manual 1, Nilable: nil
-		for a quest that isn't watched) and GetQuestIDForLogIndex(questLogIndex)
-		-> questID (Nilable: "Only returns a questID for actual quests, not
-		headers"). The rest are Blizzard's Lua or old globals, not in the
+		in stub.quest_calls. These are Blizzard's Lua or old globals, not in the
 		generated documentation; their names and arguments are Blizzard's own
 		callers':
 		  ChatFrameUtil.TryInsertQuestLinkForQuestID(questID) (Blizzard_ChatFrameBase/Shared/ChatFrameUtil.lua:
@@ -587,22 +588,12 @@ do
 		    QuestMapQuestOptions_AbandonQuest(questID) (Mainline/QuestMapFrame.lua:
 		    the map's quest log, and the abandon confirmation)
 		C_PlayerInfo.IsPlayerNPERestricted() is in PlayerInfoDocumentation.lua.
-		The English texts of the menu's strings are the game's, from memory (the
-		generated documentation has no GlobalStrings): a test reads them through
-		the globals, never as literals.
+		The menu's strings are the game's own English, from wago.tools'
+		GlobalStrings at Forever 1.60.1.70888 and retail 12.1.5.70783 (the same
+		on both; all nine names exist on both): a test reads them through the
+		globals, never as literals.
 	]]
 
-	function Q.GetQuestWatchType(questID)
-		number_arg(questID, 'local watchType = C_QuestLog.GetQuestWatchType(questID)')
-		if not watch_index(questID) then return nil end
-		return Enum.QuestWatchType.Manual
-	end
-	function Q.GetQuestIDForLogIndex(questLogIndex)
-		number_arg(questLogIndex, 'local questID = C_QuestLog.GetQuestIDForLogIndex(questLogIndex)')
-		local entry = stub.quests.log[questLogIndex]
-		if not entry or entry.header then return nil end
-		return entry.id
-	end
 	function C_PlayerInfo.IsPlayerNPERestricted() return stub.npe_restricted == true end
 
 	function IsModifiedClick(action)

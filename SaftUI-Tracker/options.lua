@@ -83,13 +83,18 @@ function TR.QuestsTab()
 		left_click = {
 			order = 16,
 			name = 'Left click',
-			desc = "What a click on a quest does. Show on map opens the quest on the map out of combat and focuses it in combat; Focus focuses it always. Shift-click stops tracking, right-click opens the menu.",
-			type = 'select',
 			-- Read again on every call: Show on map is left out while it isn't allowed.
+			desc = function()
+				if TR.ShowOnMapAllowed() then
+					return "What a click on a quest does. Show on map opens the quest on the map out of combat and focuses it in combat; Focus focuses it always. Shift-click stops tracking, right-click opens the menu."
+				end
+				return "What a click on a quest does: it focuses the quest. Shift-click stops tracking, right-click opens the menu."
+			end,
+			type = 'select',
 			values = function() return TR.LeftClickValues() end,
 			sorting = { 'map', 'focus' },
 			get = function() return TR.LeftClick() end,
-			default = TR.SettingDefault('quests', 'left_click'),
+			default = TR.LeftClickDefault(),
 		},
 		spacing = generators.range(17, 'Spacing', 0, 20, 1, 'The space between two quests.'),
 		colors = {

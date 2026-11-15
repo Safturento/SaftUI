@@ -352,18 +352,18 @@ test('/sui, a path, and a mover\'s click while the bar shows grow it to half on 
 	OW:Navigate('Chat'); wait(); OW:Shrink()
 	eq(OW:GetWindowSize(), 'mini')
 	mover.dragged = false
-	stub.click(mover.overlay)
+	stub.click_unchecked(mover.overlay)
 	eq(OW:GetWindowSize(), 'half', 'a click on the selected mover grows the bar'); eq(OW:GetState().page, 'Loot', 'to the mover\'s page')
 	OW:Navigate('Chat')
-	stub.click(mover.overlay)
+	stub.click_unchecked(mover.overlay)
 	eq(OW:GetState().page, 'Chat', "at half the click leaves /sui on the page it shows"); eq(OW:GetWindowSize(), 'half')
 	st.Config:Close()
-	stub.click(mover.overlay)
+	stub.click_unchecked(mover.overlay)
 	check(OW:IsShown(), 'closed: the click opens it')
 	-- A drag is no click.
 	st.Config:Close()
 	mover.dragged = true
-	stub.click(mover.overlay)
+	stub.click_unchecked(mover.overlay)
 	check(not OW:IsShown(), 'a drag is no click')
 	mover.dragged = false
 	reset()

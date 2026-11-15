@@ -23,6 +23,7 @@ local function menu_stand_in()
 	local function element(list, kind, text, onClick)
 		local item = { kind = kind, text = text, onClick = onClick, enabled = true }
 		list[#list + 1] = item
+		-- Blizzard's SetEnabled takes a boolean or a function the menu polls.
 		function item:SetEnabled(enabled) self.enabled = enabled end
 		function item:SetTooltip(fn) self.tooltip = fn end
 		return item
@@ -39,6 +40,12 @@ local function menu_stand_in()
 		end,
 	}
 	return opened
+end
+
+-- Whether a menu element is enabled now: its value, or what its polled function says.
+local function enabled(item)
+	if type(item.enabled) == 'function' then return item.enabled() and true or false end
+	return item.enabled
 end
 
 -- What a menu element's tooltip callback writes on a tooltip.
@@ -86,23 +93,33 @@ local function click(row, button)
 	stub.click(row, button or 'LeftButton')
 end
 
-RW.both('the stubs the clicks use: the two quest log functions and the tooltip methods', function(st, TR)
+RW.both('the stubs the clicks use: the tooltip methods behave as the game\'s accessors', function(st, TR)
 	zone()
-	eq(C_QuestLog.GetQuestWatchType(1), Enum.QuestWatchType.Manual, 'a watched quest has a watch type')
-	eq(C_QuestLog.GetQuestWatchType(99), nil, 'an unwatched one none')
-	eq(C_QuestLog.GetQuestIDForLogIndex(2), 1, 'the quest at a log index')
-	eq(C_QuestLog.GetQuestIDForLogIndex(1), nil, 'nothing for a header')
-	check(not pcall(C_QuestLog.GetQuestWatchType, 'x'), 'a bad argument errors as in game')
 	GameTooltip:SetOwner(UIParent, 'ANCHOR_NONE')
 	GameTooltip:SetQuestLogSpecialItem(2)
 	eq(stub.state(GameTooltip).texts[1], 'quest item 2', 'SetQuestLogSpecialItem')
+	check(not pcall(GameTooltip.SetQuestLogSpecialItem, GameTooltip, 'x'), 'a bad argument errors')
 	GameTooltip:SetHyperlink('|Hquest:1|h[x]|h')
 	GameTooltip:SetQuestPartyProgress(1, true)
-	eq(stub.state(GameTooltip).lines, 2, 'SetQuestPartyProgress with omitTitle adds to the tooltip')
+	eq(stub.state(GameTooltip).lines, 1, 'SetQuestPartyProgress starts the tooltip over, as every accessor does, omitTitle or not')
+	eq(stub.state(GameTooltip).texts[1], 'party 1', 'with the party line')
+	GameTooltip:SetHyperlink('|Hquest:1|h[x]|h')
+	GameTooltip:AppendInfo('GetQuestPartyProgress', 1, true)
+	eq(stub.state(GameTooltip).lines, 2, 'AppendInfo adds to it')
+	stub.party_progress = false
+	GameTooltip:Show()
+	GameTooltip:AppendInfo('GetQuestPartyProgress', 1, true)
+	eq(stub.state(GameTooltip).lines, 2, 'with no party data it adds nothing')
+	check(GameTooltip:IsShown(), 'and hides nothing')
 	GameTooltip:SetQuestPartyProgress(1)
-	eq(stub.state(GameTooltip).lines, 1, 'and without it starts over')
+	check(not GameTooltip:IsShown(), 'SetQuestPartyProgress with no data hides the tooltip')
+	stub.party_progress = nil
 	GameTooltip:AddLine('x', 0.5, 0.25, 0.75)
-	eq(stub.state(GameTooltip).colors[2][3], 0.75, 'AddLine keeps its color')
+	eq(stub.state(GameTooltip).colors[stub.state(GameTooltip).lines][3], 0.75, 'AddLine keeps its color')
+	GameTooltip:SetText('y')
+	eq(next(stub.state(GameTooltip).colors), nil, 'SetText starts the colors over')
+	UIErrorsFrame:AddMessage('boo', 1, 0.1, 0.1, 1)
+	eq(stub.ui_errors[1][1], 'boo', 'the error line is recorded')
 end)
 
 ------------------------------------------------------------------ the clicks
@@ -158,10 +175,46 @@ RW.both('shift-click stops tracking where QuestUtil.CanRemoveQuestWatch allows i
 	click(row)
 	eq(table.concat(stub.quests.watched, ','), '2,1', 'shift-click tracks it')
 	RW.later(1) -- the list changed: the row's quest is tracked now
+	-- In combat a watch change runs Blizzard's tracker, map and super track
+	-- handlers inside our call (QUEST_WATCH_LIST_CHANGED is synchronous): it is not made, and
+	-- the error line says why.
 	stub.in_combat = true
+	stub.ui_errors = {}
 	click(RW.quest(TR, 1))
-	eq(table.concat(stub.quests.watched, ','), '2', 'and stops tracking it again in combat: the game allows it')
+	eq(table.concat(stub.quests.watched, ','), '2,1', 'in combat a Shift-click changes nothing')
+	eq(#stub.ui_errors, 1, 'and says so')
+	eq(stub.ui_errors[1][1], 'Out of combat only', 'in the error line')
 	stub.in_combat = false
+	-- The seam: P6 failing is one function.
+	TR.WatchChangeAllowed = function() return false end
+	click(RW.quest(TR, 1))
+	eq(table.concat(stub.quests.watched, ','), '2,1', 'WatchChangeAllowed false: nothing changes out of combat either')
+end)
+
+RW.both('tracking a 26th quest says so, as Blizzard\'s own refusal does', function(st, TR)
+	stub.real_zone_text = 'A'
+	local log, watched = { Q.header('A') }, {}
+	for id = 1, 26 do
+		log[#log + 1] = Q.quest(id)
+		if id <= 25 then watched[#watched + 1] = id end
+	end
+	Q.set(log, watched)
+	TR.config.quests.show = 'zone'
+	TR:Refresh()
+	stub.modified.QUESTWATCHTOGGLE = true
+	stub.ui_errors = {}
+	click(RW.quest(TR, 26))
+	eq(#stub.quests.watched, 25, 'the 26th is not tracked')
+	eq(stub.ui_errors[1] and stub.ui_errors[1][1], OBJECTIVES_WATCH_TOO_MANY, "with the game's words")
+	eq(stub.ui_errors[1][2] .. ' ' .. stub.ui_errors[1][3], '1 0.1', 'in red')
+	-- Through the menu too.
+	local opened = menu_stand_in()
+	stub.modified.QUESTWATCHTOGGLE = false
+	click(RW.quest(TR, 26), 'RightButton')
+	stub.ui_errors = {}
+	entry(opened[1].list, TRACK_QUEST).onClick()
+	eq(#stub.quests.watched, 25, 'Track Quest does not either')
+	eq(#stub.ui_errors, 1, 'and says so')
 end)
 
 RW.both('left on a complete auto-complete quest: ShowQuestComplete and its popup removed, in combat too', function(st, TR)
@@ -172,9 +225,12 @@ RW.both('left on a complete auto-complete quest: ShowQuestComplete and its popup
 	stub.quest_calls = {}
 	click(RW.quest(TR, 7))
 	local seen = calls()
-	check(has(seen, 'RemoveAutoQuestPopUp:7') and has(seen, 'ShowQuestComplete:7'), 'the popup removed and the turn-in shown: ' .. seen)
-	check(not has(seen, 'QuestMapFrame_OpenToQuestDetails'), 'not the map')
+	eq(seen, 'ChatFrameUtil.TryInsertQuestLinkForQuestID:7 IsModifiedClick:QUESTWATCHTOGGLE RemoveAutoQuestPopUp:7 ShowQuestComplete:7',
+		"the popup removed, then the turn-in shown, as Blizzard's click does")
 	eq(#stub.quests.popups, 0, 'the popup is gone')
+	check(TR:GetPopupRow(7, 'COMPLETE') ~= nil, 'its row is still drawn until the refresh the click asked for')
+	RW.later(1)
+	eq(TR:GetPopupRow(7, 'COMPLETE'), nil, 'which then removes it')
 	eq(stub.quests.shown[#stub.quests.shown], 'complete:7', 'the quest frame was asked for')
 	-- An auto-complete quest not complete yet is an ordinary click.
 	click(RW.quest(TR, 8))
@@ -209,9 +265,13 @@ RW.both('left: Show on map out of combat, focus in combat; Left click Focus: foc
 	click(RW.quest(TR, 2))
 	eq(stub.quests.focused, 2, 'Focus focuses out of combat')
 	check(not has(calls(), 'QuestMapFrame_OpenToQuestDetails'), 'and opens no map')
+	click(RW.quest(TR, 2))
+	eq(stub.quests.focused, 2, 'a second click on the focused quest keeps it focused (only the icon toggles)')
 	-- The icon: focuses, and stops focusing when it is.
 	local icon = RW.quest(TR, 1).iconButton
-	check(icon ~= nil, 'a quest row has an icon button')
+	check(icon ~= nil and icon:IsShown(), 'a quest row has an icon button, shown')
+	local clicks = stub.state(RW.quest(TR, 1)).click_buttons
+	eq(table.concat(clicks, ','), 'LeftButtonUp,RightButtonUp', 'the row takes both mouse buttons')
 	click(icon)
 	eq(stub.quests.focused, 1, 'the icon focuses the quest')
 	click(icon)
@@ -296,9 +356,8 @@ RW.both('the menu: Blizzard\'s entries and strings in order; Share only shareabl
 		'details, the map, Share and Abandon, with Blizzard\'s functions')
 	entry(list, OBJECTIVES_STOP_TRACKING).onClick()
 	eq(table.concat(stub.quests.watched, ','), '1', 'Stop tracking untracks')
-	-- The toggled texts: Stop focusing while it is focused, Hide quest details while they show.
-	click(RW.quest(TR, 1), 'RightButton')
-	click(RW.quest(TR, 2) or RW.quest(TR, 1), 'RightButton')
+	-- The toggled texts: Remove Focus while it is focused, Close Quest Details while they show.
+	RW.later(1) -- quest 2 is untracked now, quest 1 is tracked
 	stub.quests.focused, stub.quests.details = 1, 1
 	click(RW.quest(TR, 1), 'RightButton')
 	local last = opened[#opened].list
@@ -336,10 +395,10 @@ RW.both('an untracked zone quest\'s menu offers Track quest in place of Stop tra
 	_G.TRACK_QUEST = saved
 	local names = {}
 	for i, e in ipairs(entries) do names[i] = e.text end
-	check(table.concat(names, '|'):find('Track quest', 1, true), 'Track quest where the client lacks the string')
+	check(table.concat(names, '|'):find('Track Quest', 1, true), 'Track Quest where the client lacks the string')
 end)
 
-RW.both('in combat details, Show on map, Share and Abandon are disabled with "Out of combat only"; Focus and Stop tracking work', function(st, TR)
+RW.both('in combat details, Show on map, Abandon and the watch changes are disabled with "Out of combat only"; Focus and Share work', function(st, TR)
 	zone()
 	TR:Refresh()
 	stub.group = {}
@@ -350,33 +409,77 @@ RW.both('in combat details, Show on map, Share and Abandon are disabled with "Ou
 	-- No Blizzard Lua in combat: not even the menu's read of it (the details toggle's text).
 	check(not has(calls(), 'IsShowingQuestDetails'), 'the details frame is not asked in combat')
 	local list = opened[1].list
-	for _, text in ipairs({ OBJECTIVES_VIEW_IN_QUESTLOG, OBJECTIVES_SHOW_QUEST_MAP, SHARE_QUEST, ABANDON_QUEST_ABBREV }) do
+	for _, text in ipairs({ OBJECTIVES_VIEW_IN_QUESTLOG, OBJECTIVES_SHOW_QUEST_MAP, OBJECTIVES_STOP_TRACKING, ABANDON_QUEST_ABBREV }) do
 		local item = entry(list, text)
-		eq(item.enabled, false, text .. ' is disabled in combat')
+		eq(enabled(item), false, text .. ' is disabled in combat')
 		eq(tip_of(item), 'Out of combat only', text .. ' says why')
 	end
-	for _, text in ipairs({ SUPER_TRACK_QUEST, OBJECTIVES_STOP_TRACKING }) do
-		eq(entry(list, text).enabled, true, text .. ' stays enabled')
+	for _, text in ipairs({ SUPER_TRACK_QUEST, SHARE_QUEST }) do
+		eq(enabled(entry(list, text)), true, text .. ' stays enabled')
 		eq(tip_of(entry(list, text)), nil, 'with no tip')
 	end
-	stub.quest_calls = {}
 	entry(list, SUPER_TRACK_QUEST).onClick()
 	eq(stub.quests.focused, 2, 'Focus works in combat')
-	entry(list, OBJECTIVES_STOP_TRACKING).onClick()
-	eq(table.concat(stub.quests.watched, ','), '1', 'Stop tracking works in combat')
-	-- A menu opened out of combat, combat started: the entries refuse to run Blizzard's UI Lua.
-	stub.in_combat = false
-	click(RW.quest(TR, 2) or RW.quest(TR, 1), 'RightButton')
-	local calm = opened[#opened].list
-	check(entry(calm, ABANDON_QUEST_ABBREV).enabled, 'out of combat it is enabled')
-	stub.in_combat = true
 	stub.quest_calls = {}
-	entry(calm, ABANDON_QUEST_ABBREV).onClick()
-	entry(calm, OBJECTIVES_SHOW_QUEST_MAP).onClick()
-	entry(calm, OBJECTIVES_VIEW_IN_QUESTLOG).onClick()
-	eq(calls(), '', 'combat since the menu opened: none of them ran')
-	eq(#stub.blocked, 0, 'nothing blocked')
+	entry(list, SHARE_QUEST).onClick()
+	eq(calls(), 'QuestUtil.ShareQuest:2', 'Share works in combat: two C calls and nothing written')
+	-- The disabled ones refuse to run when clicked anyway.
+	entry(list, OBJECTIVES_STOP_TRACKING).onClick()
+	eq(table.concat(stub.quests.watched, ','), '1,2', 'Untrack does nothing in combat')
+	for _, text in ipairs({ OBJECTIVES_VIEW_IN_QUESTLOG, OBJECTIVES_SHOW_QUEST_MAP, ABANDON_QUEST_ABBREV }) do entry(list, text).onClick() end
+	eq(calls(), '', 'nor does any of the Blizzard UI Lua')
 	stub.in_combat = false
+end)
+
+RW.both('a menu open when combat starts greys out, and comes back when it ends', function(st, TR)
+	zone()
+	TR:Refresh()
+	local opened = menu_stand_in()
+	click(RW.quest(TR, 2), 'RightButton')
+	local list = opened[1].list
+	local gated = { OBJECTIVES_VIEW_IN_QUESTLOG, OBJECTIVES_SHOW_QUEST_MAP, OBJECTIVES_STOP_TRACKING, ABANDON_QUEST_ABBREV }
+	for _, text in ipairs(gated) do
+		eq(enabled(entry(list, text)), true, text .. ' is enabled out of combat')
+		eq(tip_of(entry(list, text)), nil, 'with no tip')
+	end
+	stub.in_combat = true
+	for _, text in ipairs(gated) do
+		eq(enabled(entry(list, text)), false, text .. ' is greyed out once combat starts')
+		eq(tip_of(entry(list, text)), 'Out of combat only', 'and says why')
+	end
+	stub.quest_calls = {}
+	for _, text in ipairs(gated) do entry(list, text).onClick() end
+	eq(calls(), '', 'clicking them runs nothing')
+	eq(table.concat(stub.quests.watched, ','), '1,2', 'and untracks nothing')
+	stub.in_combat = false
+	eq(enabled(entry(list, ABANDON_QUEST_ABBREV)), true, 'enabled again when combat ends')
+end)
+
+RW.both('each Blizzard UI entry and the watch changes sit behind one seam: a failed in-game check changes one constant', function(st, TR)
+	zone()
+	TR:Refresh()
+	local opened = menu_stand_in()
+	TR.QUEST_DETAILS = false
+	click(RW.quest(TR, 1), 'RightButton')
+	check(entry(opened[1].list, OBJECTIVES_VIEW_IN_QUESTLOG) == nil, 'QUEST_DETAILS false: no Open Quest Details')
+	check(entry(opened[1].list, ABANDON_QUEST_ABBREV) ~= nil and entry(opened[1].list, OBJECTIVES_SHOW_QUEST_MAP) ~= nil, 'the others stay')
+	TR.QUEST_DETAILS, TR.ABANDON = true, false
+	click(RW.quest(TR, 1), 'RightButton')
+	check(entry(opened[2].list, ABANDON_QUEST_ABBREV) == nil, 'ABANDON false: no Abandon')
+	check(entry(opened[2].list, OBJECTIVES_VIEW_IN_QUESTLOG) ~= nil, 'the details come back')
+	TR.ABANDON = true
+	local saved = _G.QuestMapQuestOptions_AbandonQuest
+	_G.QuestMapQuestOptions_AbandonQuest = nil
+	check(not TR.AbandonAllowed(), 'a client without the function: not allowed either')
+	_G.QuestMapQuestOptions_AbandonQuest = saved
+	TR.WatchChangeAllowed = function() return false end
+	click(RW.quest(TR, 1), 'RightButton')
+	eq(enabled(entry(opened[3].list, OBJECTIVES_STOP_TRACKING)), false, 'WatchChangeAllowed false: the menu\'s Untrack is disabled out of combat')
+	local entries = TR.MenuEntries({ id = 1, title = 'Wolves', tracked = true }, { combat = false })
+	local stop
+	for _, e in ipairs(entries) do if e.text == OBJECTIVES_STOP_TRACKING then stop = e end end
+	eq(stop.enabled, false, 'WatchChangeAllowed false: Untrack is disabled out of combat')
+	eq(stop.tip, 'Out of combat only', 'with the tip')
 end)
 
 RW.both('P5 failed (TR.SHOW_ON_MAP = false): Left click offers Focus only, a saved map reads as focus, the menu drops it, the hint says "Click: focus."', function(st, TR)
@@ -397,6 +500,8 @@ RW.both('P5 failed (TR.SHOW_ON_MAP = false): Left click offers Focus only, a sav
 	click(RW.quest(TR, 1), 'RightButton')
 	check(entry(opened[1].list, OBJECTIVES_SHOW_QUEST_MAP) == nil, 'the menu has no Show on map')
 	eq(TR.ClickHint('map', TR.ShowOnMapAllowed()), 'Click: focus.', 'the hint')
+	eq(TR.ClickHint('map', true, 'track'), 'Click: show on map (focus in combat). Shift-click: track. Right-click: more.', 'Shift tracks an untracked quest')
+	eq(TR.ClickHint('map', true, 'none'), 'Click: show on map (focus in combat). Right-click: more.', 'and does nothing where the game forbids untracking')
 	stub.fire_script(RW.quest(TR, 1), 'OnEnter', true)
 	local s = stub.state(GameTooltip)
 	eq(s.texts[s.lines], 'Click: focus.', 'on the tooltip')
@@ -462,23 +567,50 @@ RW.both('the tooltip: the quest link, party progress when grouped, the click hin
 	stub.fire_script(row, 'OnEnter', true)
 	s = stub.state(GameTooltip)
 	eq(s.lines, 3, 'grouped: the link, the party, the hint')
+	eq(s.texts[1], GetQuestLink(1), 'the link is still first')
 	eq(s.texts[2], 'party 1', 'the party progress comes second')
 	eq(s.texts[3], TR.ClickHint('map', true), 'then the hint')
 	stub.fire_script(row, 'OnLeave', true)
+	-- A party with no progress on the quest: the game adds nothing and hides nothing.
+	stub.party_progress = false
+	stub.fire_script(row, 'OnEnter', true)
+	s = stub.state(GameTooltip)
+	eq(s.lines, 2, 'no party data: the link and the hint')
+	check(GameTooltip:IsShown(), 'still shown')
+	stub.party_progress = nil
+	stub.fire_script(row, 'OnLeave', true)
+	-- Shift-click's words follow the quest.
+	TR.config.quests.show = 'zone'
+	stub.quests.watched = { 2 }
+	TR:Refresh()
+	stub.fire_script(RW.quest(TR, 1), 'OnEnter', true)
+	s = stub.state(GameTooltip)
+	eq(s.texts[s.lines], 'Click: show on map (focus in combat). Shift-click: track. Right-click: more.', 'an untracked zone quest: Shift-click tracks')
+	stub.fire_script(RW.quest(TR, 1), 'OnLeave', true)
+	stub.npe_restricted = true
+	stub.fire_script(RW.quest(TR, 2), 'OnEnter', true)
+	s = stub.state(GameTooltip)
+	eq(s.texts[s.lines], 'Click: show on map (focus in combat). Right-click: more.', 'new player experience: no Shift-click')
+	stub.fire_script(RW.quest(TR, 2), 'OnLeave', true)
+	stub.npe_restricted = false
+	TR.config.quests.show = 'tracked'
+	stub.quests.watched = { 1, 2 }
+	TR:Refresh()
+	row = RW.quest(TR, 1)
 	-- Left click Focus: the short hint.
 	TR.config.quests.left_click = 'focus'
 	stub.fire_script(row, 'OnEnter', true)
 	s = stub.state(GameTooltip)
 	eq(s.texts[s.lines], 'Click: focus.', 'Left click Focus: the hint says so')
 	stub.fire_script(row, 'OnLeave', true)
-	-- Where the game has no SetQuestPartyProgress, the party line is left out.
+	-- Where the game has no AppendInfo, the party line is left out.
 	local methods = getmetatable(GameTooltip).__index
-	local party = methods.SetQuestPartyProgress
-	methods.SetQuestPartyProgress = nil
+	local append = methods.AppendInfo
+	methods.AppendInfo = nil
 	stub.fire_script(row, 'OnEnter', true)
-	eq(stub.state(GameTooltip).lines, 2, 'no party line without the method')
+	eq(stub.state(GameTooltip).lines, 2, 'no party line without AppendInfo')
 	stub.fire_script(row, 'OnLeave', true)
-	methods.SetQuestPartyProgress = party
+	methods.AppendInfo = append
 	-- Tooltips off.
 	TR.config.quests.tooltips = false
 	GameTooltip:Hide()
@@ -512,6 +644,22 @@ RW.both('a secret title: the tooltip, the menu and the clicks pass it through', 
 	click(row)
 	restore()
 	methods.SetText = set_text
+end)
+
+RW.both('with Quest icons off the icon button is hidden and takes no click: the row takes it', function(st, TR)
+	zone()
+	TR.config.quests.icons = false
+	TR:Refresh()
+	local row = RW.quest(TR, 1)
+	check(not row.iconButton:IsShown(), 'no icon button over the title')
+	eq(stub.click(row.iconButton), false, 'a click there is the row\'s, not the icon\'s')
+	check(stub.quests.focused == 0, 'nothing was focused')
+	TR.config.quests.icons = true
+	TR:Refresh()
+	check(row.iconButton:IsShown(), 'with them on it shows')
+	local open = menu_stand_in()
+	stub.click(row, 'RightButton')
+	eq(#open, 1, 'the row takes the right button')
 end)
 
 ------------------------------------------------------------------ nothing to open

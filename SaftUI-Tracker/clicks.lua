@@ -12,33 +12,95 @@ local L = TR.LAYOUT
 	called from the rows' scripts (rows.lua), built with the rows, so with the
 	switch off none of it runs.
 
-	Combat (.agents/taint.md). A click handler of ours is addon code, so a
-	Blizzard UI function it calls runs tainted: opening the map or the quest
-	log (QuestMapFrame_OpenToQuestDetails, QuestUtil.OpenQuestDetails), sharing
-	(QuestUtil.ShareQuest) and abandoning with its confirmation
-	(QuestMapQuestOptions_AbandonQuest) are never called in combat: a left click
-	focuses the quest instead, and the menu makes those entries disabled with
-	"Out of combat only" (each also checks again when clicked, for a combat that
-	began after the menu opened). What stays allowed in combat: the game's own
-	quest calls, which have no Lua of Blizzard's and no restriction in the
-	generated documentation (C_SuperTrack.SetSuperTrackedQuestID,
-	C_QuestLog.AddQuestWatch and RemoveQuestWatch, ShowQuestComplete,
-	RemoveAutoQuestPopUp); Blizzard's two read-only helpers (QuestUtil.
-	CanRemoveQuestWatch, which only reads C_PlayerInfo.IsPlayerNPERestricted;
-	and the chat link's ChatFrameUtil.TryInsertQuestLinkForQuestID, which puts
-	text in the edit box, as every addon's shift click does). That the game
-	allows them in combat is an in-game check.
+	Combat (.agents/taint.md, rule 14). A click handler of ours is addon code, so
+	a Blizzard UI function it calls runs tainted: opening the map or the quest
+	log (QuestMapFrame_OpenToQuestDetails, QuestUtil.OpenQuestDetails) and
+	abandoning with its confirmation (QuestMapQuestOptions_AbandonQuest) are
+	never called in combat: a left click focuses the quest instead, and the menu
+	makes those entries disabled with "Out of combat only" (polled, so a menu
+	open when combat starts greys out; each also checks again when clicked).
+	Watch changes (C_QuestLog.AddQuestWatch and RemoveQuestWatch) are the same:
+	the game fires QUEST_WATCH_LIST_CHANGED, a SynchronousEvent, inside the call,
+	so Blizzard's concealed tracker, the quest map and the super track frame run
+	their handlers in our tainted call chain (the tracker's MarkDirty is what
+	rule 5 forbids from our code). They are out of combat only too: a Shift click
+	in combat does nothing and says "Out of combat only"; Track quest and Stop
+	tracking are disabled. What stays allowed in combat: focus
+	(C_SuperTrack.SetSuperTrackedQuestID: SUPER_TRACKING_CHANGED is not
+	synchronous), ShowQuestComplete and RemoveAutoQuestPopUp (the game's own
+	functions, no Lua of Blizzard's), Share (two C calls) and Blizzard's two
+	read-only helpers (QuestUtil.CanRemoveQuestWatch, which only reads
+	C_PlayerInfo.IsPlayerNPERestricted, and the chat link's ChatFrameUtil.
+	TryInsertQuestLinkForQuestID, which puts text in the edit box, as every
+	addon's shift click does). That the game allows them in combat is an
+	in-game check.
 
-	TR.ShowOnMapAllowed() is the one function that holds whether a left click
-	may open the map (experiment P5): the click, the menu, the tooltip's hint
-	and the Left click setting's values all read it, so a failed experiment
-	changes one constant, TR.SHOW_ON_MAP.
+	The seams (plan: Experiment seams), each one function so an experiment's
+	failure changes one constant: TR.ShowOnMapAllowed() (P5: may a left click
+	open the map; read by the click, the menu, the tooltip's hint and the Left
+	click setting's values), TR.QuestDetailsAllowed() and TR.AbandonAllowed()
+	(P5 too: the same lasting-taint question for the details panel and the
+	abandon confirmation; the menu entry goes when its constant is false) and
+	TR.WatchChangeAllowed() (P6: does a watch change from our click leave lasting
+	taint out of combat, and is it blocked in combat; today `not
+	InCombatLockdown()`).
 ]]
 
 TR.SHOW_ON_MAP = true
+TR.QUEST_DETAILS = true
+TR.ABANDON = true
+
+local function OutOfCombat() return not InCombatLockdown() end
 
 function TR.ShowOnMapAllowed()
 	return TR.SHOW_ON_MAP and type(QuestMapFrame_OpenToQuestDetails) == 'function' or false
+end
+
+-- Whether the menu may offer Open quest details, and Abandon (P5, as Show on
+-- map: the details panel and the abandon confirmation are Blizzard's UI Lua run
+-- from our call, which may leave lasting taint).
+function TR.QuestDetailsAllowed()
+	return TR.QUEST_DETAILS and type(QuestUtil) == 'table' and type(QuestUtil.OpenQuestDetails) == 'function' or false
+end
+
+function TR.AbandonAllowed()
+	return TR.ABANDON and type(QuestMapQuestOptions_AbandonQuest) == 'function' or false
+end
+
+-- Whether a click or menu entry may change the watch list now (P6): the game
+-- runs Blizzard's tracker, map and super track handlers inside the call.
+function TR.WatchChangeAllowed()
+	return not InCombatLockdown()
+end
+
+-- The one place a quest is tracked or untracked: false for a change not made,
+-- with the reason said in the game's error line (UIErrorsFrame, red, as
+-- Blizzard's own refusal of a 26th watch). The limit's words are Blizzard's
+-- (OBJECTIVES_WATCH_TOO_MANY, QuestMapQuestOptions_TrackQuest).
+local OUT_OF_COMBAT = 'Out of combat only'
+
+local function Say(text)
+	if type(UIErrorsFrame) == 'table' and type(UIErrorsFrame.AddMessage) == 'function' then
+		UIErrorsFrame:AddMessage(text, 1, 0.1, 0.1, 1)
+	end
+end
+
+function TR.SetWatched(questID, on)
+	if not TR.WatchChangeAllowed() then
+		Say(OUT_OF_COMBAT)
+		return false
+	end
+	if on then
+		local limit = type(Constants) == 'table' and Constants.QuestWatchConsts and Constants.QuestWatchConsts.MAX_QUEST_WATCHES
+		if limit and C_QuestLog.GetNumQuestWatches() >= limit then
+			Say(type(OBJECTIVES_WATCH_TOO_MANY) == 'string' and OBJECTIVES_WATCH_TOO_MANY or "You can't track any more quests.")
+			return false
+		end
+		C_QuestLog.AddQuestWatch(questID)
+	else
+		C_QuestLog.RemoveQuestWatch(questID)
+	end
+	return true
 end
 
 -- The Left click setting's choices: Show on map only while it is allowed.
@@ -56,10 +118,34 @@ function TR.LeftClick()
 	return 'focus'
 end
 
--- The last line of a quest's tooltip, naming the clicks.
-function TR.ClickHint(leftClick, allowed)
+-- The Left click row's own reset: its default as it acts (Focus where Show on
+-- map isn't allowed, so the row shows no reset icon for a saved map that reads
+-- as focus), writing the saved default when it resets.
+function TR.LeftClickDefault()
+	local base = TR.SettingDefault('quests', 'left_click')
+	local function Acts(value)
+		if value == 'map' and not TR.ShowOnMapAllowed() then return 'focus' end
+		return value
+	end
+	return {
+		differs = function() return TR.LeftClick() ~= Acts(base.value()) end,
+		reset = base.reset,
+		value = function() return Acts(base.value()) end,
+	}
+end
+
+-- The last line of a quest's tooltip, naming the clicks. shift says what a
+-- Shift-click does to this quest: 'untrack' (the default), 'track' (an
+-- untracked zone quest) or 'none' (the new player experience forbids it).
+function TR.ClickHint(leftClick, allowed, shift)
 	if leftClick == 'map' and allowed then
-		return 'Click: show on map (focus in combat). Shift-click: stop tracking. Right-click: more.'
+		local text = 'Click: show on map (focus in combat).'
+		if shift == 'track' then
+			text = text .. ' Shift-click: track.'
+		elseif shift ~= 'none' then
+			text = text .. ' Shift-click: stop tracking.'
+		end
+		return text .. ' Right-click: more.'
 	end
 	return 'Click: focus.'
 end
@@ -123,9 +209,9 @@ function TR:OnQuestClick(row, button)
 	end
 	local action = TR.ClickAction(quest, button, state)
 	if action == 'untrack' then
-		C_QuestLog.RemoveQuestWatch(id)
+		TR.SetWatched(id, false)
 	elseif action == 'track' then
-		C_QuestLog.AddQuestWatch(id)
+		TR.SetWatched(id, true)
 	elseif action == 'complete' then
 		-- Blizzard's order: the popup goes, then the turn-in opens (both the game's
 		-- own functions, as the popups' click uses).
@@ -152,27 +238,29 @@ local function Str(name, fallback)
 	return fallback
 end
 
-local OUT_OF_COMBAT = 'Out of combat only'
-
 -- The menu's entries for a quest, in Blizzard's order (the tracker's own menu
--- on both clients): { { kind = 'title' | 'button', text, enabled, tip,
--- onClick } }. state = { combat } (the game's answer when omitted). The
--- entries that run Blizzard's UI Lua are disabled in combat with a tip
--- (ruling 19), and refuse to run if combat began after the menu opened.
--- Blizzard's Share in chat, a gamepad entry, is left out: this tracker has no
--- gamepad mode. A secret title is the title as it is.
+-- on both clients): { { kind = 'title' | 'button', text, enabled, tip, poll,
+-- onClick } }. state = { combat } (the game's answer when omitted). An entry
+-- that runs Blizzard's UI Lua or changes the watch list has a `poll` function
+-- (true while it may run): enabled and tip are its answer now, with the tip
+-- "Out of combat only" (ruling 19), and the menu polls it, so a menu open when
+-- combat starts greys out; the click checks again. Blizzard's Share in chat, a
+-- gamepad entry, is left out: this tracker has no gamepad mode. A secret title
+-- is the title as it is.
 function TR.MenuEntries(quest, state)
 	local combat = state and state.combat
 	if combat == nil then combat = InCombatLockdown() and true or false end
 	local id = quest.id
 	local entries = {}
 
-	local function Add(text, onClick, runsBlizzardUI)
+	local function Add(text, onClick, poll)
 		local entry = { kind = 'button', text = text, enabled = true, onClick = onClick }
-		if runsBlizzardUI then
-			if combat then entry.enabled, entry.tip = false, OUT_OF_COMBAT end
+		if poll then
+			entry.poll = poll
+			entry.enabled = not combat and poll() or false
+			if combat or not entry.enabled then entry.enabled, entry.tip = false, OUT_OF_COMBAT end
 			entry.onClick = function()
-				if InCombatLockdown() then return end
+				if not poll() then return end
 				onClick()
 			end
 		end
@@ -184,42 +272,44 @@ function TR.MenuEntries(quest, state)
 	local focused = type(C_SuperTrack) == 'table' and type(C_SuperTrack.GetSuperTrackedQuestID) == 'function'
 		and C_SuperTrack.GetSuperTrackedQuestID() == id
 	if focused then
-		Add(Str('STOP_SUPER_TRACK_QUEST', 'Stop focusing'), function() C_SuperTrack.SetSuperTrackedQuestID(0) end)
+		Add(Str('STOP_SUPER_TRACK_QUEST', 'Remove Focus'), function() C_SuperTrack.SetSuperTrackedQuestID(0) end)
 	else
 		Add(Str('SUPER_TRACK_QUEST', 'Focus'), function() C_SuperTrack.SetSuperTrackedQuestID(id) end)
 	end
 
-	if type(QuestUtil) == 'table' and type(QuestUtil.OpenQuestDetails) == 'function' then
+	if TR.QuestDetailsAllowed() then
 		-- Blizzard's own read of whether the details show is not made in combat.
 		local showing = not combat and type(QuestUtil.IsShowingQuestDetails) == 'function'
 			and QuestUtil.IsShowingQuestDetails(id)
-		Add(showing and Str('OBJECTIVES_HIDE_VIEW_IN_QUESTLOG', 'Hide quest details')
-			or Str('OBJECTIVES_VIEW_IN_QUESTLOG', 'Open quest details'),
-			function() QuestUtil.OpenQuestDetails(id) end, true)
+		Add(showing and Str('OBJECTIVES_HIDE_VIEW_IN_QUESTLOG', 'Close Quest Details')
+			or Str('OBJECTIVES_VIEW_IN_QUESTLOG', 'Open Quest Details'),
+			function() QuestUtil.OpenQuestDetails(id) end, OutOfCombat)
 	end
 
 	if TR.ShowOnMapAllowed() then
-		Add(Str('OBJECTIVES_SHOW_QUEST_MAP', 'Show on map'), function() QuestMapFrame_OpenToQuestDetails(id) end, true)
+		Add(Str('OBJECTIVES_SHOW_QUEST_MAP', 'Open Quest Map'), function() QuestMapFrame_OpenToQuestDetails(id) end, OutOfCombat)
 	end
 
 	if quest.tracked then
 		local can = Call(QuestUtil, 'CanRemoveQuestWatch')
 		if can == nil or can then
-			Add(Str('OBJECTIVES_STOP_TRACKING', 'Stop tracking'), function() C_QuestLog.RemoveQuestWatch(id) end)
+			Add(Str('OBJECTIVES_STOP_TRACKING', 'Untrack'), function() TR.SetWatched(id, false) end, TR.WatchChangeAllowed)
 		end
 	else
 		-- A current-zone quest that isn't tracked (ruling 9): the quest log's own
 		-- menu words (TRACK_QUEST).
-		Add(Str('TRACK_QUEST', 'Track quest'), function() C_QuestLog.AddQuestWatch(id) end)
+		Add(Str('TRACK_QUEST', 'Track Quest'), function() TR.SetWatched(id, true) end, TR.WatchChangeAllowed)
 	end
 
+	-- Two C calls and nothing written (QuestUtil.ShareQuest), so allowed in combat.
 	if type(QuestUtil) == 'table' and type(QuestUtil.ShareQuest) == 'function'
-		and C_QuestLog.IsPushableQuest(id) and IsInGroup() then
-		Add(Str('SHARE_QUEST', 'Share quest'), function() QuestUtil.ShareQuest(id) end, true)
+		and type(C_QuestLog.IsPushableQuest) == 'function' and C_QuestLog.IsPushableQuest(id)
+		and type(IsInGroup) == 'function' and IsInGroup() then
+		Add(Str('SHARE_QUEST', 'Share Quest'), function() QuestUtil.ShareQuest(id) end)
 	end
 
-	if type(QuestMapQuestOptions_AbandonQuest) == 'function' then
-		Add(Str('ABANDON_QUEST_ABBREV', 'Abandon'), function() QuestMapQuestOptions_AbandonQuest(id) end, true)
+	if TR.AbandonAllowed() then
+		Add(Str('ABANDON_QUEST_ABBREV', 'Abandon'), function() QuestMapQuestOptions_AbandonQuest(id) end, OutOfCombat)
 	end
 	return entries
 end
@@ -237,10 +327,16 @@ function TR:OpenMenu(row)
 				root:CreateTitle(entry.text)
 			else
 				local element = root:CreateButton(entry.text, entry.onClick)
-				if entry.enabled == false then element:SetEnabled(false) end
-				if entry.tip and type(element.SetTooltip) == 'function' then
-					local tip = entry.tip
-					element:SetTooltip(function(tooltip) tooltip:SetText(tip) end)
+				local poll = entry.poll
+				if poll then
+					-- Polled by the menu (Blizzard's SetEnabled takes a function), so it
+					-- follows combat starting or ending while the menu is open.
+					element:SetEnabled(poll)
+					if type(element.SetTooltip) == 'function' then
+						element:SetTooltip(function(tooltip)
+							if not poll() then tooltip:SetText(OUT_OF_COMBAT) end
+						end)
+					end
 				end
 			end
 		end
@@ -272,12 +368,21 @@ function TR:ShowRowTooltip(row)
 	else
 		GameTooltip:SetText(quest.title)
 	end
-	if type(IsInGroup) == 'function' and IsInGroup() and type(GameTooltip.SetQuestPartyProgress) == 'function' then
-		-- Its title omitted: the link above is the title.
-		GameTooltip:SetQuestPartyProgress(quest.id, true)
+	-- The party's progress, appended after the link (a tooltip data accessor,
+	-- AppendInfo(getterName, ...), on both clients: SetQuestPartyProgress, like
+	-- SetHyperlink, starts the tooltip over, and hides it with no data). Where the
+	-- game lacks AppendInfo the line is left out.
+	if type(IsInGroup) == 'function' and IsInGroup() and type(GameTooltip.AppendInfo) == 'function' then
+		GameTooltip:AppendInfo('GetQuestPartyProgress', quest.id, true)
+	end
+	local shift = 'untrack'
+	if not quest.tracked then
+		shift = 'track'
+	elseif Call(QuestUtil, 'CanRemoveQuestWatch') == false then
+		shift = 'none'
 	end
 	local r, g, b = st.config.profile.colors.text.grey:GetRGB()
-	GameTooltip:AddLine(TR.ClickHint(TR.LeftClick(), TR.ShowOnMapAllowed()), r, g, b, true)
+	GameTooltip:AddLine(TR.ClickHint(TR.LeftClick(), TR.ShowOnMapAllowed(), shift), r, g, b, true)
 	GameTooltip:Show()
 end
 
@@ -290,6 +395,6 @@ function TR:ShowIconTooltip(button, row)
 	if not row.quest then return end
 	PlaceTooltip(button, row)
 	local focused = type(C_SuperTrack) == 'table' and C_SuperTrack.GetSuperTrackedQuestID() == row.quest.id
-	GameTooltip:SetText(focused and Str('STOP_SUPER_TRACK_QUEST', 'Stop focusing') or Str('SUPER_TRACK_QUEST', 'Focus'), 1, 1, 1)
+	GameTooltip:SetText(focused and Str('STOP_SUPER_TRACK_QUEST', 'Remove Focus') or Str('SUPER_TRACK_QUEST', 'Focus'), 1, 1, 1)
 	GameTooltip:Show()
 end

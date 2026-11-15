@@ -532,7 +532,7 @@ test('the title opens the page list, grouped as the sidebar is, while the sideba
 	click(frames_row)
 	eq(W.ListOwner(), F.titleButton, 'a caption click keeps the list open')
 	eq(OW:GetState().page, 'Loot')
-	click(row('Chat'))
+	click((row('Chat')))
 	eq(OW:GetState().page, 'Chat', 'a pick navigates'); eq(OW:IsSidebarShown(), false, 'the sidebar stays collapsed')
 	eq(F.title:GetText(), 'Chat'); eq(W.ListOwner(), nil, 'and the list closes')
 	eq(F.titleArrow:GetLeft(), F.title:GetLeft() + math.ceil(F.title:GetStringWidth()) + 8, 'the arrow follows a new title')
@@ -542,7 +542,7 @@ test('the title opens the page list, grouped as the sidebar is, while the sideba
 	-- A search is ended by a pick.
 	F.search:SetText('width'); tick(0.3)
 	eq(OW:GetState().search, 'width')
-	click(F.titleButton); click(row('Loot'))
+	click(F.titleButton); click((row('Loot')))
 	eq(OW:GetState().search, '', 'a pick ends the search'); eq(OW:GetState().page, 'Loot')
 	-- With the sidebar shown the button takes no click.
 	OW:SetSidebarShown(true)
