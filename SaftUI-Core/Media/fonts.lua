@@ -149,10 +149,16 @@ end
 -- picked mid-session draws at once. Another addon's faces are not preloaded
 -- (the in-game check G1 says whether they need to be).
 FN.preloaded = {}
+-- Which font files the game is known to take, path -> true, kept for the session
+-- (SaftUI's preloaded faces are known from here), and those it refused, path ->
+-- true, kept only until the next st:FontsChanged (st:FontLoads, below).
+local loads, refused = {}, {}
 for i, name in ipairs(st.SAFTUI_FACES or {}) do
 	local object = CreateFont('SaftUI_Preload' .. i .. 'Font')
-	object:SetFont(st.LSM:Fetch('font', name), 12, '')
+	local path = st.LSM:Fetch('font', name)
+	object:SetFont(path, 12, '')
 	FN.preloaded[name] = object
+	loads[path] = true
 end
 
 -- Heading's face, once per profile (the Settled 3 of the fonts design). Heading
@@ -230,22 +236,28 @@ end
 -- each face, outline, shadow and spacing it is dragged at, and the same one
 -- again when it comes back.
 local typefaces, typefaceCount = {}, 0
+local fellBack = {} -- key -> true: the object is in Text's face for a refused file
 local function Typeface(value)
 	local name, size, outline, x, y, spacing = Resolve(value)
 	local path = st.LSM:Fetch('font', name)
 	local key = path .. '\31' .. size .. '\31' .. outline .. '\31' .. x .. '\31' .. y .. '\31' .. spacing
 	local object = typefaces[key]
+	-- An object made in Text's face for a refused file is made again once the file loads.
+	if object and fellBack[key] and st:FontLoads(path) then object = nil end
 	if not object then
 		typefaceCount = typefaceCount + 1
 		object = CreateFont('SaftUI_Typeface' .. typefaceCount .. 'Font')
 		object:SetTextColor(1, 1, 1)
 		local fields = { font_name = name, font_size = size, font_outline = outline, shadow_offset = { x, y }, spacing = spacing }
-		-- A face LibSharedMedia lists whose file fails to load: the object takes
-		-- Text's face with the size, outline, shadow and spacing asked for, so the
-		-- text still draws (in Text's face).
-		if not pcall(FN.SetObject, FN, object, fields) then
+		-- A face LibSharedMedia lists whose file the game refuses (st:FontLoads): the
+		-- object takes Text's face with the size, outline, shadow and spacing asked
+		-- for, so the text still draws (in Text's face). A SetObject that raises
+		-- for another reason falls back the same way.
+		fellBack[key] = nil
+		if not st:FontLoads(path) or not pcall(FN.SetObject, FN, object, fields) then
 			fields.font_name = st.defaults.fonts.normal.font_name
 			FN:SetObject(object, fields)
+			fellBack[key] = true
 		end
 		typefaces[key] = object
 	end
@@ -278,11 +290,51 @@ function st:ApplyFont(fontString, value)
 	fontString:SetFontObject(st:FontObject(value))
 end
 
+-- Whether the game takes a font file. SaftUI's preloaded faces do, with no probe.
+-- Any other file is tried on a font object of SaftUI's own (`CreateFont`: a font
+-- file draws reliably only once a font object has been set to it, the font demo
+-- found, so this is the mechanism known to work and not a font string's own
+-- SetFont). It counts as refused when the call raises, returns false, or leaves
+-- the object still on the face it was put on before (`Font:GetFont` returns a file, a height and flags in
+-- the API documentation, on both clients; `Font:SetFont` has no return value
+-- there, `FontString:SetFont` returns `success`, and neither says whether a missing
+-- file raises or returns false). A positive answer is kept for the session. A
+-- refusal is kept only until the next st:FontsChanged (which clears it, so
+-- changing a font setting or reopening a font list tries the file again), and a
+-- path is probed at most once between two of those, so a reader on a hot path
+-- (the tooltip's Show) costs one table lookup.
+local probe
+function st:FontLoads(path)
+	if loads[path] then return true end
+	if refused[path] then return false end
+	probe = probe or CreateFont('SaftUI_FontProbeFont')
+	-- Put on a face known to load first, so a refusal that says nothing shows as the
+	-- object still having it, whatever form the game reports a path in.
+	local sentinel = st.LSM:Fetch('font', (Resolve('normal')))
+	probe:SetFont(sentinel, 12, '')
+	local before = probe:GetFont()
+	local ok, result = pcall(probe.SetFont, probe, path, 12, '')
+	local file = ok and result ~= false and probe:GetFont()
+	if type(file) == 'string' and file ~= '' and file ~= before then
+		loads[path] = true
+		return true
+	end
+	refused[path] = true
+	return false
+end
+
 -- For a reader that takes values, not an object: path, size, flags, shadow X,
--- shadow Y and spacing of a font setting.
+-- shadow Y and spacing of a font setting. A face the game refuses to load
+-- (st:FontLoads) gives Text's face in its place, with the size and flags asked,
+-- so every reader, whether it sets a font string, a chat window or another
+-- addon's timer, draws something. Builds nothing once a face is known.
 function st:FontValues(value)
 	local name, size, outline, x, y, spacing = Resolve(value)
-	return st.LSM:Fetch('font', name), size, st.OutlineFlag(outline), x, y, spacing
+	local path = st.LSM:Fetch('font', name)
+	if not st:FontLoads(path) then
+		path = st.LSM:Fetch('font', (Resolve('normal')))
+	end
+	return path, size, st.OutlineFlag(outline), x, y, spacing
 end
 
 -- The words for a font setting: a shared font's name ("Heading"), a typeface as
@@ -356,6 +408,8 @@ end
 -- OnFontsChanged reads a profile it converts runs its conversion first: the
 -- profile update calls this before the modules' UpdateConfig.
 function st:FontsChanged()
+	-- A face the game refused is tried again: a wrong refusal lasts no longer.
+	for path in pairs(refused) do refused[path] = nil end
 	st:RefollowFonts()
 	for _, module in pairs(st.modules) do
 		if module.OnFontsChanged then
@@ -502,31 +556,29 @@ function FN.FontSettingDefault(read, write, default)
 end
 
 -- The Kinds of text section: which font each kind of text uses, as
--- { row key, profile key, name, default, desc, apply }. A row reads and writes
--- st.config.profile[profile key].font. Only window titles can be re-applied
--- (st:UpdateHeader); the others are set when their frames are built.
+-- { row key, profile key, name, default, desc }. A row reads and writes
+-- st.config.profile[profile key].font. Each kind's texts follow their setting
+-- (st:FollowFont), so a change reaches them at once.
 local TEXT_FONTS = {
 	{ 'window_titles', 'headers', 'Window titles', 'normal',
-		"The titles of SaftUI's windows (the bags and bank), which change at once, and the bags' gold and free-slot text along their bottom, which changes on a reload.",
-		function() st:UpdateHeader() end },
+		"The titles of SaftUI's windows (the bags and bank), which change at once, and the bags' gold and free-slot text along their bottom, which changes on a reload." },
 	{ 'button_text', 'buttons', 'Button text', 'pixel',
 		"The text on the totem bar's buttons (key bindings, counts and names) and its totem timers, and on the bag slot bars and the bank's bag slots." },
 	{ 'checkbox_labels', 'panels', 'Check box labels', 'normal',
 		"The labels of SaftUI's check boxes, such as the bags' filters." },
 }
 
-local TEXT_FONTS_NOTE = 'Window titles change at once. The rest is read when SaftUI builds its frames: reload (Reload UI, bottom right) to see a change everywhere.'
+local TEXT_FONTS_NOTE = 'Which font each kind of text uses. A change shows at once, except where its row says otherwise.'
 
 local function TextFontsGroup()
 	local args = {}
 	for i, entry in ipairs(TEXT_FONTS) do
-		local key, profile_key, name, default, desc, apply = unpack(entry)
+		local key, profile_key, name, default, desc = unpack(entry)
 		local option = st.Config.generators.font(i, desc)
 		option.name = name
 		local function read() return st.config.profile[profile_key].font end
 		local function write(_, value)
 			st.config.profile[profile_key].font = value
-			if apply then apply() end
 		end
 		option.get = read
 		option.set = function(info, value)

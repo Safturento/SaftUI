@@ -80,7 +80,7 @@ local TIMER_GAP = 3
 -- The gap between the bar and the text above it.
 local TEXT_GAP = 2
 
--- The text's height when the profile's button font can't be read.
+-- The text's height when the size of the profile's button font can't be read.
 local DEFAULT_TEXT_HEIGHT = 10
 
 -- The time left from which the bar and text turn the warning colour.
@@ -114,22 +114,12 @@ local flyoutBaseHeight
 -- if this client has it.
 local PostHook = TB.PostHook
 
--- The text's font: the profile's button font, else SaftUI's pixel font, else one of
--- Blizzard's, so the text always has one (SetText errors without). Also its name, when
--- it's one of SaftUI's fonts.
-local function TimerFont()
-	local name = st.config.profile.buttons.font
-	local font = st:GetFont(name)
-	if font then return font, name end
-	font = st:GetFont('pixel')
-	if font then return font, 'pixel' end
-	return NumberFontNormalSmall
-end
+-- The text's font setting: the profile's Button text.
+local function ButtonsFont() return st.config.profile.buttons.font end
 
--- The text's height in its font.
+-- The text's height in its font: the size the setting gives.
 local function TextHeight()
-	local font = TimerFont()
-	local size = font and select(2, font:GetFont())
+	local _, size = st:FontValues(ButtonsFont())
 	return math.ceil(size or DEFAULT_TEXT_HEIGHT)
 end
 
@@ -432,8 +422,10 @@ local function CreateTimer(button)
 	cover:SetAllPoints(frame)
 	cover:SetFrameLevel(bar:GetFrameLevel() + 1)
 
+	-- The text follows Button text (Global settings > Fonts), so it always has a
+	-- font (SetText errors without) and a change reaches it at once.
 	local text = cover:CreateFontString(nil, 'OVERLAY')
-	text:SetFontObject((TimerFont()))
+	st:FollowFont(text, ButtonsFont)
 
 	local timer = {
 		frame = frame,
@@ -557,7 +549,6 @@ function TB:ApplyTimerLayout()
 	local onBar = showBar and showText and config.timer_text_position == 'on'
 	local look = st.config.profile.buttons
 	local inset = st:ThemeInset(look.theme, look.background, 'bar')
-	local font = TimerFont()
 	local height = math.max(1, self:GetTimerAreaHeight() - TIMER_GAP)
 	local barHeight = BarHeight(onBar)
 
@@ -574,7 +565,6 @@ function TB:ApplyTimerLayout()
 		backdrop:SetShown(showBar)
 		st:SetInside(bar, inset)
 
-		text:SetFontObject(font)
 		-- Where the time sits; PlaceText centres it there on whole pixels. The point
 		-- names are the vertical half of the anchor ('' for the middle).
 		if onBar then

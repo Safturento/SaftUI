@@ -65,8 +65,7 @@ local function SetupSlot(slotId, slotName)
 	-- on a dark backing. The font and backing are SaftUI's own; only they are
 	-- added to Blizzard's button.
 	local itemLevel = button:CreateFontString(nil, 'OVERLAY')
-	local font = st:GetFont(st.config.profile.skinning.font)
-	if font then itemLevel:SetFontObject(font) end
+	st:ApplyFont(itemLevel, st.config.profile.skinning.font)
 	itemLevel:SetTextColor(st.config.profile.colors.text.white:GetRGB())
 	itemLevel:SetDrawLayer('OVERLAY', 7)
 	itemLevel:SetPoint('BOTTOMRIGHT', -3, 3)
@@ -110,10 +109,8 @@ end
 -- A profile change or the Skinning page's font: the item level text takes the
 -- profile's Skinning font again.
 function CF:UpdateConfig()
-	local font = st:GetFont(st.config.profile.skinning.font)
-	if not font then return end
 	for _, slot in pairs(slots) do
-		slot.itemLevel:SetFontObject(font)
+		st:ApplyFont(slot.itemLevel, st.config.profile.skinning.font)
 		-- A font object can reset an explicit colour, and the profile's white may differ.
 		slot.itemLevel:SetTextColor(st.config.profile.colors.text.white:GetRGB())
 	end

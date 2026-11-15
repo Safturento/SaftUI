@@ -452,3 +452,44 @@ test("Cooldown Manager off leaves Blizzard's look and hooks nothing", function()
 	eq(backdrop_of(later[1]), nil, 'still nothing after a profile update')
 	eq(#take_errors(), 0, 'no errors')
 end)
+
+test('a Skinning font that names nothing draws Text on the count and the bar texts; a typeface reaches them', function()
+	world('forever')
+	local icons = CV.Essential:RefreshLayout(1)
+	local bars = CV.BuffBar:RefreshLayout(1)
+	local item, barItem = icons[1], bars[1]
+	for _, value in ipairs({ 'gone', 17, false }) do
+		profile.skinning.font = value
+		SK:UpdateConfig()
+		eq(item.ChargeCount.Current:GetFontObject(), st:GetFont('normal'), 'the count: Text for ' .. tostring(value))
+		eq(barItem.Bar.Name:GetFontObject(), st:GetFont('normal'), "the bar's name: Text for " .. tostring(value))
+	end
+	local face = { font_name = 'Colus', font_size = 12, font_outline = 'OUTLINE', shadow_offset = { 0, 0 }, spacing = 4 }
+	profile.skinning.font = face
+	SK:UpdateConfig()
+	eq(item.ChargeCount.Current:GetFontObject(), st:FontObject(face), 'the count in a typeface')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("a Fonts tab size change reaches a bar item's count height (the Cooldown Manager's OnFontsChanged)", function()
+	world('forever')
+	local barItem = CV.BuffBar:RefreshLayout(1)[1]
+	profile.skinning.font = 'pixel'
+	SK:UpdateConfig()
+	local count = barItem.Icon.Applications
+	local before = count and count:GetHeight()
+	profile.fonts.pixel.font_size = 23
+	st:GetModule('Fonts'):UpdateFontConfig('pixel')
+	st:FontsChanged()
+	local seen = {}
+	for _, region in ipairs({ barItem.Icon:GetRegions() }) do
+		if region:GetObjectType() == 'FontString' then seen[#seen + 1] = region:GetHeight() end
+	end
+	local found
+	for _, h in ipairs(seen) do if h == 23 then found = true end end
+	check(found, 'a count text of the bar item is as tall as the new size (23); before: ' .. tostring(before) .. ', now: ' .. table.concat(seen, ','))
+	profile.fonts.pixel.font_size = nil
+	st:GetModule('Fonts'):UpdateFontConfig('pixel')
+	profile.skinning.font = 'pixel'
+	eq(#take_errors(), 0, 'no errors')
+end)

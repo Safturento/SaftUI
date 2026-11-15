@@ -204,9 +204,12 @@ define('font', {
 			-- shared font has replaced writes nothing.
 			widget:Refresh()
 			if widget.kind ~= 'typeface' or widget.faceOnly then return end
-			local ok, err = OM.Set(widget.root, widget.row, Fonts().WithField(st:FontFields(widget.value), field, value))
+			-- A page row's own validate is not honoured from here: a failed one
+			-- saves nothing and says nothing (the menu's redraw would clear any
+			-- message at once). No font row has one; a row that needs one would
+			-- give each menu option a validate that runs the row's.
+			OM.Set(widget.root, widget.row, Fonts().WithField(st:FontFields(widget.value), field, value))
 			widget:Refresh()
-			if ok == false and err and widget.onChanged then widget.onChanged(false, err) end
 		end
 		local fields = self.row.option.fontFields
 		return { type = 'group', name = title, args = Fonts().FieldOptions(read, write, 'text', fields) }, title

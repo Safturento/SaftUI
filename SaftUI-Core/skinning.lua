@@ -118,10 +118,13 @@ function st:SkinCooldown(button, cooldown)
 	skinnedCooldowns[cooldown] = true
 	cooldown:SetHideCountdownNumbers(true)
 	local text = cooldown:CreateFontString(nil, 'OVERLAY')
-	text:SetFontObject(st:GetFont('pixel'))
+	st:ApplyFont(text, 'pixel')
 	text:SetAllPoints(cooldown)
 	cooldown.text = text
 end
+
+-- Core's Button text setting, read when a text follows it.
+local function ButtonsFont() return st.config.profile.buttons.font end
 
 -- hover -> the blend button:SetHighlightTexture gave the flat hover
 -- st:SkinActionButton made, so it goes back on after Blizzard's state art
@@ -132,6 +135,14 @@ local hoverBlends = setmetatable({}, { __mode = 'k' })
 -- config.theme and config.background, drawn as kind ('action' by default; a
 -- bag slot is a 'slot'), and config.font and config.trueSize.
 function st:SkinActionButton(button, config, kind)
+	-- With no config the button wears Core's own button settings, and its texts
+	-- follow their font (Button text, Global settings > Fonts). A config of a
+	-- module's own is applied as it stands: its font follows only where it is a
+	-- shared font, whose object changes. The button's own normal, highlight and
+	-- disabled font objects (below) are set once either way: they follow a shared
+	-- object's change, but not Button text moving from one key to another, so a
+	-- caller whose button has a text of its own needs more than this.
+	local follow = config == nil
 	config = config or st.config.profile.buttons
 
 	st:SetBackdrop(button, config.theme, config.background, kind or 'action')
@@ -179,11 +190,15 @@ function st:SkinActionButton(button, config, kind)
 	st:Kill(button.CircleMask)
 
 	if config.font then
-		local font_object = st:GetFont(config.font)
+		local font_object = st:FontObject(config.font)
 
 		for _,region in pairs({button:GetRegions()}) do
 			if region:GetObjectType() == 'FontString' then
-				region:SetFontObject(font_object)
+				if follow then
+					st:FollowFont(region, ButtonsFont)
+				else
+					st:ApplyFont(region, config.font)
+				end
 			end
 		end
 
@@ -402,17 +417,17 @@ function st:StyleEditBox(editbox, theme, background, font)
 	editBoxLooks[editbox] = look
 	DrawEditBox(editbox, look)
 
-	if font then
-		local fontObject = st:GetFont(font)
-		if editbox.Instructions then
-			editbox.Instructions:SetFontObject(fontObject)
-		end
-		local text, _, _, _, header = editbox:GetRegions()
-		text:SetFontObject(fontObject)
-		-- if header then
-		-- 	header:SetFontObject(fontObject)
-		-- end
+	if font then st:ApplyEditBoxFont(editbox, font) end
+end
+
+-- The font of an edit box st:SkinEditBox skinned: its text and its instructions.
+-- Only the font, so a font change can reach a box with no redraw.
+function st:ApplyEditBoxFont(editbox, font)
+	if editbox.Instructions then
+		st:ApplyFont(editbox.Instructions, font)
 	end
+	local text = editbox:GetRegions()
+	st:ApplyFont(text, font)
 end
 
 function st:EnableResizing(frame, resizeButton, callback)

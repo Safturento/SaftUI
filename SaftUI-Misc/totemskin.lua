@@ -100,6 +100,9 @@ local OVER_ICON = {
 -- and setting its text and colour.
 local TEXTS = { 'HotKey', 'Count', 'Name' }
 
+-- Button text (Core's buttons font), read when a text is styled or follows.
+local function ButtonsFont() return st.config.profile.buttons.font end
+
 -- The gap between the flyout's panel and its column of choices. Small enough that, with
 -- the Thick theme, the panel's border sits just above the element button's border
 -- below it rather than over it, and the panel is as wide as the element button.
@@ -308,16 +311,13 @@ local function StyleButton(button, skin, theme, background)
 		end
 	end
 
-	-- SaftUI's pixel fonts are drawn without a shadow.
-	local font = st:GetFont(st.config.profile.buttons.font)
-	if font then
-		for _, key in ipairs(TEXTS) do
-			local text = button[key]
-			if text then
-				text:SetFontObject(font)
-				text:SetShadowOffset(0, 0)
-			end
-		end
+	-- The texts follow Button text (Global settings > Fonts), shadow and all: the
+	-- font's own shadow is what they draw. A font change reaches them in combat too:
+	-- setting a text's font object is no protected call (the API documentation marks no
+	-- font function protected, see .agents/taint.md rule 1; not yet confirmed in game).
+	for _, key in ipairs(TEXTS) do
+		local text = button[key]
+		if text then st:FollowFont(text, ButtonsFont) end
 	end
 
 	-- Cooldown numbers in the pixel font, larger on large buttons, as on SaftUI's action

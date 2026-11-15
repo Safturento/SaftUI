@@ -57,7 +57,7 @@ local function CreateBankBagSlot(bar, tab)
 	slot.locked:SetAlpha(0.3)
 	slot.locked:SetAllPoints()
 
-	st:SkinActionButton(slot, st.config.profile.buttons, 'slot')
+	st:SkinActionButton(slot, nil, 'slot')
 
 	slot:RegisterForClicks('LeftButtonUp')
 	slot:RegisterForDrag('LeftButton')

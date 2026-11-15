@@ -148,11 +148,12 @@ local function Active()
 end
 function OT:IsActive() return Active() end
 
+-- The font object of a kind of text: one object per look, so PutFont can compare.
 local function Font(kind)
 	local config = Profile().objectivetracker
-	if kind == 'header' then return st:GetFont(config.header_font) end
-	if kind == 'count' then return st:GetFont(Profile().skinning.font) end
-	return st:GetFont(config.font)
+	if kind == 'header' then return st:FontObject(config.header_font) end
+	if kind == 'count' then return st:FontObject(Profile().skinning.font) end
+	return st:FontObject(config.font)
 end
 
 -- Gives a font string a font, keeping the color it shows: Blizzard colors

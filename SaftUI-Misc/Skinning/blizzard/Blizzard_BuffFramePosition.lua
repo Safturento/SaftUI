@@ -465,12 +465,17 @@ end
 local fonts = {} -- 'buffs' / 'debuffs' -> { duration = Font, count = Font }
 
 -- Applies one text's font settings to its font object. Every font string set to the
--- object follows.
+-- object follows. The setting is a face (a LibSharedMedia name, taken at this text's
+-- size and outline) or, once its list offers them, a shared font's key (taken whole:
+-- its face, size, outline and shadow). st:FaceFont tells which; the shadow is the
+-- font's own, none for a face.
 function AP:UpdateFont(key, kind)
 	local font = fonts[key] and fonts[key][kind]
 	if not font then return end
 	local config = st.config.profile.auras[key][kind]
-	font:SetFont(st.LSM:Fetch('font', config.font), config.size, st.OutlineFlag(config.outline))
+	local path, size, flags, x, y = st:FontValues(st:FaceFont(config.font, config.size, config.outline))
+	font:SetFont(path, size, flags)
+	font:SetShadowOffset(x, y)
 end
 
 function AP:UpdateFonts()
@@ -478,6 +483,14 @@ function AP:UpdateFonts()
 		self:UpdateFont(info.key, 'duration')
 		self:UpdateFont(info.key, 'count')
 	end
+end
+
+-- A shared font or a font setting changed (st:FontsChanged): the two texts' font
+-- objects take their settings again, and the buttons that show them restyle (a text's
+-- height decides the debuffs' layout).
+function AP:OnFontsChanged()
+	self:UpdateFonts()
+	self:UpdateText()
 end
 
 -- The font object for one frame's duration or count text, made the first time.

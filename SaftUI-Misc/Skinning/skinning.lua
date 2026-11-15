@@ -29,6 +29,19 @@ function SK:OnColorsChanged(group)
 	end
 end
 
+-- A shared font or a font setting changed (st:FontsChanged). It reaches the skins the
+-- same way: each one with an OnFontsChanged applies what it builds from font values
+-- again (the Cooldown Manager's bar heights, RestedXP's faces, the color picker's
+-- title). Texts on a shared font follow its object with no call, and a change of the
+-- Skinning font setting itself runs each skin's UpdateConfig.
+function SK:OnFontsChanged()
+	for _, module in self:IterateModules() do
+		if module.OnFontsChanged then
+			xpcall(module.OnFontsChanged, geterrorhandler(), module)
+		end
+	end
+end
+
 -- The Skinning page in /sui: the font, Theme and Background the skins share. The
 -- skins re-apply them at once (SK:UpdateConfig above).
 function SK:GetConfigTable()

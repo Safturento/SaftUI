@@ -164,8 +164,11 @@ local function Original(target, kind)
 	return entry and entry.font or _G[BLIZZARD_FONTS[kind]]
 end
 
-local function TitleFont() return st:GetFont(Profile().headers.font) end
-local function SkinFont() return st:GetFont(Profile().skinning.font) end
+-- One font object per look (st:FontObject), so a typeface is one too. They are read
+-- when a text is restyled, never followed (st:FollowFont): a follower would put
+-- SaftUI's font back on a text the skin has given Blizzard's.
+local function TitleFont() return st:FontObject(Profile().headers.font) end
+local function SkinFont() return st:FontObject(Profile().skinning.font) end
 
 -- SaftUI's font on a font string or edit box (anything with SetFontObject), or
 -- what Blizzard had back. keepColor keeps the color it shows through the
@@ -574,13 +577,20 @@ end
 -- A profile change, the Skinning page's Theme, Background, font or Color
 -- picker: on, the picker takes the look; off or under the Blizzard theme,
 -- Blizzard's look goes back on, at once. (The title follows Window titles'
--- font on the next of these, not the moment it changes.)
+-- font at once, through OnFontsChanged below.)
 function CP:UpdateConfig()
 	if installed then
 		self:StyleAll()
 	elseif Profile().skinning.color_picker then
 		self:Install()
 	end
+end
+
+-- A shared font or a font setting changed (st:FontsChanged): the title takes Window
+-- titles' font and the other texts the Skinning font again, as UpdateConfig styles
+-- them; with the skin off nothing is touched (Blizzard's fonts stay).
+function CP:OnFontsChanged()
+	if installed then self:StyleAll() end
 end
 
 -- A theme recolor or a color change: the buttons' hover edge takes the color

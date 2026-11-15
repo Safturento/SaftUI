@@ -123,3 +123,25 @@ test('a change of the Skinning font reaches the text without a reload', function
 	SK:UpdateConfig()
 	if not ok then error(err, 0) end
 end)
+
+test('a Skinning font that names nothing draws Text; a typeface reaches the text through the Skinning update', function()
+	local face = { font_name = 'Colus', font_size = 12, font_outline = 'OUTLINE', shadow_offset = { 0, 0 }, spacing = 4 }
+	local ok, err = pcall(function()
+		for _, value in ipairs({ 'gone', 17, false }) do
+			profile.skinning.font = value
+			SK:UpdateConfig()
+			for _, name in ipairs(SLOTS) do
+				eq(parts(buttons[name]):GetFontObject(), st:GetFont('normal'), name .. ': Text for ' .. tostring(value))
+			end
+		end
+		profile.skinning.font = face
+		SK:UpdateConfig()
+		for _, name in ipairs(SLOTS) do
+			eq(parts(buttons[name]):GetFontObject(), st:FontObject(face), name .. ': the typeface')
+		end
+		eq(#take_errors(), 0, 'no errors')
+	end)
+	profile.skinning.font = 'pixel'
+	SK:UpdateConfig()
+	if not ok then error(err, 0) end
+end)

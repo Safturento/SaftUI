@@ -54,7 +54,7 @@ local noneColor
 
 -- Read at use time, so a profile change takes effect.
 local function SkinningFont()
-	return st:GetFont(st.config.profile.skinning.font)
+	return st:FontObject(st.config.profile.skinning.font)
 end
 
 -- The Skinning page's Theme and Background, read at use time.
@@ -277,7 +277,7 @@ local function SkinAuraButton(button)
 	skinned[button] = true
 
 	local config = st.config.profile.skinning
-	local font = st:GetFont(config.font)
+	local font = st:FontObject(config.font)
 
 	st:SkinIcon(button.Icon)
 	DrawBackdrop(button)
@@ -341,7 +341,7 @@ end
 -- run in combat.
 function BF:UpdateConfig()
 	local config = st.config.profile.skinning
-	local font = st:GetFont(config.font)
+	local font = st:FontObject(config.font)
 
 	for button in pairs(skinned) do
 		DrawBackdrop(button)
