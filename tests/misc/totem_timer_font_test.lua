@@ -150,7 +150,6 @@ test('the Totem bar page has a Timer font row: a font row with a reset that name
 	check(not row.faceOnly, 'the full row: the typeface menu has every field')
 	check(row.name:find('Timer', 1, true), 'named for the timers: ' .. tostring(row.name))
 	check(type(row.desc) == 'string' and row.desc:find('timer', 1, true), 'it says what it changes: ' .. tostring(row.desc))
-	check(row.default ~= nil, 'it has a reset')
 
 	local root = { TotemBar = tree }
 	local view = OM.BuildView(root, 'TotemBar')
@@ -162,6 +161,7 @@ test('the Totem bar page has a Timer font row: a font row with a reset that name
 	end
 	check(found ~= nil, 'the row is on the page')
 	eq(OM.Get(root, found), 'pixel', 'it reads totembar.timer_font')
+	eq(OM.DefaultSource(root, found), 'derived', 'it resets from where it is saved, with no hand default')
 	eq(OM.DefaultState(root, found).differs, false, 'at the default it shows no reset')
 
 	-- A pick writes the profile and reaches the timers at once (the page's set runs st:FontsChanged).
@@ -171,7 +171,7 @@ test('the Totem bar page has a Timer font row: a font row with a reset that name
 	check(text:GetFontObject() == st:GetFont('heading'), 'and reaches the timers at once')
 	local state = OM.DefaultState(root, found)
 	eq(state.differs, true, 'it differs now')
-	eq(state.text, 'Small text', 'the reset names Small text')
+	eq(st:FontLabel(state.value[1]), 'Small text', 'the reset names Small text')
 	OM.Set(root, found, FACE)
 	eq(OM.DefaultState(root, found).differs, true, 'a typeface differs too')
 	check(text:GetFontObject() == st:FontObject(FACE), 'and reaches the timers')

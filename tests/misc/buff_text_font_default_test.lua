@@ -141,18 +141,21 @@ test('Size and Outline hide while Small text shows; the Font rows reset to Small
 	function AP:GetGeometry() return { horizontal = true, grow = 'LEFT', wrap = 'DOWN' } end
 	function AP:UpdateText() end
 	local tree = AP:GetConfigTable()
+	local OM = st.OptionsModel
+	local root = { Auras = tree }
 	for _, key in ipairs(FRAMES) do
 		for _, kind in ipairs(KINDS) do
 			local group = tree.args[key].args.text.args[kind]
+			local font = { option = group.args.font, path = { 'Auras', key, 'text', kind, 'font' }, type = 'font', key = 'font' }
 			eq(group.args.size.hidden(), true, key .. ' ' .. kind .. ': Size hides on Small text')
 			eq(group.args.outline.hidden(), true, 'and Outline')
-			check(group.args.font.default ~= nil, 'the Font row has a reset')
-			eq(group.args.font.default.differs(), false, 'at its default it shows none')
+			eq(OM.DefaultSource(root, font), 'derived', 'the Font row resets from where its group saves it')
+			eq(OM.DefaultDiffers(root, font), false, 'at its default it shows none')
 			group.set({ 'font' }, 'Colus')
 			eq(group.args.size.hidden(), false, 'a face shows Size')
-			eq(group.args.font.default.differs(), true, 'and the reset')
-			eq(group.args.font.default.text, 'Small text', 'which names Small text')
-			group.args.font.default.reset()
+			eq(OM.DefaultDiffers(root, font), true, 'and the reset')
+			eq(st:FontLabel(OM.SourceState(root, font).value[1]), 'Small text', 'which names Small text')
+			OM.DefaultReset(root, font)
 			eq(AP.config[key][kind].font, 'pixel', 'and puts Small text back')
 		end
 	end

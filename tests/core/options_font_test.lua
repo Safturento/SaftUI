@@ -609,7 +609,7 @@ test("a default's reset names the default by FontLabel: 'Header font goes back t
 	in_look('thick', function(tip)
 		fresh()
 		vals.header = 'pixel'
-		local default = FN.FontSettingDefault(function() return vals.header end, function(_, v) vals.header = v end, 'heading')
+		local default = { differs = function() return vals.header ~= 'heading' end, reset = function() vals.header = 'heading' end, value = function() return 'heading' end }
 		local root = Page({ header = FontRow('header', 1, nil, { name = 'Header font', default = default }) })
 		local _, by = draw(root)
 		local frame = by.header.frame
