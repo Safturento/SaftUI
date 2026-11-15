@@ -33,6 +33,7 @@
 	  use_client(name, before) a fresh world on 'forever' or 'retail'
 	  st.config.global        an empty table, as AceDB gives
 	  SCALE_SCREENS           the screens use_scale knows, by k: { width, height, mode }
+	  TEST_SCALE              set in a scaled run: the shell then builds every world at use_scale(TEST_SCALE)
 	  use_scale(k)            puts the world on k's screen at the scale the model gives it
 	                          (0.75, 1, 1.25 or 1.55); nothing is reset; returns UIScale.Resolve's table
 ]]
@@ -622,4 +623,10 @@ function use_scale(k)
 	UIParent:SetScale(resolved.uiScale)
 	st.UIScale:SetTokens()
 	return resolved
+end
+
+-- In a scaled run (TEST_SCALE, which runner.py sets) every world is built at
+-- that scale: this file runs again on every reset_world and use_client.
+if TEST_SCALE then
+	use_scale(TEST_SCALE)
 end
