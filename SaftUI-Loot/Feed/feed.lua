@@ -135,8 +135,8 @@ function LT:CreateFeedButtons()
 	end)
 end
 
--- A mount's entry in the Loot > Mount color: its border and fill, and its icon's border. Every
--- other entry has the feed's Theme and Background (drawn by DrawEntry).
+-- A mount's entry in the Loot > Mount color: its border and fill, and its
+-- icon's border. Every other entry has the feed's Theme and Background (drawn by DrawEntry).
 local function ColorMount(item)
 	local r, g, b = st:Color('loot', 'mount'):GetRGB()
 	if item.backdrop then

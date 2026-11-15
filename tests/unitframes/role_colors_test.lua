@@ -89,12 +89,12 @@ test("the party preview's corners take Roles too", function()
 end)
 
 test('UF:UpdateColors leaves oUF its own role colors', function()
-	local roles = UF.oUF.colors.roles
-	check(type(roles) == 'table', 'oUF has role colors')
+	-- oUF has no role colors of its own; the profile's are not handed to it.
 	UF:UpdateColors()
-	check(UF.oUF.colors.roles == roles, 'the same table after UF:UpdateColors()')
+	check(UF.oUF.colors.roles ~= colors.roles, "oUF's colors.roles is not the profile's Roles")
+	local roles = UF.oUF.colors.roles
 	set(colors.roles.TANK, 0.5, 0.5, 0.5)
 	UF:UpdateColors()
-	check(UF.oUF.colors.roles == roles, "and after a Roles change; the profile's colors aren't oUF's")
+	check(UF.oUF.colors.roles == roles, 'and a Roles change leaves it as it was')
 	set(colors.roles.TANK, 0, 0.68, 0.94)
 end)

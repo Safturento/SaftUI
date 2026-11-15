@@ -3,6 +3,7 @@
 -- on every profile switch, copy or reset (Config:UpdateConfig), on a real
 -- AceDB-3.0 (core/config_helpers.lua).
 local st
+local T = load_test_file('lib/theme_helpers.lua')
 
 -- A fresh world logged in with saved (SaftUI_DB as the game loads it from the
 -- SavedVariables file before login, or nil for a new install).
@@ -18,8 +19,8 @@ end
 local function char_key() return UnitName('player') .. ' - ' .. GetRealmName() end
 
 local function on(profile) return { profileKeys = { [char_key()] = 'Old' }, profiles = { Old = profile } } end
-local function rgb(c) return ('%.2f,%.2f,%.2f'):format(c.r, c.g, c.b) end
-local function RGB(r, g, b) return ('%.2f,%.2f,%.2f'):format(r, g, b) end
+local RGB = T.rgb
+local function rgb(c) return T.rgb(c.r, c.g, c.b) end
 local function LAST() return #st:GetModule('Colors').MIGRATION_STEPS end
 local RED, YELLOW, BLUE = RGB(220/255, 100/255, 100/255), RGB(200/255, 200/255, 100/255), RGB(0, 0.68, 0.94)
 
@@ -47,7 +48,8 @@ test('nothing saved: only the version, every destination at its default, nothing
 	eq(colors.version, LAST())
 	eq(rgb(colors.loot.pass), RED); eq(rgb(colors.roles.TANK), BLUE); eq(rgb(colors.factions.Neutral), YELLOW)
 	st.config:SetProfile('Two')
-	eq(SaftUI_DB.profiles.Old.colors.version, LAST()); eq(SaftUI_DB.profiles.Old.colors.loot, nil)
+	eq(SaftUI_DB.profiles.Old.colors.version, LAST())
+	for _, group in ipairs({ 'loot', 'roles', 'factions' }) do eq(SaftUI_DB.profiles.Old.colors[group], nil, group) end
 end)
 
 test('one saved channel: the rest from OLD_COLORS, into every destination of the split, methods kept', function()
@@ -110,15 +112,30 @@ end)
 
 test('saved data the migration does not expect: nothing errors and nothing is lowered', function() -- Review Focus 1
 	for _, raw in ipairs({ { colors = 'x' }, { colors = { text = 'x' } }, { colors = { text = { red = 5 } } },
-		{ colors = { text = { red = { r = 'x', g = 0 } } } }, { colors = { version = 'x' } } }) do
+		{ colors = { text = { red = { r = 'x', g = 0 } } } }, { colors = { version = 'x' } }, { colors = { version = 0.5 } }, { colors = { version = -1 } } }) do
 		check(pcall(st.MigrateColors, st, raw))
 	end
 	local raw = { colors = { text = { red = { r = 'x', g = 0 } } } }; st:MigrateColors(raw)
 	eq(rgb(raw.colors.loot.pass), RGB(220/255, 0, 100/255), "a channel that isn't a number takes the old default's")
+	for _, version in ipairs({ 0.5, -1, 'x' }) do
+		raw = { colors = { version = version, text = { red = { r = 1 } } } }; st:MigrateColors(raw)
+		eq(raw.colors.loot.pass.r, 1, 'version ' .. tostring(version) .. ' runs step 1'); eq(raw.colors.version, LAST())
+	end
 	raw = { colors = { version = 99, text = { red = { r = 1 } } } }; st:MigrateColors(raw)
 	eq(raw.colors.version, 99); eq(raw.colors.loot, nil)
 	fresh(on({ colors = { text = { red = 5 }, version = 'x' } })); eq(#take_errors(), 0)
 	eq(st.config.profile.colors.version, LAST())
+end)
+
+test('a migration that raises at login is reported and the profile still loads (xpcall, Ruling 6)', function()
+	fresh(on({}))
+	local steps = st:GetModule('Colors').MIGRATION_STEPS
+	steps[#steps + 1] = { copy = { 5 }, retire = 5 }
+	take_errors()
+	st.Config:InitializeAceConfig() -- login again, with a step that raises
+	steps[#steps] = nil
+	eq(#take_errors(), 1, 'one error reported, not raised')
+	check(type(st.config.profile) == 'table', 'the profile is there, so modules still load')
 end)
 
 -- A profile as today's build saves it, every hue customized in part.

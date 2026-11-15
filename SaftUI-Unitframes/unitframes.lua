@@ -216,8 +216,8 @@ function UF:UpdateColors()
 	st.tablemerge(UF.oUF.colors.class, st.config.profile.colors.class, true)
 	-- The profile has no runes colors by default; use oUF's then instead of
 	-- wiping them. Set every time, so a profile without them doesn't keep the
-	-- colors of a profile switched away from. oUF's own role colors stay as it
-	-- loaded them: the role corners read the Roles colors (st:Color('roles')).
+	-- colors of a profile switched away from. oUF has no role colors of its own;
+	-- the role corners read the Roles colors (st:Color('roles', role)).
 	UF.oUF.colors.runes = st.config.profile.colors.runes or DEFAULT_RUNE_COLORS
 end
 
@@ -225,7 +225,8 @@ end
 -- UF:UpdateConfig, because the picker sets a color on every move of its cursor:
 -- it copies the colors to oUF, makes the bars and tags read them again, and
 -- draws the test previews again, and rebuilds nothing. Groups the unit frames
--- don't use (text, button, item quality, renown) and a module that isn't
+-- don't use (text, button, item quality, renown), and Roles, which the corners
+-- read when they update and not on a color change, and a module that isn't
 -- enabled yet (no UF.units) change nothing. The threat colors are only the
 -- nameplates' tint and threat text (nameplates/threat.lua): the plates are
 -- tinted again, and no other unit frame is updated.

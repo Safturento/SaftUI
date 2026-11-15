@@ -40,11 +40,16 @@ local function Resolve(group, key, level)
 	else
 		local from = defaults and defaults.colors and defaults.colors[group]
 		if type(from) == 'table' then
-			if key == nil then default = from else default = from[key] end
+			if key == nil then
+				-- Only a default that is itself a color has no key (renown).
+				if type(from.r) == 'number' then default = from end
+			else
+				default = from[key]
+			end
 		end
 	end
 	if type(default) ~= 'table' then
-		local name = (group == 'accent' or key == nil) and tostring(group) or (tostring(group) .. '.' .. tostring(key))
+		local name = group == 'accent' and 'accent' or (tostring(group) .. '.' .. tostring(key))
 		error('SaftUI: no color ' .. name, level)
 	end
 
@@ -58,7 +63,9 @@ local function Resolve(group, key, level)
 		local holder = type(colors) == 'table' and colors[group]
 		if key == nil then saved = holder elseif type(holder) == 'table' then saved = holder[key] end
 	end
-	if type(saved) == 'table' then return saved end
+	-- Every color AceDB fills has the methods; a bare table (a hand edit, or a
+	-- migration's write into a group that wasn't a table) reads as the default.
+	if type(saved) == 'table' and saved.GetRGB then return saved end
 	return default
 end
 
@@ -184,13 +191,13 @@ function st:MigrateColors(profile)
 	local colors = profile.colors
 	local from = type(colors.version) == 'number' and colors.version or 0
 	local last = #CO.MIGRATION_STEPS
-	for n = from + 1, last do
-		RunStep(profile, CO.MIGRATION_STEPS[n])
+	for n = 1, last do
+		if n > from then RunStep(profile, CO.MIGRATION_STEPS[n]) end
 	end
 	if last > from then colors.version = last end
 end
 
-local RELOAD_NOTE ='Most of SaftUI reads these when it builds its frames: reload (Reload UI, bottom right) to see a change everywhere.'
+local RELOAD_NOTE = 'Most of SaftUI reads these when it builds its frames: reload (Reload UI, bottom right) to see a change everywhere.'
 
 -- The Colors tab's sections, in order. A section is { key, name, note,
 -- hasAlpha, colors }: key is its group's key, note shows under its title,
@@ -302,7 +309,7 @@ CO.SECTIONS = {
 			{ 'need', 'Need', "Need on loot rolls: the Need button's letter, and Need in the loot feed's roll tooltip." },
 			{ 'greed', 'Greed', "Greed on loot rolls: the Greed button's letter, the roll counts of Greed and its line in the loot feed's roll tooltip." },
 			{ 'transmog', 'Transmog', "Transmog on loot rolls: the Transmog button's letter, the roll counts of Transmog and its line in the loot feed's roll tooltip." },
-			{ 'pass', 'Pass', "Pass on loot rolls: the Pass button's letter, and All passed and Pass: in the loot feed's roll tooltip." },
+			{ 'pass', 'Pass', "Pass on loot rolls: the Pass button's letter, and All passed (on the feed line and in its roll tooltip) and Pass: in the loot feed's roll tooltip." },
 			{ 'mount', 'Mount', "A fresh mount's entry in the loot feed: its border and fill, and its icon's border." },
 		}),
 	},

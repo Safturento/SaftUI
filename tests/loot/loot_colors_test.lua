@@ -144,6 +144,12 @@ test("the paired counts and the feed's roll tooltip read Loot: All passed and Pa
 	}
 	local text = { colors.text.red:GetRGB() }
 	set(colors.text.red, 0, 0, 0)
+
+	-- The feed line's right side, "All passed", in Loot > Pass too.
+	C_Item = { GetItemInfo = function() end, GetItemInfoInstant = function() return 1, 'Armor', 'Cloth', nil, 134400 end }
+	local entry = LT:BuildRollEntry('item:1', { allPassed = true }, true)
+	check(entry and entry.rightText:find('^|cffdc6464All passed|r$'), 'the feed line: ' .. tostring(entry and entry.rightText))
+
 	LT:AddRollLines(tooltip, { allPassed = true }, false)
 	eq(lines[#lines].text, 'All passed'); eq(T.rgb(lines[#lines].r, lines[#lines].g, lines[#lines].b), RED, 'All passed in Loot > Pass')
 
@@ -161,6 +167,16 @@ test("the paired counts and the feed's roll tooltip read Loot: All passed and Pa
 		if line.text:find('Pass: ', 1, true) then passed = line.text end
 	end
 	check(passed and passed:find('^|cffdc6464Pass: |r'), 'Pass: in Loot > Pass, not the changed Text > Red: ' .. tostring(passed))
+
+	-- The winner's line stays Text > Green (not a Loot color).
+	local doubles = {}
+	tooltip.AddDoubleLine = function(_, _, _, _, _, _, r, g, b) doubles[#doubles + 1] = T.rgb(r, g, b) end
+	local green = { colors.text.green:GetRGB() }
+	set(colors.text.green, 0.1, 0.2, 0.3)
+	local winning = { { name = 'Aa', state = S.NeedMainSpec, roll = 50 } }
+	LT:AddRollLines(tooltip, { list = winning, winner = 1 }, false)
+	eq(doubles[1], T.rgb(0.1, 0.2, 0.3), "the winner's roll in Text > Green")
+	set(colors.text.green, unpack(green))
 
 	set(colors.text.red, unpack(text))
 	local pass = { colors.loot.pass:GetRGB() }

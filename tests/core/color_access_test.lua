@@ -34,6 +34,23 @@ test('ColorRGBA: strength times opacity, a nil alpha as 1', function()
 	eq(select(4, st:ColorRGBA('button', 'hover', 0.4)), 0.2)
 end)
 
+test('a nil key raises, except for a default that is itself a color (renown)', function() -- Ruling 5
+	check(not pcall(st.Color, st, 'loot'), 'a group is not a color')
+	check(not pcall(st.ColorRGBA, st, 'text'), 'nor for ColorRGBA')
+	local ok, err = pcall(st.Color, st, 'loot')
+	check(not ok and err:find('SaftUI: no color loot.nil', 1, true), tostring(err))
+	check(st:Color('renown') == st.config.profile.colors.renown, "renown, a color with no keys")
+end)
+
+test('a saved entry that is not a color (no methods) reads as the default', function()
+	local keep = st.config.profile.colors.loot.pass
+	st.config.profile.colors.loot.pass = { r = 1, g = 0, b = 0 }
+	check(st:Color('loot', 'pass') == st.defaults.colors.loot.pass)
+	st.config.profile.colors.loot.pass = 5
+	check(st:Color('loot', 'pass') == st.defaults.colors.loot.pass)
+	st.config.profile.colors.loot.pass = keep
+end)
+
 test('ColorRGBA returns the color\'s r, g and b first', function()
 	local r, g, b = st:ColorRGBA('loot', 'transmog')
 	local c = st.config.profile.colors.loot.transmog

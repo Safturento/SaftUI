@@ -8,7 +8,7 @@
 --   C  an st:Color or st:ColorRGBA call with a literal group or key that has
 --      no default, or a key given with 'accent'.
 -- SaftUI-Core/Media/colors.lua, which holds the retired keys' old values and
--- the migration, is exempt from every rule but C. Real: the source files, and
+-- the migration, is exempt from every rule but C (it holds strings of the retired keys today, and from Task 4 the one direct read, rule D's, that the accessor makes: don't remove the exemption as dead). Real: the source files, and
 -- Core's defaults (core/config_helpers.lua).
 load_test_file('core/config_helpers.lua')
 local T = load_test_file('lib/theme_helpers.lua')
