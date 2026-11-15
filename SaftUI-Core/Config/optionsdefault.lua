@@ -732,6 +732,20 @@ local function DerivedDiffers(root, row, node, handler)
 end
 
 --[[
+	Whether the row's hand default says its value differs now, and nothing else
+	(no words, no value): the icon asks it for every row on every render, so it
+	reads the row with the scratch info (Locate) and makes no table. A differs
+	that errors goes to the error handler and counts as false.
+]]
+function OM.HandDiffers(root, row)
+	local default = row.option.default
+	if type(default) ~= 'table' or type(default.differs) ~= 'function' then return false end
+	Locate(root, row)
+	local ok, answer = xpcall(default.differs, geterrorhandler(), info)
+	return ok and answer and true or false
+end
+
+--[[
 	Whether the row's value differs from its default now, for the icon (asked
 	for every row on every render): a hand default's differs, a mover's
 	EM:CanReset, a derived row's compare of its value with the default at its

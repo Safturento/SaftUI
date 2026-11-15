@@ -477,6 +477,41 @@ test('asking whether a row differs allocates nothing, ten thousand times, on eve
 	end
 end)
 
+test("asking a hand default row whether it differs makes no table of its own: the icon asks it on every render", function()
+	local root = setup()
+	local calls, seen = 0, nil
+	root.Page.args.hand = {
+		type = 'toggle', name = 'By hand', order = 9,
+		get = function() return data().toggle end,
+		set = function(_, value) data().toggle = value end,
+		default = {
+			differs = function(info) calls = calls + 1; seen = info; return data().toggle ~= true end,
+			reset = function() data().toggle = true end,
+		},
+	}
+	local row = new_row(root, 'Page', 'hand')
+	eq(OM.DefaultSource(root, row), 'default', 'a hand default')
+	data().toggle = false
+	check(OM.DefaultDiffers(root, row), 'it differs')
+	eq(seen[1], 'Page', 'differs is given an info with the path')
+	eq(seen[2], 'hand', 'to the row')
+	eq(seen.option, root.Page.args.hand, 'and its option')
+	data().toggle = true
+	check(not OM.DefaultDiffers(root, row), 'and not at its default')
+	-- The test's xpcall hands arguments on through a table, as the game's does not: with the plain one
+	-- (and the differs ignoring its info) only the kit's own allocations are left.
+	local game_xpcall = xpcall
+	xpcall = function(f, _, ...) return pcall(f, ...) end
+	root.Page.args.hand.default.differs = function() return false end
+	collectgarbage(); collectgarbage('stop')
+	local before = collectgarbage('count')
+	for _ = 1, 10000 do OM.DefaultDiffers(root, row) end
+	local grown = collectgarbage('count') - before
+	collectgarbage('restart')
+	xpcall = game_xpcall
+	check(grown < 20, 'a hand default makes no table per ask (grew ' .. grown .. ' KB)')
+end)
+
 ------------------------------------------------------------------ DefaultAt, merged tables (C1)
 
 test('DefaultAt: a partial own table gets the rest from the sibling **, as AceDB merges it', function()

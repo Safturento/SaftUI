@@ -1103,14 +1103,8 @@ function OM.DefaultState(root, row)
 	return state
 end
 
--- Whether the row's hand default says its value differs now, and nothing
--- else: the icon asks it for every row on every render (no words, no value).
-function OM.HandDiffers(root, row)
-	local default = DefaultOf(row.option)
-	if not default then return false end
-	local info = BuildInfo(row.option, Options(root), row.path)
-	return ShareAsk(default, 'differs', info) and true or false
-end
+-- (OM.HandDiffers, whether a hand default says the row differs now, is in
+-- optionsdefault.lua: the icon asks it on every render, with the scratch info.)
 
 -- Puts the row's default back: its hand default.reset(info) through safecall
 -- (true when it ran, false when it errored: the error goes to the handler, or
