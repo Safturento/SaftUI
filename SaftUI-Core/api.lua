@@ -204,6 +204,57 @@ function st:InsetTexture(texture, inset)
 	texture:SetTexCoord(inset, 1-inset, inset, 1-inset)
 end
 
+local SHORT_MODIFIERS = {
+	{ 'SHIFT', 'S' },
+	{ 'CTRL', 'C' },
+	{ 'ALT', 'A' },
+	{ 'META', 'M' },
+}
+
+local SHORT_KEYS = {
+	MOUSEWHEELUP = 'MU',
+	MOUSEWHEELDOWN = 'MD',
+	NUMPADDECIMAL = 'N.',
+	NUMPADDIVIDE = 'N/',
+	NUMPADMINUS = 'N-',
+	NUMPADMULTIPLY = 'N*',
+	NUMPADPLUS = 'N+',
+	PAGEUP = 'PU',
+	PAGEDOWN = 'PD',
+	SPACE = 'SpB',
+	INSERT = 'Ins',
+	HOME = 'Hm',
+	END = 'End',
+	DELETE = 'Del',
+	BACKSPACE = 'BS',
+	CAPSLOCK = 'Cap',
+	ESCAPE = 'Esc',
+	ENTER = 'Ent',
+	TAB = 'Tab',
+}
+
+-- A binding key in a few characters: the modifiers as single letters, then the
+-- key. Mouse buttons become M3-M5 and numpad keys N0-N9. Shortening a short key
+-- gives it back unchanged. The action bars' hotkeys and the tracker's nearest
+-- button's key use it.
+function st:ShortBindingKey(key)
+	local prefix = ''
+	local found = true
+	while found do
+		found = false
+		for _, modifier in ipairs(SHORT_MODIFIERS) do
+			local rest = key:match('^' .. modifier[1] .. '%-(.+)$')
+			if rest then
+				prefix = prefix .. modifier[2]
+				key = rest
+				found = true
+			end
+		end
+	end
+	local short = SHORT_KEYS[key] or (key:gsub('^BUTTON(%d+)$', 'M%1'):gsub('^NUMPAD(%d)$', 'N%1'))
+	return prefix .. short
+end
+
 local title = "|cff00adefSaftUI|r"
 
 function st:Print(...)

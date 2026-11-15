@@ -510,7 +510,21 @@ test('a secure action button\'s click, as SecureActionButton_OnClick treats an a
 	stub.press_key(button, true)
 	stub.press_key(button, false)
 	eq(#stub.secure_clicks, 4, 'a key press follows the same rule')
-	check(stub.secure_clicks[4].key, 'and is told apart')
+	-- An addon's button is not told a key press from a mouse click: both give the
+	-- same use in both settings.
+	for _, on_key_down in ipairs({ true, false }) do
+		stub.cast_on_key_down = on_key_down
+		local before = #stub.secure_clicks
+		stub.click(button, 'LeftButton', true)
+		stub.click(button, 'LeftButton', false)
+		local by_mouse = #stub.secure_clicks - before
+		before = #stub.secure_clicks
+		stub.press_key(button, true)
+		stub.press_key(button, false)
+		eq(#stub.secure_clicks - before, by_mouse, 'a key press uses it as a mouse click does, on key down ' .. tostring(on_key_down))
+	end
+	stub.cast_on_key_down = true
+	for i = #stub.secure_clicks, 5, -1 do stub.secure_clicks[i] = nil end
 	stub.in_combat = true
 	stub.click(button, 'LeftButton', true)
 	eq(#stub.secure_clicks, 5, 'in combat a click still uses it')

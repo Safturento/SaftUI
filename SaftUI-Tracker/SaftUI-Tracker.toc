@@ -14,5 +14,6 @@ window.lua
 rows.lua
 clicks.lua
 items.lua
+nearest.lua
 blizzard.lua
 options.lua

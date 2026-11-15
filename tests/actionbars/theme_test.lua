@@ -295,3 +295,17 @@ test("under Blizzard an action button's hover, pushed, checked and flash are Bli
 		eq(#take_errors(), 0, where .. 'no errors')
 	end
 end)
+
+test('a skinned button\'s hotkey is shortened as LibActionButton writes it (Core\'s st:ShortBindingKey)', function()
+	fresh()
+	local b = button('SaftUIHotkeyButton')
+	b.HotKey:SetText('SHIFT-BUTTON4')
+	eq(b.HotKey:GetText(), 'SM4', 'a modifier and a mouse button')
+	b.HotKey:SetText('CTRL-ALT-Q')
+	eq(b.HotKey:GetText(), 'CAQ', 'two modifiers')
+	b.HotKey:SetText('NUMPAD5')
+	eq(b.HotKey:GetText(), 'N5', 'a numpad key')
+	b.HotKey:SetText('F')
+	eq(b.HotKey:GetText(), 'F', 'a short key is left alone')
+	eq(#take_errors(), 0, 'no errors')
+end)

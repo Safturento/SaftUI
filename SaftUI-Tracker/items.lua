@@ -353,9 +353,9 @@ end
 -- button (st:MarkForeign, MakeButton), and the quest-area border's piece is
 -- made now, by coloring the border and putting it back, so in combat it is only
 -- shown, hidden and colored.
-local function StyleButton(button, look)
+local function StyleButton(button, look, size)
 	local config = TR.config
-	local size = config.items.size
+	size = size or config.items.size
 	local trim = st.config.profile.misc.icon_trim
 	local name = look and look.name
 	if button.styleName == name and button.styleSize == size and button.styleTrim == trim
@@ -464,15 +464,20 @@ function TR:BuildItemLayer()
 	return layer
 end
 
-local function MakeButton(self)
-	local index = #self.itemButtons + 1
-	local button = CreateFrame('Button', st.name .. 'TrackerItem' .. index, self.itemLayer, 'SecureActionButtonTemplate')
+-- The frame of a quest item button, made once: the secure button, the icon, the
+-- hover, the cooldown, the count and the column's number. The pool's buttons are
+-- made on the layer (MakeButton), the nearest button (nearest.lua) on its holder.
+-- No scripts are set: the owner's differ. Out of combat only.
+local function NewButton(parent, name)
+	local button = CreateFrame('Button', name, parent, 'SecureActionButtonTemplate')
 	-- AnyUp and AnyDown, as SaftUI's own secure buttons register
 	-- (SaftUI-ActionBars/buttons.lua) and LibActionButton-1.0 does: an addon's
 	-- secure action button gets no isKeyPress or isSecureAction from the game
 	-- (SecureTemplates.xml), so SecureActionButton_OnClick acts on the press when
 	-- ActionButtonUseKeyDown is on (its default) and on the release when off. A
-	-- button registered for AnyUp alone would never act with the setting on.
+	-- button registered for AnyUp alone would never act with the setting on. A key
+	-- bound to click the button (the nearest button's) arrives the same way, the
+	-- press and then the release, so it uses the item once per press.
 	button:RegisterForClicks('AnyUp', 'AnyDown')
 	button:Hide()
 	-- The Blizzard theme draws a button's ring and its own-color piece as textures
@@ -485,7 +490,7 @@ local function MakeButton(self)
 	button.icon = button:CreateTexture(nil, 'ARTWORK')
 	button.hover = button:CreateTexture(nil, 'HIGHLIGHT')
 	button.hover:SetAllPoints(button.icon)
-	self:NewAccent(button.hover, 0.4)
+	TR:NewAccent(button.hover, 0.4)
 
 	-- The levels are ordered on purpose: the cooldown at the button's own level,
 	-- the Blizzard theme's ring (a holder frame one over the backdrop's and the
@@ -497,6 +502,7 @@ local function MakeButton(self)
 	local over = CreateFrame('Frame', nil, button)
 	over:SetAllPoints(button)
 	over:SetFrameLevel(button:GetFrameLevel() + 2)
+	button.over = over
 	button.count = over:CreateFontString(nil, 'OVERLAY')
 	button.count:SetFontObject(st:GetFont('pixel'))
 	button.count:SetJustifyH('RIGHT')
@@ -509,7 +515,21 @@ local function MakeButton(self)
 	button.numberText:SetJustifyH('LEFT')
 	button.numberText:SetPoint('BOTTOMLEFT', over, 'BOTTOMLEFT', 2, 2)
 	button.numberText:Hide()
+	return button
+end
 
+-- The nearest button's (nearest.lua): the same button and look on its own holder,
+-- with its own scripts and size.
+TR.NewItemButton = NewButton
+TR.StyleItemButton = StyleButton
+TR.PaintItemButton = PaintButton
+TR.LogIndex = LogIndex
+TR.ReadItemRange = ReadRange
+TR.ReadItemCooldown = ReadCooldown
+
+local function MakeButton(self)
+	local index = #self.itemButtons + 1
+	local button = NewButton(self.itemLayer, st.name .. 'TrackerItem' .. index)
 	-- The button takes the mouse from its row, so it keeps the row's hover too.
 	button:SetScript('OnEnter', function(self)
 		local row = self.questID and TR:GetQuestRow(self.questID)

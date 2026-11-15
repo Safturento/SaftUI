@@ -1694,7 +1694,6 @@ local function secure_action_click(self, mouse, down, is_key_press, is_secure_ac
 	stub.secure_clicks[#stub.secure_clicks + 1] = {
 		button = self, type = kind, item = self:GetAttribute('item'),
 		macrotext = self:GetAttribute('macrotext'), mouse = mouse, down = down and true or false,
-		key = is_key_press and true or false,
 	}
 end
 
@@ -1800,12 +1799,14 @@ end
 
 -- A key binding's click (CLICK <button>:LeftButton) on a secure button: the
 -- press (down true) or the release, delivered under the same registration as a
--- mouse click and told apart from one (isKeyPress), so the template acts on the
--- press when ActionButtonUseKeyDown is on.
+-- mouse click. An addon's button is not told which it is (SecureTemplates.xml:
+-- "for now AddOns won't be able to have isKeyPress or isSecureAction set"), so
+-- the click carries no extra arguments, and the template acts on the press when
+-- ActionButtonUseKeyDown is on, as for a mouse click.
 function stub.press_key(button, down)
 	local why = click_refusal(button, 'LeftButton', down)
 	if why then error('stub.press_key: the game would not deliver this click: ' .. why, 2) end
-	return stub.fire_script(button, 'OnClick', 'LeftButton', down and true or false, true, false)
+	return stub.fire_script(button, 'OnClick', 'LeftButton', down and true or false)
 end
 
 -- stub.click for a refusal that is the point of the test: false when the game

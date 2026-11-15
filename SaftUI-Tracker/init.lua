@@ -62,6 +62,7 @@ function TR:Build()
 	self:BuildWindow()
 	self:BuildRows()
 	self:BuildItems()
+	self:BuildNearest()
 	self:RegisterEvents()
 	-- Blizzard's tracker goes off screen (blizzard.lua), once the window is there
 	-- for the y it hides at.
@@ -115,6 +116,9 @@ function TR:UpdateConfig()
 	-- it is meant to be (concealed, or at the handover's place), no write if
 	-- it's there already.
 	self:PlaceBlizzard(self.blizzardWhere)
+	-- The nearest button's holder: its size and spot (in combat, waiting for its
+	-- end); the button itself follows in the refresh below.
+	self:PlaceNearest()
 	-- Each part of the tracker adds its own update below. The rows are read and
 	-- drawn again once a first refresh has run (the build's own is on its way).
 	if self.model then self:Refresh() end
@@ -130,6 +134,7 @@ function TR:OnColorsChanged(group)
 	self:ColorWindow()
 	self:ColorRows(group)
 	self:ColorItems()
+	self:ColorNearest()
 end
 
 -- What the tracker keeps per character, in st.config.char.tracker: each zone
@@ -250,6 +255,7 @@ function TR:OnEvent(event, ...)
 	end
 	if event == 'BAG_UPDATE_COOLDOWN' then
 		self:RefreshCooldowns()
+		self:RefreshNearestCooldown()
 		return
 	end
 	-- Combat starting or ending changes what the list may do (the scroll lock),
@@ -422,6 +428,7 @@ end
 -- buttons, the probes, the handover, the visibility).
 function TR:RunStages()
 	self:RefreshItems()
+	self:RefreshNearest()
 	if self.RunProbes then self:RunProbes() end
 	if self.UpdateHandover then self:UpdateHandover() end
 	if self.ApplyVisibility then self:ApplyVisibility() end
