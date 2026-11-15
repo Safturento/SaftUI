@@ -82,7 +82,11 @@ local function tab() return cell('categories').widget end
 local tick = tick_options_window
 local click = stub.click
 
-local function rgb(group, name) return { st.config.profile.colors[group][name]:GetRGB() } end
+-- A color's r, g, b as { r, g, b }: a Colors group and key, or the accent.
+local function rgb(group, name)
+	if group == 'accent' then return { st:Color('accent'):GetRGB() } end
+	return { st.config.profile.colors[group][name]:GetRGB() }
+end
 local function same_rgb(c, want)
 	return math.abs(c[1] - want[1]) < 1e-6 and math.abs(c[2] - want[2]) < 1e-6 and math.abs(c[3] - want[3]) < 1e-6
 end

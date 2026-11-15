@@ -81,7 +81,7 @@ function INV:SelectBankCategory(clickedHeader)
     for containerName, container in pairs(self.containers) do
         if containerName == selectedContainer.id then
             if container.backdrop then
-                st:SetBorderColor(container.backdrop, st.config.profile.colors.button.blue:GetRGB())
+                st:SetBorderColor(container.backdrop, st:Color('accent'):GetRGB())
             end
         else
             st:SetBackdrop(container, self.config.theme, self.config.background, 'window')

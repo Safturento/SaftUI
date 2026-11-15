@@ -29,7 +29,7 @@ local HANDLE_WIDTH = 10
 	                                  it would still be under it by IsMouseOver
 	  ShowGhost(w, label, height)     shows w.ghost (made once, drawn in
 	                                  SaftUI's theme) with label, colors
-	                                  w.insert blue and runs w.drawDrag on
+	                                  w.insert in the accent and runs w.drawDrag on
 	                                  w.frame's OnUpdate
 	  PlaceGhost(ghost)               the ghost by the cursor
 	  StopDrag(w)                     no w.drag, no OnUpdate, the ghost and
@@ -116,7 +116,7 @@ function D.ShowGhost(w, label, height)
 	ghost.text:SetText(label)
 	ghost:SetWidth(D.TextWidth(ghost.text) + 16)
 	ghost:Show()
-	w.insert:SetColorTexture(D.Colors().button.blue:GetRGB())
+	w.insert:SetColorTexture(st:Color('accent'):GetRGB())
 	w.frame:SetScript('OnUpdate', w.drawDrag)
 	return ghost
 end

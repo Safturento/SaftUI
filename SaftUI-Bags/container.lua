@@ -82,7 +82,7 @@ function INV:InitializeLoadingOverlay(container)
 	local loadingBar = st:CreateStatusBar(container:GetName().."LoadingBar", loadingOverlay, '-/-', 'theme', 'solid')
 	loadingBar:SetPoint('CENTER')
 	loadingBar:SetSize(300, 30)
-	loadingBar:SetStatusBarColor(st.config.profile.colors.button.blue:GetRGB())
+	loadingBar:SetStatusBarColor(st:Color('accent'):GetRGB())
 	loadingOverlay.loadingBar = loadingBar
 
 	container.loadingOverlay = loadingOverlay

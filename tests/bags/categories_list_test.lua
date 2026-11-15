@@ -151,7 +151,7 @@ test('the list: every category in order, counts from the bag window, the edited 
 	eq(consumables.bar:GetWidth(), 3, 'the bar is 3 wide')
 	eq(consumables.bar:GetLeft(), consumables.frame:GetLeft(), 'at the left')
 	eq(consumables.bar:GetHeight(), 22, 'the whole row high')
-	check(same_rgb(stub.state(consumables.bar).color_texture, rgb('button', 'blue')), 'blue')
+	check(same_rgb(stub.state(consumables.bar).color_texture, rgb('accent')), 'blue')
 
 	-- A handle on every row but Miscellaneous.
 	for _, row in ipairs(w.rows) do
@@ -162,8 +162,8 @@ test('the list: every category in order, counts from the bag window, the edited 
 	-- (the shipped list is longer than it shows; see the scrolling tests).
 	eq(w.addButton.text:GetText(), '+ New category', '+ New category')
 	eq(w.resetButton.text:GetText(), 'Reset all', 'Reset all')
-	check(same_rgb({ w.addButton.text:GetTextColor() }, rgb('text', 'blue')), 'in blue')
-	check(same_rgb({ w.resetButton.text:GetTextColor() }, rgb('text', 'blue')), 'both')
+	check(same_rgb({ w.addButton.text:GetTextColor() }, rgb('accent')), 'in blue')
+	check(same_rgb({ w.resetButton.text:GetTextColor() }, rgb('accent')), 'both')
 	eq(w.listScroll:GetBottom() - w.addButton:GetTop(), 8, "8 under the list's view")
 	check(w.resetButton:GetLeft() > w.addButton:GetRight(), 'side by side')
 
@@ -311,13 +311,13 @@ test("under Blizzard the category list is the Settings category list; its handle
 		eq(sel.tint:GetAtlas(), nil, client .. ': Thick: a color tint')
 		check(sel.tint:IsShown() and sel.bar:IsShown(), client .. ': Thick: the blue tint and bar')
 		check(same_rgb({ sel.name:GetTextColor() }, rgb('text', 'normal')), client .. ': Thick: the normal text color')
-		check(same_rgb(stub.state(sel.bar).color_texture, rgb('button', 'blue')), client .. ': Thick: blue')
+		check(same_rgb(stub.state(sel.bar).color_texture, rgb('accent')), client .. ': Thick: blue')
 		local hover = row_of(w, SETS).frame.hover
 		stub.fire_script(row_of(w, SETS).frame, 'OnEnter')
 		eq(hover:GetAtlas(), nil, client .. ': Thick: no hover art')
 		check(hover:IsShown(), client .. ': Thick: the hover shows')
 		local c = stub.state(hover).color_texture
-		check(same_rgb(c, rgb('button', 'blue')), client .. ': Thick: a blue hover')
+		check(same_rgb(c, rgb('accent')), client .. ': Thick: a blue hover')
 		eq(c[4], st.TINT_ROW, client .. ': at the row tint, the same as the selected row')
 		eq(c[4], 0.25, client .. ': 25%')
 		eq(stub.state(sel.tint).color_texture[4], st.TINT_ROW, client .. ': the selected row at the row tint')

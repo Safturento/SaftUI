@@ -20,8 +20,8 @@ local INV = st:GetModule('Inventory')
 	marker in orange, and its count in grey at the right when above 0 (what
 	the bag window's Compact header shows: INV:CountCategories). A category
 	that is off is grey, with a 1px line through its name. The selected row is
-	tinted blue, with a 3px blue bar at its left. Under the list, + New
-	category and Reset all, in blue. A click on a row selects it. Dragging a
+	tinted in the accent, with a 3px accent bar at its left. Under the list, + New
+	category and Reset all, in the accent. A click on a row selects it. Dragging a
 	handle moves the category (INV:MoveCategory) above the row under the
 	cursor, or below it from its lower half, but never below Miscellaneous;
 	the drag holds the window's render as the rule editor's does, and the drop
@@ -486,7 +486,7 @@ local function Selected(list)
 	return id
 end
 
--- + New category and Reset all: blue text that runs run(button).
+-- + New category and Reset all: accent text that runs run(button).
 local function Action(parent, text, run)
 	local button = CreateFrame('Button', nil, parent)
 	button.text = Text(button, W.GetFont())
@@ -631,7 +631,7 @@ local function LayListRow(w, i, entry, count, selected)
 	f:Show()
 	-- Under Blizzard the Settings category list: the hover and the picked
 	-- row on its art, no blue bar, the name gold (white when picked). Else the
-	-- blue tint and bar. Read on each layout, so a theme switch shows at once.
+	-- accent tint and bar. Read on each layout, so a theme switch shows at once.
 	local look = W.BlizzardLook() and st.ThemeArt.Control('optionslist')
 	if look then
 		f.hover:SetAtlas(look.hover)
@@ -640,7 +640,7 @@ local function LayListRow(w, i, entry, count, selected)
 		f.tint:SetAlpha(1)
 		f.bar:Hide()
 	else
-		local r, g, b = Colors().button.blue:GetRGB()
+		local r, g, b = st:Color('accent'):GetRGB()
 		f.hover:SetColorTexture(r, g, b, st.TINT_ROW)
 		f.tint:SetColorTexture(r, g, b, st.TINT_ROW)
 		f.bar:SetColorTexture(r, g, b)
@@ -999,10 +999,9 @@ local function Layout(w, relayout)
 	w.over:SetFrameLevel(w.list:GetFrameLevel() + 4) -- the drag's line, over the rows
 
 	-- Under the list's view (Fit sizes it).
-	local blue = Colors().text.blue
 	local x = PAD
 	for _, button in ipairs({ w.addButton, w.resetButton }) do
-		button.text:SetTextColor(blue:GetRGB())
+		button.text:SetTextColor(st:Color('accent'):GetRGB())
 		button.text:SetAlpha(1)
 		button:SetSize(TextWidth(button.text), ROW_HEIGHT)
 		button:ClearAllPoints()

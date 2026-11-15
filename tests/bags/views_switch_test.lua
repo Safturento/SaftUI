@@ -2,8 +2,8 @@
 -- INV:SetView, SaftUI-Bags/options.lua's View and Empty slots): four small icon
 -- buttons in each window's title bar, left of the close button, in the order
 -- One bag, Multi bag, Compact, Rows, with a tooltip naming the view; the
--- current one lit with Buttons -> Blue, kept through a theme recolor and
--- redraw and relit when Blue changes, the icons in Text -> Normal; a click,
+-- current one lit in the accent (Theme > Accent), kept through a theme recolor and
+-- redraw and relit when the accent changes, the icons in Text -> Normal; a click,
 -- or the /sui View select, saves the window's own view, refreshes an open /sui
 -- and lays it out, a view that is already the window's changing nothing; and a
 -- switch in combat lighting the button and saving the view at once while the
@@ -48,12 +48,12 @@ end
 
 local click = stub.click
 
-local function blue() return T.text(SaftUI.config.profile.colors.button.blue:GetRGB()) end
+local function blue() return T.text(SaftUI.config.profile.theme.accent:GetRGB()) end
 
 -- The border color of a view button, as text.
 local function border(button) return T.edge_rgb(button.backdrop) end
 
--- Which of a window's view buttons are lit (Buttons -> Blue), as 'a,b'.
+-- Which of a window's view buttons are lit (the accent), as 'a,b'.
 local function lit(container)
 	local out = {}
 	for _, view in ipairs(VIEWS) do
@@ -388,12 +388,15 @@ test('the lit button keeps its blue through a recolor and a redraw, and the old 
 	eq(border(compact), blue(), 'after a redraw, still blue')
 	eq(T.around(compact.backdrop, compact), T.around(rows.backdrop, rows), 'drawn at the same inset as the others')
 
-	-- A Buttons -> Blue change, as the Colors tab sends it.
-	local blueColor = SaftUI.config.profile.colors.button.blue
+	-- A Theme > Accent change relights it at once, and a Buttons change no
+	-- longer moves it (Review Focus 4).
+	local blueColor = SaftUI.config.profile.theme.accent
 	blueColor.r, blueColor.g, blueColor.b = 0.9, 0.9, 0.1
 	SaftUI:ColorsChanged('button')
-	eq(border(compact), blue(), 'a Blue change relights it')
-	eq(border(compact), T.text(0.9, 0.9, 0.1), 'in the new Blue')
+	eq(border(compact), T.text(0, 0.68, 0.94), "a 'button' change does not relight it: it waits for the accent")
+	SaftUI:ColorsChanged('accent')
+	eq(border(compact), blue(), 'an accent change relights it')
+	eq(border(compact), T.text(0.9, 0.9, 0.1), 'in the new accent')
 
 	-- Switching lights the new one and the old one is the theme's again.
 	click(rows)
@@ -430,7 +433,7 @@ test('the icons take Colors -> Text -> Normal at once, in every window', functio
 	SaftUI:ColorsChanged('text')
 	eq(glyphs(container), T.text(0.2, 0.6, 0.4), 'the bags: in the new color')
 	eq(glyphs(bank), T.text(0.2, 0.6, 0.4), 'the bank: too')
-	eq(border(container.viewButtons.compact), blue(), 'the lit border stays Blue')
+	eq(border(container.viewButtons.compact), blue(), 'the lit border stays the accent')
 	eq(glyphs(window('warband')), T.text(0.2, 0.6, 0.4), 'a window made after: in the new color')
 	eq(#take_errors(), 0, 'no errors')
 end)
