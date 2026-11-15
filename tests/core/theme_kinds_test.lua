@@ -359,3 +359,52 @@ test('no option anywhere offers Template, Highlight or Close Button', function()
 	end
 	eq(table.concat(found, '\n'), '', 'no SaftUI file offers an old label or builds a Template dropdown')
 end)
+
+-- No border or line is written as one unit: every edge is a line (st.line,
+-- st:GetLineSize), so it is a whole number of pixels at any UI scale. The files
+-- still drawing a one-unit edge, each with its count and the phase that does
+-- them. The list only shrinks: a file not on it has none, and one on it has
+-- exactly as many (so a phase that converts one takes it off).
+local EDGE_ALLOW = {
+	['SaftUI-Core/Config/optionslook.lua'] = 3, -- phase 2
+	['SaftUI-Core/Config/optionscolorpicker.lua'] = 2, -- phase 2
+	['SaftUI-Core/Dev/fontdemo.lua'] = 1, -- Task 8 deletes it
+}
+
+-- How many 'edgeSize = 1' source holds, in code (comments and strings left out).
+local function CountEdgeOnes(source)
+	local _, mask = Lex(source)
+	local count, from = 0, 1
+	while true do
+		local s, e = mask:find('edgeSize%s*=%s*1%f[^%w_%.]', from)
+		if not s then break end
+		count = count + 1
+		from = e + 1
+	end
+	return count
+end
+
+test('no literal edgeSize = 1 outside the allow-list, and nothing on the list without one', function()
+	eq(CountEdgeOnes('local a = { edgeSize = 1, x = 1 }\nb = { edgeSize=1 }'), 2, 'the counter finds both spellings')
+	eq(CountEdgeOnes('-- edgeSize = 1\nlocal s = "edgeSize = 1"\nedgeSize = 10\nedgeSize = 1.5\nedgeSize = line'), 0, 'and not a comment, a string, 10, 1.5 or a line')
+
+	local found, scanned, seen = {}, 0, {}
+	for _, path in ipairs((LoadedFiles())) do
+		local source = read_saftui_source(path)
+		if source then
+			scanned = scanned + 1
+			local count = CountEdgeOnes(source)
+			local allowed = EDGE_ALLOW[path]
+			if allowed then seen[path] = true end
+			if count ~= (allowed or 0) then
+				found[#found + 1] = ('%s: %d literal edgeSize = 1, expected %d'):format(path, count, allowed or 0)
+			end
+		end
+	end
+	check(scanned > 140, 'the scan read the files: ' .. scanned)
+	for path in pairs(EDGE_ALLOW) do
+		check(seen[path], path .. ' is a file the game loads')
+	end
+	table.sort(found)
+	eq(table.concat(found, '\n'), '', 'every edge is a line, bar the files waiting for their phase')
+end)

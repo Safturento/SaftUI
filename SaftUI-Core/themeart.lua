@@ -83,6 +83,32 @@ function ThemeArt.Inset(kind)
 	return ForClient(Kind(kind).inset)
 end
 
+-- A length of the art in whole pixels of frame (UIParent with none): the
+-- length times k, rounded, in frame's own units. Nothing stays nothing and
+-- anything else is at least one pixel, so a one-unit inset is always its line.
+-- At k = 1 it is the length itself. The art's own sizes (a piece's atlas) are
+-- not rounded: they scale with k, as the art does (call 21).
+function ThemeArt.Whole(value, frame)
+	if value == 0 then return 0 end
+	local pixel = st:DrawPixelSize(frame or UIParent)
+	if not pixel then return value end
+	-- The count is trimmed to 1e-4 before it rounds, as the line weight's is
+	-- (UIScale.LineWeight), so a half a pixel that arrives a float short still
+	-- rounds up, and a one-unit inset is always one line. Not trimmed as a
+	-- length: like a line, it is exactly that many pixels.
+	local count = math.floor(math.floor(value / pixel * 10000 + 0.5) / 10000 + 0.5)
+	return math.max(1, count) * pixel
+end
+
+-- ThemeArt.Inset and ThemeArt.Top in whole pixels of frame.
+function ThemeArt.WholeInset(kind, frame)
+	return ThemeArt.Whole(ThemeArt.Inset(kind), frame)
+end
+
+function ThemeArt.WholeTop(kind, frame)
+	return ThemeArt.Whole(ThemeArt.Top(kind), frame)
+end
+
 -- How far the metal's title bar reaches down from a window's drawn frame's
 -- top, on this client.
 function ThemeArt.TitleHeight()
@@ -575,6 +601,7 @@ function ThemeArt.SetBorder(frame, look, kind, host, r, g, b, a)
 		end
 		own = Piece(art, host or Holder(frame), 'own', style.border, RING_LAYER, OWN_SUBLEVEL)
 		art.ownStyle, art.ownHost = style.border, host
+		st:SnapRegion(own)
 		own:ClearAllPoints()
 		own:SetAllPoints(frame)
 		own:SetVertexColor(r, g, b, a)
@@ -594,8 +621,10 @@ end
 
 -- Draws a Blizzard look (st:ResolveTheme) on frame as kind: a backdrop that
 -- fills it the kind's inset in (a window's from under its title bar), with no
--- edge but a small frame's line, and the kind's art; the frame's other pieces
--- are hidden. A kind that draws nothing is cleared. Then colors it. host is
+-- edge but a small frame's line (one line of frame's), and the kind's art; the
+-- frame's other pieces are hidden. The inset is whole pixels of frame's own,
+-- the record theme.lua just made (st:DrawnInset), and the top is the kind's
+-- top in whole pixels. A kind that draws nothing is cleared. Then colors it. host is
 -- the button of SaftUI's frame sits behind, whose ring is a texture of its own
 -- (LayButton), or nil.
 function ThemeArt.Paint(frame, look, kind, host)
@@ -607,13 +636,13 @@ function ThemeArt.Paint(frame, look, kind, host)
 	end
 
 	if frame.SetBackdrop then
-		local inset = look.inset
+		local inset = st:DrawnInset(frame) or look.inset
 		frame:SetBackdrop({
 			bgFile = st.BLANK_TEX,
 			edgeFile = blizzard.line and st.BLANK_TEX or nil,
-			edgeSize = 1,
+			edgeSize = st:DrawLineSize(frame),
 			tile = false, tileSize = 0,
-			insets = { left = inset, right = inset, top = ThemeArt.Top(kind), bottom = inset },
+			insets = { left = inset, right = inset, top = ThemeArt.WholeTop(kind, frame), bottom = inset },
 		})
 	end
 

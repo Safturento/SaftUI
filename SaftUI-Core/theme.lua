@@ -61,10 +61,11 @@ st.THEME_KINDS = {
 -- The themes this version has. A saved name that isn't one reads as FALLBACK.
 local THEMES = { thick = true, thin = true, blizzard = true }
 
--- How far in Thick's and Thin's border reaches, whatever the kind: Thick draws
--- a dark line, its border and another dark line, Thin one line. Blizzard's is
--- each kind's own (st.ThemeArt.Inset).
-local INSETS = { thick = 2, thin = 1 }
+-- How far in Thick's and Thin's border reaches, whatever the kind, in lines
+-- (a line is st.lineWeight pixels: st:GetLineSize): Thick draws a dark line,
+-- its border and another dark line, Thin one line. Blizzard's is each kind's
+-- own, in whole pixels (st.ThemeArt.WholeInset).
+local LINES = { thick = 2, thin = 1 }
 
 -- A header or footer strip is the theme's border color at this alpha.
 local HEADER_ALPHA = 0.4
@@ -94,19 +95,23 @@ local function ResolveName(theme)
 end
 
 -- The look for a Theme and Background override, drawn as kind:
--- { name, inset, alpha, colors, kind }, or nil for None. A transparent
+-- { name, lines, inset, alpha, colors, kind }, or nil for None. A transparent
 -- background is see-through at the profile's Opacity, even one asked for while
--- the Transparent background toggle is off. The inset is Thick's or Thin's
--- whatever the kind; Blizzard's is the kind's (st.ThemeArt.Inset), and nil
--- with no kind. An unknown saved theme reads as FALLBACK; the saved name stays.
+-- the Transparent background toggle is off. lines is how many lines in the
+-- border reaches, Thick's 2 or Thin's 1 whatever the kind, and nil under
+-- Blizzard. inset is that in UIParent's units (lines * st.line); Blizzard's is
+-- the kind's art inset in whole pixels (st.ThemeArt.WholeInset), and nil with
+-- no kind. A frame draws in its own units: InsetIn. An unknown saved theme
+-- reads as FALLBACK; the saved name stays.
 function st:ResolveTheme(theme, background, kind)
 	if theme == 'none' then return nil end
 	local profile = st.config.profile
 	local name = ResolveName(theme)
 
-	local inset = INSETS[name]
+	local lines = LINES[name]
+	local inset = lines and lines * st.line
 	if name == 'blizzard' then
-		inset = kind and st.ThemeArt.Inset(kind) or nil
+		inset = kind and st.ThemeArt.WholeInset(kind, UIParent) or nil
 	end
 
 	-- 'options' is SaftUI's own config windows' Background: the Theme tab's
@@ -127,6 +132,7 @@ function st:ResolveTheme(theme, background, kind)
 
 	return {
 		name = name,
+		lines = lines,
 		inset = inset,
 		alpha = transparent and profile.theme.opacity or 1,
 		colors = profile.templates[name],
@@ -163,9 +169,9 @@ function st:ResolveLegacyTemplate(name)
 end
 
 -- How far in from a frame's edge its border reaches, drawn as kind: where
--- content sits inside a frame drawn with this Theme and Background. 2 for
--- Thick and 1 for Thin whatever the kind, the kind's under Blizzard, 0 for
--- None. The kind is required, as a draw call's is: only a call whose Theme is
+-- content sits inside a frame drawn with this Theme and Background, in
+-- UIParent's units and whole pixels. 2 lines for Thick and 1 for Thin whatever
+-- the kind, the kind's under Blizzard, 0 for None. The kind is required, as a draw call's is: only a call whose Theme is
 -- None may leave it out. Errors at the caller.
 function st:ThemeInset(theme, background, kind)
 	if kind == nil then
@@ -244,6 +250,55 @@ local drawn = setmetatable({}, { __mode = 'k' })
 -- st:SetBackdropIn, for st:DrawnInset. owner may be Blizzard's: it's only a key.
 local owners = setmetatable({}, { __mode = 'k' })
 
+-- The frame whose pixel a draw on frame is measured in: frame itself, where it
+-- hangs under UIParent, else UIParent. Two kinds of frame don't: one under no
+-- parent (a pooled widget waiting to be used, which a theme change draws again)
+-- has a scale of 1, which isn't the one it will show at; and one under
+-- WorldFrame (a plate's frame, drawn when it is made, before its scale is
+-- pinned to UIParent's: UF:PinPlateScale) is about to take UIParent's. Both
+-- are drawn in lines of UIParent's, the pixel they will have.
+function st:DrawingFrame(frame)
+	local top = frame
+	for _ = 1, 100 do
+		local parent = top:GetParent()
+		if not parent then
+			return top == UIParent and frame or UIParent
+		end
+		top = parent
+	end
+	return frame
+end
+
+-- One pixel of the frame a draw on frame is measured in (st:DrawingFrame), or
+-- nil while the game can't say (no screen, or a secret scale).
+function st:DrawPixelSize(frame)
+	local measured = st:DrawingFrame(frame)
+	local scale = measured:GetEffectiveScale()
+	if issecretvalue(scale) then return nil end
+	return st:GetPixelSize(measured)
+end
+
+-- One line in frame's own units: lineWeight pixels of st:DrawPixelSize, or the
+-- token's while the game can't say.
+function st:DrawLineSize(frame)
+	local pixel = st:DrawPixelSize(frame)
+	return pixel and st.lineWeight * pixel or st.line
+end
+
+local function LineIn(frame)
+	return st:DrawLineSize(frame)
+end
+
+-- How far in a look reaches on frame, drawn as kind, in frame's own units and a
+-- whole number of its pixels: lines of its line under Thick and Thin, the
+-- kind's art inset in whole pixels under Blizzard, 0 for None. (look.inset is
+-- the same in UIParent's units.)
+local function InsetIn(look, kind, frame)
+	if not look then return 0 end
+	if look.lines then return look.lines * LineIn(frame) end
+	return kind and st.ThemeArt.WholeInset(kind, frame) or 0
+end
+
 local function Record(frame, theme, background, kind, look, owner, backdrops)
 	local entry = drawn[frame]
 	if not entry then
@@ -251,7 +306,7 @@ local function Record(frame, theme, background, kind, look, owner, backdrops)
 		drawn[frame] = entry
 	end
 	entry.theme, entry.background, entry.kind = theme, background, kind
-	entry.inset, entry.look = look and look.inset or 0, look and look.name
+	entry.inset, entry.look = InsetIn(look, kind, frame), look and look.name
 	-- A backdrop drawn again with st:SetTemplate (to reset a border a module
 	-- tinted) still belongs to its frame.
 	if owner then
@@ -269,9 +324,10 @@ local function DrawnEntry(frame)
 end
 
 -- The inset frame was last drawn at: how far in from its edge its border
--- reaches, as st:ThemeInset gives it for the look it was drawn in, and 0 for
--- None. frame is a drawn frame or the owner of a backdrop the engine drew; nil
--- for a frame never drawn.
+-- reaches, as st:ThemeInset gives it for the look it was drawn in but in
+-- frame's own units, a whole number of its pixels, and 0 for None. frame is a
+-- drawn frame or the owner of a backdrop the engine drew; nil for a frame
+-- never drawn.
 function st:DrawnInset(frame)
 	local entry = DrawnEntry(frame)
 	return entry and entry.inset
@@ -329,37 +385,59 @@ local function DrawLook(theme, background, kind)
 	return st:ResolveTheme(theme, background, kind), kind
 end
 
--- Thick's dark lines: 3px wide strips under the frame's 1px border, one pixel
--- outside it and one inside.
+-- Thick's dark lines: four strips, 3 lines wide under the frame's border line,
+-- one line outside the frame and one inside it. This makes them; LayAltBorder
+-- anchors and sizes them.
 local function CreateAltBorder(frame)
-	frame.altborder = {}
+	local strips = {}
+	frame.altborder = strips
+	for _, key in ipairs({ 'LEFT', 'RIGHT', 'TOP', 'BOTTOM' }) do
+		local strip = frame:CreateTexture(nil, 'BACKGROUND')
+		strip:SetTexture(st.BLANK_TEX)
+		strips[key] = strip
+	end
+end
 
-	local offset = 1
-	local width = 3
+-- frame -> the line its strips were last laid at (only keys: frame.altborder is
+-- walked as the strips).
+local altLaid = setmetatable({}, { __mode = 'k' })
 
-	frame.altborder.LEFT = frame:CreateTexture(nil, 'BACKGROUND')
-	frame.altborder.LEFT:SetWidth(width)
-	frame.altborder.LEFT:SetPoint('TOPLEFT', frame, 'TOPLEFT', -offset, offset)
-	frame.altborder.LEFT:SetPoint('BOTTOMLEFT', frame, 'BOTTOMLEFT', -offset, -offset)
-	frame.altborder.LEFT:SetTexture(st.BLANK_TEX)
+-- Lays Thick's strips for a line of frame's own units: each one line outside
+-- the frame and three lines wide. A draw lays them, and a draw at the same line
+-- finds them laid; a redraw after the scale changed lays them again (a color
+-- pass never does: it draws nothing). A frame that can't be moved now (a
+-- protected one in combat) keeps the strips it has until its next draw, unless
+-- they were never laid.
+local function LayAltBorder(frame, line)
+	local laid = altLaid[frame]
+	if laid == line then return end
+	if laid ~= nil and not st:CanMoveNow(frame) then return end
+	altLaid[frame] = line
+	local strips, width = frame.altborder, 3 * line
 
-	frame.altborder.RIGHT = frame:CreateTexture(nil, 'BACKGROUND')
-	frame.altborder.RIGHT:SetWidth(width)
-	frame.altborder.RIGHT:SetPoint('TOPRIGHT', frame, 'TOPRIGHT', offset, offset)
-	frame.altborder.RIGHT:SetPoint('BOTTOMRIGHT', frame, 'BOTTOMRIGHT', offset, -offset)
-	frame.altborder.RIGHT:SetTexture(st.BLANK_TEX)
+	local left = strips.LEFT
+	left:ClearAllPoints()
+	left:SetWidth(width)
+	left:SetPoint('TOPLEFT', frame, 'TOPLEFT', -line, line)
+	left:SetPoint('BOTTOMLEFT', frame, 'BOTTOMLEFT', -line, -line)
 
-	frame.altborder.TOP = frame:CreateTexture(nil, 'BACKGROUND')
-	frame.altborder.TOP:SetHeight(width)
-	frame.altborder.TOP:SetPoint('TOPLEFT', frame, 'TOPLEFT', offset, offset)
-	frame.altborder.TOP:SetPoint('TOPRIGHT', frame, 'TOPRIGHT', -offset, offset)
-	frame.altborder.TOP:SetTexture(st.BLANK_TEX)
+	local right = strips.RIGHT
+	right:ClearAllPoints()
+	right:SetWidth(width)
+	right:SetPoint('TOPRIGHT', frame, 'TOPRIGHT', line, line)
+	right:SetPoint('BOTTOMRIGHT', frame, 'BOTTOMRIGHT', line, -line)
 
-	frame.altborder.BOTTOM = frame:CreateTexture(nil, 'BACKGROUND')
-	frame.altborder.BOTTOM:SetHeight(width)
-	frame.altborder.BOTTOM:SetPoint('BOTTOMLEFT', frame, 'BOTTOMLEFT', offset, -offset)
-	frame.altborder.BOTTOM:SetPoint('BOTTOMRIGHT', frame, 'BOTTOMRIGHT', -offset, -offset)
-	frame.altborder.BOTTOM:SetTexture(st.BLANK_TEX)
+	local top = strips.TOP
+	top:ClearAllPoints()
+	top:SetHeight(width)
+	top:SetPoint('TOPLEFT', frame, 'TOPLEFT', line, line)
+	top:SetPoint('TOPRIGHT', frame, 'TOPRIGHT', -line, line)
+
+	local bottom = strips.BOTTOM
+	bottom:ClearAllPoints()
+	bottom:SetHeight(width)
+	bottom:SetPoint('BOTTOMLEFT', frame, 'BOTTOMLEFT', line, -line)
+	bottom:SetPoint('BOTTOMRIGHT', frame, 'BOTTOMRIGHT', -line, -line)
 end
 
 -- Puts a look's colors and alpha on a drawn frame. Moves nothing. A Blizzard
@@ -383,6 +461,117 @@ local function Color(frame, look, kind)
 				line:SetVertexColor(unpack(colors.altbordercolor))
 			end
 		end
+	end
+end
+
+------------------------------------
+--- Snapping -----------------------
+------------------------------------
+
+--[[
+	How the engine treats the game's pixel snapping on what it draws:
+	'unsnap' (shipped), 'round' or 'none'. Every width the engine draws is a
+	whole number of pixels (the line tokens), but in-game experiment E5b
+	(rerun, confirmed) showed that at a fractional scale a one-pixel line with
+	the game's default texture snapping lost a side when it sat half a pixel off
+	whole pixels, while with snapping off it was whole wherever it sat, and a
+	two-pixel line was whole either way. So:
+	  'unsnap'  turns texture snapping off (SetSnapToPixelGrid(false) and
+	            SetTexelSnappingBias(0)) on the border and line textures the
+	            engine owns: the pieces of a backdrop it drew, Thick's strips
+	            and the own-color piece. A texture without the methods is left
+	            alone. Never on a Blizzard frame's own regions.
+	  'round'   turns SetRoundLayoutToNearestPixel(true) on for the drawn frame
+	            and its own regions (the plates already do), and leaves texture
+	            snapping as the game has it (E5's row 3). Kept as a switch.
+	  'none'    nothing.
+	It is done when a texture is made or drawn (a redraw), never by a color
+	pass. Edges are still placed on whole pixels wherever the engine computes a
+	placement: 'unsnap' is the safety for what sits off them.
+]]
+st.SNAP_DRAWN = 'unsnap'
+
+-- The frames SnapDrawn found protected in combat, which it does after.
+local snapWaiting = setmetatable({}, { __mode = 'k' })
+
+local function SnapAfterCombat()
+	-- PLAYER_REGEN_ENABLED can fire while combat is still on; wait again then.
+	if st:QueueAfterCombat('SnapDrawn', SnapAfterCombat) then return end
+	local frames = {}
+	for frame in pairs(snapWaiting) do frames[#frames + 1] = frame end
+	snapWaiting = setmetatable({}, { __mode = 'k' })
+	for _, frame in ipairs(frames) do st:SnapDrawn(frame) end
+end
+
+-- Rounds one region's layout, or, for a protected one in combat, notes the
+-- drawn frame to do it after.
+local function SnapOne(region, drawn)
+	if type(region.SetRoundLayoutToNearestPixel) ~= 'function' then return end
+	if InCombatLockdown() and region:IsProtected() then
+		snapWaiting[drawn] = true
+		st:QueueAfterCombat('SnapDrawn', SnapAfterCombat)
+		return
+	end
+	region:SetRoundLayoutToNearestPixel(true)
+end
+
+-- Turns texture snapping off on one texture the engine owns (not protected, so
+-- it is done in combat too). A region without the methods is left alone.
+local function UnsnapOne(region)
+	if type(region.SetSnapToPixelGrid) ~= 'function' or type(region.SetTexelSnappingBias) ~= 'function' then return end
+	region:SetSnapToPixelGrid(false)
+	region:SetTexelSnappingBias(0)
+end
+
+-- Handles one region of the engine's (the own-color piece, made after the draw).
+function st:SnapRegion(region)
+	local mode = st.SNAP_DRAWN
+	if mode == 'unsnap' then
+		UnsnapOne(region)
+	elseif mode == 'round' then
+		SnapOne(region, region)
+	end
+end
+
+-- BackdropTemplate's own pieces, as fields of the frame.
+local BACKDROP_PIECES = { 'TopLeftCorner', 'TopRightCorner', 'BottomLeftCorner', 'BottomRightCorner',
+	'TopEdge', 'BottomEdge', 'LeftEdge', 'RightEdge', 'Center' }
+
+-- After every draw and redraw (Paint), by st.SNAP_DRAWN: 'unsnap' turns
+-- texture snapping off on the textures the engine owns on frame (a backdrop's
+-- pieces, Thick's strips); 'round' puts the layout rounding on frame and its
+-- own regions, never on a protected frame in combat (that waits for the end of
+-- it); 'none' does nothing.
+function st:SnapDrawn(frame)
+	local mode = st.SNAP_DRAWN
+	if mode == 'unsnap' then
+		if frame.backdropInfo then
+			-- The pieces of the backdrop the engine just set, not a region of the frame's own.
+			for _, key in ipairs(BACKDROP_PIECES) do
+				local piece = frame[key]
+				if type(piece) == 'table' then UnsnapOne(piece) end
+			end
+		end
+		if frame.altborder then
+			for _, strip in pairs(frame.altborder) do UnsnapOne(strip) end
+		end
+		return
+	end
+	if mode ~= 'round' then return end
+	SnapOne(frame, frame)
+	for _, key in ipairs(BACKDROP_PIECES) do
+		local piece = frame[key]
+		if type(piece) == 'table' then SnapOne(piece, frame) end
+	end
+	if frame.altborder then
+		for _, strip in pairs(frame.altborder) do SnapOne(strip, frame) end
+	end
+	local art = st.ThemeArt.Get(frame)
+	if art then
+		for _, set in ipairs({ art.pieces, art.over }) do
+			for _, piece in pairs(set) do SnapOne(piece, frame) end
+		end
+		if art.own then SnapOne(art.own, frame) end
 	end
 end
 
@@ -415,11 +604,13 @@ local function Host(entry)
 	end
 end
 
--- Draws a look on frame as kind: Thick's dark lines, the 1px border and the
--- background inside it, or a strip's fill with no lines. A Blizzard look is
--- st.ThemeArt's to draw, with Thick's lines hidden, and a button's ring on
--- host (Host); any other hides the frame's Blizzard art. No look clears it.
-local function Paint(frame, look, kind, host)
+-- Draws a look on frame as kind: Thick's dark lines, the border one line wide
+-- and the background inside it, or a strip's fill with no lines. Every width
+-- is lines of frame's own (LineIn), the record's inset in its own units
+-- (InsetIn: Record has already made it). A Blizzard look is st.ThemeArt's to
+-- draw, with Thick's lines hidden, and a button's ring on host (Host); any
+-- other hides the frame's Blizzard art. No look clears it.
+local function PaintLook(frame, look, kind, host)
 	if not look or look.name == 'blizzard' then
 		if frame.altborder then
 			for _, line in pairs(frame.altborder) do line:Hide() end
@@ -437,17 +628,19 @@ local function Paint(frame, look, kind, host)
 	if not frame.altborder then
 		CreateAltBorder(frame)
 	end
+	local line = LineIn(frame)
 	local outer = look.name == 'thick' and not IsStrip(kind)
-	for _, line in pairs(frame.altborder) do
-		if outer then line:Show() else line:Hide() end
+	LayAltBorder(frame, line)
+	for _, strip in pairs(frame.altborder) do
+		if outer then strip:Show() else strip:Hide() end
 	end
 
-	local inset = IsStrip(kind) and 0 or look.inset
+	local inset = IsStrip(kind) and 0 or InsetIn(look, kind, frame)
 	if frame.SetBackdrop then
 		frame:SetBackdrop({
 			bgFile = st.BLANK_TEX,
 			edgeFile = st.BLANK_TEX,
-			edgeSize = 1,
+			edgeSize = line,
 			tile = false, tileSize = 0,
 			insets = {
 				left = inset,
@@ -461,12 +654,22 @@ local function Paint(frame, look, kind, host)
 	Color(frame, look, kind)
 end
 
+-- Draws a look on frame (PaintLook), then st:SnapDrawn.
+local function Paint(frame, look, kind, host)
+	PaintLook(frame, look, kind, host)
+	st:SnapDrawn(frame)
+end
+
 -- Where a look's backdrop sits outside its owner, drawn as kind: { side, top },
 -- its inset on the sides and the bottom, and above the owner the same, or
--- under Blizzard how far the kind's art reaches down (a window's title bar).
-local function Placement(look, kind)
-	local top = look.name == 'blizzard' and st.ThemeArt.Top(kind) or look.inset
-	return { side = look.inset, top = top }
+-- under Blizzard how far the kind's art reaches down (a window's title bar). In
+-- the owner's units: lines of the owner's line, or whole pixels of the owner.
+local function Placement(look, kind, owner)
+	if look.name == 'blizzard' then
+		return { side = st.ThemeArt.WholeInset(kind, owner), top = st.ThemeArt.WholeTop(kind, owner) }
+	end
+	local side = look.lines * LineIn(owner)
+	return { side = side, top = side }
 end
 
 --[[
@@ -535,7 +738,7 @@ local function DrawBackdrop(backdrop, owner, backdrops, theme, background, kind,
 	if not redraw then owners[owner] = backdrop end
 	if look then
 		if not redraw or entry.placed then
-			Place(backdrop, owner, entry, Placement(look, drawKind))
+			Place(backdrop, owner, entry, Placement(look, drawKind, owner))
 		end
 		if not backdrops then
 			-- true or false, so thick is only nil on a frame never given a backdrop
@@ -555,8 +758,11 @@ end
 function st:SetTemplate(frame, theme, background, kind, host)
 	CheckKind(theme, kind)
 	local look, drawKind = DrawLook(theme, background, kind)
-	Paint(frame, look, drawKind, host or Host(drawn[frame]))
+	-- The host of this draw: the one given, or the last draw's. The record is
+	-- made first, so what the art reads of it (st:DrawnInset) is this draw's.
+	local useHost = host or Host(drawn[frame])
 	Record(frame, theme, background, kind, look).host = host
+	Paint(frame, look, drawKind, useHost)
 end
 
 -- Draws theme and background on a frame of SaftUI's (frame.backdrop), made the
@@ -694,8 +900,8 @@ local function Redraw(frame, entry)
 		DrawBackdrop(frame, entry.owner, entry.backdrops, entry.theme, entry.background, entry.kind, true)
 	else
 		local look, kind = DrawLook(entry.theme, entry.background, entry.kind)
+		entry.inset, entry.look = InsetIn(look, kind, frame), look and look.name
 		Paint(frame, look, kind, Host(entry))
-		entry.inset, entry.look = look and look.inset or 0, look and look.name
 	end
 end
 
