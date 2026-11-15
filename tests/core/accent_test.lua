@@ -137,3 +137,9 @@ test('every live recolor of the accent: the edit mode bar follows at once (Coord
 	eq(text(grid.icon:GetVertexColor()), DEFAULT, 'and back')
 	EM:Deactivate()
 end)
+
+test("the Accent's description says nothing of a reload and ends at the chat prefix", function()
+	local desc = st:GetModule('Colors'):AccentOption(5).desc
+	check(not desc:lower():find('reload', 1, true), 'no reload')
+	check(desc:sub(-#'and the chat prefix.') == 'and the chat prefix.', 'ends at the chat prefix')
+end)

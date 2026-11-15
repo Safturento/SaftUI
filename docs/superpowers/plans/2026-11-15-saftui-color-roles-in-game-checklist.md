@@ -1,5 +1,7 @@
 # Color roles: in-game checklist
 
+> **Revised 2026-11-15:** its reload steps (the line under the title, step 3 of section 4, step 4 of section 5 on Damage and Muted, and the reload in section 6) now show at once: every color follows a pick as it is made. They are checked by the live colors plan's checklist, `2026-11-15-saftui-live-colors-in-game-checklist.md`. Read each "reload" below as "at once".
+
 One pass for the whole color roles plan (`2026-11-14-saftui-color-roles.md`, Tasks 1 to 5), in the order you would play it. Do it on both clients (WoW Forever, interface 16001, and retail, interface 120000) unless an item says one. Everything is at SaftUI's defaults unless it says "customized". Nothing here needs a character, realm or account name.
 
 Reload (`/reload`) after you change a color, where an item says so: most of SaftUI reads a color when it builds its frames, as the Colors page's note says.
