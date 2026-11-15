@@ -47,6 +47,13 @@
 	    quest module's block and line templates, the bonus and scenario
 	    modules' progress bar templates, and the scenario module's fixed
 	    ObjectivesBlock are theirs.
+	    Each module has `state` and `hasContents` (ObjectiveTrackerModuleMixin's
+	    dynamic settings: Skipped and false until its Update sets them), the
+	    tracker's `modules` is the plain list of them (ObjectiveTrackerContainerMixin),
+	    and ObjectiveTrackerModuleState is the global enum (EnumUtil.MakeEnum, 1 to 5:
+	    Skipped, NoObjectives, NotShown, ShownPartially, ShownFully).
+	  - ObjectiveTrackerUIWidgetContainer (a UIParent frame; GetNumWidgetsShowing is
+	    UIWidgetContainerMixin's `return self.numWidgetsShowing or 0`).
 	  - The frame pools (ObjectiveTrackerManager:AcquireFrame, one pool per
 	    template across modules): a released frame is hidden, its anchors
 	    cleared, and handed out again before a new one is made; a new one gets
@@ -68,6 +75,11 @@
 	  - Blizzard's fonts the templates inherit.
 
 	The drivers run Blizzard's own code paths:
+	  - OT.run_update(module, state, hasContents): the container calling a
+	    module's Update (`module:Update(availableHeight, dirtyUpdate)`, the frame's
+	    own field, looked up at call time so a post-hook runs), which sets the
+	    module's state and hasContents first; OT.add_module(name) adds a module a
+	    patch might (it joins the list); OT.set_widgets(n) sets the widgets showing.
 	  - OT.layout(module, quests): a module's layout (BeginLayout,
 	    LayoutContents, EndLayout): a block per quest (GetBlock, SetHeader),
 	    a line per objective (AddObjective, which measures the text with
@@ -774,12 +786,16 @@ local function module(name, tracker)
 		'module.questItemButtonSettings'))
 	for key, value in pairs(SETTINGS[name] or {}) do rawset(frame, key, value) end
 	rawset(frame, 'isCollapsed', false)
+	-- ObjectiveTrackerModuleMixin's dynamic settings the handover reads: a module
+	-- starts Skipped with nothing to show; its Update sets both (OT.run_update).
+	rawset(frame, 'state', ObjectiveTrackerModuleState.Skipped)
+	rawset(frame, 'hasContents', false)
 	rawset(frame, 'usedBlocks', lock_table({}, 'module.usedBlocks'))
 	rawset(frame, 'usedProgressBars', lock_table({}, 'module.usedProgressBars'))
 	rawset(frame, 'usedTimerBars', lock_table({}, 'module.usedTimerBars'))
 	rawset(frame, 'usedRightEdgeFrames', lock_table({}, 'module.usedRightEdgeFrames'))
 	for key, fn in pairs(MODULE) do rawset(frame, key, fn) end
-	for _, name in ipairs(GUARDED) do guard(frame, 'module ' .. frame:GetName(), name) end
+	for _, name in ipairs(GUARDED) do guard(frame, 'module ' .. tostring(frame:GetName()), name) end
 	if name == 'ScenarioObjectiveTracker' then
 		-- Its fixed ObjectivesBlock (an ObjectiveTrackerBlockTemplate, Init
 		-- and Reset in InitModule).
@@ -887,11 +903,27 @@ function OT.build(opts)
 		rawset(tracker, 'IsProtected', function() return true, true end)
 	end
 	OT.modules = {}
+	-- ObjectiveTrackerModuleState (EnumUtil.MakeEnum: 1 to 5, in this order,
+	-- Blizzard_ObjectiveTrackerModule.lua, both branches).
+	_G.ObjectiveTrackerModuleState = { Skipped = 1, NoObjectives = 2, NotShown = 3, ShownPartially = 4, ShownFully = 5 }
+	-- ObjectiveTrackerContainerMixin's `modules`: a plain list of the frames in
+	-- the order the manager gave them (ObjectiveTrackerManager:Init's).
+	local list = {}
 	for _, name in ipairs(OT.MODULES) do
 		OT.modules[name] = module(name, tracker)
+		list[#list + 1] = OT.modules[name]
 		for _, method in ipairs(STRAY_MODULE) do guard(OT.modules[name], 'module ' .. name, method) end
 	end
+	rawset(tracker, 'modules', list)
 	OT.tracker = lock(tracker, OWNER)
+	-- ObjectiveTrackerUIWidgetContainer (Blizzard_ObjectiveTrackerUIWidgetContainer.xml):
+	-- a UIParent frame whose GetNumWidgetsShowing is UIWidgetContainerMixin's,
+	-- `return self.numWidgetsShowing or 0`, a read. OT.set_widgets(n) is the
+	-- widgets showing.
+	local widgets = CreateFrame('Frame', 'ObjectiveTrackerUIWidgetContainer', UIParent)
+	rawset(widgets, 'numWidgetsShowing', nil)
+	rawset(widgets, 'GetNumWidgetsShowing', function(self) return self.numWidgetsShowing or 0 end)
+	OT.widgets = lock(widgets, OWNER)
 
 	-- The container's Layout (LayoutMixin:LayoutChildren, the tracker its one
 	-- child, aligned right).
@@ -977,6 +1009,37 @@ function OT.break_snap()
 		tracker.systemInfo.isInDefaultPosition = false
 		rawset(tracker, 'anchorInfo', { point = point, relativePoint = relativePoint, offsetX = x, offsetY = y })
 	end)
+end
+
+-- ObjectiveTrackerUIWidgetContainer's widgets showing (UIWidgetContainerMixin
+-- sets numWidgetsShowing as it lays its widgets out).
+function OT.set_widgets(n)
+	rawset(OT.widgets, 'numWidgetsShowing', n)
+end
+
+-- Blizzard's container laying a module out: ObjectiveTrackerModuleMixin:Update
+-- sets the module's state and hasContents, and the container calls it as
+-- `module:Update(availableHeight, dirtyUpdate)`, the frame's own field looked
+-- up at call time, so a post-hook on the field runs after. module is the frame
+-- or its name.
+function OT.run_update(module, state, hasContents)
+	if type(module) == 'string' then module = OT.modules[module] or _G[module] end
+	return drive(function()
+		rawset(module, 'state', state)
+		rawset(module, 'hasContents', hasContents and true or false)
+		return module:Update(100, false)
+	end)
+end
+
+-- A module a later patch adds (ObjectiveTrackerContainerMixin:AddModule: it joins
+-- the container's list), named name; returns its frame.
+function OT.add_module(name)
+	local frame = module(name, OT.tracker)
+	-- (a nil name: a frame with no name, kept under a label of its own)
+	OT.modules[name or ('unnamed' .. (#OT.tracker.modules + 1))] = frame
+	table.insert(OT.tracker.modules, frame)
+	for _, method in ipairs(STRAY_MODULE) do guard(frame, 'module ' .. tostring(name), method) end
+	return frame
 end
 
 -- The mouse over (on true) or off a block: Blizzard's own highlight update.

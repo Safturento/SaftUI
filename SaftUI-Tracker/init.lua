@@ -64,9 +64,15 @@ function TR:Build()
 	self:BuildItems()
 	self:BuildNearest()
 	self:RegisterEvents()
+	-- The sections' probes (probes.lua) and the handover's state, which a /reload
+	-- always starts from own: SaftUI's tracker shows, Blizzard's is concealed.
+	self.handoverState = 'own'
+	self:BuildProbes()
 	-- Blizzard's tracker goes off screen (blizzard.lua), once the window is there
-	-- for the y it hides at.
+	-- for the y it hides at; its modules' layouts are watched.
 	self:SetupBlizzard()
+	-- The first probe pass, on the next frame.
+	self:RunProbes()
 	-- The first refresh, on the next frame like any other.
 	self:MarkDirty('BUILD')
 end
@@ -119,6 +125,9 @@ function TR:UpdateConfig()
 	-- The nearest button's holder: its size and spot (in combat, waiting for its
 	-- end); the button itself follows in the refresh below.
 	self:PlaceNearest()
+	-- A new mode (a setting, a profile switch) is handled here, whether or not a
+	-- refresh follows.
+	self:UpdateHandover()
 	-- Each part of the tracker adds its own update below. The rows are read and
 	-- drawn again once a first refresh has run (the build's own is on its way).
 	if self.model then self:Refresh() end
@@ -214,6 +223,9 @@ TR.EVENTS = {
 	'QUEST_DETAIL', 'QUEST_DATA_LOAD_RESULT',
 }
 TR.UNIT_EVENTS = { UNIT_QUEST_LOG_CHANGED = 'player' }
+-- The set of the above, for the events the probes share.
+TR.EVENT_SET = {}
+for _, event in ipairs(TR.EVENTS) do TR.EVENT_SET[event] = true end
 TR.CONDITIONAL_EVENTS = { PLAYER_MONEY = true }
 
 -- The events come many times a second while killing: the list refreshes at most
@@ -235,10 +247,24 @@ function TR:RegisterEvents()
 			frame:RegisterEvent(event)
 		end
 	end
+	-- The probe events (probes.lua) the list above doesn't have: they ask for a probe
+	-- pass and mark nothing dirty.
+	for _, event in ipairs(TR.PROBE_EVENT_LIST or {}) do
+		if not TR.EVENT_SET[event]
+			and not (C_EventUtils and C_EventUtils.IsEventValid and not C_EventUtils.IsEventValid(event)) then
+			frame:RegisterEvent(event)
+		end
+	end
 	self.eventFrame = frame
 end
 
 function TR:OnEvent(event, ...)
+	-- The probes' events (probes.lua): a pass on the next frame. One that only the
+	-- probes listen to marks nothing dirty.
+	if TR.PROBE_EVENTS and TR.PROBE_EVENTS[event] then
+		self:RunProbes()
+		if not TR.EVENT_SET[event] then return end
+	end
 	-- The game says a quest was just tracked: its row is scrolled into view
 	-- once it's drawn, whatever refresh that is. A quest merely new to the
 	-- tracker (the log arriving after login, a title that came late, a zone's
@@ -340,7 +366,7 @@ end
 
 -- Reads the quest log into the model and draws it: the model, the groups, the
 -- entries, the layout, the rows, then each later stage where its file defines
--- it (the item buttons, the probes, the handover, the visibility).
+-- it (the item buttons, the handover, the visibility; the probes run on their own events).
 function TR:Refresh()
 	if not self.built then return end
 	self.lastRefresh = GetTime()
@@ -425,11 +451,13 @@ function TR:Redraw()
 end
 
 -- The stages of the later tasks, each once its file defines it (the item
--- buttons, the probes, the handover, the visibility).
+-- buttons, the handover, the visibility). The probes run on their own events and
+-- after a module's layout (TR:RunProbes), not on every refresh; the handover
+-- reads what they found, and follows what a refresh changes (the item buttons to
+-- show, the column's width, the window).
 function TR:RunStages()
 	self:RefreshItems()
 	self:RefreshNearest()
-	if self.RunProbes then self:RunProbes() end
 	if self.UpdateHandover then self:UpdateHandover() end
 	if self.ApplyVisibility then self:ApplyVisibility() end
 end

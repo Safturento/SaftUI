@@ -166,16 +166,23 @@ function Items.Column(entries, size, side, windowLeft, windowRight, viewTop, vie
 	return places
 end
 
--- The room the column takes beside the tracker, for the beside spot (Task 11):
--- Button size while the column shows (the placement is Beside the tracker and a
--- quest has an item), else 0. Its 4 gap is the caller's.
+-- The room the column takes beside the tracker, for the beside spot of Blizzard's
+-- tracker (TR:BlizzardTarget): Button size while the column shows, else 0. Its 4
+-- gap is the caller's. Out of combat it is what the list draws (the placement is
+-- Beside the tracker, the list is open, and a quest it draws has an item with a
+-- link: a collapsed group's quest has no row and so no button). In combat it is
+-- the column as it was placed: the buttons can't move or hide then, and a button
+-- whose quest left still takes clicks, so Blizzard's tracker must stay clear of
+-- every one that shows, whatever the list is now.
 function TR:ColumnWidth()
-	if not self:ItemsToShow() or self.config.items.placement ~= 'beside' then return 0 end
-	-- A quest whose item has no link has no button, so it makes no column.
-	for _, quest in ipairs(self.model.quests) do
-		if quest.item and quest.item.link then return self.config.items.size end
+	if self.config.items.placement ~= 'beside' then return 0 end
+	if InCombatLockdown() then
+		for _, button in ipairs(self.itemButtons or {}) do
+			if button.column and button.questID and button:IsShown() then return self.config.items.size end
+		end
+		return 0
 	end
-	return 0
+	return self:ItemsToShow() and self.config.items.size or 0
 end
 
 ------------------------------------------------------------------ P3: what a button uses
@@ -654,13 +661,15 @@ end
 ------------------------------------------------------------------ the pass
 
 -- Whether there is an item for the handover to leave buttons for: the placement
--- is In the row or Beside the tracker, and a quest has an item.
+-- is In the row or Beside the tracker, the list is open, and a quest the list
+-- draws has an item with a link (what Wanted would hand a button out for).
 function TR:ItemsToShow()
-	if not self.built or not self.model then return false end
+	if not self.built or not self.model or not self.entries then return false end
 	local placement = self.config.items.placement
-	if placement ~= 'row' and placement ~= 'beside' then return false end
-	for _, quest in ipairs(self.model.quests) do
-		if quest.item then return true end
+	if placement ~= 'row' and placement ~= 'beside' or self:IsCollapsed() then return false end
+	for _, entry in ipairs(self.entries) do
+		local quest = entry.kind == 'quest' and entry.quest
+		if quest and quest.item and quest.item.link then return true end
 	end
 	return false
 end
@@ -695,6 +704,12 @@ local NONE = {}
 local function Wanted(self)
 	local wanted = self.itemWanted
 	local n = 0
+	if self.handoverState == 'blizzard' then
+		-- Blizzard's tracker is in SaftUI's place (handover.lua): no button, and none
+		-- left from before.
+		for index = 1, #wanted do wanted[index] = nil end
+		return wanted
+	end
 	if self.config.items.placement == 'beside' then
 		for _, entry in ipairs(self.entries) do
 			local quest = entry.kind == 'quest' and entry.quest

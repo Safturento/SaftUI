@@ -75,7 +75,8 @@ Both edit `.agents/architecture.md`, so merge by hand, keeping both sides. Tasks
     - `ClearAllPoints`, `SetPoint` and `SetClampedToScreen` through `getmetatable(frame).__index`;
     - the C `SetAlpha` during a handover that fades;
     - `hooksecurefunc` post-hooks on the tracker's `SetPoint`, `ClearAllPoints`, `UpdateHeight` and `SetAlpha`, and on each module's own `Update`. Each runs in `xpcall` to `geterrorhandler()` and is installed only where `type(...) == 'function'`;
-    - reads of module `state` and `hasContents`;
+    - reads of module `state` and `hasContents`, of the container's `modules` list, and `GetName` (the C method, from the module's metatable) on a module nobody knows;
+    - the reads `GetParent`, `GetHeight(true)` and `GetEffectiveScale` of the tracker for the Edit Mode spot (Ruling 33);
     - `ObjectiveTrackerUIWidgetContainer:GetNumWidgetsShowing()`;
     - `st:HideEditModeSelection`.
 
@@ -156,6 +157,7 @@ Both edit `.agents/architecture.md`, so merge by hand, keeping both sides. Tasks
 30. **The row tooltip's anchor.** Its top right sits 8 left of the row's top left, which is the window's left edge (PAD 8).
 31. **Faded item buttons** use `max(fade_alpha, TR.BUTTON_MIN_ALPHA)`.
 32. **The waypoint line** reads `('Waypoint: %s'):format(text)`, for the focused quest only.
+33. **The spot's floor (the controller's ruling, made in Task 11 for the owner to check).** A revealed or concealed spot (the same y, Ruling 29) keeps Blizzard's tracker at least `TR.BLIZZARD_FLOOR` (200) above the screen's bottom, even when that moves its top off SaftUI's top: Blizzard's height is its anchor's y down to the right column's bottom, at least 20, so a lower spot leaves its modules no room. A tracker moved in Blizzard's Edit Mode (a child of UIParent, a fixed height) is raised to keep that height on screen, never past the screen's top. With Grow up the handed-over tracker stays at the window's top as it was when the window was hidden. The probes are not part of the refresh (Task 11): they run on their own events and after a module's layout, through the list's throttle.
 
 ## Experiment seams
 

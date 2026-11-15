@@ -388,6 +388,8 @@ item buttons sit beside the tracker on that side (the column's width and its 4 g
 the holder's top. On the left, Blizzard's top right corner goes there; on the right, its top left
 (its width read with `GetWidth(true)`). Its own clamp, turned back on, keeps it on screen.
 
+*Ruling made by the controller in Task 11, for the owner to check:* a revealed (and concealed) spot keeps Blizzard's tracker at least 200 above the screen's bottom, even when that moves its top off SaftUI's top, because Blizzard works its height out from its anchor's y down to the right column's bottom (at least 20) and a lower spot leaves its modules no room. A tracker moved in Blizzard's Edit Mode is raised to keep its fixed height on screen. With Grow up it stays at the window's top as it was when the window was hidden.
+
 The Blizzard's tracker tab also shows a line saying what it's doing now: "Not needed now." or
 "Showing Blizzard's tracker for: Scenario, Achievements." (the needed sections, by the names in the
 table above), refreshed when the page draws.
