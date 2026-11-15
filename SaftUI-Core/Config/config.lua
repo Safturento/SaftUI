@@ -299,6 +299,9 @@ function Config:UpdateConfig()
 	-- copies where another shows (chat) reads it with the new margin.
 	local fonts = st:GetModule('Fonts', true)
 	UpdateModule(fonts)
+	-- Then the texts that follow a font and the modules that read its values
+	-- (st:FontsChanged), with the new profile in place and the objects set.
+	Safely(function() st:FontsChanged() end)
 	Safely(function() st:UpdateHeader() end)
 	Safely(function() st:UpdateScreenMargin() end)
 

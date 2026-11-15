@@ -32,8 +32,8 @@ local st = SaftUI
 	    x_off / y_off from there. text.countdown is the cooldown numbers:
 	    point, rel_point, x_off and y_off as above, and no show (Blizzard's
 	    "Show Numbers for Cooldowns" shows them, for every bar). Their font,
-	    size and outline have no default: each one unset is SaftUI's Pixel Med
-	    font's on buttons of 36px and up and its Pixel font's below (skin.lua),
+	    size and outline have no default: each one unset is SaftUI's Large numbers
+	    font's on buttons of 36px and up and its Small text font's below (skin.lua),
 	    the font the numbers have always had, so a bar looks as it did until
 	    one is set. The pet and stance buttons only have a hotkey and cooldown
 	    numbers; their count and macro name keep the shape and go unused.

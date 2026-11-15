@@ -28,8 +28,8 @@ local AB = st:GetModule('ActionBars')
 	    for every bar). An open /sui draws again when it changes in Blizzard's
 	    options (skin.lua), so the box follows. On a bar there's no box.
 	  - their Font, Size and Outline show what's drawn until they're set
-	    (AB:GetCountdownFont: Pixel Med on buttons of 36px and up, Pixel
-	    below); on All bars their default is unset, and their reset unsets
+	    (AB:GetCountdownFont: Large numbers on buttons of 36px and up, Small
+	    text below); on All bars their default is unset, and their reset unsets
 	    them again.
 	There is no Reset button: every setting has its own (Core's default and
 	share fields, .agents/edit-mode.md).
@@ -69,7 +69,7 @@ local COUNTDOWN_BAR_DESC = "The time left on a button's cooldown. All bars shows
 -- they're set (AB:GetCountdownFont), which is also their default. field: font,
 -- size or outline.
 local function CountdownDefault(field)
-	return ("Pixel Med's %s on buttons of 36px and up, Pixel's below (Global settings > Fonts)"):format(field)
+	return ("Large numbers' %s on buttons of 36px and up, Small text's below (Global settings > Fonts)"):format(field)
 end
 local function CountdownUnset(field)
 	return " Until set, it goes by the button's size: " .. CountdownDefault(field) .. '.'

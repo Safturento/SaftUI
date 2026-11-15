@@ -66,19 +66,15 @@ function TR:Build()
 	-- Blizzard's tracker goes off screen (blizzard.lua), once the window is there
 	-- for the y it hides at.
 	self:SetupBlizzard()
-	-- The Fonts tab changes the font objects without telling any module: SaftUI's
-	-- own update function is post-hooked (never Blizzard's) so the rows reflow at
-	-- once.
-	local fonts = st:GetModule('Fonts', true)
-	if fonts and type(fonts.UpdateFontConfig) == 'function' then
-		-- A profile change calls it once for each font: the marks fold into one
-		-- refresh through the same throttle.
-		hooksecurefunc(fonts, 'UpdateFontConfig', function()
-			if TR.model then TR:MarkDirty('FONTS') end
-		end)
-	end
 	-- The first refresh, on the next frame like any other.
 	self:MarkDirty('BUILD')
+end
+
+-- A shared font or a font setting changed (st:FontsChanged: the Fonts tab, a
+-- profile update): the rows reflow at once. A profile change marks it once; the
+-- marks fold into one refresh through the throttle.
+function TR:OnFontsChanged()
+	if TR.model then TR:MarkDirty('FONTS') end
 end
 
 -- The switch was just saved from /sui and the player is being asked about a

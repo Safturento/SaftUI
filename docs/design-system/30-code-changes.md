@@ -30,6 +30,7 @@ The organisational changes that would make this system real in the addon: one pl
 - **Risk.** Medium: saved profiles hold today's keys and copied faces.
 - **Order.** After 1; independent of 2.
 - **Unblocks.** This system's type styles becoming the code's roles; Discrepancies 2 and 20.
+- **Taken up by** the fonts design (`docs/superpowers/specs/2026-11-14-saftui-fonts-design.md`, plan `docs/superpowers/plans/2026-11-14-saftui-fonts.md`).
 
 ## 4. One button component
 

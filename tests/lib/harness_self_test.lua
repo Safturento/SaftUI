@@ -150,6 +150,22 @@ test("apply_defaults has AceDB's wildcard keys: '**' fills every sibling, made l
 	eq(uf.profiles.Fresh.player.width, 301, 'a new unit frame profile gets the real unit defaults')
 end)
 
+test('apply_defaults keeps a table saved under a string default and merges no ** defaults into it', function()
+	reset_world()
+	SaftUI.defaults = { a = { font = 'normal', count = { font = 'pixel' }, ['**'] = { filter = { on = true } } } }
+	local saved_font, saved_count = { font_name = 'Colus' }, { font_name = 'Homespun' }
+	SaftUI.config.profile = { a = { font = saved_font, count = { font = saved_count } } }
+	apply_defaults()
+	local a = SaftUI.config.profile.a
+	check(a.font == saved_font, 'the table saved under a string default is kept')
+	check(a.count.font == saved_count, 'also one level down')
+	eq(next(saved_font), 'font_name', 'it has its one key')
+	eq(next(saved_font, 'font_name'), nil, 'and no other')
+	eq(next(saved_count), 'font_name', 'the other has its one key')
+	eq(next(saved_count, 'font_name'), nil, 'and no other')
+	eq(a.count.filter.on, true, "the '**' defaults still fill the tables around it")
+end)
+
 test('the shell enables a module once: OnInitialize, then OnEnable, then its submodules', function()
 	reset_world()
 	local calls = {}

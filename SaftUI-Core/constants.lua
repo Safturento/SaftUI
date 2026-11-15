@@ -20,7 +20,7 @@ st.CLOSE_X_BUTTON_SIZE = {24, 24} -- SaftUI's own (st:CreateCloseButton)
 -- (ExtraActionButtonTemplate, ZoneAbilityFrameSpellButtonTemplate).
 st.BLIZZARD_SIZE = 52
 -- From this button (or icon) size up, cooldown numbers are in the larger pixel
--- font (Pixel Med, 18px by default); smaller ones get Pixel (10px), so the
+-- font (Large numbers, 18px by default); smaller ones get Small text (10px), so the
 -- numbers fit inside a 28px button.
 st.LARGE_COUNTDOWN_SIZE = 36
 -- How far in from a header's right edge SaftUI's close button sits

@@ -32,9 +32,9 @@ local LAB = LibStub('LibActionButton-1.0')
 	    tints are LibActionButton's own. Cooldown numbers follow Blizzard's "Show
 	    Numbers for Cooldowns" setting (the countdownForCooldowns CVar), which
 	    /sui's Cooldown numbers reads and sets. They're drawn in the bar's font
-	    and place for them (text.countdown): by default SaftUI's pixel font, Pixel
-	    Med on buttons of 36px and up and Pixel below that, so the numbers fit on
-	    small buttons, in the middle of the button.
+	    and place for them (text.countdown): by default SaftUI's shared fonts: Large
+	    numbers on buttons of 36px and up and Small text below that, so the numbers
+	    fit on small buttons, in the middle of the button.
 	  - Hotkeys are shortened ("SHIFT-MOUSEWHEELUP" -> "SMU").
 	  - Text. The hotkey, stack count and macro name follow the bar's Text
 	    settings (font, size, outline, show, and where each is anchored), set
@@ -282,7 +282,7 @@ countdownWatch:SetScript('OnEvent', function(_, _, name)
 end)
 
 -- The Fonts tab's font the numbers are drawn in on a button of size, where the
--- bar sets none of its own: Pixel Med on buttons of 36px and up, Pixel below,
+-- bar sets none of its own: Large numbers on buttons of 36px and up, Small text below,
 -- so the numbers fit on small buttons.
 local function CountdownFontKey(size)
 	return size >= st.LARGE_COUNTDOWN_SIZE and 'pixel_med' or 'pixel'

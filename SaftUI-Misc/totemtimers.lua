@@ -614,17 +614,11 @@ function TB:SetupTimers()
 	PostHook('MultiCastFlyoutFrameOpenButton_Show', GrowArrow)
 	PostHook('MultiCastFlyoutFrame_ToggleFlyout', OnToggleFlyout)
 
-	-- A size change to the timers' font in /sui -> Fonts changes their height, and so how
-	-- far the arrow and the flyout grow. SaftUI's own Fonts module, so a plain post-hook.
-	-- With no font name it updates every font, calling itself for each one.
-	local fonts = st:GetModule('Fonts', true)
-	if fonts and type(fonts.UpdateFontConfig) == 'function' then
-		hooksecurefunc(fonts, 'UpdateFontConfig', function(_, fontName)
-			if fontName and fontName == select(2, TimerFont()) then
-				self:ApplyTimerLayout()
-			end
-		end)
-	end
-
 	self:ApplyTimerLayout()
+end
+
+-- A shared font or a font setting changed (st:FontsChanged): the timers' font
+-- changes their height, and so how far the arrow and the flyout grow.
+function TB:OnFontsChanged()
+	if timersReady then self:ApplyTimerLayout() end
 end
