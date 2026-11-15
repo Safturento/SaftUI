@@ -26,7 +26,8 @@ local TR = st.Tracker
 	    one, and the rule's wording (C methods only) is about the writes;
 	  - post-hooks (hooksecurefunc, each in xpcall to the error handler) on its
 	    SetPoint, ClearAllPoints, UpdateHeight and SetAlpha, which only run
-	    TR:PlaceBlizzard or TR:SyncBlizzardAlpha again;
+	    TR:PlaceBlizzard or TR:OnBlizzardAlpha (an alpha from outside that lifts
+	    the fade is put back; a lower one, Blizzard's 0 or another addon's, stands);
 	  - the sections' watch (TR:WatchModules): a post-hook on each module's own
 	    Update, which reads the module's state and hasContents and asks for a probe
 	    pass on the next frame, and a read of the container's `modules` list, with
@@ -241,13 +242,40 @@ function TR:SyncBlizzardAlpha(force)
 	self:SetBlizzardAlpha(alpha < 1 and alpha or nil, force)
 end
 
+-- The post-hook's work: `alpha` was just set on Blizzard's tracker from outside.
+-- Concealed, the hold goes stale as before (TR:SyncBlizzardAlpha). Shown with a
+-- fade held, an alpha above the fade lifts it (Blizzard's 1, or another addon
+-- giving it back) and the fade is written again; one below it (0, from Blizzard's
+-- hidden UIParent or another addon hiding it) stands, and the hold is marked
+-- unknown (false) so SaftUI's own next write, at a fade step or a reveal, is made.
+-- With no fade held an outside alpha is never touched.
+function TR:OnBlizzardAlpha(alpha)
+	if not self.blizzardFrame then return end
+	local where = self.blizzardEffective
+	if where == nil or where == 'concealed' or type(alpha) ~= 'number' or not Plain(alpha) then
+		self:SyncBlizzardAlpha(true)
+		return
+	end
+	local fx = self.fx
+	local fade = fx and fx.window or 1
+	if fade >= 1 then
+		self:SyncBlizzardAlpha(true) -- (lets a hold go; no fade held: nothing is written)
+	elseif alpha >= fade then
+		self:SyncBlizzardAlpha(true)
+	elseif self.blizzardAlphaSet ~= nil then
+		self.blizzardAlphaSet = false
+	end
+end
+
 -- Puts Blizzard's tracker at `where` ('concealed', 'place' or 'beside'): the
 -- clamp off for concealed and on otherwise, then its one point, by the three C
 -- methods. Nothing is called when its clamp and its one point are already as wanted.
+-- Returns false when the move waits for the end of combat (a protected tracker),
+-- else its point and screen spot.
 local function PlaceAt(self, tracker, where)
 	if not st:CanMoveNow(tracker)
 		and st:QueueAfterCombat('tracker_blizzard', function() self:PlaceBlizzard(self.blizzardWhere) end) then
-		return
+		return false -- (waiting for the end of combat: it is where it was)
 	end
 	local parent, point, x, y, screenX, screenY = self:BlizzardTarget(where)
 	if not parent then return end
@@ -304,8 +332,16 @@ function TR:PlaceBlizzard(where)
 	-- place is kept for when the trigger ends.
 	self.blizzardWhere = where
 	if self.visHidden then where = 'concealed' end
-	self.blizzardEffective = where
 	local point, screenX, screenY = PlaceAt(self, tracker, where)
+	-- A protected tracker's move waits for the end of combat (the queued pass
+	-- places it and records it): until then it is where it was, so it is not
+	-- recorded as revealed (given an alpha, its place counted as the hover) while
+	-- it is still off screen, nor as concealed while it still shows.
+	if point == false then
+		self:SyncBlizzardAlpha()
+		return
+	end
+	self.blizzardEffective = where
 	CacheRect(self, tracker, where, point, screenX, screenY)
 	-- The fade holds while it shows, and is let go once it is revealed again.
 	self:SyncBlizzardAlpha()
@@ -319,9 +355,14 @@ local function Replace()
 	return ok, err
 end
 
--- The same for Blizzard's own SetAlpha: the fade's alpha again, while one is held.
-local function Realpha()
-	local ok, err = xpcall(function() TR:SyncBlizzardAlpha(true) end, geterrorhandler())
+-- The same for an alpha set on the frame from outside. SaftUI's own writes are the
+-- C method from the metatable, which this hook (on the frame's own field) never
+-- hears, so every call it hears is Blizzard's (the right column: 0 when UIParent
+-- hides, 1 when it shows) or another addon's (BigWigs sets it in boss fights; the
+-- spec's edge case: SaftUI doesn't fight it). They are told apart by what they do
+-- to the fade (TR:OnBlizzardAlpha), never by who called.
+local function Realpha(_, alpha)
+	local ok, err = xpcall(TR.OnBlizzardAlpha, geterrorhandler(), TR, alpha)
 	return ok, err
 end
 

@@ -576,8 +576,8 @@ both('during a handover Hide conceals Blizzard\'s tracker and Fade holds its alp
 	-- Blizzard's own call (the right column fades its frames in and out) is put back.
 	OT.tracker:SetAlpha(1)
 	check(near(OT.tracker:GetAlpha(), 0.4), 'Blizzard\'s SetAlpha(1) is put back after it: ' .. OT.tracker:GetAlpha())
-	OT.tracker:SetAlpha(0)
-	check(near(OT.tracker:GetAlpha(), 0.4), 'and its 0')
+	-- (A call that sets it lower than the fade, Blizzard's own 0 when UIParent hides or
+	-- another addon's, is not fought: see the next case.)
 	-- Hover is read from SaftUI's holder, never Blizzard's frame.
 	RW.mouse_on(TR.holder)
 	stub.fire_script(TR.fader, 'OnUpdate', 0.016)
@@ -918,3 +918,74 @@ both('the nearest button is built with the pet battle\'s driver alone, whatever 
 	eq(stub.state(TR.nearestDriver).state_drivers['state-visibility'], '[petbattle] hide; show', 'its driver, as built: the pet battle\'s alone')
 	eq(TR.nearestDriverSet, '[petbattle] hide; show', 'and that is what it remembers it set')
 end, { visibility = { items = true, combat = 'hide', boss = 'hide' } })
+
+------------------------------------------------------------------ final review
+
+-- M3 (the spec's edge case: another addon touching Blizzard's tracker, BigWigs
+-- sets its alpha in boss fights; SaftUI doesn't fight it). SaftUI's own writes
+-- are the C method from the metatable, which the post-hook on the frame's own
+-- SetAlpha never sees, so every call the hook hears is somebody else's: Blizzard's
+-- (only ever 0 when UIParent hides and 1 when it shows) or another addon's. The
+-- hook tells them apart by what they do to the fade: a call that sets the alpha
+-- above the fade held lifts it (Blizzard's 1, an addon's restoring 1) and the fade
+-- is put back; one that sets it lower (0: hidden by Blizzard's UIParent or by
+-- another addon) is left to stand, and the hold is marked unknown so SaftUI's own
+-- next write, at a fade step or a reveal, is made.
+both('another addon (BigWigs) setting Blizzard\'s tracker lower during a faded handover is not fought; a call that lifts the fade is put back', function(st, TR, OT)
+	set(TR, { mouseoff = 'fade', fade_alpha = 0.4 })
+	scenario(true)
+	settle_probes()
+	fade_done(TR)
+	check(near(OT.tracker:GetAlpha(), 0.4), 'faded to 40%')
+	-- The boss pull: SetAlpha(0) from outside.
+	OT.tracker:SetAlpha(0)
+	eq(OT.tracker:GetAlpha(), 0, 'an outside SetAlpha(0) stands: not undone to the fade')
+	OT.tracker:SetAlpha(0.1)
+	eq(OT.tracker:GetAlpha(), 0.1, 'so does any value under the fade')
+	-- The end of the fight: it sets 1 back; that lifts the fade, which is put back.
+	OT.tracker:SetAlpha(1)
+	check(near(OT.tracker:GetAlpha(), 0.4), 'a SetAlpha(1) lifts the fade: put back to 40%')
+	-- The same sequence without a fade held changes nothing SaftUI does.
+	set(TR, { mouseoff = 'show' })
+	fade_done(TR)
+	eq(OT.tracker:GetAlpha(), 1, 'no fade: full alpha')
+	OT.tracker:SetAlpha(0)
+	eq(OT.tracker:GetAlpha(), 0, 'no fade held: an outside alpha is never touched')
+	OT.tracker:SetAlpha(1)
+	eq(OT.tracker:GetAlpha(), 1, 'and 1')
+	-- Held low by another addon, SaftUI's own next write (a fade step) is still made.
+	set(TR, { mouseoff = 'fade', fade_alpha = 0.4 })
+	fade_done(TR)
+	OT.tracker:SetAlpha(0)
+	RW.mouse_on(TR.holder)
+	fade_done(TR)
+	eq(OT.tracker:GetAlpha(), 1, 'the hover lifts the fade: SaftUI\'s own step writes its alpha')
+	RW.mouse_off()
+	fade_done(TR)
+end, { blizzard = true })
+
+-- M4: a protected Blizzard tracker in combat is still where it was (the move waits
+-- for the end of combat); it is not recorded as revealed.
+both('a protected Blizzard tracker still concealed in combat is not given an alpha and its place is not the holder\'s hover, until it is placed', function(st, TR, OT)
+	set(TR, { mouseoff = 'fade', fade_alpha = 0.3 })
+	TW.combat(true)
+	settle_probes()
+	scenario(true)
+	settle_probes()
+	eq(TR.handoverState, 'both', 'the handover wants it beside')
+	check(near(OT.tracker:GetRight(), UIParent:GetLeft() - 100), 'it is still concealed: the move waits for the end of combat')
+	check(TR.blizzardEffective == nil or TR.blizzardEffective == 'concealed', 'not recorded as revealed: ' .. tostring(TR.blizzardEffective))
+	eq(TR.blizzardAlphaSet, nil, 'never given an alpha while concealed')
+	eq(OT.tracker:GetAlpha(), 1, 'it has its own')
+	RW.mouse_on(TR.holder)
+	settle_probes(0.05)
+	check(not TR:IsBlizzardHovered(), 'the holder is not its hover while it is off screen')
+	RW.mouse_off()
+	fade_done(TR)
+	eq(TR.blizzardAlphaSet, nil, 'still none after a fade step')
+	TW.combat(false)
+	settle_probes(1)
+	fade_done(TR)
+	eq(TR.blizzardEffective, 'place', 'placed when combat ends: in SaftUI\'s place (the handover goes in place out of combat)')
+	check(near(OT.tracker:GetAlpha(), 0.3), 'and now faded: ' .. OT.tracker:GetAlpha())
+end, { blizzard = { protected = true } })
