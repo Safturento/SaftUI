@@ -49,7 +49,6 @@ local OLD_ARRAY_DEFAULTS = {
 	bag = { 'BOTTOMRIGHT', -20, 20 },
 	bank = { 'TOPLEFT', 200, -200 },
 	combinedbank = { 'TOPLEFT', 200, -200 },
-	reagent = { 'TOPLEFT', 'SaftUIBank', 'TOPRIGHT', 20, 0 },
 	warband = { 'TOPLEFT', 'SaftUIBank', 'TOPRIGHT', 20, 0 },
 }
 
@@ -94,7 +93,6 @@ function INV:MigratePositions()
 	for _, id in ipairs(WINDOW_IDS) do
 		self:MigratePosition(id)
 	end
-	self:MigratePosition('reagent') -- no window yet, but it has a config entry
 end
 
 function INV:GetAnchor(id)
@@ -162,7 +160,7 @@ end
 -- Windows with a mover on this client, for the layout the profile uses. The bank
 -- opens combined or as separate bank and warband windows, never both at once
 -- (INV:BANKFRAME_OPENED). The warband window is only made from the separate
--- bank. Reagents have a config entry but no window, so no mover.
+-- bank.
 function INV:GetMoverIds()
 	local ids = { 'bag' }
 	if self.config.combinedBank then

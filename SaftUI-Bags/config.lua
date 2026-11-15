@@ -55,18 +55,6 @@ st.defaults.inventory = {
 		view = 'compact',
 		emptySlots = 'off',
 	},
-	reagent = {
-		position = {
-			point = 'TOPLEFT',
-			frame = 'SaftUIBagsAnchor_bank',
-			rel_point = 'TOPRIGHT',
-			x_off = 20,
-			y_off = 0,
-		},
-		perrow = 4,
-		maxRows = 20,
-		maxColumns = 3
-	},
 	warband = {
 		position = {
 			point = 'TOPLEFT',
