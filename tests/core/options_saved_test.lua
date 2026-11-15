@@ -559,7 +559,8 @@ test('the icon\'s compare and OM.SameValue say the same, type by type', function
 	matrix('color', { hasAlpha = function() return false end }, colors)
 	matrix('multiselect', { values = { a = 'A', b = 'B' } }, {
 		{ { a = true }, { a = true, b = false } }, { { a = true }, { a = true, b = true } }, { {}, {} },
-		{ { z = true }, {} }, { { a = true, z = true }, { a = true } }, { { a = false }, {} } })
+		{ { z = true }, {} }, { { a = true, z = true }, { a = true } }, { { a = false }, {} },
+		{ { a = true }, { a = true, z = true } }, { {}, { z = true } } })
 	local pos = { point = 'TOP', rel_point = 'TOP', frame = 'UIParent', x_off = 0.5, y_off = 0 }
 	local function with(change)
 		local copy = {}
@@ -709,27 +710,76 @@ end)
 
 ------------------------------------------------------------------ which Position is the mover's (M1, M7)
 
-test('a mover links to the first Position in its group only; a hand default still wins', function()
+test('a mover links to the last Position in its group only (the convention: the frame\'s goes last); a hand default still wins', function()
 	local frame = CreateFrame('Frame', 'KitLinkMover', UIParent)
 	local cfg = { position = { point = 'CENTER', rel_point = 'CENTER', frame = 'UIParent', x_off = 5, y_off = 0 } }
 	st:RegisterConfigMover(frame, { key = 'sv_link', label = 'Link', config = function() return cfg end, apply = function() end,
 		configPath = { 'Page', 'general' }, getDefaultPosition = function() return { point = 'CENTER', rel_point = 'CENTER', frame = 'UIParent', x_off = 0, y_off = 0 } end })
 	local function pos(order, name) return generators.position(order, true, function(part) return cfg.position[part] end,
 		function(part, value) cfg.position[part] = value end, nil, nil, name) end
-	local second = pos(1001, 'Text position')
-	local hand = pos(1002, 'Hand position')
+	local text = pos(5, 'Text position')
+	local hand = pos(6, 'Hand position')
 	hand.default = { differs = function() return false end, reset = function() end }
 	local root = { Page = { type = 'group', name = 'Page', args = { general = { type = 'group', name = 'General', args = {
-		position = pos(1000, 'Position'), textpos = second, handpos = hand } } } } }
+		position = pos(1000, 'Position'), textpos = text, handpos = hand } } } } }
 	local function source(key) return OM.DefaultSource(root, new_row(root, 'Page', 'general', key)) end
-	eq(source('position'), 'mover', 'the first Position of the group is the mover\'s')
-	eq(source('textpos'), nil, 'a second one is not (it has no source of its own)')
+	eq(source('position'), 'mover', 'the last Position of the group (order 1000) is the mover\'s')
+	eq(source('textpos'), nil, 'an earlier one is not (it has no source of its own)')
 	eq(source('handpos'), 'default', 'a hand default wins over the mover link')
 	root.Page.args.general.args.position.default = { differs = function() return false end, reset = function() end }
-	eq(source('position'), 'default', 'on the first too')
+	eq(source('position'), 'default', 'on the last too')
 	root.Page.args.general.args.position.default = nil
-	root.Page.args.general.args.handpos.order = 10
-	eq(source('position'), nil, 'the link is to the first Position by order: with another before it, this one is not the mover\'s')
-	eq(source('handpos'), 'default', 'and that one keeps its hand default')
+	root.Page.args.general.args.handpos.order = 2000
+	eq(source('position'), nil, 'with another Position after it, this one is not the mover\'s')
+	root.Page.args.general.args.handpos.order = 6
+	-- Equal orders: the greater key is last.
+	root.Page.args.general.args.textpos.order = 1000
+	eq(source('textpos'), 'mover', 'at an equal order the greater key is the last (textpos after position)')
+	eq(source('position'), nil, 'and the lesser is not')
 	EM.movers.sv_link = nil
+end)
+
+------------------------------------------------------------------ fonts, anchors, quiet (round two)
+
+test('there is one st:FontValues (the face\'s path and flags); the typeface compare has its own name and compares names', function()
+	local source = read_saftui_source('SaftUI-Core/Media/fonts.lua')
+	local _, count = source:gsub('function st:FontValues', '')
+	eq(count, 1, 'one definition of st:FontValues in fonts.lua')
+	check(source:find('function st:FontParts', 1, true) ~= nil, 'and the kit\'s no-table resolver has its own name')
+	local path = st:FontValues('normal')
+	check(type(path) == 'string' and path:find('%.') ~= nil, 'st:FontValues gives a file path first, as the readers expect')
+	local store = { font = { font_name = 'NoSuchFaceAAA' } }
+	st.defaults.ft2_ = { font = { font_name = 'NoSuchFaceBBB' } }
+	local root = { Page = { type = 'group', name = 'Page', args = { f = { type = 'font', name = 'F', order = 1,
+		get = function() return store.font end, set = function() end, saved = st.Config.SavedAt('ft2_', 'font') } } } }
+	check(OM.DefaultDiffers(root, new_row(root, 'Page', 'f')), 'two faces the game does not know differ by name, not by the fallback path')
+end)
+
+test('an element anchor with a leftover frame is the same as the default: no icon, nothing to reset', function()
+	local root, row, cfg = uf_position_world()
+	st.defaults.pv_ = { position = { point = 'BOTTOM', rel_point = 'BOTTOM', element = 'Health', x_off = 4, y_off = 5 } }
+	cfg.position = { point = 'BOTTOM', rel_point = 'BOTTOM', element = 'Health', frame = 'UIParent', x_off = 4, y_off = 5 }
+	check(not OM.DefaultDiffers(root, row), 'a frame left beside an element is not a difference')
+	check(OM.SameValue('position', { point = 'TOP', element = 'Health', frame = 'UIParent' }, { point = 'TOP', element = 'Health' }, { relative = true }),
+		'nor in the pure compare')
+	cfg.position.element = false
+	check(OM.DefaultDiffers(root, row), 'but with no element the frame is the anchor, and it differs')
+end)
+
+test('CanReset(mover, true) makes no text at the default place either, and a drag step places no tables for a shown icon', function()
+	st.defaults.cm2_ = { position = { point = 'CENTER', rel_point = 'CENTER', frame = 'UIParent', x_off = 0, y_off = 0 } }
+	local frame = CreateFrame('Frame', 'KitQuietMover', UIParent)
+	frame:SetSize(100, 50)
+	local cfg = { position = { point = 'CENTER', rel_point = 'CENTER', frame = 'UIParent', x_off = 0, y_off = 0 } }
+	st:RegisterConfigMover(frame, { key = 'sv_quiet', label = 'Quiet', config = function() return cfg end, apply = function() end,
+		configPath = { 'Page', 'general' }, defaults = function() return st.defaults.cm2_ end })
+	local mover = EM.movers.sv_quiet
+	check(EM:CanReset(mover, true) == false, 'at its default: no')
+	collectgarbage(); collectgarbage('stop')
+	local before = collectgarbage('count')
+	for _ = 1, 10000 do EM:CanReset(mover, true) end
+	local grown = collectgarbage('count') - before
+	collectgarbage('restart')
+	check(grown < 20, 'it makes no text at the default place (grew ' .. grown .. ' KB)')
+	EM.movers.sv_quiet = nil
 end)

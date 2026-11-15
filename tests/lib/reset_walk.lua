@@ -328,7 +328,11 @@ end
 
 local function IsValueRow(option)
 	if type(option) ~= 'table' then return false end
-	return VALUE[option.type] or (st.OptionsWidgets.CUSTOM[option.type] ~= nil and not LISTS[option.type])
+	if VALUE[option.type] then return true end
+	-- A type the bags (or a test) define: only where the widget files are loaded.
+	local W = st.OptionsWidgets
+	local custom = W and W.CUSTOM and W.CUSTOM[option.type]
+	return custom ~= nil and not LISTS[option.type]
 end
 
 local function Walk(root, pageKey, opts, problems)

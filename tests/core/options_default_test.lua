@@ -956,3 +956,25 @@ test('a long title\'s hover frame stops short of the reset icon', function()
 		body:Release()
 	end)
 end)
+
+test('placing a shown icon on every drag step builds no tables of its own: DrawnLeft walks regions as varargs', function()
+	-- The stubs allocate on every layout read and SetPoint, so bytes can't pin it; the walk's own
+	-- tables (one per region, two per control) were the kit's, and the source says there are none.
+	local source = read_saftui_source('SaftUI-Core/Config/optionsshare.lua')
+	local from = source:find('DrawnLeft = function', 1, true)
+	local walk = source:sub(from, source:find('\nend\n', from, true))
+	check(not walk:find('{', 1, true), 'DrawnLeft makes no table of a region\'s regions or children')
+	check(source:find('DrawnLeftOf(left, region:GetRegions())', 1, true) ~= nil, 'they are walked as varargs')
+	in_look('blizzard', function()
+		derived_reset()
+		change_all()
+		local body, by = draw(DerivedPage())
+		for _, key in ipairs(DERIVED_KEYS) do
+			local left = leftmost(by[key].widget.frame)
+			if key ~= 'position' and key ~= 'item' then
+				eq(icon_of(by[key]):GetRight() - by[key].frame:GetLeft(), math.floor(left - by[key].frame:GetLeft()) - 6, key .. ': the icon still clears the art')
+			end
+		end
+		body:Release()
+	end)
+end)

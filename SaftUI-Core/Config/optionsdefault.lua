@@ -378,9 +378,9 @@ end
 local function SameFont(a, b)
 	if type(a) == 'string' and type(b) == 'string' then return a == b end
 	if type(a) ~= 'table' or type(b) ~= 'table' then return a == b end -- a key against a table always differs
-	-- Two typefaces by what they draw (st:FontValues: the same as st:FontFields, no table made).
-	local n1, s1, o1, x1, y1, p1 = st:FontValues(a)
-	local n2, s2, o2, x2, y2, p2 = st:FontValues(b)
+	-- Two typefaces by what they draw (st:FontParts: the same as st:FontFields, no table made).
+	local n1, s1, o1, x1, y1, p1 = st:FontParts(a)
+	local n2, s2, o2, x2, y2, p2 = st:FontParts(b)
 	return n1 == n2 and o1 == o2 and SameNumber(s1, s2) and SameNumber(p1, p2) and SameNumber(x1, x2) and SameNumber(y1, y2)
 end
 
@@ -472,8 +472,8 @@ function OM.SameValue(rowType, a, b, opts)
 		local relative = opts and opts.relative
 		return SamePart('point', a.point, b.point)
 			and SamePart('rel_point', a.rel_point, b.rel_point, a.point, b.point)
-			and SamePart('frame', a.frame, b.frame, nil, nil, relative)
 			and SamePart('element', a.element, b.element)
+			and ((relative and a.element and b.element) or SamePart('frame', a.frame, b.frame, nil, nil, relative))
 			and SamePart('x_off', a.x_off, b.x_off) and SamePart('y_off', a.y_off, b.y_off)
 	end
 	return SameDeep(a, b)
@@ -586,10 +586,12 @@ local function ParentOf(root, row)
 	return group
 end
 
--- Whether no other Position of the group comes before the row's: by order, then
--- key. A mover links to that one Position only, so a second Position in the
--- group (a text's, an icon's) never resets the frame.
-local function IsFirstPosition(root, row)
+-- Whether no other Position of the group comes after the row's: by order, then
+-- key. A mover's Position goes last in its group (generators.lua: the window
+-- gives it a section of its own, after everything else), so a mover links to
+-- that one Position only, and a text's or an icon's Position before it never
+-- resets the frame.
+local function IsLastPosition(root, row)
 	local group = ParentOf(root, row)
 	local args = group and group.args
 	if type(args) ~= 'table' then return false end
@@ -600,20 +602,20 @@ local function IsFirstPosition(root, row)
 		if other ~= key and type(option) == 'table' and option.type == 'position' then
 			local theirs = option.order
 			if type(theirs) ~= 'number' then theirs = 100 end
-			if theirs < order or (theirs == order and tostring(other) < tostring(key)) then return false end
+			if theirs > order or (theirs == order and tostring(other) > tostring(key)) then return false end
 		end
 	end
 	return true
 end
 
 -- The registered mover the row's Position resets: the mover whose configPath
--- is the row's group, and the row the first Position of that group.
+-- is the row's group, and the row the last Position of that group.
 local function MoverFor(root, row)
 	local EM = st.EditModeFrames
 	local path = row.path
 	if not (EM and EM.MoverAt and path) then return nil end
 	local mover = EM:MoverAt(path, #path - 1)
-	if mover and IsFirstPosition(root, row) then return mover end
+	if mover and IsLastPosition(root, row) then return mover end
 	return nil
 end
 
@@ -710,8 +712,14 @@ local function DerivedDiffers(root, row, node, handler)
 		if not SamePart('rel_point', CallGet(node, handler, 'rel_point'), Field(list, count, 'rel_point'), point, defaultPoint) then
 			return true
 		end
-		if hasElement and not SamePart('element', CallGet(node, handler, 'element'), Field(list, count, 'element')) then return true end
-		if hasFrame and not SamePart('frame', CallGet(node, handler, 'frame'), Field(list, count, 'frame'), nil, nil, hasElement) then
+		local element
+		if hasElement then
+			element = CallGet(node, handler, 'element')
+			if not SamePart('element', element, Field(list, count, 'element')) then return true end
+		end
+		-- With an element on both sides the element is the anchor: a frame left beside it counts for nothing.
+		if hasFrame and not (element and Field(list, count, 'element'))
+				and not SamePart('frame', CallGet(node, handler, 'frame'), Field(list, count, 'frame'), nil, nil, hasElement) then
 			return true
 		end
 		return not SamePart('x_off', CallGet(node, handler, 'x_off'), Field(list, count, 'x_off'))

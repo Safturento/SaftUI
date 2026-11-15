@@ -117,10 +117,12 @@ function st:FontFields(value)
 	return { font_name = name, font_size = size, font_outline = outline, shadow_offset = { x, y }, spacing = spacing }
 end
 
--- The same six answers as Resolve gives, for a caller that wants no table (the
--- options kit's compare of a typeface with its default, asked of every row on
--- every render): font_name, font_size, font_outline, shadow X, shadow Y, spacing.
-function st:FontValues(value)
+-- Resolve's six answers, for a caller that wants no table (the options kit's
+-- compare of a typeface with its default, asked of every row on every render):
+-- font_name, font_size, font_outline, shadow X, shadow Y, spacing. Not
+-- st:FontValues, which gives the face's file path and flags for a reader that
+-- draws.
+function st:FontParts(value)
 	return Resolve(value)
 end
 

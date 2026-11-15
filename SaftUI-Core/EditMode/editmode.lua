@@ -219,7 +219,8 @@ end
 -- label, configPath, blizzardFrame, module, isDisabled, isHidden,
 -- noDefaultReason, ...> }. spec isn't changed; its other fields go to
 -- st:RegisterMover as they are, except frame, getPosition and setPosition, which
--- the helper's own replace, and defaults, which becomes getDefaultPosition:
+-- the helper's own replace, and defaults, which becomes getDefaultPosition (and
+-- peekDefaultPosition, the same without the copy, for EM:PeekDefaultPosition):
 --   key     the mover's key, as st:RegisterMover's first argument.
 --   defaults  optional, the twin of config: a function returning the table that
 --           holds the default `position` (function() return st.defaults.chat end).
@@ -331,9 +332,6 @@ function EM:IsMoverHidden(mover)
 	return RunPredicate(mover, 'isHidden')
 end
 
--- Where Reset puts the mover's frame: a fresh deep copy on every call, so a
--- caller's writes never reach st.defaults. Nil when it has no default (see
--- def.noDefaultReason for why).
 -- Where Reset would put the mover's frame, without a copy: the table the
 -- registration holds (it may be st.defaults' own, or a fresh one), which a
 -- caller only reads. For a check made on every render (EM:CanReset(mover, true)),
@@ -347,6 +345,9 @@ function EM:PeekDefaultPosition(mover)
 	return position
 end
 
+-- Where Reset puts the mover's frame: a fresh deep copy on every call, so a
+-- caller's writes never reach st.defaults. Nil when it has no default (see
+-- def.noDefaultReason for why).
 function EM:GetDefaultPosition(mover)
 	local get = mover.def.getDefaultPosition
 	if not get then return nil end

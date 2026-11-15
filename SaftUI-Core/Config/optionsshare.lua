@@ -664,13 +664,19 @@ local NO_DEFAULT = { execute = true, description = true }
 -- it shown, its regions and its children's, down the tree. Under Blizzard a
 -- control's art reaches past its frame (a dropdown's glow, the check box's
 -- art), and the icon keeps clear of it.
-local function DrawnLeft(region, left)
+local DrawnLeft
+-- The regions or children as varargs, so no table is made per region.
+local function DrawnLeftOf(left, ...)
+	for i = 1, select('#', ...) do left = DrawnLeft(select(i, ...), left) end
+	return left
+end
+DrawnLeft = function(region, left)
 	if not region:IsShown() then return left end
 	local l = region:GetLeft()
 	if l and (not left or l < left) then left = l end
 	if region.GetRegions then
-		for _, part in ipairs({ region:GetRegions() }) do left = DrawnLeft(part, left) end
-		for _, child in ipairs({ region:GetChildren() }) do left = DrawnLeft(child, left) end
+		left = DrawnLeftOf(left, region:GetRegions())
+		left = DrawnLeftOf(left, region:GetChildren())
 	end
 	return left
 end
