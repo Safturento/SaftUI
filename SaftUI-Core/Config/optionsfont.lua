@@ -234,6 +234,7 @@ define('font', {
 
 	Open = function(self)
 		if self.disabled or not self.row then return end
+		st:RetryFonts() -- a face the game refused is asked again as the list opens
 		local entries, selected = W.FontEntries(self:Value(), self.faceOnly)
 		W.OpenList(self.face, entries, selected, function(key) self:Pick(key) end)
 	end,
@@ -243,6 +244,7 @@ define('font', {
 	-- table of what the row showed with that face.
 	Pick = function(self, key)
 		if self.disabled or not self.row or type(key) ~= 'string' then return end
+		st:RetryFonts() -- and again as a face is picked, before the module reads it
 		if key:sub(1, #FACE_PREFIX) ~= FACE_PREFIX then return self:Commit(key) end
 		local face = key:sub(#FACE_PREFIX + 1)
 		if self.faceOnly then return self:Commit(face) end

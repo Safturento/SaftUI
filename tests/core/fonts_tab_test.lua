@@ -21,7 +21,7 @@ load_options_widgets()
 load_saftui('SaftUI-Core/Config/optionsbody.lua')
 local OM, OB, W = st.OptionsModel, st.OptionsBody, st.OptionsWidgets
 
-local INTRO = "SaftUI's shared fonts. Font rows throughout SaftUI choose from these, and a change here changes every text that uses the font, at once. A Font row can take a typeface of its own instead, with its size and outline in its dots."
+local INTRO = "SaftUI's shared fonts. Font rows throughout SaftUI choose from these, and a change here changes every text that uses the font, at once. A Font row can take a typeface of its own instead, with its size and outline in its dots, or in the Size and Outline beside the row."
 local KINDS_NOTE = 'Which font each kind of text uses. A change shows at once.'
 
 local FN = st:GetModule('Fonts')

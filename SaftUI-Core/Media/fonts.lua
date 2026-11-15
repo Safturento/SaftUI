@@ -220,7 +220,14 @@ function FN:UpdateFontConfig(key)
 		font:SetTextColor(1, 1, 1)
 		self.font_objects[key] = font
 	end
-	self:SetObject(font, st:FontFields(key))
+	-- A face the game refuses (st:FontLoads), or a SetObject that raises, puts the
+	-- object in the fallback face with the rest of the look kept, as a typeface's
+	-- object is (a shared font can be put on any face LibSharedMedia lists).
+	local fields = st:FontFields(key)
+	if not st:FontLoads(st.LSM:Fetch('font', fields.font_name)) or not pcall(self.SetObject, self, font, fields) then
+		fields.font_name = self:FallbackName()
+		self:SetObject(font, fields)
+	end
 end
 
 -- One font object per typeface look (a table, or a dropped key), made the first
@@ -255,7 +262,7 @@ local function Typeface(value)
 		-- for another reason falls back the same way.
 		fellBack[key] = nil
 		if not st:FontLoads(path) or not pcall(FN.SetObject, FN, object, fields) then
-			fields.font_name = st.defaults.fonts.normal.font_name
+			fields.font_name = FN:FallbackName()
 			FN:SetObject(object, fields)
 			fellBack[key] = true
 		end
@@ -299,19 +306,27 @@ end
 -- the API documentation, on both clients; `Font:SetFont` has no return value
 -- there, `FontString:SetFont` returns `success`, and neither says whether a missing
 -- file raises or returns false). A positive answer is kept for the session. A
--- refusal is kept only until the next st:FontsChanged (which clears it, so
--- changing a font setting or reopening a font list tries the file again), and a
--- path is probed at most once between two of those, so a reader on a hot path
--- (the tooltip's Show) costs one table lookup.
+-- refusal is kept only until the next st:RetryFonts (which st:FontsChanged runs,
+-- and so does a font row picking a face and a font list opening, so a changed
+-- font setting or a reopened list tries the file again), and a path is probed at
+-- most once between two of those, so a reader on a hot path (the tooltip's
+-- Show) costs one table lookup.
 local probe
 function st:FontLoads(path)
 	if loads[path] then return true end
 	if refused[path] then return false end
 	probe = probe or CreateFont('SaftUI_FontProbeFont')
 	-- Put on a face known to load first, so a refusal that says nothing shows as the
-	-- object still having it, whatever form the game reports a path in.
-	local sentinel = st.LSM:Fetch('font', (Resolve('normal')))
-	probe:SetFont(sentinel, 12, '')
+	-- object still having it, whatever form the game reports a path in. It is a
+	-- file already known to load, which is never the one probed (that is not in
+	-- `loads` here): one of SaftUI's preloaded faces, never Text's own, which a
+	-- player may have put on a face SaftUI does not preload, or that raises. The
+	-- call is guarded as the probed one is.
+	local sentinel = next(loads)
+	if not sentinel or sentinel == path then
+		sentinel = st.LSM:Fetch('font', st.defaults.fonts.normal.font_name)
+	end
+	pcall(probe.SetFont, probe, sentinel, 12, '')
 	local before = probe:GetFont()
 	local ok, result = pcall(probe.SetFont, probe, path, 12, '')
 	local file = ok and result ~= false and probe:GetFont()
@@ -323,6 +338,22 @@ function st:FontLoads(path)
 	return false
 end
 
+-- Forgets the refusals, so a face the game refused is tried again the next time
+-- it is asked for. Run by st:FontsChanged, by a font row's pick and by a font
+-- list opening (a face another addon registers late, or a file that appears).
+function st:RetryFonts()
+	for path in pairs(refused) do refused[path] = nil end
+end
+
+-- The face a refused face draws in, for the value readers and every font
+-- object alike: the profile's Text when it loads, else SaftUI's default Text
+-- face (which is preloaded).
+function FN:FallbackName()
+	local name = Resolve('normal')
+	if st:FontLoads(st.LSM:Fetch('font', name)) then return name end
+	return st.defaults.fonts.normal.font_name
+end
+
 -- For a reader that takes values, not an object: path, size, flags, shadow X,
 -- shadow Y and spacing of a font setting. A face the game refuses to load
 -- (st:FontLoads) gives Text's face in its place, with the size and flags asked,
@@ -332,7 +363,7 @@ function st:FontValues(value)
 	local name, size, outline, x, y, spacing = Resolve(value)
 	local path = st.LSM:Fetch('font', name)
 	if not st:FontLoads(path) then
-		path = st.LSM:Fetch('font', (Resolve('normal')))
+		path = st.LSM:Fetch('font', FN:FallbackName())
 	end
 	return path, size, st.OutlineFlag(outline), x, y, spacing
 end
@@ -409,7 +440,7 @@ end
 -- profile update calls this before the modules' UpdateConfig.
 function st:FontsChanged()
 	-- A face the game refused is tried again: a wrong refusal lasts no longer.
-	for path in pairs(refused) do refused[path] = nil end
+	st:RetryFonts()
 	st:RefollowFonts()
 	for _, module in pairs(st.modules) do
 		if module.OnFontsChanged then
@@ -598,7 +629,7 @@ end
 
 -- The first sentence is Task 2's wording, kept: a Font row lists these first.
 -- The second is the spec's, about the dots.
-local INTRO = "SaftUI's shared fonts. Font rows throughout SaftUI choose from these, and a change here changes every text that uses the font, at once. A Font row can take a typeface of its own instead, with its size and outline in its dots."
+local INTRO = "SaftUI's shared fonts. Font rows throughout SaftUI choose from these, and a change here changes every text that uses the font, at once. A Font row can take a typeface of its own instead, with its size and outline in its dots, or in the Size and Outline beside the row."
 
 -- The look of a shared font at its default, for the row's reset: one field of
 -- st.defaults.fonts[key].
