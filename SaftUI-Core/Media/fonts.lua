@@ -117,6 +117,13 @@ function st:FontFields(value)
 	return { font_name = name, font_size = size, font_outline = outline, shadow_offset = { x, y }, spacing = spacing }
 end
 
+-- The same six answers as Resolve gives, for a caller that wants no table (the
+-- options kit's compare of a typeface with its default, asked of every row on
+-- every render): font_name, font_size, font_outline, shadow X, shadow Y, spacing.
+function st:FontValues(value)
+	return Resolve(value)
+end
+
 -- Sets a font object to a look (st:FontFields' shape): the face from
 -- LibSharedMedia (its default face when it doesn't list the name), size,
 -- outline, an opaque black shadow, the shadow's offset, line spacing. The one

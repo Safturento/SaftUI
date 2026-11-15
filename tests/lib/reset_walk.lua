@@ -13,7 +13,11 @@
 -- mover row differs on the profile as it is, which the caller made fresh; probe
 -- (default true) round-trips every derived row; skip = { ['<path joined by .>']
 -- = true } leaves a row out of everything, for one a page can't walk (give the
--- reason in the page's test).
+-- reason in the page's test); allow = { ['<row path joined by .>'] = { '<profile
+-- key joined by .>', ... } } lets a row's set (and its reset) write those keys
+-- outside its saved path, a key or anything below it, and keeps the rest of the
+-- row's round trip. For a set with a known side effect, say Theme > Theme marking
+-- fonts.version: allow = { ['Fonts.theme.theme'] = { 'fonts.version' } }.
 --
 -- It walks with each_option every option under the page, an item's menu rows
 -- on OM.MenuRoot(item) with a { 'menu', ... } path, and every group's
@@ -27,15 +31,19 @@
 --      does is "differs on a fresh profile"; with fresh = false it is left
 --      unprobed instead);
 --   4. a derived row round-trips: a probe value (below) set through the row's
---      set makes it differ and changes the profile only under its saved path,
---      and its reset makes it the same again with the default saved; any error
---      the game would report during it is a problem naming the row.
+--      set makes it differ and changes the profile only under its saved path
+--      (or an allowed key), and its reset makes it the same again with the
+--      default saved and leaves the whole profile as it was before the probe
+--      (numbers within 1e-4, nil and false alike, a frame nil or 'UIParent' alike,
+--      offsets as whole pixels, an allowed key excepted); any error the game
+--      would report during it is a problem naming the row.
 -- A hidden or disabled row is checked for a source, never probed and never asked
 -- whether it differs. The probe value, as the audit set one: a toggle or item
 -- flipped, a range one step (else bigStep, else 1) up or down at its max, another
 -- select key, a multiselect's first key flipped, an input's number plus 1 (else
 -- '7' for a pattern row, else its text plus 'z'), a color's red plus 0.37
--- wrapped, a position's x_off plus 3, a font 'pixel' ('normal' when it holds
+-- wrapped, a position's x_off plus 3 and its point moved (and, with an element
+-- dropdown, its anchor put on another choice of the row's values), a font 'pixel' ('normal' when it holds
 -- 'pixel'), a keybinding 'CTRL-F12'. The row is put back as it was.
 
 local st = SaftUI
@@ -52,6 +60,8 @@ local VALUE = {
 -- The bags' own types: lists, with a reset of their own (a titled rule row can carry one).
 local LISTS = { bagcategories = true, bagitems = true }
 
+local abs = math.abs
+
 local function Joined(path) return table.concat(path, '.') end
 
 local function Plain(value)
@@ -61,13 +71,37 @@ local function Plain(value)
 	return copy
 end
 
--- Every leaf that differs between two plain copies, as a path (a list of keys).
-local function Changes(a, b, path, out)
+-- Whether two saved values are the same for the reset's purposes: numbers
+-- within 1e-4, nil and false alike, a frame nil or 'UIParent' alike, offsets as
+-- the position set stores them (whole pixels).
+local function Equivalent(key, a, b)
+	if a == b then return true end
+	if type(a) == 'number' and type(b) == 'number' then
+		if abs(a - b) <= 1e-4 then return true end
+		if key == 'x_off' or key == 'y_off' then
+			return abs(tonumber(st:RoundToPixel(a)) - tonumber(st:RoundToPixel(b))) <= 1e-4
+		end
+		return false
+	end
+	if not a and not b then return true end
+	if key == 'frame' and (not a or a == 'UIParent') and (not b or b == 'UIParent') then return true end
+	return false
+end
+
+-- Every leaf that differs between two plain copies, as a path (a list of
+-- keys); loose compares with Equivalent.
+local function Changes(a, b, path, out, loose)
 	for key, value in pairs(a) do
 		local other = b[key]
 		path[#path + 1] = key
 		if type(value) == 'table' and type(other) == 'table' then
-			Changes(value, other, path, out)
+			Changes(value, other, path, out, loose)
+		elseif type(value) == 'table' and not other and loose and next(value) == nil then
+			-- an empty table against none
+		elseif loose then
+			if type(value) == 'table' or type(other) == 'table' or not Equivalent(key, value, other) then
+				out[#out + 1] = { unpack(path) }
+			end
 		elseif value ~= other then
 			out[#out + 1] = { unpack(path) }
 		end
@@ -77,7 +111,9 @@ local function Changes(a, b, path, out)
 		if a[key] == nil then
 			local at = { unpack(path) }
 			at[#at + 1] = key
-			out[#out + 1] = at
+			if not (loose and (type(value) ~= 'table' and Equivalent(key, nil, value) or (type(value) == 'table' and next(value) == nil))) then
+				out[#out + 1] = at
+			end
 		end
 	end
 	return out
@@ -89,6 +125,16 @@ local function Under(path, saved)
 		if tostring(path[i]) ~= tostring(saved[i]) then return false end
 	end
 	return true
+end
+
+-- Whether a changed profile path is a key the row's allow list names, or below one.
+local function Allowed(path, allowed)
+	if not allowed then return false end
+	local text = Joined(path)
+	for _, key in ipairs(allowed) do
+		if text == key or text:sub(1, #key + 1) == key .. '.' then return true end
+	end
+	return false
 end
 
 -- The tree and the path a row is read from: an item's menu rows are on
@@ -165,6 +211,22 @@ local function Probe(root, row, current)
 		local value = {}
 		for key, part in pairs(current) do value[key] = part end
 		value.x_off = (tonumber(value.x_off) or 0) + 3
+		value.point = value.point == 'TOPLEFT' and 'TOPRIGHT' or 'TOPLEFT'
+		if option.target == 'select' and option.unitKey then
+			-- Another choice of the anchor dropdown, as its own set takes it.
+			local now = OM.Get(root, row, 'relative_to')
+			for _, entry in ipairs(OM.Values(root, row)) do
+				if entry.key ~= now then
+					value.element, value.frame = nil, nil
+					if entry.key == option.nameKey then
+						value.frame = 'UIParent'
+					elseif entry.key ~= option.unitKey then
+						value.element = entry.key
+					end
+					break
+				end
+			end
+		end
 		return value
 	elseif rowType == 'font' then
 		return current == 'pixel' and 'normal' or 'pixel'
@@ -174,7 +236,7 @@ local function Probe(root, row, current)
 	return current
 end
 
-local function RoundTrip(root, row, label, problems)
+local function RoundTrip(root, row, label, allowed, problems)
 	local saved = SavedPath(root, row)
 	local function Errors(step)
 		for _, err in ipairs(take_errors()) do
@@ -188,14 +250,20 @@ local function RoundTrip(root, row, label, problems)
 	Errors('probe set')
 	if not ok then
 		problems[#problems + 1] = ('%s: its probe was not set: %s'):format(label, tostring(message))
+		OM.WriteValue(root, row, before)
+		Errors('restore')
 		return
+	end
+	if row.type == 'position' and not OM.SameValue('position', OM.ValueOf(root, row), probe,
+			{ relative = row.option.target == 'select' }) then
+		problems[#problems + 1] = ('%s: its set did not take the probe position (its anchor, point or offsets)'):format(label)
 	end
 	if not OM.DefaultDiffers(root, row) then
 		problems[#problems + 1] = ('%s: the probe set did not make it differ from its default'):format(label)
 	end
 	if saved then
 		for _, at in ipairs(Changes(snapshot, Plain(st.config.profile), {}, {})) do
-			if not Under(at, saved) then
+			if not Under(at, saved) and not Allowed(at, allowed) then
 				problems[#problems + 1] = ('%s: the probe changed the profile outside its saved path (%s): %s'):format(
 					label, table.concat(saved, '.'), table.concat(at, '.'))
 			end
@@ -212,6 +280,13 @@ local function RoundTrip(root, row, label, problems)
 		if found and not OM.SameValue(row.type, OM.ValueOf(root, row), OM.DefaultValueOf(root, row, default),
 				{ hasAlpha = OM.Member(root, row, 'hasAlpha'), relative = row.option.target == 'select' }) then
 			problems[#problems + 1] = ('%s: its reset did not save the default'):format(label)
+		end
+		-- The profile as it was before the probe, key for key.
+		for _, at in ipairs(Changes(snapshot, Plain(st.config.profile), {}, {}, true)) do
+			if not Allowed(at, allowed) then
+				problems[#problems + 1] = ('%s: after its reset the profile differs from before the probe: %s'):format(
+					label, table.concat(at, '.'))
+			end
 		end
 	end
 	-- Back as it was.
@@ -248,7 +323,7 @@ local function CheckRow(root, row, path, opts, problems)
 	end
 	-- A row that already differs (fresh = false) is not probed: its probe
 	-- value could be the default.
-	if source == 'derived' and opts.probe ~= false and not differs then RoundTrip(root, row, label, problems) end
+	if source == 'derived' and opts.probe ~= false and not differs then RoundTrip(root, row, label, opts.allow and opts.allow[Joined(path)], problems) end
 end
 
 local function IsValueRow(option)

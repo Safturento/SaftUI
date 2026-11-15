@@ -163,3 +163,79 @@ test('items, menus and picker controls are walked; the probe values reach every 
 	eq(p.color.r, 0.9, 'and the color')
 	eq(p.choice, 'one', 'and the select')
 end)
+
+test('allow: a known side effect of a set is let through, and only that one', function()
+	world()
+	local root = page(group({
+		saved = st.Config.SavedIn('t_'),
+		set = function(info, value)
+			st.config.profile.t_[info[#info]] = value
+			st.config.profile.side_ = (st.config.profile.side_ or 0) + 1 -- a set that also marks something else
+		end,
+		args = { a = { type = 'toggle', name = 'Marks', order = 1 } },
+	}))
+	local problems = R.problems(root, 'Page')
+	check(has(problems, 'outside its saved path'), 'without an allow it fails: ' .. table.concat(problems, '; '))
+	problems = R.problems(root, 'Page', { allow = { ['Page.box.a'] = { 'side_' } } })
+	check(not has(problems, 'outside its saved path'), 'with the key allowed for that row it passes: ' .. table.concat(problems, '; '))
+	root.Page.args.box.args.b = { type = 'toggle', name = 'Same side effect', order = 2 }
+	problems = R.problems(root, 'Page', { allow = { ['Page.box.a'] = { 'side_' } } })
+	check(has(problems, 'Page.box.b (toggle Same side effect)'), 'another row is not let through')
+	problems = R.problems(root, 'Page', { allow = { ['Page.box.a'] = { 'other_' } } })
+	check(has(problems, 'Page.box.a (toggle Marks)'), 'a different key is not the one allowed')
+end)
+
+test('a reset that leaves the profile changed beyond the row is a problem', function()
+	world()
+	local root = page(group({
+		saved = st.Config.SavedIn('t_'),
+		set = function(info, value)
+			st.config.profile.t_[info[#info]] = value
+			if value == st.defaults.t_[info[#info]] then st.config.profile.t_.stray = true end -- only a reset writes it
+		end,
+		args = { a = { type = 'toggle', name = 'Strays', order = 1 } },
+	}))
+	local problems = R.problems(root, 'Page')
+	check(has(problems, 'Page.box.a (toggle Strays)') and has(problems, 'after its reset'),
+		'the stray key is found after the reset: ' .. table.concat(problems, '; '))
+end)
+
+local function uf_row()
+	load_saftui('SaftUI-Unitframes/config/position.lua')
+	local unitframe = CreateFrame('Frame', 'WalkUnitFrame', UIParent)
+	unitframe.Health = CreateFrame('Frame', nil, unitframe)
+	unitframe.elements = { Health = true }
+	local part = CreateFrame('Frame', nil, unitframe)
+	part.unitframe = unitframe
+	local cfg = { position = { point = 'TOP', rel_point = 'TOP', element = false, frame = false, x_off = 0, y_off = 0 } }
+	st.defaults.pw_ = { position = { point = 'TOP', rel_point = 'TOP', x_off = 0, y_off = 0 } }
+	local parts = {}
+	local option = st.Config.generators.uf_element_position(1, function(k) return cfg.position[k] end,
+		function(k, v) parts[#parts + 1] = k; cfg.position[k] = v end, part)
+	option.saved = st.Config.SavedAt('pw_', 'position')
+	return page(option), cfg, parts, option
+end
+
+test('the probe of a unit frame part\'s Position moves its point and its anchor, not only x_off, and its reset is all or none', function()
+	world()
+	local root, cfg, parts = uf_row()
+	local problems = R.problems(root, 'Page')
+	eq(#problems, 0, 'a working Position passes: ' .. table.concat(problems, '; '))
+	local seen = {}
+	for _, part in ipairs(parts) do seen[part] = true end
+	check(seen.point and seen.x_off, 'the probe changed the point and x_off')
+	check(seen.element or seen.frame, 'and the anchor (' .. table.concat(parts, ',') .. ')')
+end)
+
+test('a unit frame part whose anchor can\'t be put back fails the walk', function()
+	world()
+	local root, cfg, parts, option = uf_row()
+	local set = option.set
+	-- A set that quietly ignores the anchor, as the bug did.
+	option.set = function(info, part, value)
+		if part == 'relative_to' or part == 'element' or part == 'frame' then return end
+		return set(info, part, value)
+	end
+	local problems = R.problems(root, 'Page')
+	check(#problems > 0, 'the walk finds it: ' .. table.concat(problems, '; '))
+end)

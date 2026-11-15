@@ -43,59 +43,73 @@ local TOLERANCE = 1e-4
 
 ------------------------------------------------------------------ st:DefaultAt
 
--- The scratch lists st:DefaultAt walks with: the tables AceDB merged into
--- one profile table, in the order that wins. Kept at file level so a lookup
--- makes no table; a lookup never calls out, so one pair is enough.
+-- The scratch lists a lookup walks with: the tables AceDB merged into one
+-- profile table, in the order they merge. Kept at file level so a lookup makes
+-- no table. st:DefaultAt (called from anywhere, a page's get among them) has
+-- one pair, the icon's compare (OM.DefaultDiffers, which calls the row's get
+-- between reads of the default) its own, so neither clobbers the other.
 local listA, listB = {}, {}
+local hotA, hotB = {}, {}
 
 --[[
-	The default of a saved path in st.defaults, as AceDB-3.0 fills a profile:
-	found, value (false when there is none), the value itself, never a copy.
-	AceDB merges, into a table at a key, the table's own default there and then
-	the '**' beside that key in its parent, so an own key beats the sibling '**',
-	which beats nothing; a key no merged table names takes the '**' or '*' of
-	the table (a non-table value is the default; a table only gives the tables
-	below it its defaults, so as the last key it is no default).
-	  DefaultAt('chat', 'font')                       'chat' > 'font'
-	  DefaultAt('unitframes', 'profiles', 'Healer', 'player', 'buffs', 'alpha')
-	      the element-level '**' alpha, not buffs' own '**' table
+	Walks st.defaults along the keys as AceDB-3.0's copyDefaults fills a profile,
+	with the two lists given. For each key, over the tables merged so far, in
+	order (copyDefaults' own):
+	  - the first table that names the key decides: a plain value is the default
+	    and later tables are ignored, a table is merged with every later table
+	    that names it;
+	  - a table that names the key as a table adds the '**' beside it, which
+	    AceDB applies to the child (copyDefaults(dest[k], src['**']));
+	  - a table that doesn't name the key but has a '**' or '*' table adds it
+	    when an earlier table made the child already ("handle already existing
+	    tables in the SV");
+	  - when no table names the key, the last merged table's '**' (or '*') gives
+	    it: a plain value is the default, a table is the table AceDB makes.
+	Returns 'leaf', value; or 'tables', count, list (the tables a table default
+	is merged from, in order: the walk's own scratch, valid until the next walk
+	with these lists); or nil for no default.
 ]]
-function st:DefaultAt(...)
+local function Resolve(from, to, ...)
 	local defaults = st.defaults
 	local n = select('#', ...)
-	if n == 0 or type(defaults) ~= 'table' then return false end
-	local from, to = listA, listB
+	if n == 0 or type(defaults) ~= 'table' then return nil end
 	from[1] = defaults
 	local count = 1
 	for i = 1, n do
 		local key = select(i, ...)
-		local last = i == n
-		local made = 0
+		local made, decided, leaf = 0, nil, nil
 		if key ~= nil and key ~= '*' and key ~= '**' then
 			for j = 1, count do
 				local source = from[j]
 				local value = source[key]
 				if value ~= nil then
-					if type(value) ~= 'table' then
-						if last then return true, value end
-						return false
+					if decided == nil then
+						if type(value) == 'table' then decided = 'table' else decided, leaf = 'leaf', value end
 					end
-					-- The key's own table, then its parent's '**', as AceDB's copyDefaults.
-					made = made + 1
-					to[made] = value
-					local sibling = source['**']
-					if type(sibling) == 'table' then
+					if decided == 'table' and type(value) == 'table' then
 						made = made + 1
-						to[made] = sibling
+						to[made] = value
+						local sibling = source['**']
+						if type(sibling) == 'table' then
+							made = made + 1
+							to[made] = sibling
+						end
 					end
+				elseif decided == 'table' then
+					local wild = source['**']
+					if type(wild) == 'table' then made = made + 1; to[made] = wild end
+					wild = source['*']
+					if type(wild) == 'table' then made = made + 1; to[made] = wild end
 				end
 			end
 		end
-		if made > 0 then
-			if last then return true, to[1] end
-		else
+		if decided == 'leaf' then
+			if i == n then return 'leaf', leaf end
+			return nil
+		end
+		if made == 0 then
 			-- No merged table names the key: the metatable AceDB left on the
-			-- table, the last merged table's '**' (or '*').
+			-- table, from the last merged table with a '**' or '*'.
 			local wild
 			for j = 1, count do
 				local source = from[j]
@@ -103,16 +117,87 @@ function st:DefaultAt(...)
 				if value == nil then value = source['*'] end
 				if value ~= nil then wild = value end
 			end
-			if wild == nil then return false end
+			if wild == nil then return nil end
 			if type(wild) ~= 'table' then
-				if last then return true, wild end
-				return false
+				if i == n then return 'leaf', wild end
+				return nil
 			end
-			if last then return false end
 			made = 1
 			to[1] = wild
 		end
 		from, to, count = to, from, made
+	end
+	return 'tables', count, from
+end
+
+-- A field of the merged tables Resolve listed, as the filled table holds it:
+-- the first table that names it, else the last wildcard's plain value (the
+-- metatable AceDB leaves). A table value is returned as it is.
+local function Field(list, count, name)
+	for j = 1, count do
+		local value = list[j][name]
+		if value ~= nil then return value end
+	end
+	local wild
+	for j = 1, count do
+		local source = list[j]
+		local value = source['**']
+		if value == nil then value = source['*'] end
+		if value ~= nil then wild = value end
+	end
+	if type(wild) ~= 'table' then return wild end
+end
+
+-- AceDB's copyDefaults on plain tables (no wildcard metatables: a wildcard
+-- only reaches the tables already in dest, as AceDB's own pass does).
+local function CopyDefaults(dest, source)
+	for key, value in pairs(source) do
+		if key == '*' or key == '**' then
+			if type(value) == 'table' then
+				for existing, child in pairs(dest) do
+					if rawget(source, existing) == nil and type(child) == 'table' then CopyDefaults(child, value) end
+				end
+			end
+		elseif type(value) == 'table' then
+			if rawget(dest, key) == nil then dest[key] = {} end
+			if type(dest[key]) == 'table' then
+				CopyDefaults(dest[key], value)
+				local sibling = source['**']
+				if type(sibling) == 'table' then CopyDefaults(dest[key], sibling) end
+			end
+		elseif rawget(dest, key) == nil then
+			dest[key] = value
+		end
+	end
+end
+
+-- The tables of a list merged into one new table, in AceDB's order.
+local function Merge(list, count)
+	local merged = {}
+	for j = 1, count do CopyDefaults(merged, list[j]) end
+	return merged
+end
+
+--[[
+	The default of a saved path in st.defaults, exactly what a fresh AceDB-3.0
+	profile holds there (tests/core/default_at_acedb_test.lua compares every
+	leaf and every table of plain values of the real defaults against a real
+	AceDB:New): found, value, and found is false when there is none.
+	A plain value is the value. A table is st.defaults' own table when one table
+	gives it, so copy it before writing; when several merge into it (an own
+	table and the '**' beside it, say a position with only some parts of its
+	own) it is a new merged table, as AceDB's, which nothing else holds.
+	  DefaultAt('chat', 'font')
+	  DefaultAt('unitframes', 'profiles', 'Healer', 'player', 'buffs', 'alpha')
+	      the element-level '**' alpha, not buffs' own '**' table
+	The wildcards (see Resolve) are AceDB's own rules.
+]]
+function st:DefaultAt(...)
+	local kind, a, list = Resolve(listA, listB, ...)
+	if kind == 'leaf' then return true, a end
+	if kind == 'tables' then
+		if a == 1 then return true, list[1] end
+		return true, Merge(list, a)
 	end
 	return false
 end
@@ -293,10 +378,10 @@ end
 local function SameFont(a, b)
 	if type(a) == 'string' and type(b) == 'string' then return a == b end
 	if type(a) ~= 'table' or type(b) ~= 'table' then return a == b end -- a key against a table always differs
-	local fa, fb = st:FontFields(a), st:FontFields(b)
-	return fa.font_name == fb.font_name and fa.font_outline == fb.font_outline
-		and SameNumber(fa.font_size, fb.font_size) and SameNumber(fa.spacing, fb.spacing)
-		and SameNumber(fa.shadow_offset[1], fb.shadow_offset[1]) and SameNumber(fa.shadow_offset[2], fb.shadow_offset[2])
+	-- Two typefaces by what they draw (st:FontValues: the same as st:FontFields, no table made).
+	local n1, s1, o1, x1, y1, p1 = st:FontValues(a)
+	local n2, s2, o2, x2, y2, p2 = st:FontValues(b)
+	return n1 == n2 and o1 == o2 and SameNumber(s1, s2) and SameNumber(p1, p2) and SameNumber(x1, x2) and SameNumber(y1, y2)
 end
 
 -- The offset as the position set stores it: a number rounded to the pixel.
@@ -461,9 +546,10 @@ function OM.DefaultValueOf(root, row, default)
 		if a == nil then a = 1 end
 		return { r, g, b, a }
 	elseif rowType == 'multiselect' then
+		-- Over the row's values only, as OM.ValueOf is, so the two compare key for key.
 		local value = {}
 		if type(default) == 'table' then
-			for key, on in pairs(default) do value[key] = on and true or false end
+			for _, entry in ipairs(OM.Values(root, row)) do value[entry.key] = default[entry.key] and true or false end
 		end
 		return value
 	elseif rowType == 'position' then
@@ -489,15 +575,50 @@ local NO_VALUE = {
 	execute = true, description = true, header = true, group = true, bagcategories = true, bagitems = true,
 }
 
-local function MoverFor(row)
+-- The group a row sits in, as the model walks to it.
+local function ParentOf(root, row)
+	local group = OptionsFor(root)
+	local path = row.path
+	for i = 1, #path - 1 do
+		group = OM.SubOption(group, path[i])
+		if not group then return nil end
+	end
+	return group
+end
+
+-- Whether no other Position of the group comes before the row's: by order, then
+-- key. A mover links to that one Position only, so a second Position in the
+-- group (a text's, an icon's) never resets the frame.
+local function IsFirstPosition(root, row)
+	local group = ParentOf(root, row)
+	local args = group and group.args
+	if type(args) ~= 'table' then return false end
+	local key = row.path[#row.path]
+	local order = row.option.order
+	if type(order) ~= 'number' then order = 100 end
+	for other, option in pairs(args) do
+		if other ~= key and type(option) == 'table' and option.type == 'position' then
+			local theirs = option.order
+			if type(theirs) ~= 'number' then theirs = 100 end
+			if theirs < order or (theirs == order and tostring(other) < tostring(key)) then return false end
+		end
+	end
+	return true
+end
+
+-- The registered mover the row's Position resets: the mover whose configPath
+-- is the row's group, and the row the first Position of that group.
+local function MoverFor(root, row)
 	local EM = st.EditModeFrames
 	local path = row.path
 	if not (EM and EM.MoverAt and path) then return nil end
-	return EM:MoverAt(path, #path - 1)
+	local mover = EM:MoverAt(path, #path - 1)
+	if mover and IsFirstPosition(root, row) then return mover end
+	return nil
 end
 
--- The row's source, and for a derived one the node that gives its get and its
--- handler (info is filled for the row). See the header.
+-- The row's source and, for a derived row, the node that gives its get and its
+-- handler (info is filled for the row); for a mover row, the mover. See the header.
 local function Classify(root, row)
 	local option = row.option
 	local rowType = RowType(row)
@@ -505,7 +626,10 @@ local function Classify(root, row)
 	local share = option.share
 	if type(share) == 'table' and share.own ~= nil then return 'share' end
 	if type(option.default) == 'table' then return 'default' end
-	if rowType == 'position' and MoverFor(row) then return 'mover' end
+	if rowType == 'position' then
+		local mover = MoverFor(root, row)
+		if mover then return 'mover', mover end
+	end
 	local node, handler = Locate(root, row)
 	if node and node.get == false then return 'none' end
 	if node and type(node.saved) == 'function' then return 'derived', node, handler end
@@ -523,14 +647,18 @@ function OM.DefaultSource(root, row)
 	return (Classify(root, row))
 end
 
--- Whether the saved value differs from the default, node's get against the
--- default at the saved path. Allocates nothing for a toggle, item, range,
--- select, input, keybinding, color, multiselect, position or a font key.
-local function DerivedDiffers(root, row, node, handler)
-	local found, default = st:DefaultAt(node.saved(info))
-	if not found then return false end
-	local option = row.option
-	local rowType = RowType(row)
+-- The member of the option as the model reads it, called with info (the scratch
+-- one) when it is a function or a handler's method; no table made.
+local function Member(option, name, handler)
+	local member = option[name]
+	if type(member) == 'function' then return member(info) end
+	if type(member) == 'string' and handler and handler[member] then return handler[member](handler, info) end
+	return member
+end
+
+-- Whether a plain default differs from the saved value (toggle, item, range,
+-- select, input, keybinding, font key; and what no type claims, a table).
+local function LeafDiffers(rowType, node, handler, default)
 	if rowType == 'toggle' or rowType == 'item' then
 		return (not CallGet(node, handler)) ~= (not default)
 	elseif rowType == 'range' or rowType == 'select' then
@@ -541,37 +669,58 @@ local function DerivedDiffers(root, row, node, handler)
 		return (CallGet(node, handler) or '') ~= (default or '')
 	elseif rowType == 'font' then
 		return not SameFont((CallGet(node, handler)), default)
-	elseif rowType == 'color' then
-		if type(default) ~= 'table' then return false end
-		local hasAlpha = option.hasAlpha
-		if type(hasAlpha) == 'function' then hasAlpha = hasAlpha(info) end
+	end
+	return not SameDeep(CallGet(node, handler), default)
+end
+
+-- Whether the saved value differs from the default at the saved path: node's
+-- get against the default, read part by part from the tables AceDB merges (no
+-- table made for any type but a merged table nothing here claims).
+local function DerivedDiffers(root, row, node, handler)
+	local kind, a, list = Resolve(hotA, hotB, node.saved(info))
+	if not kind then return false end
+	local rowType = RowType(row)
+	if kind == 'leaf' then
+		if rowType == 'color' or rowType == 'multiselect' or rowType == 'position' then return false end
+		return LeafDiffers(rowType, node, handler, a)
+	end
+	local count, option = a, row.option
+	if rowType == 'color' then
+		local hasAlpha = Member(option, 'hasAlpha', handler)
 		local r1, g1, b1, a1 = CallGet(node, handler)
-		local r2, g2, b2, a2 = RGBA(default)
+		local r2, g2, b2, a2
+		if Field(list, count, 'r') ~= nil then
+			r2, g2, b2, a2 = Field(list, count, 'r'), Field(list, count, 'g'), Field(list, count, 'b'), Field(list, count, 'a')
+		else
+			r2, g2, b2, a2 = Field(list, count, 1), Field(list, count, 2), Field(list, count, 3), Field(list, count, 4)
+		end
 		return not SameRGBA(r1, g1, b1, a1, r2, g2, b2, a2, hasAlpha)
 	elseif rowType == 'multiselect' then
-		local values = option.values
-		if type(values) == 'function' then values = values(info) end
-		if type(values) ~= 'table' or type(default) ~= 'table' then return false end
+		local values = Member(option, 'values', handler)
+		if type(values) ~= 'table' then return false end
 		for key in pairs(values) do
-			if (not CallGet(node, handler, key)) ~= (not default[key]) then return true end
+			if (not CallGet(node, handler, key)) ~= (not Field(list, count, key)) then return true end
 		end
 		return false
 	elseif rowType == 'position' then
-		if type(default) ~= 'table' then return false end
 		local hasFrame, hasElement = PartsOf(option)
 		local point = CallGet(node, handler, 'point')
-		if point ~= default.point then return true end
-		if not SamePart('rel_point', CallGet(node, handler, 'rel_point'), default.rel_point, point, default.point) then
+		if point ~= Field(list, count, 'point') then return true end
+		local defaultPoint = Field(list, count, 'point')
+		if not SamePart('rel_point', CallGet(node, handler, 'rel_point'), Field(list, count, 'rel_point'), point, defaultPoint) then
 			return true
 		end
-		if hasElement and not SamePart('element', CallGet(node, handler, 'element'), default.element) then return true end
-		if hasFrame and not SamePart('frame', CallGet(node, handler, 'frame'), default.frame, nil, nil, hasElement) then
+		if hasElement and not SamePart('element', CallGet(node, handler, 'element'), Field(list, count, 'element')) then return true end
+		if hasFrame and not SamePart('frame', CallGet(node, handler, 'frame'), Field(list, count, 'frame'), nil, nil, hasElement) then
 			return true
 		end
-		return not SamePart('x_off', CallGet(node, handler, 'x_off'), default.x_off)
-			or not SamePart('y_off', CallGet(node, handler, 'y_off'), default.y_off)
+		return not SamePart('x_off', CallGet(node, handler, 'x_off'), Field(list, count, 'x_off'))
+			or not SamePart('y_off', CallGet(node, handler, 'y_off'), Field(list, count, 'y_off'))
+	elseif rowType == 'font' and count == 1 then
+		return not SameFont((CallGet(node, handler)), list[1])
 	end
-	return not SameDeep(CallGet(node, handler), default)
+	-- Anything else: a table, merged when more than one table gives it.
+	return LeafDiffers(rowType, node, handler, count == 1 and list[1] or Merge(list, count))
 end
 
 --[[
@@ -584,10 +733,7 @@ function OM.DefaultDiffers(root, row)
 	local source, node, handler = Classify(root, row)
 	if source == 'derived' then return DerivedDiffers(root, row, node, handler) and true or false end
 	if source == 'default' then return OM.HandDiffers(root, row) end
-	if source == 'mover' then
-		local mover = MoverFor(row)
-		return mover ~= nil and (st.EditModeFrames:CanReset(mover) and true or false)
-	end
+	if source == 'mover' then return st.EditModeFrames:CanReset(node, true) and true or false end
 	return false
 end
 
@@ -615,9 +761,8 @@ function OM.SourceState(root, row)
 		return state
 	elseif source == 'mover' then
 		local EM = st.EditModeFrames
-		local mover = MoverFor(row)
-		local default = mover and EM:GetDefaultPosition(mover)
-		local state = { differs = mover ~= nil and (EM:CanReset(mover) and true or false) }
+		local default = EM:GetDefaultPosition(node)
+		local state = { differs = EM:CanReset(node, true) and true or false }
 		if default then state.value = { n = 1, default } end
 		return state
 	end
@@ -634,32 +779,58 @@ local function SetPart(root, row, ...)
 	return true
 end
 
-local function WritePosition(root, row, value)
-	local hasFrame, hasElement = PartsOf(row.option)
-	local function Write(part, wanted, write)
-		local now = OM.Get(root, row, part)
-		local same
-		if part == 'rel_point' then
-			same = (now or OM.Get(root, row, 'point')) == (wanted or value.point)
-		elseif part == 'frame' then
-			same = SamePart('frame', now, wanted, nil, nil, hasElement)
-		else
-			same = SamePart(part, now, wanted)
+--[[
+	The writes that put a position row at value (OM.DefaultValueOf's shape), as a
+	list of { part, value } in the order point, rel_point, the anchor, x_off, y_off,
+	and only the parts that differ. A row with an element dropdown (target
+	'select', a unit frame part) puts its anchor back through its own
+	'relative_to' part, as its dropdown does (the row's set clears and sets the
+	element and the frame itself), then the frame part for a Global frame's name:
+	never the element or the frame part on its own, whose validate refuses the
+	cleared frame. A row with a name box (target 'name') writes the frame part.
+]]
+local function PositionWrites(root, row, value)
+	local option = row.option
+	local hasFrame, hasElement = PartsOf(option)
+	local writes = {}
+	local function Add(part, wanted) writes[#writes + 1] = { part, wanted } end
+	local point = OM.Get(root, row, 'point')
+	if point ~= value.point then Add('point', value.point) end
+	local relPoint = value.rel_point or value.point
+	if (OM.Get(root, row, 'rel_point') or point) ~= relPoint then Add('rel_point', relPoint) end
+	if hasElement and option.unitKey then
+		local wanted = value.element or (value.frame and option.nameKey) or option.unitKey
+		local changed = OM.Get(root, row, 'relative_to') ~= wanted
+		if changed then Add('relative_to', wanted) end
+		if wanted == option.nameKey then
+			-- Choosing Global frame sets the frame to UIParent; a named one comes after it.
+			local now = changed and 'UIParent' or OM.Get(root, row, 'frame')
+			if not SamePart('frame', now, value.frame, nil, nil, true) then Add('frame', value.frame) end
 		end
-		if same then return true end
-		return SetPart(root, row, part, write)
+	elseif hasElement then
+		if not SamePart('element', OM.Get(root, row, 'element'), value.element) then Add('element', value.element or false) end
+		if not SamePart('frame', OM.Get(root, row, 'frame'), value.frame, nil, nil, true) then Add('frame', value.frame or false) end
+	elseif hasFrame then
+		if not SamePart('frame', OM.Get(root, row, 'frame'), value.frame) then Add('frame', value.frame or 'UIParent') end
 	end
-	local ok, message = Write('point', value.point, value.point)
-	if ok then ok, message = Write('rel_point', value.rel_point, value.rel_point or value.point) end
-	if ok and hasElement then ok, message = Write('element', value.element, value.element or false) end
-	if ok and hasFrame then
-		local frame = value.frame
-		if not frame then frame = (not hasElement) and 'UIParent' or false end
-		ok, message = Write('frame', value.frame, frame)
+	if not SamePart('x_off', OM.Get(root, row, 'x_off'), value.x_off) then Add('x_off', value.x_off) end
+	if not SamePart('y_off', OM.Get(root, row, 'y_off'), value.y_off) then Add('y_off', value.y_off) end
+	return writes
+end
+
+-- All parts or none: every write is validated first (a refused one stops the
+-- reset before anything is written), then each is set.
+local function WritePosition(root, row, value)
+	local writes = PositionWrites(root, row, value)
+	for _, write in ipairs(writes) do
+		local ok, message = OM.Validate(root, row, write[1], write[2])
+		if not ok then return false, message end
 	end
-	if ok then ok, message = Write('x_off', value.x_off, value.x_off) end
-	if ok then ok, message = Write('y_off', value.y_off, value.y_off) end
-	return ok, message
+	for _, write in ipairs(writes) do
+		local ok, message = SetPart(root, row, write[1], write[2])
+		if not ok then return false, message end
+	end
+	return true
 end
 
 --[[
@@ -667,8 +838,8 @@ end
 	so validate runs and a failure stops it: ok, message (false and the
 	validation's message, or false alone for a set that errored). An input's is
 	text, a color's r, g, b, a, a multiselect calls set only for the keys that
-	differ, a position sets only the parts that differ in the order point,
-	rel_point, element, frame, x_off, y_off. Nothing is cleared.
+	differ, a position sets only the parts that differ (all or none: see
+	PositionWrites). Nothing is cleared.
 ]]
 function OM.WriteValue(root, row, value)
 	local rowType = RowType(row)
@@ -698,10 +869,7 @@ end
 function OM.SourceReset(root, row)
 	local source, node = Classify(root, row)
 	if source == 'mover' then
-		local EM = st.EditModeFrames
-		local mover = MoverFor(row)
-		if not mover then return false end
-		return EM:Reset(mover)
+		return st.EditModeFrames:Reset(node)
 	elseif source == 'derived' then
 		local found, default = st:DefaultAt(node.saved(info))
 		if not found then return false, (row.name or tostring(row.key)) .. ' has no default.' end

@@ -251,6 +251,15 @@ function st:RegisterConfigMover(frame, spec)
 		end
 	end
 	def.frame = frame
+	if spec.defaults ~= nil then
+		-- The same default without the copy, for a caller that only compares it
+		-- (EM:PeekDefaultPosition: the options kit's icon check, every render).
+		local defaults = spec.defaults
+		def.peekDefaultPosition = function()
+			local d = defaults()
+			return d and d.position or nil
+		end
+	end
 	def.getPosition = function() return getConfig().position end
 	def.setPosition = function(position) getConfig().position = position end
 	return st:RegisterMover(spec.key, def)
@@ -325,6 +334,19 @@ end
 -- Where Reset puts the mover's frame: a fresh deep copy on every call, so a
 -- caller's writes never reach st.defaults. Nil when it has no default (see
 -- def.noDefaultReason for why).
+-- Where Reset would put the mover's frame, without a copy: the table the
+-- registration holds (it may be st.defaults' own, or a fresh one), which a
+-- caller only reads. For a check made on every render (EM:CanReset(mover, true)),
+-- which must make no table. Nil when there is no default.
+function EM:PeekDefaultPosition(mover)
+	local def = mover.def
+	local get = def.peekDefaultPosition or def.getDefaultPosition
+	if not get then return nil end
+	local ok, position = xpcall(get, geterrorhandler())
+	if not ok or type(position) ~= 'table' then return nil end
+	return position
+end
+
 function EM:GetDefaultPosition(mover)
 	local get = mover.def.getDefaultPosition
 	if not get then return nil end

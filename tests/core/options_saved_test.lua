@@ -106,7 +106,8 @@ test('DefaultAt follows AceDB: a sibling **, a table **, a *', function()
 	check(found and value == true, "a's own '**' for a key nothing names")
 	found, value = at('t_', 'star', 'q')
 	check(found and value == 5, "a '*'")
-	eq(select(1, at('t_', 'nope')), false, "a '**' table is not a default for a key")
+	found, value = at('t_', 'nope')
+	check(found and type(value) == 'table' and value.y == 2 and value.x == 9, "a key nothing names is the '**' table AceDB makes for it")
 	eq(select(1, at('t_', 'a', 'x', 'too', 'deep')), false, 'a path below a value is none')
 	eq(select(1, at()), false, 'no keys is none')
 
@@ -475,4 +476,260 @@ test('asking whether a row differs allocates nothing, ten thousand times, on eve
 		collectgarbage('restart')
 		check(grown < 20, each.type .. ' at its default makes no table per ask (grew ' .. grown .. ' KB)')
 	end
+end)
+
+------------------------------------------------------------------ DefaultAt, merged tables (C1)
+
+test('DefaultAt: a partial own table gets the rest from the sibling **, as AceDB merges it', function()
+	st.defaults.mg_ = { a = { position = { point = 'TOP', x_off = 0.5 } }, ['**'] = { position = { point = 'CENTER', rel_point = 'TOP', y_off = 0, frame = 'UIParent' } } }
+	local found, value = st:DefaultAt('mg_', 'a', 'position')
+	check(found and value.point == 'TOP' and value.x_off == 0.5, 'its own parts win')
+	check(value.rel_point == 'TOP' and value.y_off == 0 and value.frame == 'UIParent', "and the sibling's fill what it lacks")
+	check(value ~= st.defaults.mg_.a.position, 'a merged table is a copy: writing it never reaches st.defaults')
+	value.x_off = 99
+	eq(st.defaults.mg_.a.position.x_off, 0.5, 'st.defaults is untouched')
+	local single = { point = 'TOP' }
+	st.defaults.mg_.b = { position = single }
+	st.defaults.mg_.b['**'] = nil
+	st.defaults.mg_['**'] = nil
+	found, value = st:DefaultAt('mg_', 'b', 'position')
+	check(found and value == single, 'one table alone is the table itself')
+end)
+
+test('DefaultAt: the first plain value of a field wins, a table beats a later plain value, the existing-tables pass', function()
+	st.defaults.mp_ = { a = { k = { x = 1 } }, ['**'] = { k = 5 } }
+	local found, value = st:DefaultAt('mp_', 'a', 'k', 'x')
+	check(found and value == 1, 'an own table beats a later plain value')
+	st.defaults.me_ = { only = { thing = { y = 1 } }, ['**'] = { thing = { z = 2 } } }
+	found, value = st:DefaultAt('me_', 'only', 'thing', 'z')
+	check(found and value == 2, "a sibling '**' is applied to a table an earlier candidate made")
+	st.defaults.mw_ = { ['**'] = { first = true }, a = {} }
+	st.defaults.mw_.a['**'] = { second = true }
+	found, value = st:DefaultAt('mw_', 'a', 'x', 'second')
+	check(found and value == true, "the last merged table's wildcard wins for a key nothing names")
+end)
+
+------------------------------------------------------------------ the compares agree (I4)
+
+local function matrix(rowType, opts, cases)
+	-- Each case { saved, default }: the hot path and OM.SameValue say the same.
+	local store = {}
+	local option = { type = rowType, name = 'M', order = 1 }
+	for k, v in pairs(opts or {}) do option[k] = v end
+	option.get = function(info, a)
+		local v = store.value
+		if rowType == 'color' then
+			if type(v) ~= 'table' then return v end
+			if v.r ~= nil then return v.r, v.g, v.b, v.a end
+			return v[1], v[2], v[3], v[4]
+		elseif rowType == 'multiselect' or rowType == 'position' then
+			return v[a]
+		end
+		return v
+	end
+	option.set = function() end
+	option.saved = st.Config.SavedAt('mx_', 'value')
+	local root = { Page = { type = 'group', name = 'Page', args = { m = option } } }
+	local row = new_row(root, 'Page', 'm')
+	local bad = {}
+	for i, case in ipairs(cases) do
+		store.value = case[1]
+		st.defaults.mx_ = { value = case[2] }
+		local default = case[2]
+		local differs = OM.DefaultDiffers(root, row)
+		local same = OM.SameValue(rowType, OM.ValueOf(root, row), OM.DefaultValueOf(root, row, default),
+			{ hasAlpha = OM.Member(root, row, 'hasAlpha'), relative = option.target == 'select' })
+		if differs ~= (not same) then bad[#bad + 1] = i end
+		check(differs == (not same), ('%s case %d: DefaultDiffers %s, SameValue %s'):format(rowType, i, tostring(differs), tostring(same)))
+	end
+	return bad
+end
+
+test('the icon\'s compare and OM.SameValue say the same, type by type', function()
+	matrix('toggle', nil, { { nil, false }, { false, true }, { true, true }, { false, false }, { nil, true }, { true, false } })
+	matrix('range', nil, { { 0.30000001, 0.3 }, { 0.3, 0.31 }, { 0.3, 0.3 }, { 0.3, 0.30009 } })
+	matrix('select', { values = { a = 'A', b = 'B' } }, { { 'a', 'a' }, { 'a', 'b' }, { 2, 2.00001 }, { 2, 3 } })
+	matrix('input', nil, { { '200', 200 }, { 'a', 'A' }, { nil, '' }, { 200, '200' }, { 'x', 'x' }, { '', 'x' }, { 'abc', 5 } })
+	matrix('keybinding', nil, { { nil, '' }, { 'F', '' }, { '', '' }, { 'F', 'F' }, { '', 'F' } })
+	local colors = { { { 1, 0, 0 }, { 1, 0, 0, 1 } }, { { 1, 0, 0, 0.5 }, { 1, 0, 0, 1 } }, { { 1, 0, 0, 0.5 }, { 1, 0, 0, 0.5 + 0.5 / 255 } },
+		{ { r = 1, g = 0, b = 0 }, { 1, 0, 0 } }, { { 1, 0, 0 }, { 0, 0, 0 } }, { { 0.5, 0.5, 0.5 }, { r = 0.5, g = 0.5, b = 0.5, a = 1 } } }
+	matrix('color', nil, colors)
+	matrix('color', { hasAlpha = true }, colors)
+	matrix('color', { hasAlpha = function() return true end }, colors)
+	matrix('color', { hasAlpha = function() return false end }, colors)
+	matrix('multiselect', { values = { a = 'A', b = 'B' } }, {
+		{ { a = true }, { a = true, b = false } }, { { a = true }, { a = true, b = true } }, { {}, {} },
+		{ { z = true }, {} }, { { a = true, z = true }, { a = true } }, { { a = false }, {} } })
+	local pos = { point = 'TOP', rel_point = 'TOP', frame = 'UIParent', x_off = 0.5, y_off = 0 }
+	local function with(change)
+		local copy = {}
+		for k, v in pairs(pos) do copy[k] = v end
+		for k, v in pairs(change) do if v == '__nil' then copy[k] = nil else copy[k] = v end end
+		return copy
+	end
+	local positions = { { pos, pos }, { with({ point = 'BOTTOM' }), pos }, { with({ rel_point = '__nil' }), pos },
+		{ with({ rel_point = 'BOTTOM' }), pos }, { with({ frame = '__nil' }), pos }, { with({ frame = 'Foo' }), pos },
+		{ with({ x_off = 7 }), pos }, { with({ x_off = '0.5' }), pos }, { with({ y_off = 3 }), pos }, { with({ y_off = '__nil' }), pos },
+		{ with({ element = 'Health' }), pos }, { with({ element = false }), pos }, { with({ frame = false }), pos } }
+	matrix('position', nil, positions)
+	matrix('position', { target = 'name' }, positions)
+	matrix('position', { target = 'select' }, positions)
+	local face = { font_name = 'Colus', font_size = 12 }
+	matrix('font', nil, { { 'pixel', 'pixel' }, { 'pixel', 'normal' }, { 'pixel', face }, { face, 'pixel' }, { face, { font_name = 'Colus', font_size = 12 } },
+		{ face, { font_name = 'Colus', font_size = 13 } } })
+end)
+
+------------------------------------------------------------------ a unit frame part's Position (I1)
+
+local function uf_position_world()
+	load_saftui('SaftUI-Unitframes/config/position.lua')
+	local unitframe = CreateFrame('Frame', 'KitUnitFrame', UIParent)
+	unitframe.Health, unitframe.Castbar = CreateFrame('Frame', nil, unitframe), CreateFrame('Frame', nil, unitframe)
+	unitframe.elements = { Health = true, Castbar = true }
+	local part = CreateFrame('Frame', nil, unitframe)
+	part.unitframe = unitframe
+	CreateFrame('Frame', 'KitTypedFrame', UIParent)
+	local cfg = { position = { point = 'TOP', rel_point = 'TOP', element = false, frame = false, x_off = 0, y_off = 0 } }
+	local option = generators.uf_element_position(1, function(k) return cfg.position[k] end,
+		function(k, v) cfg.position[k] = v end, part)
+	option.saved = st.Config.SavedAt('pv_', 'position')
+	local root = { Page = { type = 'group', name = 'Page', args = { pos = option } } }
+	return root, new_row(root, 'Page', 'pos'), cfg
+end
+
+local ANCHORS = {
+	unit = {}, element = { element = 'Health' }, global = { frame = 'UIParent' }, typed = { frame = 'KitTypedFrame' },
+}
+local function anchored(cfg, anchor)
+	cfg.position.element, cfg.position.frame = anchor.element or false, anchor.frame or false
+end
+
+test('a unit frame part\'s Position resets from and to every anchor: the unit frame, an element, Global frame, a typed frame', function()
+	local root, row, cfg = uf_position_world()
+	for from, a in pairs(ANCHORS) do
+		for to, b in pairs(ANCHORS) do
+			st.defaults.pv_ = { position = { point = 'BOTTOM', rel_point = 'BOTTOM', element = b.element, frame = b.frame, x_off = 4, y_off = 5 } }
+			cfg.position = { point = 'TOP', rel_point = 'TOP', x_off = 0, y_off = 0 }
+			anchored(cfg, a)
+			local label = from .. ' -> ' .. to
+			check(OM.DefaultDiffers(root, row), label .. ': it differs')
+			local ok, message = OM.DefaultReset(root, row)
+			check(ok == true, label .. ': the reset ran (' .. tostring(message) .. ')')
+			check(not OM.DefaultDiffers(root, row), label .. ': the icon is gone')
+			eq(cfg.position.element or false, b.element or false, label .. ': element')
+			eq(cfg.position.frame or false, b.frame or false, label .. ': frame')
+			eq(cfg.position.point .. cfg.position.x_off, 'BOTTOM4', label .. ': the rest')
+		end
+	end
+end)
+
+test('a refused anchor writes nothing: all parts or none', function()
+	local root, row, cfg = uf_position_world()
+	st.defaults.pv_ = { position = { point = 'BOTTOM', rel_point = 'BOTTOM', frame = 'NoSuchFrameAnywhere', x_off = 4, y_off = 5 } }
+	cfg.position = { point = 'TOP', rel_point = 'TOP', element = 'Health', frame = false, x_off = 0, y_off = 0 }
+	local ok, message = OM.DefaultReset(root, row)
+	check(ok == false and message ~= nil, 'the reset fails with a message: ' .. tostring(message))
+	eq(cfg.position.point .. tostring(cfg.position.element) .. tostring(cfg.position.frame) .. cfg.position.x_off, 'TOPHealthfalse0', 'nothing was written, not the point, the anchor or the offset')
+	check(OM.DefaultDiffers(root, row), 'the icon stays')
+end)
+
+test('the tooltip names what a unit frame part is anchored to', function()
+	local root, row = uf_position_world()
+	local function words(position)
+		st.defaults.pv_ = { position = position }
+		local state = OM.DefaultState(root, row)
+		local EM = st.EditModeFrames
+		return state, state and state.value and state.value[1]
+	end
+	words({ point = 'RIGHT', rel_point = 'RIGHT', element = 'Health', x_off = -7, y_off = -1 })
+	local OB = st.OptionsBody
+	check(OB.DefaultWords ~= nil, 'optionsshare exposes the words for the tests')
+	eq(OB.DefaultWords(root, row, OM.DefaultState(root, row)), 'Right of Health: -7, -1', 'an element')
+	words({ point = 'BOTTOM', rel_point = 'BOTTOM', x_off = 0, y_off = 0 })
+	eq(OB.DefaultWords(root, row, OM.DefaultState(root, row)), 'Bottom of the unit frame: 0, 0', 'the unit frame')
+	words({ point = 'TOP', rel_point = 'TOP', frame = 'UIParent', x_off = 1, y_off = 2 })
+	eq(OB.DefaultWords(root, row, OM.DefaultState(root, row)), 'Top of the screen: 1, 2', 'the screen')
+	words({ point = 'TOP', rel_point = 'TOP', frame = 'KitTypedFrame', x_off = 1, y_off = 2 })
+	eq(OB.DefaultWords(root, row, OM.DefaultState(root, row)), 'Top of KitTypedFrame: 1, 2', 'a typed frame')
+end)
+
+------------------------------------------------------------------ cost, round two (I2 nits)
+
+test('no table per ask for a mover row, a typeface compare or a merged position; one movers scan per ask', function()
+	st.defaults.cm_ = { position = { point = 'CENTER', rel_point = 'CENTER', frame = 'UIParent', x_off = 0, y_off = 0 } }
+	local frame = CreateFrame('Frame', 'KitCostMover', UIParent)
+	frame:SetSize(100, 50)
+	local cfg = { position = { point = 'CENTER', rel_point = 'CENTER', frame = 'UIParent', x_off = 5, y_off = 0 } }
+	st:RegisterConfigMover(frame, { key = 'sv_cost', label = 'Cost', config = function() return cfg end, apply = function() end,
+		configPath = { 'Page', 'general' }, defaults = function() return st.defaults.cm_ end })
+	local root = { Page = { type = 'group', name = 'Page', args = { general = { type = 'group', name = 'General', args = {
+		position = generators.position(1, true, function(part) return cfg.position[part] end, function(part, value) cfg.position[part] = value end),
+	} } } } }
+	local row = new_row(root, 'Page', 'general', 'position')
+	local scans = 0
+	local at = EM.MoverAt
+	EM.MoverAt = function(...) scans = scans + 1; return at(...) end
+	check(OM.DefaultDiffers(root, row), 'the mover row differs')
+	EM.MoverAt = at
+	eq(scans, 1, 'one scan of the movers per ask')
+	local function grown(fn)
+		collectgarbage(); collectgarbage('stop')
+		local before = collectgarbage('count')
+		for _ = 1, 10000 do fn() end
+		local g = collectgarbage('count') - before
+		collectgarbage('restart')
+		return g
+	end
+	local g = grown(function() OM.DefaultDiffers(root, row) end)
+	check(g < 20, 'a mover row makes no table per ask (grew ' .. g .. ' KB)')
+	EM.movers.sv_cost = nil
+
+	-- A typeface compare.
+	local store = { font = { font_name = 'Colus', font_size = 14 } }
+	st.defaults.ft_ = { font = { font_name = 'Colus', font_size = 12 } }
+	local froot = { Page = { type = 'group', name = 'Page', args = { f = { type = 'font', name = 'F', order = 1,
+		get = function() return store.font end, set = function() end, saved = st.Config.SavedAt('ft_', 'font') } } } }
+	local frow = new_row(froot, 'Page', 'f')
+	check(OM.DefaultDiffers(froot, frow), 'a typeface of another size differs')
+	g = grown(function() OM.DefaultDiffers(froot, frow) end)
+	check(g < 20, 'a typeface compare makes no table per ask (grew ' .. g .. ' KB)')
+
+	-- A position whose default is merged from two tables.
+	st.defaults.mg_ = { a = { position = { point = 'TOP', x_off = 0.5 } }, ['**'] = { position = { rel_point = 'TOP', y_off = 0, frame = 'UIParent' } } }
+	local pos = { point = 'TOP', rel_point = 'TOP', frame = 'UIParent', x_off = 9, y_off = 0 }
+	local proot = { Page = { type = 'group', name = 'Page', args = { p = generators.position(1, true, function(part) return pos[part] end,
+		function(part, value) pos[part] = value end, nil, nil, 'Position', st.Config.SavedAt('mg_', 'a', 'position')) } } }
+	local prow = new_row(proot, 'Page', 'p')
+	check(OM.DefaultDiffers(proot, prow), 'a merged default is compared part by part')
+	pos.x_off = 0.5
+	check(not OM.DefaultDiffers(proot, prow), 'and the same when it is')
+	g = grown(function() OM.DefaultDiffers(proot, prow) end)
+	check(g < 20, 'a merged position makes no table per ask (grew ' .. g .. ' KB)')
+end)
+
+------------------------------------------------------------------ which Position is the mover's (M1, M7)
+
+test('a mover links to the first Position in its group only; a hand default still wins', function()
+	local frame = CreateFrame('Frame', 'KitLinkMover', UIParent)
+	local cfg = { position = { point = 'CENTER', rel_point = 'CENTER', frame = 'UIParent', x_off = 5, y_off = 0 } }
+	st:RegisterConfigMover(frame, { key = 'sv_link', label = 'Link', config = function() return cfg end, apply = function() end,
+		configPath = { 'Page', 'general' }, getDefaultPosition = function() return { point = 'CENTER', rel_point = 'CENTER', frame = 'UIParent', x_off = 0, y_off = 0 } end })
+	local function pos(order, name) return generators.position(order, true, function(part) return cfg.position[part] end,
+		function(part, value) cfg.position[part] = value end, nil, nil, name) end
+	local second = pos(1001, 'Text position')
+	local hand = pos(1002, 'Hand position')
+	hand.default = { differs = function() return false end, reset = function() end }
+	local root = { Page = { type = 'group', name = 'Page', args = { general = { type = 'group', name = 'General', args = {
+		position = pos(1000, 'Position'), textpos = second, handpos = hand } } } } }
+	local function source(key) return OM.DefaultSource(root, new_row(root, 'Page', 'general', key)) end
+	eq(source('position'), 'mover', 'the first Position of the group is the mover\'s')
+	eq(source('textpos'), nil, 'a second one is not (it has no source of its own)')
+	eq(source('handpos'), 'default', 'a hand default wins over the mover link')
+	root.Page.args.general.args.position.default = { differs = function() return false end, reset = function() end }
+	eq(source('position'), 'default', 'on the first too')
+	root.Page.args.general.args.position.default = nil
+	root.Page.args.general.args.handpos.order = 10
+	eq(source('position'), nil, 'the link is to the first Position by order: with another before it, this one is not the mover\'s')
+	eq(source('handpos'), 'default', 'and that one keeps its hand default')
+	EM.movers.sv_link = nil
 end)

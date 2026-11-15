@@ -893,3 +893,66 @@ test('the derived icons and the titled row\'s sit on whole pixels, under Thick, 
 		end)
 	end
 end)
+
+test('a derived row\'s icon follows a drag: Body:Refresh places it for every row with a source, and takes it back', function()
+	in_look('thick', function()
+		derived_reset()
+		local body, by = draw(DerivedPage())
+		check(not shown(by.range), 'at its default: none')
+		dv.range = 0.9 -- what a drag of another row's preview does to this one
+		body:Refresh()
+		check(shown(by.range), 'after Refresh the derived row shows its icon')
+		dv.range = 0.25
+		body:Refresh()
+		check(not shown(by.range), 'and loses it at its default')
+		dv.position = { point = 'CENTER', rel_point = 'CENTER', frame = 'UIParent', x_off = 10, y_off = 10 }
+		body:Refresh()
+		check(shown(by.position), 'a position row too')
+		body:Release()
+
+		-- A mover's Position.
+		local frame = CreateFrame('Frame', 'DragMoverFrame', UIParent)
+		local cfg = { position = { point = 'CENTER', rel_point = 'CENTER', frame = 'UIParent', x_off = 0, y_off = 0 } }
+		st:RegisterConfigMover(frame, { key = 'dv_drag', label = 'Drag', config = function() return cfg end, apply = function() end,
+			configPath = { 'page', 'general' }, getDefaultPosition = function() return { point = 'CENTER', rel_point = 'CENTER', frame = 'UIParent', x_off = 0, y_off = 0 } end })
+		local root = { page = { type = 'group', name = 'Page', args = { general = { type = 'group', name = 'General', args = {
+			position = st.Config.generators.position(1, true, function(part) return cfg.position[part] end,
+				function(part, value) cfg.position[part] = value end) } } } } }
+		local content = CreateFrame('Frame', nil, UIParent)
+		content:SetSize(774, 900)
+		body = OB.New(content, root, nil, 774)
+		body:Draw(OM.BuildView(root, 'page', { tab = 'general' }).sections)
+		local cell
+		for _, c in ipairs(body.cells) do if c.row.key == 'position' then cell = c end end
+		check(cell and not shown(cell), 'a mover row at its default: none')
+		cfg.position.x_off = 40
+		body:Refresh()
+		check(shown(cell), 'moved: its icon shows on Refresh')
+		body:Release()
+		st.EditModeFrames.movers.dv_drag = nil
+	end)
+end)
+
+test('a long title\'s hover frame stops short of the reset icon', function()
+	in_look('thick', function()
+		local function build(w)
+			w.frame = CreateFrame('Frame', nil, UIParent)
+			w.frame:SetSize(60, 20)
+		end
+		W.Define('derivedtitled', { bare = true, titled = true, build = build, methods = { Refresh = function() end } })
+		local root = { page = { type = 'group', name = 'Page', args = {
+			long = { type = 'derivedtitled', name = string.rep('A very long title ', 20), size = 'wide', order = 1,
+				default = { differs = function() return true end, reset = function() end } },
+			short = { type = 'derivedtitled', name = 'Rule', size = 'wide', order = 2,
+				default = { differs = function() return true end, reset = function() end } },
+		} } }
+		local body, by = draw(root)
+		for _, key in ipairs({ 'long', 'short' }) do
+			local c = by[key]
+			local tip = c.frame.titleTip
+			check(tip and tip:IsShown(), key .. ': the title has its hover frame')
+			check(tip:GetRight() <= icon_of(c):GetLeft(), key .. ': it ends before the icon (' .. tostring(tip:GetRight()) .. ' vs ' .. tostring(icon_of(c):GetLeft()) .. ')')
+		end
+		body:Release()
+	end)
+end)

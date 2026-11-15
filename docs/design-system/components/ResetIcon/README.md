@@ -29,7 +29,7 @@ A relative of this icon: a row of the edit mode bar's History list ends in a 14p
 
 ## Status
 
-Built for every value row in `/sui` (decision 50): a derived default, a mover Position's, or a hand one, with the icon where the control draws, in an item's menu and beside a titled row's title (6 after its text). The kit, `optionsdefault.lua`, is built; each page declares its `saved` as its task lands (`tests/core/reset_coverage_test.lua` lists the pages not yet walked).
+The kit can give every value row in `/sui` a reset (decision 50): a derived default, a mover Position's, or a hand one; with the icon where the control draws, in an item's menu and beside a titled row's title (6 after its text). A row has one once its page says where it is saved (or a hand default, or why it has none); pages are converted one task at a time (`tests/core/reset_coverage_test.lua` lists the pages not yet walked).
 
 ## Blizzard theme
 

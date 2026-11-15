@@ -39,10 +39,54 @@ local PAGES = {
 
 -- Whether a test file's text walks the page: R.check_page(root, 'Page'), a
 -- receiver and the page's key as the second argument.
-local function Walks(source, page)
-	return source:find('%.check_page%([^\n]-,%s*"' .. page .. '"') ~= nil
-		or source:find("%.check_page%([^\n]-,%s*'" .. page .. "'") ~= nil
+local L = load_test_file('lib/source_lex.lua')
+
+-- The text of the top-level arguments of the call whose '(' is at open (in code
+-- with comments blanked), or nil.
+local function Args(code, open)
+	local args, depth, from = {}, 0, open + 1
+	for i = open, #code do
+		local c = code:sub(i, i)
+		if c == '(' or c == '{' or c == '[' then
+			depth = depth + 1
+		elseif c == ')' or c == '}' or c == ']' then
+			depth = depth - 1
+			if depth == 0 then
+				args[#args + 1] = code:sub(from, i - 1)
+				return args
+			end
+		elseif c == ',' and depth == 1 then
+			args[#args + 1] = code:sub(from, i - 1)
+			from = i + 1
+		end
+	end
 end
+
+-- Whether a test file's code walks the page: R.check_page(root, 'Page'), a
+-- receiver and the page's key as the second argument, a literal. Comments are
+-- blanked by the repo's lexer, so a commented call is not a walk.
+local function Walks(source, page)
+	local code, mask = L.Lex(source)
+	local from = 1
+	while true do
+		local at, to = mask:find('[%w_]%.check_page%(', from)
+		if not at then return false end
+		local args = Args(code, to)
+		local second = args and args[2] and args[2]:match('^%s*(.-)%s*$')
+		if second == "'" .. page .. "'" or second == '"' .. page .. '"' then return true end
+		from = to + 1
+	end
+end
+
+test('the scan reads code, not comments, and a call over several lines', function()
+	check(not Walks("-- R.check_page(root, 'Chat')", 'Chat'), 'a commented call is not a walk')
+	check(not Walks("--[[ R.check_page(root, 'Chat') ]]", 'Chat'), 'nor a call in a block comment')
+	check(Walks("R.check_page(\n\troot,\n\t'Chat'\n)", 'Chat'), 'a call over several lines is')
+	check(Walks("R.check_page(st.Config:GetOptionsTable(), 'Chat', { probe = false })", 'Chat'), 'with a call as its first argument')
+	check(Walks('R.check_page(root, "Chat")', 'Chat'), 'double quotes')
+	check(not Walks('check_page(root, "Chat")', 'Chat'), 'a double-quoted local call with no receiver is not it')
+	check(not Walks("local s = \"R.check_page(root, 'Chat')\"", 'Chat'), 'nor a call inside a string')
+end)
 
 test('the scan tells a call on the walk helper from a local of the same name', function()
 	check(Walks("R.check_page(root, 'Chat')", 'Chat'), 'a call on the helper')
