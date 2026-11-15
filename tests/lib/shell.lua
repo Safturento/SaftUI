@@ -594,7 +594,7 @@ st.config.global = {}
 
 -- What the shell sets UIParent to: SaftUI's pixel for pixel scale, one UIParent
 -- unit per physical pixel, worked out by the scale model and read back into
--- the tokens. The shell never calls UIScale:Start, whose events would set back
+-- the tokens. The shell never calls UIScale:Start, whose events (from Task 4) would set back
 -- the scales a test sets.
 UIParent:SetScale(st.UIScale.Resolve({ mode = 'pixel' }, st.UIScale.ReadScreen()).uiScale)
 st.UIScale:SetTokens()

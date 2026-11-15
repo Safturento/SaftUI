@@ -272,3 +272,84 @@ test("use_scale(k): each k gives its screen and Resolve's k, without resetting t
 	check(not pcall(use_scale, 2), 'another k is an error')
 	check(not pcall(use_scale, nil), 'nil is an error')
 end)
+
+test("the game hands scales back in single precision: tokens at a whole k are exactly whole (Fix round 1, I1)", function()
+	local st = world()
+	stub.screen_width, stub.screen_height = 2560, 1440
+	-- 768 / 1440 as the game reads it back: rounded to single precision.
+	local single = 0.53333330154419
+	UIParent.GetEffectiveScale = function() return single end
+	st.pixel, st.lineWeight, st.line = 9, 9, 9
+	st.UIScale:SetTokens()
+	check(rawequal(st.pixel, 1) and rawequal(st.lineWeight, 1) and rawequal(st.line, 1), 'the tokens are exactly 1 1 1: ' .. tostring(st.pixel))
+	check(rawequal(st:GetPixelSize(UIParent), 1), 'GetPixelSize is exactly 1')
+	check(rawequal(st:GetLineSize(UIParent), 1), 'GetLineSize is exactly 1')
+	check(rawequal(st:RoundToPixel(25), 25), 'a helper gives 25 for 25 units, not 24.999998')
+	check(rawequal(st:FloorToPixel(25), 25) and rawequal(st:CeilToPixel(25), 25), 'and Floor and Ceil')
+	-- k 2, from 5120 x 2880 with a scale a hair off 768 / 2880 * 2.
+	stub.screen_width, stub.screen_height = 5120, 2880
+	UIParent.GetEffectiveScale = function() return 0.53333330154419 end
+	st.UIScale:SetTokens()
+	check(rawequal(st.pixel, 0.5) and rawequal(st.lineWeight, 2) and rawequal(st.line, 1), 'k 2: 0.5, 2, 1: ' .. tostring(st.pixel))
+	-- A k that is not whole keeps what is measured.
+	stub.screen_width, stub.screen_height = 1920, 1080
+	UIParent.GetEffectiveScale = function() return single end
+	st.UIScale:SetTokens()
+	check(close(st.pixel, 4 / 3, 1e-6) and not rawequal(st.pixel, 4 / 3 + 0), 'k 0.75 is as measured')
+end)
+
+test('minPixels raises any non-zero value under it, its sign kept (Fix round 1, I2)', function()
+	local st = world()
+	use_scale(0.75)
+	local pixel = 4 / 3
+	local function near4(a, b) return close(a, b, 1e-4) end
+	check(near4(st:RoundToPixel(1.2 * pixel, nil, 2), 2 * pixel), '1.2 pixels with a minimum of 2 is 2')
+	check(near4(st:RoundToPixel(-1.2 * pixel, nil, 2), -2 * pixel), 'negative: -2')
+	check(near4(st:RoundToPixel(0.3, nil, 3), 3 * pixel), 'under half a pixel with a minimum of 3 is 3')
+	check(near4(st:RoundToPixel(3.4 * pixel, nil, 2), 3 * pixel), 'a value over it is as before')
+	eq(st:RoundToPixel(0, nil, 2), 0, 'zero stays zero')
+	check(near4(st:RoundToPixel(1.2 * pixel), pixel), 'no minimum: as before')
+end)
+
+test('Start sets Pixel for pixel on a screen, in every size (Fix round 1, m1)', function()
+	local st = world()
+	for _, h in ipairs({ 1080, 1440, 2160 }) do
+		stub.screen_width, stub.screen_height = h * 16 / 9, h
+		UIParent:SetScale(1)
+		st.pixel, st.lineWeight, st.line = 9, 9, 9
+		st.UIScale:Start()
+		check(rawequal(UIParent:GetScale(), 768 / h), h .. ': UIParent is 768 / H, not Automatic')
+		check(st.pixel == 1 and st.lineWeight == 1 and st.line == 1, h .. ': the tokens are 1')
+	end
+end)
+
+test('GetLineSize where lines are two pixels (Fix round 1, m2)', function()
+	local st = world()
+	use_scale(1.55)
+	eq(st.lineWeight, 2, 'a two pixel line')
+	check(close(st:GetLineSize(UIParent), 2 * st.pixel), 'GetLineSize(UIParent)')
+	local frame = CreateFrame('Frame', nil, UIParent)
+	frame:SetScale(0.8)
+	check(close(st:GetLineSize(frame), 2 * st.pixel / 0.8), 'on a frame at 0.8')
+end)
+
+test('the nits: NaN, a width of 0, the trims, the line weight floor and EvenPixels on a negative count (Fix round 1)', function()
+	local st = world()
+	local U = st.UIScale
+	eq(U.Normalize({ size = 0 / 0 }).size, 1, 'a NaN size is 1')
+	eq(U.Resolve({ mode = 'auto' }, { width = 100, height = 0 / 0 }), nil, 'a NaN height is nil')
+	eq(U.Resolve({ mode = 'auto' }, { width = 0 / 0, height = 100 }), nil, 'a NaN width is nil')
+	local read = GetPhysicalScreenSize
+	GetPhysicalScreenSize = function() return 100, 0 / 0 end
+	eq(U.ReadScreen(), nil, 'ReadScreen: a NaN height')
+	GetPhysicalScreenSize = function() return 0, 1440 end
+	eq(U.ReadScreen(), nil, 'ReadScreen: a width of 0')
+	GetPhysicalScreenSize = read
+	check(rawequal(U.Resolve({ mode = 'auto', size = 1.1 }, screen(2560, 1440)).size, 1.1), 'the size is trimmed to two decimals')
+	eq(U.LineWeight(0.3), 1, 'the line weight is at least 1')
+	use_scale(0.75)
+	eq(st:EvenPixels(45), 45.3333, 'EvenPixels is trimmed')
+	use_scale(1)
+	eq(st:EvenPixels(-45), -46, 'an odd negative count goes away from zero')
+	eq(st:EvenPixels(-44), -44, 'an even one stays')
+end)

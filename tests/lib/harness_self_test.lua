@@ -1195,7 +1195,7 @@ test('the shell sets UIParent pixel for pixel through Resolve: 768 / 1080, the t
 	eq(type(SaftUI.config.global), 'table', 'the shell has a global table, as AceDB does')
 end)
 
-test("Core's TOCs load uiscale.lua right after api.lua, as the shell does", function()
+test("Core's TOCs load uiscale.lua right after api.lua", function()
 	for _, name in ipairs({ 'Forever', 'Mainline' }) do
 		local toc = read_saftui_source('SaftUI-Core/SaftUI-Core_' .. name .. '.toc')
 		local api, ui = toc:find('\napi.lua\n', 1, true), toc:find('\nuiscale.lua\n', 1, true)

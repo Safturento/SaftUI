@@ -24,13 +24,24 @@ function st:DefaultTrackerPosition()
 end
 
 -- Size of one physical pixel in frame's (or UIParent's) coordinate space, or nil if unknown.
+-- The game hands a scale back in single precision (768 / 1440 comes back as
+-- 0.53333330154419), so at a whole number of pixels to a unit (k = 1 / pixel,
+-- 1 on a 1440p screen) the division would give 1.0000000596 and every line and
+-- token built from it would carry that noise. Within 1e-6 (relative) of a
+-- whole k the pixel is exactly 1 / k.
 function st:GetPixelSize(frame)
 	local physicalHeight = select(2, GetPhysicalScreenSize())
 	local scale = (frame or UIParent):GetEffectiveScale()
 	if not physicalHeight or physicalHeight == 0 or not scale or scale == 0 then
 		return nil
 	end
-	return (768 / physicalHeight) / scale
+	local pixel = (768 / physicalHeight) / scale
+	local k = 1 / pixel
+	local whole = math.floor(k + 0.5)
+	if whole >= 1 and math.abs(k - whole) < 1e-6 * whole then
+		return 1 / whole
+	end
+	return pixel
 end
 
 -- A whole number of pixels as a length: pixel sizes like 0.99999995 leave float
@@ -42,18 +53,17 @@ local function PixelsToLength(pixels, pixel)
 end
 
 -- Rounds a value (in frame's coordinate space) to the nearest physical pixel.
--- A value that isn't zero but rounds to none is minPixels pixels instead (its
--- sign kept), when minPixels is given: a line that must show.
+-- A value that isn't zero but is under minPixels pixels is minPixels pixels
+-- instead (its sign kept), when minPixels is given: a line that must show.
 function st:RoundToPixel(value, frame, minPixels)
 	local pixel = st:GetPixelSize(frame)
 	if not pixel then
 		return value
 	end
+	if value == 0 then return 0 end
 	local pixels = math.floor(math.abs(value) / pixel + 0.5)
-	if pixels == 0 then
-		if not minPixels or minPixels <= 0 or value == 0 then return 0 end
-		pixels = minPixels
-	end
+	if minPixels and minPixels > 0 and pixels < minPixels then pixels = minPixels end
+	if pixels == 0 then return 0 end
 	local result = PixelsToLength(pixels, pixel)
 	return value < 0 and -result or result
 end
@@ -82,15 +92,15 @@ function st:CeilToPixel(value, frame)
 	return PixelsToLength(math.ceil(value / pixel - 1e-6), pixel)
 end
 
--- A value rounded to the nearest whole pixel, then up one when that count is
--- odd: a length whose edges and centre sit on whole pixels, for a frame
+-- A value rounded to the nearest whole pixel, then one more away from zero
+-- when that count is odd (-45 pixels is -46): a length whose edges and centre sit on whole pixels, for a frame
 -- anchored by its centre (see "Half pixels from centred anchors" in
 -- .agents/architecture.md).
 function st:EvenPixels(value, frame)
 	local pixel = st:GetPixelSize(frame)
 	if not pixel then return value end
 	local pixels = math.floor(value / pixel + 0.5)
-	if pixels % 2 == 1 then pixels = pixels + 1 end
+	if pixels % 2 ~= 0 then pixels = pixels + (pixels > 0 and 1 or -1) end
 	return PixelsToLength(pixels, pixel)
 end
 

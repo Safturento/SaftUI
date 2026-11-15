@@ -38,10 +38,11 @@ local function Trim(value)
 end
 
 -- The screen in physical pixels, { width, height }, or nil when the game
--- doesn't say. The one place the model reads the screen (the E1 and E2 seam).
+-- doesn't say, or says no width or height (both are needed: the model's units
+-- wide come from the width). The one place the model reads the screen (the E1 and E2 seam).
 function UIScale.ReadScreen()
 	local width, height = GetPhysicalScreenSize()
-	if type(width) ~= 'number' or type(height) ~= 'number' or width <= 0 or height <= 0 then
+	if type(width) ~= 'number' or type(height) ~= 'number' or not (width > 0) or not (height > 0) then
 		return nil
 	end
 	return { width = width, height = height }
@@ -77,8 +78,8 @@ end
 -- no screen, or in 'game' without a positive gameScale (the game's own UI
 -- scale). Pure: it reads nothing and writes nothing.
 function UIScale.Resolve(choice, screen, gameScale)
-	if type(screen) ~= 'table' or type(screen.height) ~= 'number' or screen.height <= 0
-		or type(screen.width) ~= 'number' or screen.width <= 0 then
+	if type(screen) ~= 'table' or type(screen.height) ~= 'number' or not (screen.height > 0)
+		or type(screen.width) ~= 'number' or not (screen.width > 0) then
 		return nil
 	end
 	local picked = UIScale.Normalize(choice)
