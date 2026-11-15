@@ -1,7 +1,8 @@
 -- The font row, SaftUI's own option type 'font' (SaftUI-Core/Config/
 -- optionsfont.lua): a select face drawn in the face it names and one 16 by 24
 -- slot, the link to the shared font's section of Global settings > Fonts
--- (OW:Reveal); its list (W.FontEntries and W.OpenList: SaftUI's fonts, then
+-- (OW:Reveal) or, for a typeface, the dots of its own menu (Size, Outline,
+-- Shadow offset X and Y, Line spacing); its list (W.FontEntries and W.OpenList: SaftUI's fonts, then
 -- every typeface, each in its own face), picking, the face-only variant, the
 -- reset's words, shares and search; and generators.font.
 --
@@ -161,7 +162,7 @@ test("the row under Thick, Thin and Blizzard: label, the 170 x 24 face, the 16 x
 			local left = w.face:GetLeft()
 			vals.header = { font_name = 'Homespun', font_size = 10 }
 			w:Refresh()
-			check(not w.dots:IsShown(), where .. 'a typeface leaves the slot empty')
+			check(w.dots:IsShown(), where .. 'a typeface puts the dots in the slot')
 			eq(w.face:GetLeft(), left, where .. 'the face does not move when the slot changes')
 			eq(w.dots:GetRight(), w.frame:GetRight(), where .. 'and the slot keeps its room')
 		end)
@@ -196,7 +197,7 @@ test('a shared font picked: the face reads its name in its face at 15, the slot 
 	end)
 end)
 
-test('a typeface picked: the face reads its face in that face; the slot is empty', function()
+test('a typeface picked: the face reads its face in that face; the slot holds the dots', function()
 	in_look('thick', function()
 		local w = row_widget('header', { font_name = 'Homespun', font_size = 10, font_outline = 'NONE' })
 		eq(w.kind, 'typeface')
@@ -204,7 +205,7 @@ test('a typeface picked: the face reads its face in that face; the slot is empty
 		local p, size = face_of(w.face.text)
 		eq(p, path('Homespun'))
 		eq(size, 15, 'at 15, whatever the text\'s own size')
-		check(not w.dots:IsShown(), 'the slot is empty until the dots')
+		check(w.dots:IsShown(), 'the slot holds the dots')
 		-- A partial table reads as Text's with the table over it.
 		w = row_widget('header', { font_name = 'Bebas Neue' })
 		eq(w.face.text:GetText(), 'Bebas Neue')
@@ -345,7 +346,7 @@ test('picking: a shared font saves its key; a typeface a fresh table filled from
 		eq(t.shadow_offset[1] .. ',' .. t.shadow_offset[2], '0,0')
 		eq(t.spacing, 4)
 		eq(w.kind, 'typeface')
-		check(not w.dots:IsShown(), 'the slot is empty')
+		check(w.dots:IsShown(), 'the slot holds the dots')
 
 		-- A face swap keeps the other fields, in a new table; the first is untouched.
 		t.font_size, t.font_outline, t.spacing = 22, 'THICKOUTLINE', 9
@@ -380,7 +381,7 @@ test('a dropped key shows its old face and writes nothing until a pick', functio
 		eq(w.kind, 'typeface', 'a dropped key is a typeface')
 		eq(w.face.text:GetText(), 'Homespun', 'the face it looked like')
 		eq(face_of(w.face.text), path('Homespun'))
-		check(not w.dots:IsShown(), 'the slot is empty')
+		check(w.dots:IsShown(), 'the slot holds the dots')
 		eq(#sets, 0, 'reading and drawing wrote nothing')
 		local list = open(w)
 		eq(list.selected, 'face:Homespun', "its old face's entry is the picked one")
@@ -402,7 +403,7 @@ test('a typeface LibSharedMedia does not list (Review Focus 1)', function()
 		eq(w.kind, 'typeface')
 		eq(w.face.text:GetText(), 'Gone', 'the saved name is read')
 		eq(face_of(w.face.text), (W.GetFont():GetFont()), 'in the field font')
-		check(not w.dots:IsShown())
+		check(w.dots:IsShown(), 'the dots show for a typeface')
 		local list = open(w)
 		eq(list.selected, 'face:Gone')
 		for _, row in ipairs(list.rows) do
@@ -798,5 +799,345 @@ test('OW:Reveal from the bar grows the window to half before revealing', functio
 		eq(OW:GetWindowSize(), 'half')
 		eq(OW:GetState().page, 'Fonts')
 		H.close_all()
+	end)
+end)
+
+------------------------------------------------------------------ the dots and their menu
+
+local DOTS = st:NewModule('FontDotsRows')
+local hideHeader
+function DOTS:GetConfigTable()
+	return {
+		name = 'Font dots rows', type = 'group', category = 'Frames',
+		args = {
+			texts = { order = 1, type = 'group', name = 'Texts', args = {
+				header = FontRow('header', 1, nil, { name = 'Header font', hidden = function() return hideHeader end }),
+				tip = FontRow('tip', 2, { fields = { 'font_size', 'font_outline' } }, { name = 'Tooltip font' }),
+				chat = FontRow('chat', 3, { fields = { 'font_size', 'font_outline', 'shadow_x', 'shadow_y' } }, { name = 'Chat font' }),
+				hotkey = {
+					order = 4, type = 'item', name = 'Hotkey', desc = 'The key.', size = 'small',
+					get = function() return true end, set = function() end,
+					menu = { type = 'group', name = 'Hotkey', args = {
+						face = FontRow('face', 1, { faceOnly = true }, { name = 'Face' }),
+					} },
+				},
+			} },
+			other = { order = 2, type = 'group', name = 'Other', args = {
+				plain = { type = 'toggle', name = 'Plain', desc = 'Plain.', get = function() return true end, set = function() end },
+			} },
+		},
+	}
+end
+
+local COLUS = { font_name = 'Colus', font_size = 15, font_outline = 'NONE', shadow_offset = { 0, 0 }, spacing = 4 }
+local function colus()
+	return { font_name = 'Colus', font_size = 15, font_outline = 'NONE', shadow_offset = { 0, 0 }, spacing = 4 }
+end
+
+local function open_dots()
+	fresh()
+	hideHeader = nil
+	vals.header, vals.tip, vals.chat = colus(), colus(), colus()
+	st.Config:Open('FontDotsRows', 'texts')
+end
+local function dots_of(key) return H.cell(key).widget.dots end
+local function mcell(key)
+	for _, c in ipairs(OW.GetMenuFrames().body.cells) do
+		if c.row.key == key then return c end
+	end
+end
+local function mkeys()
+	local keys = {}
+	for _, c in ipairs(OW.GetMenuFrames().body.cells) do keys[#keys + 1] = c.row.key end
+	return keys
+end
+local function close_dots()
+	st.Config:Close()
+	H.close_all()
+	stub.in_combat = nil
+end
+
+test('a typeface picked: the dots in the slot, grey, lit under the mouse (white under Blizzard); the tooltip names the face and the row', function()
+	for _, look in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		in_look(look, function(tip)
+			local w = row_widget('header', { font_name = 'Colus', font_size = 15 }, nil, { name = 'Header font' })
+			eq(w.kind, 'typeface')
+			check(w.dots:IsShown(), look .. ': the dots show')
+			eq(w.dots.icon:GetTexture(), st.icons.ellipsisVertical, 'the ellipsis, not the link')
+			eq(w.dots:GetWidth() .. 'x' .. w.dots:GetHeight(), '16x24')
+			eq(rgb(w.dots.icon:GetVertexColor()), rgb(st.config.profile.colors.text.grey:GetRGB()), 'Text > Grey')
+			stub.fire_script(w.dots, 'OnEnter', true)
+			eq(rgb(w.dots.icon:GetVertexColor()), look == 'blizzard' and rgb(1, 1, 1) or blue(), 'lit under the mouse')
+			eq(tip.owner, w.dots)
+			eq(tip.lines[1], 'Colus for Header font')
+			eq(tip.lines[2], 'Its own size, outline, shadow and line spacing.')
+			eq(#tip.lines, 2)
+			stub.fire_script(w.dots, 'OnLeave', true)
+			check(not tip.shown, 'and the tip goes')
+			-- Back to a shared font: the link, with its own tooltip.
+			w = row_widget('header', 'heading')
+			eq(w.dots.icon:GetTexture(), st.icons.link)
+		end)
+	end
+end)
+
+test("the dots open the menu 'Header font: Colus': Size, Outline, Shadow offset X, Shadow offset Y, Line spacing, with the tab's ranges; a second click closes it", function()
+	in_look('thick', function()
+		open_dots()
+		stub.click(dots_of('header'))
+		check(OW:IsMenuShown(), 'the dots open it')
+		check(OW:IsMenuShown(H.cell('header').widget), "it's the header row's")
+		eq(OW.GetMenuFrames().title:GetText(), 'Header font: Colus')
+		eq(table.concat(mkeys(), ','), 'font_size,font_outline,shadow_x,shadow_y,spacing')
+		local names = {}
+		for _, k in ipairs(mkeys()) do names[#names + 1] = mcell(k).row.name end
+		eq(table.concat(names, ','), 'Size,Outline,Shadow offset X,Shadow offset Y,Line spacing')
+		local menu = OW.GetMenuFrames().body.root.menu.args
+		eq(menu.font_size.min .. '-' .. menu.font_size.max, '1-100')
+		eq(menu.shadow_x.min .. '-' .. menu.shadow_x.max, '-5-5')
+		eq(menu.shadow_y.min .. '-' .. menu.shadow_y.max, '-5-5')
+		eq(menu.spacing.min .. '-' .. menu.spacing.max, '0-20')
+		eq(menu.font_outline.sorting[1], 'NONE')
+		eq(mcell('font_size').widget.edit:GetText(), '15', "the typeface's own size")
+		local p, rel = OW.GetMenuFrames().frame:GetPoint(1)
+		eq(rel, dots_of('header'), 'hung from the dots')
+		stub.click(dots_of('header'))
+		check(not OW:IsMenuShown(), 'a second click closes it')
+		close_dots()
+	end)
+end)
+
+test('fontFields: the tooltip row lists Size and Outline only, the chat row Size, Outline and both shadows', function()
+	in_look('thick', function()
+		open_dots()
+		stub.click(dots_of('tip'))
+		eq(table.concat(mkeys(), ','), 'font_size,font_outline')
+		eq(OW.GetMenuFrames().title:GetText(), 'Tooltip font: Colus')
+		stub.click(dots_of('chat'))
+		eq(table.concat(mkeys(), ','), 'font_size,font_outline,shadow_x,shadow_y')
+		close_dots()
+	end)
+end)
+
+test("a menu change calls the row's set with a new table, the saved one unchanged; the page and the menu draw again", function()
+	in_look('thick', function()
+		open_dots()
+		local saved = vals.header
+		stub.click(dots_of('header'))
+		local renders = OW.GetRenderCount()
+		mcell('font_size').widget:Commit(22)
+		eq(#sets, 1, 'one set')
+		check(sets[1] ~= saved, 'a new table')
+		eq(sets[1].font_size, 22)
+		eq(sets[1].font_name, 'Colus')
+		eq(saved.font_size, 15, 'the saved table is not edited')
+		check(vals.header == sets[1], 'the row now holds the new one')
+		check(OW.GetRenderCount() > renders, 'the page drew again')
+		check(OW:IsMenuShown(), 'the menu is still open')
+		eq(mcell('font_size').widget.edit:GetText(), '22', 'and shows the value')
+		-- A shadow: a new offset table too.
+		local before = vals.header
+		mcell('shadow_y').widget:Commit(-2)
+		eq(#sets, 2)
+		eq(vals.header.shadow_offset[2], -2)
+		eq(vals.header.shadow_offset[1], 0)
+		check(vals.header.shadow_offset ~= before.shadow_offset, 'the offset is a new table')
+		eq(before.shadow_offset[2], 0, 'the old one is not edited')
+		mcell('font_outline').widget:Commit('OUTLINE')
+		eq(vals.header.font_outline, 'OUTLINE')
+		eq(vals.header.font_size, 22, 'the other fields stay')
+		mcell('spacing').widget:Commit(7)
+		eq(vals.header.spacing, 7)
+		-- The row's own face is the same.
+		eq(H.cell('header').widget.face.text:GetText(), 'Colus')
+		close_dots()
+	end)
+end)
+
+test('the value changing under an open menu (Review Focus 4)', function()
+	in_look('thick', function()
+		open_dots()
+		take_errors()
+		stub.click(dots_of('header'))
+		local old = H.cell('header').widget:Menu()
+		-- The row's reset (back to a shared font): the menu closes.
+		vals.header = 'heading'
+		OW:Render()
+		check(not OW:IsMenuShown(), 'a shared font closes it')
+		-- The old menu's rows write nothing now.
+		local count = #sets
+		old.args.font_size.set(nil, 30)
+		eq(#sets, count, 'a stale menu writes nothing')
+		eq(vals.header, 'heading')
+		-- Another typeface replaces the table: the menu follows its face.
+		vals.header = colus()
+		OW:Render()
+		stub.click(dots_of('header'))
+		vals.header = { font_name = 'Bebas Neue', font_size = 9, font_outline = 'NONE', shadow_offset = { 1, 1 }, spacing = 2 }
+		OW:Render()
+		check(OW:IsMenuShown(), 'it follows')
+		eq(OW.GetMenuFrames().title:GetText(), 'Header font: Bebas Neue')
+		eq(mcell('font_size').widget.edit:GetText(), '9')
+		-- Written through the new table, not the old.
+		mcell('font_size').widget:Commit(11)
+		eq(vals.header.font_name, 'Bebas Neue')
+		eq(vals.header.font_size, 11)
+		-- A profile switch: the other profile's value (a typeface) is followed, a shared one closes.
+		vals.header = colus()
+		OW:Render()
+		eq(OW.GetMenuFrames().title:GetText(), 'Header font: Colus')
+		vals.header = 'pixel'
+		OW:Render()
+		check(not OW:IsMenuShown(), 'a profile with a shared font closes it')
+		-- The cell gone.
+		vals.header = colus()
+		OW:Render()
+		stub.click(dots_of('header'))
+		hideHeader = true
+		OW:Render()
+		check(not OW:IsMenuShown(), 'the row gone closes it')
+		eq(#take_errors(), 0, 'no error on the way')
+		close_dots()
+	end)
+end)
+
+test('a drag across the range (Review Focus 5)', function()
+	in_look('thick', function()
+		open_dots()
+		vals.header = { font_name = 'Colus', font_size = 15 }
+		OW:Render()
+		st:GetFont(vals.header) -- the object the row's reader made when it drew
+		-- The row's set, as its module's: the look gets its object.
+		local option = H.cell('header').row.option
+		local plain = option.set
+		option.set = function(info, value)
+			plain(info, value)
+			st:GetFont(value)
+		end
+		stub.click(dots_of('header'))
+		local made, real = 0, CreateFont
+		CreateFont = function(...) made = made + 1; return real(...) end
+		local ok, err = pcall(function()
+			local slider = mcell('font_size').widget
+			stub.mouse_buttons.LeftButton = true
+			slider.dragging = true
+			local count = #sets
+			for size = 16, 40 do
+				slider:Commit(size)
+				eq(#sets, count + 1, 'one set for size ' .. size)
+				count = #sets
+				slider = mcell('font_size').widget
+				slider.dragging = true
+			end
+			eq(made, 25, 'a typeface object per size going up (16 to 40)')
+			made = 0
+			for size = 39, 15, -1 do
+				slider:Commit(size)
+				eq(#sets, count + 1)
+				count = #sets
+				slider = mcell('font_size').widget
+				slider.dragging = true
+			end
+			eq(made, 0, 'none coming back')
+			stub.mouse_buttons.LeftButton = nil
+			slider.dragging = nil
+		end)
+		CreateFont = real
+		stub.mouse_buttons.LeftButton = nil
+		if not ok then error(err, 0) end
+		close_dots()
+	end)
+end)
+
+test('under Thick, Thin and Blizzard with a share on the row: the menu draws, follows its row, and closes on Esc, a click outside and navigation', function()
+	for _, look in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		in_look(look, function()
+			open_dots()
+			local share = {
+				page = 'Bar 3', own = function() return true end, reset = function() end,
+				source = 'All bars', shared = function() return 'Heading' end,
+				targets = function() return { { key = 'bar2', label = 'Bar 2' } } end,
+				applyAll = function() end, apply = function() end,
+			}
+			-- The share rides on the row the page draws: set it on the live option.
+			local row = H.cell('header').row.option
+			row.share = share
+			OW:Render()
+			local m = OW.GetMenuFrames()
+			stub.click(dots_of('header'))
+			check(OW:IsMenuShown(), look .. ': open')
+			eq(#mkeys(), 5, 'five rows drawn')
+			check(m.frame:GetHeight() > 100, 'with a height')
+			-- Follows the row across a render and a tab back.
+			OW:Render()
+			check(OW:IsMenuShown() and select(2, m.frame:GetPoint(1)) == dots_of('header'), 'still hung from its dots')
+			-- Esc.
+			stub.fire_script(m.keys, 'OnKeyDown', 'ESCAPE')
+			check(not OW:IsMenuShown(), 'Esc closes it')
+			-- A click outside.
+			stub.click(dots_of('header'))
+			stub.fire_script(m.catcher, 'OnMouseDown', 'LeftButton')
+			check(not OW:IsMenuShown(), 'a click outside closes it')
+			-- Navigation.
+			stub.click(dots_of('header'))
+			OW:Navigate('FontDotsRows', { tab = 'other' })
+			check(not OW:IsMenuShown(), 'a tab closes it')
+			OW:Navigate('FontDotsRows', { tab = 'texts' })
+			stub.click(dots_of('header'))
+			OW:Navigate('Fonts')
+			check(not OW:IsMenuShown(), 'a page closes it')
+			close_dots()
+		end)
+	end
+end)
+
+test("a disabled row's dots take no mouse; in combat the menu does not open", function()
+	in_look('thick', function()
+		local w = row_widget('header', colus(), nil, { disabled = function() return true end })
+		check(not w.dots:IsMouseEnabled(), 'a disabled row: no mouse on the dots')
+		stub.click_unchecked(w.dots)
+		check(not OW:IsMenuShown(), 'a click opens nothing')
+		eq(OW:OpenMenu(w), false, 'OpenMenu refuses a disabled row')
+		w:SetDisabled(false)
+		check(w.dots:IsMouseEnabled(), 'enabled again')
+		stub.in_combat = true
+		eq(OW:OpenMenu(w), false, 'in combat')
+		check(not OW:IsMenuShown())
+		stub.in_combat = nil
+		-- A row with no menu: a shared font.
+		local shared = row_widget('header', 'heading')
+		eq(shared:Menu(), nil, 'a shared font has no menu')
+		eq(OW:OpenMenu(shared), false)
+		-- A faceOnly row's typeface has none either.
+		local face = row_widget('face', 'Colus', { faceOnly = true })
+		eq(face:Menu(), nil)
+		eq(OW:OpenMenu(face), false)
+	end)
+end)
+
+test("search finds no row of a dots menu ('Size' matches only real Size rows)", function()
+	fresh()
+	vals.header = colus()
+	local root = Page({
+		header = FontRow('header', 1, nil, { name = 'Header font' }),
+		size = { order = 2, type = 'range', name = 'Size', min = 1, max = 9, step = 1, desc = 'x', get = function() return 3 end, set = function() end },
+	})
+	local found = {}
+	for _, r in ipairs(OM.Search(root, 'Size')) do found[#found + 1] = r.path[#r.path] end
+	eq(table.concat(found, ','), 'size', 'only the real Size row')
+	eq(#OM.Search(root, 'Shadow offset'), 0, 'no shadow row of a dots menu')
+end)
+
+test('a faceOnly row never shows dots, so no menu opens inside an item menu', function()
+	in_look('thick', function()
+		open_dots()
+		vals.face = 'Colus'
+		stub.click(H.cell('hotkey').widget.dots)
+		check(OW:IsMenuShown(), "the item's menu is open")
+		OW:Render()
+		local c = mcell('face')
+		check(c ~= nil and not c.widget.dots:IsShown(), 'its face-only typeface has no dots')
+		eq(c.widget:Menu(), nil)
+		close_dots()
 	end)
 end)

@@ -523,7 +523,7 @@ end
 
 -- What is true today: the Font rows list these and nothing else. Task 4's dots
 -- add a sentence about a typeface's own size and outline.
-local INTRO = "SaftUI's shared fonts. Font rows throughout SaftUI choose from these, and a change here changes every text that uses the font, at once."
+local INTRO = "SaftUI's shared fonts. Font rows throughout SaftUI choose from these, and a change here changes every text that uses the font, at once. A Font row can take a typeface of its own instead, with its size and outline in its dots."
 
 -- The look of a shared font at its default, for the row's reset: one field of
 -- st.defaults.fonts[key].
