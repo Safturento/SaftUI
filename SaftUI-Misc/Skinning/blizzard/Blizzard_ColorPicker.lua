@@ -334,7 +334,7 @@ local function ColorHover(button)
 	local entry = buttons[button]
 	if not entry or not Active() then return end
 	if hovered[button] then
-		st:SetBorderColor(entry.box, Profile().colors.button.blue:GetRGB())
+		st:SetBorderColor(entry.box, st:Color('accent'):GetRGB())
 	else
 		st:SetBorderColor(entry.box)
 	end

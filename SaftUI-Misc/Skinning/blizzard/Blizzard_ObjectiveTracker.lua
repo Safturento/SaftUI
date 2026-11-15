@@ -431,7 +431,7 @@ local function KeepCrop(icon)
 end
 
 local function ColorItem(entry)
-	entry.hover:SetVertexColor(Profile().colors.button.blue:GetRGB())
+	entry.hover:SetVertexColor(st:Color('accent'):GetRGB())
 end
 
 local function StyleItem(button, active)

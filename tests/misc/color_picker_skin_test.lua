@@ -484,7 +484,7 @@ end)
 
 test("hovering Okay or Cancel turns the edge of SaftUI's box blue; nothing covers the label", function()
 	world('forever')
-	local blue = T.text(profile.colors.button.blue:GetRGB())
+	local blue = T.text(profile.theme.accent:GetRGB())
 	for _, key in ipairs({ 'OkayButton', 'CancelButton' }) do
 		local button = CP.frame.Footer[key]
 		local box = the_one(own_children(button), key .. "'s box")

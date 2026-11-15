@@ -136,10 +136,10 @@ test("each word takes its Factions color: Alliance blue, Horde red, Neutral yell
 	st.config.profile.colors.factions.Alliance = CreateColor(0, 0, 1)
 	eq(ZT:ColorFaction('Alliance'), '|cff0000ffAlliance|r', "a changed color is the user's palette")
 	st.config.profile.colors.factions.Alliance = blue
-	local text = st.config.profile.colors.text.blue
-	st.config.profile.colors.text.blue = CreateColor(0, 0, 1)
-	eq(ZT:ColorFaction('Alliance'), '|cff00adf0Alliance|r', 'and a Text > Blue change reaches no faction')
-	st.config.profile.colors.text.blue = text
+	local text = st.config.profile.theme.accent
+	st.config.profile.theme.accent = CreateColor(0, 0, 1)
+	eq(ZT:ColorFaction('Alliance'), '|cff00adf0Alliance|r', 'and an accent change reaches no faction')
+	st.config.profile.theme.accent = text
 end)
 
 ------------------------------------------------------------------ the level range

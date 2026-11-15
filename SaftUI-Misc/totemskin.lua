@@ -296,7 +296,7 @@ local function StyleButton(button, skin, theme, background)
 	else
 		FlatStateTexture(skin.hover, icon, st.ThemeArt.HOVER_LAYER)
 		FlatStateTexture(skin.pushed, icon)
-		skin.hover:SetVertexColor(colors.button.blue:GetRGB())
+		skin.hover:SetVertexColor(st:Color('accent'):GetRGB())
 		skin.pushed:SetVertexColor(0, 0, 0, 0.1)
 		if skin.checked then
 			FlatStateTexture(skin.checked, icon)
