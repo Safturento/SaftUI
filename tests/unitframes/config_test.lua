@@ -13,7 +13,8 @@
 -- whose tabs config.lua adds to each unit that has the element;
 -- nameplates/nameplates.lua (UF:NameplateAddon, which the nameplate pages
 -- read; with no other nameplate addon loaded, SaftUI draws the plates) and
--- nameplates/threat.lua (the plates' Threat element and its tab) and
+-- nameplates/threat.lua (the plates' Threat element and its tab),
+-- nameplates/subtext.lua (their Subtext tab) and
 -- nameplates/options.lua (the nameplate pages).
 --
 -- Stand-ins, for unitframes.lua, which needs oUF:
@@ -100,6 +101,8 @@ end
 UF.oUF = { Tags = { Events = {}, Methods = {} }, colors = { class = st.config.profile.colors.class } }
 load_string_format()
 load_saftui('SaftUI-Unitframes/tags.lua')
+-- The Subtext element (registers a tag on UF.oUF, so after tags.lua): the plate pages' Subtext tab.
+load_saftui('SaftUI-Unitframes/nameplates/subtext.lua')
 
 local click = stub.click
 
@@ -115,6 +118,141 @@ local function cell(key)
 		if c.row.key == key then return c end
 	end
 end
+
+-- The game's nameplate settings (nameplates/cvars.lua, which this world doesn't load): what the Nameplates
+-- and Friendly plates rows' sets call, so the walk can set them.
+function UF:ApplyNameplateCVars() end
+function UF:RestoreNameplateCVars() end
+
+-- Every row of every unit's page has a reset (the kit derives it from where the row is saved), and each
+-- derived one round-trips. First, on the profile as it starts: no case before this changes a value.
+local R = load_test_file('lib/reset_walk.lua')
+-- The walk's round trips copy the whole profile twice per derived row, so a walk of every unit
+-- at once is far over the harness's limit for one case (about 25 s). One cheap walk of every row
+-- (probe = false: each has a source, a default, and is at it on this fresh profile), then the
+-- round trips for a few units, each its own case.
+local function Page(units)
+	local tree = UF:GetConfigTable()
+	if units then
+		local args = {}
+		for _, unit in ipairs(units) do args[unit] = tree.args[unit] end
+		tree.args = args
+	end
+	return { Unitframes = tree }
+end
+
+test('every unit frame row has a reset', function()
+	R.check_page(Page(), 'Unitframes', { probe = false })
+end)
+
+for _, unit in ipairs({ 'player', 'target', 'party', 'raid10', 'boss', 'nameplate', 'friendlynameplate' }) do
+	test(unit .. "'s derived resets round-trip", function()
+		R.check_page(Page({ unit }), 'Unitframes')
+	end)
+end
+
+test('resets round-trip on a unit frame profile of another name, and only that profile is written', function()
+	local profiles = st.config.profile.unitframes.profiles
+	local first = st.config.profile.unitframes.config_profile
+	local _ = profiles.Healer
+	local before = profiles[first].player.health.enable
+	st.config.profile.unitframes.config_profile = 'Healer'
+	R.check_page(Page({ 'player' }), 'Unitframes')
+	eq(st.config.profile.unitframes.config_profile, 'Healer', 'still on Healer')
+	st.config.profile.unitframes.config_profile = first
+	rawset(profiles, 'Healer', nil)
+	eq(profiles[first].player.health.enable, before, "the first profile's value is untouched")
+end)
+
+-- The row at path ({ 'Unitframes', 'player', 'Health', 'enable' }) in the options tree root, as the model reads it.
+local function RowAt(root, path)
+	local group = { args = root }
+	for _, key in ipairs(path) do group = OM.SubOption(group, key) end
+	return { option = group, path = path, type = group.type, key = path[#path] }
+end
+
+test('resets on a unit frame profile of another name write that profile, and leave the first untouched', function()
+	local profiles = st.config.profile.unitframes.profiles
+	local first = st.config.profile.unitframes.config_profile
+	-- A profile made from the '**' defaults, as New makes one.
+	local healer = profiles.Healer
+	st.config.profile.unitframes.config_profile = 'Healer'
+	local root = { Unitframes = UF:GetConfigTable() }
+	local row = RowAt(root, { 'Unitframes', 'player', 'Health', 'enable' })
+	local _, defaultValue = st:DefaultAt('unitframes', 'profiles', 'Healer', 'player', 'health', 'enable')
+	check(not OM.DefaultDiffers(root, row), 'a fresh Healer profile has the default')
+	local firstValue = profiles[first].player.health.enable
+	healer.player.health.enable = not defaultValue
+	check(OM.DefaultDiffers(root, row), 'Healer differs from the default after a change')
+	check(OM.DefaultReset(root, row), 'its reset ran')
+	eq(healer.player.health.enable, defaultValue, "the default is back in Healer's profile")
+	eq(profiles[first].player.health.enable, firstValue, "the first profile's value is untouched")
+	check(not OM.DefaultDiffers(root, row), 'and the row is at its default again')
+	st.config.profile.unitframes.config_profile = first
+	rawset(profiles, 'Healer', nil)
+end)
+
+test("the player's Power position resets though its default X is half a pixel", function()
+	local root = { Unitframes = UF:GetConfigTable() }
+	local row = RowAt(root, { 'Unitframes', 'player', 'Power', 'position' })
+	local position = UF:GetProfileConfig().player.power.position
+	-- (The walk before has already rounded the profile's own to a whole pixel.)
+	eq(select(2, st:DefaultAt('unitframes', 'profiles', UF:GetProfile(), 'player', 'power', 'position', 'x_off')), 0.5, 'the default is the half pixel')
+	check(not OM.DefaultDiffers(root, row), 'at the default')
+	check(OM.WriteValue(root, row, { point = position.point, rel_point = position.rel_point, frame = position.frame,
+		x_off = 3, y_off = position.y_off }), 'moved by 3')
+	check(OM.DefaultDiffers(root, row), 'it differs')
+	check(OM.DefaultReset(root, row), 'its reset ran')
+	check(not OM.DefaultDiffers(root, row), 'it is at its default again, though a set rounds the half pixel')
+end)
+
+test("a part's position resets to the merged default: the castbar's Text and Time are anchored to Castbar, target's Buffs sit 7 up", function()
+	local root = { Unitframes = UF:GetConfigTable() }
+	local P = UF:GetProfileConfig()
+	for _, case in ipairs({
+		{ { 'Unitframes', 'player', 'Castbar', 'text', 'position' }, function() return P.player.castbar.text.position end, 'Castbar', nil },
+		{ { 'Unitframes', 'player', 'Castbar', 'time', 'position' }, function() return P.player.castbar.time.position end, 'Castbar', nil },
+		{ { 'Unitframes', 'target', 'Buffs', 'layout', 'position' }, function() return P.target.buffs.position end, nil, 7 },
+	}) do
+		local path, position, element, y = case[1], case[2], case[3], case[4]
+		local row = RowAt(root, path)
+		local label = table.concat(path, '.')
+		check(not OM.DefaultDiffers(root, row), label .. ' is at its default on a fresh profile')
+		local was = {}
+		for key, value in pairs(position()) do was[key] = value end
+		-- Move it: another offset, and its anchor put on Global frame.
+		check(OM.WriteValue(root, row, { point = was.point, rel_point = was.rel_point, x_off = 11, y_off = 12, frame = 'UIParent' }), label .. ' moved')
+		check(OM.DefaultDiffers(root, row), label .. ' differs once moved')
+		check(OM.DefaultReset(root, row), label .. ' reset ran')
+		check(not OM.DefaultDiffers(root, row), label .. ' is at its default again')
+		eq(position().element or false, element or false, label .. ': its element is the default one')
+		eq(position().frame or false, was.frame or false, label .. ': no global frame')
+		eq(position().x_off, was.x_off, label .. ': X is back')
+		eq(position().y_off, was.y_off, label .. ': Y is back')
+		if y then eq(position().y_off, y, label .. ': the merged default Y') end
+	end
+end)
+
+test("the aura borders are saved once per hostility: their reset puts each hostility's own default back", function()
+	local root = { Unitframes = UF:GetConfigTable() }
+	local P = UF:GetProfileConfig()
+	for _, case in ipairs({ { 'Buffs', 'buffs', 'colorStealable', 'enemy' }, { 'Debuffs', 'debuffs', 'colorTypes', 'friend' } }) do
+		local tab, key, flag, on = case[1], case[2], case[3], case[4]
+		local row = RowAt(root, { 'Unitframes', 'target', tab, 'buttons', 'border' })
+		local config = P.target[key]
+		check(config[on][flag], tab .. ': ' .. on .. ' has it on by default')
+		check(not OM.DefaultDiffers(root, row), tab .. ': at its default')
+		check(OM.WriteValue(root, row, false), tab .. ': turned off')
+		check(not config.friend[flag] and not config.enemy[flag], tab .. ': off for both')
+		check(OM.DefaultDiffers(root, row), tab .. ': differs')
+		local before = updates
+		check(OM.DefaultReset(root, row), tab .. ': reset')
+		check(updates > before, tab .. ': the frames were told, as a set tells them')
+		check(config[on][flag], tab .. ': ' .. on .. ' is on again')
+		check(not (config.friend[flag] and config.enemy[flag]), tab .. ': only its own hostility, as the default has it')
+		check(not OM.DefaultDiffers(root, row), tab .. ': at its default again')
+	end
+end)
 
 test('Copy from opens a SaftUI dialog whose rows come from its table, and copies what was ticked', function()
 	local P = UF:GetProfileConfig()
@@ -689,8 +827,8 @@ test('each unit has a tab for each element it has', function()
 		'Buffs,Castbar,Debuffs,GroupRoleIndicator,Health,Name,Power,QuestIndicator,RaidRoleIndicator,RaidTargetIndicator,ReadyCheckIndicator',
 		'party has the ready check')
 	eq(sorted_keys(element_tabs(config, 'nameplate')),
-		'Buffs,Castbar,Debuffs,Health,Name,QuestIndicator,RaidTargetIndicator,Threat',
-		'nameplates have no power, role or ready check, and have the threat text')
+		'Buffs,Castbar,Debuffs,Health,Name,QuestIndicator,RaidTargetIndicator,Subtext,Threat',
+		'nameplates have no power, role or ready check, and have the subtext and threat text')
 end)
 
 test('every element tab: a tooltip on every option, no Ace width, and each Position a block last in its group', function()
@@ -1187,7 +1325,7 @@ end)
 -- write }. The unit frame's own are in General; the castbar has the bar's and
 -- the icon's; the aura tabs have them in Buttons. Name and the nameplates'
 -- threat text have none: they're texts.
-local TEXTS = { Name = true, Threat = true }
+local TEXTS = { Name = true, Subtext = true, Threat = true }
 local function themed_parts(config, P, unit)
 	local parts = { { 'general', {}, P[unit] } }
 	for tab in pairs(element_tabs(config, unit)) do

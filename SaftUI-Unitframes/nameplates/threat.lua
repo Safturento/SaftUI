@@ -268,6 +268,7 @@ local function GetConfigTable(unit)
 		type = 'group',
 		name = 'Threat',
 		order = 1.5,
+		saved = UF.SavedIn(unit, 'threat'),
 		get = function(info) return Config()[info[#info]] end,
 		set = function(info, value)
 			Config()[info[#info]] = value
@@ -286,7 +287,8 @@ local function GetConfigTable(unit)
 					Update()
 				end,
 				UF:ConfigTarget(unit, 'Threat'),
-				"Where the threat text sits: which of its points goes to which point of what it's attached to, then moved by X and Y."
+				"Where the threat text sits: which of its points goes to which point of what it's attached to, then moved by X and Y.",
+				nil, UF.SavedAt(unit, 'threat', 'position')
 			),
 		},
 	}
