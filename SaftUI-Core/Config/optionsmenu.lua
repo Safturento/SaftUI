@@ -11,10 +11,12 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	through S.FollowMenu, after S.FollowDialog.
 
 	  OW:OpenMenu(widget) -> boolean
-	      opens the menu of an item widget (its row's option's menu, a group),
-	      closing any open one first. false in combat, when the item is
+	      opens the menu of a widget: its own, widget:Menu() -> group, title
+	      (a font row's typeface menu: optionsfont.lua), when the widget has
+	      Menu, else its row's option's menu (an item's), a group; closing any
+	      open one first. false in combat, when the item is
 	      disabled (a search result can ask, though its dots can't), or when
-	      the row has no menu. It remembers the item as { body =
+	      the row has no menu (a Menu that gives nil). It remembers the item as { body =
 	      widget.rowBody, path = widget.row.path }, the body that drew it (the
 	      window's page or the small dialog's) and its path there.
 	  OW:CloseMenu(body)   closes it; with body, only when its item is in it
@@ -40,7 +42,7 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	menuTitle, else its name; the section font, grey) 12 in and 10 down;
 	under it a plain content frame (no scroll frame: it is as tall as what it
 	holds, so nothing opened from it is cut off) holding a body of its own,
-	OB.New(content, OM.MenuRoot(option), MenuChanged, 376, { oneColumn =
+	OB.New(content, OM.MenuRoot({ menu = group }), MenuChanged, 376, { oneColumn =
 	true }), which draws OM.BuildView(root, OM.MENU_KEY).sections: every row
 	a line of its own, on panels under Thick and Thin (a closing line of
 	buttons floats under its panel), none under Blizzard. The menu is as tall
@@ -70,12 +72,15 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	waits, as the window does.
 
 	Following its item (S.FollowMenu, on every render after the dialog's): it
-	finds its item's cell again in owner.body's cells by path, re-anchors to
-	that cell's dots (OW.MenuPlace) and draws its body again (the values,
-	title and menu the new row has); with no cell of that path it closes.
+	finds its item's cell again in owner.body's cells by path, asks that
+	cell's widget for its menu again, re-anchors to the cell's dots
+	(OW.MenuPlace) and draws its body again (the values, title and menu the
+	new row has); with no cell of that path, or a widget whose menu is now
+	nil (a font row whose value is a shared font again), it closes.
 	While it's busy (a list or a confirm open from it, its slider held, one of
 	its boxes typed in) its rows aren't drawn again, as FollowDialog waits: it
-	only moves onto its item's new dots.
+	only moves onto its item's new dots, unless that cell is gone or its
+	widget gives no menu, when it closes.
 
 	It closes on Esc, a click outside, OW:Navigate, a tab or pick (Select), a
 	search result's GoTo (through OW:Navigate), the window hiding (combat
@@ -176,13 +181,24 @@ local function DrawBody()
 	M.frame:SetHeight(CONTENT_TOP + (height > 0 and height - OB.BOTTOM or OB.TOP) + foot)
 end
 
+-- The menu of a widget's row: the widget's own (widget:Menu(): a font row's
+-- typeface menu, built on each ask, with its title; nil when it has none now),
+-- else the row's option's menu, a group (its title is menuTitle's or the
+-- row's name, drawn by Draw).
+local function MenuOf(widget)
+	if type(widget.Menu) == 'function' then return widget:Menu() end
+	local menu = widget.row and widget.row.option and widget.row.option.menu
+	if type(menu) == 'table' then return menu end
+end
+
 -- The menu of an item's row (in body, the body that drew it) drawn, and on
--- its dots.
-local function Draw(body, row, dots)
+-- its dots. menu is MenuOf's group, and title its own title when the widget
+-- gave one.
+local function Draw(body, row, dots, menu, title)
 	M.owner = { body = body, path = row.path }
-	M.root = OM.MenuRoot(row.option)
+	M.root = OM.MenuRoot({ menu = menu })
 	M.body:SetRoot(M.root)
-	local title = OM.Member(body.root, row, 'menuTitle')
+	if title == nil then title = OM.Member(body.root, row, 'menuTitle') end
 	if type(title) == 'number' then title = tostring(title) end
 	M.title:SetText(type(title) == 'string' and title ~= '' and title or row.name)
 	-- On each draw: Text > Grey can change, or the profile with it.
@@ -308,13 +324,17 @@ end
 local function FollowMenu()
 	if not (M.frame and M.frame:IsShown() and M.owner) then return end
 	local cell = ItemCell(M.owner.body, M.owner.path)
+	-- Its widget's menu again: a font row has none once its value is no longer
+	-- a typeface, so the menu closes (even while busy: it has nothing to draw).
+	local menu, title
+	if cell then menu, title = MenuOf(cell.widget) end
+	if not menu then return OW:CloseMenu() end
 	if Busy() then
-		if cell then Anchor(cell.widget.dots) end
+		Anchor(cell.widget.dots)
 		return
 	end
 	M.dragging = nil
-	if not cell then return OW:CloseMenu() end
-	Draw(cell.body, cell.row, cell.widget.dots)
+	Draw(cell.body, cell.row, cell.widget.dots, menu, title)
 end
 
 ------------------------------------------------------------------ the API
@@ -323,11 +343,12 @@ function OW:OpenMenu(widget)
 	if InCombatLockdown() then return false end
 	if widget and widget.disabled then return false end
 	local row = widget and widget.row
-	local menu = row and row.option and row.option.menu
-	if type(menu) ~= 'table' or not (widget.rowBody and widget.dots) then return false end
+	if not (row and widget.rowBody and widget.dots) then return false end
+	local menu, title = MenuOf(widget)
+	if type(menu) ~= 'table' then return false end
 	if not M.frame then Build() end
 	self:CloseMenu()
-	Draw(widget.rowBody, row, widget.dots)
+	Draw(widget.rowBody, row, widget.dots, menu, title)
 	M.frame:Show()
 	return true
 end

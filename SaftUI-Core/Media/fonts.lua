@@ -365,7 +365,7 @@ function st:FontsChanged()
 end
 
 -- The rows of one font's look, as the Fonts tab shows them and as the dots menu
--- of a font row will: Size, Outline, Shadow offset X and Y, Line spacing.
+-- of a font row does: Size, Outline, Shadow offset X and Y, Line spacing.
 FN.FIELDS = { 'font_size', 'font_outline', 'shadow_x', 'shadow_y', 'spacing' }
 
 -- One field of a look (st:FontFields' shape, or a profile's or default's
@@ -390,6 +390,31 @@ function FN.WithField(fields, field, value)
 		copy[field] = value
 	end
 	return copy
+end
+
+-- The dots' tooltip title for a typeface: "Size, outline, shadow and line
+-- spacing for Colus", listing only what the row's menu shows (fields: the
+-- row's fontFields, nil for all five).
+local DOTS_WORDS = { font_size = 'size', font_outline = 'outline', shadow_x = 'shadow', shadow_y = 'shadow', spacing = 'line spacing' }
+function FN.DotsTitle(fields, face)
+	local wanted
+	if fields then
+		wanted = {}
+		for _, field in ipairs(fields) do wanted[field] = true end
+	end
+	local words, seen = {}, {}
+	for _, field in ipairs(FN.FIELDS) do
+		local word = DOTS_WORDS[field]
+		if (not wanted or wanted[field]) and not seen[word] then
+			seen[word] = true
+			words[#words + 1] = word
+		end
+	end
+	local list = words[1]
+	if #words > 1 then
+		list = table.concat(words, ', ', 1, #words - 1) .. ' and ' .. words[#words]
+	end
+	return (list or 'Options'):gsub('^%l', string.upper) .. ' for ' .. face
 end
 
 -- Per field: its name and its desc for each subject. A 'shared' desc is the
@@ -521,9 +546,9 @@ local function TextFontsGroup()
 	}
 end
 
--- What is true today: the Font rows list these and nothing else. Task 4's dots
--- add a sentence about a typeface's own size and outline.
-local INTRO = "SaftUI's shared fonts. Font rows throughout SaftUI choose from these, and a change here changes every text that uses the font, at once."
+-- The first sentence is Task 2's wording, kept: a Font row lists these first.
+-- The second is the spec's, about the dots.
+local INTRO = "SaftUI's shared fonts. Font rows throughout SaftUI choose from these, and a change here changes every text that uses the font, at once. A Font row can take a typeface of its own instead, with its size and outline in its dots."
 
 -- The look of a shared font at its default, for the row's reset: one field of
 -- st.defaults.fonts[key].
