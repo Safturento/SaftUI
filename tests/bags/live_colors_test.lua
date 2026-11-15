@@ -138,6 +138,17 @@ local function quiet()
 	end
 end
 
+-- Bags' own handler alone, measured: what Bags itself repaints for a color.
+-- (A whole pass also runs Core's widget followers: every button's, close
+-- button's and scroll thumb's own colors, which "nothing of Bags'" must not count.)
+local function bags_pass(group, key)
+	spy()
+	local ok, m = pcall(C.measure, function() INV:OnColorsChanged(group, key) end, 1)
+	unspy()
+	if not ok then error(m, 0) end
+	return m
+end
+
 -- A pass of one color, measured: setters, forbidden calls and garbage.
 local function pass(group, key, runs)
 	spy()
@@ -414,7 +425,7 @@ test('another text color does not recolor the glyphs or the funnel', function()
 	local funnel = bag.categories.Currencies.filterButton
 	st.config.profile.colors.text.normal:SetRGB(0.2, 0.6, 0.4)
 	st:ColorChanged('text', 'normal')
-	local m = pass('text', 'danger')
+	local m = bags_pass('text', 'danger')
 	eq(setters(m, 'SetColorTexture'), 0, 'no glyph')
 	eq(setters(m, 'SetVertexColor'), 0, 'no funnel, no marker')
 end)
@@ -433,7 +444,7 @@ test("Buttons > Danger: the bank's unbought slots, at their region's 0.3", funct
 	end
 	quiet()
 	eq(m.forbidden.total, 0, 'nothing forbidden')
-	m = pass('button', 'hover')
+	m = bags_pass('button', 'hover')
 	eq(setters(m, 'SetVertexColor'), 0, 'another Buttons color: nothing')
 end)
 

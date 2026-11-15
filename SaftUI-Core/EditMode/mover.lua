@@ -353,16 +353,22 @@ function EM:CreateMover(key, def)
 end
 
 -- A theme recolor (or redraw) gives every drawn frame the theme's colors; the
--- overlays take their own back, and a selected one follows the accent at once.
--- Every group is passed on ('ColorsChanged': the bar's accent follows
--- Theme > Accent).
-function EM:OnColorsChanged(group)
-	if group == 'theme' or group == 'accent' then
+-- overlays take their own back, and the selected one follows the accent at
+-- once (only it wears the accent, and not under Blizzard, whose art it shows).
+-- While edit mode is on the pass is passed on as 'ColorsChanged' (group, key)
+-- for each part of it that draws a color; while it is off nothing is: each
+-- part looks again as edit mode comes on (the 'Enabled' event). A pass only
+-- colors (the plan's "A pass only colors").
+function EM:OnColorsChanged(group, key)
+	if group == 'theme' then
 		for _, mover in pairs(self.movers) do
 			SetBorderColor(mover, mover == self.selected)
 		end
+	elseif group == 'accent' then
+		local selected = self.selected
+		if selected and not st:IsBlizzardLook('theme', 'solid') then SetBorderColor(selected, true) end
 	end
-	self:Fire('ColorsChanged', group)
+	if self.active then self:Fire('ColorsChanged', group, key) end
 end
 
 -- Keyboard catcher: only exists while edit mode is active. Everything except

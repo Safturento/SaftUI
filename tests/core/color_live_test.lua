@@ -10,6 +10,7 @@
 -- color field and picker, the Colors tab and the theme. The clock the guard
 -- reads (debugprofilestop) is a stand-in a paint moves.
 local H = load_test_file('core/options_widgets_helpers.lua')
+load_editmode_bar() -- the real edit mode, off: a pass costs it nothing (editmode_colors_test.lua)
 local C = load_test_file('lib/color_cost.lua')
 local st = SaftUI
 local W = st.OptionsWidgets
@@ -269,16 +270,6 @@ end)
 
 ------------------------------------------------------------------ the guard and the numbers
 
--- Runs fn with the stand-in the only module: the modules' own handlers are
--- measured by their own tests (Edit mode's looks at its bar again on every
--- group until Task 2 of live colors).
-local function alone(fn)
-	local modules = st.modules
-	st.modules = { LiveProbe = M }
-	local ok, err = pcall(fn)
-	st.modules = modules
-	if not ok then error(err, 0) end
-end
 
 -- The clock the guard reads, moved by hand.
 local function with_clock(fn)
@@ -412,7 +403,7 @@ test('a pass makes nothing and allocates nothing: 1000 followers, 100 passes', f
 		st:FollowColor(objects[i], 'text', 'danger', paint)
 	end
 	local m
-	alone(function() m = C.measure(function() st:ColorChanged('text', 'danger') end, 100) end)
+	m = C.measure(function() st:ColorChanged('text', 'danger') end, 100) -- every module real; edit mode's (off here) costs nothing
 	eq(m.made, 0, 'nothing made')
 	eq(m.forbidden.total, 0, 'nothing shown, hidden, placed or sized')
 	eq(m.calls.by.SetVertexColor, 100000, 'every follower colored, every pass')
@@ -469,10 +460,9 @@ test('combat cancels an open picker: the restore and the whole pass run, color o
 	forget()
 	stub.in_combat = true
 	local m
-	alone(function()
-		m = C.measure(function() stub.fire_script(F.frame, 'OnEvent', 'PLAYER_REGEN_DISABLED') end, 1,
-			{ [F.frame] = true, [F.keys] = true, [F.square] = true, [F.hue] = true, [F.alpha] = true, [F.drag] = true, [CO.ticker] = true })
-	end)
+	-- Every module real (edit mode's, off here, costs the pass nothing).
+	m = C.measure(function() stub.fire_script(F.frame, 'OnEvent', 'PLAYER_REGEN_DISABLED') end, 1,
+		{ [F.frame] = true, [F.keys] = true, [F.square] = true, [F.hue] = true, [F.alpha] = true, [F.drag] = true, [CO.ticker] = true })
 	eq(m.made, 0, 'nothing made')
 	eq(m.forbidden.total, 0, 'no forbidden call but the picker and the ticker hiding themselves')
 	eq(told(), 'text:nil', 'the whole pass ran')

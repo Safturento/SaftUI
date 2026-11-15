@@ -153,3 +153,32 @@ test('st:ColorRGBA allocates nothing per read, ten thousand times', function()
 	collectgarbage('restart')
 	check(grown < 20, 'st:ColorRGBA makes no table per read (grew ' .. grown .. ' KB)')
 end)
+
+test('a pick reaches every reader at once, at its opacity (live colors)', function()
+	local C = load_test_file('lib/color_cost.lua')
+	paint(1)
+	local button = CreateFrame('Button', nil, UIParent)
+	st:SkinButton(button)
+	local box = CreateFrame('CheckButton', nil, UIParent)
+	st:SkinCheckButton(box)
+	local bar = scrollBar()
+	st:SkinNewScrollBar(bar)
+	local frame = resizable()
+	st:EnableResizing(frame)
+	-- Outside an edit: only each color's own pass runs, so a follower under the wrong key fails.
+	for key, rgb in pairs({ normal = { 0.1, 0.9, 0.2 }, hover = { 0.8, 0.2, 0.7 }, pushed = { 0.6, 0.6, 0.1 } }) do
+		local c = st.config.profile.colors.button[key]
+		c:SetRGB(unpack(rgb)); c.a = 0.5
+		st:ColorChanged('button', key)
+	end
+	eq(text(button.hover:GetVertexColor()), text(0.1, 0.9, 0.2, 0.5), 'a button highlight')
+	eq(text(button.pushed:GetVertexColor()), text(0.6, 0.6, 0.1, 0.5), 'a button pushed fill')
+	eq(text(box:GetCheckedTexture():GetVertexColor()), text(0.8, 0.2, 0.7, 0.5), 'a check box fill')
+	eq(text(box:GetHighlightTexture():GetVertexColor()), text(0.1, 0.9, 0.2, 0.5), 'a check box highlight')
+	eq(text(bar:GetThumb().backdrop:GetBackdropColor()), text(0.1, 0.9, 0.2, 0.5), 'a thumb at rest')
+	eq(text(frame.ResizeButton:GetPushedTexture():GetVertexColor()), text(0.8, 0.2, 0.7, 0.5), 'a resize corner')
+	for _, key in ipairs({ 'normal', 'hover', 'pushed' }) do
+		local c = st.config.profile.colors.button[key]
+		c.a = 1
+	end
+end)

@@ -114,6 +114,12 @@ local function EndResize(_, button)
 	if button == 'LeftButton' then StopResize() end
 end
 
+-- The corner's highlight and pushed textures follow Buttons > Hover at once
+-- (st:FollowColor); under Blizzard's art (white) a pass leaves them.
+local function PaintGrip(texture)
+	if not S.blizzard then texture:SetVertexColor(st:ColorRGBA('button', 'hover')) end
+end
+
 -- The grip and the edge, at the window's bottom, over its frames. The grip's
 -- textures are dressed for the look by LookGrip.
 local function BuildResize(window)
@@ -129,6 +135,8 @@ local function BuildResize(window)
 	grip:SetNormalTexture(grip.normal)
 	grip:SetHighlightTexture(grip.highlight)
 	grip:SetPushedTexture(grip.pushed)
+	st:FollowColor(grip.highlight, 'button', 'hover', PaintGrip)
+	st:FollowColor(grip.pushed, 'button', 'hover', PaintGrip)
 
 	local sizer = CreateFrame('Frame', nil, window)
 	sizer:SetPoint('BOTTOMLEFT', window, 'BOTTOMLEFT', 0, 0)

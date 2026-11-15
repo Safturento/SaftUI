@@ -287,3 +287,37 @@ test('the /sui options gain Dim world and Coordinates', function()
 	check(g.dim and g.coordinates, 'options: dim and coordinates')
 	check(g.dim.name == 'Dim world' and g.coordinates.name == 'Coordinates', 'their names')
 end)
+
+test("a color pass of the Accent gives the two centre lines the Accent at CENTER_ALPHA, redrawing nothing; another group touches none", function()
+	set_screen(1921, 1081)
+	EM:Activate()
+	settings.grid, settings.grid_size = true, 32
+	EM:UpdateGrid()
+	local before = {}
+	for i, line in ipairs(shownLines()) do before[i] = colorOf(line) end
+	local drawn = select('#', EM.gridFrame:GetRegions())
+	local accent = st.config.profile.theme.accent
+	local keep = { accent.r, accent.g, accent.b }
+	accent:SetRGB(0.9, 0.5, 0.1)
+	st:ColorChanged('class', 'MAGE')
+	for i, line in ipairs(shownLines()) do check(colorEq(colorOf(line), before[i]), 'Class > Mage: line ' .. i .. ' unchanged') end
+	st:ColorChanged('accent')
+	local changed = 0
+	for i, line in ipairs(shownLines()) do
+		if not colorEq(colorOf(line), before[i]) then
+			changed = changed + 1
+			check(colorEq(colorOf(line), { 0.9, 0.5, 0.1, 0.9 }), 'a centre line: the Accent at 0.9')
+		end
+	end
+	check(changed == 2, 'the two centre lines changed: ' .. changed)
+	check(select('#', EM.gridFrame:GetRegions()) == drawn, 'no line made')
+	-- Edit mode off: the grid is hidden and a pass leaves its lines.
+	EM:Deactivate()
+	accent:SetRGB(0.1, 0.2, 0.3)
+	st:ColorChanged('accent')
+	accent:SetRGB(unpack(keep))
+	EM:Activate()
+	EM:UpdateGrid() -- drawn again as it comes on, in the Accent
+	check(colorEq(colorOf((function() for _, l in ipairs(shownLines()) do if colorOf(l)[4] == 0.9 then return l end end end)()), { keep[1], keep[2], keep[3], 0.9 }), 'drawn on in the Accent as it is')
+	EM:Deactivate()
+end)

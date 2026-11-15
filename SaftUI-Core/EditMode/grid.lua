@@ -14,6 +14,7 @@ local LINE_COLOR = { 1, 1, 1, 0.12 }
 
 local gridFrame
 local pool = {} -- line textures, reused between redraws
+local centers, centerCount = {}, 0 -- the centre lines the last draw made, for a recolor
 
 -- Every center + k*size (k any integer) from low to high, ascending. A size
 -- under 1 would never end, so it gives just the center.
@@ -74,8 +75,11 @@ function Draw()
 	local centerR, centerG, centerB = st:Color('accent'):GetRGB()
 
 	local used = 0
+	centerCount = 0
 	local function Place(line, isCenter)
 		if isCenter then
+			centerCount = centerCount + 1
+			centers[centerCount] = line
 			line:SetColorTexture(centerR, centerG, centerB, CENTER_ALPHA)
 		else
 			line:SetColorTexture(unpack(LINE_COLOR))
@@ -156,6 +160,13 @@ function EM:UpdateDim()
 	local f = GetDimFrame()
 	f:SetShown(self.active and self:GetSettings().dim == true)
 end
+
+-- A color pass: the two centre lines take the Accent; nothing is redrawn.
+EM:On('ColorsChanged', function(group)
+	if group ~= 'accent' or not (gridFrame and gridFrame:IsShown()) then return end
+	local r, g, b = st:Color('accent'):GetRGB()
+	for i = 1, centerCount do centers[i]:SetColorTexture(r, g, b, CENTER_ALPHA) end
+end)
 
 EM:On('Enabled', function() EM:UpdateGrid() EM:UpdateDim() end)
 EM:On('Disabled', function() EM:UpdateGrid() EM:UpdateDim() end)

@@ -29,18 +29,23 @@ local W, OB = st.OptionsWidgets, st.OptionsBody
 	                           the group's controls on the docked bar only; the
 	                           floating window keeps the group's own. side only
 	                           says the default row.
-	  a control                { key, frame, Lay, Refresh, Look, section, align }
+	  a control                { key, frame, Lay, Refresh, Look, Recolor, section, align }
 	    Lay(control, floating) -> width   lays the control out and says its
 	                           width; 0 is not shown
 	    Refresh(control)       puts the settings' state on it (optional)
 	    Look(control, blizzard) its look for the theme; W.LookControl(frame) when
 	                           it has none (a number box's is W.LookNumberBox)
+	    Recolor(control, blizzard) its colors only, for a color pass (optional:
+	                           with none Look runs, which must then do nothing
+	                           but color while the art is the same)
 	    section, align         the group's section overridden, 'right' (unused in
 	                           the docked bar)
 	  EM.BarLayout(rows) -> xs, dividers, width      the pure part
 	  EM:GetBar()              the frame, built on first use
 	  EM:LayoutBar()           lays the controls out and sizes the bar
 	  EM:RefreshBar()          each control's look and state again
+	  EM:RecolorBar()          each control's colors again (a color pass: nothing
+	                           placed, shown or hidden)
 	  EM:BarControl(key)       a control by its key
 	  EM:IsBlizzardEditModeOpen()
 
@@ -63,8 +68,9 @@ local W, OB = st.OptionsWidgets, st.OptionsBody
 	Events (EM:On): Enabled lays out, refreshes and shows it, Disabled hides it
 	(and so does entering combat, which turns edit mode off). DragStarted fades
 	it to DRAG_ALPHA and takes the mouse off every control, so a frame dragged
-	up under it shows through; DragStopped brings it back. SettingsChanged and
-	ColorsChanged refresh it. Every control's click does nothing in combat
+	up under it shows through; DragStopped brings it back. SettingsChanged refreshes it; ColorsChanged
+	(group, key) for Text's Normal and Muted and the Accent recolors it
+	(EM:RecolorBar), and for Theme looks again (EM:RefreshBar). Every control's click does nothing in combat
 	(bargroups.lua's Guard).
 
 	Whole pixels: widths come in whole, the controls are placed by their top
@@ -357,6 +363,29 @@ function EM:RefreshBar()
 	if self.LookBarWindow then self:LookBarWindow(blizzard) end
 end
 
+-- A color pass over the bar: each control's colors again, and nothing else (no
+-- look, no state, nothing placed or shown). A control's Recolor(control,
+-- blizzard) paints its own; one with no Recolor has the look put on again,
+-- which does only that while the art is the same (Changes), as W.LookControl.
+function EM:RecolorBar()
+	if not bar then return end
+	local blizzard = W.BlizzardLook()
+	for _, group in ipairs(groups) do
+		local built = group.built -- (nil until built: no table made per pass)
+		for i = 1, built and #built or 0 do
+			local control = built[i]
+			if control.Recolor then
+				control:Recolor(blizzard)
+			elseif control.Look then
+				control:Look(blizzard)
+			else
+				W.LookControl(control.frame, blizzard)
+			end
+		end
+	end
+	if self.LookBarWindow then self:LookBarWindow(blizzard) end
+end
+
 -- Every control, in group order: the floating window lays them out by section.
 function EM:BarControls()
 	local list = {}
@@ -522,6 +551,7 @@ EM:On('Enabled', function()
 	ApplyMode()
 	EM:LayoutBar()
 	EM:RefreshBar()
+	EM:RecolorBar() -- what a pass skipped while edit mode was off (the number boxes' arrows)
 	ShowSurface()
 end)
 
@@ -570,4 +600,22 @@ EM:On('DragStopped', function()
 end)
 
 EM:On('SettingsChanged', function() EM:RefreshBar() end)
-EM:On('ColorsChanged', function() EM:RefreshBar() end)
+-- Whether a color pass of (group, key) reaches what the bar, its floating
+-- window and the History list draw: Text's Normal and Muted (labels, icons,
+-- arrows) and the Accent (a lit control's edge, a mark, the hover). They draw
+-- no Buttons color (the controls' fills are the kit's own) and no other Text
+-- (Danger shows in a tooltip, drawn as it shows).
+function EM.DrawsColor(group, key)
+	if group == 'accent' then return true end
+	return group == 'text' and (key == nil or key == 'normal' or key == 'muted')
+end
+
+-- A Theme pass looks again as it always did; the colors the bar draws repaint
+-- its colors only (EM:RecolorBar).
+EM:On('ColorsChanged', function(group, key)
+	if group == 'theme' then
+		EM:RefreshBar()
+	elseif EM.DrawsColor(group, key) then
+		EM:RecolorBar()
+	end
+end)

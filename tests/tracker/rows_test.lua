@@ -1134,8 +1134,9 @@ end)
 RW.both('a Class or Power pass repaints nothing in the tracker; Text, Objectives and the Accent still do', function(st, TR)
 	Q.set({ Q.header('A'), Q.quest(1, { objectives = { { text = 'old', type = 'monster' } } }) }, { 1 }, {})
 	TR:Refresh()
-	-- The tracker alone: RW.calls counts every widget's setters, and edit mode's handler
-	-- (and Core's) paint on Text, Buttons and the Accent too.
+	-- The tracker alone: RW.calls counts every widget's setters, and other modules'
+	-- handlers (Core's, edit mode's when it is on: about 125 setters on a Text or
+	-- Accent pass) paint on those groups too, which isn't the tracker's cost.
 	local function total(group, key)
 		local modules = st.modules
 		st.modules = { Tracker = TR }
@@ -1161,8 +1162,9 @@ RW.both("a pass for the tracker's live groups only colors: nothing forbidden or 
 	local C = load_test_file('lib/color_cost.lua')
 	Q.set({ Q.header('A'), Q.quest(1, { item = { link = 'item:6948', texture = 134400 } }), Q.quest(2) }, { 1, 2 })
 	TR:Refresh()
-	-- The tracker alone: RW.calls counts every widget, and edit mode's handler
-	-- (and Core's) paint on Text, Buttons and the Accent too.
+	-- The tracker alone: RW.calls counts every widget, and other modules' handlers
+	-- (Core's, edit mode's when it is on) paint on those groups too, which isn't the
+	-- tracker's cost.
 	local modules = st.modules
 	for _, combat in ipairs({ false, true }) do
 		RW.TW.combat(combat)
