@@ -441,15 +441,21 @@ function UF:CopySettings(unit, from, keys)
 	local config = self:GetProfileConfig()
 	local skipped
 	local changes = {}
+	-- Only a setting both units' pages name: the source's config has no value
+	-- for one its page lacks (a read would make AceDB's '**' default, written
+	-- onto the destination and created on the source).
+	local named, namedFrom = CopyNames(self, unit), CopyNames(self, from)
 	for _, key in ipairs(keys) do
-		local problem = key == 'position' and self:PositionCopyProblem(unit, from)
-		if problem then
-			skipped = "Position wasn't copied: " .. problem
-		else
-			changes[#changes + 1] = {
-				kind = 'ufsetting', where = { profile = profile, unit = unit, key = key },
-				old = CopyValue(config[unit][key]),
-			}
+		if named[key] and namedFrom[key] then
+			local problem = key == 'position' and self:PositionCopyProblem(unit, from)
+			if problem then
+				skipped = "Position wasn't copied: " .. problem
+			else
+				changes[#changes + 1] = {
+					kind = 'ufsetting', where = { profile = profile, unit = unit, key = key },
+					old = CopyValue(config[unit][key]),
+				}
+			end
 		end
 	end
 	for _, change in ipairs(changes) do
@@ -502,11 +508,23 @@ function UF:OpenCopyTable(unit)
 		settingArgs.position.disabled = function() return PositionProblem() ~= nil end
 		settingArgs.position.disabledDesc = function() return PositionProblem() end
 	end
+	-- A setting is offered while both units' pages name it (the source's can't
+	-- be read for one its page lacks): all of this unit's until a source is
+	-- chosen, then the ones that source's page names too.
+	local fromNames, fromNamesOf
+	local function Offered(key)
+		if not copy.from then return true end
+		if fromNamesOf ~= copy.from then fromNames, fromNamesOf = CopyNames(UF, copy.from), copy.from end
+		return fromNames[key] ~= nil
+	end
+	for key, arg in pairs(settingArgs) do
+		arg.hidden = function() return not Offered(key) end
+	end
 	local function Ticked(key)
-		return copy.settings[key] and not (key == 'position' and PositionProblem())
+		return copy.settings[key] and Offered(key) and not (key == 'position' and PositionProblem())
 	end
 	local function SetAll(value)
-		for key in pairs(copy.settings) do copy.settings[key] = value end
+		for key in pairs(copy.settings) do copy.settings[key] = value and Offered(key) end
 	end
 
 	local options = {

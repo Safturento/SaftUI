@@ -11,7 +11,11 @@
 -- spawned frame and needs oUF).
 
 local UW = load_test_file('unitframes/uf_world.lua')
-local st, UF = UW.world({ position = true })
+-- With the name element too: the typeface test copies the Name tab's setting,
+-- and Copy from lists only the settings a unit's page names.
+local elements = { 'name' }
+for _, file in ipairs(UW.ELEMENTS) do elements[#elements + 1] = file end
+local st, UF = UW.world({ position = true, elements = elements })
 load_saftui('SaftUI-Core/Libraries/Ace3/AceConfig-3.0/AceConfigRegistry-3.0/AceConfigRegistry-3.0.lua')
 load_saftui('SaftUI-Core/Config/optionsmodel.lua')
 load_options_widgets()
@@ -302,4 +306,50 @@ test('Copy from carries a typeface table deep: the two units never share one, an
 	eq(History:Undo(), false, 'a hand edit in place makes the step stale, so refused')
 	eq(P.focus.name.font.shadow_offset[1], 5, 'and the edit stays')
 	eq(typeface.shadow_offset[1], 1, "the source's shadow is untouched")
+end)
+
+-- A key only the destination's page names (Party's Layout: spacing) has no
+-- value on a source that lacks it (Target): reading one gives AceDB's '**'
+-- default, which would be written onto the destination and made on the source.
+test("Copy from offers and copies only the settings both units' pages name", function()
+	fresh()
+	local P = config()
+	UF.groups.party = CreateFrame('Frame', nil, UIParent)
+	P.party.width, P.target.width = 90, 300
+	P.party.spacing = 11
+	eq(rawget(P.target, 'spacing'), nil, 'Target has no spacing of its own')
+
+	-- The function.
+	local partySpacing = P.party.spacing
+	local step = UF:CopySettings('party', 'target', { 'spacing', 'growthDirection', 'width' })
+	eq(P.party.spacing, partySpacing, "Party's spacing is untouched")
+	eq(type(P.party.growthDirection), 'string', "Party's growth direction is untouched")
+	eq(rawget(P.target, 'spacing'), nil, 'and Target gets none made')
+	eq(rawget(P.target, 'growthDirection'), nil, 'nor a growth direction')
+	eq(P.party.width, 300, 'width, which both name, copies')
+	eq(#step.changes, 1, 'one change')
+	eq(History:Undo(), true, 'Undo')
+	eq(P.party.width, 90, 'width is back')
+	eq(P.party.spacing, partySpacing, 'spacing the same')
+
+	-- A step with only keys the source lacks records nothing.
+	eq(UF:CopySettings('party', 'target', { 'spacing' }), nil, 'only an unnamed key: no step')
+	eq(rawget(P.target, 'spacing'), nil, 'still none made')
+
+	-- The dialog.
+	UF:OpenCopyTable('party')
+	check(cell('spacing') ~= nil, 'Spacing is offered before a source is chosen')
+	cell('copy_from').widget:Commit('target')
+	local spacing = cell('spacing')
+	check(spacing == nil or spacing.row.hidden, 'and not once Target is the source')
+	check(cell('width') ~= nil and not cell('width').row.hidden, 'Width is')
+	click(cell('toggle_all').widget.frame)
+	click(cell('accept').widget.frame)
+	click(W.GetDialogFrames().yes)
+	eq(P.party.width, 300, 'All copied what is offered')
+	eq(P.party.spacing, partySpacing, 'and not the rest')
+	eq(rawget(P.target, 'spacing'), nil, 'nothing made on Target')
+	History:Undo()
+	OW:CloseDialog()
+	UF.groups.party = nil
 end)
