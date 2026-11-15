@@ -628,13 +628,16 @@ test('the skin repaints for its groups only: a Class pass touches nothing', func
 	end
 	-- Objectives colors each line through Apply, an xpcall with arguments: the stub's xpcall
 	-- (tests/wow/lua.lua) makes a closure for those, the game's makes none. With a stand-in
-	-- that makes none, the skin's own pass makes no table.
+	-- that makes none, the skin's own pass makes no table: Objectives, and Theme, which colors
+	-- the lines the same way and takes the header lines' border color without a look table.
 	local stub_xpcall = _G.xpcall
 	_G.xpcall = function(fn, _, ...) return pcall(fn, ...) end
 	local ok, err = pcall(function()
-		st:ColorChanged('objectives')
-		local m = C.measure(function() st:ColorChanged('objectives') end, 100)
-		check(m.kb < 4, 'objectives, without the stub\'s xpcall closure: ' .. m.kb .. ' KB over 100 passes')
+		for _, group in ipairs({ 'objectives', 'theme' }) do
+			st:ColorChanged(group)
+			local m = C.measure(function() st:ColorChanged(group) end, 100)
+			check(m.kb < 4, group .. ', without the stub\'s xpcall closure: ' .. m.kb .. ' KB over 100 passes')
+		end
 	end)
 	_G.xpcall = stub_xpcall
 	if not ok then error(err, 0) end

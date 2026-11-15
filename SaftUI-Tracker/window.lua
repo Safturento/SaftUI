@@ -697,9 +697,7 @@ end
 -- The line along the header's bottom: the drawn theme's border color, faint
 -- (the skin's LineColor rule).
 local function LineColor()
-	local config = TR.config
-	local look = st:ResolveTheme(config.theme, config.background) or st:ResolveTheme()
-	local r, g, b = unpack(look.colors.bordercolor)
+	local r, g, b = st:ThemeBorderColor(TR.config.theme)
 	return r, g, b, L.LINE_ALPHA
 end
 

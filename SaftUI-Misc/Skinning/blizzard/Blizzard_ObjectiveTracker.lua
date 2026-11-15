@@ -180,9 +180,7 @@ end
 
 -- The color of a header's line: the theme's border color, faint.
 local function LineColor()
-	local theme, background = Look()
-	local look = st:ResolveTheme(theme, background) or st:ResolveTheme()
-	local r, g, b = unpack(look.colors.bordercolor)
+	local r, g, b = st:ThemeBorderColor((Look()))
 	return r, g, b, LINE_ALPHA
 end
 

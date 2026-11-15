@@ -577,10 +577,6 @@ function st:MigrateColors(profile)
 	if last > from then colors.version = last end
 end
 
-local RELOAD_NOTE = 'Most of SaftUI reads these when it builds its frames: reload (Reload UI, bottom right) to see a change everywhere.'
--- The same, for the Accent, which is one color.
-local ACCENT_RELOAD_NOTE = 'Most of SaftUI reads it when it builds its frames: reload (Reload UI, bottom right) to see a change everywhere.'
-
 -- The Colors tab's sections, in order. A section is { key, name, note,
 -- hasAlpha, colors }: key is its group's key, note shows under its title,
 -- hasAlpha gives its swatches an opacity slider. A color is { group, key,
@@ -601,7 +597,7 @@ end
 
 CO.SECTIONS = {
 	{
-		key = 'text', name = 'Text', note = RELOAD_NOTE,
+		key = 'text', name = 'Text',
 		colors = Colors('text', {
 			{ 'normal', 'Text', "Ordinary text: the options window, totem timers, the flyout arrow on the totem bar's summon button, and an enemy nameplate's threat text while your threat on it is fine." },
 			{ 'muted', 'Muted', "Dimmed text and icons: the options window's hints, captions, section titles and disabled controls, and the diff icon beside a setting that differs; edit mode's hint lines; the bag categories' counts and their edited and yours marker, and the combined bank's visibility toggle; SaftUI's objective tracker's zone headers, counts and chevrons; and a unit frame's level tag for a far lower level." },
@@ -614,7 +610,7 @@ CO.SECTIONS = {
 		}),
 	},
 	{
-		key = 'button', name = 'Buttons', note = RELOAD_NOTE .. " Opacity sets how strongly each is drawn: 100% is SaftUI's own.", hasAlpha = true,
+		key = 'button', name = 'Buttons', note = "Opacity sets how strongly each is drawn: 100% is SaftUI's own.", hasAlpha = true,
 		colors = Colors('button', {
 			{ 'normal', 'Normal', "A SaftUI button's or check box's highlight, a scroll bar thumb at rest, and the highlight of the micro menu bar's own items (the zone text and the addon compartment)." },
 			{ 'hover', 'Hover', "A checked check box, a hovered scroll bar thumb, the micro buttons' highlight, the minimap's tracking, queue and expansion buttons under the mouse, and resize corners." },
@@ -632,7 +628,7 @@ CO.SECTIONS = {
 		}),
 	},
 	{
-		key = 'roles', name = 'Roles', note = RELOAD_NOTE,
+		key = 'roles', name = 'Roles',
 		colors = Colors('roles', {
 			{ 'TANK', 'Tank', "The role corner of a tank on unit frames, and in the group test previews." },
 			{ 'HEALER', 'Healer', "The role corner of a healer on unit frames, and in the group test previews." },
@@ -655,7 +651,7 @@ CO.SECTIONS = {
 		end)(),
 	},
 	{
-		key = 'factions', name = 'Factions', note = RELOAD_NOTE,
+		key = 'factions', name = 'Factions',
 		colors = Colors('factions', {
 			{ 'Alliance', 'Alliance', "Alliance on the zone text and the world map's zone names: a zone the Alliance holds." },
 			{ 'Horde', 'Horde', "Horde on the zone text and the world map's zone names: a zone the Horde holds." },
@@ -682,7 +678,7 @@ CO.SECTIONS = {
 		}),
 	},
 	{
-		key = 'loot', name = 'Loot', note = RELOAD_NOTE,
+		key = 'loot', name = 'Loot',
 		colors = Colors('loot', {
 			{ 'need', 'Need', "Need on loot rolls: the Need button's letter, and Need in the loot feed's roll tooltip." },
 			{ 'greed', 'Greed', "Greed on loot rolls: the Greed button's letter, the roll counts of Greed and its line in the loot feed's roll tooltip." },
@@ -846,7 +842,7 @@ function CO:AccentOption(order)
 		size = 'small',
 		order = order,
 		name = 'Accent',
-		desc = "SaftUI's accent under every theme: what is on, picked, current or under the mouse in SaftUI's frames and windows, its links, and the chat prefix. " .. ACCENT_RELOAD_NOTE,
+		desc = "SaftUI's accent under every theme: what is on, picked, current or under the mouse in SaftUI's frames and windows, its links, and the chat prefix.",
 		get = function()
 			return st:Color('accent'):GetRGB()
 		end,
@@ -879,5 +875,6 @@ function CO:GetConfigTable()
 	for i, section in ipairs(CO.SECTIONS) do
 		args[section.key] = SectionGroup(section, i)
 	end
+	args.intro = { type = 'description', order = 0, name = 'A change shows everywhere as you pick it. This window takes it when the picker closes.' }
 	return { type = 'group', name = 'Colors', order = 2, args = args }
 end

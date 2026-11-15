@@ -1178,9 +1178,7 @@ RW.both("a pass for the tracker's live groups only colors: nothing forbidden or 
 				eq(m.forbidden.total, 0, where .. ': nothing forbidden')
 				eq(m.made, 0, where .. ': nothing made')
 				check(m.calls.total > 0, where .. ': colors')
-				-- A theme recolor draws the header's line through st:ResolveTheme, a look table per pass;
-				-- the Colors page's groups make none.
-				if pass[1] ~= 'theme' then check(m.kb < 4, where .. ': no garbage: ' .. m.kb) end
+				check(m.kb < 4, where .. ': no garbage: ' .. m.kb)
 			end
 		end)
 		st.modules = modules

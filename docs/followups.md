@@ -7,6 +7,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-15 — `/sui` following during a color drag](#2026-11-15--sui-following-during-a-color-drag)
+  - [2026-11-15 — The Theme tab's color drag recolors every drawn frame](#2026-11-15--the-theme-tabs-color-drag-recolors-every-drawn-frame)
   - [2026-11-15 — Edit mode: a Theme pass with edit mode on still does the full look and list refresh](#2026-11-15--edit-mode-a-theme-pass-with-edit-mode-on-still-does-the-full-look-and-list-refresh)
   - [2026-11-15 — Unit frames: a Warrior class pick updates every Warrior NPC plate](#2026-11-15--unit-frames-a-warrior-class-pick-updates-every-warrior-npc-plate)
   - [2026-11-15 — Unit frames: what a color pass's real element updates cost](#2026-11-15--unit-frames-what-a-color-passs-real-element-updates-cost)
@@ -193,6 +195,34 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-15 — `/sui` following during a color drag
+
+**What:** While the color picker is open, every SaftUI frame follows the color as it is dragged except the `/sui` window itself, which redraws once when the picker closes (Okay or Cancel). Making the window follow during the drag is a larger change across the options kit.
+
+**Why noticed:** The live colors design's Question 2 for the owner (`docs/superpowers/specs/2026-11-15-saftui-live-colors-design.md`, "What stays as it is, and why" and "Questions for the owner"): is `/sui` following when the picker closes all right? The plan built "at close" and the owner has not said otherwise. The reason it waits: a redraw while the picker is open releases the field the picker writes through, and repainting in place means touching the widget files of the options kit, which other branches were editing and the reset-on-every-setting design was reworking. The kit's field font does follow at once (its font objects), and Part B's preview (Tasks 9 to 11 of the plan) shows the text roles and the Accent on SaftUI's panels and controls meanwhile.
+
+**Anchors:** `docs/superpowers/specs/2026-11-15-saftui-live-colors-design.md` ("What stays as it is, and why", Question 2); `docs/superpowers/plans/2026-11-15-saftui-live-colors.md`; `SaftUI-Core/Config/optionscolorpicker.lua` (the edit's begin and end); `SaftUI-Core/Config/config.lua` (`Config:OnColorsChanged`, the redraw at close); the kit: `SaftUI-Core/Config/optionswidgets.lua`, `optionsbody.lua`, `optionstypes.lua`, `optionsmodel.lua` and the rows' own files; `tests/core/color_live_test.lua`.
+
+**What's been considered:** Repaint in place: every kit widget registers a follower for the colors it draws (`st:FollowColor`), as Core's buttons and check boxes already do, instead of the window being rebuilt. The branches in flight when this was written were the resets plan's last task (the options kit and `tests/lib/harness.lua`) and the UI scaling design (`optionsresize.lua`, `panels.lua`); the change is best made after they land.
+
+**Shape of work:** a design pass over the kit (which widgets draw a Colors-page color and where), then one ticket per widget family; each with a cost case (`tests/lib/color_cost.lua`).
+
+**Open questions:** Whether the owner wants it at all once the preview shows the text roles and the Accent beside the picker; whether the window should follow only for the color being dragged, or for every Colors page group.
+
+### 2026-11-15 — The Theme tab's color drag recolors every drawn frame
+
+**What:** A color picked on the Theme tab (its background and border colors, the templates' colors) runs `st:RecolorThemed()`, which recolors every frame drawn by the theme engine, on each pass of the drag. It is not made cheaper by the live colors work: the pass is timed (`theme` in the debug line) and nothing more.
+
+**Why noticed:** The live colors design left the Theme tab's colors out of scope (its call 11: "their recolor is timed in the debug line, a followup if over budget"). Whether it is over budget only the game can say: the spec's target is 2 ms a pass and the guard waits one frame per 8 ms over, three at most.
+
+**Anchors:** `SaftUI-Core/Media/theme.lua` (`Recolor()`, which runs `st:RecolorThemed()` through `CO.Timed('theme', nil, fn)`), `SaftUI-Core/theme.lua` (`st:RecolorThemed`), `SaftUI-Core/Media/colors.lua` (`CO.Timed`, `CO.EditStats`, the `<DEBUG:Colors>` line), `docs/superpowers/plans/2026-11-15-saftui-live-colors-in-game-checklist.md` (the debug line check).
+
+**What's been considered:** Act on it only if the owner's debug line, after a Theme tab color drag in a full UI (bags and the bank open, a 40-player raid or Test mode with Raid 40, the tracker), shows `theme` over 8 ms. Then: recolor only the frames whose look reads the color (by template and by key, as the Colors page's passes filter by group and key), or throttle the drag's passes.
+
+**Shape of work:** a read of the debug line first; if slow, one ticket in Core to filter `st:RecolorThemed` by the template key that changed.
+
+**Open questions:** The slowest `theme` pass the owner sees in game.
 
 ### 2026-11-15 — Edit mode: a Theme pass with edit mode on still does the full look and list refresh
 

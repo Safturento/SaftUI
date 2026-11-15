@@ -143,6 +143,14 @@ function st:IsBlizzardLook(theme, background)
 	return ResolveName(theme) == 'blizzard'
 end
 
+-- The border color a Theme override draws (r, g, b), which is
+-- st:ResolveTheme(theme).colors.bordercolor, or the profile's own theme's for None
+-- (as a header line's callers fall back), with no look table made: a color pass may ask.
+function st:ThemeBorderColor(theme)
+	local name = ResolveName(theme ~= 'none' and theme or nil)
+	return unpack(st.config.profile.templates[name].bordercolor)
+end
+
 -- The look an old template name drew: nil for none, and for no name, which drew
 -- nothing. A name LEGACY doesn't know reads as a Theme. Nothing draws with an
 -- old name any more; the tests compare a module's new defaults with the old
