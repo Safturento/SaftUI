@@ -204,8 +204,9 @@ local function Scan(source)
 
 	-- A module held in a variable: the loop over the tracker's `modules` list, or
 	-- `module = _G[<the section's module name>]`. It may be hooked (Update only),
-	-- named (GetName: the C read, for the chat line about a module nobody knows) and
-	-- have its fields read (state, hasContents); nothing else.
+	-- have its fields read (state, hasContents) and be named through the metatable's
+	-- C method (`getmetatable(module).__index.GetName`, for the chat line about a
+	-- module nobody knows); nothing else, so a plain `module:GetName()` is flagged.
 	local modvars = {}
 	for name in pairs(names) do
 		Each(mask, 'for%s+[%w_]+%s*,%s*([%w_]+)%s+in%s+ipairs%(%s*[%w_%.]*' .. name .. '%s*%.%s*modules%s*%)', function(_, var) modvars[var] = true end)
@@ -214,7 +215,7 @@ local function Scan(source)
 	for var in pairs(modvars) do
 		local before = '%f[%w_]' .. var
 		Each(mask, before .. '%s*:%s*([%w_]+)', function(s, method)
-			if method ~= 'GetName' then Flag(s, ('%s:%s() is a method of one of its modules'):format(var, method)) end
+			Flag(s, ('%s:%s() is a method of one of its modules'):format(var, method))
 		end)
 		Each(mask, before .. '%s*%.%s*([%w_]+)%s*=[^=]', function(s, field) Flag(s, ('a field written onto a module: %s.%s'):format(var, field)) end)
 		Each(mask, before .. '%s*%.%s*([%w_]+)%s*%(', function(s, field) Flag(s, ('%s.%s() calls one of a module\'s functions'):format(var, field)) end)
@@ -283,6 +284,9 @@ test('the scanner flags what is off the list and lets the allowed through', func
 		'ObjectiveTrackerManager:Init()', 'ObjectiveTrackerManager.Foo()', 'ObjectiveTrackerManager.x = 1',
 		'ShouldShowMawBuffs()', 'UseQuestLogSpecialItem(1)', 'tracker:RemoveModule(m)', 'x:SetRolesets("alwaysBlocked")',
 		-- a module in a variable, by the loop over the list or by name
+		-- the name only through the metatable's C method (a plain call is the module's own function)
+		'for _, module in ipairs(tracker.modules) do local name = module:GetName() end',
+		'local module = _G[section.module]\nlocal name = module:GetName()',
 		'for _, module in ipairs(tracker.modules) do module:Hide() end', 'for i, m in ipairs(tracker.modules) do m:SetCollapsed(true) end',
 		'for _, module in ipairs(tracker.modules) do module.state = 1 end', 'for _, module in ipairs(ObjectiveTrackerFrame.modules) do module:Update() end',
 		'for _, module in ipairs(tracker.modules) do hooksecurefunc(module, "Show", f) end',
@@ -303,7 +307,7 @@ test('the scanner flags what is off the list and lets the allowed through', func
 		'if tracker.Selection then tracker.Selection:Hide() end',
 		'hooksecurefunc(tracker, "SetPoint", f)\nhooksecurefunc(tracker, "ClearAllPoints", f)\nhooksecurefunc(tracker, "UpdateHeight", f)\nhooksecurefunc(tracker, "SetAlpha", f)',
 		'hooksecurefunc(QuestObjectiveTracker, "Update", f)',
-		'for _, module in ipairs(tracker.modules) do\nlocal name = module:GetName()\nlocal s, h = module.state, module.hasContents\nhooksecurefunc(module, "Update", f)\nend',
+		'for _, module in ipairs(tracker.modules) do\nlocal s, h = module.state, module.hasContents\nhooksecurefunc(module, "Update", f)\nend',
 		'local module = _G[section.module]\nif module then hooksecurefunc(module, "Update", f) end\nlocal state = module.state',
 		'for _, module in ipairs(tracker.modules) do\nlocal getName = getmetatable(module).__index.GetName\nlocal key = getName(module)\nend',
 		'local n = ObjectiveTrackerUIWidgetContainer:GetNumWidgetsShowing()', 'local c = ObjectiveTrackerUIWidgetContainer ~= nil',
