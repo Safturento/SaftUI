@@ -408,9 +408,10 @@ function AB:StyleButton(button, config, theme, background)
 	-- showing from the bar's text settings (GetButtonConfig), with its own SetFont
 	-- of the same look; each text then takes its font object (st:ApplyFont) and
 	-- the shadow of its value (st:FontValues: a typeface's is 0, 0, as these texts
-	-- were drawn before, a shared font's is its own), because the template's texts
-	-- inherit a 1, -1 shadow and whether the object's shadow reaches a text the
-	-- library gave a SetFont is unverified in game. The hotkey and macro name are
+	-- were drawn before, a shared font's is its own), because the template's macro
+	-- name inherits a 1, -1 shadow (the hotkey's and count's do not) and whether
+	-- the object's shadow reaches a text the library gave a SetFont is
+	-- unverified in game. The hotkey and macro name are
 	-- one line, as tall as their font, and cut to the room inside the border (see
 	-- the top of this file). LibActionButton never shows or hides the count, so
 	-- its setting is applied here.
@@ -464,11 +465,16 @@ local function UsesSharedFont(config)
 end
 
 function AB:RestyleSharedFontBars()
-	if st:QueueAfterCombat('actionbars_fonts', function() self:RestyleSharedFontBars() end) then return end
+	local restyle = {}
 	for id, bar in pairs(self.bars) do
-		if bar.buttons and UsesSharedFont(self:GetBarConfig(id)) then
-			xpcall(function() self:StyleBar(id) end, geterrorhandler())
-		end
+		if bar.buttons and UsesSharedFont(self:GetBarConfig(id)) then restyle[#restyle + 1] = id end
+	end
+	-- In combat only when there is something to restyle: a profile of typefaces
+	-- queues nothing.
+	if #restyle == 0 then return end
+	if st:QueueAfterCombat('actionbars_fonts', function() self:RestyleSharedFontBars() end) then return end
+	for _, id in ipairs(restyle) do
+		xpcall(function() self:StyleBar(id) end, geterrorhandler())
 	end
 end
 
