@@ -81,7 +81,6 @@ function CHT:GetConfigTable()
 					theme = generators.theme(3, 'The border and background of the chat window and its edit box.'),
 					background = generators.background(3.5),
 					font = font,
-					fontsize = generators.range(5, 'Font size', 8, 32, 1, 'The size of the chat text.'),
 					padding = generators.range(6, 'Padding', 0, 30, 1,
 						'How far the chat background extends past the chat text.'),
 					editbox_height = {

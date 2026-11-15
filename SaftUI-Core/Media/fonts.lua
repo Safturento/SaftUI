@@ -502,31 +502,29 @@ function FN.FontSettingDefault(read, write, default)
 end
 
 -- The Kinds of text section: which font each kind of text uses, as
--- { row key, profile key, name, default, desc, apply }. A row reads and writes
--- st.config.profile[profile key].font. Only window titles can be re-applied
--- (st:UpdateHeader); the others are set when their frames are built.
+-- { row key, profile key, name, default, desc }. A row reads and writes
+-- st.config.profile[profile key].font. Each kind's texts follow their setting
+-- (st:FollowFont), so a change reaches them at once.
 local TEXT_FONTS = {
 	{ 'window_titles', 'headers', 'Window titles', 'normal',
-		"The titles of SaftUI's windows (the bags and bank), which change at once, and the bags' gold and free-slot text along their bottom, which changes on a reload.",
-		function() st:UpdateHeader() end },
+		"The titles of SaftUI's windows (the bags and bank), which change at once, and the bags' gold and free-slot text along their bottom, which changes on a reload." },
 	{ 'button_text', 'buttons', 'Button text', 'pixel',
 		"The text on the totem bar's buttons (key bindings, counts and names) and its totem timers, and on the bag slot bars and the bank's bag slots." },
 	{ 'checkbox_labels', 'panels', 'Check box labels', 'normal',
 		"The labels of SaftUI's check boxes, such as the bags' filters." },
 }
 
-local TEXT_FONTS_NOTE = 'Window titles change at once. The rest is read when SaftUI builds its frames: reload (Reload UI, bottom right) to see a change everywhere.'
+local TEXT_FONTS_NOTE = 'Which font each kind of text uses. A change shows at once.'
 
 local function TextFontsGroup()
 	local args = {}
 	for i, entry in ipairs(TEXT_FONTS) do
-		local key, profile_key, name, default, desc, apply = unpack(entry)
+		local key, profile_key, name, default, desc = unpack(entry)
 		local option = st.Config.generators.font(i, desc)
 		option.name = name
 		local function read() return st.config.profile[profile_key].font end
 		local function write(_, value)
 			st.config.profile[profile_key].font = value
-			if apply then apply() end
 		end
 		option.get = read
 		option.set = function(info, value)

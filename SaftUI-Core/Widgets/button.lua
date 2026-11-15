@@ -212,7 +212,7 @@ function st:SkinButton(button, theme, background, font)
 	theme, background = theme or 'theme', background or 'solid'
 	st:SetBackdrop(button, theme, background, 'control')
 
-    local fontObject = st:GetFont(font or 'pixel')
+    local fontObject = st:FontObject(font or 'pixel')
 	if button.SetNormalFontObject then
 		button:SetNormalFontObject(fontObject)
 		button:SetHighlightFontObject(fontObject)

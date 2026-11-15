@@ -805,13 +805,14 @@ end)
 ------------------------------------------------------------------ the dots and their menu
 
 local DOTS = st:NewModule('FontDotsRows')
-local hideHeader
+local hideHeader, failHeader
 function DOTS:GetConfigTable()
 	return {
 		name = 'Font dots rows', type = 'group', category = 'Frames',
 		args = {
 			texts = { order = 1, type = 'group', name = 'Texts', args = {
-				header = FontRow('header', 1, nil, { name = 'Header font', hidden = function() return hideHeader end }),
+				header = FontRow('header', 1, nil, { name = 'Header font', hidden = function() return hideHeader end,
+					validate = function() if failHeader then return 'Not that one.' end return true end }),
 				tip = FontRow('tip', 2, { fields = { 'font_size', 'font_outline' } }, { name = 'Tooltip font' }),
 				chat = FontRow('chat', 3, { fields = { 'font_size', 'font_outline', 'shadow_x', 'shadow_y' } }, { name = 'Chat font' }),
 				hotkey = {
@@ -852,7 +853,7 @@ end
 
 local function open_dots()
 	fresh()
-	hideHeader = nil
+	hideHeader, failHeader = nil, nil
 	vals.header, vals.tip, vals.chat = colus(), colus(), colus()
 	st.Config:Open('FontDotsRows', 'texts')
 end
@@ -1337,4 +1338,37 @@ test('the typeface menu sits on whole pixels under Thick, Thin and Blizzard (m7)
 		end
 	end
 	stub.size_noise = 0
+end)
+
+test("a page row's failed validate is not honoured from the dots menu: nothing saved, no message (n1)", function()
+	in_look('thick', function()
+		three_rows()
+		stub.click(dots_of('header'))
+		local menu = OW.GetMenuFrames().body.root.menu.args
+		local before, count = vals.header, #sets
+		failHeader = true
+		menu.font_size.set(nil, 40)
+		eq(#sets, count, 'a refused value is not saved')
+		eq(vals.header, before, 'the value is as it was')
+		failHeader = nil
+		menu.font_size.set(nil, 41)
+		eq(vals.header.font_size, 41, 'with the validate passing the same write saves')
+		eq(#take_errors(), 0, 'no errors')
+		close_dots()
+	end)
+end)
+
+test("the menu's read with no live widget gives Text's values (n2)", function()
+	fresh()
+	vals.header = colus()
+	local body, by = draw(Page({ header = FontRow('header', 1, nil, { name = 'Header font' }) }))
+	local group = by.header.widget:Menu()
+	eq(group.args.font_size.get(), 15, 'with its row there: the typeface')
+	body:Release()
+	local text = st:FontFields('normal')
+	eq(group.args.font_size.get(), text.font_size, "the body gone: Text's size, not nil")
+	eq(group.args.font_outline.get(), text.font_outline, "and Text's outline")
+	eq(group.args.shadow_x.get(), text.shadow_offset[1], "and Text's shadow")
+	eq(group.args.spacing.get(), text.spacing, "and Text's spacing")
+	eq(#take_errors(), 0, 'no errors')
 end)

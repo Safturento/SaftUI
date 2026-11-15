@@ -22,7 +22,7 @@ load_saftui('SaftUI-Core/Config/optionsbody.lua')
 local OM, OB, W = st.OptionsModel, st.OptionsBody, st.OptionsWidgets
 
 local INTRO = "SaftUI's shared fonts. Font rows throughout SaftUI choose from these, and a change here changes every text that uses the font, at once. A Font row can take a typeface of its own instead, with its size and outline in its dots."
-local KINDS_NOTE = 'Window titles change at once. The rest is read when SaftUI builds its frames: reload (Reload UI, bottom right) to see a change everywhere.'
+local KINDS_NOTE = 'Which font each kind of text uses. A change shows at once.'
 
 local FN = st:GetModule('Fonts')
 
@@ -82,7 +82,7 @@ test('the tab: the line at the top, the six fonts in FN.FONTS order with their j
 	for i, entry in ipairs(FN.FONTS) do
 		eq(sections[i + 1].note, entry.job .. '.', entry.key .. "'s job is its note, as a sentence")
 	end
-	eq(sections[8].note, KINDS_NOTE, "Kinds of text keeps its note until a later task")
+	eq(sections[8].note, KINDS_NOTE, "Kinds of text's note says nothing of a reload")
 	local tab = Tab()
 	eq(tab.args.intro.order, 0, 'the line is first')
 	eq(tab.args.kinds.order, #FN.FONTS + 1, 'Kinds of text is last')
@@ -425,6 +425,46 @@ test('each kind of text reads and writes its profile font; window titles change 
 	Set('kinds', 'button_text', 'pixel')
 	Set('kinds', 'checkbox_labels', 'normal')
 	check(panel.title:GetFontObject() == st:GetFont('normal'), 'and back')
+end)
+
+test("Kinds of text: Button text and Check box labels apply at once; the note says nothing of a reload", function()
+	load_saftui('SaftUI-Core/Widgets/checkbutton.lua')
+	local note = Tab().args.kinds.desc
+	check(not note:find('reload', 1, true), 'the note: ' .. note)
+
+	-- A check box label (SaftUI's own check button, Blizzard's template's Text),
+	-- an action button on Core's own settings (its count text is one of its
+	-- regions) and the window's title.
+	local box = CreateFrame('CheckButton', 'FontsTestBox', UIParent)
+	box.Text = box:CreateFontString(nil, 'ARTWORK')
+	st:SkinCheckButton(box)
+	check(box.text:GetFontObject() == st:GetFont('normal'), 'a label starts in Check box labels')
+	local slot = CreateFrame('Button', 'FontsTestSlot', UIParent)
+	slot.Count = slot:CreateFontString(nil, 'ARTWORK')
+	st:SkinActionButton(slot, nil, 'slot')
+	check(slot.Count:GetFontObject() == st:GetFont('pixel'), 'a button text starts in Button text')
+
+	Set('kinds', 'checkbox_labels', 'subtitle')
+	check(box.text:GetFontObject() == st:GetFont('subtitle'), 'Check box labels reach the label at once')
+	Set('kinds', 'button_text', 'pixel_med')
+	check(slot.Count:GetFontObject() == st:GetFont('pixel_med'), 'Button text reaches the button text at once')
+	check(box.text:GetFontObject() == st:GetFont('subtitle'), 'and not the label')
+
+	-- A typeface: no shared object changes, the followers are applied again.
+	local face = { font_name = 'Homespun', font_size = 13, font_outline = 'OUTLINE', shadow_offset = { 0, 0 }, spacing = 4 }
+	Set('kinds', 'button_text', face)
+	check(slot.Count:GetFontObject() == st:FontObject(face), "a typeface in Button text reaches it too")
+	Set('kinds', 'checkbox_labels', face)
+	check(box.text:GetFontObject() == st:FontObject(face), 'and in Check box labels')
+
+	-- A label given a font of its own with SetTextFont follows no more.
+	box:SetTextFont('pixel')
+	check(box.text:GetFontObject() == st:GetFont('pixel'), 'SetTextFont puts a font on the label')
+	Set('kinds', 'checkbox_labels', 'normal')
+	check(box.text:GetFontObject() == st:GetFont('pixel'), 'which a Fonts tab change then leaves')
+
+	Set('kinds', 'button_text', 'pixel')
+	eq(#take_errors(), 0, 'no errors')
 end)
 
 test('after a profile switch, the rows reach the new profile, and the font objects and titles take its values', function()

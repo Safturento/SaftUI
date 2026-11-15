@@ -163,7 +163,7 @@ end
 local function CountdownFont(holder)
 	local width = holder:GetWidth()
 	local large = not issecretvalue(width) and width >= st.LARGE_COUNTDOWN_SIZE
-	return st:GetFont(large and 'pixel_med' or 'pixel')
+	return st:FontObject(large and 'pixel_med' or 'pixel')
 end
 
 -- The bar of a bar item, as SaftUI's bars: see the top of this file.
@@ -197,7 +197,7 @@ end
 -- nothing new after the first time (the backdrops).
 local function Style(item, parts)
 	local theme, background = SkinningLook()
-	local font = st:GetFont(st.config.profile.skinning.font)
+	local font = st:FontObject(st.config.profile.skinning.font)
 	local holder, icon = parts.holder, parts.icon
 
 	-- The backdrop is drawn on itself, with the holder as the host of the
@@ -294,6 +294,12 @@ function CD:UpdateConfig()
 	for item, parts in pairs(skinned) do
 		xpcall(Style, geterrorhandler(), item, parts)
 	end
+end
+
+-- A shared font or a font setting changed (st:FontsChanged): the items take the
+-- Skinning font again (a typeface's object is not the shared font's).
+function CD:OnFontsChanged()
+	self:UpdateConfig()
 end
 
 -- Off (Skinning -> Cooldown Manager), nothing is hooked or touched: Blizzard's

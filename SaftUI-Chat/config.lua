@@ -12,9 +12,10 @@ st.defaults.chat = {
 	-- new or reset one too) takes the chat frame's current size once (CHT:CaptureSize).
 	theme = 'theme',
 	background = 'theme',
+	-- fontsVersion has no default: it marks a profile CHT:ConvertFonts has converted (it
+	-- took the old Font size row's value, fontsize, which has no default now either).
 	font = 'normal',
 	padding = 10,
-	fontsize = 16,
 	tabs = {
 		fade = false,
 	},

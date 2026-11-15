@@ -52,7 +52,9 @@ local function StyleLine(line, font, size, outline)
 end
 
 function TT:UpdateTooltipFonts(tooltip)
-	local font,size,outline = st:GetFont(self.config.font):GetFont()
+	-- The face, size and outline of the tooltip's font, whichever shape it has.
+	-- Show runs often: st:FontValues builds nothing, so this costs no garbage.
+	local font, size, outline = st:FontValues(self.config.font)
 	local name = tooltip:GetName()
 
 	for i=1, tooltip:NumLines() do

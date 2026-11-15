@@ -1207,9 +1207,6 @@ local function Draw()
 	S.blizzard = W.BlizzardLook()
 	if LayoutKey() ~= laidOut then Relayout() end
 	S.UpdateWindowButtons() -- the screen may have changed since
-	-- The window's name in the profile's font for window titles, which the
-	-- Fonts tab can change.
-	F.titleText:SetFontObject(st:GetFont(st.config.profile.headers.font))
 	LookControls()
 	ReleaseBody()
 	contentHeight, S.filledTo = 0, nil
@@ -1509,7 +1506,9 @@ local function BuildTitleBar(window)
 	-- the bar, so a click on it is the button's.
 	F.close:SetFrameLevel(bar:GetFrameLevel() + 1)
 	local text = bar:CreateFontString(nil, 'OVERLAY')
-	text:SetFontObject(st:GetFont(st.config.profile.headers.font))
+	-- The window's name in the profile's font for window titles: it follows
+	-- the setting, so the Fonts tab's change reaches it at once.
+	st:FollowFont(text, function() return st.config.profile.headers.font end)
 	text:SetText(format('%s Options', st.name))
 	F.titleBar, F.titleText = bar, text
 

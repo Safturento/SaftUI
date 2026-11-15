@@ -100,10 +100,9 @@ local function ApplyFont(fs)
 
 	local _, _, fontName = RX:GetStyle()
 	if state.kind == 'title' then fontName = 'title' end
-	local fontObject = st:GetFont(fontName)
-	if not fontObject then return end
-
-	local face, _, outline = fontObject:GetFont()
+	-- The face and outline of chat's font (a shared font's key or a typeface), or
+	-- of Huge title for the title.
+	local face, _, outline = st:FontValues(fontName)
 	local size = state.size + (state.kind == 'title' and TITLE_SIZE_BONUS or 0)
 
 	applyingFont = true
@@ -453,11 +452,8 @@ local function SkinTimer(bar)
 	bar:SetTexture(st.BLANK_TEX)
 	bar:SetBackgroundColor(0, 0, 0, 0) -- the box's background shows through
 	local _, _, fontName = RX:GetStyle()
-	local fontObject = st:GetFont(fontName)
-	if fontObject then
-		local face, _, outline = fontObject:GetFont()
-		bar:SetFont(face, TimerFontSize(), outline)
-	end
+	local face, _, outline = st:FontValues(fontName)
+	bar:SetFont(face, TimerFontSize(), outline)
 	bar:SetHeight(TimerHeight()) -- OnTimerHeight lays it out
 end
 
@@ -651,6 +647,17 @@ function RX:UpdateConfig()
 	ColorLines()
 	local bar = self.frames and self.frames.ScrollFrame.ScrollBar
 	if bar then ColorThumb(bar) end
+end
+
+-- A shared font or a font setting changed (st:FontsChanged): chat's font (or Huge title,
+-- for the title) again on the texts, and on the timers that show. Chat's own
+-- ApplyAppearance reaches UpdateConfig on its font change as well; this is the
+-- Fonts tab's and a profile's.
+function RX:OnFontsChanged()
+	for fs in pairs(fontState) do
+		ApplyFont(fs)
+	end
+	self:SkinTimers()
 end
 
 -- After a theme recolor (st:RecolorThemed recolored the panels and timer boxes): the

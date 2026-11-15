@@ -148,11 +148,12 @@ local function Active()
 end
 function OT:IsActive() return Active() end
 
+-- The font object of a kind of text: one object per look, so PutFont can compare.
 local function Font(kind)
 	local config = Profile().objectivetracker
-	if kind == 'header' then return st:GetFont(config.header_font) end
-	if kind == 'count' then return st:GetFont(Profile().skinning.font) end
-	return st:GetFont(config.font)
+	if kind == 'header' then return st:FontObject(config.header_font) end
+	if kind == 'count' then return st:FontObject(Profile().skinning.font) end
+	return st:FontObject(config.font)
 end
 
 -- Gives a font string a font, keeping the color it shows: Blizzard colors
@@ -627,6 +628,13 @@ function OT:UpdateConfig()
 	elseif Profile().skinning.objective_tracker then
 		self:Install()
 	end
+end
+
+-- A shared font or a font setting changed (st:FontsChanged): the texts take their fonts
+-- again (a typeface's object is not the shared font's). Widget calls only, as
+-- OT:UpdateConfig; nothing while the skin isn't installed.
+function OT:OnFontsChanged()
+	if installed then self:StyleAll() end
 end
 
 -- A theme recolor or a color change: the header lines, the chevrons and the

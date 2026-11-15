@@ -164,7 +164,6 @@ function st:UpdateCloseButton(frame)
 	if button then closeDraws[button](button) end
 end
 
-local headerTitles = {} -- header -> the title st:CreateHeader put on it
 
 -- The frame can be dragged by its header, and is kept inside the screen edge
 -- margin (st:KeepInScreenMargin), which waits for the end of combat on a
@@ -172,6 +171,9 @@ local headerTitles = {} -- header -> the title st:CreateHeader put on it
 -- The header is a strip along frame's top, or under the Blizzard theme the
 -- strip of the metal's title bar above it (st:HeaderInTitleBar): what frame
 -- places under the header starts right under the title bar.
+-- The profile's Window titles font, read when a title is made or follows.
+local function HeaderFont() return st.config.profile.headers.font end
+
 function st:CreateHeader(frame, title, close_button)
 	frame:SetMovable(true)
 	st:KeepInScreenMargin(frame)
@@ -202,12 +204,13 @@ function st:CreateHeader(frame, title, close_button)
 			frame.title = title
 		end
 
-		frame.title:SetFontObject(st:GetFont(st.config.profile.headers.font))
+		-- Window titles (Global settings > Fonts): the title follows the font
+		-- setting, so a change reaches it at once.
+		st:FollowFont(frame.title, HeaderFont)
 		frame.title:SetParent(header)
 		frame.title:ClearAllPoints()
 		frame.title:SetPoint('CENTER', header)
 		frame.title:SetJustifyH('CENTER')
-		headerTitles[header] = frame.title
 	end
 
 	headerOf[frame], windowOfHeader[header] = header, frame
@@ -247,7 +250,7 @@ function st:CreateHeader(frame, title, close_button)
 	return header
 end
 
--- Applies the profile's header height and font to a header made by
+-- Applies the profile's header height to a header made by
 -- st:CreateHeader, and puts it in its window's metal title bar or back at the
 -- window's top (st:HeaderInTitleBar; in the title bar it's the bar's strip,
 -- whatever the profile's height). With no header, updates every header and
@@ -271,10 +274,6 @@ function st:UpdateHeader(header)
 	end
 
 	PlaceHeader(header)
-	local title = headerTitles[header]
-	if title then
-		title:SetFontObject(st:GetFont(st.config.profile.headers.font))
-	end
 end
 
 st.footers = {}
@@ -461,7 +460,7 @@ end
 
 function st:CreateFontString(parent, font, text)
 	local fontString = parent:CreateFontString(nil, 'OVERLAY')
-	fontString:SetFontObject(st:GetFont(font or 'pixel'))
+	st:ApplyFont(fontString, font or 'pixel')
 	if text then fontString:SetText(text) end
 	return fontString
 end

@@ -88,9 +88,8 @@ local function StyleBar(statusBar)
 	local config = st.config.profile.skinning
 	st:SetBackdropIn(backdrops, statusBar, config.theme, config.background, 'bar')
 
-	local font = st:GetFont(config.font)
-	if statusBar.TypeLabel then statusBar.TypeLabel:SetFontObject(font) end
-	if statusBar.TimeLabel then statusBar.TimeLabel:SetFontObject(font) end
+	if statusBar.TypeLabel then st:ApplyFont(statusBar.TypeLabel, config.font) end
+	if statusBar.TimeLabel then st:ApplyFont(statusBar.TimeLabel, config.font) end
 end
 
 local function SkinBar(bar, color)
@@ -121,6 +120,12 @@ function ST:UpdateConfig()
 	for bar in pairs(skinned) do
 		StyleBar(bar.StatusBar)
 	end
+end
+
+-- A shared font or a font setting changed (st:FontsChanged): the labels take the
+-- Skinning font again (a typeface's object is not the shared font's).
+function ST:OnFontsChanged()
+	self:UpdateConfig()
 end
 
 function ST:OnEnable()

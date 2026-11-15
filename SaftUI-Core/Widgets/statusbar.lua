@@ -18,6 +18,6 @@ function st:SkinStatusBar(statusbar, theme, background, font)
 	assert(statusbar)
 	st:SetBackdrop(statusbar, theme or 'theme', background or 'solid', 'bar')
 
-    statusbar.text:SetFontObject(st:GetFont(font or 'pixel'))
+    st:ApplyFont(statusbar.text, font or 'pixel')
 	statusbar:SetStatusBarTexture(st.BLANK_TEX)
 end

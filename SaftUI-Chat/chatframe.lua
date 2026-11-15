@@ -38,12 +38,45 @@ local function onMouseScroll(self, delta)
 	end
 end
 
--- The profile's font and font size on a chat frame, shared by SkinChatFrame and
--- ApplyChatFrameConfig.
+-- The Font size row's value before chat's font took Text's own size: the old
+-- default, which AceDB never saved, so a profile without one drew at this.
+CHT.OLD_FONT_SIZE = 16
+
+-- The one-time step for a profile saved before chat's font was a shared font's
+-- whole look. It drew Text's face and outline at its own Font size (fontsize)
+-- with its shadow forced to 0, 0, so where that differs from what chat's font
+-- setting reads now (Text's size and shadow, or a typeface's), chat keeps the old
+-- look as a typeface. The common profile, whose Font size is Text's, changes
+-- nothing: chat keeps following its font. The marker, chat.fontsVersion, rides
+-- in chat's own profile table, so a copy carries it and a reset clears it. Table
+-- writes only. Returns whether it ran.
+function CHT:ConvertFonts()
+	local config = self.config
+	if not config or config.fontsVersion ~= nil then return false end
+
+	local size = type(config.fontsize) == 'number' and config.fontsize or CHT.OLD_FONT_SIZE
+	local fields = st:FontFields(config.font)
+	local x, y = fields.shadow_offset[1], fields.shadow_offset[2]
+	if size ~= fields.font_size or x ~= 0 or y ~= 0 then
+		fields.font_size = size
+		fields.shadow_offset = { 0, 0 }
+		config.font = fields
+	end
+	config.fontsize = nil
+	config.fontsVersion = 1
+	return true
+end
+
+-- The profile's font on a chat frame, shared by SkinChatFrame and
+-- ApplyChatFrameConfig: the face, size, outline and shadow of chat's font setting,
+-- the shadow opaque black as Blizzard's own. Blizzard's chat frames draw at line
+-- spacing 0 and chat leaves it there (Text's is 4, which would widen every
+-- line), so no spacing is set.
 function CHT:ApplyChatFont(frame)
-	local font, _, outline = st:GetFont(self.config.font):GetFont()
-	frame:SetFont(font, self.config.fontsize, outline)
-	frame:SetShadowOffset(0, 0)
+	local path, size, flags, x, y = st:FontValues(self.config.font)
+	frame:SetFont(path, size, flags)
+	frame:SetShadowColor(0, 0, 0, 1)
+	frame:SetShadowOffset(x, y)
 end
 
 function CHT:SkinChatFrame(frame)
@@ -118,8 +151,8 @@ function CHT:UpdateChatFrameDisplay(frame)
 	end
 end
 
--- Applies the profile's font, font size, theme, padding and edit box
--- height to a chat frame SkinChatFrame already skinned.
+-- Applies the profile's font, theme, padding and edit box height to a chat
+-- frame SkinChatFrame already skinned.
 function CHT:ApplyChatFrameConfig(frame)
 	self:ApplyChatFont(frame)
 
@@ -314,9 +347,20 @@ end
 function CHT:UpdateConfig()
 	if not self.config then return end -- not enabled
 
+	self:ConvertFonts()
 	self:MigratePosition()
 	self:CaptureSize()
 	self:ApplyHolder()
+	self:ApplyAppearance()
+end
+
+-- A shared font or a font setting changed (st:FontsChanged): every chat frame
+-- takes chat's font again. The profile update calls this before the modules'
+-- UpdateConfig, with the new profile bound, so a profile switched to converts
+-- here first, before its font is read.
+function CHT:OnFontsChanged()
+	if not self.config then return end -- not enabled
+	self:ConvertFonts()
 	self:ApplyAppearance()
 end
 
@@ -394,6 +438,7 @@ end
 
 function CHT:OnEnable()
 	st:BindModuleConfig(self, 'chat')
+	self:ConvertFonts()
 
 	-- Kill stuff
 	st:Kill(ChatFrameMenuButton)
