@@ -97,8 +97,9 @@ local function Resolve(value)
 	if type(outline) ~= 'string' or not FN.outlines[outline] then outline = base.font_outline end
 	local shadow, x, y = overlay.shadow_offset, base.shadow_offset[1], base.shadow_offset[2]
 	if type(shadow) == 'table' then
-		if IsNumber(shadow[1]) then x = st.Clamp(shadow[1], -5, 5) end
-		if IsNumber(shadow[2]) then y = st.Clamp(shadow[2], -5, 5) end
+		-- + 0 turns a negative zero into 0, so -0 and 0 are one look.
+		if IsNumber(shadow[1]) then x = st.Clamp(shadow[1], -5, 5) + 0 end
+		if IsNumber(shadow[2]) then y = st.Clamp(shadow[2], -5, 5) + 0 end
 	end
 	local spacing = overlay.spacing
 	if IsNumber(spacing) then spacing = st.Clamp(spacing, 0, 20) else spacing = base.spacing end
@@ -186,7 +187,9 @@ end
 -- font string set to one; nothing else has to be touched. The face step is
 -- first, so the objects are set from the profile it has settled.
 function FN:UpdateConfig()
-	self:ConvertHeadingFace()
+	-- In xpcall, as in OnEnable: a step that fails is reported and the objects
+	-- are still set.
+	xpcall(self.ConvertHeadingFace, geterrorhandler(), self)
 	self:UpdateFontConfig()
 end
 

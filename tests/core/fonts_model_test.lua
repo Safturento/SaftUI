@@ -243,6 +243,35 @@ test('ApplyFont draws Text for nil, an unknown key and a number, and never error
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+-- Ruling 2: no nil guard. A font object is what SetFontObject takes (the
+-- game's SetFontObject refuses nil on both clients), so with no Text object a
+-- value that names nothing errors where a guard would hide a broken load.
+test('ApplyFont is exactly SetFontObject(FontObject(value)): with no Text object it errors, as the game does', function()
+	local fs = CreateFrame('Frame'):CreateFontString()
+	local real = FN.font_objects.normal
+	FN.font_objects.normal = nil
+	local ok = pcall(st.ApplyFont, st, fs, nil)
+	local okShared = pcall(st.ApplyFont, st, fs, 'pixel')
+	FN.font_objects.normal = real
+	eq(ok, false, 'nil with no Text object errors')
+	eq(okShared, true, 'a shared font still applies')
+	eq(fs:GetFontObject(), st:GetFont('pixel'), 'and is the object set')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a shadow of -0 is the look of 0: one object, not two', function()
+	local negative = 0 * -1
+	eq(tostring(negative), '-0', 'the probe is a negative zero')
+	local a = st:GetFont({ font_name = 'Colus', font_size = 15, shadow_offset = { negative, negative } })
+	local b = st:GetFont({ font_name = 'Colus', font_size = 15, shadow_offset = { 0, 0 } })
+	eq(a, b, '-0, -0 and 0, 0 make one object')
+	local x, y = a:GetShadowOffset()
+	eq(tostring(x) .. ',' .. tostring(y), '0,0', 'the offset the object holds')
+	local _, _, _, sx, sy = st:FontValues({ font_name = 'Colus', shadow_offset = { negative, negative } })
+	eq(tostring(sx) .. ',' .. tostring(sy), '0,0', 'FontValues gives 0, 0 too')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
 test('FollowFont applies at once and again on RefollowFonts, reading the getter then; nil forgets; a region kept twice keeps the last', function()
 	local fs = CreateFrame('Frame'):CreateFontString()
 	local value = 'pixel'
@@ -475,6 +504,18 @@ test('an error in the Heading step at login is reported and the objects are stil
 	FN.ConvertHeadingFace = function() error('step failed') end
 	fonts().pixel.spacing = 9
 	FN:OnEnable()
+	FN.ConvertHeadingFace = real
+	eq(st:GetFont('pixel'):GetSpacing(), 9, 'UpdateFontConfig still ran')
+	eq(#take_errors(), 1, 'and the error was reported')
+	fonts().pixel.spacing = 4
+	FN:UpdateFontConfig('pixel')
+end)
+
+test('an error in the Heading step on a profile change is reported and the objects are still set', function()
+	local real = FN.ConvertHeadingFace
+	FN.ConvertHeadingFace = function() error('step failed') end
+	fonts().pixel.spacing = 9
+	FN:UpdateConfig()
 	FN.ConvertHeadingFace = real
 	eq(st:GetFont('pixel'):GetSpacing(), 9, 'UpdateFontConfig still ran')
 	eq(#take_errors(), 1, 'and the error was reported')
