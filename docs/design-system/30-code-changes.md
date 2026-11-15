@@ -104,7 +104,7 @@ Each a few lines and safe:
 - the chat prefix `|cff00adef` and the error `|cFFFF0000` (both in `api.lua`) read from the profile's blue and red (both are done: the prefix is the accent's hex and the Error prefix and DEBUG are Text > Danger, read at each print; color roles Tasks 2 and 4);
 - `OB.SHARE` colours read through `Colors()` (done: the share line's marks, diff icon and links read the accent, Muted and Strong through the accessor; color roles Tasks 2 to 4);
 - the float gap to the owner's 24 (`OB.FLOAT_GAP`, `optionsbody.lua:133`);
-- delete the unreferenced TGAs and the 20 x 10 close path once the loot popup is decided;
+- delete the unreferenced TGAs and the 20 x 10 close path (the loot popup is decided: it stays and no longer uses them, `fb-lootpopup`; the deletion is a Core change);
 - fix the bag search's multi-line flag;
 - correct the stale followup paragraph (`docs/followups.md:285`);
 - the Copy from dialog's labels and title (`Unitframes/config/config.lua:205-300`).

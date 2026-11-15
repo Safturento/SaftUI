@@ -75,7 +75,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Per-dispel-type debuff art on SaftUI's own aura buttons](#2026-11-11--per-dispel-type-debuff-art-on-saftuis-own-aura-buttons)
   - [2026-11-11 — Blizzard bag-bar slots and the Hekili skin write onto frames that aren't SaftUI's](#2026-11-11--blizzard-bag-bar-slots-and-the-hekili-skin-write-onto-frames-that-arent-saftuis)
   - [2026-11-11 — Loot feed: retail item quality text and profession overlay sit under the Blizzard ring](#2026-11-11--loot-feed-retail-item-quality-text-and-profession-overlay-sit-under-the-blizzard-ring)
-  - [2026-11-11 — The disabled loot popup writes nametext onto Blizzard's LootButton](#2026-11-11--the-disabled-loot-popup-writes-nametext-onto-blizzards-lootbutton)
   - [2026-11-11 — Class power types with no Blizzard art draw a borderless flat bar under Blizzard](#2026-11-11--class-power-types-with-no-blizzard-art-draw-a-borderless-flat-bar-under-blizzard)
   - [2026-11-11 — Blizzard theme: the bags' rule editor and Categories list keep the options window's own look](#2026-11-11--blizzard-theme-the-bags-rule-editor-and-categories-list-keep-the-options-windows-own-look)
   - [2026-11-11 — Grays/Auto Vendor: a finished edit that broadens its rule sells at the next merchant](#2026-11-11--graysauto-vendor-a-finished-edit-that-broadens-its-rule-sells-at-the-next-merchant)
@@ -105,7 +104,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-10 — Colors tab: role and rune colors, and a switch for Blizzard's class colors](#2026-11-10--colors-tab-role-and-rune-colors-and-a-switch-for-blizzards-class-colors)
   - [2026-11-09 — st:Kill and st:SkinIcon still write onto Blizzard pieces (roll bars and elsewhere)](#2026-11-09--stkill-and-stskinicon-still-write-onto-blizzard-pieces-roll-bars-and-elsewhere)
   - [2026-11-09 — Loot feed: a merge while scrolled shifts the scroll offset](#2026-11-09--loot-feed-a-merge-while-scrolled-shifts-the-scroll-offset)
-  - [2026-11-09 — st:CreateHeader writes title and close_button onto the Blizzard panels it skins](#2026-11-09--stcreateheader-writes-title-and-close_button-onto-the-blizzard-panels-it-skins)
   - [2026-11-09 — st:CreateButton's SetText and SetFont aliases break when called as methods](#2026-11-09--stcreatebuttons-settext-and-setfont-aliases-break-when-called-as-methods)
   - [2026-11-09 — Unit frame Portrait, and AuraWatch as Grid2-style corner indicators](#2026-11-09--unit-frame-portrait-and-aurawatch-as-grid2-style-corner-indicators)
   - [2026-11-09 — Aura timer bars: stacked bars instead of icons](#2026-11-09--aura-timer-bars-stacked-bars-instead-of-icons)
@@ -127,6 +125,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-11 — The disabled loot popup writes nametext onto Blizzard's LootButton](#2026-11-11--the-disabled-loot-popup-writes-nametext-onto-blizzards-lootbutton)
+  - [2026-11-09 — st:CreateHeader writes title and close_button onto the Blizzard panels it skins](#2026-11-09--stcreateheader-writes-title-and-close_button-onto-the-blizzard-panels-it-skins)
   - [2026-11-15 — SaftUI's tracker: experiments and in-game checks before the switch turns on](#2026-11-15--saftuis-tracker-experiments-and-in-game-checks-before-the-switch-turns-on)
   - [2026-11-14 — Tracker: a refresh allocates about 175 KB, measure it in game](#2026-11-14--tracker-a-refresh-allocates-about-175-kb-measure-it-in-game)
   - [2026-11-13 — Objective tracker skin: zone grouping, max height and a scroll frame](#2026-11-13--objective-tracker-skin-zone-grouping-max-height-and-a-scroll-frame)
@@ -786,7 +786,7 @@ What's left needs evidence from the game. In the order they'd be checked:
 - **Writes onto Blizzard frames (taint rule 1), not traced:** `Blizzard_WeeklyRewards.lua`'s `ShouldShowOverlay`, `st:EnableResizing` on `WorldMapFrame`, `st:Kill`'s other callers (see also "st:Kill and st:SkinIcon still write onto Blizzard pieces"), the totem bar's setup on classes with no totems. [1]
 - **Migrations that may be finished** (delete once every profile has passed through them): Bags `categories.lua` and `movers.lua`, `CHT:MigratePosition`, `st:ResolveLegacyTemplate` with its seven "defaults look as they did" tests and `T.old_names`. [2.3, 6.3]
 - **Features that look unused, keep or delete:**
-  - the loot window popup (`SaftUI-Loot/popup.lua`, with its two accidental globals);
+  - ~~the loot window popup (`SaftUI-Loot/popup.lua`, with its two accidental globals);~~ *Kept and rebuilt 2026-11-15 (the owner's decision, `fb-lootpopup`): it is on again by default, with an Enable, Theme, Background and Font on the Loot window page.*
   - the honor feed;
   - the keybinding widget (`SaftUI-Core/Config/optionskeybinding.lua`);
   - the old bag Edit view;
@@ -1401,18 +1401,6 @@ Loot feed, retail: the item's `n/m` quality text and the profession overlay unde
 
 **Shape of work:** Small, one helper and its two callers; an in-game check on retail.
 
-### 2026-11-11 — The disabled loot popup writes nametext onto Blizzard's LootButton
-
-**What:** `SaftUI-Loot/popup.lua` (~38) sets `button.nametext = _G['LootButton'..ID..'Text']` on Blizzard's loot buttons, and elsewhere `st:Kill`s their `IconBorder` and `IconOverlay`. That writes a field onto a Blizzard frame (`.agents/taint.md` rule 1). The popup is disabled (`SaftUI-Loot/init.lua`, `-- self:InitializeLootFrame()` is commented out), so it never runs today.
-
-**Why noticed:** The Blizzard theme's reviews (2026-11-11): the popup's draw calls were re-tagged and a scan of Loot for writes onto Blizzard frames found it. Related to the older "SaftUI-Loot writes onto Blizzard frames and globals" entry in Resolved.
-
-**Anchors:** `SaftUI-Loot/popup.lua`; `SaftUI-Loot/init.lua` (~17); `.agents/taint.md` rule 1.
-
-**What's been considered:** Keep the font strings in a weak table keyed by the button, and replace `st:Kill` with `SetAlpha(0)` where Blizzard never sets the alpha.
-
-**Shape of work:** Fix it before re-enabling the popup; no work while it stays off.
-
 ### 2026-11-11 — Class power types with no Blizzard art draw a borderless flat bar under Blizzard
 
 **What:** Each class power point is drawn as kind `control`, which is bare under Blizzard (`SaftUI-Unitframes/elements/classpower.lua`, the `st:SetBackdrop(point, ..., 'control')` line). A power type with no Blizzard art (retail's demon hunter soul fragments, icicles and tip of the spear; the art exists for combo points, holy power, soul shards, chi, arcane charges and essence) draws only its flat status bar, with no border. Before, kind `small` gave them a 1px line. Forever has combo points only, which have art, so the user's client isn't affected.
@@ -1854,7 +1842,7 @@ On retail:
 - `st:Kill` writes `Show`, `_Show` and `SetAtlas`;
 - `st:SkinIcon` wrote `__stTexCoord`, plus a hook. *Update 2026-11-11 (commit 28c0448):* it keeps its crop and its hooked flag in weak tables of `skinning.lua`'s, so it now writes nothing onto the icon but its hook. `st:Kill` still writes.
 
-The roll bar skin (`SaftUI-Loot/roll.lua`) calls them on Blizzard pieces: `IconFrame.Border`, `Timer.Background`, `NameFrame`, `Corner`, `IconFrame.Count`, `IconFrame.Icon`. That breaks `.agents/taint.md` rule 1. Other skins likely do the same. Separately, `SaftUI-Loot/popup.lua` writes `LootFrame.skinned`, but that file isn't loaded; it goes away with the loot window reskin.
+The roll bar skin (`SaftUI-Loot/roll.lua`) calls them on Blizzard pieces: `IconFrame.Border`, `Timer.Background`, `NameFrame`, `Corner`, `IconFrame.Count`, `IconFrame.Icon`. That breaks `.agents/taint.md` rule 1. Other skins likely do the same. Separately, `SaftUI-Loot/popup.lua` wrote `LootFrame.skinned`; *fixed 2026-11-15: the popup is rewritten and calls neither helper (`fb-lootpopup`).*
 
 **Why noticed:** The roll bar side-table fix (2026-11-09) left these alone, because the followup it fixed didn't list them. Both its implementer and its reviewer flagged them.
 
@@ -1875,18 +1863,6 @@ The roll bar skin (`SaftUI-Loot/roll.lua`) calls them on Blizzard pieces: `IconF
 **Anchors:** `SaftUI-Loot/Feed/feed.lua` (`LootFeedPush`, the merge branches, `offset`); `tests/loot/feed_test.lua`.
 
 **Shape of work:** Small: bump the offset only on an insert, with a test.
-
-### 2026-11-09 — st:CreateHeader writes title and close_button onto the Blizzard panels it skins
-
-**What:** `st:CreateHeader(frame, title, close_button)` (`SaftUI-Core/panels.lua`) writes `frame.title`, `frame.close_button` and `frame.header` onto the frame it's given. That frame can be a Blizzard panel: the unloaded loot window code (`SaftUI-Loot/popup.lua`) hands it `LootFrame`, and is the only such caller left since the codebase cleanup deleted `SK:SkinBlizzardPanel` (2026-11-12). Its other callers pass SaftUI's own frames (`SaftUI-Bags/container.lua`, and `st:CreatePanel` in `SaftUI-Core/panels.lua`). Writing them breaks `.agents/taint.md` rule 1. It also keeps the frame inside the screen edge margin (`st:KeepInScreenMargin`), which is meant for SaftUI's own frames only (2026-11-10). The loot window code isn't loaded, so no Blizzard frame gets these writes today.
-
-**Why noticed:** The options window rework (2026-11-09) fixed the same class of write in `st:CreateCloseButton`, which now uses a weak side table and `st:GetCloseButton(frame)`. Its re-reviewer pointed out that `CreateHeader` still does it. That's old code, outside that task.
-
-**Anchors:** `SaftUI-Core/panels.lua` (`CreateHeader`, `closeOf`, `headerTitles`), `SaftUI-Loot/popup.lua`.
-
-**What's been considered:** Use the same pattern: weak side tables keyed by frame, with accessors such as `st:GetHeader(frame)`. Then find every reader of `.header`, `.title` and `.close_button` and switch it over.
-
-**Shape of work:** A small refactor in `panels.lua`, plus its readers.
 
 ### 2026-11-09 — st:CreateButton's SetText and SetFont aliases break when called as methods
 
@@ -1994,7 +1970,7 @@ The roll bar skin (`SaftUI-Loot/roll.lua`) calls them on Blizzard pieces: `IconF
 - **Action bars:** `actionbars.template`.
 - **Bags:** `inventory.enable`, `template`, `padding`, `categoryTitleHeight`, `scrollSpeed`, `autorepair`, `autovendor`, `combinedBank`, `inverted`, `fonts.titles` and `fonts.icons` now have options (Task 5 of the options layout project, 2026-11-09): Bags → General and Look.
 - **Chat:** ~~`chat.linespacing` is left without an option, because nothing applies it. Only `CHT:ChatFrame_OnUpdate` (`SaftUI-Chat/chatframe.lua`) reads it, and its `SecureHook` is commented out, so the setting is read by nothing. Either hook it back up (the function sets each line's spacing once, so a change would also need the lines un-marked `handled`, and it writes a field onto Blizzard's chat lines, which `.agents/taint.md` forbids, so it needs a side table) and give it an option, or remove the key.~~ *Done 2026-11-12 (codebase cleanup, Task 4): the key and `CHT:ChatFrame_OnUpdate`, its only reader, were removed.*
-- **Loot:** `loot.popup.*` (template, font, name_wrap, width, button_height, spacing) is in fact read by nothing. `SaftUI-Loot/popup.lua` isn't in the TOC, and `LT:InitializeLootFrame()` has been commented out of `init.lua` since the Loot addon was added. The skin is also written for the classic loot window (`LootButton1`-`4`, `LootFrameInset`), which current clients don't have, and it writes onto `LootFrame`. Skinning the loot window means a new skin for today's `LootFrame`, with these settings.
+- **Loot:** *(done 2026-11-15, `fb-lootpopup`: the popup is rewritten for today's window and reads `loot.popup.enable`, `.theme`, `.background` and `.font`; `width`, `button_height`, `spacing` and `name_wrap` are gone, since Blizzard sizes the window and its rows.)* `loot.popup.*` (template, font, name_wrap, width, button_height, spacing) was in fact read by nothing. `SaftUI-Loot/popup.lua` isn't in the TOC, and `LT:InitializeLootFrame()` has been commented out of `init.lua` since the Loot addon was added. The skin is also written for the classic loot window (`LootButton1`-`4`, `LootFrameInset`), which current clients don't have, and it writes onto `LootFrame`. Skinning the loot window means a new skin for today's `LootFrame`, with these settings.
 - **Unit frames:** these now have options (Tasks 8 and 9 of the options layout project, 2026-11-09), each only on the units where it does something:
   - `range_alpha.inside` and `.outside`: on party and the raids, the only frames with oUF's Range element.
   - `boss.spacing`, with the rest of boss's layout: boss has a Layout group.
@@ -2350,6 +2326,34 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-11 — The disabled loot popup writes nametext onto Blizzard's LootButton
+
+**What:** `SaftUI-Loot/popup.lua` (~38) sets `button.nametext = _G['LootButton'..ID..'Text']` on Blizzard's loot buttons, and elsewhere `st:Kill`s their `IconBorder` and `IconOverlay`. That writes a field onto a Blizzard frame (`.agents/taint.md` rule 1). The popup is disabled (`SaftUI-Loot/init.lua`, `-- self:InitializeLootFrame()` is commented out), so it never runs today.
+
+**Why noticed:** The Blizzard theme's reviews (2026-11-11): the popup's draw calls were re-tagged and a scan of Loot for writes onto Blizzard frames found it. Related to the older "SaftUI-Loot writes onto Blizzard frames and globals" entry in Resolved.
+
+**Anchors:** `SaftUI-Loot/popup.lua`; `SaftUI-Loot/init.lua` (~17); `.agents/taint.md` rule 1.
+
+**What's been considered:** Keep the font strings in a weak table keyed by the button, and replace `st:Kill` with `SetAlpha(0)` where Blizzard never sets the alpha.
+
+**Shape of work:** Fix it before re-enabling the popup; no work while it stays off.
+
+**Resolved 2026-11-15:** the owner asked for the popup back (`fb-lootpopup`). `SaftUI-Loot/popup.lua` is rewritten for today's scroll box `LootFrame` (the `LootButton1`-`4` code, `nametext` and the `st:Kill` calls are gone): SaftUI's pieces live in weak tables keyed by Blizzard's frames, only post-hooks, no script replaced, and `tests/loot/popup_test.lua` locks every Blizzard widget so a field write fails.
+
+### 2026-11-09 — st:CreateHeader writes title and close_button onto the Blizzard panels it skins
+
+**What:** `st:CreateHeader(frame, title, close_button)` (`SaftUI-Core/panels.lua`) writes `frame.title`, `frame.close_button` and `frame.header` onto the frame it's given. That frame can be a Blizzard panel: the unloaded loot window code (`SaftUI-Loot/popup.lua`) hands it `LootFrame`, and is the only such caller left since the codebase cleanup deleted `SK:SkinBlizzardPanel` (2026-11-12). Its other callers pass SaftUI's own frames (`SaftUI-Bags/container.lua`, and `st:CreatePanel` in `SaftUI-Core/panels.lua`). Writing them breaks `.agents/taint.md` rule 1. It also keeps the frame inside the screen edge margin (`st:KeepInScreenMargin`), which is meant for SaftUI's own frames only (2026-11-10). The loot window code isn't loaded, so no Blizzard frame gets these writes today.
+
+**Why noticed:** The options window rework (2026-11-09) fixed the same class of write in `st:CreateCloseButton`, which now uses a weak side table and `st:GetCloseButton(frame)`. Its re-reviewer pointed out that `CreateHeader` still does it. That's old code, outside that task.
+
+**Anchors:** `SaftUI-Core/panels.lua` (`CreateHeader`, `closeOf`, `headerTitles`), `SaftUI-Loot/popup.lua`.
+
+**What's been considered:** Use the same pattern: weak side tables keyed by frame, with accessors such as `st:GetHeader(frame)`. Then find every reader of `.header`, `.title` and `.close_button` and switch it over.
+
+**Shape of work:** A small refactor in `panels.lua`, plus its readers.
+
+**Resolved 2026-11-15:** its only Blizzard caller, the loot popup, no longer calls `st:CreateHeader` (it leaves Blizzard's title and close button and restyles them without writing fields, `fb-lootpopup`). The remaining callers pass SaftUI's own frames (`SaftUI-Bags/container.lua`, `st:CreatePanel`), where the writes are fine. The helper itself is unchanged: it still writes onto the frame it is given, so a future Blizzard caller would need the side-table refactor described above.
 
 ### 2026-11-15 — SaftUI's tracker: experiments and in-game checks before the switch turns on
 
