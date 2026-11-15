@@ -353,3 +353,30 @@ test("Copy from offers and copies only the settings both units' pages name", fun
 	OW:CloseDialog()
 	UF.groups.party = nil
 end)
+
+test('Copy from builds the options tree once for a copy', function()
+	fresh()
+	local built, build = 0, UF.GetConfigTable
+	UF.GetConfigTable = function(...) built = built + 1 return build(...) end
+	UF:CopySettings('focus', 'target', { 'width', 'health' })
+	UF.GetConfigTable = build
+	eq(built, 1, 'one build')
+	History:Undo()
+end)
+
+test('Copy from between like units still offers every setting', function()
+	fresh()
+	UF:OpenCopyTable('focus')
+	local function count()
+		local n = 0
+		for _, c in ipairs(OW.GetDialogFrames().body.cells) do
+			if c.row.type == 'toggle' and not c.row.hidden then n = n + 1 end
+		end
+		return n
+	end
+	local before = count()
+	check(before > 10, 'many offered before a source: ' .. before)
+	cell('copy_from').widget:Commit('target')
+	eq(count(), before, 'Target has every setting Focus has: nothing dropped')
+	OW:CloseDialog()
+end)

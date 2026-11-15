@@ -388,7 +388,7 @@ History()
 -- A key the page names nothing for isn't listed: the config holds it but
 -- nothing reads it for this unit (Aura watch and Portrait have no element, a
 -- single unit has no Range section), so ticking it would copy nothing.
-local function CopyNames(self, unit)
+local function CopyNames(self, unit, tree)
 	local names = {}
 	local function Add(key, name)
 		if names[key] == nil and type(key) == 'string' and type(name) == 'string' and name ~= '' then
@@ -401,7 +401,7 @@ local function CopyNames(self, unit)
 			if option.type == 'group' and type(option.args) == 'table' then AddGeneral(option.args) end
 		end
 	end
-	local page = self:GetConfigTable().args[unit]
+	local page = (tree or self:GetConfigTable()).args[unit]
 	for tabKey, tab in pairs(page and page.args or {}) do
 		if tabKey == 'general' then AddGeneral(tab.args or {}) else Add(tabKey:lower(), tab.name) end
 	end
@@ -446,7 +446,8 @@ function UF:CopySettings(unit, from, keys)
 	-- Only a setting both units' pages name: the source's config has no value
 	-- for one its page lacks (a read would make AceDB's '**' default, written
 	-- onto the destination and created on the source).
-	local named, namedFrom = CopyNames(self, unit), CopyNames(self, from)
+	local tree = self:GetConfigTable() -- built once for both
+	local named, namedFrom = CopyNames(self, unit, tree), CopyNames(self, from, tree)
 	for _, key in ipairs(keys) do
 		if named[key] and namedFrom[key] then
 			local problem = key == 'position' and self:PositionCopyProblem(unit, from)

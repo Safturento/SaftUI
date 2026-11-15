@@ -254,3 +254,25 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		end
 	end)
 end
+
+-- A global frame typed into the name box (part 'frame') is checked against the
+-- page too: the Castbar's frame name, typed into the Enemy page's Health, loops
+-- in the enemy config where the Castbar hangs on the bar, whichever plate is up.
+for _, client in ipairs({ 'forever', 'retail' }) do
+	test(client .. ': a typed global frame is checked against the page being edited', function()
+		local st, UF = plate_world(client)
+		NP.friend('nameplate1')
+		local friend = NP.add('nameplate1')
+		local P = UF:GetProfileConfig()
+		eq(P.nameplate.castbar.position.element, 'Health', "the enemy's castbar hangs on its bar")
+		P.friendlynameplate.castbar.position = { point = 'TOP', frame = 'UIParent', rel_point = 'TOP', x_off = 0, y_off = 0 }
+		local config = P.nameplate.health
+		local option = st.Config.generators.uf_element_position(1,
+			function(k) return config.position[k] end,
+			function(k, v) config.position[k] = v end,
+			UF:ConfigTarget('nameplate', 'Health'))
+		local ok, res = pcall(option.validate, {}, 'frame', friend.Castbar:GetName())
+		is(ok, res, true, 'Anchor would create a loop', "the Castbar's frame name: refused by the enemy config")
+		eq(UF.anchorPage, nil, 'the page is not kept')
+	end)
+end
