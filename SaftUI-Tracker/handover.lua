@@ -41,7 +41,8 @@ local NONE = {}
 -- The design's table, as a function. state is 'own', 'blizzard' or 'both';
 -- needed whether a section SaftUI doesn't draw has content; inCombat; mode
 -- ('place' or 'beside', the setting); itemsToShow whether there are quest item
--- buttons to show again (TR:ItemsToShow). Returns the new state and the actions
+-- buttons to show again (TR:ItemsToShow); held whether Blizzard's tracker is protected
+-- and in combat (it can't be moved until combat ends). Returns the new state and the actions
 -- to run, in order: 'hide_items', 'hide_window', 'reveal_place', 'reveal_beside',
 -- 'conceal', 'show_window' and 'show_items'.
 --
@@ -54,7 +55,8 @@ local NONE = {}
 --   blizzard not needed, out of combat                  -> own (conceal; the window, the buttons)
 --   blizzard not needed, in combat, no buttons to show  -> own
 --   blizzard not needed, in combat, buttons to show     -> stays: own when combat ends
-function Handover.Next(state, needed, inCombat, mode, itemsToShow)
+--   blizzard needed, Beside SaftUI's (the mode changed)  -> both (Blizzard's beside, the window back)
+function Handover.Next(state, needed, inCombat, mode, itemsToShow, held)
 	if state == 'own' then
 		if not needed then return 'own', NONE end
 		if mode == 'beside' or inCombat then return 'both', { 'reveal_beside' } end
@@ -67,7 +69,22 @@ function Handover.Next(state, needed, inCombat, mode, itemsToShow)
 		return 'both', NONE
 	end
 	-- blizzard
-	if needed then return 'blizzard', NONE end
+	if needed then
+		-- The mode went to Beside while handed over in place (a profile switch can
+		-- come in combat): Blizzard's moves beside at once (TR:PlaceBlizzard waits
+		-- for the end of combat only for a protected tracker) and SaftUI's window
+		-- is back; the buttons come back only out of combat (the pass at the end of
+		-- combat, otherwise).
+		if mode == 'beside' then
+			-- A protected tracker can't move in combat (its move waits for the end):
+			-- SaftUI's window must not draw over it where it is, so the state stays
+			-- until it can move.
+			if held then return 'blizzard', NONE end
+			if inCombat or not itemsToShow then return 'both', { 'reveal_beside', 'show_window' } end
+			return 'both', { 'reveal_beside', 'show_window', 'show_items' }
+		end
+		return 'blizzard', NONE
+	end
 	if inCombat then
 		if itemsToShow then return 'blizzard', NONE end
 		return 'own', { 'conceal', 'show_window' }
@@ -97,8 +114,8 @@ local ACTIONS = {
 	show_items = function(self) self:RefreshItems() end,
 }
 
-local function Run(self, needed, combat, mode, items)
-	local state, actions = Handover.Next(self.handoverState, needed, combat, mode, items)
+local function Run(self, needed, combat, mode, items, held)
+	local state, actions = Handover.Next(self.handoverState, needed, combat, mode, items, held)
 	self.handoverState = state
 	for _, action in ipairs(actions) do ACTIONS[action](self) end
 end
@@ -116,14 +133,15 @@ function TR:UpdateHandover()
 	-- "Buttons to show" also holds Blizzard's tracker up while the game won't let it
 	-- be put away in combat (a protected one: TR:PlaceBlizzard waits for the end),
 	-- so SaftUI's window never comes back over it.
-	local items = self:ItemsToShow() or (combat and not st:CanMoveNow(self.blizzardFrame))
+	local held = combat and not st:CanMoveNow(self.blizzardFrame)
+	local items = self:ItemsToShow() or held
 	if self.handoverMode == nil then
 		self.handoverMode = mode
 	elseif self.handoverMode ~= mode then
 		self.handoverMode = mode
-		Run(self, false, combat, mode, items)
+		Run(self, false, combat, mode, items, held)
 	end
-	Run(self, #self:NeededSections() > 0, combat, mode, items)
+	Run(self, #self:NeededSections() > 0, combat, mode, items, held)
 	self:PlaceBlizzard(WHERE[self.handoverState])
 end
 

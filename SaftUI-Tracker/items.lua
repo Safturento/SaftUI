@@ -243,12 +243,18 @@ local function LogIndex(questID)
 	if index and index > 0 then return index end
 end
 
--- { start, duration, enable } of the quest item's cooldown, or nil.
-local function ReadCooldown(index)
+-- { start, duration, enable } of the quest item's cooldown, or nil. `out`, when
+-- given, is the table filled and returned (so an event that comes with every global
+-- cooldown makes none).
+local function ReadCooldown(index, out)
 	if not index or type(GetQuestLogSpecialItemCooldown) ~= 'function' then return nil end
 	local start, duration, enable = GetQuestLogSpecialItemCooldown(index)
 	start, duration, enable = PlainNumber(start), PlainNumber(duration), PlainNumber(enable)
-	if start and duration then return { start = start, duration = duration, enable = enable } end
+	if start and duration then
+		out = out or {}
+		out.start, out.duration, out.enable = start, duration, enable
+		return out
+	end
 end
 
 -- 0 out of range, 1 in range, nil where the item has no range.
@@ -559,6 +565,24 @@ TR.LogIndex = LogIndex
 TR.ReadItemRange = ReadRange
 TR.ReadItemCooldown = ReadCooldown
 
+-- Reads a button's own cooldown again, into a table of the button's own (made the
+-- first time, never the model's), and says whether it changed: start, duration or
+-- enable, or none now against one before. Allocates nothing after the first read.
+function TR.ReadButtonCooldown(button, index)
+	local read = button.cdRead
+	if not read then
+		read = {}
+		button.cdRead = read
+	end
+	local old = button.cd
+	local oldStart, oldDuration, oldEnable
+	if old then oldStart, oldDuration, oldEnable = old.start, old.duration, old.enable end
+	local cd = ReadCooldown(index, read)
+	button.cd = cd
+	if cd == nil then return old ~= nil end
+	return old == nil or oldStart ~= cd.start or oldDuration ~= cd.duration or oldEnable ~= cd.enable
+end
+
 local function MakeButton(self)
 	local index = #self.itemButtons + 1
 	local button = NewButton(self.itemLayer, st.name .. 'TrackerItem' .. index)
@@ -666,8 +690,7 @@ end
 function TR:RefreshCooldowns()
 	if not self.itemButtons then return end
 	for _, button in ipairs(self.itemButtons) do
-		if button.questID and button.item then
-			button.cd = ReadCooldown(LogIndex(button.questID))
+		if button.questID and button.item and TR.ReadButtonCooldown(button, LogIndex(button.questID)) then
 			PaintButton(button)
 		end
 	end
@@ -924,7 +947,10 @@ local function AssignItems(self, wanted)
 		end
 		if button and self:SetButtonItem(button, quest.item) then
 			button.item, button.title = quest.item, quest.title
-			button.cd, button.range = quest.item.cooldown, quest.item.range
+			-- Their own live reads, never the model's (as old as the last quest event).
+			local logIndex = LogIndex(quest.id)
+			TR.ReadButtonCooldown(button, logIndex)
+			button.range = ReadRange(logIndex)
 			button.inside = ReadInside(quest.id)
 			StyleButton(button, look)
 			SetKind(button, column, entry.number, self.columnSide)
@@ -950,8 +976,11 @@ end
 -- In combat: nothing secure. A button stays where it was; it dims to DIM_ALPHA
 -- when its quest's item is another one now or the quest is gone, and a row's also
 -- when its row moved by more than MOVE_TOLERANCE or is out of view, and goes on
--- using its own quest's item. What a drawing may change (the count, the
--- cooldown) follows the quest while its item is the same one. A column button
+-- using its own quest's item. What a drawing may change (the count) follows the
+-- quest while its item is the same one; the cooldown and the range are never
+-- taken from the model, which is as old as the last quest or bag event: they are
+-- painted from their own reads (BAG_UPDATE_COOLDOWN, the range watcher), as the
+-- nearest button's are (rule 16). A column button
 -- is not tied to its row: the list scrolls, the column stays.
 local function DimItems(self)
 	local size = self.config.items.size
@@ -964,10 +993,7 @@ local function DimItems(self)
 			local alpha
 			if button.column then
 				local same = sameItem and row.item == 'beside'
-				if same then
-					button.item, button.title = item, quest.title
-					button.cd, button.range = item.cooldown, item.range
-				end
+				if same then button.item, button.title = item, quest.title end
 				alpha = same and 1 or TR.DIM_ALPHA
 			else
 				local rowTop
@@ -975,7 +1001,6 @@ local function DimItems(self)
 					local _, top = Place(self, row, button.sizeSet or size)
 					rowTop = top
 					button.item, button.title = item, quest.title
-					button.cd, button.range = item.cooldown, item.range
 				end
 				alpha = Items.CombatAlpha(button.placedTop, rowTop)
 			end

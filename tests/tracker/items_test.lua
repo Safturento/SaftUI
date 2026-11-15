@@ -631,6 +631,7 @@ test('a cooldown that ends or starts is drawn from BAG_UPDATE_COOLDOWN with no r
 	eq(stub.state(b.cooldown).cooldown_duration, 20, 'the cooldown is drawn')
 	eq(refreshes, 0, 'by TR:RefreshCooldowns, with no refresh')
 	TW.combat(true)
+	RW.later(1) -- (a quiet gap: the event draws at once)
 	stub.quests.log[2].item.cooldown = { start = 70, duration = 10, enable = 1 }
 	stub.fire_event('BAG_UPDATE_COOLDOWN')
 	eq(stub.state(b.cooldown).cooldown_start, 70, 'in combat too: a cooldown is drawing')
@@ -1843,4 +1844,100 @@ test('the number sits centred on the title\'s first line', function()
 	local expected = math.max(0, math.floor((line - TR.tagHeight) / 2))
 	eq(-y == 0 and 0 or -y, expected, 'its y is half what the line has over the number')
 	check(TR.tagHeight > 0 and TR.tagHeight <= line, 'the number is no taller than the line')
+end)
+
+------------------------------------------------------------------ final review
+
+-- A pool button in combat that read its own cooldown (BAG_UPDATE_COOLDOWN) and its
+-- own range (the range watcher) keeps both through a placement pass (a scroll, a
+-- collapse, a window show or size change): DimItems copies nothing of the model's,
+-- which is as old as the last quest or bag event (the nearest button's rule, rule 16).
+for _, placement in ipairs({ 'row', 'beside' }) do
+	test('in combat a placement pass puts no stale cooldown or range back over a ' .. placement .. ' button\'s own reads', function()
+		local st, TR = world({ 1, 2, 3 })
+		if placement == 'beside' then
+			TR.config.items.placement = 'beside'
+			TR:UpdateConfig()
+			settle()
+		end
+		local b = button(TR, 1)
+		check(b ~= nil and (b.column == true) == (placement == 'beside'), 'a ' .. placement .. ' button for quest 1')
+		TW.combat(true)
+		RW.later(0.2)
+		stub.time = stub.time + 1
+		stub.quests.log[2].item.cooldown = { start = stub.time, duration = 30, enable = 1 }
+		stub.quests.log[2].item.range = 0
+		stub.fire_event('BAG_UPDATE_COOLDOWN')
+		stub.fire_script(TR.itemWatcher, 'OnUpdate', 1)
+		eq(stub.state(b.cooldown).cooldown_duration, 30, 'the swipe is drawn from its own read')
+		eq(b.range, 0, 'and the range from the watcher')
+		local red = ('%.2f %.2f %.2f'):format(st.config.profile.colors.text.red:GetRGB())
+		eq(('%.2f %.2f %.2f'):format(b.icon:GetVertexColor()), red, 'out of range: red')
+		-- A scroll, a collapse and a size change all place the items again.
+		TR:PlaceItems()
+		TR:RefreshItems()
+		eq(b.cdStart, stub.quests.log[2].item.cooldown.start, 'the pass leaves the swipe (the model has none)')
+		eq(stub.state(b.cooldown).cooldown_duration, 30, 'still drawn')
+		eq(b.range, 0, 'the range is not the model\'s old one')
+		eq(('%.2f %.2f %.2f'):format(b.icon:GetVertexColor()), red, 'still red')
+		eq(#stub.blocked, 0, 'nothing blocked')
+		TW.combat(false)
+		eq(#take_errors(), 0, 'no errors')
+	end)
+end
+
+-- M7: BAG_UPDATE_COOLDOWN comes with every global cooldown in a fight.
+test('BAG_UPDATE_COOLDOWN goes through a gap: the first draws at once, the rest of a burst are one draw at the gap\'s end', function()
+	local st, TR = world({ 1, 2, 3 })
+	RW.later(1)
+	local reads = 0
+	local real = GetQuestLogSpecialItemCooldown
+	GetQuestLogSpecialItemCooldown = function(...) reads = reads + 1; return real(...) end
+	stub.fire_event('BAG_UPDATE_COOLDOWN')
+	eq(reads, 3, 'the first event after a quiet gap reads the three buttons at once')
+	for _ = 1, 20 do stub.fire_event('BAG_UPDATE_COOLDOWN') end
+	eq(reads, 3, 'twenty more inside the gap read nothing yet')
+	RW.later(TR.REFRESH_GAP + 0.01)
+	eq(reads, 6, 'one draw when the gap ends, for all twenty')
+	RW.later(1)
+	eq(reads, 6, 'and no more')
+	stub.quests.log[2].item.cooldown = { start = 50, duration = 20, enable = 1 }
+	stub.fire_event('BAG_UPDATE_COOLDOWN')
+	eq(stub.state(button(TR, 1).cooldown).cooldown_duration, 20, 'a change after a quiet gap is drawn at once')
+	GetQuestLogSpecialItemCooldown = real
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('BAG_UPDATE_COOLDOWN makes no table per button: an unchanged cooldown allocates nothing and draws nothing', function()
+	local st, TR = world({ 1, 2, 3, 4 }, { nearest = true })
+	local b = button(TR, 1)
+	stub.quests.log[2].item.cooldown = { start = 50, duration = 20, enable = 1 }
+	TR:RefreshCooldowns()
+	local cd = b.cd
+	check(cd ~= nil and cd.duration == 20, 'drawn')
+	local draws = 0
+	local set = b.cooldown.SetCooldown
+	b.cooldown.SetCooldown = function(...) draws = draws + 1; return set(...) end
+	TR:RefreshCooldowns()
+	eq(b.cd, cd, 'the same table, filled again in place')
+	eq(draws, 0, 'an unchanged cooldown is not drawn again')
+	stub.quests.log[2].item.cooldown = { start = 60, duration = 20, enable = 1 }
+	TR:RefreshCooldowns()
+	eq(b.cd, cd, 'a changed one fills the same table')
+	eq(draws, 1, 'and is drawn')
+	-- Allocation: with the stubs' own reads subtracted, the tracker's part is nothing.
+	local function churn(f)
+		collectgarbage(); collectgarbage('stop')
+		local before = collectgarbage('count')
+		for _ = 1, 200 do f() end
+		local after = collectgarbage('count')
+		collectgarbage('restart')
+		return (after - before) / 200
+	end
+	local stubs = churn(function()
+		for index = 1, 5 do GetQuestLogSpecialItemCooldown(index) end
+	end)
+	local own = churn(function() TR:RefreshCooldowns(); TR:RefreshNearestCooldown() end)
+	check(own <= stubs + 0.05, ('the tracker adds no allocation to a draw: %.3f KB against the stubs\' %.3f'):format(own, stubs))
+	eq(#take_errors(), 0, 'no errors')
 end)

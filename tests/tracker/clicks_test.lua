@@ -732,3 +732,44 @@ test('the switch off: nothing of clicks.lua runs; no frame, hook, event or scrip
 	TR:ShowRowTooltip({})
 	eq(#take_errors(), 0, 'and calling them with nothing built errors nothing')
 end)
+
+------------------------------------------------------------------ final review
+
+-- M5: QUEST_DETAIL and QUEST_COMPLETE are SynchronousEvents. If the client fires them
+-- inside ShowQuestOffer and ShowQuestComplete, QuestFrame's handlers run in our call,
+-- in combat too. A popup's click and an auto-complete quest's click go behind one
+-- seam, TR.PopupClickAllowed() (experiment P7), which allows them in combat today
+-- (the owner's ruling: finishing a quest from its popup in combat is the point).
+RW.both('P7: a popup click and an auto-complete click are behind TR.PopupClickAllowed(): allowed in combat today, out of combat only when TR.POPUP_CLICK_IN_COMBAT is false', function(st, TR)
+	stub.real_zone_text = 'Elwynn Forest'
+	Q.set({ Q.header('Elwynn Forest'), Q.quest(7, { title = 'Done', auto = true, complete = true }) }, { 7 },
+		{ popups = { { id = 7, kind = 'COMPLETE' }, { id = 9, kind = 'OFFER' } }, titles = { [9] = 'An offer' } })
+	TR:Refresh()
+	check(TR.PopupClickAllowed(), 'out of combat: allowed')
+	eq(TR.POPUP_CLICK_IN_COMBAT, true, 'the constant is on: the ruling')
+	stub.in_combat = true
+	check(TR.PopupClickAllowed(), 'in combat: allowed as ruled')
+	stub.quest_calls = {}
+	stub.click(TR:GetPopupRow(9, 'OFFER'))
+	check(has(calls(), 'ShowQuestOffer:9'), 'the offer popup in combat runs the game\'s call')
+	-- The failed experiment: one constant.
+	TR.POPUP_CLICK_IN_COMBAT = false
+	check(not TR.PopupClickAllowed(), 'the constant off: refused in combat')
+	stub.quest_calls = {}
+	stub.ui_errors = {}
+	Q.set({ Q.header('Elwynn Forest'), Q.quest(7, { title = 'Done', auto = true, complete = true }) }, { 7 },
+		{ popups = { { id = 7, kind = 'COMPLETE' }, { id = 9, kind = 'OFFER' } }, titles = { [9] = 'An offer' } })
+	stub.click(TR:GetPopupRow(9, 'OFFER'))
+	stub.click(TR:GetPopupRow(7, 'COMPLETE'))
+	stub.click(RW.quest(TR, 7))
+	local seen = calls()
+	check(not has(seen, 'ShowQuestOffer') and not has(seen, 'ShowQuestComplete') and not has(seen, 'RemoveAutoQuestPopUp'),
+		'in combat no popup click and no auto-complete click runs a game call: ' .. seen)
+	check(#stub.ui_errors >= 1, 'and the error line says so')
+	eq(#stub.quests.popups, 2, 'the popups stay')
+	stub.in_combat = false
+	check(TR.PopupClickAllowed(), 'out of combat the constant never matters')
+	stub.click(TR:GetPopupRow(9, 'OFFER'))
+	check(has(calls(), 'ShowQuestOffer:9'), 'a popup click out of combat works')
+	TR.POPUP_CLICK_IN_COMBAT = true
+end)

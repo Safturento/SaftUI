@@ -37,7 +37,15 @@ local CASES = { -- from, needed, combat, mode, itemsToShow -> to, actions
 	{ 'blizzard', false, true,  'place',  true,  'blizzard', '' },
 	{ 'blizzard', true,  true,  'place',  true,  'blizzard', '' },
 	{ 'own',      false, false, 'place',  true,  'own',      '' },
+	-- A mode change to Beside while handed over in place (a profile switch can come in combat):
+	-- Blizzard's tracker moves beside at once and SaftUI's window comes back; the buttons only out of combat.
+	{ 'blizzard', true,  true,  'beside', true,  'both',     'reveal_beside,show_window' },
+	{ 'blizzard', true,  false, 'beside', true,  'both',     'reveal_beside,show_window,show_items' },
+	{ 'blizzard', true,  false, 'beside', false, 'both',     'reveal_beside,show_window' },
 }
+
+-- (held, a protected Blizzard tracker that can't move in combat: the sixth argument)
+local HELD = { 'blizzard', true, true, 'beside', true, true }
 
 test('TR.Handover.Next: every row of the design\'s table', function()
 	local _, TR = RW.world({ blizzard = true })
@@ -48,6 +56,14 @@ test('TR.Handover.Next: every row of the design\'s table', function()
 		eq(state .. ' ' .. table.concat(actions, ','), case[6] .. ' ' .. case[7], label)
 	end
 	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('TR.Handover.Next: a protected tracker held in combat stays blizzard, the window away, until it can move', function()
+	local _, TR = RW.world({ blizzard = true })
+	local state, actions = TR.Handover.Next(unpack(HELD))
+	eq(state .. ' ' .. table.concat(actions, ','), 'blizzard ', 'held: stays')
+	state, actions = TR.Handover.Next('blizzard', true, true, 'beside', true, false)
+	eq(state, 'both', 'not held: both')
 end)
 
 test('TR.Handover.Next: the rest of the grid, as the rules say', function()
@@ -759,4 +775,119 @@ both('a /reload in combat inside a scenario: both in combat, in place when it en
 	check(TR.itemLayer ~= nil, 'the item layer exists')
 	eq(#stub.blocked, 0, 'nothing blocked')
 	eq(#take_errors(), 0, 'no errors')
+end)
+
+------------------------------------------------------------------ final review
+
+-- The game's order at PLAYER_REGEN_DISABLED: the event's handlers run first, with
+-- InCombatLockdown() still false, and lockdown begins after them (TW.combat starts
+-- it first). A refresh and a probe pass that were waiting run in that window, so
+-- they may assign the item buttons and hand over, hiding secure buttons, with
+-- nothing blocked; then lockdown begins.
+both('combat starting in the game\'s order (handlers before lockdown) with a refresh and a probe pass waiting: both run unlocked, nothing blocked', function(client)
+	local st, TR, OT = world({ client = client, ids = { 1, 2, 3 } })
+	eq(items_shown(TR), 3, 'three buttons')
+	local old = {}
+	for _, id in ipairs({ 2, 3 }) do old[id] = TR:GetItemButton(id) end
+	-- Quest 1 leaves, and a scenario starts: the refresh and the probe pass are both waiting.
+	log({ 2, 3 }, true)
+	stub.fire_event('QUEST_LOG_UPDATE')
+	scenario(true)
+	check(TR.pending and TR.probePending, 'a refresh and a probe pass wait')
+	-- The game's order.
+	stub.fire_event('PLAYER_REGEN_DISABLED')
+	check(not TR.pending and not TR.probePending, 'both ran in the event\'s own handlers')
+	eq(TR.handoverState, 'blizzard', 'the handover went to Blizzard\'s in SaftUI\'s place out of lockdown')
+	eq(items_shown(TR), 0, 'and the secure buttons were hidden then, which lockdown would have refused')
+	stub.in_combat = true
+	settle(0.2)
+	eq(#stub.blocked, 0, 'nothing blocked when lockdown began')
+	eq(TR.handoverState, 'blizzard', 'still in place')
+	eq(items_shown(TR), 0, 'the buttons still away')
+	-- Combat ends and the need ends: the buttons come back at the rows' places.
+	stub.in_combat = false
+	stub.fire_event('PLAYER_REGEN_ENABLED')
+	scenario(false)
+	settle(TR.HOLD + 1)
+	eq(TR.handoverState, 'own', 'back in SaftUI\'s own')
+	eq(items_shown(TR), 2, 'the two quests\' buttons are back')
+	for _, id in ipairs({ 2, 3 }) do
+		local button = TR:GetItemButton(id)
+		check(button ~= nil and button:IsShown(), 'quest ' .. id .. ' has its button')
+		if button then eq(button:GetTop(), RW.quest(TR, id):GetTop(), 'quest ' .. id .. ': over its row') end
+	end
+	clean()
+end)
+
+-- M1: a profile switch (from another addon, a macro or an automatic change: /sui is
+-- closed in combat, a profile is not) from In SaftUI's place to Beside SaftUI's while
+-- handed over, in combat.
+both('a profile switch to Beside in combat while handed over in place: Blizzard\'s moves beside at once, SaftUI\'s window is back, and it stays so after combat', function(client)
+	local st, TR, OT = world({ client = client })
+	scenario(true)
+	settle()
+	eq(TR.handoverState, 'blizzard', 'handed over in place')
+	TW.combat(true)
+	settle()
+	TR.config.blizzard.mode = 'beside'
+	TR:UpdateConfig()
+	settle()
+	eq(TR.handoverState, 'both', 'in combat: both')
+	eq(TR.blizzardEffective, 'beside', 'Blizzard\'s is beside SaftUI\'s now')
+	check(not near(OT.tracker:GetRight(), TR.holder:GetRight()), 'and not in the holder\'s place')
+	check(TR.window:IsShown(), 'SaftUI\'s window shows')
+	TW.combat(false)
+	settle(1)
+	eq(TR.handoverState, 'both', 'combat over: still both')
+	eq(TR.blizzardWhere, 'beside', 'Blizzard\'s still beside')
+	check(TR.window:IsShown() and items_shown(TR) == 2, 'the window and the buttons are back')
+	settle(5)
+	stub.fire_event('QUEST_LOG_UPDATE')
+	settle(1)
+	eq(TR.handoverState, 'both', 'and later too')
+	clean()
+end)
+
+both('the same switch with a tracker the game counts as protected: it stays in place until combat ends, then goes beside; nothing blocked', function(client)
+	local st, TR, OT = world({ client = client, blizzard = { protected = true } })
+	scenario(true)
+	settle()
+	eq(TR.handoverState, 'blizzard', 'handed over in place (out of combat)')
+	local top, right = OT.tracker:GetTop(), OT.tracker:GetRight()
+	TW.combat(true)
+	settle()
+	TR.config.blizzard.mode = 'beside'
+	TR:UpdateConfig()
+	settle()
+	eq(TR.handoverState, 'blizzard', 'the state stays blizzard: SaftUI\'s window must not draw over the unmoved tracker')
+	check(not TR.window:IsShown(), 'the window stays away')
+	eq(OT.tracker:GetRight(), right, 'its place waits for the end of combat: not moved')
+	eq(OT.tracker:GetTop(), top, 'at all')
+	TW.combat(false)
+	settle(1)
+	eq(TR.blizzardEffective, 'beside', 'combat over: beside')
+	check(not near(OT.tracker:GetRight(), TR.holder:GetRight()), 'moved off the holder\'s place')
+	eq(TR.handoverState, 'both', 'both once it could move')
+	check(TR.window:IsShown(), 'and SaftUI\'s window is back')
+	clean()
+end)
+
+-- N1: AssignItems reads each button's own live cooldown and range, not the model's
+-- (as old as the last quest event): an item used from Blizzard's own button during a
+-- handover shows its swipe and range when SaftUI's buttons come back.
+both('an item used during a handover shows its cooldown and range when the buttons come back, with no quest event between', function(client)
+	local st, TR, OT = world({ client = client })
+	scenario(true)
+	settle()
+	eq(TR.handoverState, 'blizzard', 'handed over')
+	stub.time = stub.time + 1
+	stub.quests.log[2].item.cooldown = { start = stub.time, duration = 30, enable = 1 }
+	stub.quests.log[2].item.range = 0
+	scenario(false)
+	settle(TR.HOLD + 1)
+	eq(TR.handoverState, 'own', 'back')
+	local b = TR:GetItemButton(1)
+	check(b ~= nil and b:IsShown(), 'the button is back')
+	eq(stub.state(b.cooldown).cooldown_duration, 30, 'with its swipe')
+	eq(b.range, 0, 'and its range')
 end)

@@ -305,8 +305,7 @@ function TR:OnEvent(event, ...)
 		if self.knownIds and not self.knownIds[questID] then return end
 	end
 	if event == 'BAG_UPDATE_COOLDOWN' then
-		self:RefreshCooldowns()
-		self:RefreshNearestCooldown()
+		self:OnCooldownEvent()
 		return
 	end
 	-- Combat starting or ending changes what the list may do (the scroll lock),
@@ -349,6 +348,30 @@ function TR:OnEvent(event, ...)
 		self:ApplyVisibility()
 	end
 	self:MarkDirty(event)
+end
+
+-- BAG_UPDATE_COOLDOWN comes with every global cooldown in a fight. It only draws
+-- (no refresh), and through a gap of its own, the refresh's length: the first one
+-- after a quiet gap draws at once, those inside it are one draw when the gap ends.
+function TR:OnCooldownEvent()
+	if not self.built or self.cooldownPending then return end
+	local wait = self.lastCooldown and (TR.REFRESH_GAP - (GetTime() - self.lastCooldown)) or 0
+	if wait > 0 then
+		self.cooldownPending = true
+		self.cooldownDraw = self.cooldownDraw or function()
+			self.cooldownPending = false
+			self:DrawCooldowns()
+		end
+		C_Timer.After(wait, self.cooldownDraw)
+		return
+	end
+	self:DrawCooldowns()
+end
+
+function TR:DrawCooldowns()
+	self.lastCooldown = GetTime()
+	self:RefreshCooldowns()
+	self:RefreshNearestCooldown()
 end
 
 -- The quests the game just said were tracked, in order, each waiting for its row

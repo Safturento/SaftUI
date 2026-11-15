@@ -615,10 +615,12 @@ end
 
 -- A popup's click: the game's own offer or turn-in frame (the game functions
 -- that open it through its own events, no Blizzard Lua of ours), then the
--- popup is removed, as Blizzard's does. Allowed in combat (an in-game check).
+-- popup is removed, as Blizzard's does. Behind TR.PopupClickAllowed() (clicks.lua,
+-- experiment P7: the events the calls lead to are synchronous), which allows it in
+-- combat today.
 function TR:OnPopupClick(row)
 	local questID = row.questID
-	if not questID then return end
+	if not questID or TR.RefusePopupClick() then return end
 	if row.popupKind == 'COMPLETE' then
 		if type(ShowQuestComplete) == 'function' then ShowQuestComplete(questID) end
 	else

@@ -4,7 +4,7 @@
 --   - level and elite (Forever's IsEliteQuest, retail's tag), tags, frequency;
 --   - objectives (sequenced, Hide finished, finished quests), completion,
 --     failure, auto-complete, money, the timer, the item, the focused quest's
---     waypoint, area and distance;
+--     waypoint (no area or distance: the nearest button reads those itself);
 --   - popups, an arena, the counts, the current zone's untracked quests;
 --   - an API missing or a value secret making its part absent;
 --   - quests the log can't place.
@@ -258,12 +258,11 @@ both("the item and show-when-complete; area, distance (none when the API returns
 	check(Q.find(model, 3).item ~= nil, 'one that does: kept')
 	eq(Q.find(model, 3).item.showWhenComplete, true, 'with the flag')
 	eq(Q.find(model, 4).item, nil, 'no item')
-	eq(first.inArea, true, 'inside the quest\'s area')
-	eq(Q.find(model, 4).inArea, false, 'outside it')
-	eq(first.distanceSq, 400, 'the distance squared')
-	eq(first.onContinent, true, 'on the continent')
-	eq(Q.find(model, 4).distanceSq, nil, 'no distance when the API returns nothing')
-	eq(Q.find(model, 4).onContinent, nil, 'and no continent')
+	-- The area and the distance are the nearest button's alone (nearest.lua reads
+	-- them fresh, for the quests it chooses among): the model neither reads nor keeps them.
+	eq(first.inArea, nil, 'no area in the model')
+	eq(first.distanceSq, nil, 'no distance in the model')
+	eq(first.onContinent, nil, 'no continent in the model')
 	eq(model.focused, 1, 'the focused quest')
 	eq(first.waypoint, 'Take the boat', 'its waypoint')
 	eq(Q.find(model, 2).waypoint, nil, 'only the focused quest has one')
@@ -393,7 +392,7 @@ both('a missing function makes its part absent; a secret value (level, numbers, 
 	stub.money = 0
 	local full = TR.Model.Read('zone')
 	local quest = full.quests[1]
-	check(quest.item and quest.level and quest.inArea ~= nil and quest.distanceSq and quest.waypoint, 'with every API, every part is there')
+	check(quest.item and quest.level and quest.waypoint, 'with every API, every part is there')
 
 	local function without(label, remove, restore_fn, check_fn)
 		remove()
@@ -415,7 +414,6 @@ both('a missing function makes its part absent; a secret value (level, numbers, 
 
 	drop_member('C_QuestLog', 'GetQuestObjectives', function(q) eq(#q.objectives, 0, 'no objectives') end)
 	drop_member('C_QuestLog', 'IsComplete', function(q) eq(q.complete, false, 'not complete') end)
-	drop_member('C_QuestLog', 'GetDistanceSqToQuest', function(q) eq(q.distanceSq, nil, 'no distance') end)
 	drop_member('C_QuestLog', 'GetNextWaypointText', function(q) eq(q.waypoint, nil, 'no waypoint') end)
 	drop_member('C_QuestLog', 'GetRequiredMoney', function(q) eq(q.money, nil, 'no money') end)
 	drop_member('C_QuestLog', 'GetQuestTagInfo', function(q) eq(#q.tags, 1, 'only the frequency tag') end)
@@ -427,7 +425,6 @@ both('a missing function makes its part absent; a secret value (level, numbers, 
 	drop_member('C_QuestLog', 'GetNumQuestLogEntries', function(_, m) eq(m.counts.inLog, nil, 'no log count') end)
 	drop_member('C_QuestLog', 'GetMaxNumQuestsCanAccept', function(_, m) eq(m.counts.max, stub.interface == 16001 and 40 or TR.FALLBACK_MAX_QUESTS, "Forever's constant, else the fallback") end)
 	drop_member('C_SuperTrack', 'GetSuperTrackedQuestID', function(q, m) eq(m.focused, nil, 'none focused') eq(q.waypoint, nil, 'so no waypoint') end)
-	drop_member('C_Minimap', 'IsInsideQuestBlob', function(q) eq(q.inArea, nil, 'no area') end)
 	drop_member('C_PlayerInfo', 'GetContentDifficultyQuestForPlayer', function(q) eq(q.difficultyColor, nil, 'no color') end)
 	drop_member('C_Map', 'GetBestMapForUnit', function(_, m) eq(type(m.zoneNames), 'table', 'zone names still') end)
 	drop_global('GetQuestLogSpecialItemInfo', function(q) eq(q.item, nil, 'no item') end)
@@ -473,8 +470,6 @@ both('a missing function makes its part absent; a secret value (level, numbers, 
 		eq(q.level, nil, 'a secret level is no level')
 		eq(q.money, nil, 'a secret money')
 		eq(q.timeLeft, nil, 'a secret time')
-		eq(q.distanceSq, nil, 'a secret distance')
-		eq(q.onContinent, nil, 'and no continent')
 		eq(q.objectives[1].text, nil, 'a secret objective text')
 		eq(q.objectives[1].numFulfilled, nil, 'a secret number')
 		eq(q.objectives[1].finished, false, 'a secret flag is not set')
@@ -600,4 +595,15 @@ both('the zone names stop at a dungeon map: its zone outside is not a current na
 	}
 	stub.player_map = 2
 	eq(table.concat(TR.Model.ZoneNames(), '|'), 'The Deadmines', 'the dungeon, not Westfall')
+end)
+
+both('the model reads no quest area and no distance: nothing uses them, and a refresh must not pay 2 C calls a quest', function(st, TR)
+	Q.set({ Q.header('Zone'), Q.quest(1, { inArea = true, distance = { sq = 4, onContinent = true } }), Q.quest(2) }, { 1, 2 })
+	local reads = 0
+	local area, distance = C_Minimap.IsInsideQuestBlob, C_QuestLog.GetDistanceSqToQuest
+	C_Minimap.IsInsideQuestBlob = function(...) reads = reads + 1; return area(...) end
+	C_QuestLog.GetDistanceSqToQuest = function(...) reads = reads + 1; return distance(...) end
+	TR.Model.Read('tracked')
+	C_Minimap.IsInsideQuestBlob, C_QuestLog.GetDistanceSqToQuest = area, distance
+	eq(reads, 0, 'neither API is called by a read')
 end)
