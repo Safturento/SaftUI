@@ -978,6 +978,64 @@ function stub.set_cvar_secure(name, value)
 	set_cvar(name, value)
 end
 
+-- Key bindings. The old globals are not in the generated API documentation
+-- (Blizzard_APIDocumentationGenerated); their shapes are how Blizzard's own key
+-- binding settings call them (Blizzard_Settings_Shared/Blizzard_Keybindings.lua,
+-- read on both branches of Gethe/wow-ui-source on 2026-11-14, the same on both):
+--   GetBindingKey(command [, nil, context]) -> key1, key2, ...: the keys bound to
+--     the command, nothing for none.
+--   SetBinding(key, command [, context]) -> boolean: binds the key to the command
+--     (taking it from whatever it was bound to); a nil command unbinds the key
+--     (SetBinding(key, nil, context)). false when the game refuses the key.
+--   SaveBindings(set), GetCurrentBindingSet(): `SaveBindings(GetCurrentBindingSet())`
+--     is the line Blizzard's own code runs after a change (Blizzard_Keybindings.lua
+--     line 144; Blizzard_ClickBindingUI.lua line 400): the set is 1 (account) or 2
+--     (character).
+-- In combat the game blocks SetBinding and SaveBindings (.agents/taint.md rule 6),
+-- so the stubs refuse both: noted in stub.blocked as { SetBinding, key } and
+-- { SaveBindings, set }, changing nothing. The game fires UPDATE_BINDINGS after a
+-- binding changes; the stubs don't, a test fires it itself.
+--   stub.bindings        key -> command
+--   stub.binding_set     what GetCurrentBindingSet returns (1)
+--   stub.saved_bindings  the sets SaveBindings was given, in order
+--   stub.rejected_keys   a set of keys SetBinding refuses (returns false)
+stub.bindings = {}
+stub.binding_set = 1
+stub.saved_bindings = {}
+stub.rejected_keys = {}
+
+function GetBindingKey(command)
+	if type(command) ~= 'string' then error('Usage: key1, key2 = GetBindingKey(command)', 2) end
+	local keys = {}
+	for key, bound in pairs(stub.bindings) do
+		if bound == command then keys[#keys + 1] = key end
+	end
+	table.sort(keys)
+	return unpack(keys)
+end
+
+function SetBinding(key, command)
+	if type(key) ~= 'string' then error('Usage: success = SetBinding(key [, command])', 2) end
+	if InCombatLockdown() then
+		stub.blocked[#stub.blocked + 1] = { SetBinding, key }
+		return false
+	end
+	if command ~= nil and stub.rejected_keys[key] then return false end
+	stub.bindings[key] = command
+	return true
+end
+
+function GetCurrentBindingSet() return stub.binding_set end
+
+function SaveBindings(set)
+	if set ~= 1 and set ~= 2 then error('Usage: SaveBindings(bindingSet)', 2) end
+	if InCombatLockdown() then
+		stub.blocked[#stub.blocked + 1] = { SaveBindings, set }
+		return
+	end
+	stub.saved_bindings[#stub.saved_bindings + 1] = set
+end
+
 -- The quest icon's questions about a unit (the same on both clients: a unit
 -- token in, a plain boolean back, its documentation marks it not nilable):
 -- C_QuestLog.UnitIsRelatedToActiveQuest(unit) (QuestLogDocumentation.lua),

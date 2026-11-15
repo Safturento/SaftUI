@@ -119,7 +119,8 @@ end
 -- saves into tracker.items and runs TR:UpdateConfig, whose refresh draws the
 -- rows and (out of combat) the buttons again; a change in combat waits for the
 -- end of it, like the buttons (/sui is closed in combat anyway). The nearest
--- button and its key are later tasks' rows.
+-- button's rows (nearest.lua) come after the row buttons': its switch, size, key
+-- (the game's binding) and, last, its Position.
 function TR.ItemsTab()
 	local function toggle(order, key, name, desc)
 		local option = generators.toggle(order, name, desc)
@@ -141,13 +142,43 @@ function TR.ItemsTab()
 		count = toggle(4, 'count', 'Count', "The item's charges, when it has more than one."),
 		range = toggle(5, 'range', 'Out of range in red',
 			"Tints the button red while the item can't be used on what is in front of you."),
+		nearest = toggle(6, 'nearest', 'Nearest quest item button',
+			"One bigger button for the quest item you most likely want: the one whose area you're in, else your focused quest's, else the nearest. Move it in edit mode; bind a key to it below."),
+		nearest_size = generators.range(7, 'Nearest button size', 24, 64, 2, 'How big the nearest quest item button is.'),
+		-- The key is the game's own binding (Key Bindings > AddOns > SaftUI), not a
+		-- profile setting: get and set read and write it.
+		key = {
+			order = 8,
+			name = 'Key',
+			desc = "The key that uses the nearest quest item. It is the game's own binding, also set under Key Bindings > AddOns > SaftUI. In combat a change waits for its end.",
+			type = 'keybinding',
+			get = function() return TR.NearestKey() end,
+			set = function(_, value) TR:SetNearestKey(value) end,
+			default = {
+				differs = function() return TR.NearestKey() ~= nil end,
+				reset = function() TR:SetNearestKey('') end,
+				text = 'Not bound',
+			},
+		},
 		combat = {
-			order = 6,
+			order = 9,
 			type = 'description',
 			name = 'In combat a quest item that appears gets its button when combat ends, buttons stay where they were, and the nearest button keeps its item. Changes to buttons wait for the end of combat.',
 		},
 	}
 	args.size.default = TR.SettingDefault('items', 'size')
+	args.nearest_size.default = TR.SettingDefault('items', 'nearest_size')
+	-- Where the nearest button's holder is, last in the tab. Its holder is the
+	-- target, so a position anchored to the button itself is refused.
+	args.nearest_position = generators.position(1000, true,
+		function(key) return TR.config.items.nearest_position[key] end,
+		function(key, value)
+			TR.config.items.nearest_position[key] = value
+			TR:PlaceNearest()
+		end,
+		function() return TR.nearestHolder end,
+		"Where the nearest quest item button is. Drag it in edit mode, or set it here.")
+	args.nearest_position.default = TR.SettingDefault('items', 'nearest_position')
 	local tab = TR.Tab(3, 'Items', args)
 	tab.get = function(info) return TR.config.items[info[#info]] end
 	tab.set = function(info, value)
