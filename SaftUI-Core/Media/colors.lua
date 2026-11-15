@@ -800,17 +800,48 @@ local PREVIEWS = {
 	['objectives.failed'] = { kind = 'text', sample = 'Escort failed' },
 }
 
--- A Buttons color's preview names its key (the states it reaches are lit);
--- one table per key, kept (the picker reads it as constants).
-local BUTTON_PREVIEWS = {}
+-- A color's preview that names its key or its label is one table per color,
+-- kept (the picker reads it as constants); the Buttons rows name their key,
+-- the others what their bar or slot shows.
+local POINT_POWERS = { COMBO_POINTS = true, CHI = true, HOLY_POWER = true, SOUL_SHARDS = true, ARCANE_CHARGES = true }
+local STATUS_LABELS = { disconnected = 'Offline', tapped = 'Tapped' }
+local ROLES_PREVIEW = { kind = 'bar', style = 'role' }
+local POINTS_PREVIEW = { kind = 'bar', style = 'points' }
+local QUALITY_PREVIEW = { kind = 'border', style = 'slot' }
+local MOUNT_PREVIEW = { kind = 'border', style = 'entry' }
+local THREAT_PREVIEW = { kind = 'bar', style = 'plate', threat = true }
+local KEPT = {}
+local function Kept(color, make)
+	local id = color.group .. '.' .. tostring(color.key)
+	KEPT[id] = KEPT[id] or make()
+	return KEPT[id]
+end
+
 local function PreviewOf(color)
-	if color.group == 'text' then return TEXT_PREVIEW end
-	if color.group == 'button' then
-		local key = tostring(color.key)
-		BUTTON_PREVIEWS[key] = BUTTON_PREVIEWS[key] or { kind = 'button', key = key }
-		return BUTTON_PREVIEWS[key]
+	local group = color.group
+	if group == 'text' then return TEXT_PREVIEW end
+	if group == 'button' then
+		return Kept(color, function() return { kind = 'button', key = tostring(color.key) } end)
 	end
-	return PREVIEWS[color.group .. '.' .. tostring(color.key)]
+	if group == 'class' then
+		return Kept(color, function() return { kind = 'bar', style = 'unit', label = color.name } end)
+	end
+	if group == 'roles' then return ROLES_PREVIEW end
+	if group == 'reaction' or group == 'renown' then
+		return Kept(color, function() return { kind = 'bar', style = 'reputation', label = color.name } end)
+	end
+	if group == 'power' then
+		if POINT_POWERS[color.key] then return POINTS_PREVIEW end
+		return Kept(color, function() return { kind = 'bar', style = 'power', label = color.name } end)
+	end
+	if group == 'item_quality' then return QUALITY_PREVIEW end
+	if group == 'loot' and color.key == 'mount' then return MOUNT_PREVIEW end
+	if group == 'status' then
+		-- Status colors only color health: no tooltip.
+		return Kept(color, function() return { kind = 'bar', style = 'unit', label = STATUS_LABELS[color.key], tooltip = false } end)
+	end
+	if group == 'threat' then return THREAT_PREVIEW end
+	return PREVIEWS[group .. '.' .. tostring(color.key)]
 end
 
 local function SectionGroup(section, index)

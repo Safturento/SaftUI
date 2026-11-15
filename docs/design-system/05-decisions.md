@@ -76,6 +76,7 @@ Answers the owner has given to the questions and discrepancies. Each stands as a
 
 51. **The color picker's preview sits under the square (placement A),** a strip 64 tall with a "Preview" caption above it; the picker is 94 taller when an option has one (436, not 342).
 52. **The picker has no Class colors row.** The Colors page edits those; Last used stays, and moves up into the row's place (248, or 342 under a preview).
+53. **Every Colors row and the Accent have a preview, and a preview shows only what the color reaches.** Class, Status, Roles, Reputation, Power, Threat show SaftUI's own bars at 70% (Status has no tooltip: it only colors health); Item quality and Loot > Mount show a slot and a feed entry. Class power points are drawn as Thick under the Blizzard theme (its art takes no color), with the same "Shown as Thick" note as Buttons.
 
 ## 2026-11-15, the reset
 
