@@ -104,3 +104,30 @@ test('UF:UpdateColors leaves oUF its own role colors', function()
 	check(UF.oUF.colors.roles == roles, 'and a Roles change leaves it as it was')
 	set(colors.roles.TANK, 0, 0.68, 0.94)
 end)
+
+test('a Roles pick reaches the corners of its role at once, and only those', function()
+	-- oUF's update stood in for by what it does for the corner: PostUpdate.
+	UnitExists = function() return true end
+	local forced = 0
+	member.IsElementEnabled = function() return true end
+	member.UpdateTags = function() end
+	corner.ForceUpdate = function(self) forced = forced + 1; self:PostUpdate() end
+	local saved_units, saved_groups, saved_preview = UF.units, UF.groups, UF.testGroups
+	UF.units, UF.groups, UF.testGroups = { party1 = member }, {}, nil
+	corner.config.showDps = true
+	_G.UnitGroupRolesAssigned = function() return 'TANK' end
+	corner:PostUpdate()
+	set(colors.roles.TANK, 0.2, 0.3, 0.4)
+	st:ColorChanged('roles', 'TANK')
+	eq(T.rgb(corner:GetVertexColor()), T.rgb(0.2, 0.3, 0.4), 'the tank corner takes the new Tank color')
+	eq(forced, 1, 'updated once')
+	st:ColorChanged('roles', 'HEALER')
+	st:ColorChanged('roles', 'DAMAGER')
+	eq(forced, 1, "a Healer or Damage pick leaves a tank's corner")
+	set(colors.roles.TANK, 0, 0.68, 0.94)
+	st:ColorsChanged('roles')
+	eq(forced, 2, 'the whole pass updates it')
+	eq(T.rgb(corner:GetVertexColor()), ROLES.TANK, 'in the restored color')
+	UF.units, UF.groups, UF.testGroups = saved_units, saved_groups, saved_preview
+	eq(#take_errors(), 0, 'no errors')
+end)

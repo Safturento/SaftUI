@@ -220,26 +220,63 @@ function UF:RegisterElement(name, Constructor, UpdateConfig, GetConfigTable, Val
 	}
 end
 
-function UF:UpdateColors()
-	st.tablemerge(UF.oUF.colors.disconnected, st.config.profile.colors.status.disconnected, true)
-	st.tablemerge(UF.oUF.colors.tapped, st.config.profile.colors.status.tapped, true)
-	st.tablemerge(UF.oUF.colors.reaction, st.config.profile.colors.reaction, true)
-	st.tablemerge(UF.oUF.colors.power, st.config.profile.colors.power, true)
-	st.tablemerge(UF.oUF.colors.class, st.config.profile.colors.class, true)
+-- Copies one profile color into oUF's color of the same name, in place (a
+-- table already there keeps its identity and its methods, and nothing is
+-- made); a color oUF has none of yet is put there.
+local function CopyColor(group, key, from)
+	if from == nil then return end
+	local to = group[key]
+	if type(to) == 'table' and type(from) == 'table' then
+		to.r, to.g, to.b = from.r, from.g, from.b
+		if from.a ~= nil then to.a = from.a end
+	else
+		group[key] = from
+	end
+end
+
+-- Puts the profile's colors on oUF's. With no group, every group the unit
+-- frames use (the profile loading, the module enabling); with a group and no
+-- key, that group's; with both, only that color, so a color picker's drag
+-- copies one color and makes no garbage. Roles, text and threat are not oUF's:
+-- the role corners and the tags read them as they update.
+function UF:UpdateColors(group, key)
+	local oUFColors, profile = UF.oUF.colors, st.config.profile.colors
+	if key ~= nil and group ~= nil then
+		if group == 'status' then
+			CopyColor(oUFColors, key, profile.status[key])
+		elseif group == 'class' or group == 'reaction' or group == 'power' then
+			CopyColor(oUFColors[group], key, profile[group][key])
+		end
+		return
+	end
+	if group == nil or group == 'status' then
+		st.tablemerge(oUFColors.disconnected, profile.status.disconnected, true)
+		st.tablemerge(oUFColors.tapped, profile.status.tapped, true)
+	end
+	if group == nil or group == 'reaction' then
+		st.tablemerge(oUFColors.reaction, profile.reaction, true)
+	end
+	if group == nil or group == 'power' then
+		st.tablemerge(oUFColors.power, profile.power, true)
+	end
+	if group == nil or group == 'class' then
+		st.tablemerge(oUFColors.class, profile.class, true)
+	end
 	-- The profile has no runes colors by default; use oUF's then instead of
 	-- wiping them. Set every time, so a profile without them doesn't keep the
 	-- colors of a profile switched away from. oUF has no role colors of its own;
 	-- the role corners read the Roles colors (st:Color('roles', role)).
-	UF.oUF.colors.runes = st.config.profile.colors.runes or DEFAULT_RUNE_COLORS
+	if group == nil then
+		oUFColors.runes = profile.runes or DEFAULT_RUNE_COLORS
+	end
 end
 
 -- A color changed on the Colors tab (st:ColorsChanged calls this). Lighter than
 -- UF:UpdateConfig, because the picker sets a color on every move of its cursor:
 -- it copies the colors to oUF, makes the bars and tags read them again, and
 -- draws the test previews again, and rebuilds nothing. Groups the unit frames
--- don't use (text, button, item quality, renown), and Roles, which the corners
--- read when they update and not on a color change, and a module that isn't
--- enabled yet (no UF.units) change nothing. The threat colors are only the
+-- don't use (button, item quality, renown), and a module that isn't enabled
+-- yet (no UF.units), change nothing. The threat colors are only the
 -- nameplates' tint and threat text (nameplates/threat.lua): the plates are
 -- tinted again, and no other unit frame is updated.
 --
@@ -254,11 +291,152 @@ end
 -- update wait apart, and run in no set order once it ends, so the redraw's
 -- new art can come after the update's rounding. Each plate on its own, so one
 -- that errors leaves the rest drawn.
-local UNIT_FRAME_COLOR_GROUPS = { class = true, reaction = true, power = true, status = true, threat = true }
--- ClassPower sets its color only when it checks its visibility, which
--- ForceUpdate runs.
-local RECOLORED_ELEMENTS = { 'Health', 'Power', 'AdditionalPower', 'ClassPower' }
-function UF:OnColorsChanged(group)
+--
+-- By key (st:ColorChanged(group, key)): only the frames the one color reaches
+-- (UF.ColorReaches) update, and only the elements the group colors
+-- (UF.COLOR_ELEMENTS), so a class color touches the frames of that class and
+-- no other. key nil, the whole pass, updates every frame with a unit, for the
+-- group's elements only. A pass only colors: ForceUpdate and UpdateTags, no
+-- frame made, shown, hidden or moved, so it runs in combat.
+local UNIT_FRAME_COLOR_GROUPS = { class = true, reaction = true, power = true, status = true, threat = true,
+	roles = true, text = true }
+
+-- The elements a group's color is read by, which a pass updates (oUF's own
+-- ForceUpdate; ClassPower sets its color only when it checks its visibility,
+-- which ForceUpdate runs). Power also updates AdditionalPower (the player's
+-- mana bar, 'MANA' only) and ClassPower (the player's frame, its own points
+-- only).
+UF.COLOR_ELEMENTS = {
+	class = { 'Health', 'Power' },
+	reaction = { 'Health', 'Power' },
+	power = { 'Power', 'AdditionalPower', 'ClassPower' },
+	status = { 'Health', 'Power' },
+	roles = { 'GroupRoleIndicator' },
+}
+-- The groups whose colors the tags read: the name's class and reaction color,
+-- and the text colors (a much higher level's tag, hostile names).
+UF.COLOR_TAGS = { class = true, reaction = true, text = true }
+-- The groups the test mode previews draw again for (grouppreview.lua).
+UF.PREVIEW_GROUPS = { class = true, reaction = true, power = true, status = true, roles = true, text = true }
+-- The Text colors the tags read (tags.lua: the level's colors and the hostile
+-- and unfriendly names'); Normal, Strong and Shared reach no tag.
+-- The Text colors the test previews read (grouppreview.lua: names by reaction).
+local TEXT_PREVIEW_KEYS = { danger = true, caution = true }
+local TEXT_TAG_KEYS = { danger = true, warning = true, caution = true, success = true, muted = true }
+-- The power colors ClassPower reads (oUF's classpower.lua).
+local CLASS_POWER_KEYS = { ARCANE_CHARGES = true, CHI = true, COMBO_POINTS = true, ESSENCE = true,
+	HOLY_POWER = true, ICICLES = true, MAELSTROM = true, SOUL_FRAGMENTS = true, SOUL_SHARDS = true,
+	TIP_OF_THE_SPEAR = true }
+
+-- Whether a player's frame shows a standing: oUF colors a player by its
+-- standing when the class doesn't take it first (a bar with Class off and
+-- Reaction on, a name with Color friendly on and Class off). Plain fields.
+local function ShowsStandingForPlayers(frame)
+	local health, power = frame.Health, frame.Power
+	if health and health.colorReaction and not health.colorClass then return true end
+	if power and power.colorReaction and not (power.colorClass or power.colorPower) then return true end
+	local name = frame.config and frame.config.name
+	return (name and name.color_friendly and not name.colorClass) and true or false
+end
+
+-- Whether the color (group, key) is one the frame's unit shows. key nil is
+-- every color of the group. A class color reaches by the unit's class token
+-- whoever it is (a player, a party member run by the game, or an NPC with a
+-- class, which some frames color too). A secret answer (a class, a standing or a power
+-- type the game keeps from addons) counts as reached: it is never compared,
+-- and the frame is updated.
+function UF.ColorReaches(frame, group, key)
+	if key == nil then return true end
+	local unit = frame.__unit
+	if not unit then return true end
+	if group == 'class' then
+		local _, token = UnitClass(unit)
+		return issecretvalue(token) or token == key
+	elseif group == 'reaction' then
+		-- A player's frame wears its class color (the Class flag, on by
+		-- default), not a standing, unless its flags say otherwise; a pet or an
+		-- NPC wears its standing.
+		local isPlayer = UnitIsPlayer(unit)
+		if not issecretvalue(isPlayer) and isPlayer and not ShowsStandingForPlayers(frame) then return false end
+		local reaction = UnitReaction(unit, 'player')
+		return issecretvalue(reaction) or reaction == key
+	elseif group == 'power' then
+		local _, token = UnitPowerType(unit)
+		return issecretvalue(token) or token == key
+	elseif group == 'status' then
+		if key == 'disconnected' then
+			local connected = UnitIsConnected(unit)
+			return issecretvalue(connected) or not connected
+		elseif key == 'tapped' then
+			local denied = UnitIsTapDenied(unit)
+			return issecretvalue(denied) or (denied and true or false)
+		end
+	elseif group == 'roles' then
+		local role = UnitGroupRolesAssigned(unit)
+		if issecretvalue(role) then return true end
+		if key == 'DAMAGER' then return role ~= 'TANK' and role ~= 'HEALER' end
+		return role == key
+	end
+	return true
+end
+
+-- The pass's group and key, for ColorFrame, which ForEachUnitFrame calls
+-- (a function made per pass would be garbage a drag adds up).
+local passGroup, passKey
+
+local function UpdateColorElement(frame, name)
+	local element = frame[name]
+	if not element or not frame:IsElementEnabled(name) then return end
+	-- A part its config turns off (and a friend's threat text) is not updated:
+	-- oUF updates every element when the frame shows.
+	if element.config and not UF:ElementWanted(element) then return end
+	element:ForceUpdate()
+end
+
+local function ColorFrame(frame)
+	-- A frame whose unit doesn't exist (a boss or arena frame out of an
+	-- encounter, an empty party slot) has nothing to draw, and its tags
+	-- error on a nil name; oUF updates it, with the colors merged above,
+	-- when its unit appears. The unit is oUF's active unit (__unit): .unit
+	-- is set only by UF.OnEnter, so a frame never hovered has none. A
+	-- plate's frame keeps the unit it last showed after the game takes its
+	-- plate away (nameplates.lua), so only a plate showing it now counts.
+	local unit = frame.__unit
+	if not (unit and UnitExists(unit)) then return end
+	if frame.isNamePlate and not UF:PlateShowsUnit(frame) then return end
+	-- A hidden frame (a header's children while another layout shows) takes the
+	-- color when it shows: oUF's OnShow updates every element.
+	-- A plate has no OnShow in oUF (it updates on each add), so it is not skipped.
+	if not frame.isNamePlate and frame.IsVisible and not frame:IsVisible() then return end
+	local group, key = passGroup, passKey
+	local reached = UF.ColorReaches(frame, group, key)
+	local elements = UF.COLOR_ELEMENTS[group]
+	if elements then
+		for i = 1, #elements do
+			local name = elements[i]
+			if group ~= 'power' then
+				if reached then UpdateColorElement(frame, name) end
+			elseif name == 'Power' then
+				if reached then UpdateColorElement(frame, name) end
+			elseif name == 'AdditionalPower' then
+				if key == nil or key == 'MANA' then UpdateColorElement(frame, name) end
+			elseif key == nil or CLASS_POWER_KEYS[key] then
+				UpdateColorElement(frame, name)
+			end
+		end
+	end
+	if UF.COLOR_TAGS[group] and reached and (group ~= 'text' or key == nil or TEXT_TAG_KEYS[key]) then
+		frame:UpdateTags()
+	end
+end
+
+-- A plate's threat text, in the Text colors: the normal text color while the
+-- threat is fine.
+local function UpdatePlateThreatText(frame)
+	if UF:PlateShowsUnit(frame) then UF:UpdatePlateThreat(frame, true) end
+end
+
+function UF:OnColorsChanged(group, key)
 	if group == 'theme' and self.nameplates then
 		self:ForEachPlate(function(frame)
 			xpcall(self.UpdatePlateTarget, geterrorhandler(), self, frame)
@@ -266,33 +444,26 @@ function UF:OnColorsChanged(group)
 		end)
 	end
 	if not self.units or not UNIT_FRAME_COLOR_GROUPS[group] then return end
-	self:UpdateColors()
 	if group == 'threat' then
+		self:UpdateColors()
 		for _, frame in pairs(self.nameplates or {}) do
 			self:UpdatePlateThreat(frame, true)
 		end
 		return
 	end
-	self:ForEachUnitFrame(function(frame)
-		-- A frame whose unit doesn't exist (a boss or arena frame out of an
-		-- encounter, an empty party slot) has nothing to draw, and its tags
-		-- error on a nil name; oUF updates it, with the colors merged above,
-		-- when its unit appears. The unit is oUF's active unit (__unit): .unit
-		-- is set only by UF.OnEnter, so a frame never hovered has none. A
-		-- plate's frame keeps the unit it last showed after the game takes its
-		-- plate away (nameplates.lua), so only a plate showing it now counts.
-		local unit = frame.__unit
-		if not (unit and UnitExists(unit)) then return end
-		if frame.isNamePlate and not self:PlateShowsUnit(frame) then return end
-		for _, name in ipairs(RECOLORED_ELEMENTS) do
-			if frame[name] and frame:IsElementEnabled(name) then
-				frame[name]:ForceUpdate()
-			end
+	self:UpdateColors(group, key)
+	passGroup, passKey = group, key
+	self:ForEachUnitFrame(ColorFrame)
+	if group == 'text' and (key == nil or key == 'normal') then
+		for _, frame in pairs(self.nameplates or {}) do
+			UpdatePlateThreatText(frame)
 		end
-		frame:UpdateTags()
-	end)
-	for testGroup in pairs(self.testGroups or {}) do
-		self:UpdateGroupPreview(testGroup)
+	end
+	local testGroups = self.testGroups
+	if testGroups and UF.PREVIEW_GROUPS[group] and (group ~= 'text' or key == nil or TEXT_PREVIEW_KEYS[key]) then
+		for testGroup in pairs(testGroups) do
+			self:UpdateGroupPreview(testGroup)
+		end
 	end
 end
 
