@@ -157,6 +157,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **Shape of work:** Small design pass, then one change: let a mover say which frames its holder may not be anchored to (a `refuseAnchor(frame)` hook on `generators.position`'s target, or a registry of frames SaftUI moves in combat), use it in the secure holders' rows, and a test per row.
 
+**A case the tracker's row can't see:** the refusal runs when the nearest row is set and each time the holder is placed (a saved anchor that now reaches the window falls back to UIParent at the next placement, out of combat), not when another frame's anchor changes. A player can attach the nearest holder to frame X (accepted), then attach X to `SaftUITracker` through X's own Position row, which only refuses loops: the window is protected through the chain until the next placement. A backstop would be `TR:LayoutWindow` skipping `SetSize` while `not st:CanMoveNow(window)` and queuing it.
+
 **Open questions:** whether to refuse by a registry of "moves in combat" frames or by asking each row's owner.
 
 ### 2026-11-14 — The options kit's keybinding widget doesn't know META or Blizzard's ignored keys

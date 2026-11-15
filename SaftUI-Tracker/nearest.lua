@@ -227,6 +227,12 @@ function TR.NearestAnchorRefusal(frame)
 	if frame and window and st:MovesWith(frame, window) then
 		return "The tracker's window changes size in combat, so the nearest button can't be attached to it or to anything in it. Attach it to SaftUITrackerHolder or UIParent."
 	end
+	-- Blizzard's tracker, which SaftUI's conceals off screen while it owns it (the
+	-- button would go with it, and a protected tracker can't be revealed in combat).
+	local blizzard = _G.ObjectiveTrackerFrame
+	if frame and blizzard and TR:OwnsBlizzard() and st:MovesWith(frame, blizzard) then
+		return "Blizzard's tracker is moved off screen while SaftUI's tracker is on, so the nearest button can't be attached to it or to anything on it. Attach it to SaftUITrackerHolder or UIParent."
+	end
 end
 
 -- The saved position, with an anchor the rule above refuses (a profile or an
@@ -364,7 +370,9 @@ function TR:BuildNearest()
 	st:RegisterMover('trackernearest', {
 		frame = holder,
 		label = 'Nearest quest item',
-		getPosition = function() return self.config.items.nearest_position end,
+		-- The placed position: a refused saved anchor reads as UIParent, so a drag
+		-- starts from where the holder is and its commit heals the profile.
+		getPosition = function() return TR.NearestPosition(self) end,
 		setPosition = function(position) self.config.items.nearest_position = position end,
 		apply = function() self:PlaceNearest() end,
 		configPath = { 'Tracker', 'items' },

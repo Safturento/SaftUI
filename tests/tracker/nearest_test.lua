@@ -979,3 +979,73 @@ test('the holder and the button are one whole-pixel size; the tick stops when th
 	eq(watcher:GetScript('OnUpdate'), nil, 'off: no tick')
 	eq(#take_errors(), 0, 'no errors')
 end)
+
+------------------------------------------------------------------ fix round 2
+
+test('a chain made later falls back at the next placement; the saved position is left as it was', function()
+	local st, TR = world()
+	local hung = CreateFrame('Frame', 'NearestTestChain', UIParent)
+	hung:SetPoint('CENTER')
+	TR.config.items.nearest_position = { point = 'TOPLEFT', frame = 'NearestTestChain', rel_point = 'BOTTOMLEFT', x_off = 3, y_off = 4 }
+	TR:UpdateConfig()
+	local _, relative = TR.nearestHolder:GetPoint(1)
+	eq(relative, hung, 'an accepted frame')
+	-- Its own Position row (which only refuses loops) now hangs it from the window.
+	hung:ClearAllPoints()
+	hung:SetPoint('TOPLEFT', TR.window, 'BOTTOMLEFT')
+	TR:UpdateConfig()
+	_, relative = TR.nearestHolder:GetPoint(1)
+	eq(relative, UIParent, 'the chain through the window is seen at the placement: UIParent')
+	eq(TR.config.items.nearest_position.frame, 'NearestTestChain', 'the profile is untouched')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('Blizzard\'s tracker, which SaftUI\'s conceals, is no anchor while SaftUI owns it', function()
+	local st, TR = world({ blizzard = true })
+	local position = TR.ItemsTab().args.nearest_position
+	check(_G.ObjectiveTrackerFrame ~= nil, 'the fixture made it')
+	local result = position.validate({}, 'frame', 'ObjectiveTrackerFrame')
+	check(type(result) == 'string' and result:find("Blizzard's tracker", 1, true), 'refused, with its own reason: ' .. tostring(result))
+	local hung = CreateFrame('Frame', 'NearestTestBlizzardHung', UIParent)
+	hung:SetPoint('TOPLEFT', _G.ObjectiveTrackerFrame, 'BOTTOMLEFT')
+	check(type(position.validate({}, 'frame', 'NearestTestBlizzardHung')) == 'string', 'and what hangs from it')
+	TR.config.items.nearest_position = { point = 'TOPLEFT', frame = 'ObjectiveTrackerFrame', rel_point = 'TOPLEFT', x_off = 0, y_off = 0 }
+	TR:UpdateConfig()
+	local _, relative = TR.nearestHolder:GetPoint(1)
+	eq(relative, UIParent, 'a saved one is placed on UIParent')
+	eq(position.validate({}, 'frame', 'UIParent'), true, 'UIParent is fine')
+	-- Without the tracker owning Blizzard's, nothing is refused on its account.
+	local _, TR2 = world()
+	eq(TR2.NearestAnchorRefusal(nil), nil, 'no frame, no refusal')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('edit mode and the Position row start from the placed position, not the refused saved one', function()
+	local st, TR = world()
+	local mover = st.EditModeFrames.movers.trackernearest
+	local position = TR.ItemsTab().args.nearest_position
+	TR.config.items.nearest_position = { point = 'TOPLEFT', frame = 'SaftUITracker', rel_point = 'BOTTOMLEFT', x_off = 5, y_off = 6 }
+	TR:UpdateConfig()
+	eq(mover.def.getPosition().frame, 'UIParent', 'the mover reads the placed position')
+	eq(position.get({}, 'frame'), 'UIParent', 'and so does the row')
+	eq(TR.config.items.nearest_position.frame, 'SaftUITracker', 'the profile is not written by a read')
+	-- A drag's commit saves the UIParent form and heals the profile.
+	mover.def.setPosition({ point = 'CENTER', frame = 'UIParent', rel_point = 'CENTER', x_off = 1, y_off = 2 })
+	eq(TR.config.items.nearest_position.frame, 'UIParent', 'healed')
+	eq(mover.def.getPosition(), TR.config.items.nearest_position, 'and an accepted position is the profile\'s own table')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('the holder and the button are the rounded size, in whole pixels', function()
+	local st, TR = world({ screen = { 1920, 1080 } })
+	TR.config.items.nearest_size = 25.3
+	TR:UpdateConfig()
+	RW.later(1)
+	local rounded = st:RoundToPixel(25.3, TR.nearestHolder)
+	check(rounded ~= 25.3, 'the size needs rounding at this scale')
+	eq(button(TR):GetWidth(), rounded, 'the button is the rounded size')
+	eq(TR.nearestHolder:GetWidth(), rounded, 'and so is the holder')
+	local off = P.off(TR.nearestHolder)
+	eq(#off, 0, 'whole pixels: ' .. P.report(off))
+	eq(#take_errors(), 0, 'no errors')
+end)

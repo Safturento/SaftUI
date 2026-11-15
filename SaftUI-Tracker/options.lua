@@ -171,8 +171,10 @@ function TR.ItemsTab()
 	-- Where the nearest button's holder is, last in the tab. Its holder is the
 	-- target, so a position anchored to the button itself is refused.
 	args.nearest_position = generators.position(1000, true,
-		function(key) return TR.config.items.nearest_position[key] end,
+		function(key) return TR.NearestPosition(TR)[key] end,
 		function(key, value)
+			-- (from the placed position, so a refused anchor is healed by the edit)
+			TR.config.items.nearest_position = st.tablecopy(TR.NearestPosition(TR), true)
 			TR.config.items.nearest_position[key] = value
 			TR:PlaceNearest()
 		end,
