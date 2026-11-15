@@ -62,7 +62,7 @@ local function ShowTooltip()
 	GameTooltip:SetOwner(binder, 'ANCHOR_TOP')
 	GameTooltip:AddLine(GetBindingName(command), 1, 1, 1)
 	GameTooltip:AddLine(KeysText(command), 1, 0.82, 0)
-	GameTooltip:AddLine('Press a key to bind it. Right-click clears.', 0.7, 0.7, 0.7)
+	GameTooltip:AddLine('Press a key to bind it. Right-click clears.', st:Color('text', 'muted'):GetRGB())
 	GameTooltip:Show()
 end
 
