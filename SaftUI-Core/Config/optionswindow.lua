@@ -837,13 +837,17 @@ end
 -- A search result's row, once its page is drawn: scrolled to and marked blue.
 -- A result in an item's menu leaves the item's widget in menuFor, for Draw
 -- to open its menu once the scroll is set.
+local SECTION_REVEAL_GAP = 6 -- a revealed section's title keeps this much above it
 local function BringIntoView()
 	local path, menu = focusPath, focusMenu
 	focusPath, focusMenu = nil, nil
 	if not path then return end
 	for _, cell in ipairs(pageBody.cells) do
 		if cell.row.path and SamePath(cell.row.path, path) then
-			S.scrollOffset = max(0, cell.y - ROW_HEIGHT)
+			local top = cell.y - ROW_HEIGHT
+			-- The first row of a titled section brings the title into view too.
+			if cell.sectionY and cell.sectionY - SECTION_REVEAL_GAP < top then top = cell.sectionY - SECTION_REVEAL_GAP end
+			S.scrollOffset = max(0, top)
 			cell.label:SetTextColor(Colors().text.blue:GetRGB())
 			if menu then menuFor = cell.widget end
 			return
@@ -1648,6 +1652,23 @@ function OW:Navigate(pageKey, selection)
 	S.scrollOffset = 0
 	self:SetStatus(nil)
 	self:Render()
+end
+
+-- Opens the page and tab that hold the option at path (a list of option keys,
+-- as OW:Open takes: { 'Fonts', 'fonts', 'heading', 'font_name' }) with its row
+-- brought into view and its label in Text > Blue by the next render, as a
+-- search result's click does: the font row's link to a shared font's section
+-- of Global settings > Fonts. As OW:Navigate it leaves search and closes an
+-- open item's menu. Nothing for a path the tree doesn't hold.
+function OW:Reveal(path)
+	-- A window at the bar grows to half first, as OW:Open does; a small dialog
+	-- would cover the row it lights, so it closes.
+	if S.size == 'mini' then
+		SaveWindow({ size = 'half' })
+		S.size = 'half'
+	end
+	self:CloseDialog()
+	GoTo(path)
 end
 
 -- Draws the page (or search results) again from the model, and an open

@@ -15,6 +15,7 @@
 	<Script file="optionsitem.lua"/>
 	<Script file="optionscontrols.lua"/>
 	<Script file="optionscolorpicker.lua"/>
+	<Script file="optionsfont.lua"/>
 	<Script file="optionsposition.lua"/>
 	<Script file="optionsbody.lua"/>
 	<Script file="optionsshare.lua"/>

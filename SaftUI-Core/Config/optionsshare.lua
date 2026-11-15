@@ -15,7 +15,7 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	comes from the option's share or default.
 
 	What each piece draws, from OM.ShareState (rows of a type
-	OB.SHARE_KINDS marks 'row': toggle, range, select, input, color, item; a
+	OB.SHARE_KINDS marks 'row': toggle, range, select, input, color, item, font; a
 	position row, 'mark', gets the mark alone, its title carrying the rest):
 	  - the mark (state.marked): a 2px line in Button > Blue, 6 in from the
 	    row's top and bottom, the metrics' markX in from its slot's left
@@ -100,6 +100,7 @@ local floor, ceil, max, min, format = math.floor, math.ceil, math.max, math.min,
 OB.SHARE_KINDS = {
 	toggle = 'row', range = 'row', select = 'row', input = 'row', color = 'row', position = 'mark',
 	item = 'row', -- its name is its label, after its Show box (labelX); its line acts on its Show
+	font = 'row',
 }
 
 local LINE_HEIGHT = 14 -- the hover line: the small font (13)
@@ -691,6 +692,11 @@ local function DefaultText(body, row, state)
 		return W.HexText(value[1] or 0, value[2] or 0, value[3] or 0, value[4] or 1, hasAlpha)
 	elseif row.type == 'toggle' or row.type == 'item' then
 		return first and 'on' or 'off'
+	elseif row.type == 'font' then
+		-- A font row's default is a shared font's key (named, never as a file
+		-- path), a typeface table or, on a face-only row, a face's name.
+		if row.option.faceOnly and type(first) == 'string' and not st:IsSharedFont(first) then return first end
+		return st:FontLabel(first)
 	elseif row.type == 'select' and row.option.dialogControl == 'LSM30_Font' then
 		return tostring(first) -- a font list is labeled by its names (name -> file)
 	elseif row.type == 'select' then

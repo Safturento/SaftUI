@@ -108,7 +108,7 @@ test('the other generators take desc and size, and carry no Ace width', function
 		{ 'height', generators.height(2, 'D'), 'input' },
 		{ 'width', generators.width(2, 'D'), 'input' },
 		{ 'background', generators.background(2, 'D'), 'select' },
-		{ 'font', generators.font(2, 'D'), 'select' },
+		{ 'font', generators.font(2, 'D'), 'font' },
 	}
 	for _, case in ipairs(cases) do
 		local name, option, otype = case[1], case[2], case[3]

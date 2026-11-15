@@ -472,7 +472,7 @@ test("the Blizzard's tracker page: the fonts, then Position", function()
 	eq(tree.name, "Blizzard's tracker", 'the sidebar names it for what it moves')
 	eq(tree.desc, "Blizzard's objective tracker: its fonts, and its place while SaftUI's tracker is off. Its fonts also style it while it fills in for SaftUI's (Tracker page).", 'its desc')
 	local general = tree.args.general
-	eq(general.args.font.type, 'select', 'Font')
+	eq(general.args.font.type, 'font', 'Font')
 	eq(general.args.header_font.name, 'Header font', 'Header font')
 	eq(general.args.position.type, 'position', 'Position')
 	for key, option in pairs(general.args) do

@@ -302,8 +302,7 @@ define('position', {
 
 	Open = function(self)
 		if self.disabled or not self.row or self.target ~= 'select' then return end
-		local entries, fontMode = ListEntries(self.root, self.row)
-		W.OpenList(self.select, entries, self:Value('relative_to'), function(key) self:Commit('relative_to', key) end, fontMode)
+		W.OpenList(self.select, ListEntries(self.root, self.row), self:Value('relative_to'), function(key) self:Commit('relative_to', key) end)
 	end,
 
 	OnDisabled = function(self, disabled)

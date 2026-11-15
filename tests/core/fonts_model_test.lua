@@ -603,3 +603,21 @@ test('a Size drag makes one typeface object per whole size, and the same one aga
 	for size = 60, 20, -1 do eq(st:GetFont({ font_name = 'Colus', font_size = size }), made[size], 'size ' .. size .. ' again') end
 	eq(st:GetFont({ font_name = 'Colus', font_size = 30.7 }), made[30], 'a size between is the whole size below')
 end)
+
+test('a listed face whose file fails to load: the typeface object falls back to Text\'s face, keeping the size and outline', function()
+	local real = FN.SetObject
+	local calls = 0
+	FN.SetObject = function(self, object, fields)
+		calls = calls + 1
+		if fields.font_name == 'Broken face' then error('Couldn\'t load the font file') end
+		return real(self, object, fields)
+	end
+	local ok, object = pcall(st.GetFont, st, { font_name = 'Broken face', font_size = 21, font_outline = 'THICKOUTLINE' })
+	FN.SetObject = real
+	check(ok, 'nothing errors')
+	check(object ~= nil, 'an object is made')
+	local p, size, flags = object:GetFont()
+	eq(p, path(st.defaults.fonts.normal.font_name), "in Text's face")
+	eq(size, 21, 'at the size asked')
+	eq(flags, 'THICKOUTLINE', 'with the outline asked')
+end)

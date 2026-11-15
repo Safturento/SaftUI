@@ -239,7 +239,14 @@ local function Typeface(value)
 		typefaceCount = typefaceCount + 1
 		object = CreateFont('SaftUI_Typeface' .. typefaceCount .. 'Font')
 		object:SetTextColor(1, 1, 1)
-		FN:SetObject(object, { font_name = name, font_size = size, font_outline = outline, shadow_offset = { x, y }, spacing = spacing })
+		local fields = { font_name = name, font_size = size, font_outline = outline, shadow_offset = { x, y }, spacing = spacing }
+		-- A face LibSharedMedia lists whose file fails to load: the object takes
+		-- Text's face with the size, outline, shadow and spacing asked for, so the
+		-- text still draws (in Text's face).
+		if not pcall(FN.SetObject, FN, object, fields) then
+			fields.font_name = st.defaults.fonts.normal.font_name
+			FN:SetObject(object, fields)
+		end
 		typefaces[key] = object
 	end
 	return object

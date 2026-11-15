@@ -109,6 +109,7 @@ st.icons = {
 	maximize2 = st:TexturePath('lucide-maximize-2.tga'), -- and its grow
 	squareMousePointer = st:TexturePath('lucide-square-mouse-pointer.tga'), -- the edit mode bar's Hide until hovered, off
 	squareDashedMousePointer = st:TexturePath('lucide-square-dashed-mouse-pointer.tga'), -- and on
+	link = st:TexturePath('lucide-link.tga'), -- the font row's link to a shared font's section of the Fonts tab
 }
 
 st.FRAME_ANCHORS = {
