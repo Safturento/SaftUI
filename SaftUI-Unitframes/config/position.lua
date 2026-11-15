@@ -88,6 +88,10 @@ function generators.uf_element_position(order, get, set, target, desc, name)
 
 	option.target = 'select'
 	option.nameKey = GLOBAL_FRAME
+	-- The dropdown's choice for the unit frame itself: the options kit's reset puts
+	-- an anchor back through the row's own set of 'relative_to' with it, an element's
+	-- name or nameKey (optionsdefault.lua).
+	option.unitKey = UNIT_FRAME
 
 	-- The dropdown: Unit frame, the elements, Global frame.
 	option.values = function()

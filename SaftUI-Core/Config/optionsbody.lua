@@ -1346,7 +1346,10 @@ function Body:Refresh(except)
 		end
 		-- A setting's own reset follows the drag (the dragged row's too), and
 		-- the row's diff icon and hover line follow the room it takes or gives.
-		if widget and OB.PlaceDefault and type(cell.row.option.default) == 'table' then
+		-- (every row with a value: PlaceDefault asks whether it differs by its
+		-- source, a hand default's, a mover's or a derived one, and leaves the
+		-- rest alone.)
+		if widget and OB.PlaceDefault then
 			OB.PlaceDefault(cell)
 			if OB.FollowShare then OB.FollowShare(cell) end
 		end
