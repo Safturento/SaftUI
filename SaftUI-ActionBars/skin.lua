@@ -253,11 +253,19 @@ local DEFAULT_COUNTDOWN = { point = 'CENTER', rel_point = 'CENTER', x_off = 0, y
 
 -- The font, size and outline of the cooldown numbers on a bar with config:
 -- each the bar's own (text.countdown) where it's set, else that of its default
--- font on the Fonts tab (CountdownFontKey). /sui shows these.
+-- font on the Fonts tab (CountdownFontKey). /sui shows these. The font is the
+-- shared font's key itself while the bar sets none of the three (the Font row
+-- lists it picked, and hides Size and Outline); once a size or an outline is
+-- set with no font, it is the default's face, which is what is drawn.
 function AB:GetCountdownFont(config)
 	local own = config.text.countdown or DEFAULT_COUNTDOWN
-	local default = st.config.profile.fonts[CountdownFontKey(config.size)]
-	return own.font or default.font_name, own.size or default.font_size, own.outline or default.font_outline
+	local key = CountdownFontKey(config.size)
+	local default = st.config.profile.fonts[key]
+	local font = own.font
+	if not font then
+		if own.size or own.outline then font = default.font_name else font = key end
+	end
+	return font, own.size or default.font_size, own.outline or default.font_outline
 end
 
 -- The font setting the cooldown numbers are drawn in: while the bar sets none

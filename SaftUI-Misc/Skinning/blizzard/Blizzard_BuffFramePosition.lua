@@ -466,7 +466,7 @@ local fonts = {} -- 'buffs' / 'debuffs' -> { duration = Font, count = Font }
 
 -- Applies one text's font settings to its font object. Every font string set to the
 -- object follows. The setting is a face (a LibSharedMedia name, taken at this text's
--- size and outline) or, once its list offers them, a shared font's key (taken whole:
+-- size and outline) or, as its Font row offers them, a shared font's key (taken whole:
 -- its face, size, outline and shadow). st:FaceFont tells which; the shadow is the
 -- font's own, none for a face.
 function AP:UpdateFont(key, kind)
@@ -629,8 +629,9 @@ function AP:OnEnable()
 	end
 end
 
--- One text's options (duration or count), inline in the Text section: its font, size
--- and outline, then its Position (last). The text's point, the icon's point and the
+-- One text's options (duration or count), inline in the Text section: its font (the
+-- font row in its face-only mode), size and outline (hidden while the font is one of
+-- SaftUI's), then its Position (last). The text's point, the icon's point and the
 -- offsets are the profile's point, rel_point, x_off and y_off.
 function AP:GetTextOptions(key, kind, name, order)
 	local generators = st.Config.generators
@@ -640,7 +641,9 @@ function AP:GetTextOptions(key, kind, name, order)
 		self:UpdateFont(key, kind)
 		self:UpdateText()
 	end
-	return {
+	-- Size and Outline show only while the font is a typeface.
+	local function SharedFont() return st:IsSharedFont(self.config[key][kind].font) end
+	local options = {
 		name = name,
 		type = 'group',
 		inline = true,
@@ -651,14 +654,10 @@ function AP:GetTextOptions(key, kind, name, order)
 			Apply()
 		end,
 		args = {
-			font = {
-				order = 1,
-				name = 'Font',
-				desc = ('The font of the %s on each icon.'):format(what),
-				type = 'select',
-				dialogControl = 'LSM30_Font',
-				values = st.LSM:HashTable('font'),
-			},
+			-- The font row in its face-only mode: one of SaftUI's fonts is saved as its key
+			-- and brings its own size and outline, a typeface as its face's name with this
+			-- text's Size and Outline beside it.
+			font = generators.font(1, ('The font of the %s on each icon. One of SaftUI\'s fonts (Global settings > Fonts) sets the size and outline too and follows its changes there; a typeface takes this text\'s Size and Outline.'):format(what), { faceOnly = true }),
 			size = generators.range(2, 'Size', 6, 40, 1, ('The size of the %s text.'):format(what)),
 			outline = {
 				order = 3,
@@ -679,6 +678,9 @@ function AP:GetTextOptions(key, kind, name, order)
 			),
 		},
 	}
+	options.args.size.hidden = SharedFont
+	options.args.outline.hidden = SharedFont
+	return options
 end
 
 function AP:GetFrameOptions(info, order)

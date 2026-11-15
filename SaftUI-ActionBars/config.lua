@@ -27,7 +27,8 @@ local st = SaftUI
 	    the pet and stance bars (30). The values here are kept for every bar
 	    as today's defaults, which the one-time conversion reads (shared.lua).
 	  - text: hotkey, stack count and macro name. Each has show, font (a
-	    LibSharedMedia font name), size, outline (a Fonts outline name, 'NONE' for
+	    LibSharedMedia font name, or a shared font's key once a Font row picks one,
+	    which brings its own size and outline), size, outline (a Fonts outline name, 'NONE' for
 	    none), point and rel_point (the text's point and the button's), and
 	    x_off / y_off from there. text.countdown is the cooldown numbers:
 	    point, rel_point, x_off and y_off as above, and no show (Blizzard's

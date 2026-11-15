@@ -214,8 +214,8 @@ end
 	({ point, rel_point, x_off, y_off }):
 	  a number as it is; fade_alpha as a percent ('30%'); visibility and
 	  growth by their labels; '<kind>.show' 'Shown' or 'Hidden'; a font by its
-	  name; an outline by the Fonts module's label; an unset cooldown numbers'
-	  font, size or outline 'By button size'; a position '<point> to <rel_point>,
+	  name (a shared font by st:FontLabel: 'Small text'); an outline by the
+	  Fonts module's label; an unset cooldown numbers' font, size or outline 'By button size'; a position '<point> to <rel_point>,
 	  <x>, <y>' with st.FRAME_ANCHORS' labels ('Top Right to Top Right, -3, -3').
 ]]
 function AB:ValueText(key, value)
@@ -229,6 +229,7 @@ function AB:ValueText(key, value)
 	elseif field then
 		if value == nil then return 'By button size' end
 		if field == 'outline' then return st:GetModule('Fonts').outlines[value] or tostring(value) end
+		if field == 'font' and st:IsSharedFont(value) then return st:FontLabel(value) end
 		return tostring(value)
 	elseif key == 'fade_alpha' then
 		return floor((tonumber(value) or 0) * 100 + 0.5) .. '%'

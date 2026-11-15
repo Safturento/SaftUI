@@ -279,7 +279,7 @@ test("a bar's Cooldown menu sets the numbers' font, size, outline and place at o
 
 	-- Until set, the options show what's drawn.
 	eq(get('font') .. ',' .. get('size') .. ',' .. get('outline'),
-		pixelMed.font_name .. ',' .. pixelMed.font_size .. ',' .. OUTLINE, "Font, Size and Outline show Pixel Med's")
+		'pixel_med,' .. pixelMed.font_size .. ',' .. OUTLINE, "Font shows Large numbers' key, Size and Outline its values")
 
 	set('size', 14)
 	eq(AB.config.bar1.text.countdown.size, 14, 'Size writes text.countdown.size')
@@ -347,7 +347,7 @@ test("a bar's Cooldown menu sets the numbers' font, size, outline and place at o
 	eq(font(numbers), font(st:GetFont('pixel_med')), "drawn in its font")
 	eq(T.anchor(numbers, names), 'CENTER button CENTER 0.00,0.00', 'in the middle')
 	eq(get('font') .. ',' .. get('size') .. ',' .. get('outline'),
-		pixelMed.font_name .. ',' .. pixelMed.font_size .. ',' .. OUTLINE, "the rows show Pixel Med's again")
+		'pixel_med,' .. pixelMed.font_size .. ',' .. OUTLINE, "the rows show Large numbers' again")
 	AB:SetSetting('bar1', 'size', 30)
 	AB:UpdateBar('bar1')
 	eq(numbers:GetFontObject(), st:GetFont('pixel'), 'and the font follows the button size again: Pixel at 30px')
