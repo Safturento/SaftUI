@@ -73,6 +73,19 @@ test('OnColorsChanged item_quality redraws filled slots only', function()
 	eq(#bare.calls, 0, 'the slot with no info')
 end)
 
+test('OnColorsChanged item_quality with a key redraws the slots of that quality only', function()
+	local epic, rare, locked = make_slot({ quality = 4 }), make_slot({ quality = 3 }), make_slot({ quality = 4, locked = true })
+	INV.containers = { bag = { categories = { A = { slots = { epic, rare, locked } } } } }
+	INV:OnColorsChanged('item_quality', 4)
+	eq(#epic.calls, 1, 'the epic slot')
+	eq(#rare.calls, 0, 'not the rare one')
+	eq(#locked.calls, 0, 'a locked slot keeps its border')
+	INV:OnColorsChanged('item_quality', nil)
+	eq(#epic.calls + #rare.calls, 3, 'no key: every filled slot')
+	INV:OnColorsChanged('theme')
+	eq(#rare.calls, 2, 'a theme recolor: every filled slot')
+end)
+
 test('QualityBorderColor: the profile color, black for -1 and for a quality with no color', function()
 	_G.ITEM_QUALITY_COLORS = {}
 	local r, g, b = st.config.profile.colors.item_quality[4]:GetRGB()
@@ -114,6 +127,10 @@ test("a currency's border is its quality's color, and follows a quality color ch
 	INV:OnColorsChanged('item_quality')
 	eq(#slots[1].calls, 2, 'a quality change redraws the currency')
 	eq(last(slots[1]), '0.3,0.6,0.9', 'in the new color')
+	INV:OnColorsChanged('item_quality', 3)
+	eq(#slots[1].calls, 2, 'another quality redraws nothing, and the game is not asked')
+	INV:OnColorsChanged('item_quality', 4)
+	eq(#slots[1].calls, 3, 'its own quality redraws it')
 end)
 
 test('a currency with quality -1 gets a black border', function()

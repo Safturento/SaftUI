@@ -31,5 +31,11 @@ test("a bag bar slot's hover is the accent, at an accent that is not the default
 	restyle(slot)
 	local r, g, b = slot:GetHighlightTexture():GetVertexColor()
 	eq(string.format('%.2f,%.2f,%.2f', r, g, b), '0.90,0.20,0.40', 'the accent, set again whenever Blizzard rewrites the texture')
+	-- A pick reaches it at once (it follows Theme > Accent, as InitializePlayerBagSlots registers it), no restyle.
+	st:FollowColor(slot, 'accent', nil, up(INV.InitializePlayerBagSlots, 'PaintBagSlotHover'))
+	st.config.profile.theme.accent:SetRGB(0.2, 0.9, 0.5)
+	st:ColorChanged('accent')
+	r, g, b = slot:GetHighlightTexture():GetVertexColor()
+	eq(string.format('%.2f,%.2f,%.2f', r, g, b), '0.20,0.90,0.50', 'the accent that was picked')
 	st.config.profile.theme.accent:SetRGB(0, 0.68, 0.94)
 end)

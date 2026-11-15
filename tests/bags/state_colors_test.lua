@@ -105,6 +105,19 @@ test("the tab's price is Text > Strong when you can afford it and Text > Danger 
 	eq(rgb(bank_bar(nil).purchaseButton.text:GetTextColor()), rgb(unpack(STRONG)), 'a price the game does not say: Strong')
 end)
 
+test("a changed Buttons > Danger or Text > Danger reaches the bank's bar at once", function()
+	local container = H.window('bank')
+	local bar = bank_bar(false)
+	container.bagSlotContainer = bar
+	colors.button.danger:SetRGB(0.9, 0.9, 0.2)
+	st:ColorChanged('button', 'danger')
+	eq(rgb(bar.slots[3].locked:GetVertexColor()), rgb(0.9, 0.9, 0.2), 'the locked tab, with no update')
+	colors.text.danger:SetRGB(0.8, 0.2, 0.2)
+	st:ColorChanged('text', 'danger')
+	eq(rgb(bar.purchaseButton.text:GetTextColor()), rgb(0.8, 0.2, 0.2), 'the price a tab too dear is drawn in')
+	colors.button.danger:SetRGB(unpack(BUTTON)); colors.text.danger:SetRGB(unpack(DANGER))
+end)
+
 test("the bank's combat line in the purchase tooltip is Text > Danger", function()
 	local show = up(up(INV.InitializeBankBagSlots, 'CreateBankBagPurchaseButton'), 'BankBagPurchase_OnEnter')
 	check(show, 'the tooltip function')

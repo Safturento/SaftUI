@@ -206,6 +206,12 @@ local function SkinBagSlot(slot)
 	if textures.disabled then st:SetInside(textures.disabled, inset) end
 end
 
+-- The hover is the accent (a follower of Theme > Accent, on the slot).
+local function PaintBagSlotHover(slot)
+	local hover = slot:GetHighlightTexture()
+	if hover then hover:SetVertexColor(st:Color('accent'):GetRGB()) end
+end
+
 -- Re-apply SaftUI styling on top of Blizzard's BaseBagSlotButtonMixin:UpdateTextures.
 local function RestyleBagSlot(slot)
 	slot:GetNormalTexture():SetAlpha(0)
@@ -284,6 +290,8 @@ function INV:InitializePlayerBagSlots()
 			self:SecureHook(slot, 'UpdateTextures', RestyleBagSlot)
 		end
 		RestyleBagSlot(slot)
+		-- Once, not on every UpdateTextures: the hover follows the accent.
+		st:FollowColor(slot, 'accent', nil, PaintBagSlotHover)
 
 		-- With the bar collapsed Blizzard hides the slots; ours should always show.
 		if slot.SetBarExpanded then
@@ -318,9 +326,21 @@ function INV:InitializePlayerBagSlots()
 	end
 end
 
+-- The footer's text from the counts last read (container.slotCounts: used and
+-- total, then the reagent bag's used and total): the second count, the reagent
+-- bag's, is left out when there is none equipped instead of showing a useless
+-- 0/0, and is drawn in Text > Success.
+local function SetFooter(container)
+	local counts = container.slotCounts
+	local text = ('%d/%d '):format(counts[1], counts[2])
+	if counts[4] > 0 then
+		text = text .. INV.TintText(('%d/%d '):format(counts[3], counts[4]), 'success')
+	end
+	container.footer.slots:SetText(text)
+end
+
 local function UpdateContainerSlots(container)
 	local empty, total
-	local text = ''
 	empty, total = INV:GetNumContainerSlots({
         Enum.BagIndex.Backpack,
         Enum.BagIndex.Bag_1,
@@ -328,21 +348,23 @@ local function UpdateContainerSlots(container)
         Enum.BagIndex.Bag_3,
         Enum.BagIndex.Bag_4,
      })
-	text = text .. ('%d/%d '):format(total - empty, total)
+	local counts = container.slotCounts or {}
+	container.slotCounts = counts
+	counts[1], counts[2] = total - empty, total
 
-	-- The second count is the reagent bag. Leave it out when there is none
-	-- equipped instead of showing a useless 0/0.
 	empty, total = INV:GetNumContainerSlots({
         Enum.BagIndex.ReagentBag,
     })
-	if total > 0 then
-		text = text .. st.StringFormat:ColorString(
-				(('%d/%d '):format(total - empty, total)),
-				st:Color('text', 'success'):GetRGB()
-		)
-	end
+	counts[3], counts[4] = total - empty, total
 
-	container.footer.slots:SetText(text)
+	SetFooter(container)
+end
+
+-- Text > Success changed: the footer's reagent count set again from the counts
+-- last read (no bag is asked, nothing laid out).
+function INV:ColorBagFooter()
+	local container = self.containers.bag
+	if container and container.slotCounts and container.footer then SetFooter(container) end
 end
 
 function INV:InitializePlayerBags()

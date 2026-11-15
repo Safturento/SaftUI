@@ -71,6 +71,11 @@ function INV:CreateContainer(id, name, isBankContainer)
 	return container
 end
 
+-- The loading bar is filled in the accent (it follows Theme > Accent).
+local function PaintLoadingBar(bar)
+	bar:SetStatusBarColor(st:Color('accent'):GetRGB())
+end
+
 function INV:InitializeLoadingOverlay(container)
 	local loadingOverlay = st:CreateFrame('frame', container:GetName().."LoadingOverlay", container)
 	loadingOverlay:SetBackdrop(st.BACKDROP)
@@ -83,6 +88,7 @@ function INV:InitializeLoadingOverlay(container)
 	loadingBar:SetPoint('CENTER')
 	loadingBar:SetSize(300, 30)
 	loadingBar:SetStatusBarColor(st:Color('accent'):GetRGB())
+	st:FollowColor(loadingBar, 'accent', nil, PaintLoadingBar)
 	loadingOverlay.loadingBar = loadingBar
 
 	container.loadingOverlay = loadingOverlay

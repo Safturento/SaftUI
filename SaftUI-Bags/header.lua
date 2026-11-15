@@ -221,13 +221,17 @@ function INV:UpdateViewButtons(id)
 	end
 end
 
--- A color the view buttons are drawn in changed (st:ColorsChanged's group):
--- The accent lights the lit buttons, Text -> Normal draws every glyph.
-function INV:ColorViewButtons(group)
+-- A color the view buttons are drawn in changed (st:ColorChanged's group and
+-- key, key nil for any of the group): the accent lights the lit buttons,
+-- Text -> Normal draws every glyph, no other Text color touches them.
+function INV:ColorViewButtons(group, key)
+	local lit = group == 'accent'
+	local glyphs = group == 'text' and (key == nil or key == 'normal')
+	if not (lit or glyphs) then return end
 	for _, container in pairs(self.containers) do
 		for _, button in pairs(container.viewButtons or {}) do
-			if group == 'accent' and button.viewLit then ColorLit(button) end
-			if group == 'text' then ColorGlyph(button) end
+			if lit and button.viewLit then ColorLit(button) end
+			if glyphs then ColorGlyph(button) end
 		end
 	end
 end

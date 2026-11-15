@@ -86,16 +86,35 @@ function INV.CreateCurrencySlot(category)
     return slot
 end
 
--- A currency count's color: shared for an account-wide currency, else strong.
--- Also put back after the Icon font changes (a font object may bring its own).
+-- The key of the Text color a currency's count is drawn in: shared for an
+-- account-wide currency, else strong.
+local function CountKey(data)
+    if data.isAccountTransferable or data.isAccountWide then return 'shared' end
+    return 'strong'
+end
+
+-- A currency count's color (see CountKey). Also put back after the Icon font
+-- changes (a font object may bring its own).
 function INV:ColorCurrencyCount(slot)
     local data = slot.elementData
     if not data then return end
-    if data.isAccountTransferable or data.isAccountWide then
-        slot.Count:SetTextColor(st:Color('text', 'shared'):GetRGB())
-    else
-        slot.Count:SetTextColor(st:Color('text', 'strong'):GetRGB())
+    slot.Count:SetTextColor(st:Color('text', CountKey(data)):GetRGB())
+end
+
+-- A Text color changed: the counts of the shown currencies drawn in it (every
+-- one for key nil). Nothing is laid out.
+function INV:ColorCurrencyCounts(key)
+    local category = self.containers and self.containers.bag and self.containers.bag.categories.Currencies
+    if not category then return end
+    for slot in category.slotPool:EnumerateActive() do
+        local data = slot.elementData
+        if data and (key == nil or CountKey(data) == key) then self:ColorCurrencyCount(slot) end
     end
+end
+
+-- The funnel is drawn in Text > Normal (it follows that color).
+local function PaintFunnel(button)
+    button.icon:SetVertexColor(st:Color('text', 'normal'):GetRGB())
 end
 
 -- The Icon font on the count of every currency slot made, and nothing else
@@ -192,6 +211,7 @@ function INV:InitializeCurrencyCategory()
     icon:SetAllPoints(filterButton)
     icon:SetVertexColor(st:Color('text', 'normal'):GetRGB())
     filterButton.icon = icon
+    st:FollowColor(filterButton, 'text', 'normal', PaintFunnel)
 
     filterButton:SetScript('OnEnter', function(button)
         GameTooltip:SetOwner(button, 'ANCHOR_TOP')
@@ -240,17 +260,26 @@ end
 function INV:SetCurrencyBorder(slot)
     if not slot.backdrop then return end
     local quality = C_CurrencyInfo.GetBasicCurrencyInfo(slot.elementData.id).quality
+    -- What its border is drawn in, so a quality color's change finds it
+    -- without asking the game.
+    slot.borderQuality = quality
     st:SetBorderColor(slot.backdrop, self:QualityBorderColor(quality))
 end
 
--- A quality color changed in the options, or a theme recolor put the theme's
--- border back on: redraws the borders of the shown currency slots, without
--- rebuilding the list.
-function INV:UpdateCurrencyBorders()
+-- A quality color changed in the options (key; nil is any), or a theme recolor
+-- put the theme's border back on: redraws the borders of the shown currency
+-- slots of that quality, without rebuilding the list.
+function INV:UpdateCurrencyBorders(key)
     local category = self.containers and self.containers.bag and self.containers.bag.categories.Currencies
     if not category then return end
     for slot in category.slotPool:EnumerateActive() do
-        self:SetCurrencyBorder(slot)
+        local quality = slot.borderQuality
+        if quality == nil then
+            self:SetCurrencyBorder(slot)
+        elseif (key == nil or quality == key) and slot.backdrop then
+            -- The quality drawn last: the game isn't asked (its answer is a table).
+            st:SetBorderColor(slot.backdrop, self:QualityBorderColor(quality))
+        end
     end
 end
 
