@@ -391,7 +391,7 @@ test('a quest area entered: PLAYER_INSIDE_QUEST_BLOB_STATE_CHANGED chooses again
 	entry(3).inArea = true
 	stub.fire_event('PLAYER_INSIDE_QUEST_BLOB_STATE_CHANGED', 3, true)
 	eq(item_of_button(TR), 'item:1003', 'inside quest 3\'s area: quest 3')
-	local accent = ('%.2f,%.2f,%.2f'):format(st.config.profile.colors.button.blue:GetRGB())
+	local accent = ('%.2f,%.2f,%.2f'):format(st.config.profile.theme.accent:GetRGB())
 	eq(('%.2f,%.2f,%.2f'):format(b.backdrop:GetBackdropBorderColor()), accent, 'its border is the accent')
 	entry(3).inArea = false
 	stub.fire_event('PLAYER_INSIDE_QUEST_BLOB_STATE_CHANGED', 3, false)

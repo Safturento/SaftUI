@@ -601,7 +601,7 @@ test('the look: icon crop, kind action in the tracker\'s pair, cooldown, count, 
 	check(icon_color(two) ~= red, 'Out of range in red off: never red')
 	TR.config.items.range = true
 	-- The accent border inside the quest's area.
-	local accent = ('%.2f,%.2f,%.2f'):format(st.config.profile.colors.button.blue:GetRGB())
+	local accent = ('%.2f,%.2f,%.2f'):format(st.config.profile.theme.accent:GetRGB())
 	local border = ('%.2f,%.2f,%.2f'):format(three.backdrop:GetBackdropBorderColor())
 	eq(border, accent, 'inside the quest\'s area: the border in the accent')
 	local other = ('%.2f,%.2f,%.2f'):format(one.backdrop:GetBackdropBorderColor())
@@ -1261,7 +1261,7 @@ end)
 
 test('numbers 1 to n in list order on the button and in the accent at the title\'s end, unchanged as the list scrolls', function()
 	local st, TR = beside_world({ 1, 2, 3 }, function(TR) TR.config.height = 120 end)
-	local accent = RW.rgb(st.config.profile.colors.button.blue)
+	local accent = RW.rgb(st.config.profile.theme.accent)
 	local function numbers(where)
 		for index, id in ipairs({ 1, 2, 3 }) do
 			local b, row = button(TR, id), RW.quest(TR, id)

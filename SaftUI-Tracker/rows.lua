@@ -114,7 +114,7 @@ end
 ------------------------------------------------------------------ colors
 
 -- The color of a state of a text: Text > Normal, the two Objectives colors,
--- Text > Grey, white, the accent (Buttons > Blue), or the quest's difficulty
+-- Text > Grey, white, the accent (Theme > Accent), or the quest's difficulty
 -- color. Read at draw time and never kept, so a Colors tab change is seen by
 -- the next draw and by TR:ColorRows.
 local function StateColor(state, difficulty)
@@ -123,7 +123,7 @@ local function StateColor(state, difficulty)
 	if state == 'failed' then return colors.objectives.failed:GetRGB() end
 	if state == 'grey' then return colors.text.grey:GetRGB() end
 	if state == 'white' then return 1, 1, 1 end
-	if state == 'accent' then return colors.button.blue:GetRGB() end
+	if state == 'accent' then return st:Color('accent'):GetRGB() end
 	if state == 'difficulty' and difficulty then return difficulty.r, difficulty.g, difficulty.b end
 	return colors.text.normal:GetRGB()
 end
