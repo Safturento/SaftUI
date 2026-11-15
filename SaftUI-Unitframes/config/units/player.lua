@@ -94,7 +94,6 @@ st.defaults.unitframes.profiles["**"].player = {
         width = 201,
         height = 20,
         spacing = 7,
-        show_empty = true,
         framelevel = 20,
         theme = 'theme',
         background = 'theme',

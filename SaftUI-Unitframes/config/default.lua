@@ -53,7 +53,6 @@ local raidtargetindicator = {
     position = {
         point = 'CENTER',
         rel_point = 'TOP',
-        element = 'Portrait',
         x_off = 0,
         y_off = 0,
     }
@@ -89,8 +88,8 @@ local castbar = {
     position = {
         point = "BOTTOM",
         rel_point = "BOTTOM",
-        y_off = "0",
-        x_off = "0",
+        y_off = 0,
+        x_off = 0,
     },
     framelevel = 15,
     colors = {
@@ -104,8 +103,8 @@ local castbar = {
             point = "TOPLEFT",
             rel_point = "BOTTOMLEFT",
             element = "Castbar",
-            x_off = "0",
-            y_off = "-3",
+            x_off = 0,
+            y_off = -3,
         },
     },
     time = {
@@ -115,8 +114,8 @@ local castbar = {
             rel_point = "RIGHT",
             point = "RIGHT",
             element = "Castbar",
-            x_off = "-5",
-            y_off = "0",
+            x_off = -5,
+            y_off = 0,
         },
     },
     icon = {

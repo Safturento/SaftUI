@@ -17,6 +17,30 @@ local function PointHeight(classPower)
 	return height
 end
 
+-- point -> the kind it was last drawn as, so a power type change draws it
+-- again only when its kind changes.
+local pointKind = setmetatable({}, { __mode = 'k' })
+
+-- The kind a point draws as: a control where Blizzard has art for the power
+-- type (the art is drawn by ApplyArt), a small frame's 1px line where it has
+-- none (retail's soul fragments, icicles, tip of the spear). A control until
+-- the first power event says the type.
+local function PointKind(classPower)
+	local state = lastState[classPower]
+	if state and state.powerType
+		and not st.ThemeArt.ClassPower(state.powerType, 1, st.my_class, false) then
+		return 'small'
+	end
+	return 'control'
+end
+
+local function DrawPoint(classPower, point)
+	local kind = PointKind(classPower)
+	local config = classPower.config
+	st:SetBackdrop(point, config.theme, config.background, kind)
+	pointKind[point] = kind
+end
+
 local function PointArt(point)
 	local set = pointArt[point]
 	if not set then
@@ -44,8 +68,10 @@ local function ApplyArt(classPower)
 	local blizzard = st:IsBlizzardLook(config.theme, config.background)
 	local state = lastState[classPower]
 	local powerType = state and state.powerType
+	local kind = PointKind(classPower)
 	for i = 1, #classPower do
 		local point = classPower[i]
+		if pointKind[point] ~= kind then DrawPoint(classPower, point) end
 		local empty, filled
 		if blizzard and powerType then
 			empty, filled = st.ThemeArt.ClassPower(powerType, i, st.my_class, state.charged[i])
@@ -86,9 +112,6 @@ local function PostUpdateClassPower(classPower, cur, max, hasCurChanged, hasMaxC
 	local width = (classPower:GetWidth() - (classPower.config.spacing * (max - 1))) / max
 	for i = 1, max do
 		classPower[i]:SetWidth(width)
-		if classPower.config.show_empty then
-			classPower[i]:Show()
-		end
 	end
 	-- The charged points' indices come after the power type.
 	local charged = {}
@@ -121,9 +144,10 @@ local function UpdateConfig(unitframe)
 	local prev
 	for i=1, 10 do
 		local point = classPower[i]
-		-- A control: nothing under Blizzard, whose art ApplyArt draws.
-		st:SetBackdrop(point, classPower.config.theme, classPower.config.background, 'control')
-		
+		-- A control (nothing under Blizzard, whose art ApplyArt draws), or a
+		-- small line for a power type with no art.
+		DrawPoint(classPower, point)
+
 		point:SetStatusBarTexture(st.BLANK_TEX)
 		point:ClearAllPoints()
 		if prev then

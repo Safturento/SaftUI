@@ -247,7 +247,10 @@ local function FillPreviewFrame(frame, member)
 			power:SetStatusBarColor(r, g, b)
 			UF.SetPowerBackgroundColor(power, r, g, b)
 		elseif powerConfig.colorCustom and powerConfig.customColor then
-			power:SetStatusBarColor(UF.UnpackColor(powerConfig.customColor))
+			-- The background follows, as UF.PostUpdatePowerColor does.
+			local r, g, b = UF.UnpackColor(powerConfig.customColor)
+			power:SetStatusBarColor(r, g, b)
+			UF.SetPowerBackgroundColor(power, r, g, b)
 		end
 
 		if power.text and powerConfig.text.enable then

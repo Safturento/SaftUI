@@ -15,7 +15,7 @@ st.defaults.unitframes.profiles["**"].arena = {
             position = {
                 point = "TOPRIGHT",
                 rel_point = "TOPLEFT",
-                x_off = "-6",
+                x_off = -6,
                 y_off = -2,
                 element = "Castbar",
             },
