@@ -118,6 +118,8 @@ end
 function TR:NewChevron(parent, getTip)
 	local button = CreateFrame('Button', nil, parent)
 	button:SetSize(L.CHEVRON, L.CHEVRON)
+	-- (a window faded out takes no mouse, visibility.lua)
+	if TR.inputOff then button:EnableMouse(false) end
 	local icon = button:CreateTexture(nil, 'OVERLAY')
 	icon:SetSize(L.CHEVRON, L.CHEVRON)
 	icon:SetPoint('CENTER')
@@ -263,8 +265,6 @@ function TR:ApplyHolder()
 		function() return self:GetPosition() end)
 	st:KeepInScreenMargin(holder)
 	self:PlaceWindow()
-	-- Blizzard's tracker in SaftUI's place follows a holder that moved.
-	if self.handoverState == 'blizzard' then self.heldTop = self.window:GetTop() end
 	-- The rows moved with the window: the quest item buttons follow (or dim).
 	if self.PlaceItems then self:PlaceItems() end
 	-- Blizzard's tracker follows the holder (its y concealed, its corner in place).
@@ -297,12 +297,13 @@ function TR:SetEmpty(empty)
 	self:ApplyWindowShown()
 end
 
--- Whether the window shows: not while it is empty with Hide when empty, and not
+-- Whether the window shows: not while it is empty with Hide when empty, not
 -- while Blizzard's tracker takes its place (the handover's state 'blizzard',
--- handover.lua). A plain frame, so shown and hidden in combat too.
+-- handover.lua) and not while a trigger hides it (TR.visHidden, visibility.lua).
+-- The one place that decides. A plain frame, so shown and hidden in combat too.
 function TR:ApplyWindowShown()
 	if not self.window then return end
-	local shown = not (self.isEmpty and self.config.hide_empty) and self.handoverState ~= 'blizzard'
+	local shown = not (self.isEmpty and self.config.hide_empty) and self.handoverState ~= 'blizzard' and not self.visHidden
 	if self.window:IsShown() ~= shown then
 		self.window:SetShown(shown)
 		self:PlaceItems()
@@ -375,9 +376,11 @@ function TR:LayoutWindow()
 		scroll:SetShown(not collapsed)
 		-- The window and the list take the wheel only while the list scrolls, so
 		-- the camera still zooms with the cursor over a tracker that fits, is empty
-		-- or is collapsed. Neither frame is protected: safe in combat.
-		window:EnableMouseWheel(range > 0)
-		scroll:EnableMouseWheel(range > 0)
+		-- or is collapsed, or is faded out (visibility.lua). Neither frame is
+		-- protected: safe in combat.
+		local wheel = range > 0 and not self.inputOff
+		window:EnableMouseWheel(wheel)
+		scroll:EnableMouseWheel(wheel)
 		-- With Grow up the window's top is the spot Blizzard's tracker reveals
 		-- at, and it moved: the concealed y follows (nothing is called when it
 		-- is where it should be).
@@ -388,6 +391,15 @@ function TR:LayoutWindow()
 	-- A collapsed window keeps the player's place for when it opens again.
 	if not collapsed then self:ScrollTo(self:GetScroll()) end
 	self:PlaceFocusBar()
+end
+
+-- The wheel follows the list (it scrolls) and the fade (a window faded out takes
+-- none: the camera zooms there).
+function TR:UpdateWheel()
+	if not self.window then return end
+	local wheel = (self.scrollRange or 0) > 0 and not self.inputOff
+	self.window:EnableMouseWheel(wheel)
+	self.scroll:EnableMouseWheel(wheel)
 end
 
 -- The scroll view's height as drawn, in whole pixels.
@@ -440,11 +452,17 @@ local function OnWheel(_, delta)
 	TR:ScrollTo(Layout.Wheel(TR:GetScroll(), delta, TR.scrollRange or 0))
 end
 
--- Whether the mouse is over the tracker: the window, or the item column beside
--- it.
+-- Whether the mouse is over the tracker: the window or the item column beside it
+-- (the scroll bar's rule and the scroll to a focused quest read this).
 function TR:IsHovered()
 	if self.window == nil then return false end
 	return self.window:IsMouseOver() or self:IsColumnHovered() or false
+end
+
+-- The same for the fading rules (visibility.lua): and, while Blizzard's tracker
+-- shows (the handover), its place too (TR:IsBlizzardHovered).
+function TR:IsTrackerHovered()
+	return self:IsHovered() or self:IsBlizzardHovered()
 end
 
 -- The bar rule: shown while Scroll bar under the mouse only is off, or the
@@ -558,6 +576,8 @@ function TR:DrawWindow()
 	self:DrawHeader()
 	self:LayoutWindow()
 	self:UpdateWatcher()
+	-- A panel made just now takes the fade's alpha (Background under the mouse only).
+	self:DrawBackground()
 end
 
 ------------------------------------------------------------------ building

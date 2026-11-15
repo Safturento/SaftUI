@@ -14,12 +14,19 @@ local TR = st.Tracker
 	  - the three C methods, taken from the frame's metatable so Edit Mode's Lua
 	    overrides on the frame object aren't what runs: SetClampedToScreen,
 	    ClearAllPoints and SetPoint (TR:PlaceBlizzard only: one anchor to its own
-	    parent, TOPRIGHT, or TOPLEFT beside SaftUI's on its right);
+	    parent, TOPRIGHT, or TOPLEFT beside SaftUI's on its right), and a fourth,
+	    SetAlpha, for the fade while it shows during a handover
+	    (TR:SetBlizzardAlpha only; Edit Mode has no override of it);
 	  - the reads GetParent, GetNumPoints, GetPoint, GetEffectiveScale and
-	    IsClampedToScreen (and IsProtected, in combat, through st:CanMoveNow);
+	    IsClampedToScreen (and IsProtected, in combat, through st:CanMoveNow), and
+	    GetParent, GetHeight(true) and GetEffectiveScale of the Edit Mode spot,
+	    which are plain methods on purpose: none has a Lua override on either
+	    client (the same overrides list as the three C methods: SetPoint,
+	    ClearAllPoints, SetScale, SetShown and Hide), so the plain call is the C
+	    one, and the rule's wording (C methods only) is about the writes;
 	  - post-hooks (hooksecurefunc, each in xpcall to the error handler) on its
-	    SetPoint, ClearAllPoints and UpdateHeight, which only run
-	    TR:PlaceBlizzard again;
+	    SetPoint, ClearAllPoints, UpdateHeight and SetAlpha, which only run
+	    TR:PlaceBlizzard or TR:SyncBlizzardAlpha again;
 	  - the sections' watch (TR:WatchModules): a post-hook on each module's own
 	    Update, which reads the module's state and hasContents and asks for a probe
 	    pass on the next frame, and a read of the container's `modules` list, with
@@ -27,7 +34,8 @@ local TR = st.Tracker
 	  - st:HideEditModeSelection and its Selection's Hide, so Blizzard's Edit Mode
 	    can't select it.
 	It is never given Hide, Show, SetShown, SetParent, SetScale, a size, a
-	roleset, SetAlpha (until Task 12's fade), an unregistered event, or a field;
+	roleset, a plain SetAlpha (the fade's is the C method), an unregistered event,
+	or a field;
 	none of its functions is replaced or wrapped; and none of its methods is
 	called (tests/tracker/source_scan_test.lua scans this file and every other
 	of the TOC's for the list).
@@ -136,10 +144,17 @@ function TR:BlizzardTarget(where)
 	if spot then top, right, scale = spot:GetTop(), spot:GetRight(), spot:GetEffectiveScale() end
 	local screenY, screenX
 	local point = 'TOPRIGHT'
-	-- The window's top as it was when it was hidden (the handover, handover.lua):
-	-- SaftUI's list goes on changing height behind it, and Blizzard's tracker
-	-- must not move with it.
-	if where == 'place' and self.heldTop and Plain(self.heldTop) then top = self.heldTop end
+	-- With Grow up the window's top is the holder's bottom and the window's height.
+	-- While it is hidden by the handover (handover.lua) SaftUI's list goes on
+	-- changing height behind it and Blizzard's tracker must not move with it, so
+	-- the height is the one it had when it was hidden (TR.heldHeight), on the
+	-- holder's live bottom: a holder that moves (an edit mode drag, a profile) takes
+	-- Blizzard's tracker with it, x and y. Grow down hangs from the holder's top,
+	-- which is the spot's own.
+	if not beside and self.heldHeight and Plain(self.heldHeight) and self.config.grow == 'up' and self.holder then
+		local bottom, holderScale = self.holder:GetBottom(), self.holder:GetEffectiveScale()
+		if Plain(bottom, holderScale) then top, scale = bottom + self.heldHeight, holderScale end
+	end
 	if Plain(top, scale) then screenY = top * scale end
 	if where == 'place' then
 		if not (screenY and Plain(right)) then return end
@@ -165,13 +180,115 @@ function TR:BlizzardTarget(where)
 		if not Plain(uiLeft, uiScale) then return end
 		screenX = (uiLeft - TR.BLIZZARD_OFF) * uiScale
 	end
-	local x, y = st:CornerOffset(tracker, parent, point, screenX, RevealY(tracker, parent, screenY))
+	screenY = RevealY(tracker, parent, screenY)
+	local x, y = st:CornerOffset(tracker, parent, point, screenX, screenY)
 	if not x then return end
-	return parent, point, x, y
+	-- (the screen spot of the corner is returned too, for the hover: the beside spot's numbers)
+	return parent, point, x, y, screenX, screenY
+end
+
+------------------------------------------------------------------ the fade and the mouse
+
+-- Whether the mouse is over the place Blizzard's tracker shows at: SaftUI's
+-- holder plus the rectangle SaftUI placed it in (CacheRect), while it shows (in
+-- SaftUI's place or beside). Never Blizzard's own frame (no rect read of it,
+-- .agents/taint.md rule 5). False while it is concealed. Allocates nothing.
+function TR:IsBlizzardHovered()
+	local where = self.blizzardEffective
+	if not self.blizzardFrame or where == nil or where == 'concealed' then return false end
+	if self.holder and self.holder:IsMouseOver() then return true end
+	local rect = self.blizzardRect
+	if not (rect and rect.valid) then return false end
+	local cursorX, cursorY = GetCursorPosition()
+	if not Plain(cursorX, cursorY) then return false end
+	return cursorX >= rect.left and cursorX <= rect.right and cursorY <= rect.top and cursorY >= rect.bottom
+end
+
+-- Holds Blizzard's tracker at `alpha` (its C SetAlpha, from the frame's
+-- metatable, like the three that place it), or lets it go with nil: its own alpha
+-- is Blizzard's (the right column's animations set it to 0 and 1), so a hold sets
+-- 1 once when it ends. Only what changed is written. Hold `force` writes it again
+-- after one of Blizzard's own calls.
+function TR:SetBlizzardAlpha(alpha, force)
+	local tracker = self.blizzardFrame
+	if not tracker then return end
+	if alpha == nil then
+		if self.blizzardAlphaSet == nil then return end
+		self.blizzardAlphaSet = nil
+		getmetatable(tracker).__index.SetAlpha(tracker, 1)
+	elseif force or self.blizzardAlphaSet ~= alpha then
+		self.blizzardAlphaSet = alpha
+		getmetatable(tracker).__index.SetAlpha(tracker, alpha)
+	end
+end
+
+-- What the fade asks of Blizzard's tracker now: the window's faded alpha while the
+-- tracker shows (in SaftUI's place or beside), nothing while it is concealed (it
+-- is off screen: not touched, and let go the next time it is revealed unfaded).
+-- Called after every placement, every step of the fade, and Blizzard's own SetAlpha.
+function TR:SyncBlizzardAlpha(force)
+	if not self.blizzardFrame then return end
+	local where = self.blizzardEffective
+	if where == nil then return end
+	if where == 'concealed' then
+		-- Off screen: not touched. But if Blizzard set its own alpha meanwhile the
+		-- hold is stale (unknown, false), so the next reveal writes it again.
+		if force and self.blizzardAlphaSet ~= nil then self.blizzardAlphaSet = false end
+		return
+	end
+	local fx = self.fx
+	local alpha = fx and fx.window or 1
+	self:SetBlizzardAlpha(alpha < 1 and alpha or nil, force)
 end
 
 -- Puts Blizzard's tracker at `where` ('concealed', 'place' or 'beside'): the
--- clamp off for concealed and on otherwise, then its one point.
+-- clamp off for concealed and on otherwise, then its one point, by the three C
+-- methods. Nothing is called when its clamp and its one point are already as wanted.
+local function PlaceAt(self, tracker, where)
+	if not st:CanMoveNow(tracker)
+		and st:QueueAfterCombat('tracker_blizzard', function() self:PlaceBlizzard(self.blizzardWhere) end) then
+		return
+	end
+	local parent, point, x, y, screenX, screenY = self:BlizzardTarget(where)
+	if not parent then return end
+	local methods = getmetatable(tracker).__index
+	local clamp = where ~= 'concealed'
+	local clamped = tracker:IsClampedToScreen()
+	if issecretvalue(clamped) or (clamped and true or false) ~= clamp then
+		methods.SetClampedToScreen(tracker, clamp)
+	end
+	if not PlacedAt(tracker, parent, point, x, y) then
+		methods.ClearAllPoints(tracker)
+		methods.SetPoint(tracker, point, parent, point, x, y)
+	end
+	return point, screenX, screenY
+end
+
+-- Blizzard's revealed rectangle as SaftUI placed it, in screen units, cached for
+-- the hover (one table, refilled): worked out from the spot SaftUI gave the tracker
+-- and the two reads rule 5 allows (`GetWidth(true)`, `GetHeight(true)`), each time
+-- it is placed (every layout of Blizzard's re-places it, so a height change
+-- follows), never per frame. The controller's ruling (for the owner to check): the
+-- hover area is SaftUI's holder plus this rectangle while Blizzard's tracker shows,
+-- so Grow up in place, where the tracker hangs below the holder's bottom, is covered.
+local function CacheRect(self, tracker, where, point, screenX, screenY)
+	local rect = self.blizzardRect
+	if not rect then
+		rect = {}
+		self.blizzardRect = rect
+	end
+	rect.valid = false
+	if where == 'concealed' or not screenX then return end
+	local width, height, scale = tracker:GetWidth(true), tracker:GetHeight(true), tracker:GetEffectiveScale()
+	if not Plain(width, height, scale) then return end
+	width, height = width * scale, height * scale
+	rect.left = point == 'TOPLEFT' and screenX or screenX - width
+	rect.right = rect.left + width
+	rect.top, rect.bottom = screenY, screenY - height
+	rect.valid = true
+end
+
+-- Puts Blizzard's tracker at `where` ('concealed', 'place' or 'beside').
 -- The P2 seam: the only function that holds the concealment, called by the
 -- hooks, the handover and the profile's update, and by nothing else. It uses
 -- only the three C methods, from the frame's metatable. Nothing is called when
@@ -182,22 +299,16 @@ end
 function TR:PlaceBlizzard(where)
 	local tracker = self.blizzardFrame
 	if not (tracker and PLACES[where]) then return end
+	-- `where` is the place the handover wants; a trigger that hides the tracker
+	-- (Fading and hiding, visibility.lua) conceals it whatever the place, and the
+	-- place is kept for when the trigger ends.
 	self.blizzardWhere = where
-	if not st:CanMoveNow(tracker)
-		and st:QueueAfterCombat('tracker_blizzard', function() self:PlaceBlizzard(self.blizzardWhere) end) then
-		return
-	end
-	local parent, point, x, y = self:BlizzardTarget(where)
-	if not parent then return end
-	local methods = getmetatable(tracker).__index
-	local clamp = where ~= 'concealed'
-	local clamped = tracker:IsClampedToScreen()
-	if issecretvalue(clamped) or (clamped and true or false) ~= clamp then
-		methods.SetClampedToScreen(tracker, clamp)
-	end
-	if PlacedAt(tracker, parent, point, x, y) then return end
-	methods.ClearAllPoints(tracker)
-	methods.SetPoint(tracker, point, parent, point, x, y)
+	if self.visHidden then where = 'concealed' end
+	self.blizzardEffective = where
+	local point, screenX, screenY = PlaceAt(self, tracker, where)
+	CacheRect(self, tracker, where, point, screenX, screenY)
+	-- The fade holds while it shows, and is let go once it is revealed again.
+	self:SyncBlizzardAlpha()
 end
 
 -- A post-hook that puts Blizzard's tracker back where it should be after one
@@ -205,6 +316,12 @@ end
 -- goes to the error handler and Blizzard's code goes on.
 local function Replace()
 	local ok, err = xpcall(function() TR:PlaceBlizzard(TR.blizzardWhere) end, geterrorhandler())
+	return ok, err
+end
+
+-- The same for Blizzard's own SetAlpha: the fade's alpha again, while one is held.
+local function Realpha()
+	local ok, err = xpcall(function() TR:SyncBlizzardAlpha(true) end, geterrorhandler())
 	return ok, err
 end
 
@@ -231,6 +348,9 @@ function TR:SetupBlizzard()
 	if type(tracker.SetPoint) == 'function' then hooksecurefunc(tracker, 'SetPoint', Replace) end
 	if type(tracker.ClearAllPoints) == 'function' then hooksecurefunc(tracker, 'ClearAllPoints', Replace) end
 	if type(tracker.UpdateHeight) == 'function' then hooksecurefunc(tracker, 'UpdateHeight', Replace) end
+	-- The fade (visibility.lua) is put back after Blizzard's own SetAlpha (the right
+	-- column fades its frames in and out).
+	if type(tracker.SetAlpha) == 'function' then hooksecurefunc(tracker, 'SetAlpha', Realpha) end
 
 	-- Blizzard's Edit Mode box, hidden from its next show, and now. Not secure,
 	-- so hiding it is safe in combat.

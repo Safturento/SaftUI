@@ -478,6 +478,8 @@ function TR:AcquireRow(kind, key)
 		row = table.remove(pool.free)
 		if not row then
 			row = MAKERS[kind](self)
+			-- A row made while the window is faded out takes no mouse (visibility.lua).
+			if self.inputOff then self:SetRowMouse(row, false) end
 			row.kind = kind
 			pool.rows[#pool.rows + 1] = row
 		end

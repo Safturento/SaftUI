@@ -3,8 +3,9 @@
 -- Blizzard's objective tracker, its modules and ObjectiveTrackerManager
 -- (.agents/taint.md rule 5, the design's "What SaftUI must never do to
 -- Blizzard's tracker"). The list of what's allowed, and nothing else:
---   - on the tracker: the three C methods, through getmetatable(tracker).__index
---     (SetClampedToScreen, ClearAllPoints, SetPoint); the reads GetParent,
+--   - on the tracker: the four C methods, through getmetatable(tracker).__index
+--     (SetClampedToScreen, ClearAllPoints, SetPoint, and SetAlpha for the fade
+--     during a handover, Task 12); the reads GetParent,
 --     GetNumPoints, GetPoint, GetEffectiveScale, IsClampedToScreen, IsProtected,
 --     GetWidth(true) and GetHeight(true); `.Selection:Hide()`;
 --   - post-hooks (hooksecurefunc) on its SetPoint, ClearAllPoints, UpdateHeight
@@ -85,7 +86,7 @@ local function Set(list)
 	return set
 end
 
-local C_METHODS = Set({ 'SetClampedToScreen', 'ClearAllPoints', 'SetPoint' })
+local C_METHODS = Set({ 'SetClampedToScreen', 'ClearAllPoints', 'SetPoint', 'SetAlpha' })
 local READS = Set({ 'GetParent', 'GetNumPoints', 'GetPoint', 'GetEffectiveScale', 'IsClampedToScreen', 'IsProtected' })
 local SIZE_READS = Set({ 'GetWidth', 'GetHeight' }) -- with ignoreRect: (true)
 local TRACKER_HOOKS = Set({ 'SetPoint', 'ClearAllPoints', 'UpdateHeight', 'SetAlpha' })
@@ -153,6 +154,8 @@ local function Scan(source)
 		-- tracker.field = value, tracker[key] = value
 		Each(mask, before .. '%s*%.%s*([%w_]+)%s*=[^=]', function(s, field) Flag(s, ('a field written onto it: %s.%s'):format(name, field)) end)
 		Each(mask, before .. '%s*%[[^%]\n]*%]%s*=[^=]', function(s) Flag(s, 'a key written onto it: ' .. name .. '[...]') end)
+		-- rawset(tracker, key, value) is a write onto it like tracker[key] = value
+		Each(mask, 'rawset%(%s*[%w_%.]*' .. name .. '%s*,', function(s) Flag(s, 'rawset onto it') end)
 		-- tracker.field:Method(), tracker.field(...)
 		Each(mask, before .. '%s*%.%s*([%w_]+)%s*:%s*([%w_]+)', function(s, field, method)
 			if field == 'Selection' and method == 'Hide' then return end
@@ -166,7 +169,7 @@ local function Scan(source)
 			if not after:match('^%s*%.%s*__index') then Flag(s, 'getmetatable(' .. name .. ') is only for .__index') end
 		end)
 		Each(mask, 'getmetatable%(%s*[%w_%.]*' .. name .. '%s*%)%s*%.%s*__index%s*%.%s*([%w_]+)', function(s, method)
-			if not C_METHODS[method] then Flag(s, method .. ' is not one of the three C methods') end
+			if not C_METHODS[method] then Flag(s, method .. ' is not one of the four C methods') end
 		end)
 		-- handed to Core's helpers: only the three that read or hide the box.
 		Each(mask, 'st%s*:%s*([%w_]+)%s*%(%s*' .. name .. '%s*[,%)]', function(s, helper)
@@ -184,7 +187,7 @@ local function Scan(source)
 
 	for bound in pairs(methods) do
 		Each(mask, '%f[%w_]' .. bound .. '%s*%.%s*([%w_]+)%s*%(', function(s, method)
-			if not C_METHODS[method] then Flag(s, method .. ' is not one of the three C methods') end
+			if not C_METHODS[method] then Flag(s, method .. ' is not one of the four C methods') end
 		end)
 		Each(mask, '%f[%w_]' .. bound .. '%s*%.%s*([%w_]+)%s*=[^=]', function(s) Flag(s, 'a method of the frame replaced') end)
 	end
@@ -204,8 +207,9 @@ local function Scan(source)
 
 	-- A module held in a variable: the loop over the tracker's `modules` list, or
 	-- `module = _G[<the section's module name>]`. It may be hooked (Update only),
-	-- named (GetName: the C read, for the chat line about a module nobody knows) and
-	-- have its fields read (state, hasContents); nothing else.
+	-- have its fields read (state, hasContents) and be named through the metatable's
+	-- C method (`getmetatable(module).__index.GetName`, for the chat line about a
+	-- module nobody knows); nothing else, so a plain `module:GetName()` is flagged.
 	local modvars = {}
 	for name in pairs(names) do
 		Each(mask, 'for%s+[%w_]+%s*,%s*([%w_]+)%s+in%s+ipairs%(%s*[%w_%.]*' .. name .. '%s*%.%s*modules%s*%)', function(_, var) modvars[var] = true end)
@@ -214,7 +218,7 @@ local function Scan(source)
 	for var in pairs(modvars) do
 		local before = '%f[%w_]' .. var
 		Each(mask, before .. '%s*:%s*([%w_]+)', function(s, method)
-			if method ~= 'GetName' then Flag(s, ('%s:%s() is a method of one of its modules'):format(var, method)) end
+			Flag(s, ('%s:%s() is a method of one of its modules'):format(var, method))
 		end)
 		Each(mask, before .. '%s*%.%s*([%w_]+)%s*=[^=]', function(s, field) Flag(s, ('a field written onto a module: %s.%s'):format(var, field)) end)
 		Each(mask, before .. '%s*%.%s*([%w_]+)%s*%(', function(s, field) Flag(s, ('%s.%s() calls one of a module\'s functions'):format(var, field)) end)
@@ -270,9 +274,9 @@ test('the scanner flags what is off the list and lets the allowed through', func
 		'tracker:ClearAllPoints()', 'tracker:MarkDirty()', 'tracker:Update()', 'tracker:UpdateHeight()',
 		'tracker:SetCollapsed(true)', 'tracker:UnregisterAllEvents()', 'tracker:UnregisterEvent("X")', 'tracker:GetRect()',
 		'tracker:GetRight()', 'tracker:GetWidth()', 'tracker:GetHeight(false)', 'tracker:IsMouseOver()', 'tracker:SetRolesets("x")',
-		'tracker:EnableMouse(false)', 'tracker.foo = 1', 'tracker["foo"] = 1', 'tracker.Update(tracker)', 'tracker.Header:Hide()',
-		'tracker.Selection:Show()', 'getmetatable(tracker).__index.Hide(tracker)', 'getmetatable(tracker).__index.SetAlpha(tracker, 0)',
-		'local m = getmetatable(tracker).__index\nm.Hide(tracker)', 'local m = getmetatable(tracker).__index\nm.SetParent = nil',
+		'tracker:EnableMouse(false)', 'tracker:GetAlpha()', 'rawset(tracker, "SetAlpha", function() end)', 'rawset(self.blizzardFrame, "x", 1)\nself.blizzardFrame = tracker', 'tracker.foo = 1', 'tracker["foo"] = 1', 'tracker.Update(tracker)', 'tracker.Header:Hide()',
+		'tracker.Selection:Show()', 'getmetatable(tracker).__index.Hide(tracker)', 'getmetatable(tracker).__index.SetShown(tracker, false)',
+		'local m = getmetatable(tracker).__index\nm.Hide(tracker)', 'local m = getmetatable(tracker).__index\nm.SetParent = nil', 'local m = getmetatable(tracker).__index\nm.SetAlpha = nil',
 		'getmetatable(tracker).__newindex = nil', 'local t = getmetatable(tracker)',
 		'st:SetPointDirect(tracker, "TOPLEFT")', 'st:Kill(tracker)',
 		'hooksecurefunc(tracker, "Show", f)', 'hooksecurefunc(tracker, "Update", f)', 'hooksecurefunc(tracker, name, f)',
@@ -283,6 +287,9 @@ test('the scanner flags what is off the list and lets the allowed through', func
 		'ObjectiveTrackerManager:Init()', 'ObjectiveTrackerManager.Foo()', 'ObjectiveTrackerManager.x = 1',
 		'ShouldShowMawBuffs()', 'UseQuestLogSpecialItem(1)', 'tracker:RemoveModule(m)', 'x:SetRolesets("alwaysBlocked")',
 		-- a module in a variable, by the loop over the list or by name
+		-- the name only through the metatable's C method (a plain call is the module's own function)
+		'for _, module in ipairs(tracker.modules) do local name = module:GetName() end',
+		'local module = _G[section.module]\nlocal name = module:GetName()',
 		'for _, module in ipairs(tracker.modules) do module:Hide() end', 'for i, m in ipairs(tracker.modules) do m:SetCollapsed(true) end',
 		'for _, module in ipairs(tracker.modules) do module.state = 1 end', 'for _, module in ipairs(ObjectiveTrackerFrame.modules) do module:Update() end',
 		'for _, module in ipairs(tracker.modules) do hooksecurefunc(module, "Show", f) end',
@@ -297,13 +304,16 @@ test('the scanner flags what is off the list and lets the allowed through', func
 	for _, good in ipairs({
 		'local methods = getmetatable(tracker).__index\nmethods.SetClampedToScreen(tracker, false)\nmethods.ClearAllPoints(tracker)\nmethods.SetPoint(tracker, "TOPRIGHT", UIParent, "TOPRIGHT", 0, 0)',
 		'getmetatable(tracker).__index.SetPoint(tracker, "TOPRIGHT", UIParent, "TOPRIGHT", 0, 0)',
+		-- the fade during a handover: the C SetAlpha, through the metatable, and its post-hook
+		'getmetatable(tracker).__index.SetAlpha(tracker, 0.3)',
+		'local methods = getmetatable(tracker).__index\nmethods.SetAlpha(tracker, 1)',
 		'local p, r, rp, x, y = tracker:GetPoint(1)\nlocal n = tracker:GetNumPoints()\nlocal parent = tracker:GetParent()',
 		'local s = tracker:GetEffectiveScale()\nlocal c = tracker:IsClampedToScreen()\nlocal q = tracker:IsProtected()',
 		'local w, h = tracker:GetWidth(true), tracker:GetHeight(true)',
 		'if tracker.Selection then tracker.Selection:Hide() end',
 		'hooksecurefunc(tracker, "SetPoint", f)\nhooksecurefunc(tracker, "ClearAllPoints", f)\nhooksecurefunc(tracker, "UpdateHeight", f)\nhooksecurefunc(tracker, "SetAlpha", f)',
 		'hooksecurefunc(QuestObjectiveTracker, "Update", f)',
-		'for _, module in ipairs(tracker.modules) do\nlocal name = module:GetName()\nlocal s, h = module.state, module.hasContents\nhooksecurefunc(module, "Update", f)\nend',
+		'for _, module in ipairs(tracker.modules) do\nlocal s, h = module.state, module.hasContents\nhooksecurefunc(module, "Update", f)\nend',
 		'local module = _G[section.module]\nif module then hooksecurefunc(module, "Update", f) end\nlocal state = module.state',
 		'for _, module in ipairs(tracker.modules) do\nlocal getName = getmetatable(module).__index.GetName\nlocal key = getName(module)\nend',
 		'local n = ObjectiveTrackerUIWidgetContainer:GetNumWidgetsShowing()', 'local c = ObjectiveTrackerUIWidgetContainer ~= nil',

@@ -201,6 +201,62 @@ function TR.ItemsTab()
 	return tab
 end
 
+-- The Visibility tab: when the tracker fades or hides (visibility.lua). Six
+-- triggers, each Show, Fade or Hide (Mouse off is Show or Fade; Mythic+ is
+-- left out where the client has no such function), the faded opacity, and four
+-- switches. Every row saves into tracker.visibility and runs TR:UpdateConfig,
+-- which applies the rules at once; the item layer's driver follows out of combat.
+function TR.VisibilityTab()
+	local CHOICES = { show = 'Show', fade = 'Fade', hide = 'Hide' }
+	local function trigger(order, key, name, desc, sorting)
+		return {
+			order = order,
+			name = name,
+			desc = desc,
+			type = 'select',
+			values = CHOICES,
+			sorting = sorting or { 'show', 'fade', 'hide' },
+			default = TR.SettingDefault('visibility', key),
+		}
+	end
+	local function toggle(order, key, name, desc)
+		local option = generators.toggle(order, name, desc)
+		option.default = TR.SettingDefault('visibility', key)
+		return option
+	end
+	local args = {
+		combat = trigger(1, 'combat', 'In combat', 'What the tracker does while you are in combat.'),
+		nocombat = trigger(2, 'nocombat', 'Out of combat', 'What the tracker does while you are not in combat.'),
+		mouseoff = trigger(3, 'mouseoff', 'Mouse off',
+			"What the tracker does while the mouse isn't over it or the quest item buttons beside it. It fades but never hides, so it can be found again.",
+			{ 'show', 'fade' }),
+		instance = trigger(4, 'instance', 'In instances',
+			'What the tracker does in a dungeon, raid, battleground, arena or scenario.'),
+		boss = trigger(5, 'boss', 'Boss fights', 'What the tracker does from the start of a boss encounter to its end. Its quest item buttons go by the boss frames showing in combat (and when an encounter starts out of combat), so a boss frame outside an encounter hides them too.'),
+		mythic = trigger(6, 'mythic', 'Mythic+', 'What the tracker does while a Mythic+ key is running.'),
+		fade_alpha = generators.range(7, 'Faded opacity', 0, 1, 0.05,
+			'How visible the tracker is while it fades. Quest item buttons that fade with it stay at 25% at the least, so they can be seen while they can be clicked.'),
+		hover = toggle(8, 'hover', 'Show fully under the mouse',
+			'A faded tracker comes back to full while the mouse is over it. A hidden one cannot be hovered.'),
+		background_hover = toggle(9, 'background_hover', 'Background under the mouse only',
+			"Draws the tracker's panel only while the mouse is over it. The text always shows."),
+		scrollbar_hover = toggle(10, 'scrollbar_hover', 'Scroll bar under the mouse only',
+			'Shows the scroll bar only while the mouse is over the tracker.'),
+		items = toggle(11, 'items', 'Hide quest items with the tracker',
+			'Fades and hides the quest item buttons with the tracker. Off, they stay at full strength wherever the tracker goes, so a quest item can always be used. In combat the game hides them for In combat, Out of combat and Boss fights; In instances and Mythic+ hide them as you arrive. The nearest quest item button is never affected.'),
+	}
+	args.fade_alpha.isPercent = true
+	args.fade_alpha.default = TR.SettingDefault('visibility', 'fade_alpha')
+	args.mythic.hidden = function() return not TR.Visibility.HasMythic() end
+	local tab = TR.Tab(4, 'Visibility', args)
+	tab.get = function(info) return TR.config.visibility[info[#info]] end
+	tab.set = function(info, value)
+		TR.config.visibility[info[#info]] = value
+		TR:UpdateConfig()
+	end
+	return tab
+end
+
 -- The Blizzard's tracker tab: when it shows (the handover, handover.lua), what it
 -- is doing now, and a note. The mode saves into tracker.blizzard and runs
 -- TR:UpdateConfig, which acts on it at once (a mode change goes back to SaftUI's
@@ -333,6 +389,7 @@ function TR:GetConfigTable()
 			general = general,
 			quests = TR.QuestsTab(),
 			items = TR.ItemsTab(),
+			visibility = TR.VisibilityTab(),
 			blizzard = TR.BlizzardTab(),
 		},
 	}

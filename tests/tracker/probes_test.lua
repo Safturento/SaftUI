@@ -544,6 +544,66 @@ both('two sections held at once: the earlier one drops on time, with no event', 
 	eq(keys(TR), '', 'then the scenario, 2 s after it last had content')
 end)
 
+both('three sections held at once: each drops on its own retry, the soonest first, not at the last one\'s end', function(st, TR, OT)
+	-- Lost at T (the widgets), T + 0.5 (the scenario) and T + 1.0 (the achievements):
+	-- each pass is an event of the same kind and nothing else happens after T + 1.1,
+	-- so only the hold's retry timer can run the pass that drops one. A retry that
+	-- fires with two sections still held must set the next one for the soonest
+	-- (the scenario's, T + 2.5), not the latest (T + 3.0).
+	local probes = stub.probes
+	OT.set_widgets(1)
+	probes.scenario = { stages = 2 }
+	probes.tracked = { [ACHIEVEMENT] = { 500 } }
+	probes.achievements = { [500] = { earned = false } }
+	stub.fire_event('ZONE_CHANGED_NEW_AREA')
+	RW.later(0.1) -- T: all three have content
+	OT.set_widgets(0)
+	stub.fire_event('ZONE_CHANGED_NEW_AREA')
+	RW.later(0.5) -- T + 0.5: the widgets are gone, last seen at T
+	probes.scenario = { stages = 0 }
+	stub.fire_event('ZONE_CHANGED_NEW_AREA')
+	RW.later(0.5) -- T + 1.0: the scenario is gone, last seen at T + 0.5
+	probes.tracked = {}
+	stub.fire_event('ZONE_CHANGED_NEW_AREA')
+	RW.later(0.1) -- T + 1.1: the achievements are gone, last seen at T + 1.0
+	eq(keys(TR), 'scenario,widgets,achievements', 'T + 1.1: all three held')
+	-- (what a section is held for is worked out from the clock, so the sections
+	-- themselves drop whenever a pass is not run; what the handover does is decided
+	-- only in a pass: so count the passes)
+	local passes = 0
+	local pass = TR.ProbePass
+	TR.ProbePass = function(...) passes = passes + 1 return pass(...) end
+	RW.later(1.1) -- T + 2.2: the widgets' hold ended at T + 2.0 (retry at T + 2.05)
+	eq(keys(TR), 'scenario,achievements', 'T + 2.2: the widgets dropped')
+	eq(passes, 1, 'by a pass of their own, with no event: the retry')
+	RW.later(0.4) -- T + 2.6: the scenario's ended at T + 2.5, the achievements' is T + 3.0
+	eq(keys(TR), 'achievements', 'T + 2.6: the scenario dropped')
+	eq(passes, 2, 'by a pass of its own, at the soonest hold\'s end, not at the achievements\' (T + 3.0): ' .. passes)
+	RW.later(0.5) -- T + 3.1
+	eq(keys(TR), '', 'T + 3.1: then the achievements')
+	eq(passes, 3, 'by a third')
+	TR.ProbePass = pass
+end)
+
+both('a probe pass waiting when combat starts runs at once, as a refresh does, and its timer runs no second one', function(st, TR)
+	RW.later(1)
+	local runs = 0
+	local scenario = TR.Probes.Scenario
+	TR.Probes.Scenario = function() runs = runs + 1 return scenario() end
+	stub.probes.scenario = { stages = 2 }
+	stub.fire_event('SCENARIO_UPDATE')
+	eq(TR.probePending, true, 'the pass is asked for, on the next frame')
+	eq(runs, 0, 'and has not run')
+	-- (the game runs the handlers out of lockdown, which begins after them)
+	stub.fire_event('PLAYER_REGEN_DISABLED')
+	eq(TR.probePending, false, 'combat starting runs it')
+	eq(runs, 1, 'once')
+	eq(TR.handoverState, 'blizzard', 'with what the game allows out of lockdown: SaftUI\'s hides and Blizzard\'s shows in its place')
+	RW.later(1)
+	eq(runs, 1, 'its timer finds nothing to run')
+	TR.Probes.Scenario = scenario
+end)
+
 both('a probe that errors is reported once, and counts as no after that', function(st, TR)
 	local real = TR.Probes.Bonus
 	TR.Probes.Bonus = function() error('the API changed') end

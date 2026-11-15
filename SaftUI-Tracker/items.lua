@@ -59,8 +59,12 @@ TR.DIM_ALPHA = 0.4
 TR.MOVE_TOLERANCE = 2
 TR.RANGE_INTERVAL = 0.2
 
--- The layer's visibility driver, until Task 12 builds it from the settings.
-TR.ITEM_DRIVER = '[petbattle] hide; show'
+-- The pet battle's part of every visibility driver, and the nearest button's own
+-- driver (nearest.lua: an action button, never touched by a trigger, Hide quest
+-- items or the fade). The layer's driver is built from the settings
+-- (TR.Visibility.Driver, visibility.lua) and starts with the same part.
+TR.PET_BATTLE_HIDE = '[petbattle] hide'
+TR.ITEM_DRIVER = TR.PET_BATTLE_HIDE .. '; show'
 
 -- The pool's cap: the log's most, read from the game (model.lua's TR.MaxQuests,
 -- which falls back to TR.FALLBACK_MAX_QUESTS), never a literal.
@@ -262,11 +266,28 @@ end
 
 -- Alpha is free in combat, but never under BUTTON_MIN_ALPHA (a button at 0
 -- still takes clicks). Everything that sets a button's alpha goes through this.
+-- `alpha` is what the button is for (1, or DIM_ALPHA when its row moved); a pool
+-- button (button.fades) wears the tracker's fade on top, Hide quest items with
+-- the tracker on (TR.itemFade, visibility.lua; 1 while it is off), and the floor
+-- holds for the result. The nearest button never fades: it is its own.
 function TR:SetItemAlpha(button, alpha)
+	button.baseAlpha = alpha
+	if button.fades then alpha = alpha * (self.itemFade or 1) end
 	alpha = math.max(alpha, TR.BUTTON_MIN_ALPHA)
 	if button.alphaSet ~= alpha then
 		button.alphaSet = alpha
 		button:SetAlpha(alpha)
+	end
+end
+
+-- The fade changed: every pool button's alpha is worked out again from what it
+-- is for. Alpha only, so it runs in combat, and it allocates nothing.
+function TR:RefreshItemAlpha()
+	local buttons = self.itemButtons
+	if not buttons then return end
+	for index = 1, #buttons do
+		local button = buttons[index]
+		if button.baseAlpha then self:SetItemAlpha(button, button.baseAlpha) end
 	end
 end
 
@@ -465,8 +486,12 @@ function TR:BuildItemLayer()
 	layer:SetFrameLevel(30)
 	layer:SetAllPoints(UIParent)
 	layer:EnableMouse(false)
-	-- The driver comes from Task 12's settings; until then a pet battle hides it.
-	RegisterStateDriver(layer, 'visibility', TR.ITEM_DRIVER)
+	-- The driver comes from the settings (TR.Visibility.Driver): the pet battle's
+	-- part, and In combat, Out of combat and Boss fights Hide while Hide quest items
+	-- with the tracker is on.
+	local driver = TR.Visibility.Driver(self.config.visibility)
+	RegisterStateDriver(layer, 'visibility', driver)
+	self.itemDriver = driver
 	self.itemLayer = layer
 	return layer
 end
@@ -537,6 +562,7 @@ TR.ReadItemCooldown = ReadCooldown
 local function MakeButton(self)
 	local index = #self.itemButtons + 1
 	local button = NewButton(self.itemLayer, st.name .. 'TrackerItem' .. index)
+	button.fades = true
 	-- The button takes the mouse from its row, so it keeps the row's hover too.
 	button:SetScript('OnEnter', function(self)
 		local row = self.questID and TR:GetQuestRow(self.questID)
@@ -704,9 +730,11 @@ local NONE = {}
 local function Wanted(self)
 	local wanted = self.itemWanted
 	local n = 0
-	if self.handoverState == 'blizzard' then
-		-- Blizzard's tracker is in SaftUI's place (handover.lua): no button, and none
-		-- left from before.
+	if self.handoverState == 'blizzard' or self.itemsHidden then
+		-- Blizzard's tracker is in SaftUI's place (handover.lua), or Hide quest items
+		-- with the tracker hides them directly (In instances, Mythic+, Boss fights:
+		-- TR.Visibility.Resolve's hideItemsDirectly): no button, and none left from
+		-- before.
 		for index = 1, #wanted do wanted[index] = nil end
 		return wanted
 	end
@@ -748,10 +776,21 @@ local function RoundToPixel(value)
 	return st:RoundToPixel(value, UIParent)
 end
 
+-- Whether a row is laid out where it can be read: visible, or shown in a window
+-- that only a trigger has hidden (Hide quest items off: the list keeps being laid
+-- out while it is hidden, so the buttons are assigned and placed by their rows as
+-- usual). Not for a collapsed list or a window the handover or an empty list hides.
+local function RowLaidOut(self, row)
+	if not row then return false end
+	if row:IsVisible() then return true end
+	return self.visHidden == true and row:IsShown() and self.scroll:IsShown() and self.content:IsShown()
+		and not self.itemsHidden and self.handoverState ~= 'blizzard'
+end
+
 -- The offsets of a row's button, in the layer's pixels, or nil while it isn't
 -- wanted there.
 local function Place(self, row, size)
-	if not row or not row:IsVisible() then return nil end
+	if not RowLaidOut(self, row) then return nil end
 	return Items.RowPlace(row:GetTop(), row:GetRight(), self.scroll:GetTop(), self.scroll:GetBottom(), size, RoundToPixel)
 end
 
@@ -821,7 +860,7 @@ local function ColumnPlaces(self, wanted, size)
 			entries[index] = entry
 		end
 		local row = slot.row
-		local top = row:IsVisible() and row:GetTop() or nil
+		local top = RowLaidOut(self, row) and row:GetTop() or nil
 		entry.top = top and RoundToPixel(top) or nil
 		-- Whether the title's button would be in view: a place of none then means the
 		-- stack pushed it out, not the scroll.
@@ -892,7 +931,11 @@ local function AssignItems(self, wanted)
 			if column then
 				local place = places[index]
 				MarkStacked(self, button, index, place)
-				if place then ShowAt(self, button, place.left, place.top) else ShowAt(self, button) end
+				if place then
+					ShowAt(self, button, place.left, place.top)
+				else
+					ShowAt(self, button)
+				end
 			else
 				PlaceButton(self, button, entry.row, size)
 			end
@@ -1028,12 +1071,27 @@ function TR:RefreshItems()
 		st:QueueAfterCombat('tracker_items', QueuedPass)
 		DimItems(self)
 	else
+		-- The layer's driver follows the settings (out of combat only: a state driver
+		-- is attributes).
+		self:ApplyItemDriver()
 		AssignItems(self, Wanted(self))
 	end
 	DrawSlots(self, combat)
 	DrawTags(self)
 	self:UpdateScrollLock()
 	self:UpdateRangeWatch()
+end
+
+-- The layer's visibility driver from the settings: set out of combat, else queued
+-- as 'tracker_items' (the pass at the end of combat sets it, RefreshItems).
+function TR:ApplyItemDriver()
+	local layer = self.itemLayer
+	if not layer then return end
+	local driver = TR.Visibility.Driver(self.config.visibility)
+	if self.itemDriver == driver then return end
+	if st:QueueAfterCombat('tracker_items', QueuedPass) then return end
+	self.itemDriver = driver
+	RegisterStateDriver(layer, 'visibility', driver)
 end
 
 -- The column's buttons, placed again where the list has them now: their places

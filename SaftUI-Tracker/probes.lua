@@ -305,6 +305,8 @@ for _, section in ipairs(TR.SECTIONS) do TR.sectionByKey[section.key] = section 
 -- pass (one timer, one function), so a burst of events and module layouts reads
 -- the game's data once.
 local function PassTimer()
+	-- (a pass the start of combat ran early leaves nothing pending)
+	if not TR.probePending then return end
 	TR.probePending = false
 	TR:ProbePass()
 end

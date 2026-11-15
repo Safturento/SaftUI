@@ -79,18 +79,19 @@ end
 -- What each action does. The state is already the new one when they run.
 local ACTIONS = {
 	hide_items = function(self) self:RefreshItems() end,
-	-- The window's top as it is now is where Blizzard's tracker sits while it is
-	-- hidden (TR:BlizzardTarget): the list behind it goes on changing height.
+	-- The window's height as it is now is what Blizzard's tracker's spot is worked
+	-- out from while it is hidden (TR:BlizzardTarget: with Grow up the holder's
+	-- bottom and this height; the list behind it goes on changing height).
 	hide_window = function(self)
-		local top = self.window:GetTop()
-		self.heldTop = (top ~= nil and not issecretvalue(top)) and top or nil
+		local height = self.window:GetHeight()
+		self.heldHeight = (height ~= nil and not issecretvalue(height)) and height or nil
 		self:ApplyWindowShown()
 	end,
 	reveal_place = function(self) self:PlaceBlizzard('place') end,
 	reveal_beside = function(self) self:PlaceBlizzard('beside') end,
 	conceal = function(self) self:PlaceBlizzard('concealed') end,
 	show_window = function(self)
-		self.heldTop = nil
+		self.heldHeight = nil
 		self:ApplyWindowShown()
 	end,
 	show_items = function(self) self:RefreshItems() end,
