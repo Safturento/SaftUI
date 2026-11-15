@@ -314,6 +314,27 @@ local function CloseArt(button)
 	return art
 end
 
+-- A close button's look in its state: SaftUI's own (not Blizzard's, whose
+-- textures show the hover and the press): the rest look is the field color
+-- with the muted cross, the hover look the red edge and cross over a faint
+-- red fill. Reads the button's own fields (hovered, blizzard) and colors only,
+-- so Text > Muted and Danger reach it through st:FollowColor.
+local function LookClose(close)
+	if close.blizzard then return end
+	local x = close.icon
+	if close.hovered then
+		-- The fill is the close template's (no option sets it); the edge and
+		-- the cross are Text > Danger.
+		close:SetBackdropColor(unpack(st.config.profile.templates.close.backdropcolor))
+		close:SetBackdropBorderColor(st:Color('text', 'danger'):GetRGB())
+		x:SetVertexColor(st:Color('text', 'danger'):GetRGB())
+	else
+		close:SetBackdropColor(unpack(st.BOX_COLORS.field))
+		close:SetBackdropBorderColor(unpack(st.BOX_COLORS.edge))
+		x:SetVertexColor(st:Color('text', 'muted'):GetRGB())
+	end
+end
+
 -- The close button: 24x24, the field color with a 1px edge border (and a dark
 -- line outside it) and a grey pixel X. Hovering turns the border and X red
 -- over a faint red fill, and while pressed the X sits 1px lower. A click hides
@@ -348,29 +369,20 @@ function st:CreateCloseButton(frame)
 	x:SetPoint('CENTER', 0, 0)
 	close.icon = x
 
-	-- Whether it wears Blizzard's look, whose own textures show the hover and
-	-- the press.
-	local blizzard = false
+	-- Whether it wears Blizzard's look (close.blizzard, on SaftUI's own
+	-- frame), whose own textures show the hover and the press.
+	close.blizzard, close.hovered = false, false
+	LookClose(close)
+	st:FollowColor(close, 'text', 'muted', LookClose)
+	st:FollowColor(close, 'text', 'danger', LookClose)
 
-	local function Look(hover)
-		if blizzard then return end
-		if hover then
-			-- The fill is the close template's (no option sets it); the edge and
-			-- the cross are Text > Danger.
-			close:SetBackdropColor(unpack(self.config.profile.templates.close.backdropcolor))
-			close:SetBackdropBorderColor(st:Color('text', 'danger'):GetRGB())
-			x:SetVertexColor(st:Color('text', 'danger'):GetRGB())
-		else
-			close:SetBackdropColor(unpack(self.BOX_COLORS.field))
-			close:SetBackdropBorderColor(unpack(self.BOX_COLORS.edge))
-			x:SetVertexColor(st:Color('text', 'muted'):GetRGB())
-		end
-	end
-	Look(false)
-
-	close:SetScript('OnEnter', function() Look(true) end)
+	close:SetScript('OnEnter', function()
+		close.hovered = true
+		LookClose(close)
+	end)
 	close:SetScript('OnLeave', function()
-		Look(false)
+		close.hovered = false
+		LookClose(close)
 		x:SetPoint('CENTER', 0, 0)
 	end)
 	close:SetScript('OnMouseDown', function() x:SetPoint('CENTER', 0, -1) end)
@@ -381,8 +393,8 @@ function st:CreateCloseButton(frame)
 	-- changed between them, then places it (PlaceCloseButton).
 	local function Draw()
 		local want = st:IsBlizzardLook('theme', 'theme')
-		if want ~= blizzard then
-			blizzard = want
+		if want ~= close.blizzard then
+			close.blizzard = want
 			if want then
 				local look = st.ThemeArt.Close()
 				local art = CloseArt(close)
@@ -401,7 +413,8 @@ function st:CreateCloseButton(frame)
 				x:Show()
 				x:SetPoint('CENTER', 0, 0)
 				close:SetSize(unpack(st.CLOSE_X_BUTTON_SIZE))
-				Look(false)
+				close.hovered = false
+				LookClose(close)
 			end
 		end
 		PlaceCloseButton(close)

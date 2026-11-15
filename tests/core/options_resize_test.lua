@@ -56,6 +56,35 @@ test("the grip's corner is Buttons > Hover at its opacity, at an odd color: 100%
 	hover:SetRGB(0.3, 0.5, 0.7); hover.a = 1
 end)
 
+test("the grip follows Buttons > Hover as it is picked (live colors), and under Blizzard's art is left alone", function()
+	local C = load_test_file('lib/color_cost.lua')
+	local hover = st.config.profile.colors.button.hover
+	close_all()
+	theme('thick')
+	st.config.global.optionsWindow = nil
+	st.Config:Open('Loot')
+	local F = frames()
+	local function pick(r, g, b, a)
+		C.edit(st, function()
+			hover:SetRGB(r, g, b); hover.a = a
+			st:ColorChanged('button', 'hover')
+			C.step(st)
+		end)
+	end
+	pick(0.2, 0.8, 0.4, 0.5)
+	for _, state in ipairs({ 'Highlight', 'Pushed' }) do
+		local texture = F.grip['Get' .. state .. 'Texture'](F.grip)
+		eq(rgba(texture:GetVertexColor()), rgba(0.2, 0.8, 0.4, 0.5), state .. ' follows the pick')
+	end
+	theme('blizzard')
+	local before = rgba(F.grip:GetHighlightTexture():GetVertexColor())
+	pick(0.9, 0.1, 0.1, 1)
+	eq(rgba(F.grip:GetHighlightTexture():GetVertexColor()), before, "Blizzard's art is not tinted")
+	close_all()
+	theme('thick')
+	hover:SetRGB(0.3, 0.5, 0.7); hover.a = 1
+end)
+
 test('/sui grows taller by its bottom edge or its grip: its width and top stay, the body takes the height, and it remembers it', function()
 	theme('thick')
 	st.config.global.optionsWindow = nil

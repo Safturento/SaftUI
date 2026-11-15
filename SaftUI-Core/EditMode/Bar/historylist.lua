@@ -203,6 +203,27 @@ local function LookList()
 	end
 end
 
+-- A color pass over the open list: LookList's colors again, and the rows'
+-- label colors (Muted while undone, else Normal) FillRow gave them. Nothing is
+-- refreshed, placed, shown or hidden. The art is the one LookList put on
+-- (list.blizzard).
+local function RecolorList()
+	local blizzard = list.blizzard
+	list.title:SetTextColor(OB.Muted())
+	list.foot1:SetTextColor(OB.Muted())
+	list.foot2:SetTextColor(OB.Muted())
+	EM.RecolorNumberBox(list.box, blizzard)
+	local position = History:Position()
+	for _, row in ipairs(list.rows) do
+		if not blizzard then row.hover:SetColorTexture(OB.Accent()) end
+		row.mark:SetColorTexture(OB.Accent())
+		row.line:SetColorTexture(unpack(OB.HAIRLINE))
+		row.detail:SetTextColor(OB.Muted())
+		if row.index then row.label:SetTextColor((row.index > position and OB.Muted or OB.Normal)()) end
+		W.LookControl(row.revert, blizzard)
+	end
+end
+
 ------------------------------------------------------------------ refreshing
 
 -- The scroll bar for rows of total entries, shown shown at a time, from offset,
@@ -471,10 +492,16 @@ end)
 EM:On('SettingsChanged', function()
 	if EM:IsHistoryListShown() then EM:RefreshHistoryList() end
 end)
-EM:On('ColorsChanged', function()
-	if list then
+-- A Theme pass looks again (and refreshes an open list) as it always did; Text's
+-- Normal and Muted and the Accent recolor an open one only (a closed one looks again
+-- when it opens: OnShow). Edit mode off passes nothing on.
+EM:On('ColorsChanged', function(group, key)
+	if not list then return end
+	if group == 'theme' then
 		LookList()
 		if list:IsShown() then EM:RefreshHistoryList() end
+	elseif EM.DrawsColor(group, key) and list:IsShown() then
+		RecolorList()
 	end
 end)
 EM:On('Disabled', function() EM:HideHistoryList() end)

@@ -50,6 +50,19 @@ local function Flat(texture, button, key, blend)
 	if blend then texture:SetBlendMode(blend) end
 end
 
+-- A check box follows Buttons > Hover (its checked fill) and Normal (its
+-- highlight) at once (st:FollowColor), where it draws SaftUI's flat look;
+-- under Blizzard its art is white and a pass leaves it. A bare one wears the
+-- flat look in every theme and follows its textures.
+local function PaintChecked(skin)
+	if not skin.blizzard then skin.checked:SetVertexColor(st:ColorRGBA('button', 'hover')) end
+end
+local function PaintHighlight(skin)
+	if not skin.blizzard then skin.hover:SetVertexColor(st:ColorRGBA('button', 'normal')) end
+end
+local function PaintFlatChecked(texture) texture:SetVertexColor(st:ColorRGBA('button', 'hover')) end
+local function PaintFlatHighlight(texture) texture:SetVertexColor(st:ColorRGBA('button', 'normal')) end
+
 -- Puts a check button's look on, when its Theme and Background
 -- (st:IsBlizzardLook) changed between Blizzard and the rest.
 local function Draw(skin)
@@ -135,7 +148,11 @@ function st:SkinCheckButton(button, style)
 		button.SetText = function(self, value) text:SetText(value) end
 	end
 
-	if style == 'bare' then return end
+	if style == 'bare' then
+		st:FollowColor(checked, 'button', 'hover', PaintFlatChecked)
+		st:FollowColor(hover, 'button', 'normal', PaintFlatHighlight)
+		return
+	end
 	-- It wears SaftUI's flat look, just made.
 	local skin = {
 		button = button, style = style, theme = panels.theme, background = panels.background,
@@ -147,6 +164,8 @@ function st:SkinCheckButton(button, style)
 		button:HookScript('PostClick', Repaint)
 	end
 	st:KeepOwnColors(skin, Draw)
+	st:FollowColor(skin, 'button', 'hover', PaintChecked)
+	st:FollowColor(skin, 'button', 'normal', PaintHighlight)
 	Draw(skin)
 end
 

@@ -135,6 +135,11 @@ local function Filter(bar)
 			box.hint:SetPoint('LEFT', box, 'LEFT', left, 0)
 			box.hint:SetPoint('RIGHT', box, 'RIGHT', -TEXT_RIGHT, 0)
 		end,
+		-- A color pass: the glass and the hint, not the insets or the points.
+		Recolor = function()
+			box.icon:SetVertexColor(OB.Muted())
+			box.hint:SetTextColor(OB.Muted())
+		end,
 		Refresh = ShowHint,
 	}
 end

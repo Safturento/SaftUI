@@ -226,7 +226,12 @@ EM:On('Enabled', Update)
 EM:On('Disabled', Update)
 EM:On('Selected', Update)
 EM:On('SettingsChanged', Update)
-EM:On('ColorsChanged', Update)
+-- A color pass: the label, when it shows, takes the Accent (nothing else of it is a color).
+EM:On('ColorsChanged', function(group)
+	if group == 'accent' and frame and frame:IsShown() then
+		frame.text:SetTextColor(st:Color('accent'):GetRGB())
+	end
+end)
 EM:On('PositionChanged', Update)
 EM:On('BarModeChanged', Update) -- the bar docked, detached, hidden or moved: what it covers at the top changed
 

@@ -63,6 +63,11 @@ function st:SkinNewScrollBar(scrollBar)
     DrawScrollBar(thumb)
     st:KeepOwnColors(thumb, DrawScrollBar)
 
+    -- The fill is the key of its state: the three Buttons colors it reads.
+    for _, key in ipairs({ 'normal', 'hover', 'pushed' }) do
+        st:FollowColor(thumb, 'button', key, ColorThumb)
+    end
+
     thumb:HookScript('OnEnter', thumbOnEnter)
     thumb:HookScript('OnLeave', thumbOnLeave)
     thumb:HookScript('OnMouseDown', thumbOnMouseDown)

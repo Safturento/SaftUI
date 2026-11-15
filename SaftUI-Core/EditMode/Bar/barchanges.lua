@@ -139,9 +139,13 @@ EM:On('Disabled', function()
 	statusToken = statusToken + 1
 	ClearStatus()
 end)
-EM:On('ColorsChanged', function()
+local function ColorStatus()
 	if EM.statusText then EM.statusText:SetTextColor(OB.Muted()) end
+end
+EM:On('ColorsChanged', function(group, key)
+	if group == 'text' and (key == nil or key == 'muted') then ColorStatus() end
 end)
+EM:On('Enabled', ColorStatus) -- a pass is not passed on while edit mode is off
 
 ------------------------------------------------------------------ the steps
 
