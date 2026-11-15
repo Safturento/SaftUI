@@ -333,16 +333,12 @@ local function ProfileName() return UF:GetProfile() end
 -- The default at that path is AceDB's merged one: the unit's own table over
 -- the '**' one (st:DefaultAt). Both give a function(info), and are made when
 -- the page's table is built.
--- Core's kit is always loaded first in game; a test that builds a page without
--- it gets no saved, and so no reset to ask for.
 function UF.SavedIn(unit, ...)
-	local build = st.Config.SavedIn
-	return build and build('unitframes', 'profiles', ProfileName, unit, ...) or nil
+	return st.Config.SavedIn('unitframes', 'profiles', ProfileName, unit, ...)
 end
 
 function UF.SavedAt(unit, ...)
-	local build = st.Config.SavedAt
-	return build and build('unitframes', 'profiles', ProfileName, unit, ...) or nil
+	return st.Config.SavedAt('unitframes', 'profiles', ProfileName, unit, ...)
 end
 
 -- option with its own saved, for a Width or Height box (its get hands on to the

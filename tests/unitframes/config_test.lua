@@ -13,7 +13,8 @@
 -- whose tabs config.lua adds to each unit that has the element;
 -- nameplates/nameplates.lua (UF:NameplateAddon, which the nameplate pages
 -- read; with no other nameplate addon loaded, SaftUI draws the plates) and
--- nameplates/threat.lua (the plates' Threat element and its tab) and
+-- nameplates/threat.lua (the plates' Threat element and its tab),
+-- nameplates/subtext.lua (their Subtext tab) and
 -- nameplates/options.lua (the nameplate pages).
 --
 -- Stand-ins, for unitframes.lua, which needs oUF:
@@ -100,6 +101,8 @@ end
 UF.oUF = { Tags = { Events = {}, Methods = {} }, colors = { class = st.config.profile.colors.class } }
 load_string_format()
 load_saftui('SaftUI-Unitframes/tags.lua')
+-- The Subtext element (registers a tag on UF.oUF, so after tags.lua): the plate pages' Subtext tab.
+load_saftui('SaftUI-Unitframes/nameplates/subtext.lua')
 
 local click = stub.click
 
@@ -124,8 +127,41 @@ function UF:RestoreNameplateCVars() end
 -- Every row of every unit's page has a reset (the kit derives it from where the row is saved), and each
 -- derived one round-trips. First, on the profile as it starts: no case before this changes a value.
 local R = load_test_file('lib/reset_walk.lua')
-test('every unit frame row has a reset, and each derived one round-trips', function()
-	R.check_page({ Unitframes = UF:GetConfigTable() }, 'Unitframes')
+-- The walk's round trips copy the whole profile twice per derived row, so a walk of every unit
+-- at once is far over the harness's limit for one case (about 25 s). One cheap walk of every row
+-- (probe = false: each has a source, a default, and is at it on this fresh profile), then the
+-- round trips for a few units, each its own case.
+local function Page(units)
+	local tree = UF:GetConfigTable()
+	if units then
+		local args = {}
+		for _, unit in ipairs(units) do args[unit] = tree.args[unit] end
+		tree.args = args
+	end
+	return { Unitframes = tree }
+end
+
+test('every unit frame row has a reset', function()
+	R.check_page(Page(), 'Unitframes', { probe = false })
+end)
+
+for _, unit in ipairs({ 'player', 'target', 'party', 'raid10', 'boss', 'nameplate', 'friendlynameplate' }) do
+	test(unit .. "'s derived resets round-trip", function()
+		R.check_page(Page({ unit }), 'Unitframes')
+	end)
+end
+
+test('resets round-trip on a unit frame profile of another name, and only that profile is written', function()
+	local profiles = st.config.profile.unitframes.profiles
+	local first = st.config.profile.unitframes.config_profile
+	local _ = profiles.Healer
+	local before = profiles[first].player.health.enable
+	st.config.profile.unitframes.config_profile = 'Healer'
+	R.check_page(Page({ 'player' }), 'Unitframes')
+	eq(st.config.profile.unitframes.config_profile, 'Healer', 'still on Healer')
+	st.config.profile.unitframes.config_profile = first
+	rawset(profiles, 'Healer', nil)
+	eq(profiles[first].player.health.enable, before, "the first profile's value is untouched")
 end)
 
 -- The row at path ({ 'Unitframes', 'player', 'Health', 'enable' }) in the options tree root, as the model reads it.
@@ -209,7 +245,9 @@ test("the aura borders are saved once per hostility: their reset puts each hosti
 		check(OM.WriteValue(root, row, false), tab .. ': turned off')
 		check(not config.friend[flag] and not config.enemy[flag], tab .. ': off for both')
 		check(OM.DefaultDiffers(root, row), tab .. ': differs')
+		local before = updates
 		check(OM.DefaultReset(root, row), tab .. ': reset')
+		check(updates > before, tab .. ': the frames were told, as a set tells them')
 		check(config[on][flag], tab .. ': ' .. on .. ' is on again')
 		check(not (config.friend[flag] and config.enemy[flag]), tab .. ': only its own hostility, as the default has it')
 		check(not OM.DefaultDiffers(root, row), tab .. ': at its default again')
@@ -789,8 +827,8 @@ test('each unit has a tab for each element it has', function()
 		'Buffs,Castbar,Debuffs,GroupRoleIndicator,Health,Name,Power,QuestIndicator,RaidRoleIndicator,RaidTargetIndicator,ReadyCheckIndicator',
 		'party has the ready check')
 	eq(sorted_keys(element_tabs(config, 'nameplate')),
-		'Buffs,Castbar,Debuffs,Health,Name,QuestIndicator,RaidTargetIndicator,Threat',
-		'nameplates have no power, role or ready check, and have the threat text')
+		'Buffs,Castbar,Debuffs,Health,Name,QuestIndicator,RaidTargetIndicator,Subtext,Threat',
+		'nameplates have no power, role or ready check, and have the subtext and threat text')
 end)
 
 test('every element tab: a tooltip on every option, no Ace width, and each Position a block last in its group', function()
@@ -1287,7 +1325,7 @@ end)
 -- write }. The unit frame's own are in General; the castbar has the bar's and
 -- the icon's; the aura tabs have them in Buttons. Name and the nameplates'
 -- threat text have none: they're texts.
-local TEXTS = { Name = true, Threat = true }
+local TEXTS = { Name = true, Subtext = true, Threat = true }
 local function themed_parts(config, P, unit)
 	local parts = { { 'general', {}, P[unit] } }
 	for tab in pairs(element_tabs(config, unit)) do
