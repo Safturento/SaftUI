@@ -234,6 +234,7 @@ test('a drag with the list scrolled: the line and the drop follow the scroll, th
 	-- Quest's handle.
 	local quest = row_of(w, 'Quest')
 	stub.mouse_buttons.LeftButton = true
+	st.config.profile.theme.accent:SetRGB(0.9, 0.2, 0.4) -- not the default, so a literal blue fails
 	stub.fire_script(quest.handle, 'OnMouseDown', 'LeftButton')
 	check(w.drag ~= nil, 'a drag')
 
@@ -244,6 +245,9 @@ test('a drag with the list scrolled: the line and the drop follow the scroll, th
 	drag_frame(w)
 	check(w.insert:IsShown(), 'the line shows')
 	eq(w.insert:GetTop(), target.frame:GetTop() + 1, 'at the top of the row under the cursor, scrolled')
+	local line = stub.state(w.insert).color_texture
+	eq(string.format('%.2f,%.2f,%.2f', line[1], line[2], line[3]), '0.90,0.20,0.40', "the drop line is the accent")
+	st.config.profile.theme.accent:SetRGB(0, 0.68, 0.94)
 
 	-- The wheel mid-drag: the list scrolls, the drag goes on, the line follows.
 	wheel(w.listScroll, 1)

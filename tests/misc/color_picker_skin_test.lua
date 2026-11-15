@@ -502,6 +502,12 @@ test("hovering Okay or Cancel turns the edge of SaftUI's box blue; nothing cover
 	stub.fire_script(button, 'OnEnter', true)
 	st:ColorsChanged('theme')
 	check(T.edge(the_one(own_children(button), 'the box')):find(blue, 1, true) ~= nil, 'a recolor keeps the hover')
+	-- A change of the accent while hovered reaches it, and an accent that is not the default is the edge.
+	profile.theme.accent:SetRGB(0.9, 0.2, 0.4)
+	st:ColorsChanged('accent')
+	check(T.edge(the_one(own_children(button), 'the box')):find(T.text(0.9, 0.2, 0.4), 1, true) ~= nil, "a change of the accent reaches the hovered box")
+	profile.theme.accent:SetRGB(0, 0.68, 0.94)
+	st:ColorsChanged('accent')
 	stub.fire_script(button, 'OnLeave', true)
 	-- Under the Blizzard theme the hooks color nothing.
 	switch('blizzard')

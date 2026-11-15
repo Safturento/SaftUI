@@ -499,6 +499,21 @@ test('a pooled block handed out again is hooked once and stays styled', function
 	clean()
 end)
 
+test("a quest item button's hover is the accent, at an accent that is not the default, and follows a change of it", function()
+	world('forever')
+	profile.theme.accent:SetRGB(0.9, 0.2, 0.4)
+	local blocks = OT.layout(quest_module(), { { id = 1, objectives = { 'One' }, item = 3 } })
+	local item = blocks[1].rightEdgeFrame
+	local hover = own_regions(item)[1]
+	check(hover ~= nil, 'a hover of SaftUI\'s')
+	eq(T.rgb(hover:GetVertexColor()), '0.90,0.20,0.40', 'the accent when it is made')
+	profile.theme.accent:SetRGB(0.1, 0.8, 0.5)
+	st:ColorsChanged('accent')
+	eq(T.rgb(hover:GetVertexColor()), '0.10,0.80,0.50', "a change of the accent (not 'theme' or 'button') reaches it")
+	profile.theme.accent:SetRGB(0, 0.68, 0.94)
+	clean()
+end)
+
 test('in combat: everything is styled with nothing blocked; a protected item button waits', function()
 	world('forever')
 	stub.in_combat, stub.blocked = true, {}

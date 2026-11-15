@@ -404,6 +404,8 @@ test("each block type's fields set its params", function()
 	end
 
 	-- Tooltip contains and Name contains: a 150 box, and whole word.
+	local accent = st.config.profile.theme.accent
+	accent:SetRGB(0.9, 0.2, 0.4) -- not the default, so a check mark drawn in a blue of its own fails
 	for _, id in ipairs({ 'tooltip', 'name' }) do
 		local ed, row, f = one(blk(id, { text = '' }))
 		eq(row.label:GetText(), R.BlockType(id).label, id .. ': its label')
@@ -416,10 +418,12 @@ test("each block type's fields set its params", function()
 		click(ed.w.rows[1].fields.word)
 		eq(ed.stored.items[1].word, true, id .. ': whole word on')
 		check(ed.w.rows[1].fields.word.mark:IsShown(), id .. ': and checked')
+		check(same_rgb(stub.state(ed.w.rows[1].fields.word.mark).color_texture, { 0.9, 0.2, 0.4 }), id .. ': its mark is the accent')
 		click(ed.w.rows[1].fields.word)
 		eq(ed.stored.items[1].word, nil, id .. ': and off')
 		done(ed)
 	end
+	accent:SetRGB(0, 0.68, 0.94)
 
 	-- Name is: a 150 box.
 	local ed, row, f = one(blk('nameis', { text = 'Hearthstone' }))

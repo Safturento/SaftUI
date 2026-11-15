@@ -869,9 +869,12 @@ test('the bag and bank windows are windows', function()
 		kinds[#kinds + 1] = (frame == bank and 'bank' or tostring(frame)) .. ':' .. tostring(kind)
 		return draw(self, frame, theme, background, kind)
 	end
+	st.config.profile.theme.accent:SetRGB(0.9, 0.2, 0.4) -- not the default, so a literal blue fails
 	INV:SelectBankCategory(bag.header)
 	st.SetBackdrop = draw
 	eq(table.concat(kinds, ','), 'bank:window', 'the window not picked is drawn again as a window')
+	eq(T.edge_rgb(bag.backdrop), T.text(0.9, 0.2, 0.4), 'the window picked takes the accent for its border')
+	st.config.profile.theme.accent:SetRGB(0, 0.68, 0.94)
 
 	st.config.profile.theme.name = 'blizzard'
 	st:ThemeChanged()
