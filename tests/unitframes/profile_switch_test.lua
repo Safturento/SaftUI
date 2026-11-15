@@ -40,3 +40,72 @@ test("a profile switch sets the game's friendly plates to the new profile's", fu
 		eq(#take_errors(), 0, client .. ': no error')
 	end
 end)
+
+------------------------------------------------------------------ parts placed afresh
+
+-- A single unit frame (the player) with two parts on it, built by the real
+-- constructors, and registered as UF:OnEnable leaves one.
+local UW = load_test_file('unitframes/uf_world.lua')
+local function player_world()
+	local st, UF = NP.world('forever')
+	st.config.char = {}
+	local P = UF:GetProfileConfig()
+	local frame = UW.unit_frame('SaftUI_ProfilePlayer', 'player', { 'Health', 'Power' })
+	frame.is_group_unit = nil
+	UF.units.player = frame
+	UF.allUnits.player = frame
+	return st, UF, P, frame
+end
+
+-- Profile A: the power bar under the health bar. Profile B: the health bar
+-- above the power bar (the other way round), the power bar on the frame.
+local function profile_a(P)
+	P.player.health.position = { point = 'TOP', element = '', rel_point = 'TOP', x_off = 0, y_off = 0 }
+	P.player.power.position = { point = 'TOP', element = 'Health', rel_point = 'BOTTOM', x_off = 0, y_off = -2 }
+end
+local function profile_b(P)
+	P.player.power.position = { point = 'BOTTOM', element = '', rel_point = 'BOTTOM', x_off = 0, y_off = 0 }
+	P.player.health.position = { point = 'BOTTOM', element = 'Power', rel_point = 'TOP', x_off = 0, y_off = 2 }
+end
+
+local function anchored_to(region)
+	local _, relativeTo = region:GetPoint(1)
+	return relativeTo
+end
+
+test('a profile switch places a unit frame\'s parts against the new anchors, whichever way they were', function()
+	local st, UF, P, frame = player_world()
+	profile_a(P)
+	UF:UpdateConfig()
+	eq(#take_errors(), 0, 'profile A: no error')
+	eq(anchored_to(frame.Power), frame.Health, 'A: the power bar under the health bar')
+	check(frame.Health:GetNumPoints() == 1 and frame.Power:GetNumPoints() == 1, 'A: both placed')
+
+	for round = 1, 2 do
+		profile_b(P)
+		UF:UpdateConfig()
+		local errors = take_errors()
+		eq(#errors, 0, 'switch ' .. round .. ' to B: no error ' .. tostring(errors[1]))
+		eq(anchored_to(frame.Health), frame.Power, 'B: the health bar over the power bar')
+		eq(anchored_to(frame.Power), frame, 'B: the power bar on the frame')
+		check(frame.Health:GetNumPoints() == 1 and frame.Power:GetNumPoints() == 1, 'B: both placed')
+
+		profile_a(P)
+		UF:UpdateConfig()
+		eq(#take_errors(), 0, 'switch ' .. round .. ' back to A: no error')
+		eq(anchored_to(frame.Power), frame.Health, 'A: the power bar under the health bar')
+		eq(anchored_to(frame.Health), frame, 'A: the health bar on the frame')
+	end
+end)
+
+test('a profile switch in combat places no part', function()
+	local st, UF, P, frame = player_world()
+	profile_a(P)
+	UF:UpdateConfig()
+	stub.in_combat = true
+	profile_b(P)
+	UF:UpdateConfig()
+	stub.in_combat = false
+	eq(anchored_to(frame.Power), frame.Health, 'nothing moved in combat')
+	eq(#take_errors(), 0, 'no error')
+end)

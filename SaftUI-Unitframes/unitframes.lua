@@ -533,6 +533,53 @@ local function ClearUnitFramePoints(self)
 	return previous
 end
 
+-- Clears the points of the parts a full update of frame places: each element
+-- its new config has on, and that element's texts and icons that are on (the
+-- rule of ClearPlacedPoints in nameplates/nameplates.lua, which clears a
+-- plate's before a switch of its config). Read from the profile now, not from
+-- the configs the parts cache, which still belong to the profile switched
+-- away from. Two parts anchored each way round across two profiles would
+-- otherwise close an anchor loop as they're placed one by one in pairs()
+-- order. A part whose update then fails is left with no points. Unit frames
+-- are secure: out of combat only.
+local function ClearPartPoints(frame)
+	local function On(part)
+		local config = part.GetConfig and part:GetConfig()
+		return config and config.enable
+	end
+	for _, element in pairs(frame.elements or {}) do
+		if On(element) then
+			element:ClearAllPoints()
+			for _, text in pairs(element.textElements or {}) do
+				if On(text) then text:ClearAllPoints() end
+			end
+			for _, icon in pairs(element.icons or {}) do
+				if On(icon) then icon:ClearAllPoints() end
+			end
+		end
+	end
+end
+
+-- Every unit frame ApplyConfig places that has parts: the single and numbered
+-- frames and the group headers' buttons.
+local function ClearAllPartPoints(self)
+	for unit, frame in pairs(self.units) do
+		if unit == 'boss' or unit == 'arena' then
+			for _, numbered in pairs(frame) do
+				ClearPartPoints(numbered)
+			end
+		else
+			ClearPartPoints(frame)
+		end
+	end
+	for _, header in pairs(self.groups or {}) do
+		for i = 1, header:GetNumChildren() do
+			local frame = select(i, header:GetChildren())
+			if frame and frame.Health then ClearPartPoints(frame) end
+		end
+	end
+end
+
 --[[
 	Wrapper function for UpdateUnitFrame that allows you to update
 		using unit string instead of the frame object. Also used 
@@ -548,6 +595,7 @@ function UF:ApplyConfig(unit, element_name)
 		local previous
 		if not element_name and not InCombatLockdown() then
 			previous = ClearUnitFramePoints(self)
+			ClearAllPartPoints(self)
 		end
 
 		for unit, frame in pairs(self.units) do
