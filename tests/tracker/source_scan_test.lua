@@ -21,64 +21,8 @@ local OT = load_test_file('misc/fixtures/objective_tracker.lua')
 
 ------------------------------------------------------------------ the scanner
 
-local function Blank(text) return (text:gsub('[^\n]', ' ')) end
-
--- source with its comments blanked (code), and with its comments and the
--- contents of its strings blanked (mask). Both keep the length and the newlines.
-local function Lex(source)
-	local code, mask = {}, {}
-	local function add(c, m)
-		code[#code + 1], mask[#mask + 1] = c, m or c
-	end
-	local i, n = 1, #source
-	while i <= n do
-		local c = source:sub(i, i)
-		local long = source:match('^%[(=*)%[', i)
-		if source:sub(i, i + 1) == '--' then
-			local level = source:match('^%[(=*)%[', i + 2)
-			local stop
-			if level then
-				local _, e = source:find(']' .. level .. ']', i + 2, true)
-				stop = e or n
-			else
-				stop = (source:find('\n', i, true) or (n + 1)) - 1
-			end
-			add(Blank(source:sub(i, stop)))
-			i = stop + 1
-		elseif long then
-			local open = #long + 2
-			local _, e = source:find(']' .. long .. ']', i + open, true)
-			e = e or n
-			add(source:sub(i, e),
-				source:sub(i, i + open - 1) .. Blank(source:sub(i + open, e - open)) .. source:sub(e - open + 1, e))
-			i = e + 1
-		elseif c == '"' or c == "'" then
-			local j = i + 1
-			while j <= n do
-				local d = source:sub(j, j)
-				if d == '\\' then
-					j = j + 2
-				elseif d == c or d == '\n' then
-					break
-				else
-					j = j + 1
-				end
-			end
-			add(source:sub(i, j), c .. Blank(source:sub(i + 1, j - 1)) .. source:sub(j, j))
-			i = j + 1
-		else
-			local j = source:find('[%-%[\'"]', i + 1) or (n + 1)
-			add(source:sub(i, j - 1))
-			i = j
-		end
-	end
-	return table.concat(code), table.concat(mask)
-end
-
-local function LineAt(text, position)
-	local _, newlines = text:sub(1, position):gsub('\n', '')
-	return newlines + 1
-end
+local L = load_test_file('lib/source_lex.lua')
+local Lex, LineAt = L.Lex, L.LineAt
 
 local function Set(list)
 	local set = {}
