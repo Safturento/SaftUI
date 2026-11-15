@@ -285,6 +285,18 @@ function st:FontValues(value)
 	return st.LSM:Fetch('font', name), size, st.OutlineFlag(outline), x, y, spacing
 end
 
+-- Sets a font on a region of the game's (a chat window, a tooltip line, a text of
+-- another addon's) from values: SetFont returns false when the game refuses the
+-- face's file, and then Text's face is set instead, at the same size and flags,
+-- as a typeface object does (Typeface's fallback). Builds nothing. Returns
+-- whether a font was set.
+function st:SetFontOrText(region, path, size, flags)
+	if region:SetFont(path, size, flags) ~= false then return true end
+	local textPath = st:FontValues('normal')
+	if textPath == path then return false end
+	return region:SetFont(textPath, size, flags) ~= false
+end
+
 -- The words for a font setting: a shared font's name ("Heading"), a typeface as
 -- "Colus 15, outline" ("Homespun 10" with no outline), anything else "Text".
 function st:FontLabel(value)
@@ -514,7 +526,7 @@ local TEXT_FONTS = {
 		"The labels of SaftUI's check boxes, such as the bags' filters." },
 }
 
-local TEXT_FONTS_NOTE = 'Which font each kind of text uses. A change shows at once.'
+local TEXT_FONTS_NOTE = 'Which font each kind of text uses. A change shows at once, except where its row says otherwise.'
 
 local function TextFontsGroup()
 	local args = {}

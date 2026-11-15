@@ -219,6 +219,24 @@ end
 
 ------------------------------------------------------------------ the window
 
+test("/sui's Blizzard title bar follows Window titles at once, with no redraw", function()
+	for _, client in ipairs(CLIENTS) do
+		world(client)
+		switch('blizzard'); st.Config:Open('Loot')
+		local F = OW.GetFrames()
+		eq(F.titleText:GetFontObject(), st:GetFont('normal'), client .. ': Text to start with')
+		st.config.profile.headers.font = 'subtitle'
+		st:FontsChanged()
+		eq(F.titleText:GetFontObject(), st:GetFont('subtitle'), client .. ': a shared font, at once')
+		local face = { font_name = 'Colus', font_size = 12, font_outline = 'OUTLINE', shadow_offset = { 0, 0 }, spacing = 4 }
+		st.config.profile.headers.font = face
+		st:FontsChanged()
+		eq(F.titleText:GetFontObject(), st:FontObject(face), client .. ': a typeface, at once')
+		st.config.profile.headers.font = 'normal'
+		eq(#take_errors(), 0, client .. ': no errors')
+	end
+end)
+
 test('/sui under Blizzard: the metal, its title bar and the close button in the socket', function()
 	for _, client in ipairs(CLIENTS) do
 		world(client)

@@ -164,6 +164,8 @@ function st:UpdateCloseButton(frame)
 	if button then closeDraws[button](button) end
 end
 
+-- The profile's Window titles font, read when a title is made or follows.
+local function HeaderFont() return st.config.profile.headers.font end
 
 -- The frame can be dragged by its header, and is kept inside the screen edge
 -- margin (st:KeepInScreenMargin), which waits for the end of combat on a
@@ -171,9 +173,6 @@ end
 -- The header is a strip along frame's top, or under the Blizzard theme the
 -- strip of the metal's title bar above it (st:HeaderInTitleBar): what frame
 -- places under the header starts right under the title bar.
--- The profile's Window titles font, read when a title is made or follows.
-local function HeaderFont() return st.config.profile.headers.font end
-
 function st:CreateHeader(frame, title, close_button)
 	frame:SetMovable(true)
 	st:KeepInScreenMargin(frame)

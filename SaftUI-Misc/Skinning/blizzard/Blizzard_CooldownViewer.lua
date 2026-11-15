@@ -296,8 +296,10 @@ function CD:UpdateConfig()
 	end
 end
 
--- A shared font or a font setting changed (st:FontsChanged): the items take the
--- Skinning font again (a typeface's object is not the shared font's).
+-- A shared font or a font setting changed (st:FontsChanged): a bar item's count is made
+-- as tall as its font (Style), so a Fonts tab size change needs the items styled
+-- again. A shared font's own change reaches the texts by itself, and a change of the
+-- Skinning font setting runs UpdateConfig, so only the height needs this.
 function CD:OnFontsChanged()
 	self:UpdateConfig()
 end

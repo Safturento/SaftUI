@@ -630,13 +630,6 @@ function OT:UpdateConfig()
 	end
 end
 
--- A shared font or a font setting changed (st:FontsChanged): the texts take their fonts
--- again (a typeface's object is not the shared font's). Widget calls only, as
--- OT:UpdateConfig; nothing while the skin isn't installed.
-function OT:OnFontsChanged()
-	if installed then self:StyleAll() end
-end
-
 -- A theme recolor or a color change: the header lines, the chevrons and the
 -- item buttons' hover take the colors again, and the objective lines for a
 -- change of the Objectives colors or of the theme (Blizzard's look back or ours).

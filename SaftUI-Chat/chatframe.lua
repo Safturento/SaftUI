@@ -67,14 +67,31 @@ function CHT:ConvertFonts()
 	return true
 end
 
+-- What ApplyChatFont last set on each chat frame: frame -> { path, size, flags,
+-- shadow x, shadow y }. Kept apart from the frame (Blizzard's).
+local applied = setmetatable({}, { __mode = 'k' })
+
 -- The profile's font on a chat frame, shared by SkinChatFrame and
 -- ApplyChatFrameConfig: the face, size, outline and shadow of chat's font setting,
 -- the shadow opaque black as Blizzard's own. Blizzard's chat frames draw at line
 -- spacing 0 and chat leaves it there (Text's is 4, which would widen every
--- line), so no spacing is set.
-function CHT:ApplyChatFont(frame)
+-- line), so no spacing is set. A face the game refuses to load draws in Text's.
+-- With onlyIfChanged, a frame whose last values from here are the same is left as
+-- it is: Blizzard's own Font Size menu sets a window's size too, and a Fonts tab
+-- change that does not touch chat's font must not undo it. Chat's own changes
+-- (its options, a profile change) always apply.
+function CHT:ApplyChatFont(frame, onlyIfChanged)
 	local path, size, flags, x, y = st:FontValues(self.config.font)
-	frame:SetFont(path, size, flags)
+	local last = applied[frame]
+	if not last then
+		last = {}
+		applied[frame] = last
+	elseif onlyIfChanged and last[1] == path and last[2] == size and last[3] == flags
+		and last[4] == x and last[5] == y then
+		return
+	end
+	last[1], last[2], last[3], last[4], last[5] = path, size, flags, x, y
+	st:SetFontOrText(frame, path, size, flags)
 	frame:SetShadowColor(0, 0, 0, 1)
 	frame:SetShadowOffset(x, y)
 end
@@ -354,14 +371,24 @@ function CHT:UpdateConfig()
 	self:ApplyAppearance()
 end
 
--- A shared font or a font setting changed (st:FontsChanged): every chat frame
--- takes chat's font again. The profile update calls this before the modules'
--- UpdateConfig, with the new profile bound, so a profile switched to converts
--- here first, before its font is read.
+-- A shared font or a font setting changed (st:FontsChanged): every chat frame takes
+-- chat's font again, and its edit box, and nothing else (no backdrop redraw: a Size
+-- drag on the Fonts tab calls this for each step). A window whose font from chat is
+-- unchanged is left alone (ApplyChatFont), so Blizzard's own per-window Font Size
+-- survives a change that does not touch chat's font. The profile update calls this
+-- before the modules' UpdateConfig, with the new profile bound, so a profile
+-- switched to converts here first, before its font is read.
 function CHT:OnFontsChanged()
 	if not self.config then return end -- not enabled
 	self:ConvertFonts()
-	self:ApplyAppearance()
+	for chatID = 1, NUM_CHAT_WINDOWS do
+		local frame = _G['ChatFrame' .. chatID]
+		if frame then
+			self:ApplyChatFont(frame, true)
+			local editbox = _G[frame:GetName() .. 'EditBox']
+			if editbox then st:ApplyEditBoxFont(editbox, self.config.font) end
+		end
+	end
 end
 
 -- Copies the holder's size and anchor to ChatFrame1 on every SaftUI placement, and puts

@@ -359,12 +359,6 @@ function BF:UpdateConfig()
 	self:UpdateText()
 end
 
--- A shared font or a font setting changed (st:FontsChanged): the skinning font's
--- object may be another (a typeface), so every skinned button's texts take it again.
-function BF:OnFontsChanged()
-	self:UpdateConfig()
-end
-
 -- After a theme recolor (st:RecolorThemed gave every backdrop the theme's border):
 -- the debuff type and weapon enchant borders go back on. Skinning passes it on.
 function BF:OnColorsChanged(group)

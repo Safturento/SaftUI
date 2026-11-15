@@ -313,8 +313,8 @@ local function StyleButton(button, skin, theme, background)
 
 	-- The texts follow Button text (Global settings > Fonts), shadow and all: the
 	-- font's own shadow is what they draw. A font change reaches them in combat too:
-	-- setting a text's font object is no protected call (inferred; not yet confirmed
-	-- in game).
+	-- setting a text's font object is no protected call (the API documentation marks no
+	-- font function protected, see .agents/taint.md rule 1; not yet confirmed in game).
 	for _, key in ipairs(TEXTS) do
 		local text = button[key]
 		if text then st:FollowFont(text, ButtonsFont) end

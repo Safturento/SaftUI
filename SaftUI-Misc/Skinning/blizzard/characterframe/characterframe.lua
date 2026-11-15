@@ -116,12 +116,6 @@ function CF:UpdateConfig()
 	end
 end
 
--- A shared font or a font setting changed (st:FontsChanged): a typeface's object is
--- not the shared font's, so the text takes the Skinning font again.
-function CF:OnFontsChanged()
-	self:UpdateConfig()
-end
-
 function CF:UpdateAllEquipSlots()
 	for button in pairs(slots) do
 		self:UpdateEquipSlot(button)

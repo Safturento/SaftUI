@@ -561,3 +561,20 @@ test("an error in a hook is reported, and Blizzard's layout goes on", function()
 	eq(bar:GetNumPoints(), 1, "and placed it")
 	check(block.used, "and finished the block's layout")
 end)
+
+test("a font that names nothing draws Text on every text, and a typeface reaches them through the skin's update", function()
+	world('forever')
+	local block = OT.layout(quest_module(), { { id = 1, objectives = { 'One' }, progress = true } })[1]
+	for _, value in ipairs({ 'gone', 17, false }) do
+		profile.objectivetracker.font, profile.objectivetracker.header_font, profile.skinning.font = value, value, value
+		skin:UpdateConfig()
+		check_texts(block, st:GetFont('normal'), 'Text for ' .. tostring(value), true)
+		eq(OT.tracker.Header.Text:GetFontObject(), st:GetFont('normal'), 'the header: Text for ' .. tostring(value))
+	end
+	local face = { font_name = 'Colus', font_size = 12, font_outline = 'OUTLINE', shadow_offset = { 0, 0 }, spacing = 4 }
+	profile.objectivetracker.font, profile.objectivetracker.header_font = face, face
+	skin:UpdateConfig()
+	check_texts(block, st:FontObject(face), 'a typeface', true)
+	eq(OT.tracker.Header.Text:GetFontObject(), st:FontObject(face), 'the header in the typeface')
+	clean()
+end)

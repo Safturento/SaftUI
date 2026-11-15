@@ -122,12 +122,6 @@ function ST:UpdateConfig()
 	end
 end
 
--- A shared font or a font setting changed (st:FontsChanged): the labels take the
--- Skinning font again (a typeface's object is not the shared font's).
-function ST:OnFontsChanged()
-	self:UpdateConfig()
-end
-
 function ST:OnEnable()
 	if _G.SwingTimerMainHandFrame then
 		self:SkinFrames()

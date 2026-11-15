@@ -5,7 +5,7 @@
 load_core_helpers()
 local st = SaftUI
 -- st:CreateCheckButton's contract (SaftUI-Core/Widgets/checkbutton.lua): a check
--- button with a .text label and SetFont/SetText, in the style asked for (nil
+-- button with a .text label and SetTextFont/SetText, in the style asked for (nil
 -- a check box, 'button' Blizzard's panel button under the Blizzard theme,
 -- 'bare' no box), which is noted here. The widget's own skinning isn't what's
 -- under test (tests/core/theme_blizzard_controls_test.lua tests it).
@@ -14,7 +14,7 @@ function st:CreateCheckButton(name, parent, style)
 	local button = CreateFrame('CheckButton', name, parent)
 	button.text = button:CreateFontString(nil, 'OVERLAY')
 	button.text:SetFontObject(GameFontNormal)
-	button.SetFont = function() end
+	button.SetTextFont = function() end
 	button.SetText = function(_, value) button.text:SetText(value) end
 	styles[button] = style or 'check box'
 	return button

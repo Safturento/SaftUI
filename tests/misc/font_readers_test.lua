@@ -79,6 +79,29 @@ test("the tooltip's lines take Text's face, size and outline from st:FontValues;
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+test("a face whose file fails to load draws in Text's face on the tooltip's lines", function()
+	local st = T.client('forever')
+	local tip = CreateFrame('GameTooltip', 'GameTooltip', UIParent)
+	local left = tip:CreateFontString('GameTooltipTextLeft1', 'ARTWORK')
+	left:SetFontObject(GameFontNormal)
+	stub.state(tip).lines = 1
+	load_saftui('SaftUI-Misc/config.lua')
+	apply_defaults()
+	load_saftui('SaftUI-Misc/tooltip.lua')
+	local TT = st:GetModule('Tooltip')
+	st:BindModuleConfig(TT, 'tooltip')
+	local colus = path(st, 'Colus')
+	local method = getmetatable(left).__index.SetFont
+	rawset(left, 'SetFont', function(self, face, ...)
+		if face == colus then return false end -- the game refuses the file
+		return method(self, face, ...)
+	end)
+	TT.config.font = { font_name = 'Colus', font_size = 11, font_outline = 'NONE', shadow_offset = { 0, 0 }, spacing = 4 }
+	TT:UpdateTooltipFonts(tip)
+	eqfont(left, path(st, 'AgencyFB Bold'), 11, '', "Text's face at the typeface's size and outline")
+	eq(#take_errors(), 0, 'no errors')
+end)
+
 ------------------------------------------------------------------ the totem bar
 
 local function totem_world()
@@ -197,6 +220,12 @@ test("Button text set to Text on the Fonts tab reaches the totem texts and the b
 	for _, key in ipairs({ 'HotKey', 'Count', 'Name' }) do
 		check(summon[key]:GetFontObject() == st:GetFont('normal'), 'the totem ' .. key .. ' takes Text at once')
 	end
+	for _, value in ipairs({ 'gone', 17, false }) do
+		st.config.profile.buttons.font = value
+		st:FontsChanged()
+		check(slot.Count:GetFontObject() == st:GetFont('normal'), 'a bag slot text: Text for ' .. tostring(value))
+		check(summon.Count:GetFontObject() == st:GetFont('normal'), 'a totem text: Text for ' .. tostring(value))
+	end
 	st.config.profile.buttons.font = 'pixel'
 	st:FontsChanged()
 	eq(#take_errors(), 0, 'no errors')
@@ -281,6 +310,18 @@ test("RestedXP's texts take chat's face and outline at RestedXP's sizes, again o
 	local title_face = R.GuideName.text:GetFont()
 	eq(title_face, path(st, 'Colus'), 'the title keeps Huge title')
 
+	-- A face the game refuses to load draws in Text's face.
+	local colus = path(st, 'Colus')
+	local method = getmetatable(R.Footer.text).__index.SetFont
+	rawset(R.Footer.text, 'SetFont', function(self, face, ...)
+		if face == colus then return false end
+		return method(self, face, ...)
+	end)
+	chat.font = { font_name = 'Colus', font_size = 30, font_outline = 'NONE', shadow_offset = { 0, 0 }, spacing = 4 }
+	st:FontsChanged()
+	eqfont(R.Footer.text, path(st, 'AgencyFB Bold'), 9, '', "a face that fails to load: Text's face at RestedXP's size")
+	rawset(R.Footer.text, 'SetFont', nil)
+
 	chat.font = 'gone'
 	st:FontsChanged()
 	eqfont(R.Footer.text, path(st, 'AgencyFB Bold'), 9, 'THICKOUTLINE', 'a value that names nothing draws Text')
@@ -340,7 +381,7 @@ end
 
 ------------------------------------------------------------------ a value that names nothing
 
-test('every reader draws Text for a value that names nothing, with no error', function()
+test('the color picker draws Text for a value that names nothing, with no error (the other readers: the tooltip, chat, RestedXP, the buff timers and the totem texts above and in their own files; the skins in characterframe_test, cooldown_viewer_test, objective_tracker_skin_test and theme_test)', function()
 	local st, SK, CP, profile = picker_world('forever')
 	for _, value in ipairs({ 'gone', 17, false }) do
 		profile.headers.font, profile.skinning.font = value, value

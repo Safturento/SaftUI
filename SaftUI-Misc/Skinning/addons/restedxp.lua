@@ -106,7 +106,7 @@ local function ApplyFont(fs)
 	local size = state.size + (state.kind == 'title' and TITLE_SIZE_BONUS or 0)
 
 	applyingFont = true
-	fs:SetFont(face, size, outline)
+	st:SetFontOrText(fs, face, size, outline)
 	applyingFont = false
 
 	if state.kind == 'title' then
@@ -453,7 +453,7 @@ local function SkinTimer(bar)
 	bar:SetBackgroundColor(0, 0, 0, 0) -- the box's background shows through
 	local _, _, fontName = RX:GetStyle()
 	local face, _, outline = st:FontValues(fontName)
-	bar:SetFont(face, TimerFontSize(), outline)
+	st:SetFontOrText(bar, face, TimerFontSize(), outline)
 	bar:SetHeight(TimerHeight()) -- OnTimerHeight lays it out
 end
 

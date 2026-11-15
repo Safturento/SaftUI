@@ -7,6 +7,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-15 — Chat's font size against Blizzard's per-window Font Size](#2026-11-15--chats-font-size-against-blizzards-per-window-font-size)
+  - [2026-11-15 — A bag window's least width ignores a Window titles change](#2026-11-15--a-bag-windows-least-width-ignores-a-window-titles-change)
   - [2026-11-14 — Position rows of secure frames can anchor to a frame that is moved in combat](#2026-11-14--position-rows-of-secure-frames-can-anchor-to-a-frame-that-is-moved-in-combat)
   - [2026-11-14 — The options kit's keybinding widget doesn't know META or Blizzard's ignored keys](#2026-11-14--the-options-kits-keybinding-widget-doesnt-know-meta-or-blizzards-ignored-keys)
   - [2026-11-14 — Three copies of the source lexer in tests](#2026-11-14--three-copies-of-the-source-lexer-in-tests)
@@ -146,6 +148,32 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-15 — Chat's font size against Blizzard's per-window Font Size
+
+**What:** Blizzard sets a chat window's font size itself, and SaftUI sets it from chat's font setting, so the two can pull against each other. Blizzard's own code runs `SetFont` on every chat frame on `UPDATE_CHAT_WINDOWS` (size from its chat-cache, face and flags the frame's current ones), the tab menu's Font Size (`FCF_SetChatWindowFontSize`) sets one window's size and saves it, and temporary whisper windows (ChatFrame11 and up) are never skinned by SaftUI and take Blizzard's saved size.
+
+**Why noticed:** Review of fonts Task 5 (`.superpowers/sdd/2026-11-14-saftui-fonts/task-5-review.md`, m1). The Task replaced chat's Font size row with chat's font (Text, or a typeface whose dots hold Size), so a typeface in the dots is now the only SaftUI way to give chat its own size. The Blizzard sources read: `Blizzard_ChatFrameBase/Mainline/ChatFrameOverrides.lua` (`UPDATE_CHAT_WINDOWS`) and `FloatingChatFrame.lua` (the tab menu), both branches.
+
+**Anchors:** `SaftUI-Chat/chatframe.lua` (`CHT:ApplyChatFont`, `CHT:OnFontsChanged`), `tests/chat/font_test.lua` (the changed-only case), `.agents/taint.md` (rule 2: post-hooks only).
+
+**What happens today:** chat applies its font on enable, on a profile change and on chat's own options (always), and on a Fonts tab change only for a window whose values from chat have changed since SaftUI last set them (the changed-only rule in `ApplyChatFont`), so a Heading size change leaves a size picked in Blizzard's tab menu alone and a Text size change (chat's own font) replaces it. If `UPDATE_CHAT_WINDOWS` fires after SaftUI enables, Blizzard's saved size shows at login, before and after the upgrade alike, so G5 compares like with like.
+
+**What's been considered:** (a) post-hook `FCF_SetChatWindowFontSize` and `HookScript('OnEvent')` for `UPDATE_CHAT_WINDOWS` on the skinned frames to put chat's font back, so SaftUI's size always wins; (b) let Blizzard's per-window size win and drop Size from chat's dots; (c) leave it, as now. Not chosen yet: it needs the in-game check below first.
+
+**Shape of work:** small: a hook pair in `chatframe.lua` for (a), or removing `'font_size'` from chat's `fields` and the conversion for (b), plus a test either way.
+
+**Open questions:** does `UPDATE_CHAT_WINDOWS` fire after `PLAYER_LOGIN`, and is chat at SaftUI's size or Blizzard's chat-cache size after login? Does a Fonts tab change that does not touch chat undo a size picked from the tab menu (it should not now)? Which of (a) and (b) does the owner want?
+
+### 2026-11-15 — A bag window's least width ignores a Window titles change
+
+**What:** A bag window's least width counts its title's width (`INV:HeaderMinWidth`, `SaftUI-Bags/header.lua`), and nothing lays the window out again when Window titles changes. The title itself follows at once (Task 5), so after a change to a wider font the title can run over the buttons until the window is next laid out.
+
+**Why noticed:** Review of fonts Task 5, m6. It already behaved this way for a Fonts tab change to Text; it is more visible now that Window titles applies at once.
+
+**Anchors:** `SaftUI-Bags/header.lua` (`INV:HeaderMinWidth`), `SaftUI-Bags/layout.lua:284` and `:355`, `INV:UpdateContainer`.
+
+**Shape of work:** small: an `INV:OnFontsChanged` that lays out each open container again (out of combat; a bag window can be protected, so it goes through the combat queue), with a test. The bags' footer texts move to the shared fonts in Task 7, so it fits there.
 
 ### 2026-11-14 — Position rows of secure frames can anchor to a frame that is moved in combat
 

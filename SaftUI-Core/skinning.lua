@@ -138,7 +138,10 @@ function st:SkinActionButton(button, config, kind)
 	-- With no config the button wears Core's own button settings, and its texts
 	-- follow their font (Button text, Global settings > Fonts). A config of a
 	-- module's own is applied as it stands: its font follows only where it is a
-	-- shared font, whose object changes.
+	-- shared font, whose object changes. The button's own normal, highlight and
+	-- disabled font objects (below) are set once either way: they follow a shared
+	-- object's change, but not Button text moving from one key to another, so a
+	-- caller whose button has a text of its own needs more than this.
 	local follow = config == nil
 	config = config or st.config.profile.buttons
 
@@ -414,16 +417,17 @@ function st:StyleEditBox(editbox, theme, background, font)
 	editBoxLooks[editbox] = look
 	DrawEditBox(editbox, look)
 
-	if font then
-		if editbox.Instructions then
-			st:ApplyFont(editbox.Instructions, font)
-		end
-		local text, _, _, _, header = editbox:GetRegions()
-		st:ApplyFont(text, font)
-		-- if header then
-		-- 	header:SetFontObject(fontObject)
-		-- end
+	if font then st:ApplyEditBoxFont(editbox, font) end
+end
+
+-- The font of an edit box st:SkinEditBox skinned: its text and its instructions.
+-- Only the font, so a font change can reach a box with no redraw.
+function st:ApplyEditBoxFont(editbox, font)
+	if editbox.Instructions then
+		st:ApplyFont(editbox.Instructions, font)
 	end
+	local text = editbox:GetRegions()
+	st:ApplyFont(text, font)
 end
 
 function st:EnableResizing(frame, resizeButton, callback)

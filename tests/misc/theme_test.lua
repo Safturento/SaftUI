@@ -721,3 +721,23 @@ test("the totem bar's setPosition(nil) forgets where the holder was last placed,
 	TB.bar, TB.holder = nil, nil
 	EM.movers.totembar = nil
 end)
+
+test('a Skinning font that names nothing draws Text on a swing timer bar; a typeface reaches it through the Skinning update', function()
+	local bar = swing_bar('SwingTimerOffHandFrame')
+	local ST = SK:GetModule('Blizzard_SwingTimer')
+	ST:SkinFrames()
+	local statusBar = bar.StatusBar
+	for _, value in ipairs({ 'gone', 17, false }) do
+		profile.skinning.font = value
+		SK:UpdateConfig()
+		eq(statusBar.TypeLabel:GetFontObject(), st:GetFont('normal'), 'Text for ' .. tostring(value))
+		eq(statusBar.TimeLabel:GetFontObject(), st:GetFont('normal'), 'the time too, for ' .. tostring(value))
+	end
+	local face = { font_name = 'Colus', font_size = 12, font_outline = 'OUTLINE', shadow_offset = { 0, 0 }, spacing = 4 }
+	profile.skinning.font = face
+	SK:UpdateConfig()
+	eq(statusBar.TypeLabel:GetFontObject(), st:FontObject(face), 'a typeface')
+	profile.skinning.font = 'pixel'
+	SK:UpdateConfig()
+	eq(#take_errors(), 0, 'no errors')
+end)
