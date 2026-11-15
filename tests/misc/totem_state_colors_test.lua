@@ -269,49 +269,86 @@ end)
 -- The timers' state as the bar keeps it: the file's own table of timers.
 local function timers_of(TB) return find_upvalue(TB.UpdateTimers, 'timers') end
 
-test("Text > Danger and Normal: the timers' curves are made again and each shown timer colored at once, nothing laid out", function()
+test("Text > Danger and Normal: each shown plain timer is colored at once, nothing laid out", function()
 	local st, TB = live_world()
 	local profile = st.config.profile
-	profile.colors.text.danger:SetRGB(unpack(DANGER))
-	profile.colors.text.normal:SetRGB(unpack(NORMAL))
 	TB.GetElementColor = function() return nil end
-	local timers = timers_of(TB)
 	local list = {}
-	for _, timer in pairs(timers) do list[#list + 1] = timer end
+	for _, timer in pairs(timers_of(TB)) do list[#list + 1] = timer end
 	check(#list == 4, 'four timers')
 	-- 1: a plain timer in its last seconds, 2: a plain one with time left, 3: a
-	-- secret one, 4: a hidden one.
+	-- hidden one.
 	list[1].secret, list[1].warning, list[1].slot = false, true, 1
 	list[2].secret, list[2].warning, list[2].slot = false, false, 2
-	local points = {}
-	list[3].secret, list[3].slot = true, 3
-	list[3].duration = { EvaluateRemainingDuration = function(_, curve)
-		local p = curve:GetPoints()
-		points[#points + 1] = curve
-		return p[2].y
-	end }
-	for i = 1, 3 do list[i].frame:Show() end
-	list[4].frame:Hide()
-	_G.C_CurveUtil = { CreateColorCurve = CreateColorCurve }
-	Enum.LuaCurveType = Enum.LuaCurveType or { Step = 1 }
+	list[1].frame:Show(); list[2].frame:Show(); list[3].frame:Hide()
+	list[3].secret, list[3].warning, list[3].slot = false, true, 3
+	list[3].text:SetTextColor(1, 1, 1)
 	profile.colors.text.danger:SetRGB(0.2, 0.2, 0.9)
 	profile.colors.text.normal:SetRGB(0.9, 0.9, 0.1)
-	local m
 	local before = {}
-	for _, t in ipairs(list) do before[#before + 1] = { t.frame:GetHeight(), select(2, t.frame:GetPoint(1)) } end
+	for _, t in ipairs(list) do before[#before + 1] = t.frame:GetHeight() .. ',' .. tostring(select(2, t.frame:GetPoint(1))) end
+	local m
 	alone(st, TB, function() m = C.measure(function() st:ColorChanged('text', 'danger') end) end)
 	eq(m.forbidden.total, 0, 'nothing laid out or shown')
 	eq(m.made, 0, 'nothing made')
 	eq(T.rgb(list[1].text:GetTextColor()), T.rgb(0.2, 0.2, 0.9), 'the last seconds: the text in the new Danger')
 	eq(T.rgb(list[1].bar:GetStatusBarColor()), T.rgb(0.2, 0.2, 0.9), 'and the bar')
 	eq(T.rgb(list[2].text:GetTextColor()), T.rgb(0.9, 0.9, 0.1), 'time left: the text in Normal')
-	eq(#points, 2, 'the secret timer evaluated a text curve and a bar curve, made again')
-	check(points[1] ~= nil and points[1] ~= points[2], 'two curves')
-	eq(T.rgb(list[3].text:GetTextColor()), T.rgb(0.9, 0.9, 0.1), "the secret timer's text from the new curve")
+	eq(T.rgb(list[3].text:GetTextColor()), T.rgb(1, 1, 1), 'a hidden timer is left')
 	for i, t in ipairs(list) do
-		eq(t.frame:GetHeight() .. ',' .. tostring(select(2, t.frame:GetPoint(1))), before[i][1] .. ',' .. tostring(before[i][2]), 'timer ' .. i .. ' not laid out')
+		eq(t.frame:GetHeight() .. ',' .. tostring(select(2, t.frame:GetPoint(1))), before[i], 'timer ' .. i .. ' not laid out')
 	end
-	check(not list[4].frame:IsShown(), 'a hidden timer stays hidden')
+	check(not list[3].frame:IsShown(), 'a hidden timer stays hidden')
+end)
+
+-- Four timers on secret values, each with a duration object as the game gives
+-- one: its curve evaluation gives the curve's color for the time left (here the
+-- last point, past the warning).
+local function secret_timers(st, TB)
+	_G.C_CurveUtil = { CreateColorCurve = CreateColorCurve }
+	Enum.LuaCurveType = { Linear = 0, Step = 1, Cosine = 2, Cubic = 3 }
+	TB.GetElementColor = function() return nil end
+	local list, evaluated = {}, { n = 0 }
+	for _, timer in pairs(timers_of(TB)) do
+		list[#list + 1] = timer
+		timer.secret, timer.slot, timer.elapsed = true, #list, 0
+		timer.duration = {
+			IsActive = function() return true end,
+			FormatRemainingDuration = function() return '12' end,
+			EvaluateRemainingDuration = function(_, curve)
+				evaluated.n = evaluated.n + 1
+				local p = curve:GetPoints()
+				return p[#p].y
+			end,
+		}
+		timer.frame.SetAlphaFromBoolean = function() end
+		timer.frame:Show()
+	end
+	return list, evaluated
+end
+
+test("a secret timer: a pass makes no curve and colors nothing; its next refresh (0.1 s) has the new color, bar and text", function()
+	local st, TB = live_world()
+	local profile = st.config.profile
+	local list, evaluated = secret_timers(st, TB)
+	profile.colors.text.normal:SetRGB(0.9, 0.9, 0.1)
+	-- One refresh first, so the curves exist in the old colors, as after a timer's first tick.
+	for _, t in ipairs(list) do stub.fire_script(t.frame, 'OnUpdate', 0.2) end
+	eq(evaluated.n, 8, 'a text curve and a bar curve evaluated by each of four timers')
+	eq(T.rgb(list[1].text:GetTextColor()), T.rgb(0.9, 0.9, 0.1), 'the old Normal')
+	profile.colors.text.normal:SetRGB(0.1, 0.9, 0.9)
+	local m
+	alone(st, TB, function() m = C.measure(function() st:ColorChanged('text', 'normal') end, 100) end)
+	eq(evaluated.n, 8, 'a pass evaluates nothing')
+	eq(m.made, 0, 'and makes nothing')
+	eq(m.forbidden.total, 0)
+	check(m.kb < 4, 'garbage over 100 passes with four secret timers: ' .. m.kb .. ' KB')
+	eq(T.rgb(list[1].text:GetTextColor()), T.rgb(0.9, 0.9, 0.1), 'the pass left the secret timer as it was')
+	for i, t in ipairs(list) do stub.fire_script(t.frame, 'OnUpdate', 0.2) end
+	for i, t in ipairs(list) do
+		eq(T.rgb(t.text:GetTextColor()), T.rgb(0.1, 0.9, 0.9), 'timer ' .. i .. ': the text takes the new Normal at its next refresh')
+		eq(T.rgb(t.bar:GetStatusBarColor()), T.rgb(0.1, 0.9, 0.9), 'timer ' .. i .. ': and the bar')
+	end
 end)
 
 test('in combat the timers and the buttons take a pick with no forbidden call and almost no garbage (Review Focus 4)', function()

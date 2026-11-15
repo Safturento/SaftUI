@@ -149,13 +149,18 @@ test("Buttons > Hover and Pushed: the micro buttons' highlight at 0.4 and pushed
 	eq(color_of(buttons[1].PushedBackground), 'none')
 end)
 
-test('Text > Caution: the alert flash at 0.5; Item quality 1, 3 and 4: the difficulty badge', function()
+test('Text > Caution: the alert flash at 0.5', function()
 	local buttons = micro_world('thick')
 	st.config.profile.colors.text.caution:SetRGB(0.9, 0.5, 0.1)
 	local m = C.measure(function() st:ColorChanged('text', 'caution') end)
 	eq(m.calls.by.SetColorTexture, 12, 'the alert flash of each')
 	eq(m.forbidden.total, 0)
 	eq(color_of(buttons[3].FlashBorder), T.rgb(0.9, 0.5, 0.1) .. ' 0.50', 'Caution at 0.5')
+end)
+
+test('Item quality 1, 3 and 4 by key: the difficulty badge (retail, which has one)', function()
+	world('retail', 'thick')
+	local m
 
 	MinimapCluster = CreateFrame('Frame', 'MinimapCluster', UIParent)
 	MinimapCluster.InstanceDifficulty = CreateFrame('Frame', nil, MinimapCluster)
@@ -179,8 +184,11 @@ test('Text > Caution: the alert flash at 0.5; Item quality 1, 3 and 4: the diffi
 	GetDifficultyInfo = function() return '', 'party', true, false, true, false, 0 end
 	MM:UpdateDungeonDifficulty()
 	quality[3]:SetRGB(0.9, 0.1, 0.5)
+	st:ColorChanged('item_quality', 3)
+	eq(bg(), T.rgb(0.9, 0.1, 0.5), 'Heroic: a pick of Item quality 3')
+	quality[3]:SetRGB(0.5, 0.1, 0.9)
 	st:ColorsChanged('item_quality')
-	eq(bg(), T.rgb(0.9, 0.1, 0.5), 'Heroic: Item quality 3, on a whole pass')
+	eq(bg(), T.rgb(0.5, 0.1, 0.9), 'and on a whole pass')
 	GetDifficultyInfo = function() return '', 'party', false, false, false, false, 0 end
 	MM:UpdateDungeonDifficulty()
 	eq(bg(), T.rgb(0.9, 0.9, 0.1), 'Normal: Item quality 1')

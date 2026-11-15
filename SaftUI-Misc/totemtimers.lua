@@ -317,21 +317,20 @@ local function ColorTimer(timer, warning)
 	end
 end
 
--- Text > Normal or Text > Danger changed (TB:OnColorsChanged): the curves are made
--- again from the new colors, and every shown timer is colored again by its state.
--- Only colors: nothing is laid out (that is TB:ApplyTimerLayout), so it runs in
--- combat too. A timer that is not shown takes its colors when it next shows.
+-- Text > Normal or Text > Danger changed (TB:OnColorsChanged): the curves are
+-- dropped, and every shown plain timer is colored again by its state. A secret
+-- timer is left to its own refresh (UPDATE_INTERVAL, 0.1 s), which makes the
+-- curves from the new colors and colors it then: a pass makes no curve, so it
+-- makes no garbage. Only colors: nothing is laid out (that is
+-- TB:ApplyTimerLayout), so it runs in combat too. A timer that is not shown
+-- takes its colors when it next shows.
 function TB:ColorTimers()
 	if not timersReady then return end
 	textCurve = nil
 	for _, timer in pairs(timers) do
 		timer.barCurve = nil
-		if timer.frame:IsShown() then
-			if not timer.secret then
-				if timer.warning ~= nil then ColorTimer(timer, timer.warning) end
-			elseif not secretFailed and timer.duration then
-				pcall(ColorSecret, timer)
-			end
+		if not timer.secret and timer.warning ~= nil and timer.frame:IsShown() then
+			ColorTimer(timer, timer.warning)
 		end
 	end
 end
