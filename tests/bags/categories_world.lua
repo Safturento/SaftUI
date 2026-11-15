@@ -30,7 +30,8 @@ local function world(client)
 	st = SaftUI
 	st.config.profile.colors.text.muted:SetRGB(0.2, 0.4, 0.6) -- not the default, so a reader that draws a grey of its own fails
 	load_saftui('SaftUI-Core/Config/optionsmodel.lua')
-	if not st.Config.SavedIn then load_saftui('SaftUI-Core/Config/optionsdefault.lua') end
+	load_saftui('SaftUI-Core/Config/optionsdefault.lua') -- onto the model just made
+	assert(st.OptionsModel.DefaultSource, 'derived defaults are on the options model')
 	load_options_widgets()
 	load_saftui('SaftUI-Core/Config/optionsbody.lua')
 	load_options_window()

@@ -64,10 +64,6 @@ local function fresh(client)
 		or { MaxQuantity = 1, NoValidSourceCharacter = 2, CannotUseCurrency = 3 }
 	for _, file in ipairs({ 'inventory', 'itemclasses', 'rules', 'currencies', 'categorydefaults', 'categories', 'category', 'views',
 		'container', 'header', 'layout', 'search', 'containers/warbandbank', 'slot', 'movers', 'options' }) do
-		if file == 'options' then
-			if not SaftUI.OptionsModel then load_saftui('SaftUI-Core/Config/optionsmodel.lua') end
-			if not SaftUI.Config.SavedIn then load_saftui('SaftUI-Core/Config/optionsdefault.lua') end
-		end
 		load_saftui('SaftUI-Bags/' .. file .. '.lua')
 	end
 	INV = st:GetModule('Inventory')
@@ -1162,4 +1158,29 @@ test('every Bags row has a reset, and each derived one round-trips', function()
 	function INV:UpdateViewButtons() end
 	local R = load_test_file('lib/reset_walk.lua')
 	R.check_page({ Inventory = INV:GetConfigTable() }, 'Inventory')
+end)
+
+test("retail's four windows and the page with the bags off are walked too", function()
+	bags(nil, 'retail')
+	function INV:ApplyView() end
+	function INV:UpdateViewButtons() end
+	-- Separate bank and warband windows, then the combined bank: all four have movers.
+	INV.config.combinedBank = false
+	INV:RegisterMovers()
+	INV.config.combinedBank = true
+	INV:RegisterMovers()
+	local R = load_test_file('lib/reset_walk.lua')
+	local tree = INV:GetConfigTable()
+	for _, id in ipairs({ 'bag', 'bank', 'warband', 'combinedbank' }) do
+		check(tree.args[id], id .. ' has its section on retail')
+	end
+	R.check_page({ Inventory = tree }, 'Inventory')
+	-- Bags off: the page is General with Enable alone (the profile differs from
+	-- a fresh one by that very setting, so the walk does not ask it to match).
+	INV.config.enable = false
+	local off = INV:GetConfigTable()
+	eq(next(off.args.general.args), 'enable', 'Enable alone')
+	local problems, walked = R.problems({ Inventory = off }, 'Inventory', { fresh = false })
+	eq(#problems, 0, table.concat(problems, '; '))
+	eq(walked, 1, 'one row walked')
 end)

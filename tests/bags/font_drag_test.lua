@@ -16,7 +16,8 @@
 load_test_file('core/config_helpers.lua')
 local st = SaftUI
 load_saftui('SaftUI-Core/Config/optionsmodel.lua')
-if not SaftUI.Config.SavedIn then load_saftui('SaftUI-Core/Config/optionsdefault.lua') end
+load_saftui('SaftUI-Core/Config/optionsdefault.lua') -- onto the model just made
+assert(SaftUI.OptionsModel.DefaultSource, 'derived defaults are on the options model')
 load_options_widgets()
 load_saftui('SaftUI-Core/Config/optionsbody.lua')
 load_options_window()

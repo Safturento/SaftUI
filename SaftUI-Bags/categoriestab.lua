@@ -407,19 +407,13 @@ function INV:CategoryEditorOptions(id, tab, items)
 			value = function() return shipped.name end,
 		}
 		args.show.default = {
+			-- Any window it is hidden in, even one Show in doesn't list on this
+			-- client (Forever's combined bank): nothing else clears that flag.
 			differs = function()
 				local e = Entry()
-				for _, window in ipairs(sorting) do
-					if e and e.hide[window] then return true end
-				end
-				return false
+				return e ~= nil and next(e.hide) ~= nil
 			end,
-			reset = function()
-				local e = Entry()
-				for _, window in ipairs(sorting) do
-					if e and e.hide[window] then INV:SetCategoryHidden(window, id, false) end
-				end
-			end,
+			reset = function() INV:ShowCategoryEverywhere(id) end,
 			text = 'shown in every window',
 		}
 		if args.enabled then
@@ -433,7 +427,7 @@ function INV:CategoryEditorOptions(id, tab, items)
 			args.rule.default = {
 				differs = function() local e = Entry(); return e and not R.Equal(e.rule, shipped.rule) or false end,
 				reset = function() INV:SetCategoryRule(id, R.Copy(shipped.rule)) end,
-				text = "SaftUI's rule",
+				text = 'the rule SaftUI ships',
 			}
 		end
 	else

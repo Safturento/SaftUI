@@ -1,6 +1,6 @@
 -- The Categories tab in /sui > Bags (SaftUI-Bags/categoriestab.lua), the list on
 -- the left: the Bags page's Categories tab, the list with its handles, counts
--- and markers, + New category, Reset all, the list under Blizzard, and the open
+-- and markers, + New category, the order's reset icon, the list under Blizzard, and the open
 -- tab following bag updates, EditCategory (INV:EditCategory) and a profile
 -- switch.
 --
@@ -296,6 +296,37 @@ test("the order's reset: shown once a shipped category moves, it puts SaftUI's o
 	eq(#w.rows, #INV:GetCategoryList(), 'the list is drawn again')
 	eq(#take_errors(), 0, 'no errors')
 	st.Config:Close()
+end)
+
+test("the order's reset with a deleted default, a run of two and one of yours first: none comes back, none is lost, the run stays together", function()
+	world()
+	local function order()
+		local out = {}
+		for i, entry in ipairs(INV:GetCategoryList()) do out[i] = entry.id end
+		return out
+	end
+	local shipped = order()
+	INV:RemoveCategory('Quest')
+	check(not INV:CategoryOrderDiffers(), 'a deleted default is no difference of order')
+	local a, b, c = INV:AddUserCategory(), INV:AddUserCategory(), INV:AddUserCategory()
+	check(not INV:CategoryOrderDiffers(), 'nor are yours, last above Miscellaneous')
+	INV:MoveCategory('Toys', INV:GetCategoryList().byId.Reputation.place)
+	INV:MoveCategory(a, INV:GetCategoryList().byId.Toys.place + 1)
+	INV:MoveCategory(b, INV:GetCategoryList().byId[a].place + 1)
+	INV:MoveCategory(c, 1)
+	check(INV:CategoryOrderDiffers(), 'Toys moved: it differs')
+	check(INV:ResetCategoryOrder(), 'it resets')
+	local want = { c }
+	for _, id in ipairs(shipped) do
+		if id ~= 'Quest' and id ~= MISC then want[#want + 1] = id end
+		if id == 'Toys' then want[#want + 1] = a; want[#want + 1] = b end
+	end
+	want[#want + 1] = MISC
+	eq(table.concat(order(), ','), table.concat(want, ','), 'yours first stays first; the run of two stays right after Toys; Quest is still gone')
+	check(INV:GetCategoryList().byId.Quest == nil and INV:CategoryStore().deleted.Quest, 'Quest is still deleted')
+	check(not INV:CategoryOrderDiffers(), 'the order is the default')
+	check(not INV:ResetCategoryOrder(), 'a second reset does nothing')
+	eq(#take_errors(), 0, 'no errors')
 end)
 
 ------------------------------------------------------------------ the editor's footer

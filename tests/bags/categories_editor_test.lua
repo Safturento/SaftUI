@@ -310,6 +310,44 @@ test("a shipped category's fields each reset alone; there is no Reset button", f
 	st.Config:Close()
 end)
 
+test("Show in's reset covers every window the category is hidden in, one the page does not list on Forever too", function()
+	world()
+	check(not INV:HasWarbandBank(), 'Forever has no warband bank: Show in lists Bags and Bank')
+	INV.categoryEditor.selected = 'Toys'
+	-- Hidden in the combined bank alone (the Edit view's checkbox, or a migrated profile).
+	INV:SetCategoryHidden('combinedbank', 'Toys', true)
+	open()
+	check(reset_icon('show'), 'hidden only in the combined bank: Show in shows its reset')
+	click(reset_icon('show'))
+	eq(INV:IsCategoryHidden('combinedbank', 'Toys'), false, 'and puts it back')
+	eq(INV:CategoryStore().edits.Toys, nil, 'nothing of the edit is left: Toys is not edited')
+	-- Three windows at once: one reset clears them all.
+	INV:SetCategoryHidden('bag', 'Toys', true)
+	INV:SetCategoryHidden('bank', 'Toys', true)
+	INV:SetCategoryHidden('combinedbank', 'Toys', true)
+	OW:Render()
+	click(reset_icon('show'))
+	for _, window in ipairs({ 'bag', 'bank', 'combinedbank' }) do
+		eq(INV:IsCategoryHidden(window, 'Toys'), false, window .. ' shown again')
+	end
+	eq(INV:CategoryStore().edits.Toys, nil, 'not edited')
+	check(not reset_icon('show'), 'the icon goes')
+	eq(#take_errors(), 0, 'no errors')
+	st.Config:Close()
+end)
+
+test("a default shown numbered because another category has its name has no Name reset: nothing of its own to reset", function()
+	world()
+	local mine = INV:AddUserCategory()
+	INV:RenameCategory(mine, 'Toys')
+	INV.categoryEditor.selected = 'Toys'
+	open()
+	eq(INV:CategoryStore().edits.Toys, nil, 'Toys has no name edit')
+	check(not reset_icon('name'), 'so its Name shows no reset, whatever it is drawn as')
+	eq(#take_errors(), 0, 'no errors')
+	st.Config:Close()
+end)
+
 test('a name reset another category blocks', function()
 	world()
 	INV:RenameCategory('Toys', 'Fun')

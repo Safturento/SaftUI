@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-15 — Forever: Show in > Bank does nothing for the default bank (the combined bank)](#2026-11-15--forever-show-in--bank-does-nothing-for-the-default-bank-the-combined-bank)
   - [2026-11-15 — Auto Vendor counts a fresh purchase in a just-sold slot as a refused sale](#2026-11-15--auto-vendor-counts-a-fresh-purchase-in-a-just-sold-slot-as-a-refused-sale)
   - [2026-11-15 — Auto Vendor's second question overstates the earlier stacks that leave](#2026-11-15--auto-vendors-second-question-overstates-the-earlier-stacks-that-leave)
   - [2026-11-15 — Nameplates: Blizzard's friendly plates key binding and the next login](#2026-11-15--nameplates-blizzards-friendly-plates-key-binding-and-the-next-login)
@@ -184,6 +185,20 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-15 — Forever: Show in > Bank does nothing for the default bank (the combined bank)
+
+**What:** On Forever the bank opens as the combined bank by default (`combinedBank` is on), and that window reads the category's `hide.combinedbank` flag. But Show in in `/sui` > Bags > Categories lists only Bags and Bank there (the warband bank and Combined bank are listed only where `INV:HasWarbandBank()`), so unticking Bank sets `hide.bank`, which the combined bank never reads: the category still shows in the bank the player sees. The flag the combined bank does read can be set only by the window's own Edit view checkbox on a category header (`category.lua`, `INV:SetCategoryHidden(id, categoryName, ...)`), or by a migrated profile.
+
+**Why noticed:** Review of the reset-every-setting Task 5 (2026-11-15). Show in's reset first covered only the listed windows, so a category hidden in the combined bank on Forever stayed "edited" with no reset; the fix there makes Show in's reset and "differs" cover every window a category is hidden in. The older bug (Show in cannot hide a category in the bank Forever actually shows) is separate and unfixed.
+
+**Anchors:** `SaftUI-Bags/categoriestab.lua` (`INV:CategoryEditorOptions`: `windows`, `sorting`), `SaftUI-Bags/categories.lua` (`INV:SetCategoryHidden`, `INV:IsCategoryHidden`, `INV:ShowCategoryEverywhere`), `SaftUI-Bags/category.lua` (the header checkbox), `SaftUI-Bags/movers.lua` (`INV:GetMoverIds`), `tests/bags/categories_editor_test.lua` (Show in's reset test).
+
+**What's been considered:** List the window the bank really is on each client: on Forever, Combined bank in place of (or beside) Bank. Or have Show in > Bank write both `bank` and `combinedbank` while the bank is combined. The reviewer preferred adding the combined bank to Show in on Forever.
+
+**Shape of work:** Small change in `INV:CategoryEditorOptions` (which windows Show in lists and what its labels say) plus a test on Forever that unticking the window the bank is in hides the category there.
+
+**Open questions:** Does Forever's Show in list Combined bank alone, or Bank and Combined bank? What does Bank mean while the bank is combined?
 
 ### 2026-11-15 — Auto Vendor counts a fresh purchase in a just-sold slot as a refused sale
 

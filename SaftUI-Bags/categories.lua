@@ -55,6 +55,7 @@ local INV = st:GetModule('Inventory')
 	  INV:MigrateCategories()    an old profile's hide flags and Auto Vendor list
 	  INV:IsCategoryHidden(windowId, key)
 	  INV:SetCategoryHidden(windowId, key, hidden)    (Show in, below)
+	  INV:ShowCategoryEverywhere(key)
 ]]
 
 INV.SELL_CATEGORY = 'Grays/Auto Vendor'
@@ -841,5 +842,15 @@ function INV:SetCategoryHidden(windowId, key, hidden)
 	if type(filters.categories) ~= 'table' then filters.categories = {} end
 	if type(filters.categories[windowId]) ~= 'table' then filters.categories[windowId] = {} end
 	filters.categories[windowId][key] = hidden or nil
+	return true
+end
+
+-- Shows a list category in every window, any a flag was set for (Show in lists
+-- the windows of this client, but the Edit view's checkbox and a migrated
+-- profile can hide it in one it doesn't), in one write.
+function INV:ShowCategoryEverywhere(key)
+	local entry = Entry(self, key)
+	if not entry then return false end
+	if SetField(self, key, 'hide', {}) then self:CategoriesChanged() end
 	return true
 end
