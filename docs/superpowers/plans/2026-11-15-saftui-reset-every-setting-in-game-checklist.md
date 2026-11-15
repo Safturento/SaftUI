@@ -11,7 +11,7 @@ The rule being checked: every setting that differs from its default shows a smal
 ## A. Check first: what the tests could not answer
 
 1. **The arrow follows a slider drag (all pages).** On a page with sliders (Unit frames > Player > Health, or Action bars > All bars > Size), drag a slider away from its default and back. The arrow appears as soon as the value leaves the default and goes as soon as it returns, with no lag or stutter, and the label and the hover line follow it.
-2. **A reset in combat.** Open `/sui` out of combat, change an action bar's or a unit frame's setting, enter combat (a target dummy) and click its arrow if the window is still reachable. Either the reset is queued and lands when combat ends, or it is refused with a line in the status bar. No `ADDON_ACTION_BLOCKED`, and no Blizzard frame moves. Do the same with a Position's arrow and edit mode's Undo (edit mode's Undo and Reset refuse in combat by design).
+2. **A reset in combat.** Open `/sui` and change an action bar's or a unit frame's setting, then enter combat (a target dummy). Expected: `/sui` closes in combat and will not open until combat ends, so no arrow can be clicked. With edit mode, make a Position reset out of combat, enter combat and try Undo, Redo and Reset: each refuses with "Can't undo in combat.", "Can't redo in combat." or "Can't reset in combat." and changes nothing. No `ADDON_ACTION_BLOCKED`, and no Blizzard frame moves.
 3. **The Loot window, the totem Timer font and the buffs' Duration and Stack count Font** (new in Task 8: their default now comes from where they are saved instead of from a hand-written default). Change each away from its default, click its arrow, and the setting goes back to Small text (or Text for the Loot window's Font) and the thing on screen follows at once: the loot window's names and counts, the totem timers, and the buff timers and stacks. Under Thick, Thin and Blizzard.
 4. **Width and Height boxes** (Unit frames > General, each element's Size, the nameplates' General): type another width, the arrow shows; click it and the number goes back to its default, the frame follows. Chat's Width and Height show no arrow however far they are from Blizzard's size.
 
@@ -30,7 +30,7 @@ The rule being checked: every setting that differs from its default shows a smal
 - **A second unit frame profile.** Make a second unit frame profile (Unit frames > General, the Profile select), switch to it and change a setting: the arrow shows, and its reset writes that profile only. Switch back: the first profile's value is untouched.
 - The Buffs Stealable border and the Debuffs Dispel type border: untick one, the arrow shows; click it and each hostility goes back to its own default (Stealable on for enemies only).
 - A plate page's Subtext tab: change NPC titles or the Position, reset each.
-- Enemy nameplates > Friendly plates: reset it; the game asks to reload, as it does for a change.
+- Enemy nameplates > Nameplates: reset it; the game asks to reload, as it does for a change. Friendly nameplates > Friendly plates resets with no question, as its change asks none.
 - Boss, Party and Raid pages: a Layout and a Range row each reset. The Test mode rows show no arrow.
 
 ## D. Action bars (Task 4)
@@ -43,12 +43,12 @@ The rule being checked: every setting that differs from its default shows a smal
 
 ## E. Bags and the Categories tab (Task 5)
 
-- **G4.** Bags > Categories: rename a shipped category, turn it off, change Show in and its rule. Each row shows its own arrow and resets alone; there is no Reset button and Delete is not covered by anything.
+- **G4.** (The rule row's arrow tooltip now reads "The rule goes back to its default: the rule SaftUI ships.".) Bags > Categories: rename a shipped category, turn it off, change Show in and its rule. Each row shows its own arrow and resets alone; there is no Reset button and Delete is not covered by anything.
 - A rename that another category already uses: the reset is refused with "Another category is already called ..." on the status line and the arrow stays.
 - **Show in on Forever's combined bank.** On Forever, hide a category in the combined bank from the bank window's own Edit view. The Show in arrow shows (it covers every window, even one Show in does not list) and its reset shows the category there again.
 - **G5 and the order icon.** Drag a shipped category to another place; the order's arrow shows in the list footer. Hover it: "Order goes back to its default: SaftUI's order, with your own categories where they are." Click it and the shipped order comes back with your own categories where they were. The icon looks exactly like the other arrows (it is the same one now). At half width it is in the menu over the editor.
 - The Bags page rows (Title font, Icon font, the windows' sizes and positions): each arrow resets. On Forever the combined bank's Position resets through its mover with an Undo step.
-- Auto Vendor: its rows reset.
+- Auto sell junk (Bags page): change it, and its arrow puts it back.
 
 ## F. Misc's pages (Task 6)
 

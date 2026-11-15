@@ -19,7 +19,13 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-15 — A roll result line's All passed and winner color are baked in at push](#2026-11-15--a-roll-result-lines-all-passed-and-winner-color-are-baked-in-at-push)
   - [2026-11-15 — A Position reset runs a unit frame's update once for every part it writes](#2026-11-15--a-position-reset-runs-a-unit-frames-update-once-for-every-part-it-writes)
   - [2026-11-15 — After a UI scale change, a reset half-pixel Position can show its icon again](#2026-11-15--after-a-ui-scale-change-a-reset-half-pixel-position-can-show-its-icon-again)
-  - [2026-11-15 — Reset-every-setting: leftovers from the reviews](#2026-11-15--reset-every-setting-leftovers-from-the-reviews)
+  - [2026-11-15 — Shipped category names shown numbered: no test pins that they show no reset icon](#2026-11-15--shipped-category-names-shown-numbered-no-test-pins-that-they-show-no-reset-icon)
+  - [2026-11-15 — Buffs and debuffs: Size and Outline keep hand defaults a derived one would replace](#2026-11-15--buffs-and-debuffs-size-and-outline-keep-hand-defaults-a-derived-one-would-replace)
+  - [2026-11-15 — Reset walks: the feed's, Minimap's and Micro menu's movers are registered inline, so the tests pin a copy](#2026-11-15--reset-walks-the-feeds-minimaps-and-micro-menus-movers-are-registered-inline-so-the-tests-pin-a-copy)
+  - [2026-11-15 — Reset walk: the profile compare is most of a unit page's cost](#2026-11-15--reset-walk-the-profile-compare-is-most-of-a-unit-pages-cost)
+  - [2026-11-15 — Buffs and debuffs: one helper for the wrap the layout keeps, so the layout and Wrap's default cannot drift](#2026-11-15--buffs-and-debuffs-one-helper-for-the-wrap-the-layout-keeps-so-the-layout-and-wraps-default-cannot-drift)
+  - [2026-11-15 — Buffs and debuffs: Wrap's hand reset copies the General group's set](#2026-11-15--buffs-and-debuffs-wraps-hand-reset-copies-the-general-groups-set)
+  - [2026-11-15 — Blizzard's tracker: the Position reset is tested on Forever only](#2026-11-15--blizzards-tracker-the-position-reset-is-tested-on-forever-only)
   - [2026-11-15 — Forever: Show in > Bank does nothing for the default bank (the combined bank)](#2026-11-15--forever-show-in--bank-does-nothing-for-the-default-bank-the-combined-bank)
   - [2026-11-15 — Auto Vendor counts a fresh purchase in a just-sold slot as a refused sale](#2026-11-15--auto-vendor-counts-a-fresh-purchase-in-a-just-sold-slot-as-a-refused-sale)
   - [2026-11-15 — Auto Vendor's second question overstates the earlier stacks that leave](#2026-11-15--auto-vendors-second-question-overstates-the-earlier-stacks-that-leave)
@@ -347,15 +353,75 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **Shape of work:** Small if wanted: decide the tolerance, then a test at two scales.
 
-### 2026-11-15 — Reset-every-setting: leftovers from the reviews
+### 2026-11-15 — Shipped category names shown numbered: no test pins that they show no reset icon
 
-**What:** Small things the reviews of the plan's Tasks 1 to 7 raised that Task 8 left: (1) the Categories rule's tooltip reads "Catches an item when goes back to its default: SaftUI's rule." because the kit always writes "<row name> goes back..." (`SaftUI-Bags/categoriestab.lua`, the rule row's `default.text`); (2) the Bags walk covers only Forever's `bag` and `combinedbank` windows, a retail case that registers all four movers would walk the bank and warband ones too (`tests/bags/theme_test.lua`); (3) no test pins that a shipped name shown numbered with no edit shows no icon (`tests/bags/`); (4) the Auras Size and Outline rows still carry hand defaults that a derived one would replace (`Blizzard_BuffFramePosition.lua`, `GetTextOptions`); (5) the feed, Minimap and Micro menu walks register copies of the real movers (the registrations are inline in `feed.lua`, `minimap.lua` and `micromenu.lua`), pinned by a source check instead of calling them; (6) the walk compares the whole profile with a copy twice a row, which is most of the unit frame walk's 12 s.
+**What:** A default category whose name another category has is shown with a number after it (`Toys (2)`), and with no edit saved the Name row shows no icon. Nothing pins that decision.
 
-**Why noticed:** Reviews of Tasks 3 to 7 (`.superpowers/sdd/2026-11-15-saftui-reset-every-setting/task-N-review.md`), Task 8's additions.
+**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
 
-**Anchors:** the files named above, `tests/lib/reset_walk.lua`.
+**Anchors:** `SaftUI-Bags/categories.lua` (`UniqueName`, the numbering in `GetCategoryList`), `SaftUI-Bags/categoriestab.lua` (`args.name.default.differs`, which reads only a saved edit), `tests/bags/categories_editor_test.lua`.
 
-**Shape of work:** Six small, independent pieces; (6) wants a cheaper way to see a write outside a row's saved path.
+**Shape of work:** One case: a user category called like a shipped one, the list numbers the shipped one, and its Name icon is absent until the name is edited. Small.
+
+### 2026-11-15 — Buffs and debuffs: Size and Outline keep hand defaults a derived one would replace
+
+**What:** The Duration and Stack count Font rows take their default from where they are saved; their Size and Outline rows still have hand `default` tables over `st.defaults`.
+
+**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
+
+**Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua` (`AP:GetTextOptions`, the `for _, field in ipairs({ 'size', 'outline' })` loop), `tests/misc/buff_text_font_default_test.lua` (the Size and Outline resets case).
+
+**Shape of work:** Delete the loop; the group's `saved` (`SavedIn('auras', key, kind)`) derives both, and a derived reset runs the group's `set` (`Apply`), as the hand one does. The case in `buff_text_font_default_test.lua` moves to the kit's calls.
+
+### 2026-11-15 — Reset walks: the feed's, Minimap's and Micro menu's movers are registered inline, so the tests pin a copy
+
+**What:** The loot feed, the minimap and the micro menu register their movers inside their setup functions, so the walks register copies and a source check pins the key, `configPath` and `defaults` text.
+
+**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
+
+**Anchors:** `SaftUI-Loot/Feed/feed.lua` (`st:RegisterConfigMover(feed, ...)`), `SaftUI-Minimap/minimap.lua`, `SaftUI-Minimap/micromenu.lua`; `tests/loot/theme_test.lua` and `tests/minimap/theme_test.lua` (the `feedSource` and `PinnedTo` checks).
+
+**Shape of work:** Move each registration into a method (`LT:RegisterFeedMover()`, as `LT:RegisterRollMover()` and `CHT:RegisterChatMover()` are) that the world calls. Three small changes and the source checks go.
+
+### 2026-11-15 — Reset walk: the profile compare is most of a unit page's cost
+
+**What:** `tests/unitframes/config_test.lua` takes 12 s: each probed row diffs the whole profile twice, which is almost all of it.
+
+**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
+
+**Anchors:** `tests/lib/reset_walk.lua` (`Changes`, `RoundTrip`, `ctx.base`), `tests/unitframes/config_test.lua`.
+
+**Shape of work:** A cheaper way to see a write outside a row's saved path: a write log on the profile table, or comparing only the saved path's top-level key plus one whole-profile compare at the end of a page.
+
+### 2026-11-15 — Buffs and debuffs: one helper for the wrap the layout keeps, so the layout and Wrap's default cannot drift
+
+**What:** `GetGeometry`, `WrapForGrow`'s last line and `DefaultWrap` each repeat the fallback (`horizontal and 'DOWN' or 'LEFT'`).
+
+**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
+
+**Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua` (lines about 129, 163-170 and 203-209), `tests/misc/options_pages_test.lua` (the Wrap cases).
+
+**Shape of work:** One local `WrapInUse(grow, wrap)` used in all three; the existing Wrap and Grow cases pin it.
+
+### 2026-11-15 — Buffs and debuffs: Wrap's hand reset copies the General group's set
+
+**What:** Wrap's hand `reset` repeats the body of the General group's `set` instead of calling it.
+
+**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
+
+**Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua` (`default` on `args.wrap`), `tests/misc/options_pages_test.lua`.
+
+**Shape of work:** A shared local function for the write and the refresh, called by `set` and by the reset.
+
+### 2026-11-15 — Blizzard's tracker: the Position reset is tested on Forever only
+
+**What:** The default differs by client (`y_off` -275 or -260); the test runs on Forever. A retail run on the scratch check gave -260, which is right.
+
+**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
+
+**Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_ObjectiveTrackerPosition.lua` (`st:DefaultTrackerPosition()`), `tests/misc/objective_tracker_position_test.lua` ("Blizzard's tracker's Position resets to Blizzard's spot").
+
+**Shape of work:** Run that case for both clients, as the walk cases of Action bars and the Tracker now are.
 
 ### 2026-11-15 — Forever: Show in > Bank does nothing for the default bank (the combined bank)
 
