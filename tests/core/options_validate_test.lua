@@ -20,8 +20,6 @@
 
 load_test_file('core/config_helpers.lua')
 load_test_file('lib/options_walk.lua')
-load_saftui('SaftUI-Core/Config/optionsmodel.lua')
-load_saftui('SaftUI-Core/Config/optionsdefault.lua') -- st.Config.SavedIn, which the pages' groups use
 local st = SaftUI
 local AceConfigRegistry = LibStub('AceConfigRegistry-3.0')
 

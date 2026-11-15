@@ -21,6 +21,7 @@ local function world(on)
 	local st, TR = TW.world({ on = on })
 	load_test_file('lib/options_walk.lua')
 	load_saftui('SaftUI-Core/Config/optionsmodel.lua')
+	load_saftui('SaftUI-Core/Config/optionsdefault.lua') -- the model was just loaded again
 	load_options_widgets()
 	return st, TR
 end
@@ -116,7 +117,8 @@ test('SettingDefault: General keys and groups, a copy on reset', function()
 		eq(config[key], shipped, where .. ' reset')
 		eq(default.differs(), false, where .. ' equal again')
 	end
-	-- A table default: reset writes a copy, never the default itself.
+	-- A table default: reset writes a copy, never the default itself (the nearest
+	-- button's Position row takes its mover's reset, below, but SettingDefault stays).
 	local position = TR.SettingDefault('items', 'nearest_position')
 	TR.config.items.nearest_position.x_off = 5
 	eq(position.differs(), true, 'a changed position differs')
@@ -209,30 +211,41 @@ test('every value row of the Tracker page has a reset', function()
 	eq(#take_errors(), 0, 'no errors')
 end)
 
-test("SaftUI's tracker's Position resets to its default spot, and Undo takes it back", function()
+test("both of the tracker's Positions reset through their movers from the /sui row, and Undo takes each back", function()
 	local st, TR = world(true)
-	local EM = st.EditModeFrames
-	local mover = EM.movers.tracker
-	local default = EM:GetDefaultPosition(mover)
-	check(not EM:CanReset(mover, true), 'at its default spot there is nothing to reset')
+	local EM, OM = st.EditModeFrames, st.OptionsModel
+	local root = { Tracker = TR:GetConfigTable() }
+	for _, case in ipairs({
+		{ key = 'tracker', tab = 'general', get = function() return TR.config.position end },
+		{ key = 'trackernearest', tab = 'items', get = function() return TR.config.items.nearest_position end },
+	}) do
+		local mover = EM.movers[case.key]
+		check(mover, case.key .. ': the mover is registered')
+		local row = { option = root.Tracker.args[case.tab].args[case.key == 'tracker' and 'position' or 'nearest_position'],
+			path = { 'Tracker', case.tab, case.key == 'tracker' and 'position' or 'nearest_position' }, type = 'position',
+			key = 'position' }
+		eq(OM.DefaultSource(root, row), 'mover', case.key .. ": the row's reset is its mover's")
+		local default = EM:GetDefaultPosition(mover)
+		eq(OM.DefaultDiffers(root, row), false, case.key .. ': at its default spot nothing differs')
 
-	-- A drag, as the mover records it.
-	local before = EM.SavedPosition(mover)
-	local moved = EM.SavedPosition(mover)
-	moved.x_off, moved.y_off = -100, -50
-	mover.def.setPosition(moved)
-	mover.def.apply()
-	EM:RecordMove(mover, 'move', before)
-	check(EM:CanReset(mover, true), 'a moved tracker can reset')
+		-- A drag, as the mover records it.
+		local before = EM.SavedPosition(mover)
+		local moved = EM.SavedPosition(mover)
+		moved.x_off, moved.y_off = -100, -50
+		mover.def.setPosition(moved)
+		mover.def.apply()
+		EM:RecordMove(mover, 'move', before)
+		eq(OM.DefaultDiffers(root, row), true, case.key .. ': a moved one differs')
 
-	local ok = EM:Reset(mover)
-	eq(ok, true, 'Reset goes through')
-	local now = mover.def.getPosition()
-	eq(now.x_off .. ',' .. now.y_off, default.x_off .. ',' .. default.y_off, 'to its default spot')
-	check(not EM:CanReset(mover, true), 'and nothing is left to reset')
+		check(OM.DefaultReset(root, row), case.key .. ': the row resets')
+		local now = case.get()
+		eq(now.x_off .. ',' .. now.y_off, default.x_off .. ',' .. default.y_off, case.key .. ': to its default spot')
+		eq(OM.DefaultDiffers(root, row), false, case.key .. ': nothing left to reset')
 
-	EM.History:Undo()
-	now = mover.def.getPosition()
-	eq(now.x_off .. ',' .. now.y_off, '-100,-50', 'Undo takes the reset back')
+		EM.History:Undo()
+		now = case.get()
+		eq(now.x_off .. ',' .. now.y_off, '-100,-50', case.key .. ': Undo takes the reset back')
+		EM.History:Undo()
+	end
 	eq(#take_errors(), 0, 'no errors')
 end)

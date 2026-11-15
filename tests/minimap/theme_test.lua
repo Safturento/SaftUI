@@ -13,8 +13,6 @@
 -- microbuttons.lua, Core's helpers and the theme engine.
 load_core_helpers()
 load_editmode()
-load_saftui('SaftUI-Core/Config/optionsmodel.lua')
-load_saftui('SaftUI-Core/Config/optionsdefault.lua')
 load_options_widgets()
 local T = load_test_file('lib/theme_helpers.lua')
 local drawn = T.watch()
@@ -60,9 +58,22 @@ test('every value row of the Minimap and Micro menu pages has a reset', function
 		defaults = function() return st.defaults.micromenu end,
 	})
 	local R = load_test_file('lib/reset_walk.lua')
-	R.check_page({ Minimap = MM:GetConfigTable() }, 'Minimap')
-	R.check_page({ MicroMenu = MicroMenu:GetConfigTable() }, 'MicroMenu')
+	local ok, err = pcall(function()
+		R.check_page({ Minimap = MM:GetConfigTable() }, 'Minimap')
+		R.check_page({ MicroMenu = MicroMenu:GetConfigTable() }, 'MicroMenu')
+	end)
 	MM.UpdateConfig, MicroMenu.UpdateConfig = update, updateMicro
+	if not ok then error(err, 0) end
+
+	-- A reset applies on screen: Size's goes through the page's set, which resizes the minimap.
+	local root = { Minimap = MM:GetConfigTable() }
+	local row = { option = root.Minimap.args.general.args.size, path = { 'Minimap', 'general', 'size' }, type = 'range', key = 'size' }
+	profile.minimap.size = 300
+	MM:UpdateConfig()
+	eq(Minimap:GetWidth(), 300, 'the minimap is 300 wide')
+	check(st.OptionsModel.DefaultReset(root, row), 'the reset ran')
+	eq(profile.minimap.size, st.defaults.minimap.size, 'Size is back at its default')
+	eq(Minimap:GetWidth(), st.defaults.minimap.size, 'and the minimap is resized')
 end)
 
 test('each page offers Theme and Background, not Template', function()

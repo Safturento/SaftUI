@@ -50,7 +50,6 @@ local function world(client)
 	loaded = client
 	local _, INV
 	_, st, INV, _, OW, _, W = CW.world(client)
-	load_saftui('SaftUI-Core/Config/optionsdefault.lua') -- st.Config.SavedIn, which the pages' groups use
 	load_saftui('SaftUI-Unitframes/config/position.lua')
 	load_saftui('SaftUI-Unitframes/config/default.lua')
 	for _, file in ipairs({ 'player', 'target', 'party', 'nameplate', 'friendlynameplate' }) do

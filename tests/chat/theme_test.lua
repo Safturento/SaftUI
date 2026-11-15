@@ -10,8 +10,6 @@
 -- Real: SaftUI-Chat's config.lua, chatframe.lua and options.lua, Core's helpers,
 -- the theme engine and edit mode.
 load_core_helpers()
-load_saftui('SaftUI-Core/Config/optionsmodel.lua')
-load_saftui('SaftUI-Core/Config/optionsdefault.lua')
 load_options_widgets()
 local T = load_test_file('lib/theme_helpers.lua')
 local drawn = T.watch()
@@ -35,8 +33,21 @@ test("every value row of the Chat page has a reset", function()
 	NUM_CHAT_WINDOWS = 0 -- no chat windows: the apply loops have nothing to restyle, the rows' own sets still run
 	CHT:RegisterChatMover() -- the Position's reset is its mover's
 	local R = load_test_file('lib/reset_walk.lua')
-	R.check_page({ Chat = CHT:GetConfigTable() }, 'Chat')
+	local ok, err = pcall(R.check_page, { Chat = CHT:GetConfigTable() }, 'Chat')
 	NUM_CHAT_WINDOWS = had
+	if not ok then error(err, 0) end
+
+	-- A reset applies on screen: Padding's goes through the page's set, which restyles the windows.
+	local applied, apply = 0, CHT.ApplyAppearance
+	function CHT:ApplyAppearance() applied = applied + 1 end
+	local root = { Chat = CHT:GetConfigTable() }
+	local row = { option = root.Chat.args.general.args.padding, path = { 'Chat', 'general', 'padding' }, type = 'range', key = 'padding' }
+	profile.chat.padding = profile.chat.padding + 5
+	local reset = st.OptionsModel.DefaultReset(root, row)
+	CHT.ApplyAppearance = apply
+	check(reset, 'the reset ran')
+	eq(profile.chat.padding, st.defaults.chat.padding, 'Padding is back at its default')
+	eq(applied, 1, 'and the chat windows were restyled')
 end)
 
 test('chat defaults look as they did', function()
