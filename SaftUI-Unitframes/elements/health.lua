@@ -18,7 +18,8 @@ local function PostUpdateHealth(health, unit, current, max)
 		local secret = issecretvalue(current) or issecretvalue(max)
 		local deficit
 		if config.deficit then
-			deficit = secret and C_StringUtil.TruncateWhenZero(UnitHealthMissing(unit)) or max - current
+			-- Plain or secret, the game blanks a zero, so a full health shows no -0.
+			deficit = C_StringUtil.TruncateWhenZero(secret and UnitHealthMissing(unit) or max - current)
 		end
 
 		-- No game function tells an addon whether a secret deficit is zero, so
@@ -30,10 +31,12 @@ local function PostUpdateHealth(health, unit, current, max)
 		elseif config.deficit then
 			health.text:SetText(C_StringUtil.WrapString(deficit, '-'))
 		elseif config.percent then
+			-- Rounded the same way for a plain and a secret health: the game
+			-- rounds a secret one and Lua can't floor it.
 			if secret then
 				health.text:SetFormattedText('%.0f', UnitHealthPercent(unit, true, CurveConstants.ScaleTo100))
 			else
-				health.text:SetText(getHealthPercentText(current / max * 100))
+				health.text:SetFormattedText('%.0f', current / max * 100)
 			end
 		else
 			local text = current
