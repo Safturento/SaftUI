@@ -4,7 +4,6 @@ description: Rules for touching Blizzard frames and code without causing taint, 
 last_updated: 2026-11-15
 covers:
   - 'SaftUI-Core/api.lua'
-  - 'SaftUI-Core/taintfix.lua'
   - 'SaftUI-Tracker/blizzard.lua'
   - 'SaftUI-Tracker/probes.lua'
   - 'SaftUI-Tracker/handover.lua'

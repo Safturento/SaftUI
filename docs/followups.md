@@ -782,7 +782,7 @@ What's left needs evidence from the game. In the order they'd be checked:
 - **Possible bugs, need an in-game check:**
   - Bags: `INV:SelectBankCategory` (`SaftUI-Bags/inventory.lua`) sets the Character bank type for the `warband` container and Account for `bank`. They look swapped. [1, bug 6]
   - Bags: the `combinedbank` window is offered only when `HasWarbandBank()` is true (`categoriestab.lua`). Intended? [1, bug 7]
-  - Core: `TaintFix:OnInitalize` (`SaftUI-Core/taintfix.lua`) is misspelled and never runs. Fixing the spelling alone would error at login (`ClickBindingFrame` is load-on-demand). Fix it properly, or delete the file? [1, bug 11]
+  - ~~Core: `TaintFix:OnInitalize` (`SaftUI-Core/taintfix.lua`) is misspelled and never runs. Fixing the spelling alone would error at login (`ClickBindingFrame` is load-on-demand). Fix it properly, or delete the file? [1, bug 11]~~ *Deleted 2026-11-15 (the owner's decision): the file and both Core TOC lines are gone, and `tests/core/toc_files_test.lua` checks that every TOC line names a file that exists.*
 - **Writes onto Blizzard frames (taint rule 1), not traced:** `Blizzard_WeeklyRewards.lua`'s `ShouldShowOverlay`, `st:EnableResizing` on `WorldMapFrame`, `st:Kill`'s other callers (see also "st:Kill and st:SkinIcon still write onto Blizzard pieces"), the totem bar's setup on classes with no totems. [1]
 - **Migrations that may be finished** (delete once every profile has passed through them): Bags `categories.lua` and `movers.lua`, `CHT:MigratePosition`, `st:ResolveLegacyTemplate` with its seven "defaults look as they did" tests and `T.old_names`. [2.3, 6.3]
 - **Features that look unused, keep or delete:**
