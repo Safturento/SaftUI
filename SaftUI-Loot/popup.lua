@@ -55,7 +55,9 @@ local LT = st:GetModule('Loot')
 	LootFrame, its rows or their regions (SaftUI's pieces live in weak tables
 	here, keyed by Blizzard's frames, or are frames and textures SaftUI made), no
 	script is set or replaced, and none of Blizzard's functions that write run from
-	here (the one Blizzard function called is the row's GetQuality, a read).
+	here (the Blizzard Lua called is the row's GetSlotIndex and, as a fallback,
+	GetQuality, both reads of the element data; the C reads are GetLootSlotInfo
+	and C_CurrencyInfo.GetCurrencyContainerInfo, for a slot's quality).
 	Blizzard's widgets get C method calls only: alpha on regions whose alpha
 	Blizzard never sets (the NineSlice, Bg, the card, the click textures, the
 	icon's border and normal and pushed textures, the close button's textures),
@@ -98,6 +100,7 @@ local cards = setmetatable({}, weak)    -- element -> the holder of its card (Sa
 local slots = setmetatable({}, weak)    -- .Item -> its slot's backdrop (st:SetBackdropIn)
 local closes = setmetatable({}, weak)   -- .ClosePanelButton -> { frame, icon }, SaftUI's cross
 local hooked = setmetatable({}, weak)   -- frame -> true once its hooks are on
+local failed = setmetatable({}, weak)   -- element -> the generation its styling last errored in (reported once)
 local styled = setmetatable({}, weak)   -- element -> the generation it was last styled in
 local hovering = setmetatable({}, weak) -- element -> true while the mouse is over its .Item
 -- What Blizzard had before the first restyle, read then and put back by a
@@ -143,18 +146,35 @@ local function KeepColor(target, change)
 	if r and not issecretvalue(r) then target:SetTextColor(r, g, b, a) end
 end
 
--- SaftUI's font on a font string, or what Blizzard had back; the text's color
--- stays what it was.
-local function PutFont(target, kind, active, font)
+-- SaftUI's font on a font string, or what Blizzard had back. With keepColor
+-- (the names, quality labels and counts) the text's color stays what it was
+-- through each change; without it (the title) the font's own color shows, and a
+-- restore puts back the color read before the first change.
+local function PutFont(target, kind, active, font, keepColor)
 	if not target or not target.SetFontObject then return end
 	if active then
 		if fonts[target] == nil then
-			fonts[target] = { font = Named(target.GetFontObject and target:GetFontObject()) }
+			local entry = { font = Named(target.GetFontObject and target:GetFontObject()) }
+			if target.GetTextColor then
+				local r, g, b, a = target:GetTextColor()
+				if r and not issecretvalue(r) then entry.color = { r, g, b, a } end
+			end
+			fonts[target] = entry
 		end
-		if font then KeepColor(target, function() target:SetFontObject(font) end) end
+		if font then
+			if keepColor then KeepColor(target, function() target:SetFontObject(font) end) else target:SetFontObject(font) end
+		end
 	elseif fonts[target] then
 		local original = fonts[target].font or _G[BLIZZARD_FONTS[kind]]
-		if original then KeepColor(target, function() target:SetFontObject(original) end) end
+		if original then
+			if keepColor then
+				KeepColor(target, function() target:SetFontObject(original) end)
+			else
+				target:SetFontObject(original)
+				local color = fonts[target].color
+				if color then target:SetTextColor(unpack(color)) end
+			end
+		end
 	end
 end
 
@@ -241,7 +261,7 @@ local function StyleWindow(frame, active)
 	Fade(frame.Bg, active)
 
 	local title = frame.TitleContainer and frame.TitleContainer.TitleText
-	PutFont(title, 'title', active, st:FontObject(st.config.profile.headers.font))
+	PutFont(title, 'title', active, st:FontObject(st.config.profile.headers.font), false)
 	StyleClose(frame, active)
 end
 
@@ -250,17 +270,24 @@ end
 -- The quality of an item row, nil for a money row. Read the way Blizzard's
 -- Init reads it, from GetLootSlotInfo for the row's slot: the element data's
 -- quality (GetQuality) is made when the loot opens and is not replaced when a
--- slot changes (LOOT_SLOT_CHANGED runs Init again), so it can be stale. Both
--- of the row's methods are Blizzard Lua, called only to read (GetSlotIndex,
--- and GetQuality for a currency, whose quality Init takes from
--- CurrencyContainerUtil, which isn't called from here).
+-- slot changes (LOOT_SLOT_CHANGED runs Init again), so it can be stale. A
+-- currency slot's quality is its container's, which Init takes from
+-- CurrencyContainerUtil's wrapper of C_CurrencyInfo.GetCurrencyContainerInfo:
+-- that C read is made here (guarded: both clients have it). The only Blizzard
+-- Lua called is the row's GetSlotIndex, and GetQuality as the fallback, both
+-- reads of the element data.
 local function ElementQuality(element)
 	if not element.QualityText then return end
 	local ok, index = pcall(element.GetSlotIndex or error, element)
 	if ok and type(index) == 'number' and GetLootSlotInfo then
-		local _, _, _, currencyID, quality = GetLootSlotInfo(index)
-		if not currencyID and type(quality) == 'number' then return quality end
-		if not currencyID and quality == nil then return Enum and Enum.ItemQuality and Enum.ItemQuality.Common or 1 end
+		local _, _, quantity, currencyID, quality = GetLootSlotInfo(index)
+		if currencyID and C_CurrencyInfo and C_CurrencyInfo.GetCurrencyContainerInfo then
+			local info = C_CurrencyInfo.GetCurrencyContainerInfo(currencyID, quantity)
+			if info and type(info.quality) == 'number' then return info.quality end
+		elseif not currencyID then
+			if type(quality) == 'number' then return quality end
+			return Enum and Enum.ItemQuality and Enum.ItemQuality.Common or 1
+		end
 	end
 	local quality
 	ok, quality = pcall(element.GetQuality or error, element)
@@ -381,9 +408,9 @@ local function StyleElement(element, active)
 	StyleCard(element, active)
 	StyleSlot(element, active)
 
-	PutFont(element.Text, 'name', active, font)
-	PutFont(element.QualityText, 'quality', active, font)
-	PutFont(element.Item.Count, 'count', active, font)
+	PutFont(element.Text, 'name', active, font, true)
+	PutFont(element.QualityText, 'quality', active, font, true)
+	PutFont(element.Item.Count, 'count', active, font, true)
 end
 
 local function HookElement(element)
@@ -442,7 +469,15 @@ local function Sweep()
 			-- would do nothing): it is when the skin comes on. Marked styled
 			-- only once it is, so a row whose styling errored is tried again.
 			if active then Apply(HookElement, element) end
-			if xpcall(StyleElement, geterrorhandler(), element, active) then styled[element] = generation end
+			local ok, err = xpcall(StyleElement, function(message) return message end, element, active)
+			if ok then
+				styled[element] = generation
+				failed[element] = nil
+			elseif failed[element] ~= generation then
+				-- Tried again on the next update, reported once a generation.
+				failed[element] = generation
+				geterrorhandler()(err)
+			end
 		end
 	end
 end

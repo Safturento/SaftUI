@@ -125,6 +125,7 @@ local function check_blizzard(where)
 	eq(frame.NineSlice:GetAlpha(), 1, where .. ': the border is Blizzard\'s')
 	eq(frame.Bg:GetAlpha(), 1, where .. ': the background is Blizzard\'s')
 	eq(frame.TitleContainer.TitleText:GetFontObject(), GameFontNormal, where .. ': the title font')
+	eq(T.rgb(frame.TitleContainer.TitleText:GetTextColor()), '1.00,0.82,0.00', where .. ': the title is Blizzard\'s yellow')
 	for _, getter in ipairs({ 'GetNormalTexture', 'GetPushedTexture', 'GetDisabledTexture', 'GetHighlightTexture' }) do
 		eq(frame.ClosePanelButton[getter](frame.ClosePanelButton):GetAlpha(), 1, where .. ': close ' .. getter)
 	end
@@ -164,6 +165,8 @@ local function check_skinned(where)
 	eq(frame.NineSlice:GetAlpha(), 0, where .. ': Blizzard\'s border is faded')
 	eq(frame.Bg:GetAlpha(), 0, where .. ': Blizzard\'s background is faded')
 	eq(frame.TitleContainer.TitleText:GetFontObject(), st:FontObject(profile.headers.font), where .. ': the title is in the Window titles font')
+	eq(T.rgb(frame.TitleContainer.TitleText:GetTextColor()), T.rgb(st:FontObject(profile.headers.font):GetTextColor()),
+		where .. ': and wears that font\'s color, not Blizzard\'s yellow')
 	for _, getter in ipairs({ 'GetNormalTexture', 'GetPushedTexture', 'GetDisabledTexture', 'GetHighlightTexture' }) do
 		eq(frame.ClosePanelButton[getter](frame.ClosePanelButton):GetAlpha(), 0, where .. ': close ' .. getter .. ' is faded')
 	end
@@ -633,4 +636,48 @@ test('the source: no write onto Blizzard\'s frames, no Kill, no CreateHeader, no
 	local init = read_saftui_source('SaftUI-Loot/init.lua')
 	check(init:find('\n\tself:InitializeLootFrame%(%)'), 'OnEnable starts the skin')
 	check(not init:find('%-%-%s*self:InitializeLootFrame'), 'and it is not commented out')
+end)
+
+test('a currency slot takes its container\'s quality, and a changed one the new quality', function()
+	world('forever')
+	LF.open({ { kind = 'item', quality = 1, name = 'Currency thing', currency = 123 }, { kind = 'item', quality = 2, name = 'Item' } })
+	LF.currencies[123] = 3
+	-- Opened before the container's quality was set: the first update reads it.
+	LF.update()
+	local row = rows()[1]
+	local blue = st:QualityColor(3)
+	LF.change(1, { kind = 'item', quality = 1, name = 'Currency thing', currency = 123 })
+	eq(T.edge_rgb(slot_backdrop(row)), T.text(blue.r, blue.g, blue.b), 'the slot\'s border is the container\'s quality')
+	LF.currencies[123] = 4
+	LF.change(1, { kind = 'item', quality = 1, name = 'Currency thing', currency = 123 })
+	local epic = st:QualityColor(4)
+	eq(T.edge_rgb(slot_backdrop(row)), T.text(epic.r, epic.g, epic.b), 'and the changed slot\'s')
+	eq(T.rgb(row.Text:GetTextColor()), T.rgb(unpack(LF.QUALITY[4])), 'the name keeps Blizzard\'s color for it')
+	-- A container the game has no quality for falls back to the element data (the
+	-- quality it opened with), with no error.
+	LF.currencies[123] = nil
+	LF.change(1, { kind = 'item', quality = 1, name = 'Currency thing', currency = 123 })
+	eq(#take_errors(), 0, 'no error without a container quality')
+end)
+
+test('a row whose styling errors is retried by the next update and reported once', function()
+	world('forever')
+	local fail = true
+	local draw = st.SetBackdrop
+	st.SetBackdrop = function(self, frame, ...)
+		if fail then error('styling failed') end
+		return draw(self, frame, ...)
+	end
+	LF.open({ { kind = 'item', quality = 2, name = 'One thing' } })
+	LF.update()
+	LF.update()
+	local errors = take_errors()
+	eq(#errors, 1, 'reported once, not on every update')
+	local row = rows()[1]
+	check(not drawn_child(row), 'the row was not styled')
+	fail = false
+	LF.update()
+	check(drawn_child(row), 'the next update styles it')
+	eq(#take_errors(), 0, 'with no more reports')
+	st.SetBackdrop = draw
 end)

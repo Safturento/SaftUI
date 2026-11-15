@@ -7,7 +7,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
-  - [2026-11-15 — The loot window's currency slots keep the opening quality when a slot changes](#2026-11-15--the-loot-windows-currency-slots-keep-the-opening-quality-when-a-slot-changes)
   - [2026-11-15 — Option descriptions that say "red" or "yellow" for what Danger and Caution color](#2026-11-15--option-descriptions-that-say-red-or-yellow-for-what-danger-and-caution-color)
   - [2026-11-15 — Keybind mode's hint line could read Muted](#2026-11-15--keybind-modes-hint-line-could-read-muted)
   - [2026-11-15 — The action bars' and buffs' texts default to Small text](#2026-11-15--the-action-bars-and-buffs-texts-default-to-small-text)
@@ -167,16 +166,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
-
-### 2026-11-15 — The loot window's currency slots keep the opening quality when a slot changes
-
-**What:** `SaftUI-Loot/popup.lua` reads a row's quality for its slot border from `GetLootSlotInfo(row:GetSlotIndex())`, as Blizzard's `Init` does, so an item slot that changes (`LOOT_SLOT_CHANGED`) gets the right color. For a currency slot Blizzard's `Init` takes the quality from `CurrencyContainerUtil.GetCurrencyContainerInfo`, which SaftUI must not call from its code (taint rule 3), so the skin falls back to the row's element data (`GetQuality()`), made when the loot opened and not replaced when the slot changes.
-
-**Why noticed:** The fix round for the loot window skin (`fb-lootpopup`, M3). The game gives no read of the new currency quality without that Blizzard function.
-
-**Anchors:** `SaftUI-Loot/popup.lua` (`ElementQuality`); Blizzard's `LootFrame.lua` (`LootFrameElementMixin:Init`, `LOOT_SLOT_CHANGED`).
-
-**Shape of work:** Probably none: a currency slot changing while the window is open is rare. If seen in game, read the quality off the row's `IconBorder` vertex color after `Init` through a post-hook.
 
 ### 2026-11-15 — Option descriptions that say "red" or "yellow" for what Danger and Caution color
 

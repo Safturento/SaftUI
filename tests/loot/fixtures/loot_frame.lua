@@ -147,7 +147,14 @@ end
 -- by slot index); the row's own data (the element data) is made when the loot
 -- opens and is never replaced, as in the game.
 local function quality_of(row)
-	return select(5, GetLootSlotInfo(row.data.index)) or 1
+	local _, _, quantity, currencyID, quality = GetLootSlotInfo(row.data.index)
+	-- A currency slot's quality is its container's (CurrencyContainerUtil, which
+	-- reads C_CurrencyInfo.GetCurrencyContainerInfo).
+	if currencyID then
+		local info = C_CurrencyInfo.GetCurrencyContainerInfo(currencyID, quantity)
+		if info then quality = info.quality end
+	end
+	return quality or 1
 end
 
 local function slot_of(row) return LF.loot[row.data.index] end
@@ -301,7 +308,15 @@ function LF.build(opts)
 	-- The game's GetLootSlotInfo: texture, item, quantity, currencyID, quality.
 	function GetLootSlotInfo(index)
 		local slot = LF.loot[index]
-		return slot.icon or 134400, slot.name or 'Item', slot.count or 1, nil, slot.quality
+		return slot.icon or 134400, slot.name or 'Item', slot.count or 1, slot.currency, slot.quality
+	end
+	-- The game's C_CurrencyInfo.GetCurrencyContainerInfo(currencyID, quantity):
+	-- a CurrencyDisplayInfo with the container's quality (LF.currencies, by id).
+	LF.currencies = {}
+	C_CurrencyInfo = C_CurrencyInfo or {}
+	function C_CurrencyInfo.GetCurrencyContainerInfo(id, quantity)
+		local quality = LF.currencies[id]
+		if quality then return { quality = quality } end
 	end
 	LF.calls, LF.stray, LF.widgets, LF.rows, LF.pool, LF.active = {}, {}, {}, {}, { item = {}, money = {} }, {}
 	-- Every Blizzard widget made, as a set, and its key list as built.
@@ -323,6 +338,7 @@ function LF.build(opts)
 	local text = title:CreateFontString(nil, 'OVERLAY')
 	text:SetFontObject(GameFontNormal)
 	text:SetText('Items')
+	text:SetTextColor(1, 0.82, 0) -- GameFontNormal's yellow, as the template draws it
 	rawset(title, 'TitleText', text)
 
 	if wanted('NineSlice') then
@@ -408,6 +424,11 @@ function LF.change(index, slot)
 	-- GetLootSlotInfo now answers for the new item; the element data stays.
 	LF.loot[index] = slot
 	drive(function() row:Init() end)
+end
+
+-- The scroll box's Update, as Blizzard calls it after a scroll or a resize.
+function LF.update()
+	drive(function() LF.scroll_box:Update() end)
 end
 
 function LF.close()
