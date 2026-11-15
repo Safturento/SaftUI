@@ -132,11 +132,12 @@ local function BuildDialog()
 	no:SetPoint('BOTTOMLEFT', frame, 'BOTTOM', 6, 14)
 
 	catcher:SetScript('OnMouseDown', function() Answer(false) end)
-	CatchKeys(catcher, { ESCAPE = true, ENTER = true }, function(key)
-		if key == 'ESCAPE' then Answer(false) elseif key == 'ENTER' then Answer(true) end
+	local consumes = { ESCAPE = true, ENTER = true }
+	CatchKeys(catcher, consumes, function(key)
+		if key == 'ESCAPE' then Answer(false) elseif key == 'ENTER' and dialog.enter then Answer(true) end
 	end)
 
-	dialog = { catcher = catcher, frame = frame, text = text, measure = measure, yes = yes, no = no, box = box }
+	dialog = { consumes = consumes, enter = true, catcher = catcher, frame = frame, text = text, measure = measure, yes = yes, no = no, box = box }
 end
 
 -- The frame the confirm dialog centers on (the options window sets it).
@@ -157,11 +158,14 @@ end
 -- One modal at a time, for Confirm and Prompt: the dialog is built once, and
 -- opening either answers an open one No first. Sets the text, the buttons and
 -- the height, and shows the dialog (a prompt's box is placed and shown here).
-local function OpenDialog(text, onYes, onNo, prompt, yesLabel, noLabel)
+local function OpenDialog(text, onYes, onNo, prompt, yesLabel, noLabel, enter)
 	if not dialog then BuildDialog() end
 	if dialog.catcher:IsShown() then Answer(false) end
 	LookDialog()
 	dialog.onYes, dialog.onNo = onYes, onNo
+	-- Enter answers Yes unless the caller says it doesn't; then it isn't consumed either.
+	dialog.enter = enter ~= false
+	dialog.consumes.ENTER = dialog.enter or nil
 	dialog.prompt = prompt and true or nil
 	text = tostring(text)
 	dialog.text:SetText(text)
@@ -198,12 +202,15 @@ end
 
 -- Asks text with Yes and No buttons, centered over the window. onYes runs on
 -- Yes; onNo (optional) on No, Esc or a click outside. Enter is Yes. A dialog
--- that is already up is answered No first. yesLabel and noLabel (optional)
--- name the buttons for a question the words Yes and No don't answer (the
--- bags' auto vendor asks Sell them or Keep them, in the world, with no
--- window up: the dialog then centers on the screen).
-function W.Confirm(text, onYes, onNo, yesLabel, noLabel)
-	OpenDialog(text, onYes, onNo, false, yesLabel or 'Yes', noLabel or 'No')
+-- that is already up is answered No first. opts (optional) = { yes = label,
+-- no = label, enter = false }: the labels name the buttons for a question the
+-- words Yes and No don't answer, and enter = false makes Enter answer nothing
+-- (it goes on to the game), for a question a stray Enter must not answer (the
+-- bags' auto vendor asks Sell them or Keep them, in the world, with no window
+-- up: the dialog then centers on the screen). Without opts it is as it was.
+function W.Confirm(text, onYes, onNo, opts)
+	opts = opts or {}
+	OpenDialog(text, onYes, onNo, false, opts.yes or 'Yes', opts.no or 'No', opts.enter)
 end
 
 -- Asks text with a one-line edit box under it, filled with initial (or empty),

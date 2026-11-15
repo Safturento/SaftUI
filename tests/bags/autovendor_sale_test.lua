@@ -9,7 +9,7 @@
 local H = load_test_file('bags/container_helpers.lua')
 
 local INV, W
-local used, prints, prompt
+local used, prints, prompt, asked
 
 local function step()
 	local frame = INV.vendorFrame
@@ -59,24 +59,39 @@ local function world(grays, others)
 	INV.config.autorepair = false
 	H.window('bag')
 
-	used, prints, prompt = {}, {}, nil
+	used, prints, prompt, asked = {}, {}, nil, 0
 	_G.MerchantFrame = CreateFrame('Frame', 'MerchantFrame', UIParent)
 	MerchantFrame:Hide()
 	-- Selling a stack takes it out of its slot, as the game does, unless the
 	-- slot is one the merchant refuses.
 	W.refused = {}
+	-- W.slow holds the sales until W.flush() (a slow server).
+	W.slow, W.queue = false, {}
+	W.flush = function()
+		for _, sale in ipairs(W.queue) do W.bags[sale.bag].items[sale.slot] = nil end
+		W.queue = {}
+	end
 	C_Container.UseContainerItem = function(bagID, slotID)
 		local item = W.bags[bagID].items[slotID]
 		used[#used + 1] = { bag = bagID, slot = slotID, id = item and item.itemID }
 		if item and MerchantFrame:IsShown() and not W.refused[item.itemID] then
-			W.bags[bagID].items[slotID] = nil
+			if W.slow then W.queue[#W.queue + 1] = { bag = bagID, slot = slotID }
+			else W.bags[bagID].items[slotID] = nil end
 		end
+	end
+	-- The stub's container info has no locked flag: an item's own.
+	local info_of = C_Container.GetContainerItemInfo
+	C_Container.GetContainerItemInfo = function(bagID, slotID)
+		local info = info_of(bagID, slotID)
+		if info then info.locked = W.bags[bagID].items[slotID].locked or false end
+		return info
 	end
 	SaftUI.Print = function(_, ...) prints[#prints + 1] = table.concat({ ... }, ' ') end
 	SaftUI.StringFormat = { GoldFormat = function(_, money) return 'gold ' .. money end }
 	SaftUI.OptionsWidgets = {
-		Confirm = function(text, onYes, onNo, yesLabel, noLabel)
-			prompt = { text = text, yes = onYes, no = onNo, yesLabel = yesLabel, noLabel = noLabel }
+		Confirm = function(text, onYes, onNo, opts)
+			asked = asked + 1
+			prompt = { text = text, yes = onYes, no = onNo, opts = opts or {} }
 		end,
 		ConfirmText = function() return prompt and prompt.text end,
 		CancelConfirm = function()
@@ -117,6 +132,7 @@ test('the sale is grays first, then everything else, each from the cheapest stac
 		'grays by value (ties by bag and slot), then the others by value')
 	open_merchant()
 	step()
+	step()
 	eq(csv(sold_ids()), '602,603,601,702,704,701,703,705', 'and UseContainerItem is called in that order')
 end)
 
@@ -145,8 +161,10 @@ test('12 non-gray items sell with no prompt, with the grays and in the same visi
 	world({ { 601, 10 }, { 602, 10 } }, 12)
 	open_merchant()
 	step()
+	eq(#used, 2, 'the grays go in the first pass, alone')
+	step()
 	eq(prompt, nil, 'no prompt at 12')
-	eq(#used, 14, 'the grays and the twelve are sold')
+	eq(#used, 14, 'then the twelve')
 	eq(csv(sold_ids()):sub(1, 7), '601,602', 'the grays first')
 end)
 
@@ -156,8 +174,9 @@ test('13 non-gray items sell the grays and ask before the rest', function()
 	step()
 	check(prompt ~= nil, 'a prompt')
 	eq(csv(sold_ids()), '601,602', 'only the grays are sold, at once')
-	eq(prompt.yesLabel, 'Sell them', 'the first answer sells')
-	eq(prompt.noLabel, 'Keep them', 'the second keeps')
+	eq(prompt.opts.yes, 'Sell them', 'the first answer sells')
+	eq(prompt.opts.no, 'Keep them', 'the second keeps')
+	eq(prompt.opts.enter, false, 'Enter answers nothing')
 	step()
 	step()
 	eq(#used, 2, 'nothing more sold while it asks')
@@ -168,6 +187,7 @@ test('grays never count toward the limit', function()
 	for i = 1, 30 do grays[i] = { 600 + i, 10 } end
 	world(grays, 12)
 	open_merchant()
+	step()
 	step()
 	eq(prompt, nil, '30 grays and 12 others: no prompt')
 	eq(#used, 42, 'everything sold')
@@ -211,7 +231,7 @@ test('the prompt says how many, their total value and the most valuable by name'
 	step()
 	local total = 0
 	for i = 1, 13 do total = total + 5 * ((i * 7) % 13 + 1) end
-	check(prompt.text:find('13 items', 1, true), 'how many: ' .. prompt.text)
+	check(prompt.text:find('13 stacks', 1, true), 'how many: ' .. prompt.text)
 	check(prompt.text:find('gold ' .. total, 1, true), 'their total value: ' .. prompt.text)
 	local best = {}
 	for i = 1, 13 do best[#best + 1] = { id = 700 + i, price = 5 * ((i * 7) % 13 + 1) } end
@@ -302,6 +322,7 @@ test('a merchant closed mid-sale stops the loop and says what was sold so far', 
 	world({ { 601, 10 } }, 3)
 	open_merchant()
 	step()
+	step()
 	close_merchant()
 	eq(step(), false, 'the loop is gone')
 	check(prints[#prints] and prints[#prints]:find('Sold 4 items', 1, true), 'summary: ' .. tostring(prints[#prints]))
@@ -369,6 +390,8 @@ test('an item the merchant refuses is not in the summary, and the sale does not 
 	step()
 	step()
 	close_merchant()
+	stub.time = stub.time + 1 -- the summary waits a second for sales still on their way
+	stub.run_timers()
 	local summary = prints[#prints]
 	check(summary and summary:find('Sold 1 item ', 1, true), 'one item: ' .. tostring(summary))
 	check(summary:find('gold 20', 1, true), 'for what it fetched: ' .. summary)
@@ -377,6 +400,7 @@ end)
 test('the summary has the count and the gold of what was sold, and none when nothing was', function()
 	world({ { 601, 10, 2 }, { 602, 5 } }, 2)
 	open_merchant()
+	step()
 	step()
 	step()
 	local summary = prints[#prints]
@@ -419,4 +443,255 @@ test('the sale is throttled: a pass under two seconds after the last does nothin
 	eq(#used, 1, 'not again at 0.5 seconds')
 	onUpdate(frame, 2)
 	eq(#used, 2, 'again after two')
+end)
+
+------------------------------------------------------------------ fix round 1
+
+local function count_prints(pattern)
+	local n = 0
+	for _, line in ipairs(prints) do if line:find(pattern, 1, true) then n = n + 1 end end
+	return n
+end
+
+local function add_pinned(id, price, bag, slot)
+	W.put(bag or 1, slot or 20, W.item(id, 'Thing ' .. id, 'Miscellaneous', 1, { quality = 1, vendorPrice = price }))
+	INV:SetAutoVendorMark(id, true)
+end
+
+test('I-1: while the question is up nothing non-gray sells, whatever the count drops to', function()
+	world({ { 601, 10 } }, 13)
+	open_merchant()
+	step()
+	check(prompt ~= nil, 'asked')
+	W.bags[0].items[2] = nil -- one leaves the bags, so 12 are left
+	step()
+	step()
+	eq(#used, 1, 'only the gray is sold before the answer')
+	check(prompt ~= nil, 'the question is still up')
+	answer(true)
+	step()
+	eq(#used, 13, 'Sell them sells the 12 that are left')
+end)
+
+test('I-2: a gray the server dropped never sells after the non-grays', function()
+	world({ { 601, 10 }, { 602, 10 } }, 12)
+	W.refused[601] = true
+	open_merchant()
+	step()
+	step()
+	W.refused[601] = nil
+	step()
+	step()
+	local order = sold_ids()
+	local seen_non_gray = false
+	for _, id in ipairs(order) do
+		if id >= 700 then seen_non_gray = true end
+		check(not (seen_non_gray and id < 700), 'no gray sold after a non-gray: ' .. csv(order))
+	end
+	local twelve = 0
+	for _, id in ipairs(order) do if id >= 700 then twelve = twelve + 1 end end
+	eq(twelve, 12, 'all twelve non-grays sold')
+end)
+
+test('I-2: a 13th stack that shows up after 12 were sold asks first', function()
+	world({}, 12)
+	open_merchant()
+	step()
+	eq(#used, 12, 'twelve sold')
+	add_pinned(799, 999)
+	step()
+	eq(#used, 12, 'the 13th is not sold')
+	check(prompt ~= nil, 'it asks')
+	check(prompt.text:find('Thing 799', 1, true), 'about the new one')
+end)
+
+test('I-2: a stack that shows up while the visit is under the limit sells without asking', function()
+	world({}, 3)
+	open_merchant()
+	step()
+	add_pinned(799, 999)
+	step()
+	eq(#used, 4, 'sold')
+	eq(prompt, nil, 'no question')
+end)
+
+test('I-2: a gray that shows up late counts toward the limit too', function()
+	world({}, 12)
+	open_merchant()
+	step()
+	W.put(1, 21, W.item(698, 'Late Gray', 'Miscellaneous', 1, { quality = 0, vendorPrice = 10 }))
+	step()
+	eq(#used, 12, 'not sold: it would push a non-gray out of the buyback list')
+	check(prompt ~= nil, 'it asks')
+end)
+
+test('I-2: Sell them sells exactly the stacks the question named; a new one needs its own question', function()
+	world({ { 601, 10 } }, 13)
+	open_merchant()
+	step()
+	add_pinned(799, 999) -- worth more than everything named
+	answer(true)
+	step()
+	local sold799 = false
+	for _, id in ipairs(sold_ids()) do if id == 799 then sold799 = true end end
+	eq(sold799, false, 'the stack the question did not name is not sold')
+	eq(#used, 14, 'the gray and the 13 named')
+	step()
+	eq(asked, 2, 'it asks about the new one')
+	check(prompt and prompt.text:find('Thing 799', 1, true), 'naming it')
+	answer(false)
+	step()
+	step()
+	eq(#used, 14, 'and Keep them keeps it')
+end)
+
+test('I-2: a named stack that is gone or changed at the moment of sale is not sold', function()
+	world({}, 13)
+	open_merchant()
+	step()
+	W.bags[0].items[1] = W.item(990, 'Impostor', 'Miscellaneous', 1, { quality = 1, vendorPrice = 1 })
+	answer(true)
+	step()
+	for _, id in ipairs(sold_ids()) do check(id ~= 990, 'the impostor in a named slot is not sold') end
+	eq(#used, 12, 'the other twelve are')
+end)
+
+test('I-3: the question takes Enter for nothing, Esc and a click for Keep them', function()
+	world({}, 13)
+	open_merchant()
+	step()
+	eq(prompt.opts.enter, false, 'Enter answers nothing')
+	SaftUI.OptionsWidgets.CancelConfirm() -- what Esc and a click outside do
+	step()
+	eq(#used, 0, 'Keep them: nothing sold')
+end)
+
+test('I-4: combat taking the question down, and asking again after it', function()
+	world({ { 601, 10 } }, 13)
+	open_merchant()
+	step()
+	local first = prompt
+	stub.in_combat = true
+	stub.fire_script(INV.vendorFrame, 'OnEvent', 'PLAYER_REGEN_DISABLED')
+	eq(prompt, nil, 'the question is down')
+	step()
+	eq(#used, 1, 'nothing sold in the fight')
+	eq(prompt, nil, 'and none asked in it')
+	stub.in_combat = false
+	step()
+	check(prompt ~= nil, 'asked again after the fight')
+	eq(asked, 2, 'a second time')
+	first.yes()
+	step()
+	eq(#used, 1, "the first question's Sell them no longer answers")
+	answer(false)
+	step()
+	eq(#used, 1, 'Keep them keeps')
+end)
+
+test('I-4: combat with no question up changes nothing', function()
+	world({}, 3)
+	open_merchant()
+	stub.fire_script(INV.vendorFrame, 'OnEvent', 'PLAYER_REGEN_DISABLED')
+	stub.in_combat = false
+	step()
+	eq(#used, 3, 'sold')
+end)
+
+test('a merchant hidden without its event sells nothing more, whatever is answered', function()
+	world({ { 601, 10 } }, 13)
+	open_merchant()
+	step()
+	local p = prompt
+	MerchantFrame:Hide()
+	p.yes()
+	step()
+	eq(#used, 1, 'only the gray')
+end)
+
+test('M-1: the buyback size is at most 12 whatever the game says', function()
+	world({}, 0)
+	local saved = _G.BUYBACK_ITEMS_PER_PAGE
+	_G.BUYBACK_ITEMS_PER_PAGE = 24
+	eq(INV:BuybackSize(), 12, 'a bigger page does not raise it')
+	_G.BUYBACK_ITEMS_PER_PAGE = 8
+	eq(INV:BuybackSize(), 8, 'a smaller one lowers it')
+	_G.BUYBACK_ITEMS_PER_PAGE = saved
+end)
+
+test('M-2: an item of unknown quality counts as non-gray and is not sold until it is known', function()
+	world({}, 2)
+	W.bags[0].items[2].quality = nil
+	open_merchant()
+	step()
+	local sold = sold_ids()
+	eq(#sold, 1, 'only the other one')
+	eq(step(), true, 'the visit waits')
+	W.bags[0].items[2].quality = 1
+	step()
+	eq(#used, 2, 'sold once its quality is known')
+end)
+
+test('M-3: a locked stack is skipped and does not use up a try', function()
+	world({}, 1)
+	W.bags[0].items[1].locked = true
+	open_merchant()
+	for _ = 1, 6 do step() end
+	eq(#used, 0, 'not sold while locked')
+	W.bags[0].items[1].locked = false
+	step()
+	eq(#used, 1, 'sold once unlocked: it kept all its tries')
+end)
+
+test('M-4: a stack given up on is named in the summary, after exactly 3 tries, and the summary is one line', function()
+	world({ { 601, 10 }, { 602, 10 } }, 0)
+	W.refused[601] = true
+	open_merchant()
+	local passes = 0
+	while step() and passes < 10 do passes = passes + 1 end
+	eq(#used, 4, 'the other once and the refused three times')
+	eq(count_prints('Sold'), 1, 'one summary')
+	local line = prints[#prints]
+	check(line:find('Sold 1 item ', 1, true), 'what sold: ' .. line)
+	check(line:find('Gray 601', 1, true), 'the stack left is named: ' .. line)
+end)
+
+test('M-4: a merchant that closes right after a pass still gets every sale counted', function()
+	world({}, 3)
+	W.slow = true
+	open_merchant()
+	step()
+	MerchantFrame:Hide()
+	stub.fire_script(INV.vendorFrame, 'OnEvent', 'MERCHANT_CLOSED')
+	W.flush() -- the server answers after the window closed
+	stub.time = stub.time + 1
+	stub.run_timers()
+	eq(count_prints('Sold 3 items'), 1, 'counted once, all three: ' .. tostring(prints[#prints]))
+end)
+
+test('M-5: turning Auto Vendor off stops a visit already running', function()
+	world({ { 601, 10 } }, 0)
+	W.refused[601] = true
+	open_merchant()
+	step()
+	INV.config.autovendor = false
+	step()
+	eq(#used, 1, 'no more tries')
+	eq(step(), false, 'the loop is gone')
+end)
+
+test('M-6: the question names the most valuable by link, so its quality color shows', function()
+	world({}, 13)
+	open_merchant()
+	step()
+	check(prompt.text:find('|Hitem:711|h[Thing 711]|h', 1, true), 'a link: ' .. prompt.text)
+end)
+
+test('the once-only summary: a visit of many passes prints one line', function()
+	world({ { 601, 10 } }, 13)
+	open_merchant()
+	for _ = 1, 3 do step() end
+	answer(true)
+	for _ = 1, 6 do step() end
+	eq(count_prints('Sold'), 1, 'one line')
 end)
