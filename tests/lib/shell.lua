@@ -570,10 +570,12 @@ local CLIENT_INTERFACES = { forever = 16001, retail = 120000 }
 -- A fresh world on one client, 'forever' or 'retail': reset_world(), then
 -- stub.interface set to the client's, the globals that client lacks dropped
 -- (stub.apply_client, tests/wow/game.lua) and Core's constants.lua run again
--- (it reads the interface, the player's name and realm and the screen when it
--- loads, so st.forever follows). before, if given, runs on the fresh stubs
--- first, to change what constants.lua reads. Returns SaftUI. Everything else
--- is as reset_world() leaves it, so a file can switch clients between cases;
+-- (it reads the interface and the player's name and realm when it loads, so
+-- st.forever follows), then, in a scaled run, use_scale(TEST_SCALE) once more,
+-- so the world is at the scale after everything that rebuilt it. before, if
+-- given, runs on the fresh stubs first, to change what constants.lua reads (a
+-- screen it sets is put back to the scale's in a scaled run). Returns SaftUI.
+-- Everything else is as reset_world() leaves it, so a file can switch clients between cases;
 -- the caller loads the rest of its world after it (load_core_helpers(), or
 -- core/config_helpers.lua for the real AceDB).
 function use_client(name, before)
@@ -586,6 +588,7 @@ function use_client(name, before)
 	stub.interface = interface
 	stub.apply_client()
 	load_saftui('SaftUI-Core/constants.lua')
+	if TEST_SCALE then use_scale(TEST_SCALE) end
 	return SaftUI
 end
 

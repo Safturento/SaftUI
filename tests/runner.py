@@ -150,6 +150,7 @@ def report(path, verbose):
     problems, its failing cases and what they printed. verbose shows every case
     and all output.
     """
+    scale = None  # the scale being run, for a harness error's message
     try:
         result = run_file(path)
         scaled_runs = []
@@ -158,7 +159,7 @@ def report(path, verbose):
                 scaled_runs.append((scale, run_file(path, scale)))
     except LuaError as error:  # the Lua harness failed on this file. Python exceptions are runner bugs and propagate to entry()
         print(f'FAIL  {shown_path(path)}')
-        print_lines([f'harness error: {error}'], '      ')
+        print_lines([f'harness error{"" if scale is None else f" [at {scale_text(scale)}]"}: {error}'], '      ')
         return False, 0, 1
 
     runs = [(None, result)] + scaled_runs
@@ -276,19 +277,30 @@ FIXTURE_EXPECTED = {
     'failing_check.lua': (EXIT_FAILED, 'one is not two: expected 2, got 1'),
     'case_error.lua': (EXIT_FAILED, 'error: tests/lib/runner_fixtures/case_error.lua:4: boom'),
     'endless_loop.lua': (EXIT_FAILED, 'so the harness stopped it'),
-    # both of these rotate to 1.25 (see rotation_scale), so a normal run has them both pass
-    'scaled_ok.lua': (0, 'ok    tests/lib/runner_fixtures/scaled_ok.lua  (3 cases, 3 checks)'),
+    # the first two rotate to 1.25 and the third to 1.55 (see rotation_scale), so a plain run has the
+    # first two pass and the third fail while loading at 1.55
+    'scaled_ok.lua': (0, 'ok    tests/lib/runner_fixtures/scaled_ok.lua  (5 cases, 57 checks)'),
     'scaled_fail_155.lua': (0, 'ok    tests/lib/runner_fixtures/scaled_fail_155.lua  (2 cases, 2 checks)'),
+    'scaled_load_155.lua': (EXIT_FAILED, '[at 1.55] error while loading the file:'),
 }
 # Scaled runs: (fixture, flags, SAFTUI_TEST_SCALE or None, exit status, texts the output must contain,
 # texts it must not). -v lists the passing cases, so a scaled case shows by name.
 SCALED_EXPECTED = [
-    ('scaled_ok.lua', ['-v'], None, 0, ['plain  (1 check)', 'scaled  (1 check)', 'scaled [at 1.25]  (1 check)'], ['[at 0.75]', '[at 1.55]']),
+    ('scaled_ok.lua', ['-v'], None, 0, ['plain  (1 check)', 'scaled  (4 checks)', 'scaled [at 1.25]  (4 checks)', 'rebuilt worlds [at 1.25]  (24 checks)'], ['[at 0.75]', '[at 1.55]']),
     ('scaled_ok.lua', ['-v', '--scales=all'], None, 0, ['scaled [at 0.75]', 'scaled [at 1.25]', 'scaled [at 1.55]'], []),
     ('scaled_ok.lua', ['-v'], '1.55', 0, ['scaled [at 1.55]'], ['[at 1.25]']),
-    ('scaled_fail_155.lua', ['--scales=all'], None, EXIT_FAILED, ['FAIL  fails at 1.55 [at 1.55]', 'this case fails at 1.55'], ['[at 0.75]', '[at 1.25]']),
+    ('scaled_ok.lua', ['-v', '--scales=all'], None, 0, ['rebuilt worlds [at 0.75]  (24 checks)', 'rebuilt worlds [at 1.25]  (24 checks)', 'rebuilt worlds [at 1.55]  (24 checks)', '(9 cases, 113 checks)'], []),
+    # a failing scaled case: the file's cases, checks and failures, and the last line, count every run
+    ('scaled_fail_155.lua', ['--scales=all'], None, EXIT_FAILED,
+     ['FAIL  fails at 1.55 [at 1.55]', 'this case fails at 1.55', 'FAIL  tests/lib/runner_fixtures/scaled_fail_155.lua  (4 cases, 4 checks, 1 failed)',
+      '1 file: 0 passed, 1 failed (4 checks, 1 failed)'], ['[at 0.75]', '[at 1.25]']),
+    # a load problem or output while loading at a scale is shown with its scale; the plain run rotates this one to 1.55
+    ('scaled_load_155.lua', [], None, EXIT_FAILED,
+     ['[at 1.55] error while loading the file:', 'load fails at 1.55', '[at 1.55] output while loading:', 'printed while loading at 1.55'], []),
+    ('scaled_load_155.lua', ['--scales=all'], None, EXIT_FAILED, ['[at 1.55] error while loading the file:'], ['[at 0.75] error', '[at 1.25] error']),
     ('scaled_fail_155.lua', [], '1.55', EXIT_FAILED, ['fails at 1.55 [at 1.55]'], []),
     ('scaled_fail_155.lua', [], '0.75', 0, ['ok    tests/lib/runner_fixtures/scaled_fail_155.lua'], ['FAIL']),
+    ('scaled_ok.lua', ['--scales=all'], '1.250', 2, [], []),  # a bad value is a bad argument even when --scales=all ignores it
     ('scaled_ok.lua', [], '2', 2, [], []),  # an unknown scale is a bad argument
 ]
 # The runner is made to crash on passing.lua with the hidden --crash-for-self-check flag, in main() or inside run_file().
@@ -367,6 +379,7 @@ def self_check():
         problems += [f'output lacks {text!r}' for text in texts if text not in done.stdout]
         problems += [f'output has {text!r}' for text in absent if text in done.stdout]
         label = ' '.join([name, *flags] + ([f'{SCALE_VARIABLE}={scale}'] if scale else []))
+        kind = 'bad argument' if expected == 2 else kind
         print(f'{"FAIL" if problems else "ok  "}  {label}: exit {done.returncode} ({kind})'
               + (f' - {"; ".join(problems)}' if problems else ''))
         if problems:
