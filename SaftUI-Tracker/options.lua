@@ -201,6 +201,42 @@ function TR.ItemsTab()
 	return tab
 end
 
+-- The Blizzard's tracker tab: when it shows (the handover, handover.lua), what it
+-- is doing now, and a note. The mode saves into tracker.blizzard and runs
+-- TR:UpdateConfig, which acts on it at once (a mode change goes back to SaftUI's
+-- tracker and runs the handover's table again).
+function TR.BlizzardTab()
+	local args = {
+		mode = {
+			order = 1,
+			name = "When Blizzard's tracker is needed",
+			desc = "What happens while something SaftUI's tracker doesn't draw has content. In SaftUI's place: Blizzard's tracker takes SaftUI's spot and SaftUI's goes away. Beside SaftUI's: both show, Blizzard's next to SaftUI's.",
+			type = 'select',
+			values = { place = "In SaftUI's place", beside = "Beside SaftUI's" },
+			sorting = { 'place', 'beside' },
+			default = TR.SettingDefault('blizzard', 'mode'),
+		},
+		-- Read again each time the page draws.
+		now = {
+			order = 2,
+			type = 'description',
+			name = function() return 'Now: ' .. TR:HandoverText() end,
+		},
+		note = {
+			order = 3,
+			type = 'description',
+			name = "SaftUI's tracker draws your quests. While something it doesn't draw yet has content (a scenario or dungeon, Mythic+, bonus objectives, world quests, a tracked achievement, recipe or activity, zone widgets), Blizzard's own tracker shows in its place, with everything in it, and SaftUI's comes back when that ends. Its look is set on Blizzard's tracker page and Skinning.",
+		},
+	}
+	local tab = TR.Tab(5, "Blizzard's tracker", args)
+	tab.get = function(info) return TR.config.blizzard[info[#info]] end
+	tab.set = function(info, value)
+		TR.config.blizzard[info[#info]] = value
+		TR:UpdateConfig()
+	end
+	return tab
+end
+
 -- The Tracker page in /sui, under Info: General first, with the switch, then
 -- a tab for each part of the tracker as it's built (each task adds its own).
 function TR:GetConfigTable()
@@ -297,6 +333,7 @@ function TR:GetConfigTable()
 			general = general,
 			quests = TR.QuestsTab(),
 			items = TR.ItemsTab(),
+			blizzard = TR.BlizzardTab(),
 		},
 	}
 

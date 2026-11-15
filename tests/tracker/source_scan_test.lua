@@ -202,6 +202,34 @@ local function Scan(source)
 		end)
 	end
 
+	-- A module held in a variable: the loop over the tracker's `modules` list, or
+	-- `module = _G[<the section's module name>]`. It may be hooked (Update only),
+	-- named (GetName: the C read, for the chat line about a module nobody knows) and
+	-- have its fields read (state, hasContents); nothing else.
+	local modvars = {}
+	for name in pairs(names) do
+		Each(mask, 'for%s+[%w_]+%s*,%s*([%w_]+)%s+in%s+ipairs%(%s*[%w_%.]*' .. name .. '%s*%.%s*modules%s*%)', function(_, var) modvars[var] = true end)
+	end
+	Each(mask, '([%w_]+)%s*=%s*_G%s*%[%s*[%w_%.]*module%s*%]', function(_, var) modvars[var] = true end)
+	for var in pairs(modvars) do
+		local before = '%f[%w_]' .. var
+		Each(mask, before .. '%s*:%s*([%w_]+)', function(s, method)
+			if method ~= 'GetName' then Flag(s, ('%s:%s() is a method of one of its modules'):format(var, method)) end
+		end)
+		Each(mask, before .. '%s*%.%s*([%w_]+)%s*=[^=]', function(s, field) Flag(s, ('a field written onto a module: %s.%s'):format(var, field)) end)
+		Each(mask, before .. '%s*%.%s*([%w_]+)%s*%(', function(s, field) Flag(s, ('%s.%s() calls one of a module\'s functions'):format(var, field)) end)
+		Each(mask, before .. '%s*%.%s*[%w_]+%s*:%s*([%w_]+)', function(s, method) Flag(s, ('a method of a module\'s part: %s...:%s()'):format(var, method)) end)
+		Each(mask, 'hooksecurefunc%(%s*' .. var .. '%s*,', function(s)
+			local second = code:sub(s):match('^hooksecurefunc%(%s*[%w_]+%s*,%s*([^,%)]*)')
+			if not (second and second:match('^[\'"]Update[\'"]$')) then Flag(s, 'a hook on a module other than its Update') end
+		end)
+	end
+	-- The widget container: its count is a read; nothing else is called or written.
+	Each(mask, '%f[%w_]ObjectiveTrackerUIWidgetContainer%s*:%s*([%w_]+)', function(s, method)
+		if method ~= 'GetNumWidgetsShowing' then Flag(s, ('ObjectiveTrackerUIWidgetContainer:%s() is not on the list'):format(method)) end
+	end)
+	Each(mask, '%f[%w_]ObjectiveTrackerUIWidgetContainer%s*%.%s*[%w_]+%s*[=%(]', function(s) Flag(s, 'a write or call on ObjectiveTrackerUIWidgetContainer\'s field') end)
+
 	Each(mask, '%f[%w_]ObjectiveTrackerManager%s*:', function(s) Flag(s, 'a method of ObjectiveTrackerManager') end)
 	Each(mask, '%f[%w_]ObjectiveTrackerManager%s*%.%s*[%w_]+%s*%(', function(s) Flag(s, 'a function of ObjectiveTrackerManager') end)
 	Each(mask, '%f[%w_]ObjectiveTrackerManager%s*%.%s*[%w_]+%s*=[^=]', function(s) Flag(s, 'a field written onto ObjectiveTrackerManager') end)
@@ -254,6 +282,14 @@ test('the scanner flags what is off the list and lets the allowed through', func
 		'hooksecurefunc(QuestObjectiveTracker, "Show", f)', 'hooksecurefunc(ScenarioObjectiveTracker, "OnLoad", f)',
 		'ObjectiveTrackerManager:Init()', 'ObjectiveTrackerManager.Foo()', 'ObjectiveTrackerManager.x = 1',
 		'ShouldShowMawBuffs()', 'UseQuestLogSpecialItem(1)', 'tracker:RemoveModule(m)', 'x:SetRolesets("alwaysBlocked")',
+		-- a module in a variable, by the loop over the list or by name
+		'for _, module in ipairs(tracker.modules) do module:Hide() end', 'for i, m in ipairs(tracker.modules) do m:SetCollapsed(true) end',
+		'for _, module in ipairs(tracker.modules) do module.state = 1 end', 'for _, module in ipairs(ObjectiveTrackerFrame.modules) do module:Update() end',
+		'for _, module in ipairs(tracker.modules) do hooksecurefunc(module, "Show", f) end',
+		'for _, module in ipairs(tracker.modules) do hooksecurefunc(module, name, f) end',
+		'for _, module in ipairs(tracker.modules) do module.Header:Hide() end', 'for _, module in ipairs(tracker.modules) do module.Update(module) end',
+		'local module = _G[section.module]\nmodule:MarkDirty()', 'local module = _G[section.module]\nmodule:UnregisterAllEvents()',
+		'ObjectiveTrackerUIWidgetContainer:Hide()', 'ObjectiveTrackerUIWidgetContainer:SetAlpha(1)', 'ObjectiveTrackerUIWidgetContainer.numWidgetsShowing = 0',
 	}) do
 		check(flagged(prefix .. bad) > 0, 'flags: ' .. bad:gsub('\n', ' / '))
 	end
@@ -267,6 +303,9 @@ test('the scanner flags what is off the list and lets the allowed through', func
 		'if tracker.Selection then tracker.Selection:Hide() end',
 		'hooksecurefunc(tracker, "SetPoint", f)\nhooksecurefunc(tracker, "ClearAllPoints", f)\nhooksecurefunc(tracker, "UpdateHeight", f)\nhooksecurefunc(tracker, "SetAlpha", f)',
 		'hooksecurefunc(QuestObjectiveTracker, "Update", f)',
+		'for _, module in ipairs(tracker.modules) do\nlocal name = module:GetName()\nlocal s, h = module.state, module.hasContents\nhooksecurefunc(module, "Update", f)\nend',
+		'local module = _G[section.module]\nif module then hooksecurefunc(module, "Update", f) end\nlocal state = module.state',
+		'local n = ObjectiveTrackerUIWidgetContainer:GetNumWidgetsShowing()', 'local c = ObjectiveTrackerUIWidgetContainer ~= nil',
 		'st:HideEditModeSelection(tracker)\nst:CanMoveNow(tracker)\nlocal x, y = st:CornerOffset(tracker, parent, "TOPRIGHT", 1, 2)',
 		'if type(tracker.UpdateHeight) == "function" then end',
 		'local shown = tracker.Selection ~= nil',

@@ -79,6 +79,13 @@ end
 
 local function default_y(st) return st.forever and -275 or -260 end
 
+-- The y a spot is revealed (and concealed) at: its top, kept TR.BLIZZARD_FLOOR
+-- above the screen's bottom so Blizzard's tracker keeps room for its modules (its
+-- height is its anchor's y down to the column's bottom, 20 at the least).
+local function reveal_top(TR, top)
+	return math.max(top, UIParent:GetBottom() + TR.BLIZZARD_FLOOR)
+end
+
 local function point_of(frame)
 	local point, relativeTo, relativePoint, x, y = frame:GetPoint(1)
 	return point, relativeTo, relativePoint, x, y
@@ -166,7 +173,7 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 					eq(point .. ' ' .. relativePoint, 'TOPRIGHT TOPRIGHT', where .. ': by its top right')
 					check(relativeTo == tracker:GetParent(), where .. ': to its own parent')
 					check(near(tracker:GetRight(), TR.window:GetRight()), where .. ': its right on the window\'s')
-					check(near(tracker:GetTop(), TR.window:GetTop()), where .. ': its top on the window\'s')
+					check(near(tracker:GetTop(), reveal_top(TR, TR.window:GetTop())), where .. ': its top on the window\'s, or the floor when the window is lower')
 					if grow == 'down' then
 						check(near(tracker:GetTop(), TR.holder:GetTop()), where .. ': the holder\'s top')
 					else
@@ -175,10 +182,71 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 					eq(tracker:IsClampedToScreen(), true, where .. ': the clamp is back on')
 					-- And concealed again: the spot's y, off the left.
 					TR:PlaceBlizzard('concealed')
-					check_concealed(tracker, TR.window:GetTop(), where .. ' concealed')
+					check_concealed(tracker, reveal_top(TR, TR.window:GetTop()), where .. ' concealed')
 					TR:PlaceBlizzard('place')
 				end
 			end
+			clean()
+		end)
+
+		test(label .. ": beside: 12 out on the side nearer the middle (top right on the left of SaftUI's, top left on its right), clamp on, the C methods only", function()
+			local st, TR = world({ client = client, misc = misc and MISC or nil })
+			local tracker = OT.tracker
+			local halves = {
+				right = { point = 'TOPRIGHT', frame = 'UIParent', rel_point = 'TOPRIGHT', x_off = -40, y_off = -90 },
+				left = { point = 'TOPLEFT', frame = 'UIParent', rel_point = 'TOPLEFT', x_off = 30, y_off = -80 },
+			}
+			for _, half in ipairs({ 'right', 'left' }) do
+				for _, grow in ipairs({ 'down', 'up' }) do
+					local where = half .. ', Grow ' .. grow
+					TR.config.position = halves[half]
+					TR.config.grow = grow
+					TR.config.height = 300
+					TR:UpdateConfig()
+					TR:SetContentHeight(100)
+					OT.watch_calls()
+					TR:PlaceBlizzard('beside')
+					eq(TR.blizzardWhere, 'beside', where .. ': where it is')
+					eq(tracker:GetNumPoints(), 1, where .. ': one point')
+					local point, relativeTo, relativePoint = point_of(tracker)
+					check(relativeTo == tracker:GetParent(), where .. ': to its own parent')
+					if half == 'right' then
+						eq(point .. ' ' .. relativePoint, 'TOPRIGHT TOPRIGHT', where .. ': by its top right, on the left of SaftUI\'s')
+						check(near(tracker:GetRight(), TR.holder:GetLeft() - 12), where .. ': 12 left of the holder: ' .. tracker:GetRight() .. ' vs ' .. TR.holder:GetLeft())
+					else
+						eq(point .. ' ' .. relativePoint, 'TOPLEFT TOPLEFT', where .. ': by its top left, on the right of SaftUI\'s')
+						check(near(tracker:GetLeft(), TR.holder:GetRight() + 12), where .. ': 12 right of the holder: ' .. tracker:GetLeft() .. ' vs ' .. TR.holder:GetRight())
+					end
+					check(near(tracker:GetTop(), reveal_top(TR, TR.holder:GetTop())), where .. ': level with the holder\'s top')
+					eq(tracker:IsClampedToScreen(), true, where .. ': the clamp is on')
+					-- Only the three C methods and the reads.
+					for name in OT.called():gmatch('[^,]+') do
+						check(name:find('^tracker:ClearAllPoints$') or name:find('^tracker:SetPoint$') or name:find('^tracker:SetClampedToScreen$')
+							or name:find('^tracker:Get') or name:find('^tracker:Is'), where .. ': ' .. name .. ' is on the list')
+					end
+					-- Concealed from beside: the holder's top (Ruling 29), off the left.
+					TR.config.blizzard.mode = 'beside'
+					TR:PlaceBlizzard('concealed')
+					check_concealed(tracker, reveal_top(TR, TR.holder:GetTop()), where .. ' concealed in Beside mode')
+					TR.config.blizzard.mode = 'place'
+				end
+			end
+			clean()
+		end)
+
+		test(label .. ": beside: past the item column and its 4 on the side it sits", function()
+			local st, TR = world({ client = client, misc = misc and MISC or nil })
+			local tracker = OT.tracker
+			TR.config.position = { point = 'TOPRIGHT', frame = 'UIParent', rel_point = 'TOPRIGHT', x_off = -40, y_off = -90 }
+			TR:UpdateConfig()
+			-- A column (stubbed here: the item layer is items_test's, handover_test.lua has the whole flow).
+			TR.ColumnWidth = function() return 24 end
+			TR:PlaceBlizzard('beside')
+			check(near(tracker:GetRight(), TR.holder:GetLeft() - 12 - 24 - 4), 'on the left: 12 + the column + 4 out, not ' .. tracker:GetRight())
+			TR.config.position = { point = 'TOPLEFT', frame = 'UIParent', rel_point = 'TOPLEFT', x_off = 30, y_off = -80 }
+			TR:UpdateConfig()
+			TR:PlaceBlizzard('beside')
+			check(near(tracker:GetLeft(), TR.holder:GetRight() + 12 + 24 + 4), 'on the right: the same past the column, not ' .. tracker:GetLeft())
 			clean()
 		end)
 
@@ -745,7 +813,7 @@ test('Grow up: the concealed y follows the window as its contents change height'
 	TR:UpdateConfig()
 	for _, height in ipairs({ 100, 300, 60 }) do
 		TR:SetContentHeight(height)
-		check_concealed(tracker, TR.window:GetTop(), 'content ' .. height)
+		check_concealed(tracker, reveal_top(TR, TR.window:GetTop()), 'content ' .. height)
 	end
 	clean()
 end)

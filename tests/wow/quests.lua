@@ -73,6 +73,24 @@
 ]]
 
 stub.quests = { log = {}, watched = {}, focused = 0, popups = {}, titles = {} }
+-- What Blizzard's tracker's sections read, for SaftUI-Tracker's section probes
+-- (the stubs are at the end of this file):
+--   stub.probes = {
+--     scenario = { name, stage, stages, flags, xp, money, type, texture, id }, -- C_Scenario.GetInfo; stages 0 is no scenario
+--     challenge = false,       -- C_ChallengeMode.IsChallengeModeActive()
+--     tasks = { questID, ... }, -- GetTasksTable(), the area's task quests in order
+--     task_info = { [questID] = { inArea, onMap, objectives, name, asObjective } }, -- GetTaskInfo
+--     watched_tasks = { [questID] = true }, -- a task quest on the watch list
+--     world = { [questID] = true }, -- the task quests that are world quests (C_QuestLog.IsWorldQuest)
+--     world_watches = 0,       -- C_QuestLog.GetNumWorldQuestWatches()
+--     tracked = { [Enum.ContentTrackingType] = { id, ... } }, -- C_ContentTracking.GetTrackedIDs
+--     achievements = { [id] = { earned = bool } }, -- GetAchievementInfo's 13th return
+--     recipes = { normal = { id }, recraft = { id } }, -- C_TradeSkillUI.GetRecipesTracked(isRecraft)
+--     perks = { ids = {}, info = { [id] = { completed } } },     -- C_PerksActivities
+--     initiative = { ids = {}, info = { [id] = { completed } } }, -- C_NeighborhoodInitiative
+--   }
+-- A namespace or function a test sets to nil plays a client without it.
+stub.probes = { watched_tasks = {}, world = {}, world_watches = 0, task_info = {}, tasks = {}, tracked = {}, achievements = {} }
 -- What the clicks and the menu of SaftUI's tracker ask of the game (see "The
 -- clicks" below): the calls of the Blizzard functions they run, in order, each
 -- 'Name:arg,arg'; which modified clicks are held (stub.modified.QUESTWATCHTOGGLE
@@ -103,6 +121,10 @@ Enum.QuestClassification = {
 }
 Enum.QuestFrequency = { Default = 0, Daily = 1, Weekly = 2, ResetByScheduler = 3 }
 Enum.RelativeContentDifficulty = { Trivial = 0, Easy = 1, Fair = 2, Difficult = 3, Impossible = 4 }
+-- QuestWatchType: QuestLogDocumentation.lua, both branches.
+Enum.QuestWatchType = { Automatic = 0, Manual = 1 }
+-- ContentTrackingType: ContentTrackingTypesDocumentation.lua, both branches.
+Enum.ContentTrackingType = { Appearance = 0, Mount = 1, Achievement = 2, Decor = 3 }
 Enum.UIMapType = Enum.UIMapType
 	or { Cosmic = 0, World = 1, Continent = 2, Zone = 3, Dungeon = 4, Micro = 5, Orphan = 6 }
 
@@ -417,13 +439,23 @@ do
 		return true
 	end
 
-	-- World quest watches aren't modelled.
-	function Q.GetNumWorldQuestWatches() return 0 end
+	-- A world quest's watch is the probes' (stub.probes.world_watches, below); no
+	-- quest of the log is a world quest watch.
+	function Q.GetNumWorldQuestWatches() return stub.probes.world_watches end
+
+	-- watchType: Enum.QuestWatchType (Automatic 0, Manual 1, QuestLogDocumentation.lua,
+	-- both branches), nil for a quest that isn't on the watch list.
+	function Q.GetQuestWatchType(questID)
+		number_arg(questID, 'local watchType = C_QuestLog.GetQuestWatchType(questID)')
+		if watch_index(questID) or stub.probes.watched_tasks[questID] then return Enum.QuestWatchType.Manual end
+		return nil
+	end
 
 	-- Blizzard decides this from the quest's tag; here the classification.
 	function Q.IsWorldQuest(questID)
 		local entry = quest_arg(questID, 'local isWorldQuest = C_QuestLog.IsWorldQuest(questID)')
-		return entry ~= nil and entry.classification == WORLD_QUEST
+		-- (a task quest of the area is in no log: the probes' stub.probes.world says)
+		return (entry ~= nil and entry.classification == WORLD_QUEST) or stub.probes.world[questID] == true
 	end
 
 	-- Forever only (its documentation has them, retail's doesn't).
@@ -652,4 +684,114 @@ do
 	end
 
 	function GetRealZoneText() return stub.real_zone_text end
+end
+
+------------------------------------------------------------------ the sections' data
+
+--[[
+	What Blizzard's own tracker modules read to decide they have content, for the
+	section probes (SaftUI-Tracker/probes.lua). Their signatures, from the
+	generated API documentation (Blizzard_APIDocumentationGenerated, read on both
+	branches of Gethe/wow-ui-source, `forever` and `live`, 2026-11-14: the same on
+	both, so no client drops one) unless the comment says where else:
+	  C_ContentTracking.GetTrackedIDs(trackableType) -> entryIDs
+	    (ContentTrackingDocumentation.lua; ContentTrackingType in
+	    ContentTrackingTypesDocumentation.lua)
+	  C_TradeSkillUI.GetRecipesTracked(isRecraft) -> recipeIDs
+	    (TradeSkillUIDocumentation.lua)
+	  C_PerksActivities.GetTrackedPerksActivities() -> { trackedIDs } and
+	    GetPerksActivityInfo(perksActivityID) -> info or nil (PerksActivitiesDocumentation.lua)
+	  C_NeighborhoodInitiative.GetTrackedInitiativeTasks() -> { trackedIDs } and
+	    GetInitiativeTaskInfo(initiativeTaskID) -> info or nil (NeighborhoodInitiativeDocumentation.lua)
+	  C_ChallengeMode.IsChallengeModeActive() -> bool (ChallengeModeInfoDocumentation.lua)
+	Not in the generated documentation, so from Blizzard's own callers
+	(Blizzard_ObjectiveTracker, the same on both branches):
+	  C_Scenario.GetInfo() -> scenarioName, currentStage, numStages, flags, _, _, _,
+	    xp, money, scenarioType, _, textureKit, scenarioID
+	    (Blizzard_ScenarioObjectiveTracker.lua:183; outside a scenario numStages is
+	    0, the module's own `isInScenario = numStages > 0`)
+	  GetTasksTable() -> a list of questIDs, GetTaskInfo(questID) -> isInArea,
+	    isOnMap, numObjectives, taskName, displayAsObjective
+	    (Blizzard_BonusObjectiveTracker.lua:428 and 464)
+	  GetAchievementInfo(achievementID) -> id, name, points, completed, month, day,
+	    year, description, flags, icon, rewardText, isGuild, wasEarnedByMe,
+	    earnedBy (the 13th is the one the achievements module tests,
+	    Blizzard_AchievementObjectiveTracker.lua:103)
+	Every argument is checked as in game: a wrong type raises the call's Usage line.
+]]
+
+do
+	local function arg(value, kind, usage)
+		if type(value) ~= kind then error('Usage: ' .. usage, 3) end
+		return value
+	end
+
+	C_Scenario = C_Scenario or {}
+	function C_Scenario.GetInfo()
+		local s = stub.probes.scenario or {}
+		return s.name or '', s.stage or 0, s.stages or 0, s.flags or 0, nil, nil, nil, s.xp or 0, s.money or 0,
+			s.type or 0, nil, s.texture, s.id or 0
+	end
+
+	C_ChallengeMode = C_ChallengeMode or {}
+	function C_ChallengeMode.IsChallengeModeActive() return stub.probes.challenge == true end
+
+	function GetTasksTable()
+		local list = {}
+		for i, questID in ipairs(stub.probes.tasks) do list[i] = questID end
+		return list
+	end
+	function GetTaskInfo(questID)
+		arg(questID, 'number', 'isInArea, isOnMap, numObjectives, taskName, displayAsObjective = GetTaskInfo(questID)')
+		local info = stub.probes.task_info[questID]
+		if not info then return false, false, nil, nil, false end
+		return info.inArea == true, info.onMap == true, info.objectives, info.name, info.asObjective == true
+	end
+
+	C_ContentTracking = C_ContentTracking or {}
+	function C_ContentTracking.GetTrackedIDs(trackableType)
+		arg(trackableType, 'number', 'local entryIDs = C_ContentTracking.GetTrackedIDs(trackableType)')
+		local ids = {}
+		for i, id in ipairs(stub.probes.tracked[trackableType] or {}) do ids[i] = id end
+		return ids
+	end
+
+	function GetAchievementInfo(achievementID)
+		arg(achievementID, 'number', 'id, name, points, completed, month, day, year, description, flags, icon, rewardText, isGuild, wasEarnedByMe, earnedBy = GetAchievementInfo(achievementID)')
+		local info = stub.probes.achievements[achievementID] or {}
+		return achievementID, 'Achievement ' .. achievementID, 10, info.earned == true, nil, nil, nil, '', 0, 0, '', false,
+			info.earned == true, nil
+	end
+
+	C_TradeSkillUI = C_TradeSkillUI or {}
+	function C_TradeSkillUI.GetRecipesTracked(isRecraft)
+		arg(isRecraft, 'boolean', 'local recipeIDs = C_TradeSkillUI.GetRecipesTracked(isRecraft)')
+		local ids = {}
+		local recipes = stub.probes.recipes or {}
+		for i, id in ipairs((isRecraft and recipes.recraft or recipes.normal) or {}) do ids[i] = id end
+		return ids
+	end
+
+	local function tracked(source) -- { ids, info }: a copy of the ids
+		local ids = {}
+		for i, id in ipairs((source and source.ids) or {}) do ids[i] = id end
+		return { trackedIDs = ids }
+	end
+	C_PerksActivities = C_PerksActivities or {}
+	function C_PerksActivities.GetTrackedPerksActivities() return tracked(stub.probes.perks) end
+	function C_PerksActivities.GetPerksActivityInfo(perksActivityID)
+		arg(perksActivityID, 'number', 'local info = C_PerksActivities.GetPerksActivityInfo(perksActivityID)')
+		local info = stub.probes.perks and stub.probes.perks.info and stub.probes.perks.info[perksActivityID]
+		if not info then return nil end
+		return { ID = perksActivityID, activityName = 'Activity ' .. perksActivityID, completed = info.completed == true, requirementsList = {} }
+	end
+
+	C_NeighborhoodInitiative = C_NeighborhoodInitiative or {}
+	function C_NeighborhoodInitiative.GetTrackedInitiativeTasks() return tracked(stub.probes.initiative) end
+	function C_NeighborhoodInitiative.GetInitiativeTaskInfo(initiativeTaskID)
+		arg(initiativeTaskID, 'number', 'local info = C_NeighborhoodInitiative.GetInitiativeTaskInfo(initiativeTaskID)')
+		local info = stub.probes.initiative and stub.probes.initiative.info and stub.probes.initiative.info[initiativeTaskID]
+		if not info then return nil end
+		return { ID = initiativeTaskID, taskName = 'Task ' .. initiativeTaskID, completed = info.completed == true, requirementsList = {} }
+	end
 end

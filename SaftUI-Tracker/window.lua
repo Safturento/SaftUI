@@ -292,8 +292,15 @@ end
 -- for it with Hide when empty, else it shows its header and the empty line.
 function TR:SetEmpty(empty)
 	self.isEmpty = empty and true or false
+	self:ApplyWindowShown()
+end
+
+-- Whether the window shows: not while it is empty with Hide when empty, and not
+-- while Blizzard's tracker takes its place (the handover's state 'blizzard',
+-- handover.lua). A plain frame, so shown and hidden in combat too.
+function TR:ApplyWindowShown()
 	if not self.window then return end
-	local shown = not (self.isEmpty and self.config.hide_empty)
+	local shown = not (self.isEmpty and self.config.hide_empty) and self.handoverState ~= 'blizzard'
 	if self.window:IsShown() ~= shown then
 		self.window:SetShown(shown)
 		self:PlaceItems()

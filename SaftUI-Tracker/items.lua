@@ -166,14 +166,16 @@ function Items.Column(entries, size, side, windowLeft, windowRight, viewTop, vie
 	return places
 end
 
--- The room the column takes beside the tracker, for the beside spot (Task 11):
--- Button size while the column shows (the placement is Beside the tracker and a
--- quest has an item), else 0. Its 4 gap is the caller's.
+-- The room the column takes beside the tracker, for the beside spot of Blizzard's
+-- tracker (TR:BlizzardTarget): Button size while the column shows (the placement
+-- is Beside the tracker, the list is open, and a quest the list draws has an item
+-- with a link: a collapsed group's quest has no row and so no button), else 0.
+-- Its 4 gap is the caller's.
 function TR:ColumnWidth()
-	if not self:ItemsToShow() or self.config.items.placement ~= 'beside' then return 0 end
-	-- A quest whose item has no link has no button, so it makes no column.
-	for _, quest in ipairs(self.model.quests) do
-		if quest.item and quest.item.link then return self.config.items.size end
+	if not self:ItemsToShow() or self.config.items.placement ~= 'beside' or self:IsCollapsed() then return 0 end
+	for _, entry in ipairs(self.entries) do
+		local quest = entry.kind == 'quest' and entry.quest
+		if quest and quest.item and quest.item.link then return self.config.items.size end
 	end
 	return 0
 end
@@ -695,6 +697,12 @@ local NONE = {}
 local function Wanted(self)
 	local wanted = self.itemWanted
 	local n = 0
+	if self.handoverState == 'blizzard' then
+		-- Blizzard's tracker is in SaftUI's place (handover.lua): no button, and none
+		-- left from before.
+		for index = 1, #wanted do wanted[index] = nil end
+		return wanted
+	end
 	if self.config.items.placement == 'beside' then
 		for _, entry in ipairs(self.entries) do
 			local quest = entry.kind == 'quest' and entry.quest

@@ -16,4 +16,6 @@ clicks.lua
 items.lua
 nearest.lua
 blizzard.lua
+probes.lua
+handover.lua
 options.lua

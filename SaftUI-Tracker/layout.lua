@@ -194,3 +194,26 @@ function Layout.IntoView(offset, top, height, view, range)
 	end
 	return Clamp(offset, range)
 end
+
+------------------------------------------------------------------ Blizzard's tracker
+
+-- Where Blizzard's tracker goes beside SaftUI's (design: "The beside spot"), as
+-- point, x, y in the holder's own units: on the side nearer the screen's middle
+-- ('left' when the holder's centre is right of the middle: Items.Side), BESIDE_GAP
+-- out from the holder's edge, past the item column and its COLUMN_GAP when the
+-- column is on that side (columnWidth 0 for none), level with the holder's top.
+-- On the left Blizzard's top right goes there; on the right, its top left. Its own
+-- clamp, turned on, keeps it on screen.
+function Layout.BesideSpot(holderLeft, holderRight, holderTop, side, columnWidth)
+	local out = L.BESIDE_GAP
+	if columnWidth and columnWidth > 0 then out = out + columnWidth + L.COLUMN_GAP end
+	if side == 'left' then return 'TOPRIGHT', holderLeft - out, holderTop end
+	return 'TOPLEFT', holderRight + out, holderTop
+end
+
+-- A spot's top, in screen pixels, kept at least floor (the least above the screen's
+-- bottom, also in pixels).
+function Layout.RevealY(top, floor)
+	if floor and top < floor then return floor end
+	return top
+end

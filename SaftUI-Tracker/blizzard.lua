@@ -13,13 +13,17 @@ local TR = st.Tracker
 	What SaftUI calls on Blizzard's tracker, the whole list:
 	  - the three C methods, taken from the frame's metatable so Edit Mode's Lua
 	    overrides on the frame object aren't what runs: SetClampedToScreen,
-	    ClearAllPoints and SetPoint (TR:PlaceBlizzard only: one anchor, TOPRIGHT
-	    to its own parent);
+	    ClearAllPoints and SetPoint (TR:PlaceBlizzard only: one anchor to its own
+	    parent, TOPRIGHT, or TOPLEFT beside SaftUI's on its right);
 	  - the reads GetParent, GetNumPoints, GetPoint, GetEffectiveScale and
 	    IsClampedToScreen (and IsProtected, in combat, through st:CanMoveNow);
 	  - post-hooks (hooksecurefunc, each in xpcall to the error handler) on its
 	    SetPoint, ClearAllPoints and UpdateHeight, which only run
 	    TR:PlaceBlizzard again;
+	  - the sections' watch (TR:WatchModules): a post-hook on each module's own
+	    Update, which reads the module's state and hasContents and asks for a probe
+	    pass on the next frame, and a read of the container's `modules` list, with
+	    GetName on a module nobody knows (for the chat line about it);
 	  - st:HideEditModeSelection and its Selection's Hide, so Blizzard's Edit Mode
 	    can't select it.
 	It is never given Hide, Show, SetShown, SetParent, SetScale, a size, a
@@ -30,15 +34,24 @@ local TR = st.Tracker
 
 	TR:PlaceBlizzard(where) is the one function that holds the concealment
 	(experiment P2: if the game says off screen alone isn't safe, only its
-	'concealed' branch changes). Later tasks place it only through that.
+	'concealed' branch changes). The handover (handover.lua) and every later task
+	place it only through that.
 ]]
 
 -- How far past UIParent's left edge the concealed tracker's right edge is, in
 -- UIParent units.
 TR.BLIZZARD_OFF = 100
 
--- The places TR:PlaceBlizzard knows. 'beside' (Task 11) is added there.
-local PLACES = { concealed = true, place = true }
+-- The least a spot Blizzard's tracker is revealed at (and concealed at, which is
+-- the same y) may be above the screen's bottom, in UIParent units. Blizzard works
+-- the tracker's height out from its anchor's y (down to the right column's
+-- bottom, 20 at the least), so a spot lower than this would give its modules no
+-- room. Grow up's window, which hangs from its bottom, is the usual one.
+TR.BLIZZARD_FLOOR = 200
+
+-- The places TR:PlaceBlizzard knows: off screen, in SaftUI's place, and beside
+-- SaftUI's tracker (the handover's states own, blizzard and both).
+local PLACES = { concealed = true, place = true, beside = true }
 
 -- Whether SaftUI's tracker owns Blizzard's: it is on this session and
 -- Blizzard's tracker exists. Misc's mover stands down while it does
@@ -74,11 +87,26 @@ function TR:BlizzardSpot()
 	return self.holder
 end
 
+-- The y a spot is revealed at: SaftUI's tracker's, kept off the bottom of the
+-- screen (TR.BLIZZARD_FLOOR). Blizzard works the tracker's height out from
+-- its anchor's y, down to the right column's bottom and at least 20, so a low
+-- spot would give its modules no room and the game's clamp would push a tall
+-- one up. Concealed it is the same y (Ruling 29), so its height is what it will be.
+local function RevealY(screenY)
+	local uiScale, bottom = UIParent:GetEffectiveScale(), UIParent:GetBottom()
+	if not (Plain(uiScale, bottom) and uiScale > 0) then return screenY end
+	return TR.Layout.RevealY(screenY, (bottom + TR.BLIZZARD_FLOOR) * uiScale)
+end
+
 -- Where Blizzard's tracker goes for `where`: parent, point, x, y for one
 -- anchor of its own parent, or nil for a place it doesn't know or a spot that
 -- can't be worked out now.
 --   'place'      its top right on the window's: the holder's top right for
 --                Grow down, the window's for Grow up.
+--   'beside'     the beside spot (TR.Layout.BesideSpot): 12 out of the holder on
+--                the side nearer the screen's middle, past the item column, level
+--                with the holder's top; its top right on the left of SaftUI's, its
+--                top left on the right.
 --   'concealed'  the same y as the spot the current mode reveals at (Ruling 29:
 --                in place, or beside, whose y is the holder's top), with an x
 --                that puts its right edge TR.BLIZZARD_OFF left of UIParent's
@@ -90,16 +118,27 @@ function TR:BlizzardTarget(where)
 	if not (tracker and PLACES[where] and self.holder) then return end
 	local parent = tracker:GetParent() or UIParent
 	local uiScale = UIParent:GetEffectiveScale()
-	local spot = self:BlizzardSpot()
-	if where == 'concealed' and self.config.blizzard.mode == 'beside' then spot = self.holder end
+	local beside = where == 'beside' or (where == 'concealed' and self.config.blizzard.mode == 'beside')
+	local spot = beside and self.holder or self:BlizzardSpot()
 
 	local top, right, scale
 	if spot then top, right, scale = spot:GetTop(), spot:GetRight(), spot:GetEffectiveScale() end
 	local screenY, screenX
+	local point = 'TOPRIGHT'
 	if Plain(top, scale) then screenY = top * scale end
 	if where == 'place' then
 		if not (screenY and Plain(right)) then return end
 		screenX = right * scale
+	elseif where == 'beside' then
+		local left = spot:GetLeft()
+		if not (screenY and Plain(left, right, uiScale)) then return end
+		-- In the holder's own units, as the item column's side is worked out.
+		local holderX, screenMid = spot:GetCenter(), UIParent:GetCenter()
+		local side = Plain(holderX, screenMid) and TR.Items.Side(holderX, screenMid) or 'left'
+		local column = self:ColumnWidth() * uiScale / scale
+		local x, y
+		point, x, y = TR.Layout.BesideSpot(left, right, top, side, column)
+		screenX, screenY = x * scale, y * scale
 	else
 		-- Off screen whatever can't be read: the default spot's y stands in.
 		local uiTop = UIParent:GetTop()
@@ -111,13 +150,13 @@ function TR:BlizzardTarget(where)
 		if not Plain(uiLeft, uiScale) then return end
 		screenX = (uiLeft - TR.BLIZZARD_OFF) * uiScale
 	end
-	local x, y = st:CornerOffset(tracker, parent, 'TOPRIGHT', screenX, screenY)
+	local x, y = st:CornerOffset(tracker, parent, point, screenX, RevealY(screenY))
 	if not x then return end
-	return parent, 'TOPRIGHT', x, y
+	return parent, point, x, y
 end
 
--- Puts Blizzard's tracker at `where` ('concealed' or 'place'; Task 11 adds
--- 'beside'): the clamp off for concealed and on otherwise, then its one point.
+-- Puts Blizzard's tracker at `where` ('concealed', 'place' or 'beside'): the
+-- clamp off for concealed and on otherwise, then its one point.
 -- The P2 seam: the only function that holds the concealment, called by the
 -- hooks, the handover and the profile's update, and by nothing else. It uses
 -- only the three C methods, from the frame's metatable. Nothing is called when
@@ -184,4 +223,65 @@ function TR:SetupBlizzard()
 	if tracker.Selection then tracker.Selection:Hide() end
 
 	self:PlaceBlizzard('concealed')
+	self:WatchModules()
 end
+
+------------------------------------------------------------------ the sections' watch
+
+-- The modules already hooked, by frame: SaftUI's own table (rule 1: nothing is
+-- written onto a Blizzard frame), so a second TR:WatchModules hooks nothing again.
+local hooked = setmetatable({}, { __mode = 'k' })
+
+-- The two quest modules, which SaftUI draws and never reads.
+local QUEST_MODULES = { 'QuestObjectiveTracker', 'CampaignQuestObjectiveTracker' }
+
+-- The post-hook on a module's own Update. It runs inside Blizzard's layout, so it
+-- reads two fields and asks for a probe pass on the next frame, nothing else; an
+-- error in it goes to the error handler and Blizzard's layout goes on.
+local function OnModuleUpdate(module)
+	local ok, err = xpcall(TR.ModuleUpdated, geterrorhandler(), TR, module)
+	return ok, err
+end
+
+-- Hooks one module's Update (the frame's own field, which Blizzard looks up at
+-- call time on every layout, dirty ones included: the mixin's methods are copied
+-- onto the frame, so hooking the mixin table would reach nothing) and reads where
+-- it stands now, since it may have laid out before the hook.
+local function Watch(self, module, key)
+	if hooked[module] then return end
+	hooked[module] = true
+	self.moduleKeys[module] = key
+	if type(module.Update) == 'function' then hooksecurefunc(module, 'Update', OnModuleUpdate) end
+	self:ModuleUpdated(module, key)
+end
+
+-- Called by TR:SetupBlizzard, and by every probe pass for what a patch may add:
+-- the eleven modules' Update (the container's own can't be hooked: its dirty
+-- update holds a closure of the function), and any frame in the container's
+-- `modules` list SaftUI doesn't know, which counts as a section while it has
+-- content. Reads and post-hooks only (.agents/taint.md rule 5).
+function TR:WatchModules()
+	local tracker = self.blizzardFrame
+	if not tracker then return end
+	local known = {}
+	for _, section in ipairs(TR.SECTIONS) do
+		local module = _G[section.module]
+		if module then
+			known[module] = true
+			Watch(self, module, section.key)
+		end
+	end
+	for _, name in ipairs(QUEST_MODULES) do
+		local module = _G[name]
+		if module then known[module] = true end
+	end
+	if type(tracker.modules) ~= 'table' then return end
+	for _, module in ipairs(tracker.modules) do
+		if not known[module] and not hooked[module] then
+			local key = module:GetName()
+			if type(key) ~= 'string' or key == '' then key = 'Unnamed module' end
+			Watch(self, module, key)
+		end
+	end
+end
+
