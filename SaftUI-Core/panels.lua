@@ -335,9 +335,10 @@ local function LookClose(close)
 	end
 end
 
--- The close button: 24x24, the field color with a 1px edge border (and a dark
--- line outside it) and a grey pixel X. Hovering turns the border and X red
--- over a faint red fill, and while pressed the X sits 1px lower. A click hides
+-- The close button: 24x24, the field color with an edge border one line wide
+-- (and a dark line one line wide outside it) and a grey pixel X. Hovering turns
+-- the border and X red over a faint red fill, and while pressed the X sits one
+-- line lower. Every draw takes the line again (a scale change). A click hides
 -- frame. st:GetCloseButton(frame) finds it again (nothing is written onto frame).
 --
 -- Its look follows SaftUI's theme, as the close kind always has. Under
@@ -351,17 +352,39 @@ function st:CreateCloseButton(frame)
 	closeButtons[close] = true
 	close:SetPoint('TOPRIGHT', 0, 0)
 	close:SetSize(unpack(self.CLOSE_X_BUTTON_SIZE))
-	local backdrop = { bgFile = self.BLANK_TEX, edgeFile = self.BLANK_TEX, edgeSize = 1, insets = { left = 1, right = 1, top = 1, bottom = 1 } }
+	local line = st:DrawLineSize(close)
+	local backdrop = { bgFile = self.BLANK_TEX, edgeFile = self.BLANK_TEX, edgeSize = line, insets = { left = line, right = line, top = line, bottom = line } }
 	close:SetBackdrop(backdrop)
+	st:SnapDrawn(close)
 
 	-- The dark line outside the border.
 	local outline = st:CreateFrame('Frame', nil, close)
-	outline:SetPoint('TOPLEFT', close, 'TOPLEFT', -1, 1)
-	outline:SetPoint('BOTTOMRIGHT', close, 'BOTTOMRIGHT', 1, -1)
+	outline:SetPoint('TOPLEFT', close, 'TOPLEFT', -line, line)
+	outline:SetPoint('BOTTOMRIGHT', close, 'BOTTOMRIGHT', line, -line)
 	outline:SetFrameLevel(max(0, close:GetFrameLevel() - 1))
-	outline:SetBackdrop({ edgeFile = self.BLANK_TEX, edgeSize = 1 })
+	outline:SetBackdrop({ edgeFile = self.BLANK_TEX, edgeSize = line })
 	outline:SetBackdropBorderColor(unpack(self.BOX_COLORS.alt))
+	st:SnapDrawn(outline)
 	close.outline = outline
+
+	-- Takes a changed line (the scale moved) onto the backdrop and the dark
+	-- line, and says whether it did: nothing is set again while the line is the
+	-- one they have.
+	local function TakeLine()
+		local now = st:DrawLineSize(close)
+		if now == line then return false end
+		line = now
+		-- A new table: Blizzard's SetBackdrop returns at once on the one the
+		-- frame already holds, so the old one changed in place would never apply.
+		backdrop = { bgFile = self.BLANK_TEX, edgeFile = self.BLANK_TEX, edgeSize = line, insets = { left = line, right = line, top = line, bottom = line } }
+		outline:ClearAllPoints()
+		outline:SetPoint('TOPLEFT', close, 'TOPLEFT', -line, line)
+		outline:SetPoint('BOTTOMRIGHT', close, 'BOTTOMRIGHT', line, -line)
+		outline:SetBackdrop({ edgeFile = self.BLANK_TEX, edgeSize = line })
+		outline:SetBackdropBorderColor(unpack(self.BOX_COLORS.alt))
+		st:SnapDrawn(outline)
+		return true
+	end
 
 	local x = close:CreateTexture(nil, 'OVERLAY')
 	x:SetTexture(self.icons.x)
@@ -385,14 +408,21 @@ function st:CreateCloseButton(frame)
 		LookClose(close)
 		x:SetPoint('CENTER', 0, 0)
 	end)
-	close:SetScript('OnMouseDown', function() x:SetPoint('CENTER', 0, -1) end)
+	close:SetScript('OnMouseDown', function() x:SetPoint('CENTER', 0, -st:DrawLineSize(close)) end)
 	close:SetScript('OnMouseUp', function() x:SetPoint('CENTER', 0, 0) end)
 	close:SetScript('OnClick', function() frame:Hide() end)
 
 	-- Switches between its own look and Blizzard's when SaftUI's theme
 	-- changed between them, then places it (PlaceCloseButton).
 	local function Draw()
+		local changed = TakeLine()
 		local want = st:IsBlizzardLook('theme', 'theme')
+		if want == close.blizzard and changed and not want then
+			-- The same look at a new line: its backdrop takes it.
+			close:SetBackdrop(backdrop)
+			st:SnapDrawn(close)
+			LookClose(close)
+		end
 		if want ~= close.blizzard then
 			close.blizzard = want
 			if want then
@@ -409,6 +439,7 @@ function st:CreateCloseButton(frame)
 			else
 				for _, texture in pairs(closeArt[close]) do texture:SetTexture(nil) end
 				close:SetBackdrop(backdrop)
+				st:SnapDrawn(close)
 				outline:Show()
 				x:Show()
 				x:SetPoint('CENTER', 0, 0)

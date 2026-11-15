@@ -55,13 +55,13 @@ Every text in SaftUI's font objects carries a 1px black outline (`text-outline`;
 
 ### Spacing and layout
 
-- **Whole pixels.** Round every size and offset (`st:RoundToPixel`). A frame centred on an axis gets an even length on that axis. Icons are even sizes on whole centres. The kit rounds halves and quarters down.
+- **Whole pixels.** Round every size and offset in pixels, not units, through the helpers (`st:RoundToPixel`, `st:FloorToPixel`, `st:CeilToPixel`, `st:EvenPixels`). Draw every line with `st:GetLineSize(frame)`: a line is a whole number of pixels at any UI scale, and the theme engine turns texture snapping off on the border textures it draws (E5b: at a fractional scale a one-pixel line placed half a pixel off whole pixels can lose a side under the game's snapping). A frame centred on an axis gets an even length on that axis. Icons are even sizes on whole centres. The kit rounds halves and quarters down.
 - **The options page.** `window-pad` (28) from the sidebar; rows `row-height` (38) on panels padded `panel-pad` (14); sections `section-margin` (14) apart, a title `title-gap` (6) over its panel. Cells are a quarter, a half or a whole line of `content-width` (774). Labels sit left, controls right-aligned in their cell, check boxes and colour bars too.
 - **In the world.** Buttons and slots `button-spacing` (3) apart; auras and roll bars `aura-spacing` (7); windows padded `frame-padding` (10); frames kept `screen-margin` (20) in from the screen's edge.
 
 ### Lines, corners, depth
 
-All lines are `line-width` (1px); marks and underlines are `mark-width` (2px). A Thick frame is three lines (`thick-width`); a Thin frame is one. Corners are `radius` (0) everywhere. There are no shadows, glows or gradients in SaftUI's own drawing; bars fill flat (`SaftUI Flat`). Depth comes from the panel's darker fill and from strata.
+All lines are `line-width` (one line: 1 pixel, 2 from k 1.5); marks and underlines are `mark-width` (two lines). A Thick frame is three lines (`thick-width`); a Thin frame is one. Corners are `radius` (0) everywhere. There are no shadows, glows or gradients in SaftUI's own drawing; bars fill flat (`SaftUI Flat`). Depth comes from the panel's darker fill and from strata.
 
 ### States
 

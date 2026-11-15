@@ -38,11 +38,14 @@ st.BOX_COLORS = {
 st.TINT_ROW = 0.25
 st.TINT_OBJECT = 0.15
 st.BLANK_TEX = [[Interface\BUTTONS\WHITE8X8]]
+-- One line wide, as every border is (UIScale:SetTokens sets it again on every
+-- change of the scale). st.line is 1 until the scale model loads.
+local BACKDROP_LINE = st.line or 1
 st.BACKDROP = {
 	bgFile = st.BLANK_TEX, 
 	edgeFile = st.BLANK_TEX,
-	tile = false, tileSize = 0, edgeSize = 1, 
-	insets = { left = 1, right = 1, top = 1, bottom = 1}
+	tile = false, tileSize = 0, edgeSize = BACKDROP_LINE, 
+	insets = { left = BACKDROP_LINE, right = BACKDROP_LINE, top = BACKDROP_LINE, bottom = BACKDROP_LINE }
 }
 st.CLAMP_INSET = 20
 

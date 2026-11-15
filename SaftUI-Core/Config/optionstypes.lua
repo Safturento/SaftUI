@@ -591,7 +591,7 @@ define('description', {
 	Fit = function(self)
 		local imageWidth, imageHeight, border = 0, 0, 0
 		if self.image:IsShown() then
-			border = st:ThemeInset('theme', 'theme', 'action')
+			border = st:ThemeInset('theme', 'theme', 'action', self.frame)
 			imageWidth = self.image:GetWidth() + 2 * border
 			imageHeight = self.image:GetHeight() + 2 * border
 		end

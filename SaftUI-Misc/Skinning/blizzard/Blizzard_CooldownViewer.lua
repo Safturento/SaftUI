@@ -206,7 +206,7 @@ local function Style(item, parts)
 
 	-- The icon inside the border, in BACKGROUND under the ring, cropped once it
 	-- has its size.
-	local inset = ITEM_INSET + st:ThemeInset(theme, background, 'action')
+	local inset = ITEM_INSET + st:ThemeInset(theme, background, 'action', holder)
 	icon:SetDrawLayer('BACKGROUND', 0)
 	icon:ClearAllPoints()
 	icon:SetPoint('TOPLEFT', holder, 'TOPLEFT', inset, -inset)

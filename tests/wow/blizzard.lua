@@ -222,7 +222,27 @@ function BackdropTemplateMixin:ClearBackdrop()
 	end
 end
 
+-- The pieces Blizzard's Backdrop.lua (SetupPieceVisuals) makes on the frame,
+-- once, as fields of it: the corners and edges for an edgeFile, the Center for
+-- a bgFile. Nothing is laid out here, so each fills the frame; they are shown.
+-- Made only while stub.backdrop_pieces is true (off by default: other tests walk
+-- a frame's regions for the art they look for, and these are not it).
+local BACKDROP_EDGE_PIECES = { 'TopLeftCorner', 'TopRightCorner', 'BottomLeftCorner', 'BottomRightCorner',
+	'TopEdge', 'BottomEdge', 'LeftEdge', 'RightEdge' }
+
+-- How many times ApplyBackdrop ran on a frame (stub.state(frame).backdrop_applies):
+-- Blizzard's SetBackdrop returns at once on the table the frame already holds.
 function BackdropTemplateMixin:ApplyBackdrop()
+	local state = stub.state(self)
+	state.backdrop_applies = (state.backdrop_applies or 0) + 1
+	local info = self.backdropInfo
+	if not stub.backdrop_pieces then info = nil end
+	if info and info.edgeFile then
+		for _, name in ipairs(BACKDROP_EDGE_PIECES) do
+			if not self[name] then self[name] = self:CreateTexture(nil, 'BORDER'); self[name]:SetAllPoints(self) end
+		end
+	end
+	if info and info.bgFile and not self.Center then self.Center = self:CreateTexture(nil, 'BACKGROUND'); self.Center:SetAllPoints(self) end
 	self:SetBackdropColor(1, 1, 1, 1)
 	self:SetBackdropBorderColor(1, 1, 1, 1)
 	self:SetupTextureCoordinates()
