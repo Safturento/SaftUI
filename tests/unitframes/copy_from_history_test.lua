@@ -261,42 +261,45 @@ end)
 test('Copy from carries a typeface table deep: the two units never share one, and an undo puts it back whole', function()
 	fresh()
 	local P = config()
+	local FN = st:GetModule('Fonts')
 	local typeface = { font_name = 'Colus', font_size = 15, font_outline = 'OUTLINE', shadow_offset = { 1, -1 }, spacing = 3 }
+	local original = { font_name = 'Homespun', font_size = 9, font_outline = 'NONE', shadow_offset = { 0, 0 }, spacing = 0 }
 	P.target.name.font = typeface
-	P.focus.name.font = 'pixel'
+	P.focus.name.font = original
+	local function fields(t) return t.font_name .. t.font_size .. t.font_outline .. t.shadow_offset[1] .. ',' .. t.shadow_offset[2] .. t.spacing end
+
 	local step = UF:CopySettings('focus', 'target', { 'name' })
 	check(step ~= nil, 'a step')
 	local copy = P.focus.name.font
 	eq(type(copy), 'table', 'the typeface was copied')
-	check(copy ~= P.target.name.font, 'not the same table as the source')
-	check(copy.shadow_offset ~= P.target.name.font.shadow_offset, "nor the same shadow offset table")
-	eq(copy.font_name .. copy.font_size .. copy.font_outline .. copy.shadow_offset[1] .. copy.shadow_offset[2] .. copy.spacing,
-		'Colus15OUTLINE1-13', 'every field')
-
-	-- A later edit of the copy (the dots menu writes a new table, but a hand edit
-	-- may change a field) never reaches the source or the history.
-	copy.font_size = 20
-	copy.shadow_offset[1] = 5
-	eq(P.target.name.font.font_size, 15, "the source's size is untouched")
-	eq(P.target.name.font.shadow_offset[1], 1, "and its shadow")
-	copy.font_size, copy.shadow_offset[1] = 15, 1
+	check(copy ~= typeface and copy.shadow_offset ~= typeface.shadow_offset, 'not the source\'s table, nor its shadow offset table')
+	eq(fields(copy), 'Colus15OUTLINE1,-13', 'every field')
 
 	eq(History:Undo(), true, 'Undo')
-	eq(P.focus.name.font, 'pixel', "the shared font's key is back")
-	eq(P.target.name.font.font_size, 15, 'the source is untouched')
-	P.focus.name.font = { font_name = 'Homespun', font_size = 9, font_outline = 'NONE', shadow_offset = { 0, 0 }, spacing = 0 }
-	History:Clear()
-	P.focus.name.font = 'pixel'
-	UF:CopySettings('focus', 'target', { 'name' })
-	eq(History:Undo(), true, 'Undo again')
+	local back = P.focus.name.font
+	eq(type(back), 'table', 'the typeface it had is back')
+	eq(fields(back), 'Homespun9NONE0,00', 'whole, every field')
+	check(back ~= typeface and back.shadow_offset ~= typeface.shadow_offset, 'not the source\'s table')
+	eq(fields(typeface), 'Colus15OUTLINE1,-13', 'the source is untouched')
+
 	eq(History:Redo(), true, 'Redo')
 	local again = P.focus.name.font
-	eq(type(again), 'table', 'a typeface again')
-	check(again ~= P.target.name.font and again.shadow_offset ~= P.target.name.font.shadow_offset, 'a copy again, not the source')
-	again.font_size = 30
-	eq(P.target.name.font.font_size, 15, "a change to the redone copy doesn't reach the source")
-	-- The step holds its own copy of the typeface: had it kept the live table, the
-	-- edit above would change what it expects to find, and the Undo would go through.
-	eq(History:Undo(), false, 'a step whose setting was edited by hand since is stale, so refused')
-	eq(P.focus.name.font.font_size, 30, 'and the hand edit stays')
+	eq(fields(again), 'Colus15OUTLINE1,-13', 'the copied typeface again')
+	check(again ~= typeface and again.shadow_offset ~= typeface.shadow_offset, 'a copy of the source again, not the source')
+
+	-- The dots menu's write puts a new table (FN.WithField); it never reaches the source.
+	P.focus.name.font = FN.WithField(st:FontFields(P.focus.name.font), 'font_size', 20)
+	eq(typeface.font_size, 15, "the source's size is untouched by an edit of the copy")
+	eq(History:Undo(), false, 'the step is stale once its setting was edited since, so refused')
+	eq(P.focus.name.font.font_size, 20, 'and the edit stays')
+
+	-- A step keeps its own copy: an edit in place of the live table's field (a hand
+	-- edit) would change what a step that held the live table expects to find.
+	History:Clear()
+	P.focus.name.font = st.tablecopy(original, true)
+	UF:CopySettings('focus', 'target', { 'name' })
+	P.focus.name.font.shadow_offset[1] = 5
+	eq(History:Undo(), false, 'a hand edit in place makes the step stale, so refused')
+	eq(P.focus.name.font.shadow_offset[1], 5, 'and the edit stays')
+	eq(typeface.shadow_offset[1], 1, "the source's shadow is untouched")
 end)

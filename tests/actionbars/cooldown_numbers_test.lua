@@ -62,6 +62,7 @@ local FILES = {
 }
 
 local st, AB, LAB
+local library = false -- true while the fixture button plays LibActionButton's own SetFont
 
 -- A fresh world with Blizzard's setting on. saved is the action bars' part of
 -- a profile saved earlier (AceDB keeps only what differs from the defaults).
@@ -90,7 +91,20 @@ local function button(name)
 		b[key]:SetFontObject(GameFontNormal)
 	end
 	b.cooldown = CreateFrame('Cooldown', nil, b)
-	function b:UpdateConfig(config) self.labConfig = config end
+	-- LibActionButton's UpdateConfig: its own SetFont on each text from the
+	-- config (UpdateTextElement, LibActionButton-1.0.lua:1283-1296), which a later
+	-- SetFontObject does not undo in game. `library` says the call is the
+	-- library's, so a test can count the SetFont calls SaftUI makes.
+	function b:UpdateConfig(config)
+		self.labConfig = config
+		self.configs = (self.configs or 0) + 1
+		library = true
+		for key, kind in pairs({ HotKey = 'hotkey', Count = 'count', Name = 'macro' }) do
+			local text = config.text[kind]
+			self[key]:SetFont(text.font.font, text.font.size, text.font.flags or '')
+		end
+		library = false
+	end
 	AB:SkinButton(b)
 	return b
 end
@@ -372,9 +386,28 @@ test("the numbers' value: the shared font by size while nothing is set, else the
 	eq(#take_errors(), 0, 'no errors')
 end)
 
-test('a hotkey switched Small text, then Colus, then Small text follows each with no SetFont (G2)', function()
+-- The font a font string draws, as 'path,size,flags'; and what st:FontValues says a value draws.
+local function drawn_font(region) return table.concat({ region:GetFont() }, ',') end
+local function value_font(value)
+	local file, size, flags = st:FontValues(value)
+	return table.concat({ file, size, flags }, ',')
+end
+
+-- Counts the SetFont calls on font strings that are not the library's.
+local function count_setfonts()
+	local methods = getmetatable(UIParent:CreateFontString(nil, 'OVERLAY')).__index
+	local original, saftui = methods.SetFont, { n = 0 }
+	methods.SetFont = function(...)
+		if not library then saftui.n = saftui.n + 1 end
+		return original(...)
+	end
+	return saftui, function() methods.SetFont = original end
+end
+
+test('a hotkey switched Small text, then Colus, then Small text draws each, with the library setting its own font and SaftUI none (G2)', function()
 	fresh()
 	local b = bar('bar1', button('CooldownTestHotkey'))
+	local calls, restore = count_setfonts()
 	local function drawn()
 		local config = AB:GetBarConfig('bar1').text.hotkey
 		return st:GetFont(st:FaceFont(config.font, config.size, config.outline))
@@ -383,23 +416,72 @@ test('a hotkey switched Small text, then Colus, then Small text follows each wit
 		AB:SetSetting('bar1', 'hotkey.font', font)
 		AB:UpdateBar('bar1')
 	end
-	set('pixel')
-	eq(b.HotKey:GetFontObject(), st:GetFont('pixel'), "Small text: the shared font's object")
-	eq(b.labConfig.text.hotkey.value, 'pixel', "the config's value is the key")
-	eq(b.HotKey:GetHeight(), select(2, st:FontValues('pixel')), "the one-line height is the shared font's size")
-	set('Colus')
-	eq(b.HotKey:GetFontObject(), drawn(), 'Colus: a typeface object')
-	check(b.HotKey:GetFontObject() ~= st:GetFont('pixel'), 'not the shared one')
-	eq(b.labConfig.text.hotkey.font.font, path('Colus'), "the library's own face is Colus too")
-	set('pixel')
-	eq(b.HotKey:GetFontObject(), st:GetFont('pixel'), 'Small text again, with no reload')
-	for _, key in ipairs({ 'HotKey', 'Count', 'Name' }) do
-		eq(stub.state(b[key]).font, nil, key .. ': no SetFont, ever')
-	end
-	-- No forced shadow: what a font string has (here set by hand, as a font object's would give) stays.
-	b.HotKey:SetShadowOffset(2, -2)
+	local ok, err = pcall(function()
+		set('pixel')
+		eq(b.HotKey:GetFontObject(), st:GetFont('pixel'), "Small text: the shared font's object")
+		eq(drawn_font(b.HotKey), value_font('pixel'), "and what the library's SetFont drew is Small text's look")
+		eq(b.labConfig.text.hotkey.value, 'pixel', "the config's value is the key")
+		eq(b.HotKey:GetHeight(), select(2, st:FontValues('pixel')), "the one-line height is the shared font's size")
+		set('Colus')
+		eq(b.HotKey:GetFontObject(), drawn(), 'Colus: a typeface object')
+		check(b.HotKey:GetFontObject() ~= st:GetFont('pixel'), 'not the shared one')
+		local config = AB:GetBarConfig('bar1').text.hotkey
+		eq(drawn_font(b.HotKey), value_font(st:FaceFont(config.font, config.size, config.outline)), "the library's SetFont drew Colus at the setting's size and outline")
+		eq(b.labConfig.text.hotkey.font.font, path('Colus'), "the library's own face is Colus")
+		set('pixel')
+		eq(b.HotKey:GetFontObject(), st:GetFont('pixel'), 'Small text again, with no reload')
+		eq(drawn_font(b.HotKey), value_font('pixel'), 'drawn in Small text')
+		eq(calls.n, 0, 'SaftUI called no SetFont on a text (only the library did)')
+		eq(stub.state(b.HotKey).font ~= nil, true, "the library's SetFont is what is on the text, which the object matches")
+
+		-- The shadow is the value's (a typeface's is 0, 0; a shared font's is its own),
+		-- never forced, on all three texts.
+		for _, key in ipairs({ 'HotKey', 'Count', 'Name' }) do
+			eq(T.text(b[key]:GetShadowOffset()), '0.00,0.00', key .. ": a typeface's shadow is 0, 0")
+		end
+		st.config.profile.fonts.pixel.shadow_offset = { 1, -1 }
+		set('pixel')
+		eq(T.text(b.HotKey:GetShadowOffset()), '1.00,-1.00', "a shared font's own shadow shows")
+		set('Colus')
+		eq(T.text(b.HotKey:GetShadowOffset()), '0.00,0.00', "and a typeface's is 0, 0 again")
+	end)
+	restore()
+	check(ok, tostring(err))
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("a shared font a bar's text uses changing on the Fonts tab restyles that bar once, out of combat, however many steps", function()
+	fresh()
+	local b = bar('bar1', button('CooldownTestFonts'))
+	local other = bar('bar2', button('CooldownTestFontsTwo'))
+	AB:SetSetting('bar1', 'hotkey.font', 'pixel')
 	AB:UpdateBar('bar1')
-	eq(T.text(b.HotKey:GetShadowOffset()), '2.00,-2.00', "the style doesn't set the shadow to 0, 0")
+	local before, otherBefore = b.configs, other.configs
+	-- A Size drag on Small text: many steps in one frame.
+	for size = 11, 20 do
+		st.config.profile.fonts.pixel.font_size = size
+		st:GetModule('Fonts'):UpdateFontConfig('pixel')
+		st:FontsChanged()
+	end
+	eq(b.configs, before, 'nothing restyled in the frame of the steps')
+	stub.run_timers()
+	eq(b.configs, before + 1, 'one restyle for the whole drag')
+	eq(drawn_font(b.HotKey), value_font('pixel'), "the library's font on the bar is Small text's new look")
+	eq(select(2, b.HotKey:GetFont()), 20, 'at the last size')
+	eq(other.configs, otherBefore, 'a bar whose texts name no shared font is not restyled')
+
+	-- In combat: nothing, then once at its end.
+	stub.in_combat = true
+	st.config.profile.fonts.pixel.font_size = 12
+	st:GetModule('Fonts'):UpdateFontConfig('pixel')
+	st:FontsChanged()
+	st:FontsChanged()
+	stub.run_timers()
+	eq(b.configs, before + 1, 'in combat: not restyled')
+	stub.in_combat = false
+	stub.fire_event('PLAYER_REGEN_ENABLED')
+	eq(b.configs, before + 2, 'restyled once when combat ends')
+	eq(select(2, b.HotKey:GetFont()), 12, 'with the new size')
 	eq(#take_errors(), 0, 'no errors')
 end)
 

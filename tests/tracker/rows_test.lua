@@ -630,6 +630,13 @@ RW.both('a typeface on Font and Header font reaches the rows; a refresh with not
 	st.config.profile.tracker.font = 'a font that does not exist'
 	TR:UpdateConfig()
 	eq(RW.quest(TR, 1).title:GetFontObject(), st:GetFont('normal'), 'a value naming nothing: Text')
+	-- The header's one setting (title, count and the zone headers): SetFontObject(nil)
+	-- errors in game, so a value naming nothing must draw Text there too.
+	st.config.profile.tracker.header_font = 'a font that does not exist'
+	TR:UpdateConfig()
+	eq(TR.header.title:GetFontObject(), st:GetFont('normal'), "the window's header title: Text")
+	eq(TR.header.count:GetFontObject(), st:GetFont('normal'), "the window's header count: Text")
+	eq(RW.zone(TR, 'A').title:GetFontObject(), st:GetFont('normal'), 'a zone header: Text')
 	eq(#take_errors(), 0, 'no errors')
 end)
 
