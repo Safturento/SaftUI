@@ -133,7 +133,7 @@ the UI, and this one is several thousand lines once its phases land (the open-so
   feature checks at run time. `## RequiredDeps: SaftUI-Core`, `## OptionalDeps: SaftUI-Misc` (so Misc,
   when present, loads first), `## Group: SaftUI-Core`, title `|cff00adefSaftUI Tracker|r`. **Call.**
 - **`Bindings.xml`** at the folder's root (the game reads it without a TOC line): one binding,
-  `CLICK SaftUITrackerNearestItem:LeftButton`, header `SAFTUI`, category `ADDONS`; the strings
+  `CLICK SaftUITrackerNearestItem:LeftButton`, header `SAFTUI`, category `BINDING_HEADER_SAFTUI` (so Key Bindings lists it in a section titled SaftUI); the strings
   `BINDING_HEADER_SAFTUI = 'SaftUI'` and the binding's name, "Use the nearest quest item", are set in
   `config.lua`.
 - **Module** `Tracker` (`st:NewModule('Tracker')`), profile key `tracker` (`st.defaults.tracker`,
@@ -781,7 +781,7 @@ It's chosen again every second out of combat, and on the quest events, `SUPER_TR
 its key in the Pixel font at the top right (`GetBindingKey`), refreshed on `UPDATE_BINDINGS`.
 
 **The key:** a `CLICK SaftUITrackerNearestItem:LeftButton` binding, listed in Blizzard's Key Bindings
-under AddOns > SaftUI ("Use the nearest quest item") through `Bindings.xml`, and set from the Items
+in the section titled SaftUI ("Use the nearest quest item") through `Bindings.xml`, and set from the Items
 tab with the options kit's keybinding widget: its `get` is `GetBindingKey` of that command, its `set`
 `SetBinding(key, command)` (clearing the old key first) and `SaveBindings(GetCurrentBindingSet())`, out
 of combat (queued in combat, as `SaftUI-ActionBars/bindings.lua` does). The key is the game's binding,

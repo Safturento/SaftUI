@@ -11,8 +11,8 @@ local TR = st.Tracker
 	(items.lua, .agents/taint.md rules 6 and 15), kept like this:
 
 	  - The holder is a plain frame made with the tracker, in combat too (a
-	    /reload in combat). The button, a child of the holder and anchored to it,
-	    is made, sized, shown, hidden and given its attributes out of combat only,
+	    /reload in combat). The button, a child of a state driver frame on the
+	    holder (hiding it in a pet battle) and anchored to the holder, is made, sized, shown, hidden and given its attributes out of combat only,
 	    the first time the setting is on; in combat the pass is queued as
 	    'tracker_nearest' and one pass at the end of combat makes it right. A
 	    holder with a secure child is protected, so it is placed through
@@ -133,36 +133,6 @@ end
 
 ------------------------------------------------------------------ the key
 
--- A key in a few characters, as the action bars show theirs
--- (SaftUI-ActionBars/skin.lua, ShortKey: the same rule, not shared because the
--- tracker does not depend on that addon): the modifiers as single letters, then
--- the key; mouse buttons M3 to M5, numpad keys N0 to N9.
-local MODIFIERS = { { 'SHIFT', 'S' }, { 'CTRL', 'C' }, { 'ALT', 'A' }, { 'META', 'M' } }
-local KEYS = {
-	MOUSEWHEELUP = 'MU', MOUSEWHEELDOWN = 'MD', NUMPADDECIMAL = 'N.', NUMPADDIVIDE = 'N/',
-	NUMPADMINUS = 'N-', NUMPADMULTIPLY = 'N*', NUMPADPLUS = 'N+', PAGEUP = 'PU', PAGEDOWN = 'PD',
-	SPACE = 'SpB', INSERT = 'Ins', HOME = 'Hm', END = 'End', DELETE = 'Del', BACKSPACE = 'BS',
-	CAPSLOCK = 'Cap', ESCAPE = 'Esc', ENTER = 'Ent', TAB = 'Tab',
-}
-
-local function ShortKey(key)
-	local prefix = ''
-	local found = true
-	while found do
-		found = false
-		for _, modifier in ipairs(MODIFIERS) do
-			local rest = key:match('^' .. modifier[1] .. '%-(.+)$')
-			if rest then
-				prefix = prefix .. modifier[2]
-				key = rest
-				found = true
-			end
-		end
-	end
-	local short = KEYS[key] or (key:gsub('^BUTTON(%d+)$', 'M%1'):gsub('^NUMPAD(%d)$', 'N%1'))
-	return prefix .. short
-end
-
 -- The first key bound to the nearest button's command, nil for none (the Items
 -- tab's Key row reads it; it is the game's binding, not a profile setting).
 function TR.NearestKey()
@@ -178,7 +148,8 @@ function TR:UpdateNearestKey()
 	if not button then return end
 	local key = TR.NearestKey()
 	if key then
-		button.keyText:SetText(ShortKey(key))
+		-- The short form the action bars' hotkeys use (Core's st:ShortBindingKey).
+		button.keyText:SetText(st:ShortBindingKey(key))
 		if not button.keyText:IsShown() then button.keyText:Show() end
 	elseif button.keyText:IsShown() then
 		button.keyText:Hide()
@@ -191,13 +162,27 @@ end
 -- (Blizzard_Settings_Shared/Blizzard_Keybindings.lua). A key the game refuses
 -- leaves the old ones bound. SetBinding and SaveBindings are blocked in combat,
 -- so in combat the change waits for its end ('tracker_binding'; the last one
--- asked for is the one made).
+-- asked for is the one made). Like /sui kb (SaftUI-ActionBars/keybindmode.lua),
+-- it tells the player in chat when the key was bound to another action ("(was
+-- X)") and when the game refused it.
 function TR:SetNearestKey(key)
 	if st:QueueAfterCombat('tracker_binding', function() TR:SetNearestKey(key) end) then return end
 	local old = { GetBindingKey(TR.NEAREST_COMMAND) }
+	local binding = key ~= nil and key ~= ''
+	local previous = binding and GetBindingAction(key) or nil
+	local name = GetBindingName(TR.NEAREST_COMMAND)
 	for _, oldKey in ipairs(old) do SetBinding(oldKey) end
-	if key ~= nil and key ~= '' and not SetBinding(key, TR.NEAREST_COMMAND) then
-		for _, oldKey in ipairs(old) do SetBinding(oldKey, TR.NEAREST_COMMAND) end
+	if binding then
+		if SetBinding(key, TR.NEAREST_COMMAND) then
+			if previous and previous ~= '' and previous ~= TR.NEAREST_COMMAND then
+				st:Print(('%s bound to %s (was %s).'):format(GetBindingText(key), name, GetBindingName(previous)))
+			else
+				st:Print(('%s bound to %s.'):format(GetBindingText(key), name))
+			end
+		else
+			for _, oldKey in ipairs(old) do SetBinding(oldKey, TR.NEAREST_COMMAND) end
+			st:Print(("Can't bind %s to %s."):format(GetBindingText(key), name))
+		end
 	end
 	SaveBindings(GetCurrentBindingSet())
 	self:UpdateNearestKey()
@@ -217,11 +202,43 @@ function TR:PlaceNearest()
 	if not holder then return end
 	st:PlaceHolder(holder, 'tracker_nearest_holder',
 		function()
-			local size = st:RoundToPixel(self.config.items.nearest_size, holder)
+			local size = TR.NearestSize(self)
 			return size, size
 		end,
-		function() return self.config.items.nearest_position end)
+		function() return TR.NearestPosition(self) end)
 	st:KeepInScreenMargin(holder)
+end
+
+-- The holder's and the button's size, one whole-pixel number (the mover's
+-- outline and the button never differ by a hair).
+function TR.NearestSize(self)
+	return st:RoundToPixel(self.config.items.nearest_size, self.nearestHolder)
+end
+
+-- Why the nearest holder may not be anchored to frame, or nil. A holder with a
+-- secure child is protected, and protection spreads to the frames it is anchored
+-- to, through the chain (.agents/taint.md rule 6), so it must never be anchored
+-- to a frame the tracker sizes or moves in combat: the tracker's window, and
+-- anything that moves with it (its scroll frame, content, rows and what hangs
+-- from them). SaftUITrackerHolder is fine: it is placed through
+-- st:SafeReposition and the window hangs from it, not the other way round.
+function TR.NearestAnchorRefusal(frame)
+	local window = TR.window
+	if frame and window and st:MovesWith(frame, window) then
+		return "The tracker's window changes size in combat, so the nearest button can't be attached to it or to anything in it. Attach it to SaftUITrackerHolder or UIParent."
+	end
+end
+
+-- The saved position, with an anchor the rule above refuses (a profile or an
+-- import can hold one) put on UIParent, the profile left as it is.
+function TR.NearestPosition(self)
+	local position = self.config.items.nearest_position
+	if TR.NearestAnchorRefusal(st:ResolveFrame(position.frame)) then
+		local copy = st.tablecopy(position, true)
+		copy.frame = 'UIParent'
+		return copy
+	end
+	return position
 end
 
 local function OnEnter(button)
@@ -251,7 +268,17 @@ function TR:BuildNearestButton()
 	if self.nearestButton then return self.nearestButton end
 	if st:QueueAfterCombat('tracker_nearest', QueuedPass) then return nil end
 	local holder = self.nearestHolder
-	local button = TR.NewItemButton(holder, st.name .. 'TrackerNearestItem')
+	-- The button hides in a pet battle by the item layer's own mechanism: its
+	-- parent is a SecureHandlerStateTemplate frame filling the holder under a
+	-- visibility driver (TR.ITEM_DRIVER, set out of combat, here with the button;
+	-- Task 12 builds it from the settings), so the game hides and shows it with no
+	-- addon Lua, in combat too. The holder itself stays a plain frame for the mover.
+	local driver = CreateFrame('Frame', st.name .. 'TrackerNearestDriver', holder, 'SecureHandlerStateTemplate')
+	driver:SetAllPoints(holder)
+	driver:EnableMouse(false)
+	RegisterStateDriver(driver, 'visibility', TR.ITEM_DRIVER)
+	self.nearestDriver = driver
+	local button = TR.NewItemButton(driver, st.name .. 'TrackerNearestItem')
 	button:SetPoint('TOPLEFT', holder, 'TOPLEFT', 0, 0)
 	-- Its key, top right, in the Pixel font.
 	local text = button.over:CreateFontString(nil, 'OVERLAY')
@@ -401,7 +428,8 @@ local function DimNearest(self)
 	local same = item and item.link ~= nil and item.link == (button.item and button.item.link)
 	if same then
 		button.item, button.title = item, quest.title
-		button.cd, button.range = item.cooldown, item.range
+		-- (the cooldown and range are the button's own live reads: the watcher's
+		-- range timer and BAG_UPDATE_COOLDOWN)
 	end
 	button.dimmed = not same
 	self:SetItemAlpha(button, same and 1 or TR.DIM_ALPHA)
@@ -411,7 +439,7 @@ end
 -- Out of combat: nothing to offer, or the setting off. The button uses nothing
 -- and is hidden.
 local function ClearNearest(button)
-	if button.questID == nil and not button:IsShown() and not button.applied then return end
+	if button.questID == nil and not button:IsShown() and not (button.applied and next(button.applied)) then return end
 	TR:SetButtonItem(button, nil)
 	button.questID, button.item, button.title, button.cd, button.range, button.inside = nil, nil, nil, nil, nil, nil
 	button.dimmed = false
@@ -425,11 +453,13 @@ end
 function TR:RefreshNearest()
 	if not (self.built and self.nearestHolder and self.model) then return end
 	self:UpdateNearestWatch()
+	local config = self.config.items
+	-- Off and no button made: nothing to keep right, so no queue and no dimming.
+	if not config.nearest and not self.nearestButton then return end
 	if st:QueueAfterCombat('tracker_nearest', QueuedPass) then
 		DimNearest(self)
 		return
 	end
-	local config = self.config.items
 	if not config.nearest then
 		if self.nearestButton then ClearNearest(self.nearestButton) end
 		return
@@ -444,10 +474,15 @@ function TR:RefreshNearest()
 	local quest = chosen.quest
 	if not self:SetButtonItem(button, quest.item) then return end
 	button.questID, button.item, button.title = quest.id, quest.item, quest.title
-	button.cd, button.range = quest.item.cooldown, quest.item.range
+	-- The cooldown and the range come from their own live reads, never from the
+	-- model (read when the last quest or bag event came): the pass runs every
+	-- second and must not put a stale tint or swipe back over what the button
+	-- read itself.
+	local index = TR.LogIndex(quest.id)
+	button.cd, button.range = TR.ReadItemCooldown(index), TR.ReadItemRange(index)
 	button.inside = chosen.inArea == true
 	button.dimmed = false
-	TR.StyleItemButton(button, st:ResolveTheme(self.config.theme, self.config.background, 'action'), config.nearest_size)
+	TR.StyleItemButton(button, st:ResolveTheme(self.config.theme, self.config.background, 'action'), TR.NearestSize(self))
 	self:SetItemAlpha(button, 1)
 	TR.PaintItemButton(button)
 	if not button:IsShown() then button:Show() end

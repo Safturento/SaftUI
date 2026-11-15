@@ -145,12 +145,12 @@ function TR.ItemsTab()
 		nearest = toggle(6, 'nearest', 'Nearest quest item button',
 			"One bigger button for the quest item you most likely want: the one whose area you're in, else your focused quest's, else the nearest. Move it in edit mode; bind a key to it below."),
 		nearest_size = generators.range(7, 'Nearest button size', 24, 64, 2, 'How big the nearest quest item button is.'),
-		-- The key is the game's own binding (Key Bindings > AddOns > SaftUI), not a
+		-- The key is the game's own binding (Key Bindings > SaftUI), not a
 		-- profile setting: get and set read and write it.
 		key = {
 			order = 8,
 			name = 'Key',
-			desc = "The key that uses the nearest quest item. It is the game's own binding, also set under Key Bindings > AddOns > SaftUI. In combat a change waits for its end.",
+			desc = "The key that uses the nearest quest item. It is the game's own binding, also set under Key Bindings > SaftUI. In combat a change waits for its end.",
 			type = 'keybinding',
 			get = function() return TR.NearestKey() end,
 			set = function(_, value) TR:SetNearestKey(value) end,
@@ -179,6 +179,17 @@ function TR.ItemsTab()
 		function() return TR.nearestHolder end,
 		"Where the nearest quest item button is. Drag it in edit mode, or set it here.")
 	args.nearest_position.default = TR.SettingDefault('items', 'nearest_position')
+	-- The button's holder is protected (a secure child), and protection spreads to
+	-- the frames it is anchored to: refused here is any frame the tracker sizes in
+	-- combat (TR.NearestAnchorRefusal); the reason shows in the footer's status line.
+	local validate = args.nearest_position.validate
+	args.nearest_position.validate = function(info, part, value)
+		if part == 'frame' then
+			local refusal = TR.NearestAnchorRefusal(st:ResolveFrame(value))
+			if refusal then return refusal end
+		end
+		return validate(info, part, value)
+	end
 	local tab = TR.Tab(3, 'Items', args)
 	tab.get = function(info) return TR.config.items[info[#info]] end
 	tab.set = function(info, value)

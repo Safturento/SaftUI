@@ -494,7 +494,7 @@ test('a secure action button\'s click, as SecureActionButton_OnClick treats an a
 	stub.press_key(button, true)
 	stub.press_key(button, false)
 	eq(#stub.secure_clicks, 4, 'a key press follows the same rule')
-	check(stub.secure_clicks[4].key, 'and is told apart')
+	eq(stub.secure_clicks[4].key, nil, 'and is not told apart: an addon\'s button gets no isKeyPress')
 	stub.in_combat = true
 	stub.click(button, 'LeftButton', true)
 	eq(#stub.secure_clicks, 5, 'in combat a click still uses it')

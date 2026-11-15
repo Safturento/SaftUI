@@ -7,6 +7,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-14 — Position rows of secure frames can anchor to a frame that is moved in combat](#2026-11-14--position-rows-of-secure-frames-can-anchor-to-a-frame-that-is-moved-in-combat)
+  - [2026-11-14 — The options kit's keybinding widget doesn't know META or Blizzard's ignored keys](#2026-11-14--the-options-kits-keybinding-widget-doesnt-know-meta-or-blizzards-ignored-keys)
   - [2026-11-14 — Three copies of the source lexer in tests](#2026-11-14--three-copies-of-the-source-lexer-in-tests)
   - [2026-11-14 — Tracker: a tracker moved in Blizzard's Edit Mode isn't the first position](#2026-11-14--tracker-a-tracker-moved-in-blizzards-edit-mode-isnt-the-first-position)
   - [2026-11-14 — A first-run setup dialog: UI size, theme, unit frame layout](#2026-11-14--a-first-run-setup-dialog-ui-size-theme-unit-frame-layout)
@@ -144,6 +146,28 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-14 — Position rows of secure frames can anchor to a frame that is moved in combat
+
+**What:** A holder with a secure child is protected, and protection spreads to the frames it is anchored to. The Position row of any mover whose holder carries secure buttons accepts any frame name (`generators.position(..., true, ...)`, which only refuses loops), so a player can anchor it to a frame SaftUI sizes or moves in combat, which then gets `ADDON_ACTION_BLOCKED`. The tracker's nearest button's row now refuses the tracker's window (`TR.NearestAnchorRefusal`); the others don't.
+
+**Why noticed:** Review of Task 10 of the objective tracker (`docs/superpowers/plans/2026-11-14-saftui-objective-tracker-phase-1.md`), finding I2: the nearest holder could be attached to `SaftUITracker`, which `TR:LayoutWindow` resizes in combat.
+
+**Anchors:** `SaftUI-Tracker/nearest.lua` (`TR.NearestAnchorRefusal`), `SaftUI-Core/Config/generators.lua` (`generators.position`), `st:MovesWith` and `st:ValidateAnchor` (`SaftUI-Core/api.lua`), the action bars' extras and the totem bar's Position rows (`SaftUI-ActionBars/options.lua`, `SaftUI-Misc/totemoptions.lua`), `.agents/taint.md` rule 6 and 16.
+
+**Shape of work:** Small design pass, then one change: let a mover say which frames its holder may not be anchored to (a `refuseAnchor(frame)` hook on `generators.position`'s target, or a registry of frames SaftUI moves in combat), use it in the secure holders' rows, and a test per row.
+
+**Open questions:** whether to refuse by a registry of "moves in combat" frames or by asking each row's owner.
+
+### 2026-11-14 — The options kit's keybinding widget doesn't know META or Blizzard's ignored keys
+
+**What:** The `keybinding` widget (`SaftUI-Core/Config/optionskeybinding.lua`) builds a key from `Is*KeyDown` in ALT-CTRL-SHIFT order and a short ignore list; unlike `/sui kb` (`GetConvertedKeyOrButton`, `IsKeyPressIgnoredForBinding`, `CreateKeyChordStringUsingMetaKeyState`) it has no META and doesn't use Blizzard's ignore list, so a Mac player can't bind META chords there and a key Blizzard refuses to bind is tried anyway (the game then refuses it, and the nearest button's Key row says "Can't bind ...").
+
+**Why noticed:** Review of Task 10 of the objective tracker, which uses the widget for its Key row. Pre-existing Core behaviour, out of that task's scope.
+
+**Anchors:** `SaftUI-Core/Config/optionskeybinding.lua` (`Press`, `IGNORED_KEYS`), `SaftUI-ActionBars/keybindmode.lua`, `SaftUI-Tracker/options.lua` (the `key` row).
+
+**Shape of work:** Small: build the key through Blizzard's own functions where they exist, guarded by presence; extend `tests/core/options_fields_test.lua`.
 
 ### 2026-11-14 — Three copies of the source lexer in tests
 

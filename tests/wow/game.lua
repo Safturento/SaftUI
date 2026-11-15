@@ -1027,6 +1027,19 @@ end
 
 function GetCurrentBindingSet() return stub.binding_set end
 
+-- GetBindingAction(key) -> the command the key is bound to, '' for none;
+-- GetBindingText(key) -> the key as the player reads it (the stubs give the key
+-- itself); GetBindingName(command) -> the command's name in Key Bindings
+-- (stub.binding_names[command], else the command). The shapes are how
+-- SaftUI-ActionBars/keybindmode.lua and Blizzard's Keybindings.lua use them.
+stub.binding_names = {}
+function GetBindingAction(key)
+	if type(key) ~= 'string' then error('Usage: action = GetBindingAction(key)', 2) end
+	return stub.bindings[key] or ''
+end
+function GetBindingText(key) return key end
+function GetBindingName(command) return stub.binding_names[command] or command end
+
 function SaveBindings(set)
 	if set ~= 1 and set ~= 2 then error('Usage: SaveBindings(bindingSet)', 2) end
 	if InCombatLockdown() then

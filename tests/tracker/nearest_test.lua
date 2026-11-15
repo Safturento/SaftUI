@@ -53,6 +53,13 @@ local DISTANCES = {
 	[3] = { distance = { sq = 200, onContinent = true } },
 }
 
+-- The game protects the holder of a secure button (and what that is anchored to);
+-- the stubs don't model the spread, so a test marks the holder once its button
+-- exists, and every combat path then has to leave it alone.
+local function protect(TR)
+	if TR.nearestButton and TR.nearestHolder then stub.state(TR.nearestHolder).protected = true end
+end
+
 local function world(opts)
 	opts = opts or {}
 	stub.bindings, stub.saved_bindings, stub.rejected_keys = {}, {}, {}
@@ -65,7 +72,9 @@ local function world(opts)
 		if opts.configure then opts.configure(tracker) end
 		log(opts.ids or { 1, 2, 3 }, opts.extra or DISTANCES)
 	end
-	return RW.world(opts)
+	local st, TR = RW.world(opts)
+	protect(TR)
+	return st, TR
 end
 
 local function button(TR) return TR.nearestButton end
@@ -171,7 +180,8 @@ test('off by default: no button, a holder and a disabled mover; on: the holder, 
 	eq(holder, _G.SaftUITrackerNearestHolder, 'named SaftUITrackerNearestHolder')
 	eq(TR.nearestButton, nil, 'but no button while it is off')
 	eq(_G.SaftUITrackerNearestItem, nil, 'no secure frame by its name')
-	eq(TW.counts.secure, 0, 'no secure frame made by the build')	local mover = st.EditModeFrames.movers.trackernearest
+	eq(TW.counts.secure, 0, 'no secure frame made by the build')
+	local mover = st.EditModeFrames.movers.trackernearest
 	check(mover, 'the mover is registered')
 	eq(mover.def.frame, holder, 'on the holder')
 	eq(mover.def.label, 'Nearest quest item', 'label')
@@ -192,7 +202,10 @@ test('off by default: no button, a holder and a disabled mover; on: the holder, 
 	local b = button(TR)
 	check(b ~= nil, 'on: the button is made')
 	eq(b, _G.SaftUITrackerNearestItem, 'named SaftUITrackerNearestItem')
-	eq(b:GetParent(), holder, 'a child of its holder')
+	protect(TR)
+	check(TR.nearestDriver ~= nil, 'its parent is a state driver frame on the holder')
+	eq(b:GetParent(), TR.nearestDriver, 'a child of the driver frame')
+	eq(TR.nearestDriver:GetParent(), holder, 'which is its holder\'s child')
 	check(b:IsProtected(), 'a secure frame')
 	eq(b:GetWidth(), 40, 'nearest_size wide')
 	eq(b:GetHeight(), 40, 'and high')
@@ -204,7 +217,6 @@ test('off by default: no button, a holder and a disabled mover; on: the holder, 
 	eq(st.EditModeFrames:IsMoverHidden(mover), false, 'and not hidden: it has an item')
 	local registered = stub.state(b).click_buttons
 	eq(table.concat(registered or {}, ','), 'AnyUp,AnyDown', 'registered for AnyUp and AnyDown')
-	eq(stub.state(holder).protected, nil, 'the stubs do not model the spread of protection')
 	eq(#take_errors(), 0, 'no errors')
 end)
 
@@ -255,7 +267,8 @@ test('it never hides with the tracker and does not depend on the placement of th
 		eq(item_of_button(TR), 'item:1002', placement .. ': with its item')
 	end
 	-- Its parent is its holder, on UIParent: not the item layer, not the window.
-	eq(button(TR):GetParent(), TR.nearestHolder, 'a child of its holder')
+	eq(button(TR):GetParent(), TR.nearestDriver, 'a child of its driver frame')
+	eq(TR.nearestDriver:GetParent(), TR.nearestHolder, 'on its holder')
 	eq(TR.nearestHolder:GetParent(), UIParent, 'the holder is on UIParent')
 	eq(#take_errors(), 0, 'no errors')
 end)
@@ -359,6 +372,7 @@ test('in combat the count, the cooldown and the range follow the quest while its
 	entry(2).item.charges = 3
 	entry(2).item.cooldown = { start = 100, duration = 30, enable = 1 }
 	settle()
+	stub.fire_event('BAG_UPDATE_COOLDOWN')
 	eq(b.count:GetText(), '3', 'the count is drawn')
 	eq(stub.state(b.cooldown).cooldown_duration, 30, 'and the cooldown')
 	stub.quests.log[3].item.range = 0 -- quest 2's entry
@@ -430,19 +444,17 @@ test('a /reload in combat: the holder and mover at once, the button only when co
 	TW.combat(false)
 	TW.count_stop()
 	check(TR.nearestButton ~= nil, 'combat ends: the button is made')
-	eq(TW.counts.secure, 5, 'once, with the layer, the three row buttons and the nearest button')
+	eq(TW.counts.secure, 6, 'once, with the layer, the three row buttons, the nearest button and its driver frame')
 	check(TR.nearestButton:IsShown(), 'and shown with its item')
 	RW.later(2)
-	eq(TW.counts.secure, 5, 'and made no more')
+	eq(TW.counts.secure, 6, 'and made no more')
 	eq(#stub.blocked, 0, 'nothing blocked')
 	eq(#take_errors(), 0, 'no errors')
 end)
 
-test('turned on, resized and moved in combat: nothing is touched; one pass at combat end makes it right', function()
+test('resized and moved in combat: nothing is touched; one pass at combat end makes it right', function()
 	local st, TR = world()
 	local b, holder = button(TR), TR.nearestHolder
-	-- The game protects the holder of a secure button.
-	stub.state(holder).protected = true
 	local mover = st.EditModeFrames.movers.trackernearest
 	TW.combat(true)
 	TW.count_from_now()
@@ -617,7 +629,6 @@ test('a key bound once uses the item once per press with ActionButtonUseKeyDown 
 		eq(last_use().down, key_down, 'on the ' .. (key_down and 'press' or 'release'))
 		eq(last_use().type, 'item', 'by its type')
 		eq(last_use().item, 'item:1002', 'and its item')
-		eq(last_use().key, true, 'from a key')
 		-- Held: the game repeats nothing; a second press is a second use.
 		stub.press_key(b, true)
 		stub.press_key(b, false)
@@ -626,14 +637,17 @@ test('a key bound once uses the item once per press with ActionButtonUseKeyDown 
 	eq(#take_errors(), 0, 'no errors')
 end)
 
-test('a hidden button is never clicked by the game; a key with no item uses nothing', function()
+test('a key with no item uses nothing, whether or not the game delivers its click to a hidden button', function()
 	local st, TR = world()
 	local b = button(TR)
 	log({}, nil)
 	settle()
 	check(not b:IsShown(), 'hidden')
 	stub.secure_clicks = {}
-	check(not pcall(stub.press_key, b, true), 'the game delivers no click to a hidden button')
+	-- Whether the engine delivers a CLICK binding to a hidden button can't be read
+	-- from Lua; the safety is that a button with no item has no type.
+	stub.click_unchecked(b, 'LeftButton', true)
+	stub.click_unchecked(b, 'LeftButton', false)
 	eq(#stub.secure_clicks, 0, 'nothing was used')
 	eq(b:GetAttribute('type'), nil, 'and it has no type to use it with')
 	eq(#take_errors(), 0, 'no errors')
@@ -758,5 +772,210 @@ test('a profile switch to another nearest spot and size places the holder; the m
 	eq(point, 'CENTER', 'apply places the holder')
 	eq(x, 7, 'at x')
 	eq(y, 9, 'and y')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+------------------------------------------------------------------ fix round 1
+
+local function printed(fn)
+	local real, lines = print, {}
+	print = function(...)
+		local parts = {}
+		for i = 1, select('#', ...) do parts[i] = tostring((select(i, ...))) end
+		lines[#lines + 1] = table.concat(parts, ' ')
+	end
+	local ok, err = pcall(fn)
+	print = real
+	if not ok then error(err, 0) end
+	return lines
+end
+
+test('the tick keeps the cooldown and the range the button read itself, never the model\'s stale ones', function()
+	local st, TR = world()
+	local b, watcher = button(TR), TR.nearestWatcher
+	entry(2).item.cooldown = { start = 100, duration = 30, enable = 1 }
+	stub.fire_event('BAG_UPDATE_COOLDOWN') -- no refresh: the model still has none
+	eq(stub.state(b.cooldown).cooldown_duration, 30, 'the swipe is drawn')
+	stub.fire_script(watcher, 'OnUpdate', 1)
+	eq(stub.state(b.cooldown).cooldown_duration, 30, 'and the once a second choice leaves it')
+	stub.quests.log[3].item.range = 0 -- quest 2's entry
+	stub.fire_script(watcher, 'OnUpdate', 0.25)
+	eq(b.range, 0, 'out of range, read live')
+	stub.fire_script(watcher, 'OnUpdate', 0.75)
+	eq(b.range, 0, 'and the choice does not put the model\'s value back')
+	local red = ('%.2f %.2f %.2f'):format(st.config.profile.colors.text.red:GetRGB())
+	eq(('%.2f %.2f %.2f'):format(b.icon:GetVertexColor()), red, 'still red')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('the Position row refuses an anchor that would protect the tracker window or what moves with it, and says why', function()
+	local st, TR = world()
+	local position = TR.ItemsTab().args.nearest_position
+	_G.NearestTestRow, _G.NearestTestContent = RW.quest(TR, 1), TR.content
+	for _, name in ipairs({ 'SaftUITracker', 'NearestTestRow', 'NearestTestContent' }) do
+		local result = position.validate({}, 'frame', name)
+		check(type(result) == 'string' and result:find('changes size in combat', 1, true), name .. ' is refused with the reason: ' .. tostring(result))
+	end
+	eq(position.validate({}, 'frame', 'UIParent'), true, 'UIParent is fine')
+	eq(position.validate({}, 'frame', 'SaftUITrackerHolder'), true, 'so is the tracker\'s holder (placed through SafeReposition)')
+	-- A frame anchored to the window moves with it.
+	local hung = CreateFrame('Frame', 'NearestTestHung', UIParent)
+	hung:SetPoint('TOPLEFT', TR.window, 'BOTTOMLEFT')
+	check(type(position.validate({}, 'frame', 'NearestTestHung')) == 'string', 'a frame anchored to the window is refused')
+	-- A saved position that names the window (an import) is placed on UIParent.
+	TR.config.items.nearest_position.frame = 'SaftUITracker'
+	TR:UpdateConfig()
+	local _, relative = TR.nearestHolder:GetPoint(1)
+	eq(relative, UIParent, 'the holder is on UIParent whatever the profile says')
+	eq(TR.config.items.nearest_position.frame, 'SaftUITracker', 'and the profile is left as it was')
+	-- Nothing of the window is anchored to the holder's chain.
+	for i = 1, TR.window:GetNumPoints() do
+		local _, rel = TR.window:GetPoint(i)
+		check(rel ~= TR.nearestHolder and rel ~= TR.nearestDriver and rel ~= button(TR), 'the window never hangs from the nearest button')
+	end
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('combat events leave the protected holder alone: UPDATE_BINDINGS, BAG_UPDATE_COOLDOWN, the area, the focus, the tick, a quest update', function()
+	local st, TR = world()
+	local holder = TR.nearestHolder
+	check(stub.state(holder).protected, 'the holder is marked protected, as the game protects it')
+	local before = TW.snapshot(holder)
+	TW.combat(true)
+	stub.bindings.F = COMMAND
+	stub.fire_event('UPDATE_BINDINGS')
+	stub.fire_event('BAG_UPDATE_COOLDOWN')
+	stub.fire_event('PLAYER_INSIDE_QUEST_BLOB_STATE_CHANGED', 2, true)
+	stub.fire_event('SUPER_TRACKING_CHANGED')
+	stub.fire_script(TR.nearestWatcher, 'OnUpdate', 1)
+	settle()
+	TR:UpdateConfig()
+	st:ColorsChanged('button')
+	eq(TW.snapshot(holder), before, 'the holder is as it was')
+	eq(holder:GetWidth(), 40, 'its size')
+	eq(#stub.blocked, 0, 'nothing was even tried on it')
+	TW.combat(false)
+	eq(#stub.blocked, 0, 'nor at the end')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('SaveBindings gets the current binding set: the character set too', function()
+	local st, TR = world()
+	stub.binding_set = 2
+	stub.saved_bindings = {}
+	TR:SetNearestKey('J')
+	eq(stub.saved_bindings[1], 2, 'SaveBindings(GetCurrentBindingSet()) with the character set')
+	stub.binding_set = 1
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('an item that changes in combat: the icon and the attribute stay the old ones, the button dims, the new one comes at the end', function()
+	local st, TR = world()
+	local b = button(TR)
+	eq(b.icon:GetTexture(), 134402, 'quest 2\'s icon')
+	TW.combat(true)
+	entry(2).item = item_of(9)
+	settle()
+	eq(b.icon:GetTexture(), 134402, 'the icon is still the item it uses')
+	eq(b:GetAttribute('item'), 'item:1002', 'and so is the attribute')
+	eq(b:GetAlpha(), TR.DIM_ALPHA, 'dimmed: its item is not the quest\'s now')
+	stub.secure_clicks = {}
+	stub.press_key(b, true)
+	eq(last_use().item, 'item:1002', 'the key uses what the button shows')
+	eq(#stub.blocked, 0, 'nothing blocked')
+	TW.combat(false)
+	eq(b:GetAttribute('item'), 'item:1009', 'combat ends: the new item')
+	eq(b.icon:GetTexture(), 134409, 'and its icon')
+	eq(b:GetAlpha(), 1, 'full strength')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a key taken from another action, or refused, is said in chat, as /sui kb does', function()
+	local st, TR = world()
+	stub.binding_names[COMMAND] = 'Use the nearest quest item'
+	stub.binding_names.ACTIONBUTTON1 = 'Action Button 1'
+	stub.bindings.F = 'ACTIONBUTTON1'
+	local lines = printed(function() TR:SetNearestKey('F') end)
+	eq(#lines, 1, 'one line')
+	check(lines[1]:find('F bound to Use the nearest quest item (was Action Button 1).', 1, true), 'names what it was: ' .. lines[1])
+	eq(stub.bindings.F, COMMAND, 'and it is bound')
+	lines = printed(function() TR:SetNearestKey('G') end)
+	check(lines[1]:find('G bound to Use the nearest quest item.', 1, true) and not lines[1]:find('was', 1, true), 'a free key: no was: ' .. lines[1])
+	lines = printed(function() TR:SetNearestKey('G') end)
+	check(not lines[1]:find('was', 1, true), 'the same key again: no was')
+	stub.rejected_keys.X = true
+	lines = printed(function() TR:SetNearestKey('X') end)
+	check(lines[1]:find("Can't bind X to Use the nearest quest item.", 1, true), 'a refusal says so: ' .. lines[1])
+	eq(stub.bindings.G, COMMAND, 'and the old key is back')
+	eq(#printed(function() TR:SetNearestKey('') end), 0, 'clearing says nothing')
+	-- In combat it says it when the change is made.
+	TW.combat(true)
+	lines = printed(function() TR:SetNearestKey('H') end)
+	eq(#lines, 0, 'nothing in combat')
+	lines = printed(function() TW.combat(false) end)
+	eq(#lines, 1, 'one line at the end')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('the button hides in a pet battle by a visibility driver on its parent, set when the button is made, out of combat', function()
+	local st, TR = world()
+	local driver = TR.nearestDriver
+	eq(driver, _G.SaftUITrackerNearestDriver, 'named')
+	check(driver:IsProtected(), 'a secure state frame')
+	eq(stub.state(driver).state_drivers['state-visibility'], TR.ITEM_DRIVER, 'the item layer\'s driver: [petbattle] hide; show')
+	eq(driver:GetNumPoints(), 2, 'it fills the holder')
+	check(not driver:IsMouseEnabled(), 'and takes no mouse')
+	eq(button(TR):GetParent(), driver, 'the button is its child')
+	-- A /reload in combat makes none of it until the end.
+	local _, TR2 = world({ combat = true })
+	eq(TR2.nearestDriver, nil, 'no driver in combat')
+	TW.combat(false)
+	check(TR2.nearestDriver ~= nil, 'made when combat ends')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('st:ShortBindingKey, Core\'s: modifiers as letters, mouse buttons, numpad, a short key unchanged', function()
+	local st = world({ nearest = false })
+	local cases = {
+		['SHIFT-F'] = 'SF', ['CTRL-ALT-Q'] = 'CAQ', ['BUTTON4'] = 'M4', ['NUMPAD5'] = 'N5', ['MOUSEWHEELUP'] = 'MU',
+		['SHIFT-MOUSEWHEELDOWN'] = 'SMD', ['SPACE'] = 'SpB', ['F'] = 'F', ['SF'] = 'SF', ['PAGEUP'] = 'PU',
+	}
+	for key, short in pairs(cases) do eq(st:ShortBindingKey(key), short, key) end
+end)
+
+test('with the setting off and no button, combat queues and dims nothing', function()
+	local st, TR = world({ nearest = false })
+	local queued = 0
+	local queue = st.QueueAfterCombat
+	st.QueueAfterCombat = function(self, key, fn)
+		if key == 'tracker_nearest' then queued = queued + 1 end
+		return queue(self, key, fn)
+	end
+	TW.combat(true)
+	settle()
+	TW.combat(false)
+	st.QueueAfterCombat = queue
+	eq(queued, 0, 'nothing queued for the nearest button')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('the holder and the button are one whole-pixel size; the tick stops when the setting goes off; a recolor reaches the button', function()
+	local st, TR = world()
+	TR.config.items.nearest_size = 25.3
+	TR:UpdateConfig()
+	RW.later(1)
+	eq(button(TR):GetWidth(), TR.nearestHolder:GetWidth(), 'the same size')
+	local watcher = TR.nearestWatcher
+	check(watcher:GetScript('OnUpdate') ~= nil, 'ticking while on')
+	local colored = 0
+	local color = TR.ColorNearest
+	TR.ColorNearest = function(...) colored = colored + 1; return color(...) end
+	st:ColorsChanged('button')
+	TR.ColorNearest = color
+	eq(colored, 1, 'a Colors change reaches the button')
+	TR.config.items.nearest = false
+	TR:UpdateConfig()
+	RW.later(1)
+	eq(watcher:GetScript('OnUpdate'), nil, 'off: no tick')
 	eq(#take_errors(), 0, 'no errors')
 end)
