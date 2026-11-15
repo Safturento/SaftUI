@@ -135,3 +135,11 @@ Kinds of text does what its rows say:
 - Global settings > Fonts > Kinds of text > Button text: pick Heading. The labels of the bags' Bag Slots button (open a bag), the bank's Warband Bank and Deposit buttons and its category tabs, and keybind mode's Done (`/sui kb`) change at once, in size and face, with no reload. Pick a typeface: the same. Reset: they are back in Small text (Homespun 10, monochrome outline, no shadow), exactly as before the change. The micro menu's clock does not change (it keeps Small text).
 - The same Button text pick still changes the totem bar's key bindings, counts and names and the bag slot bars' texts, and no longer the totem timers.
 - Check box labels: SaftUI has only one label, the bags' Edit toggle, and it is hidden, so changing the row shows nothing. The row says so. (The Edit toggle drew Small text before this change and draws Check box labels, Text by default, now; nothing shows it today.)
+
+The totem timers' font (Totem bar page > Timer font):
+
+- A fresh profile: the countdown over each element button looks exactly as it did (Small text: Homespun 10, monochrome outline, no shadow). The Timer font row sits beside Show timer text, its reset arrow absent.
+- Pick Large numbers, then a typeface with its dots (Size, Outline, Shadow offset X and Y, Line spacing): the countdowns change at once, the bar under or behind them gets taller or shorter with the text, and the flyout arrow moves with it. Reset puts Small text back (its tooltip says "Small text").
+- A profile that had changed Button text before this build: the totem timers now draw Small text (Button text no longer reaches them; they used to follow it). Pick the font again on the Timer font row if it is wanted. The key bindings, counts and names on the totem buttons still follow Button text.
+- Totem bar in combat: change the Timer font from a profile switch if you can: nothing is blocked (only fonts on regions of SaftUI's own timer frames, which are children of the secure slot buttons).
+- The Timer font row is greyed out while Show timer text is off.
