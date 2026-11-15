@@ -971,8 +971,10 @@ test('the holder and the button are one whole-pixel size; the tick stops when th
 	local color = TR.ColorNearest
 	TR.ColorNearest = function(...) colored = colored + 1; return color(...) end
 	st:ColorsChanged('button')
+	eq(colored, 0, "Buttons colors don't reach the tracker (its four groups are Text, Objectives, Accent and Theme)")
+	st:ColorsChanged('accent')
 	TR.ColorNearest = color
-	eq(colored, 1, 'a Colors change reaches the button')
+	eq(colored, 1, 'an Accent change reaches the button')
 	TR.config.items.nearest = false
 	TR:UpdateConfig()
 	RW.later(1)

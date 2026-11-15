@@ -634,6 +634,7 @@ end
 -- item buttons' hover take the colors again, and the objective lines for a
 -- change of the Objectives colors or of the theme (Blizzard's look back or ours).
 function OT:OnColorsChanged(group)
+	if group ~= 'text' and group ~= 'objectives' and group ~= 'accent' and group ~= 'theme' then return end
 	if group == 'objectives' or group == 'theme' then self:RecolorLines() end
 	for _, entry in pairs(headers) do entry.line:SetVertexColor(LineColor()) end
 	for _, entry in pairs(collapses) do ColorCollapse(entry) end

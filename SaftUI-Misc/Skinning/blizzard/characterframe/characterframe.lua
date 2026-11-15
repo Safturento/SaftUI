@@ -130,6 +130,15 @@ function CF:UpdateConfig()
 	end
 end
 
+-- A Colors tab change: the shown slots' item levels take Text > Strong at once
+-- (a color only; a hidden slot's is painted again by UpdateConfig and each new show).
+function CF:OnColorsChanged(group, key)
+	if group ~= 'text' or (key ~= nil and key ~= 'strong') then return end
+	for button, slot in pairs(slots) do
+		if button:IsShown() then slot.itemLevel:SetTextColor(st:Color('text', 'strong'):GetRGB()) end
+	end
+end
+
 function CF:UpdateAllEquipSlots()
 	for button in pairs(slots) do
 		self:UpdateEquipSlot(button)

@@ -21,10 +21,15 @@ end
 -- A color changed (st:ColorsChanged). It reaches the skins the same way: each one
 -- with an OnColorsChanged colors again what it colors itself, such as a debuff's
 -- border after a theme recolor.
-function SK:OnColorsChanged(group)
+-- Nothing is made per pass: xpcall's arguments would make a closure in a test world
+-- (the game's makes none), so the call goes through a function made once.
+local colorModule, colorGroup, colorKey
+local function CallColors() return colorModule:OnColorsChanged(colorGroup, colorKey) end
+function SK:OnColorsChanged(group, key)
 	for _, module in self:IterateModules() do
 		if module.OnColorsChanged then
-			xpcall(module.OnColorsChanged, geterrorhandler(), module, group)
+			colorModule, colorGroup, colorKey = module, group, key
+			xpcall(CallColors, geterrorhandler())
 		end
 	end
 end

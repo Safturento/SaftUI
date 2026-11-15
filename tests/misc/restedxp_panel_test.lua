@@ -203,3 +203,33 @@ test('chat_update_hooked', function()
 	Chat:UpdateConfig()
 	check(calls == 1, 'chat_update_hooked: Chat:UpdateConfig triggers RX:UpdateConfig')
 end)
+
+test('Text > Muted: the thumb, the step numbers and the titles at once', function()
+	local C = load_test_file('lib/color_cost.lua')
+	local R, RX = setup()
+	local st = SaftUI
+	R.LoadGuide(3)
+	R.AddCurrentStep({ elements = 1 })
+	R.CurrentStepFrame.UpdateText()
+	local numbers = {}
+	for _, f in ipairs(R.ScrollChild.framePool) do numbers[#numbers + 1] = f.number.text end
+	for _, f in ipairs(R.CurrentStepFrame.framePool) do numbers[#numbers + 1] = f.number.text end
+	check(#numbers >= 4, 'step numbers and a current step title exist')
+	local function rgb(fs) return table.concat({ fs:GetTextColor() }, ',', 1, 3) end
+	local function thumb() return table.concat(stub.state(R.ScrollFrame.ScrollBar:GetThumbTexture()).vertex_color or {}, ',', 1, 3) end
+	st.config.profile.colors.text.muted:SetRGB(0.2, 0.4, 0.6)
+	st:ColorChanged('text', 'muted')
+	for i, fs in ipairs(numbers) do eq(rgb(fs), '0.2,0.4,0.6', 'text ' .. i .. ' follows') end
+	eq(thumb(), '0.2,0.4,0.6', 'the thumb follows')
+	-- Another color or group: nothing.
+	st.config.profile.colors.text.muted:SetRGB(0.9, 0.9, 0.9)
+	st:ColorChanged('text', 'strong')
+	st:ColorChanged('class', 'MAGE')
+	eq(rgb(numbers[1]), '0.2,0.4,0.6', 'Strong and Class leave it')
+	local m = C.measure(function() st:ColorChanged('text', 'muted') end, 100)
+	eq(m.forbidden.total, 0, 'no forbidden call')
+	eq(m.made, 0, 'nothing made')
+	check(m.kb < 4, 'no garbage: ' .. m.kb)
+	eq(rgb(numbers[1]), '0.9,0.9,0.9', 'and a whole pass or Muted pick reaches it')
+	eq(#take_errors(), 0, 'no error')
+end)

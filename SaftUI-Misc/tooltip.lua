@@ -10,6 +10,11 @@ local backdrops = setmetatable({}, { __mode = 'k' })
 -- A tooltip showing a unit -> the class or reaction color its border and the
 -- status bar's took (GameTooltip_OnTooltipSetUnit), until it shows again.
 local unitColors = setmetatable({}, { __mode = 'k' })
+-- ... and the color it came from (group and key), so a pick on the Colors tab
+-- reaches a tooltip that is up. A secret class or reaction has none: it takes
+-- Blizzard's color, which no pick changes.
+local unitGroups = setmetatable({}, { __mode = 'k' })
+local unitKeys = setmetatable({}, { __mode = 'k' })
 
 -- Draws the Tooltip page's Theme and Background on one of Blizzard's frames, as
 -- kind: 'tooltip' for the tooltips and dropdown lists, 'bar' for the status bar.
@@ -28,6 +33,8 @@ end
 function TT:UpdateTooltipDisplay(tooltip)
 	-- Drawn again, so in the theme's border until the unit hook colors it.
 	unitColors[tooltip] = nil
+	unitGroups[tooltip] = nil
+	unitKeys[tooltip] = nil
 	SkinBackdrop(tooltip, 'tooltip')
 	--tooltip.NineSlice:Hide()
 
@@ -83,28 +90,49 @@ end
 function TT:GameTooltip_OnTooltipSetUnit(tooltip)
 	--self:UpdateTooltipDisplay(tooltip)
 
-	local c
+	local c, group, key
 	if (select(1, UnitName('mouseover')) == nil) and UnitPlayerControlled('mouseover') then
-		c = ClassColor(st.my_class)
+		group, key = 'class', st.my_class
+		c = ClassColor(key)
 	elseif UnitPlayerControlled('mouseover') then
-		c = ClassColor(select(2, UnitClass('mouseover')))
+		group, key = 'class', select(2, UnitClass('mouseover'))
+		c = ClassColor(key)
 	else
-		c = ReactionColor(UnitReaction('player', 'mouseover'))
+		group, key = 'reaction', UnitReaction('player', 'mouseover')
+		c = ReactionColor(key)
 	end
+	if issecretvalue(key) then group, key = nil, nil end
 
 	if c then
 		_G[tooltip:GetName()..'TextLeft1']:SetTextColor(c.r, c.g, c.b)
 		ColorUnitBorders(tooltip, c)
 	end
 	unitColors[tooltip] = c
+	unitGroups[tooltip] = group
+	unitKeys[tooltip] = key
 end
 
 -- After a theme recolor (st:RecolorThemed gave every backdrop the theme's
 -- border): a unit tooltip that's still showing takes its unit's color back.
-function TT:OnColorsChanged(group)
-	if group ~= 'theme' then return end
-	for tooltip, c in pairs(unitColors) do
-		if tooltip:IsShown() then ColorUnitBorders(tooltip, c) end
+-- A class or standing color changed: a shown unit tooltip whose unit has that color
+-- takes it, on its first line and its borders; a hidden one is left for its next show.
+function TT:OnColorsChanged(group, key)
+	if group == 'theme' then
+		for tooltip, c in pairs(unitColors) do
+			if tooltip:IsShown() then ColorUnitBorders(tooltip, c) end
+		end
+	elseif group == 'class' or group == 'reaction' then
+		for tooltip in pairs(unitColors) do
+			if tooltip:IsShown() and unitGroups[tooltip] == group and (key == nil or unitKeys[tooltip] == key) then
+				local c = st.config.profile.colors[group][unitKeys[tooltip]]
+				if c then
+					unitColors[tooltip] = c
+					local line = _G[tooltip:GetName() .. 'TextLeft1']
+					if line then line:SetTextColor(c.r, c.g, c.b) end
+					ColorUnitBorders(tooltip, c)
+				end
+			end
+		end
 	end
 end
 

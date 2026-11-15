@@ -220,3 +220,32 @@ test('a new item over an old one clears the old tier and text before setting its
 	check(#quality_calls >= 2 and quality_calls[1].clear, 'a clear comes first')
 	check(quality_calls[2].link == 'item:2' and not quality_calls[2].clear, 'then the set')
 end)
+
+test('Text > Strong: the shown item levels at once', function()
+	local C = load_test_file('lib/color_cost.lua')
+	local function rgb(button) return table.concat({ (parts(button)):GetTextColor() }, ',', 1, 3) end
+	profile.colors.text.strong:SetRGB(0.4, 0.8, 0.2)
+	SK:UpdateConfig()
+	for _, name in ipairs(SLOTS) do buttons[name]:Show() end
+	buttons.Neck:Hide()
+	profile.colors.text.strong:SetRGB(0.9, 0.1, 0.3)
+	st:ColorChanged('text', 'strong')
+	eq(rgb(buttons.Head), '0.9,0.1,0.3', 'a shown slot follows')
+	eq(rgb(buttons.Neck), '0.4,0.8,0.2', 'a hidden one is left')
+	-- Another Text color, another group: nothing.
+	profile.colors.text.strong:SetRGB(0.2, 0.2, 0.2)
+	st:ColorChanged('text', 'muted')
+	st:ColorChanged('class', 'MAGE')
+	eq(rgb(buttons.Head), '0.9,0.1,0.3', 'Muted and Class leave it')
+	st:ColorsChanged('text')
+	eq(rgb(buttons.Head), '0.2,0.2,0.2', "Text's whole pass reaches it")
+	-- Cost: setters only, one per shown slot.
+	st:ColorChanged('text', 'strong')
+	local m = C.measure(function() st:ColorChanged('text', 'strong') end, 100)
+	eq(m.forbidden.total, 0, 'no forbidden call')
+	eq(m.made, 0, 'nothing made')
+	check(m.kb < 4, 'no garbage: ' .. m.kb)
+	check(m.calls.total <= 100 * #SLOTS, 'at most one setter per slot per pass')
+	buttons.Neck:Show()
+	eq(#take_errors(), 0, 'no error')
+end)

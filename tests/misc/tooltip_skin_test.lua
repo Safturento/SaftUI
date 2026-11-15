@@ -283,3 +283,58 @@ test("a unit tooltip's class border survives a theme recolor, until the tooltip 
 	st:RecolorThemed()
 	eq(keys(tip), before[tip], 'still no new field')
 end)
+
+test('a shown unit tooltip takes its class or standing color at once; a hidden one is left for its next show', function()
+	TT.config.theme, TT.config.background = 'theme', 'theme'
+	TT:UpdateConfig()
+	local tip = tooltips.GameTooltip
+	_G.UnitName = function() return 'Someone' end
+	_G.UnitPlayerControlled = function() return true end
+	_G.UnitClass = function() return 'Mage', 'MAGE' end
+	st.config.profile.colors.class.MAGE = { r = 0.1, g = 0.2, b = 0.3 }
+	st.config.profile.colors.class.WARRIOR = { r = 0.7, g = 0.6, b = 0.5 }
+	tip:Show()
+	TT:GameTooltip_OnTooltipSetUnit(tip)
+	local function name_rgb() return table.concat({ left1:GetTextColor() }, ',', 1, 3) end
+	local function edges() return T.edge(backdrop_of(tip)) .. '|' .. T.edge(backdrop_of(bar)) end
+
+	-- Another class's color: nothing changes.
+	st.config.profile.colors.class.WARRIOR = { r = 0.9, g = 0.9, b = 0.9 }
+	st:ColorChanged('class', 'WARRIOR')
+	eq(name_rgb(), '0.1,0.2,0.3', "another class's pick leaves the name alone")
+
+	-- Its own class: the name and both borders at once.
+	st.config.profile.colors.class.MAGE = { r = 0.4, g = 0.5, b = 0.6 }
+	st:ColorChanged('class', 'MAGE')
+	eq(name_rgb(), '0.4,0.5,0.6', 'the name follows')
+	eq(edges(), '0.40,0.50,0.60,1.00|0.40,0.50,0.60,1.00', 'both borders follow')
+
+	-- A standing pick does not reach a player's tooltip.
+	st.config.profile.colors.reaction[4] = { r = 1, g = 0, b = 0 }
+	st:ColorChanged('reaction', 4)
+	eq(name_rgb(), '0.4,0.5,0.6', 'a standing leaves a player alone')
+
+	-- A standing tooltip follows its standing.
+	_G.UnitPlayerControlled = function() return false end
+	_G.UnitReaction = function() return 4 end
+	TT:GameTooltip_OnTooltipSetUnit(tip)
+	st.config.profile.colors.reaction[4] = { r = 0.2, g = 0.3, b = 0.4 }
+	st:ColorChanged('reaction', 4)
+	eq(name_rgb(), '0.2,0.3,0.4', 'a standing tooltip follows its standing')
+
+	-- A hidden tooltip is left alone.
+	tip:Hide()
+	st.config.profile.colors.reaction[4] = { r = 0.9, g = 0.8, b = 0.7 }
+	st:ColorChanged('reaction', 4)
+	eq(name_rgb(), '0.2,0.3,0.4', 'a hidden tooltip is not recolored')
+
+	-- Whole pass (key nil) reaches a shown one.
+	tip:Show()
+	TT:GameTooltip_OnTooltipSetUnit(tip)
+	eq(name_rgb(), '0.9,0.8,0.7', 'its next show takes the new color')
+	st.config.profile.colors.reaction[4] = { r = 0.5, g = 0.5, b = 0.5 }
+	st:ColorsChanged('reaction')
+	eq(name_rgb(), '0.5,0.5,0.5', 'a whole pass of the group reaches a shown one')
+	tip:Hide()
+	eq(#take_errors(), 0, 'no error')
+end)

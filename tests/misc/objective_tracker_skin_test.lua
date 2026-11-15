@@ -604,3 +604,24 @@ test("a font that names nothing draws Text on every text, and a typeface reaches
 	eq(OT.tracker.Header.Text:GetFontObject(), st:FontObject(face), 'the header in the typeface')
 	clean()
 end)
+
+test('the skin repaints for its groups only: a Class pass touches nothing', function()
+	local C = load_test_file('lib/color_cost.lua')
+	world('forever')
+	local blocks = OT.layout(quest_module(), { { id = 1, objectives = { 'One' }, item = 3 } })
+	check(blocks[1] ~= nil, 'a block is drawn')
+	for group, key in pairs({ class = 'MAGE', reaction = 4, power = 'MANA', button = 'normal', status = 'tapped' }) do
+		st:ColorChanged(group, key)
+		local m = C.measure(function() st:ColorChanged(group, key) end)
+		eq(m.calls.total, 0, group .. ': no color set')
+		eq(m.forbidden.total, 0, group .. ': nothing forbidden')
+	end
+	for _, group in ipairs({ 'text', 'objectives', 'accent', 'theme' }) do
+		st:ColorsChanged(group)
+		local m = C.measure(function() st:ColorChanged(group) end)
+		check(m.calls.total > 0, group .. ': the skin colors its pieces')
+		eq(m.forbidden.total, 0, group .. ': nothing forbidden')
+		eq(m.made, 0, group .. ': nothing made')
+	end
+	clean()
+end)

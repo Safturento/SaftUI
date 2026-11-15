@@ -143,8 +143,12 @@ end
 -- definition in another file would silently replace this one): each part adds
 -- its own call here. Runs while the switch is off too (st:ColorsChanged calls
 -- every module), so each part does nothing until it exists.
+function TR.ColorGroupReaches(group)
+	return group == 'text' or group == 'objectives' or group == 'accent' or group == 'theme'
+end
+
 function TR:OnColorsChanged(group)
-	if not self.built then return end
+	if not self.built or not TR.ColorGroupReaches(group) then return end
 	self:ColorWindow()
 	self:ColorRows(group)
 	self:ColorItems()
