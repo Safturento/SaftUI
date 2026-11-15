@@ -602,6 +602,44 @@ RW.both('Width and Spacing and the fonts reach the rows', function(st, TR)
 	check(one:GetHeight() == 10, 'a 10 px title: the row is 10 tall: ' .. one:GetHeight())
 end)
 
+RW.both('a typeface on Font and Header font reaches the rows; a refresh with nothing changed sets no font', function(st, TR)
+	Q.set({ Q.header('A'), Q.quest(1, { objectives = { { text = 'x', type = 'monster' } } }) }, { 1 })
+	TR:Refresh()
+	local text = { font_name = 'Friz Quadrata TT', font_size = 13, font_outline = 'NONE', shadow_offset = { 0, 0 }, spacing = 0 }
+	local header = { font_name = 'Colus', font_size = 15, font_outline = 'OUTLINE', shadow_offset = { 0, 0 }, spacing = 0 }
+	st.config.profile.tracker.font, st.config.profile.tracker.header_font = text, header
+	TR:UpdateConfig()
+	local one, zone = RW.quest(TR, 1), RW.zone(TR, 'A')
+	eq(one.title:GetFontObject(), st:GetFont(text), "Font's typeface on a quest's title")
+	eq(zone.title:GetFontObject(), st:GetFont(header), "Header font's typeface on a zone header")
+	eq(TR.header.title:GetFontObject(), st:GetFont(header), "and on the window's header line (the one setting)")
+	eq(select(2, one.title:GetFont()), 13, 'at its size')
+	eq(stub.state(one.title).font, nil, 'by SetFontObject, never SetFont')
+
+	-- A refresh with nothing changed calls no font setter.
+	local methods = getmetatable(UIParent:CreateFontString(nil, 'OVERLAY')).__index
+	local original, calls = methods.SetFontObject, 0
+	methods.SetFontObject = function(...) calls = calls + 1 return original(...) end
+	TR:MarkDirty('TEST')
+	RW.later(1)
+	TR:Refresh()
+	methods.SetFontObject = original
+	eq(calls, 0, 'no SetFontObject on an idle refresh')
+
+	-- A value that names nothing draws Text, as the tab's note says.
+	st.config.profile.tracker.font = 'a font that does not exist'
+	TR:UpdateConfig()
+	eq(RW.quest(TR, 1).title:GetFontObject(), st:GetFont('normal'), 'a value naming nothing: Text')
+	-- The header's one setting (title, count and the zone headers): SetFontObject(nil)
+	-- errors in game, so a value naming nothing must draw Text there too.
+	st.config.profile.tracker.header_font = 'a font that does not exist'
+	TR:UpdateConfig()
+	eq(TR.header.title:GetFontObject(), st:GetFont('normal'), "the window's header title: Text")
+	eq(TR.header.count:GetFontObject(), st:GetFont('normal'), "the window's header count: Text")
+	eq(RW.zone(TR, 'A').title:GetFontObject(), st:GetFont('normal'), 'a zone header: Text')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
 RW.both('a theme change draws the bars again; the rows follow a profile switch', function(st, TR)
 	Q.set({ Q.header('A'), Q.quest(1, { objectives = { { text = 'Bar', type = 'progressbar' } }, percent = 50 }) }, { 1 })
 	TR:Refresh()

@@ -36,13 +36,13 @@ function LT:SkinLootButton(button)
 	st:Kill(button.IconOverlay)
 
 	button.nametext = _G['LootButton'..ID..'Text']
-	button.nametext:SetFontObject(st:GetFont(self.config.popup.font))
+	st:ApplyFont(button.nametext, self.config.popup.font)
 	button.nametext:ClearAllPoints()
 	button.nametext:SetPoint('LEFT', button.icon, 'RIGHT', 7, 0)
 	button.nametext:SetPoint('RIGHT', button, 'RIGHT', -7, 0)
 	button.nametext:SetWordWrap(self.config.popup.name_wrap)
 
-	button.Count:SetFontObject(st:GetFont(self.config.popup.font))
+	st:ApplyFont(button.Count, self.config.popup.font)
 	button.Count:ClearAllPoints()
 	button.Count:SetPoint('BOTTOMRIGHT', button.icon, 'BOTTOMRIGHT', 0, 0)
 end
@@ -70,7 +70,7 @@ function LT:SkinLootFrame()
 		end
 	end
 
-	LootFrameTitle:SetFontObject(st:GetFont(config.font))
+	st:ApplyFont(LootFrameTitle, config.font)
 	st:CreateHeader(LootFrame, LootFrameTitle, LootFrameCloseButton) 
 	st:SetBackdrop(LootFrame.header, config.theme, config.background, 'panel')
 	

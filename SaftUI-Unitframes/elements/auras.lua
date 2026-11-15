@@ -142,7 +142,7 @@ local function StyleButton(auras, button)
 
 	if button.Count then
 		local countConfig = config.count or {}
-		button.Count:SetFontObject(st:GetFont(countConfig.font or config.font))
+		st:ApplyFont(button.Count, countConfig.font or config.font)
 		if countConfig.position then
 			local point, _, relPoint, x, y = st:UnpackPoint(countConfig.position)
 			button.Count:ClearAllPoints()
@@ -166,7 +166,7 @@ local function StyleButton(auras, button)
 			cooldown.Duration = countdown
 			if showTimer then
 				countdown:SetAlpha(1)
-				countdown:SetFontObject(st:GetFont('pixel'))
+				st:ApplyFont(countdown, 'pixel')
 				countdown:ClearAllPoints()
 				local point, _, relPoint, x, y = st:UnpackPoint(config.cooldown.timer.position)
 				countdown:SetPoint(point, button, relPoint, x, y)

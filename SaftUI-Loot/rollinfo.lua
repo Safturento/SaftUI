@@ -80,7 +80,7 @@ local PAIRED = {
 
 local function NewCount(button, point, x, y)
 	local text = button:CreateFontString(nil, 'OVERLAY')
-	text:SetFontObject(st:GetFont('pixel'))
+	st:ApplyFont(text, 'pixel')
 	text:SetJustifyH('RIGHT')
 	text:SetPoint(point, button, point, x, y)
 	text:Hide()

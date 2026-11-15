@@ -552,3 +552,30 @@ test("under the Blizzard theme the buttons are Blizzard's panel buttons with the
 	profile.loot.feed.theme = 'theme'
 	T.theme('thick', function() LT:UpdateLootFeedConfig() end)
 end)
+
+test("a typeface on the feed's Font reaches its texts; a value naming nothing draws Text", function()
+	reset()
+	local typeface = { font_name = 'Friz Quadrata TT', font_size = 13, font_outline = 'NONE', shadow_offset = { 0, 0 }, spacing = 0 }
+	local keys = { 'text', 'timer', 'rightText', 'count' }
+	config.font = typeface
+	LT:UpdateLootFeedConfig()
+	local item = feed.items[1]
+	for _, key in ipairs(keys) do
+		eq(item[key]:GetFontObject(), st:GetFont(typeface), key .. ": the typeface's object")
+		eq(stub.state(item[key]).font, nil, key .. ': set by object, never SetFont')
+	end
+	eq(select(2, item.text:GetFont()), 13, 'at its size')
+
+	config.font = 'pixel'
+	LT:UpdateLootFeedConfig()
+	eq(item.text:GetFontObject(), st:GetFont('pixel'), 'Small text: the shared font after the typeface')
+
+	config.font = 'a font that does not exist'
+	LT:UpdateLootFeedConfig()
+	for _, key in ipairs(keys) do
+		eq(item[key]:GetFontObject(), st:GetFont('normal'), key .. ': a value naming nothing draws Text')
+	end
+	config.font = 'normal'
+	LT:UpdateLootFeedConfig()
+	eq(#take_errors(), 0, 'no errors')
+end)

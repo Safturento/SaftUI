@@ -117,7 +117,7 @@ function LT:UpdateRollFrame(frame)
 	end
 	st:SetBackdrop(skin.info, config.theme, config.background, 'bar')
 
-	frame.Name:SetFontObject(st:GetFont(config.font))
+	st:ApplyFont(frame.Name, config.font)
 	frame.Name:ClearAllPoints()
 	frame.Name:SetHeight(config.height)
 	frame.Name:SetPoint('LEFT', skin.info, 5, 0)
@@ -143,7 +143,7 @@ function LT:UpdateRollFrame(frame)
 	if skin.iconBox.backdrop and iconLevel then
 		skin.iconBox.backdrop:SetFrameLevel(max(0, iconLevel - 1))
 	end
-	frame.IconFrame.Count:SetFontObject(st:GetFont(config.font))
+	st:ApplyFont(frame.IconFrame.Count, config.font)
 	frame.IconFrame:SetSize(config.height, config.height)
 
 	frame.Timer:SetStatusBarTexture(st.BLANK_TEX)
@@ -165,7 +165,7 @@ function LT:UpdateRollFrame(frame)
 				button:SetPoint('RIGHT', prev, 'LEFT', -2, 0)
 			end
 
-			skin.buttonText[info.name]:SetFontObject(st:GetFont(config.font))
+			st:ApplyFont(skin.buttonText[info.name], config.font)
 
 			button:SetSize(config.height - 4, config.height - 4)
 			--st:SetBackdrop(button, config.theme, config.background, 'small')
@@ -173,7 +173,7 @@ function LT:UpdateRollFrame(frame)
 		end
 	end
 
-	skin.timerText:SetFontObject(st:GetFont(config.font))
+	st:ApplyFont(skin.timerText, config.font)
 	skin.timerText:SetPoint('RIGHT', prev, 'LEFT', -2, 0)
 	skin.timerText:SetWidth(40)
 end

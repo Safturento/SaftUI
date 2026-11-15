@@ -50,7 +50,7 @@ local LAB = LibStub('LibActionButton-1.0')
 ]]
 
 -- SaftUI's pieces of each skinned button: button -> { hover, pushed, checked,
--- equipped, ownCountdownFont }. Kept here so no key on the button can clash
+-- equipped }. Kept here so no key on the button can clash
 -- with LibActionButton's or the template's.
 local skins = {}
 
@@ -105,13 +105,20 @@ local function Offset(value)
 	return st:RoundToPixel(tonumber(value) or 0)
 end
 
--- One of a bar's text settings in LibActionButton's shape.
+-- One of a bar's text settings in LibActionButton's shape. value is the
+-- setting as a font setting (st:FaceFont): SaftUI's own buttons draw it with
+-- st:ApplyFont (buttons.lua). font is what LibActionButton sets with its own
+-- SetFont on its buttons, taken from the same value (st:FontValues) so it draws
+-- the look value names, and AB:StyleButton puts the font object on after.
 local function TextConfig(text)
+	local value = st:FaceFont(text.font, text.size, text.outline)
+	local path, size, flags = st:FontValues(value)
 	return {
+		value = value,
 		font = {
-			font = st.LSM:Fetch('font', text.font),
-			size = text.size,
-			flags = st.OutlineFlag(text.outline),
+			font = path,
+			size = size,
+			flags = flags,
 		},
 		color = { 1, 1, 1 },
 		position = {
@@ -253,16 +260,26 @@ function AB:GetCountdownFont(config)
 	return own.font or default.font_name, own.size or default.font_size, own.outline or default.font_outline
 end
 
+-- The font setting the cooldown numbers are drawn in: while the bar sets none
+-- of font, size and outline, the shared font by button size (CountdownFontKey,
+-- which follows the Fonts tab at once); otherwise a typeface of what
+-- GetCountdownFont gives (or a shared font, once a bar's font names one).
+function AB:CountdownValue(config)
+	local own = config.text.countdown or DEFAULT_COUNTDOWN
+	if own.font or own.size or own.outline then
+		return st:FaceFont(self:GetCountdownFont(config))
+	end
+	return CountdownFontKey(config.size)
+end
+
 -- Draws a button's cooldown numbers, its cooldown's own countdown text, in the
 -- bar's font and at the bar's place for them (text.countdown, else a bar's
 -- defaults). From AB:StyleButton, so out of combat.
---   - While the bar sets no font, size or outline, they're in the default font
---     object (CountdownFontKey), as they always were, which follows the Fonts
---     tab at once. Once one is set, SetFont goes over it, the others from that
---     font. Back to none (a profile without them, or the section's Reset in
---     /sui), the font object alone may not replace a font set with SetFont
---     (.agents/testing.md, stub rule 3), so its font is set too; that button
---     then takes a Fonts tab change on its next restyle.
+--   - The font is AB:CountdownValue(config) through st:ApplyFont, and nothing
+--     else ever sets one on it (no SetFont): the shared font by button size
+--     while the bar sets none of font, size and outline (it follows the Fonts
+--     tab at once), else a typeface object. Going back to none puts the shared
+--     font's object on again, which no SetFont of ours stands in the way of.
 --   - The text is anchored to the button, as the other texts are. Its default,
 --     the middle, is the middle of the cooldown over the icon too, where the
 --     game puts the numbers. It's a region of the cooldown, a child of SaftUI's
@@ -276,20 +293,10 @@ end
 --     start, so it shows nothing either way. Whether the client's own code
 --     places or fonts the text again when a cooldown starts isn't known: an
 --     in-game check (a custom place, watched through a cooldown and the next).
-local function StyleCountdown(button, skin, config)
+local function StyleCountdown(button, config)
 	local numbers = button.cooldown:GetCountdownFontString()
 	local text = config.text.countdown or DEFAULT_COUNTDOWN
-	local object = st:GetFont(CountdownFontKey(config.size))
-	if object then
-		numbers:SetFontObject(object)
-	end
-	if text.font or text.size or text.outline then
-		local font, size, outline = AB:GetCountdownFont(config)
-		numbers:SetFont(st.LSM:Fetch('font', font), size, st.OutlineFlag(outline))
-		skin.ownCountdownFont = true
-	elseif skin.ownCountdownFont and object then
-		numbers:SetFont(object:GetFont())
-	end
+	st:ApplyFont(numbers, AB:CountdownValue(config))
 	numbers:SetJustifyH(Justify(text.point))
 	numbers:ClearAllPoints()
 	numbers:SetPoint(text.point, button, text.rel_point, Offset(text.x_off), Offset(text.y_off))
@@ -398,23 +405,30 @@ function AB:StyleButton(button, config, theme, background)
 	end
 
 	-- LibActionButton set the fonts, anchors and the hotkey's and macro name's
-	-- showing from the bar's text settings (GetButtonConfig). SaftUI's pixel fonts
-	-- are drawn without a shadow. The hotkey and macro name are one line, as tall
-	-- as their font, and cut to the room inside the border (see the top of this
-	-- file). LibActionButton never shows or hides the count, so its setting is
-	-- applied here.
+	-- showing from the bar's text settings (GetButtonConfig), with its own SetFont
+	-- of the same look; each text then takes its font object (st:ApplyFont) and
+	-- the shadow of its value (st:FontValues: a typeface's is 0, 0, as these texts
+	-- were drawn before, a shared font's is its own), because the template's texts
+	-- inherit a 1, -1 shadow and whether the object's shadow reaches a text the
+	-- library gave a SetFont is unverified in game. The hotkey and macro name are
+	-- one line, as tall as their font, and cut to the room inside the border (see
+	-- the top of this file). LibActionButton never shows or hides the count, so
+	-- its setting is applied here.
 	local size = st:RoundToPixel(config.size, button)
-	for _, text in ipairs({ button.HotKey, button.Count, button.Name }) do
-		text:SetShadowOffset(0, 0)
-	end
-	for region, text in pairs({ [button.HotKey] = config.text.hotkey, [button.Name] = config.text.macro }) do
-		region:SetWordWrap(false)
-		region:SetWidth(TextWidth(text, size, inset))
-		region:SetHeight(text.size)
+	for region, text in pairs({ [button.HotKey] = config.text.hotkey, [button.Count] = config.text.count, [button.Name] = config.text.macro }) do
+		local value = st:FaceFont(text.font, text.size, text.outline)
+		local _, height, _, shadowX, shadowY = st:FontValues(value)
+		st:ApplyFont(region, value)
+		region:SetShadowOffset(shadowX, shadowY)
+		if region ~= button.Count then
+			region:SetWordWrap(false)
+			region:SetWidth(TextWidth(text, size, inset))
+			region:SetHeight(height)
+		end
 	end
 	button.Count:SetShown(config.text.count.show)
 
-	StyleCountdown(button, skin, config)
+	StyleCountdown(button, config)
 
 	self:UpdateEquippedBorder(button)
 end
@@ -430,6 +444,41 @@ function AB:StyleBar(id)
 		button:UpdateConfig(self:GetButtonConfig(id, i, config))
 		self:StyleButton(button, config, theme, background)
 	end
+end
+
+-- A shared font a bar's text uses changed (the Fonts tab, a profile update): the
+-- library's own SetFont holds face, size and flags until the next AB:StyleBar,
+-- so the bars whose hotkey, count or macro name is on a shared font are styled
+-- again. A Size drag fires this on every step, so it waits a frame and styles
+-- once (C_Timer.After(0): one restyle per frame at most, the last step's look),
+-- and in combat (a restyle is protected) it waits for the end of it, once. The
+-- pet and stance buttons take their object by SetFontObject alone, but go
+-- through the same restyle. A bar whose texts name typefaces (every profile
+-- today) is not touched.
+local fontsPending
+local function UsesSharedFont(config)
+	for _, kind in ipairs({ 'hotkey', 'count', 'macro' }) do
+		if st:IsSharedFont(config.text[kind].font) then return true end
+	end
+	return false
+end
+
+function AB:RestyleSharedFontBars()
+	if st:QueueAfterCombat('actionbars_fonts', function() self:RestyleSharedFontBars() end) then return end
+	for id, bar in pairs(self.bars) do
+		if bar.buttons and UsesSharedFont(self:GetBarConfig(id)) then
+			xpcall(function() self:StyleBar(id) end, geterrorhandler())
+		end
+	end
+end
+
+function AB:OnFontsChanged()
+	if fontsPending or not next(self.bars) then return end
+	fontsPending = true
+	C_Timer.After(0, function()
+		fontsPending = nil
+		self:RestyleSharedFontBars()
+	end)
 end
 
 -- An equipped item's border.

@@ -359,3 +359,29 @@ test('power text: the custom color stays through a power type change', function(
 	power.PostUpdate(power, 'player', 90, 0, 100)
 	check(same(text_rgb(text), 0.3, 0.9, 0.3), 'and so does the next update')
 end)
+
+test("a typeface on a unit frame's health text draws at once, and a value naming nothing draws Text", function()
+	local health = text_bar('Health')
+	local text, config = health.text, health.config.text
+	config.font = { font_name = 'Friz Quadrata TT', font_size = 13, font_outline = 'NONE', shadow_offset = { 0, 0 }, spacing = 0 }
+	UF:UpdateText(text)
+	eq(text:GetFontObject(), st:GetFont(config.font), "the typeface's object")
+	eq(select(2, text:GetFont()), 13, 'at its size')
+	eq(stub.state(text).font, nil, 'by SetFontObject, never SetFont')
+
+	config.colorCustom, config.customColor = true, { 0.2, 0.4, 0.6 }
+	UF:UpdateText(text)
+	check(same(text_rgb(text), 0.2, 0.4, 0.6), 'the custom color goes on after the font')
+	config.colorCustom = false
+	UF:UpdateText(text)
+	check(same(text_rgb(text), 1, 1, 1), "turned off: the typeface object's color, white")
+
+	config.font = 'a font that does not exist'
+	UF:UpdateText(text)
+	eq(text:GetFontObject(), st:GetFont('normal'), 'a value that names nothing draws Text')
+	config.colorCustom = true
+	UF:UpdateText(text)
+	config.colorCustom = false
+	UF:UpdateText(text)
+	check(same(text_rgb(text), 1, 1, 1), 'and turning the color off with it puts Text\'s color back, with no error')
+end)

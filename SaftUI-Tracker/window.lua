@@ -555,9 +555,8 @@ end
 function TR:DrawHeader()
 	local config, header = self.config, self.header
 	header:SetShown(config.header and true or false)
-	local font = st:GetFont(config.header_font)
-	header.title:SetFontObject(font)
-	header.count:SetFontObject(font)
+	st:ApplyFont(header.title, config.header_font)
+	st:ApplyFont(header.count, config.header_font)
 	header.count:SetShown(config.count and true or false)
 	header.collapse:SetDown(self:IsCollapsed())
 	self:ColorHeader()
@@ -590,7 +589,7 @@ local function BuildHeader(window)
 	header:EnableMouse(true)
 
 	-- A text needs its font before it's given text (DrawHeader sets the profile's).
-	local font = st:GetFont(TR.config.header_font)
+	local font = st:FontObject(TR.config.header_font)
 	local title = header:CreateFontString(nil, 'OVERLAY')
 	title:SetFontObject(font)
 	title:SetPoint('LEFT', header, 'LEFT', 0, 0)

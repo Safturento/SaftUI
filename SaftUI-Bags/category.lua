@@ -408,7 +408,7 @@ function INV:CreateCategory(id, categoryName, slotPoolFunc)
 	header:SetPoint('TOPRIGHT', categoryFrame)
 
 	header.text = header:CreateFontString(nil, 'OVERLAY')
-	header.text:SetFontObject(st:GetFont(st.config.profile.inventory.fonts.titles))
+	st:ApplyFont(header.text, st.config.profile.inventory.fonts.titles)
 	header.text:SetPoint('BOTTOMLEFT', 2, 2)
 	header.text:SetText(self:CategoryName(categoryName))
 	categoryFrame.header = header

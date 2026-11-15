@@ -1108,3 +1108,26 @@ test("a window overridden to Thick under SaftUI's Blizzard: no metal, Blizzard's
 	check_view_buttons(container, true, "Use SaftUI's theme again")
 	eq(#take_errors(), 0, 'no errors')
 end)
+
+test("a typeface on the bags' Icon font and Category titles reaches the slots' item levels and the category titles", function()
+	local container, slots = bags()
+	local typeface = { font_name = 'Friz Quadrata TT', font_size = 13, font_outline = 'NONE', shadow_offset = { 0, 0 }, spacing = 0 }
+	local titles = { font_name = 'Colus', font_size = 15, font_outline = 'OUTLINE', shadow_offset = { 0, 0 }, spacing = 0 }
+	INV.config.fonts.icons, INV.config.fonts.titles = typeface, titles
+	INV:StyleContainerContents(container)
+	eq(slots[1].itemLevel:GetFontObject(), st:GetFont(typeface), "the item level: the Icon font's typeface")
+	eq(container.categories.Things.header.text:GetFontObject(), st:GetFont(titles), "the category title: the typeface")
+	eq(stub.state(slots[1].itemLevel).font, nil, 'by SetFontObject, never SetFont')
+	eq(select(2, slots[1].itemLevel:GetFont()), 13, 'at its size')
+
+	INV.config.fonts.icons, INV.config.fonts.titles = 'pixel', 'heading'
+	INV:StyleContainerContents(container)
+	eq(slots[1].itemLevel:GetFontObject(), st:GetFont('pixel'), 'Small text again')
+	eq(container.categories.Things.header.text:GetFontObject(), st:GetFont('heading'), 'Heading again')
+
+	INV.config.fonts.icons, INV.config.fonts.titles = 'a font that does not exist', false
+	INV:StyleContainerContents(container)
+	eq(slots[1].itemLevel:GetFontObject(), st:GetFont('normal'), 'a value naming nothing draws Text')
+	eq(container.categories.Things.header.text:GetFontObject(), st:GetFont('normal'), 'a title too')
+	eq(#take_errors(), 0, 'no errors')
+end)

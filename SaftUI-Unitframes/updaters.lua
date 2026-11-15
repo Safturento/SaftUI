@@ -148,7 +148,7 @@ function UF:UpdateElement(element, configOverride)
     end
 
     if element:IsObjectType('FontString') then
-        element:SetFontObject(st:GetFont(config.font))
+        st:ApplyFont(element, config.font)
     end
 
     if element.textElements then
@@ -397,8 +397,7 @@ function UF:UpdateText(text, configOverride)
     end
 
     UF:UpdateElement(text, configOverride)
-    local font = st:GetFont(config.font)
-    text:SetFontObject(font)
+    st:ApplyFont(text, config.font)
 
     -- The health and power texts' own color (colorCustom and customColor in
     -- their text config; the other texts have none). Off, a text keeps its
@@ -410,7 +409,7 @@ function UF:UpdateText(text, configOverride)
         text.hasCustomColor = true
     elseif text.hasCustomColor then
         text.hasCustomColor = nil
-        if font then text:SetTextColor(font:GetTextColor()) end
+        text:SetTextColor(st:FontObject(config.font):GetTextColor())
     end
 end
 
