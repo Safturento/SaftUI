@@ -16,17 +16,20 @@ local function IsSecret(...)
 	return false
 end
 
-local function NewProgress(value, total, color)
+-- `group` and `key` name the profile color the bar is drawn in (the feed reads
+-- it as it draws, LT.ProgressRGB, so a changed color reaches the line); r, g and
+-- b are the color it was taken in, for a color that is Blizzard's.
+local function NewProgress(value, total, color, group, key)
 	if IsSecret(value, total) then return end
 	if type(value) ~= 'number' or type(total) ~= 'number' or total <= 0 then return end
 
 	local r, g, b = 1, 1, 1
 	if color then r, g, b = color:GetRGB() end
-	return { value = value, max = total, r = r, g = g, b = b }
+	return { value = value, max = total, r = r, g = g, b = b, colorGroup = group, colorKey = key }
 end
 
-local function FullBar(color)
-	return NewProgress(1, 1, color)
+local function FullBar(color, group, key)
+	return NewProgress(1, 1, color, group, key)
 end
 
 ------------------------------------
@@ -35,7 +38,8 @@ end
 
 local function ExperienceProgress()
 	-- UnitXPMax is 0 when there's no XP to earn, which hides the bar.
-	return NewProgress(UnitXP('player'), UnitXPMax('player'), st.config.profile.colors.experience.normal)
+	return NewProgress(UnitXP('player'), UnitXPMax('player'), st.config.profile.colors.experience.normal,
+		'experience', 'normal')
 end
 
 ------------------------------------
@@ -99,10 +103,11 @@ function LT:RememberChangedFaction(_, factionID)
 end
 
 -- SaftUI's reaction colors (the profile's, which the Colors tab edits), else
--- Blizzard's standing colors.
+-- Blizzard's standing colors. Then the group and key of the profile's color (none
+-- for Blizzard's).
 local function ReactionColor(reaction)
 	local color = st.config.profile.colors.reaction[reaction]
-	if color then return color end
+	if color then return color, 'reaction', reaction end
 	color = FACTION_BAR_COLORS and FACTION_BAR_COLORS[reaction]
 	if color and color.GetRGB then return color end
 end
@@ -124,20 +129,25 @@ local function ReputationProgress(factionName)
 		if IsSecret(value, threshold) or type(value) ~= 'number' or type(threshold) ~= 'number' or threshold <= 0 then
 			return
 		end
-		local color = isMajor and colors.renown or ReactionColor(reaction)
-		if rewardPending then return FullBar(color) end
-		return NewProgress(value % threshold, threshold, color)
+		local color, group, key
+		if isMajor then
+			color, group = colors.renown, 'renown'
+		else
+			color, group, key = ReactionColor(reaction)
+		end
+		if rewardPending then return FullBar(color, group, key) end
+		return NewProgress(value % threshold, threshold, color, group, key)
 	end
 
 	-- Renown: through the current renown level, full at max renown.
 	if isMajor then
 		if not C_MajorFactions then return end
 		if C_MajorFactions.HasMaximumRenown and C_MajorFactions.HasMaximumRenown(id) then
-			return FullBar(colors.renown)
+			return FullBar(colors.renown, 'renown')
 		end
 		local major = C_MajorFactions.GetMajorFactionData and C_MajorFactions.GetMajorFactionData(id)
 		if not major then return end
-		return NewProgress(major.renownReputationEarned, major.renownLevelThreshold, colors.renown)
+		return NewProgress(major.renownReputationEarned, major.renownLevelThreshold, colors.renown, 'renown')
 	end
 
 	-- Friendship: through the current rank, full at max rank. Blizzard colors
@@ -147,11 +157,11 @@ local function ReputationProgress(factionName)
 	if friendship and not IsSecret(friendship.friendshipFactionID)
 		and type(friendship.friendshipFactionID) == 'number' and friendship.friendshipFactionID > 0 then
 		local standing, low, high = friendship.standing, friendship.reactionThreshold, friendship.nextThreshold
-		local color = ReactionColor(5)
+		local color, group, key = ReactionColor(5)
 		if IsSecret(standing, low, high) then return end
-		if high == nil then return FullBar(color) end
+		if high == nil then return FullBar(color, group, key) end
 		if type(standing) ~= 'number' or type(low) ~= 'number' or type(high) ~= 'number' then return end
-		return NewProgress(standing - low, high - low, color)
+		return NewProgress(standing - low, high - low, color, group, key)
 	end
 
 	-- Standard: within the current standing, e.g. Friendly 1200/6000.
@@ -159,10 +169,10 @@ local function ReputationProgress(factionName)
 	if IsSecret(value, low, high) then return end
 	if type(value) ~= 'number' or type(low) ~= 'number' or type(high) ~= 'number' then return end
 
-	local color = ReactionColor(reaction)
+	local color, group, key = ReactionColor(reaction)
 	-- No room above the current standing means it's capped: a full bar.
-	if high <= low then return FullBar(color) end
-	return NewProgress(value - low, high - low, color)
+	if high <= low then return FullBar(color, group, key) end
+	return NewProgress(value - low, high - low, color, group, key)
 end
 
 ------------------------------------

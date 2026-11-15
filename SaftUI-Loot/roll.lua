@@ -7,6 +7,7 @@ local rollbar = LT.rollbar
 local roll_buttons, ROLL_STRATA = rollbar.buttons, rollbar.strata
 local CreateBar, SetBarTransmog, LockBar = rollbar.CreateBar, rollbar.SetBarTransmog, rollbar.LockBar
 local ColorLocked, ApplyBarConfig, SetBarTimer = rollbar.ColorLocked, rollbar.ApplyBarConfig, rollbar.SetBarTimer
+local ColorBarTimer = rollbar.ColorBarTimer
 
 -- SaftUI's pieces on Blizzard's roll frames. The frames and what's on them are
 -- Blizzard's, so nothing is written onto them (.agents/taint.md rule 1): each
@@ -209,7 +210,7 @@ function LT:GroupLootFrame_OnShow(frame)
 	if skin then
 		skin.shown = {
 			rollID = st.Plain(frame.rollID), texture = texture, text = text .. name,
-			color = color, transmog = canTransmog == true,
+			color = color, quality = quality, transmog = canTransmog == true,
 		}
 	end
 end
@@ -386,7 +387,9 @@ function LT:HoldRoll(frame, roll)
 
 	bar.Icon:SetTexture(shown.texture)
 	bar.Name:SetText(shown.text)
-	local color = shown.color
+	bar.quality = shown.quality
+	-- The quality's color as it is now: the pass keeps the name in step after.
+	local color = shown.quality and st:QualityColor(shown.quality) or shown.color
 	if color then
 		bar.Name:SetVertexColor(color.r, color.g, color.b)
 	else
@@ -586,20 +589,64 @@ function LT:RegisterRollMover()
 	})
 end
 
+-- A held bar's or preview's name in its item quality's color.
+local function ColorQualityName(bar, key)
+	local quality = bar.quality
+	if not quality or (key ~= nil and key ~= quality) then return end
+	local color = st:QualityColor(quality)
+	if color then bar.Name:SetVertexColor(color.r, color.g, color.b) end
+end
+
 -- Only SaftUI's anchor, its own bars and the (unprotected) roll frames are
 -- touched, never GroupLootContainer. Everything here hangs off the anchor, so a
 -- protected frame (e.g. a unit frame) anchored to any of it makes the anchor
 -- protected; in combat the update then waits for the end of combat.
--- An accent change (st:ColorsChanged('accent'), through LT:OnColorsChanged):
--- a locked bar's lit border and label take the new accent at once. A theme
--- recolor or redraw keeps the lit border through st:KeepOwnColors.
-function LT:ColorRollBars(group)
-	if group ~= 'accent' then return end
-	for _, bar in ipairs(held) do
-		ColorLocked(bar)
-	end
-	for _, bar in ipairs(self.rollPreview and self.rollPreview.bars or {}) do
-		if bar.choice then ColorLocked(bar) end
+-- A color change (st:ColorChanged, through LT:OnColorsChanged); `key` is nil on
+-- a whole group. Only colors are set, and only on SaftUI's own pieces or as a
+-- color on a region of Blizzard's roll frame (.agents/taint.md rule 1: nothing
+-- is written onto them).
+--   'accent': a locked bar's lit border and label, and the held bars' timers. A
+--     theme recolor or redraw keeps the lit border through st:KeepOwnColors.
+--   'loot': each skinned frame's letter of that choice, and the shown counts
+--     (LT:ColorRollCounts).
+--   'item_quality': the name of each shown roll, held bar and preview of that
+--     quality.
+function LT:ColorRollBars(group, key)
+	if group == 'accent' then
+		for _, bar in ipairs(held) do
+			ColorLocked(bar)
+			ColorBarTimer(bar)
+		end
+		for _, bar in ipairs(self.rollPreview and self.rollPreview.bars or {}) do
+			if bar.choice then ColorLocked(bar) end
+		end
+	elseif group == 'loot' then
+		for _, frame in ipairs(self.skinnedRollFrames or {}) do
+			local skin = skins[frame]
+			for _, info in ipairs(roll_buttons) do
+				local text = skin and skin.buttonText[info.name]
+				if text and (key == nil or key == info.color) then
+					text:SetVertexColor(st:Color('loot', info.color):GetRGB())
+				end
+			end
+		end
+		self:ColorRollCounts(key)
+	elseif group == 'item_quality' then
+		for _, frame in ipairs(self.skinnedRollFrames or {}) do
+			local skin = skins[frame]
+			local shown = skin and skin.shown
+			local quality = shown and shown.quality
+			if quality and (key == nil or key == quality) and frame:IsShown() then
+				local color = st:QualityColor(quality)
+				if color then frame.Name:SetVertexColor(color.r, color.g, color.b) end
+			end
+		end
+		for _, bar in ipairs(held) do
+			ColorQualityName(bar, key)
+		end
+		for _, bar in ipairs(self.rollPreview and self.rollPreview.bars or {}) do
+			ColorQualityName(bar, key)
+		end
 	end
 end
 

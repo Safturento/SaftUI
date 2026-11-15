@@ -130,6 +130,7 @@ local function FillPreviewBar(bar)
 	if quality >= 3 and not spec.bindOnPickUp then text = 'BoE ' end
 	if spec.count > 1 then text = text .. '(' .. spec.count .. ') ' end
 	bar.Name:SetText(text .. name)
+	bar.quality = quality
 	local color = st:QualityColor(quality)
 	if color then bar.Name:SetVertexColor(color.r, color.g, color.b) end
 
