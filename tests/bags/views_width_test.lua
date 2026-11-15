@@ -463,17 +463,17 @@ test('a title longer than the line is cut with dots inside it, the count kept', 
 end)
 
 test("in Compact a title longer than its column is cut with dots inside it too, the count kept, on whole pixels", function()
-	for _, title in ipairs({ 'Flasks/Potions/Food (22)', 'Professions/Recipes (14)', 'Paladin/Priest/Warlock (1)' }) do
+	for _, title in ipairs({ 'Flasks/Potions/Food', 'Professions/Recipes', 'Paladin/Priest/Warlock' }) do
 		local c = world('compact', { Weapon = 2 })
 		local weapons = c.categories.Weapons
 		local items = {}
 		for _, s in ipairs(weapons.slots) do if s.info then table.insert(items, s.info) end end
 		-- Colus 15 is wider than the stubs' size-only measure: a long name stands in.
-		local long = title .. ' and then some more words to be sure it cannot fit'
+		local long = title .. ' and then some more words to be sure it cannot fit (22)'
 		INV:UpdateCategory('bag', 'Weapons', items, long, F)
 		local text = weapons.header.text
 		check(text:GetUnboundedStringWidth() <= weapons:GetWidth(), title .. ': the title fits its column')
-		check(text:GetText():find('%.%.%.'), title .. ': cut with dots: ' .. tostring(text:GetText()))
+		check(text:GetText():find('%.%.%. %(22%)$'), title .. ': cut with dots, the count at the end: ' .. tostring(text:GetText()))
 		eq(weapons:GetWidth() % 1, 0, 'the column is a whole width')
 		eq(text:GetWidth() % 1, 0, 'and the title is cut to a whole width')
 		INV:UpdateCategory('bag', 'Weapons', items, 'Short (2)', F)
