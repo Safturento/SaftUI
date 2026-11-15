@@ -407,6 +407,11 @@ end
 test('a hotkey switched Small text, then Colus, then Small text draws each, with the library setting its own font and SaftUI none (G2)', function()
 	fresh()
 	local b = bar('bar1', button('CooldownTestHotkey'))
+	-- The template's macro name inherits a 1, -1 shadow from its XML; the stubs
+	-- give a text no shadow from a font object, so it is given here, and the 0, 0
+	-- checks below can fail if StyleButton stops setting the value's shadow.
+	b.Name:SetShadowOffset(1, -1)
+	eq(T.text(b.Name:GetShadowOffset()), '1.00,-1.00', "the macro name starts with the template's shadow")
 	local calls, restore = count_setfonts()
 	local function drawn()
 		local config = AB:GetBarConfig('bar1').text.hotkey
@@ -482,6 +487,33 @@ test("a shared font a bar's text uses changing on the Fonts tab restyles that ba
 	stub.fire_event('PLAYER_REGEN_ENABLED')
 	eq(b.configs, before + 2, 'restyled once when combat ends')
 	eq(select(2, b.HotKey:GetFont()), 12, 'with the new size')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("a Fonts tab change in combat queues no restyle when no bar's text is on a shared font", function()
+	fresh()
+	local b = bar('bar2', button('CooldownTestFontsTypeface'))
+	for _, kind in ipairs({ 'hotkey', 'count', 'macro' }) do
+		AB:SetSetting('bar2', kind .. '.font', 'Colus')
+	end
+	AB:UpdateBar('bar2')
+	local queued = 0
+	local real = st.QueueAfterCombat
+	st.QueueAfterCombat = function(self, key, ...)
+		if key == 'actionbars_fonts' then queued = queued + 1 end
+		return real(self, key, ...)
+	end
+	stub.in_combat = true
+	local before = b.configs
+	local ok, err = pcall(function()
+		st:FontsChanged()
+		stub.run_timers()
+	end)
+	stub.in_combat = false
+	st.QueueAfterCombat = real
+	check(ok, tostring(err))
+	eq(queued, 0, 'nothing queued for the end of combat')
+	eq(b.configs, before, 'and nothing restyled')
 	eq(#take_errors(), 0, 'no errors')
 end)
 

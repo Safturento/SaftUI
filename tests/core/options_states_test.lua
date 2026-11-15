@@ -182,6 +182,7 @@ local function categories() return CW.tab() end
 
 local PAGES = {
 	{ name = 'Global settings', open = function() st.Config:Open('Fonts', 'general') end },
+	{ name = 'Theme tab', open = function() st.Config:Open('Fonts', 'theme') end },
 	{ name = 'Profiles', open = function() st.Config:Open('profile') end },
 	{ name = 'Action bars', open = function() st.Config:Open('ActionBars') end },
 	{ name = 'Unit frames', open = function() st.Config:Open('Unitframes', 'player', 'general') end, line = true },
@@ -425,8 +426,9 @@ end
 -- Blizzard and under Thick (forever) and Thin (retail).
 local WALK = { 'W2', 'W4', 'W3', 'W5', 'W3', 'W4', 'W6', 'W4', 'W2', 'W1', 'W3', 'W1' }
 per_client('every transition on the Unit frames page keeps the corner, the close X and the page edge', function(client)
-	local unit = 4
-	eq(PAGES[unit].name, 'Unit frames')
+	local unit
+	for i, page in ipairs(PAGES) do if page.name == 'Unit frames' then unit = i end end
+	check(unit, 'the page is listed')
 	world(client)
 	for _, name in ipairs({ 'blizzard', client == 'forever' and 'thick' or 'thin' }) do
 		look(name)

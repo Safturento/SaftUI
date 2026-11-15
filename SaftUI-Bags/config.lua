@@ -19,7 +19,7 @@ st.defaults.inventory = {
 	inverted = true,
 	stackItems = true,
 	fonts = {
-		titles = 'normal',
+		titles = 'heading',
 		icons = 'pixel',
 	},
 	bag = {

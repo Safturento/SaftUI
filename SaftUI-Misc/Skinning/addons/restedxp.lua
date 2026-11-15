@@ -99,9 +99,9 @@ local function ApplyFont(fs)
 	if not state.size then return end
 
 	local _, _, fontName = RX:GetStyle()
-	if state.kind == 'title' then fontName = 'title' end
+	if state.kind == 'title' then fontName = 'heading' end
 	-- The face and outline of chat's font (a shared font's key or a typeface), or
-	-- of Huge title for the title.
+	-- of Heading for the title.
 	local face, _, outline = st:FontValues(fontName)
 	local size = state.size + (state.kind == 'title' and TITLE_SIZE_BONUS or 0)
 
@@ -649,7 +649,7 @@ function RX:UpdateConfig()
 	if bar then ColorThumb(bar) end
 end
 
--- A shared font or a font setting changed (st:FontsChanged): chat's font (or Huge title,
+-- A shared font or a font setting changed (st:FontsChanged): chat's font (or Heading,
 -- for the title) again on the texts, and on the timers that show. Chat's own
 -- ApplyAppearance reaches UpdateConfig on its font change as well; this is the
 -- Fonts tab's and a profile's.

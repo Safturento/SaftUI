@@ -498,14 +498,16 @@ function TR:Redraw()
 	metrics.icons = self:ShowsIcons()
 	metrics.itemSize = config.items.size
 	metrics.dash = self:DashWidth()
+	metrics.zone = self:ZoneHeight()
 	local header, collapsed, max = config.header and true or false, self:IsCollapsed(), self:MaxHeight()
 	local room = self.barRoom or 0
 	local placed, height
 	for _ = 1, 2 do
 		metrics.width = self:RowsWidth(room)
 		placed, height = Layout.Rows(entries, metrics, self.measureText, self.placed)
-		local windowHeight = Layout.WindowHeight(height, { header = header, collapsed = collapsed, max = max })
-		local scrolls = not collapsed and height > Layout.ViewHeight(windowHeight, header)
+		local headerHeight = self:HeaderHeight()
+		local windowHeight = Layout.WindowHeight(height, { header = header, collapsed = collapsed, max = max, headerHeight = headerHeight })
+		local scrolls = not collapsed and height > Layout.ViewHeight(windowHeight, header, headerHeight)
 		local needed = scrolls and math.floor(st:ScrollBarRoom(self.scroll) + 0.5) or 0
 		if needed == room then break end
 		room = needed

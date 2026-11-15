@@ -10,7 +10,9 @@
 --
 -- ALLOWED names each file that may call it and why, and the call sites it may
 -- have: the receiver text before `:SetFont` (`object`, `fs`, `'SetFont'` for a
--- hook by name), so a new call in an allowed file on another receiver fails.
+-- hook by name) with how many calls each has. Receivers are generic (`line`,
+-- `fs`, `frame`), so a count is pinned per receiver: a new call on a listed
+-- receiver, or on another one, fails; so does one that goes missing.
 -- `any = true` exempts a whole file, for the temporary font demo only: it calls
 -- SetFont on font strings, objects and chained calls in a hundred places and is
 -- to be deleted. A file on the list with no call, or a listed receiver it no
@@ -19,13 +21,13 @@ local T = load_test_file('lib/theme_helpers.lua')
 local L = load_test_file('lib/source_lex.lua')
 
 local ALLOWED = {
-	['SaftUI-Core/Media/fonts.lua'] = { reason = "the shared, typeface and preload font objects, and the probe (a font object's SetFont, never a text's)", calls = { 'object', 'probe' } },
-	['SaftUI-Core/Config/optionsbody.lua'] = { reason = "/sui's own font objects (Heading's and Text's faces)", calls = { 'fontObjects[key]' } },
-	['SaftUI-Core/Config/optionslook.lua'] = { reason = "the field font object and SetFieldFont, /sui's field texts (a pooled font string that must be put on a face outright)", calls = { 'fieldFont', 'fs' } },
-	['SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua'] = { reason = "the buff and debuff frames' own font objects", calls = { 'font' } },
-	['SaftUI-Chat/chatframe.lua'] = { reason = "Blizzard's chat frames, which take a face, size and flags and have no font object of SaftUI's", calls = { 'frame' } },
-	['SaftUI-Misc/tooltip.lua'] = { reason = "Blizzard's tooltip lines, copied onto each as it shows", calls = { 'line' } },
-	['SaftUI-Misc/Skinning/addons/restedxp.lua'] = { reason = "RestedXP's texts, its timers' bars and the hook that notices its own SetFont (another addon's font strings)", calls = { 'fs', 'bar', "'SetFont'" } },
+	['SaftUI-Core/Media/fonts.lua'] = { reason = "the shared, typeface and preload font objects, and the probe (a font object's SetFont, never a text's)", calls = { object = 4, probe = 2 } },
+	['SaftUI-Core/Config/optionsbody.lua'] = { reason = "/sui's own font objects (Heading's and Text's faces)", calls = { ['fontObjects[key]'] = 1 } },
+	['SaftUI-Core/Config/optionslook.lua'] = { reason = "the field font object and SetFieldFont, /sui's field texts (a pooled font string that must be put on a face outright)", calls = { fieldFont = 1, fs = 2 } },
+	['SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua'] = { reason = "the buff and debuff frames' own font objects", calls = { font = 1 } },
+	['SaftUI-Chat/chatframe.lua'] = { reason = "Blizzard's chat frames, which take a face, size and flags and have no font object of SaftUI's", calls = { frame = 1 } },
+	['SaftUI-Misc/tooltip.lua'] = { reason = "Blizzard's tooltip lines, copied onto each as it shows", calls = { line = 1 } },
+	['SaftUI-Misc/Skinning/addons/restedxp.lua'] = { reason = "RestedXP's texts, its timers' bars and the hook that notices its own SetFont (another addon's font strings)", calls = { fs = 1, bar = 1, ["'SetFont'"] = 1 } },
 	['SaftUI-Core/Dev/fontdemo.lua'] = { reason = 'the temporary font demo, to be deleted', any = true },
 }
 
@@ -74,6 +76,12 @@ test('the scan, on samples: it finds a SetFont and passes the rest', function()
 	eq(Calls("hooksecurefunc(fs, 'SetFont', f)")[1].receiver, "'SetFont'", 'a hook names the string')
 end)
 
+test('the scan counts a receiver: a second call on a listed receiver is one too many', function()
+	local calls = Calls("line:SetFont(a)\nline:SetFont(b)")
+	eq(#calls, 2, 'two calls')
+	eq(calls[1].receiver .. calls[2].receiver, 'lineline', 'on one receiver')
+end)
+
 local files, _, missing = T.saftui_files()
 
 test('every file the TOCs name could be read', function()
@@ -86,11 +94,19 @@ test('no file the TOCs load calls SetFont outside the allowed list and its call 
 	for _, path in ipairs(files) do
 		local allowed = ALLOWED[path]
 		if not (allowed and allowed.any) then
-			local receivers = {}
-			for _, receiver in ipairs(allowed and allowed.calls or {}) do receivers[receiver] = true end
+			local pinned, seen, byReceiver = allowed and allowed.calls or {}, {}, {}
 			for _, call in ipairs(Calls(read_saftui_source(path))) do
-				if not receivers[call.receiver] then
-					failures[#failures + 1] = ('%s:%d: %s'):format(path, call.line, call.text)
+				seen[call.receiver] = (seen[call.receiver] or 0) + 1
+				byReceiver[call.receiver] = byReceiver[call.receiver] or {}
+				table.insert(byReceiver[call.receiver], call)
+			end
+			-- A receiver over its count lists every call on it (which one is new
+			-- is not known from the source's order).
+			for receiver, count in pairs(seen) do
+				if count > (pinned[receiver] or 0) then
+					for _, call in ipairs(byReceiver[receiver]) do
+						failures[#failures + 1] = ('%s:%d: %s'):format(path, call.line, call.text)
+					end
 				end
 			end
 		end
@@ -106,9 +122,9 @@ test('every allowed file and call site still exists, so a stale entry is noticed
 		local calls = Calls(read_saftui_source(path) or '')
 		check(#calls > 0, path .. ' has no SetFont call any more: take it off the allowed list')
 		local seen = {}
-		for _, call in ipairs(calls) do seen[call.receiver] = true end
-		for _, receiver in ipairs(allowed.calls or {}) do
-			check(seen[receiver], path .. ' has no call on ' .. receiver .. ' any more: take it off its list')
+		for _, call in ipairs(calls) do seen[call.receiver] = (seen[call.receiver] or 0) + 1 end
+		for receiver, count in pairs(allowed.calls or {}) do
+			eq(seen[receiver] or 0, count, path .. ' calls SetFont on ' .. receiver .. ' this many times now: change its count, or take it off its list')
 		end
 	end
 end)

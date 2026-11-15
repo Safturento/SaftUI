@@ -84,11 +84,11 @@ end)
 
 test('title_font', function()
 	local R = setup()
-	-- The face the skin applies is SaftUI's title font's, not RestedXP's or the chat font's.
-	check(SaftUI:GetFont('title'):GetFont() ~= SaftUI:GetFont('normal'):GetFont(), 'title_font: the title face is its own')
-	check(font(R.GuideName.text, 'title', 14, 'OUTLINE'), 'title_font: Colus at 11+3')
+	-- The face the skin applies is Heading's, not RestedXP's or the chat font's.
+	check(SaftUI:GetFont('heading'):GetFont() ~= SaftUI:GetFont('normal'):GetFont(), 'title_font: the title face is its own')
+	check(font(R.GuideName.text, 'heading', 14, 'OUTLINE'), 'title_font: Colus at 11+3')
 	R.GuideName.text:SetFont('GameFontFace', 13, '')
-	check(font(R.GuideName.text, 'title', 16, 'OUTLINE'), 'title_font: follows RestedXP size change (13 -> 16)')
+	check(font(R.GuideName.text, 'heading', 16, 'OUTLINE'), 'title_font: follows RestedXP size change (13 -> 16)')
 end)
 
 test('footer_font', function()

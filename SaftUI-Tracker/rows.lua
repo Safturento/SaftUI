@@ -333,7 +333,7 @@ local function MakeZoneRow(self)
 	local chevron = self:NewChevron(row, function()
 		return row.collapsed and 'Expand' or 'Collapse'
 	end)
-	chevron:SetPoint('TOPLEFT', row, 'TOPLEFT', 0, -(L.ZONE - L.CHEVRON) / 2)
+	chevron:SetPoint('LEFT', row, 'LEFT', 0, 0)
 	chevron:SetScript('OnClick', function(button)
 		TR:ToggleZone(row.key)
 		if GameTooltip:IsOwned(button) then button:ShowTip() end

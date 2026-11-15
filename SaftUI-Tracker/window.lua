@@ -355,8 +355,9 @@ function TR:LayoutWindow()
 	local content = self.contentHeight or 0
 	local width = Round(config.width)
 
-	local height = Layout.WindowHeight(content, { header = header, collapsed = collapsed, max = self:MaxHeight() })
-	local view = Layout.ViewHeight(height, header)
+	local headerHeight = self:HeaderHeight()
+	local height = Layout.WindowHeight(content, { header = header, collapsed = collapsed, max = self:MaxHeight(), headerHeight = headerHeight })
+	local view = Layout.ViewHeight(height, header, headerHeight)
 	local range = collapsed and 0 or Layout.ScrollRange(content, view)
 	-- The bar's room is read from the game (single precision: a hair off), and
 	-- rounded so the child's width stays a whole pixel.
@@ -365,13 +366,13 @@ function TR:LayoutWindow()
 
 	-- Only when something it is made of changed: a refresh that changed nothing
 	-- resizes and re-anchors nothing.
-	local key = ('%s,%s,%s,%s,%s,%s,%s,%s'):format(width, height, view, childWidth, content, range, header and 1 or 0, collapsed and 1 or 0)
+	local key = ('%s,%s,%s,%s,%s,%s,%s,%s,%s'):format(width, height, view, childWidth, content, range, header and 1 or 0, collapsed and 1 or 0, headerHeight)
 	if key ~= self.layoutKey then
 		self.layoutKey = key
 		window:SetSize(width, height)
-		self.header:SetSize(width - 2 * L.PAD, L.HEADER)
+		self.header:SetSize(width - 2 * L.PAD, headerHeight)
 		scroll:ClearAllPoints()
-		scroll:SetPoint('TOPLEFT', window, 'TOPLEFT', L.PAD, -(L.PAD + (header and L.HEADER + L.HEADER_GAP or 0)))
+		scroll:SetPoint('TOPLEFT', window, 'TOPLEFT', L.PAD, -(L.PAD + (header and headerHeight + L.HEADER_GAP or 0)))
 		scroll:SetSize(childWidth, view)
 		scroll:SetContentSize(childWidth, content)
 		scroll:SetShown(not collapsed)
@@ -401,6 +402,16 @@ function TR:UpdateWheel()
 	local wheel = (self.scrollRange or 0) > 0 and not self.inputOff
 	self.window:EnableMouseWheel(wheel)
 	self.scroll:EnableMouseWheel(wheel)
+end
+
+-- The header's height and a zone row's: the constants, or more when the Header
+-- font is large (Layout.HeaderHeight, Layout.ZoneHeight).
+function TR:HeaderHeight()
+	return Layout.HeaderHeight(select(2, st:FontValues(self.config.header_font)))
+end
+
+function TR:ZoneHeight()
+	return Layout.ZoneHeight(select(2, st:FontValues(self.config.header_font)))
 end
 
 -- The scroll view's height as drawn, in whole pixels.
@@ -600,7 +611,7 @@ local function BuildHeader(window)
 	local collapse = TR:NewChevron(header, function()
 		return TR:IsCollapsed() and 'Expand' or 'Collapse'
 	end)
-	collapse:SetPoint('TOPRIGHT', header, 'TOPRIGHT', 0, -(L.HEADER - L.CHEVRON) / 2)
+	collapse:SetPoint('RIGHT', header, 'RIGHT', 0, 0)
 	collapse:SetScript('OnClick', function(self)
 		-- Popups hold the window open: a click would save a state that shows nothing.
 		if TR.popupsShown then return end

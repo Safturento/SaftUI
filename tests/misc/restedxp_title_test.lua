@@ -83,3 +83,25 @@ test('no text height', function()
 	local R, _, ok = setup(function(R) H.text_height(R.GuideName.text, nil) end)
 	check(ok and R.GuideName:GetHeight() == 35, 'nil string height -> 35')
 end)
+
+test("RestedXP's guide title takes Heading's face at RestedXP's size plus 3", function()
+	local R, RX, ok, err = setup(function(R) H.text_height(R.GuideName.text, 14) end)
+	check(ok, 'enable ok ' .. tostring(err))
+	local face = SaftUI.config.profile.fonts
+	local function title() return R.GuideName.text:GetFont() end
+	eq(title(), SaftUI:GetFont('heading'):GetFont(), "Heading's face")
+	eq(select(2, R.GuideName.text:GetFont()), 14, "RestedXP's 11 plus 3")
+
+	-- Heading is what it follows, not Huge title: each in a face of its own.
+	face.heading.font_name = 'Homespun'
+	face.title.font_name = 'Friz Quadrata TT'
+	SaftUI:GetModule('Fonts'):UpdateFontConfig('heading')
+	SaftUI:GetModule('Fonts'):UpdateFontConfig('title')
+	SaftUI:FontsChanged()
+	eq(title(), SaftUI:GetFont('heading'):GetFont(), 'a Heading change reaches it at once')
+	check(title() ~= SaftUI:GetFont('title'):GetFont(), 'and Huge title does not')
+	R.GuideName.text:SetFont('GameFontFace', 13, '')
+	eq(title(), SaftUI:GetFont('heading'):GetFont(), "RestedXP's own SetFont keeps Heading's face")
+	eq(select(2, R.GuideName.text:GetFont()), 16, 'at 13 plus 3')
+	eq(#take_errors(), 0, 'no errors')
+end)

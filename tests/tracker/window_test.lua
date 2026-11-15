@@ -771,6 +771,30 @@ test("General's rows: each saves and the tracker follows at once, and each reset
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+test("Header font defaults to Heading for the header line and the zone headers; its reset says 'Header font goes back to its default: Heading.'", function()
+	for _, client in ipairs({ 'forever', 'retail' }) do
+		local st, TR = world({ client = client })
+		local where = client .. ': '
+		eq(st.defaults.tracker.header_font, 'heading', where .. 'the default')
+		eq(st.defaults.tracker.font, 'normal', where .. 'Font stays Text')
+		eq(TR.config.header_font, 'heading', where .. 'a profile that never saved it')
+		eq(TR.header.title:GetFontObject(), st:GetFont('heading'), where .. 'the header line')
+		eq(TR.header.count:GetFontObject(), st:GetFont('heading'), where .. 'its count')
+		local row = TR:GetConfigTable().args.general.args.header_font
+		eq(row.default.value(), 'heading', where .. 'its reset value')
+		eq(st:FontLabel(row.default.value()), 'Heading', where .. "named in the reset's tooltip")
+		eq(row.default.differs(), false, where .. 'at its default')
+		TR.config.header_font = 'normal'
+		TR:UpdateConfig()
+		eq(row.default.differs(), true, where .. 'a saved Text differs')
+		eq(TR.header.title:GetFontObject(), st:GetFont('normal'), where .. 'and keeps Text')
+		row.default.reset()
+		eq(TR.config.header_font, 'heading', where .. 'its reset')
+		eq(TR.header.title:GetFontObject(), st:GetFont('heading'), where .. 'applies at once')
+		eq(#take_errors(), 0, where .. 'no errors')
+	end
+end)
+
 test('the Position row: reads without saving while off, refuses the tracker and its holder, saves and places while on', function()
 	load_test_file('lib/options_walk.lua')
 	local st, TR = TW.world({})

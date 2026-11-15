@@ -157,6 +157,32 @@ local function OptionsRow(order)
 	return row
 end
 
+-- The Window titles section: one Font row for the titles of SaftUI's windows,
+-- saved where it always was, st.config.profile.headers.font, and shared by
+-- every theme (like Options windows above it). The titles follow it at once
+-- (st:FollowFont), and so does the color picker's (its skin's OnFontsChanged),
+-- through st:FontsChanged(). Its default is Text.
+local function WindowTitlesGroup(order)
+	local FN = st:GetModule('Fonts')
+	local font = st.Config.generators.font(1,
+		"The titles of SaftUI's windows: the bags and bank, /sui's title bar under the Blizzard theme, and Blizzard's color picker while Skinning dresses it. Every theme uses it.")
+	local function read() return st.config.profile.headers.font end
+	local function write(_, value) st.config.profile.headers.font = value end
+	font.get = read
+	font.set = function(info, value)
+		write(info, value)
+		st:FontsChanged()
+	end
+	font.default = FN.FontSettingDefault(read, write, 'normal')
+	return {
+		type = 'group',
+		inline = true,
+		order = order,
+		name = 'Window titles',
+		args = { font = font },
+	}
+end
+
 function TH:GetConfigTable()
 	return {
 		type = 'group',
@@ -227,6 +253,7 @@ function TH:GetConfigTable()
 				},
 			},
 			optionsbackground = OptionsRow(6),
+			window_titles = WindowTitlesGroup(7),
 		},
 	}
 end

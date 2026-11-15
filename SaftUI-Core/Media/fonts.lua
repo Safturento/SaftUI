@@ -560,15 +560,13 @@ end
 -- st.config.profile[profile key].font. Each kind's texts follow their setting
 -- (st:FollowFont), so a change reaches them at once.
 local TEXT_FONTS = {
-	{ 'window_titles', 'headers', 'Window titles', 'normal',
-		"The titles of SaftUI's windows (the bags and bank), which change at once, and the bags' gold and free-slot text along their bottom, which changes on a reload." },
 	{ 'button_text', 'buttons', 'Button text', 'pixel',
 		"The text on the totem bar's buttons (key bindings, counts and names) and its totem timers, and on the bag slot bars and the bank's bag slots." },
 	{ 'checkbox_labels', 'panels', 'Check box labels', 'normal',
 		"The labels of SaftUI's check boxes, such as the bags' filters." },
 }
 
-local TEXT_FONTS_NOTE = 'Which font each kind of text uses. A change shows at once, except where its row says otherwise.'
+local TEXT_FONTS_NOTE = 'Which font each kind of text uses. A change shows at once.'
 
 local function TextFontsGroup()
 	local args = {}

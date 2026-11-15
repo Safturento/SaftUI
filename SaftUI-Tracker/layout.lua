@@ -21,27 +21,44 @@ local L = TR.LAYOUT
 local Layout = {}
 TR.Layout = Layout
 
--- What the header takes at the top of the window: its height and the gap after.
-local function HeaderRoom(header)
-	return header and L.HEADER + L.HEADER_GAP or 0
+-- The least a line of Colus takes is about 1.25 times its size. The header
+-- line and a zone row are at least their own constants (24 and 20) and grow
+-- with the Header font above that, so a large Heading neither overflows nor
+-- clips; always a whole, even number, so the chevron centres on a pixel.
+local function Even(n) return n + n % 2 end
+
+-- The header's height and a zone row's, for a Header font of this size.
+function Layout.HeaderHeight(size)
+	return Even(math.max(L.HEADER, math.ceil((size or 0) * 1.25) + 4))
+end
+
+function Layout.ZoneHeight(size)
+	return Even(math.max(L.ZONE, math.ceil((size or 0) * 1.25)))
+end
+
+-- What the header takes at the top of the window: its height (headerHeight, else
+-- the constant) and the gap after.
+local function HeaderRoom(header, headerHeight)
+	return header and (headerHeight or L.HEADER) + L.HEADER_GAP or 0
 end
 
 -- The window's height for content (the rows' height): padding, the header and
 -- its gap while it shows, the content, padding, at most opts.max. opts is
 -- { header, collapsed, max }. Collapsed it is the padding and the header only
 -- (40); with no header there is no whole-tracker collapse, so the flag is
--- ignored (Ruling 15).
+-- ignored (Ruling 15). opts.headerHeight is the header's, when it is taller
+-- than the constant (Layout.HeaderHeight).
 function Layout.WindowHeight(content, opts)
 	local header = opts.header and true or false
-	if opts.collapsed and header then return 2 * L.PAD + L.HEADER end
-	local height = 2 * L.PAD + HeaderRoom(header) + (content or 0)
+	if opts.collapsed and header then return 2 * L.PAD + (opts.headerHeight or L.HEADER) end
+	local height = 2 * L.PAD + HeaderRoom(header, opts.headerHeight) + (content or 0)
 	if opts.max and height > opts.max then return opts.max end
 	return height
 end
 
 -- The scroll view's height inside a window of windowHeight; never negative.
-function Layout.ViewHeight(windowHeight, header)
-	return math.max(0, windowHeight - 2 * L.PAD - HeaderRoom(header and true or false))
+function Layout.ViewHeight(windowHeight, header, headerHeight)
+	return math.max(0, windowHeight - 2 * L.PAD - HeaderRoom(header and true or false, headerHeight))
 end
 
 -- The scroll child's width (and the scroll frame's): the window's less padding
@@ -77,7 +94,8 @@ end
 -- lines a quest's lines, each { text } or { kind = 'bar' } (model.lua's lines
 -- are this shape); item says a quest's button sits in its row, or is in the
 -- column beside the tracker (its number takes the end of the title).
--- metrics is { width, spacing, icons, itemSize, dash }: width the scroll child's,
+-- metrics is { width, spacing, icons, itemSize, dash, zone }: width the scroll child's, zone a
+-- zone row's height (nil: L.ZONE),
 -- dash the room an objective's dash takes before its text (nil for none).
 -- measure(text, width, font, entry, slot) -> height gives a text's height
 -- wrapped at width; font is 'text' (titles, objectives, the empty line); slot
@@ -122,7 +140,7 @@ function Layout.Rows(entries, metrics, measure, out)
 		row.y = y
 		row.titleHeight = 0
 		if kind == 'zone' then
-			row.height = L.ZONE
+			row.height = metrics.zone or L.ZONE
 			row.titleWidth = width - L.CHEVRON - L.ZONE_TITLE_GAP
 			row.lineWidth = row.titleWidth
 		elseif kind == 'popup' then

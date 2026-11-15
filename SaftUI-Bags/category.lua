@@ -518,12 +518,9 @@ function INV:UpdateCategory(id, categoryName, categoryItems, title, lineSlots)
 	end
 	local width = (self:GetButtonWidth() + spacing) * lineSlots - spacing
 	categoryFrame:SetWidth(width)
-	if titleText and self:GetLaidOutView(container) == 'compact' then
-		-- Compact's titles are as they always were: not cut.
-		categoryFrame.header.text:SetWordWrap(true)
-		categoryFrame.header.text:SetWidth(0)
-		categoryFrame.header.text:SetText(titleText)
-	elseif titleText then
+	if titleText then
+		-- Every view cuts a title to its column, Compact's too: Heading (Colus) is
+		-- wider than Text was, so a long name would run into the next column's.
 		local room = width - 2 - (categoryFrame.filterCheckbox and categoryFrame.filterCheckbox:IsShown() and 16 or 0)
 		FitTitle(categoryFrame.header.text, titleText, room)
 	end
