@@ -255,6 +255,39 @@ function INV:StyleContainerContents(container)
 	end
 end
 
+-- Restyles the texts of one bag font setting, 'titles' (the category titles) or
+-- 'icons' (the item level and count on the item and currency slots), and
+-- nothing else. A font changes no size, place, order or border, so the bags
+-- are not packed, sorted or skinned again for it (INV:UpdateConfig does all of
+-- that, and a held Size slider asks for it on every step). The texts are
+-- whatever has been made so far; the ones made later read the setting.
+-- Bag slots are Blizzard item buttons, so in combat it waits for the end of it,
+-- as UpdateConfig does.
+function INV:ApplyFonts(which)
+	if not self.containers.bag then return end
+	if st:QueueAfterCombat('InventoryFonts' .. tostring(which), function() INV:ApplyFonts(which) end) then return end
+	local fonts = self.config.fonts
+	if which == 'titles' then
+		for _, container in pairs(self.containers) do
+			for _, category in pairs(type(container) == 'table' and container.categories or {}) do
+				if category.header and category.header.text then
+					st:ApplyFont(category.header.text, fonts.titles)
+				end
+			end
+		end
+	elseif which == 'icons' then
+		for _, container in pairs(self.containers) do
+			for _, category in pairs(type(container) == 'table' and container.categories or {}) do
+				for _, slot in pairs(category.slots or {}) do
+					st:ApplyButtonFonts(slot, fonts.icons)
+					if slot.itemLevel then st:ApplyFont(slot.itemLevel, fonts.icons) end
+				end
+			end
+		end
+		self:ApplyCurrencyFonts()
+	end
+end
+
 -- Puts a window's bag slot bar (Bag Slots shows it) above its title bar: its
 -- bottom left on the header's top left, buttonspacing up. Under Thick and
 -- Thin the header's top is the window's, as it always was; under Blizzard

@@ -86,6 +86,14 @@ function INV.CreateCurrencySlot(category)
     return slot
 end
 
+-- The Icon font on the texts of every currency slot made, and nothing else
+-- (INV:ApplyFonts).
+function INV:ApplyCurrencyFonts()
+    for _, slot in ipairs(currencySlots) do
+        st:ApplyButtonFonts(slot, self.config.fonts.icons)
+    end
+end
+
 -- Re-applies the profile's slot size, Slot theme and fonts to every currency
 -- slot, and sizes the currency category's filter button. Runs on profile
 -- changes; skinning a slot again is safe.
