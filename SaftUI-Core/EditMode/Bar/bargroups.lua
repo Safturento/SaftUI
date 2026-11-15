@@ -166,10 +166,10 @@ local function GridSize(bar)
 	return {
 		key = 'gridSize', frame = box,
 		Lay = function() return 54 end,
-		Look = function(_, blizzard)
-			W.LookNumberBox(box, blizzard)
-			EM.RecolorNumberBox(box, blizzard) -- the arrows take the current Muted (LookNumberBox only does on a change of art)
-		end,
+		-- Look alone: the bar looks again on every setting, a click on an arrow
+		-- among them, and that must not take the hovered arrow's Normal back
+		-- (the catch-up of Muted is the bar's Enabled listener, bar.lua).
+		Look = function(_, blizzard) W.LookNumberBox(box, blizzard) end,
 		Recolor = function(_, blizzard) EM.RecolorNumberBox(box, blizzard) end,
 		Refresh = function()
 			local settings = EM:GetSettings()

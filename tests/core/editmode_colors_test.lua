@@ -332,3 +332,22 @@ test('what a pass skipped while edit mode was off: the status line and the numbe
 	eq(rgb3(EM.historyList.box.pair.down.arrow:GetVertexColor()), want, "the History list box's arrows, as it opens")
 	off()
 end)
+
+test("a click on a number box's arrow keeps the arrow's hover color while the mouse is on it (the Grid size box, and the History list's)", function()
+	setup(false)
+	local normal = rgb3(st:Color('text', 'normal'):GetRGB()) .. ',1.00'
+	local box = EM:BarControl('gridSize').frame
+	local arrow = box.pair.up
+	stub.fire_script(arrow, 'OnEnter', true)
+	eq(rgb3(arrow.arrow:GetVertexColor()), normal, 'hovered: Normal')
+	stub.fire_script(arrow, 'OnClick', 'LeftButton')
+	eq(rgb3(arrow.arrow:GetVertexColor()), normal, "after a click (the setting changed, the bar looked again): still Normal")
+	stub.fire_script(arrow, 'OnLeave', true)
+	-- The History list's box.
+	local down = EM.historyList.box.pair.down
+	stub.fire_script(down, 'OnEnter', true)
+	stub.fire_script(down, 'OnClick', 'LeftButton')
+	EM:RefreshHistoryList()
+	eq(rgb3(down.arrow:GetVertexColor()), normal, "the History list's box: still Normal after its click and refresh")
+	off()
+end)

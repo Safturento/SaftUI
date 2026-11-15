@@ -551,6 +551,7 @@ EM:On('Enabled', function()
 	ApplyMode()
 	EM:LayoutBar()
 	EM:RefreshBar()
+	EM:RecolorBar() -- what a pass skipped while edit mode was off (the number boxes' arrows)
 	ShowSurface()
 end)
 
