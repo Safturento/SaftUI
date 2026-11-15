@@ -11,6 +11,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-15 — Unit frames: what a color pass's real element updates cost](#2026-11-15--unit-frames-what-a-color-passs-real-element-updates-cost)
   - [2026-11-15 — Unit frames: a color oUF lacks is set to the profile's own table](#2026-11-15--unit-frames-a-color-ouf-lacks-is-set-to-the-profiles-own-table)
   - [2026-11-15 — Unit frames: a vehicle power type with no oUF color falls back to Mana](#2026-11-15--unit-frames-a-vehicle-power-type-with-no-ouf-color-falls-back-to-mana)
+
+  - [2026-11-15 — A roll result line's All passed and winner color are baked in at push](#2026-11-15--a-roll-result-lines-all-passed-and-winner-color-are-baked-in-at-push)
   - [2026-11-15 — Forever: Show in > Bank does nothing for the default bank (the combined bank)](#2026-11-15--forever-show-in--bank-does-nothing-for-the-default-bank-the-combined-bank)
   - [2026-11-15 — Auto Vendor counts a fresh purchase in a just-sold slot as a refused sale](#2026-11-15--auto-vendor-counts-a-fresh-purchase-in-a-just-sold-slot-as-a-refused-sale)
   - [2026-11-15 — Auto Vendor's second question overstates the earlier stacks that leave](#2026-11-15--auto-vendors-second-question-overstates-the-earlier-stacks-that-leave)
@@ -245,6 +247,20 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 **Shape of work:** one line in `UF.ColorReaches` and a test.
 
 **Open questions:** none.
+
+### 2026-11-15 — A roll result line's All passed and winner color are baked in at push
+
+**What:** A roll result's feed line (`Feed/rolls.lua`, `ResultText`) builds its right text once, at push: "All passed" in Loot > Pass, or the winner's name in their class color. A shown line, and a saved one after a reload, never follows a change to Loot > Pass or to a class color, though the Pass row's description names "All passed (on the feed line and in its roll tooltip)".
+
+**Why noticed:** Review of the live colors Task 6 (Loot). The audit and the brief didn't list this reader, so the task made the feed's item names and progress bars live and left this one. Context: the plan's goal is that every Colors page color reaches every SaftUI reader on screen as the picker is dragged.
+
+**Anchors:** `SaftUI-Loot/Feed/rolls.lua` (`ResultText`, `BuildRollEntry`), `SaftUI-Loot/Feed/feed.lua` (`LT:ColorFeed`, `LT.FeedItemName`), `docs/superpowers/plans/2026-11-15-saftui-live-colors.md` Ruling 15, `.superpowers/sdd/2026-11-15-saftui-live-colors/task-6-review.md` (m4).
+
+**What's been considered:** The same shape as the item names: the entry already keeps `rolls`, so keep it and build the right text at draw (`LT.RollResultText(info)`), and have `ColorFeed` set it again for `loot` (nil or `pass`) and `class`. A class color change then reaches only the lines with a winner.
+
+**Shape of work:** Small: one function moved out of the push, one branch in `ColorFeed`, a test beside `live_colors_test.lua`'s feed cases; saved entries already hold `rolls`, so restored lines follow too.
+
+**Open questions:** Whether the roll tooltip's lines (colored when shown) need a change: they read the color each time they open, so probably not.
 
 ### 2026-11-15 — Forever: Show in > Bank does nothing for the default bank (the combined bank)
 
