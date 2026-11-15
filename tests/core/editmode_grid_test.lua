@@ -6,8 +6,6 @@
 
 load_core_helpers() -- panels, fonts and the profile defaults
 load_editmode()
-load_saftui('SaftUI-Core/Config/optionsmodel.lua') -- the options' saved (SavedIn) is optionsdefault.lua's
-load_saftui('SaftUI-Core/Config/optionsdefault.lua')
 
 local st = SaftUI
 local EM = st.EditModeFrames

@@ -173,20 +173,15 @@ test('FN.FIELDS and FN.FieldOptions: five options at orders 2 to 6, a subset on 
 end)
 
 test('Button text resets to its AceDB default and applies at once', function()
-	for _, case in ipairs({ { 'button_text', 'buttons' } }) do
-		local key, group = case[1], case[2]
-		local root, row = Row('kinds', key)
-		if row then
-			local default = st.defaults[group].font
-			local other = default == 'normal' and 'pixel' or 'normal'
-			OM.Set(root, row, other)
-			eq(OM.DefaultState(root, row).differs, true, key .. ' differs')
-			changes = 0
-			eq(OM.DefaultReset(root, row), true, key .. ' resets')
-			eq(st.config.profile[group].font, st.defaults[group].font, key .. ' is the AceDB default')
-			eq(changes, 1, key .. ' ran FontsChanged')
-		end
-	end
+	local key, group = 'button_text', 'buttons'
+	local root, row = Row('kinds', key) -- errors when the row is missing
+	local default = st.defaults[group].font
+	OM.Set(root, row, default == 'normal' and 'pixel' or 'normal')
+	eq(OM.DefaultState(root, row).differs, true, key .. ' differs')
+	changes = 0
+	eq(OM.DefaultReset(root, row), true, key .. ' resets')
+	eq(st.config.profile[group].font, default, key .. ' is the AceDB default')
+	eq(changes, 1, key .. ' ran FontsChanged')
 end)
 
 test('FN.FontSettingDefault: differs is any value but the default (a table always does); reset writes the default and runs FontsChanged', function()

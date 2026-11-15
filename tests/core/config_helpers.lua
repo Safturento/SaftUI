@@ -38,9 +38,6 @@ remove_shell_config()
 load_saftui('SaftUI-Core/Config/config.lua')
 load_core_helpers()
 load_editmode()
--- The reset's defaults: pages declare where a setting is saved with st.Config.SavedAt/SavedIn.
-load_saftui('SaftUI-Core/Config/optionsmodel.lua')
-load_saftui('SaftUI-Core/Config/optionsdefault.lua')
 
 -- What SaftUI:OnEnable (init.lua) does at login: st.config becomes a real
 -- AceDB database over the profile defaults, and /sui is set up.
