@@ -2,15 +2,11 @@
 -- a module's GetConfigTable is a page; PAGES names, for each, the page's key in
 -- the options tree and the test file that walks it with
 -- tests/lib/reset_walk.lua's R.check_page. A page added with no walk fails the
--- first case; a page whose walk was dropped fails the second once STRICT is on.
---
--- Lenient until the last task of "A reset on every setting" (STRICT = false):
--- a page whose test doesn't call R.check_page(root, '<page key>') is printed,
--- not failed. The scan wants the call as written (a receiver, then the key as
--- the second argument): a test's own local check_page is not it.
+-- first case; a page whose walk was dropped fails the second. The scan wants
+-- the call as written (a receiver, then the key as the second argument): a
+-- test's own local check_page is not it. The walk itself checks that every
+-- value row has a reset source or a stated reason (tests/lib/reset_walk.lua).
 local T = load_test_file('lib/theme_helpers.lua')
-
-local STRICT = false
 
 -- The file that defines GetConfigTable -> the page's root key, and the test file that walks it.
 local PAGES = {
@@ -116,24 +112,13 @@ test('every page with a GetConfigTable is in PAGES, and its test file is there',
 	end
 end)
 
-test('every page is walked (lenient until the last task)', function()
+test('every page is walked', function()
 	local paths = {}
 	for path in pairs(PAGES) do paths[#paths + 1] = path end
 	table.sort(paths)
-	local missed = 0
 	for _, path in ipairs(paths) do
 		local entry = PAGES[path]
 		local source = read_test_source(entry.test) or ''
-		local walked = Walks(source, entry.page)
-		if not walked then
-			missed = missed + 1
-			if STRICT then
-				check(false, ('%s (page %s) is not walked: call check_page(root, %q) in %s'):format(path, entry.page, entry.page, entry.test))
-			else
-				print(('not yet walked: %s (page %s, in %s)'):format(path, entry.page, entry.test))
-			end
-		end
+		check(Walks(source, entry.page), ('%s (page %s) is not walked: call R.check_page(root, %q) in %s'):format(path, entry.page, entry.page, entry.test))
 	end
-	check(STRICT == false or missed == 0, 'every page is walked')
-	check(true, ('%d of %d pages not walked yet'):format(missed, #paths))
 end)

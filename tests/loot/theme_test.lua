@@ -84,7 +84,7 @@ test('every value row of the Loot page has a reset', function()
 		check(feedSource:find(line, 1, true) ~= nil, "feed.lua registers its mover with " .. line)
 	end
 	local R = load_test_file('lib/reset_walk.lua')
-	local ok, err = pcall(R.check_page, { Loot = LT:GetConfigTable() }, 'Loot')
+	local ok, err = pcall(function() R.check_page({ Loot = LT:GetConfigTable() }, 'Loot') end)
 	if ok then
 		-- A reset applies on screen: the feed's Spacing goes through the page's set, which updates the feed.
 		local root = { Loot = LT:GetConfigTable() }

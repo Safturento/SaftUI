@@ -120,9 +120,9 @@ test('Global settings: every value row has a reset, and each derived one round-t
 	local minimap = st:GetModule('Minimap')
 	local update = rawget(minimap, 'UpdateConfig')
 	minimap.UpdateConfig = function() end
-	local ok, err = pcall(R.check_page, st.Config:GetOptionsTable(), 'Fonts', {
-		allow = { ['Fonts.theme.theme'] = { 'fonts.version' } },
-	})
+	local ok, err = pcall(function()
+		R.check_page(st.Config:GetOptionsTable(), 'Fonts', { allow = { ['Fonts.theme.theme'] = { 'fonts.version' } } })
+	end)
 	minimap.UpdateConfig = update
 	if not ok then error(err, 0) end
 end)
