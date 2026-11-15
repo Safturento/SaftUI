@@ -19,6 +19,9 @@
 --                                  enable, just before TR:Enable()
 --                         before   function(st) run before SaftUI-Tracker's
 --                                  files load
+--                         without  SaftUI-Tracker is not installed: its files
+--                                  are not loaded and its module is not there
+--                                  (TR is nil); everything else is as it is
 --                       It runs as the game does: T.client, load_editmode(),
 --                       st.config.char = {}, Misc's files and Blizzard's tracker
 --                       (when asked), then SaftUI-Tracker's files with st.config
@@ -200,12 +203,16 @@ function TW.world(opts)
 	local config = st.config
 	st.config = nil
 	counting = true
-	for _, file in ipairs(TW.toc_files()) do load_saftui(file) end
+	if not opts.without then
+		for _, file in ipairs(TW.toc_files()) do load_saftui(file) end
+	end
 	counting = false
 	st.config = config
 	apply_defaults()
-	st:GetModule('Tracker').NewScrollFrame = TW.scroll_frame
-	if opts.on ~= nil then st.config.profile.tracker.enable = opts.on end
+	if not opts.without then
+		st:GetModule('Tracker').NewScrollFrame = TW.scroll_frame
+		if opts.on ~= nil then st.config.profile.tracker.enable = opts.on end
+	end
 	if opts.combat then stub.in_combat = true end
 
 	-- Then the modules enable, Misc's first.
@@ -218,6 +225,10 @@ function TW.world(opts)
 			TW.OTP = st:GetModule('ObjectiveTracker')
 			TW.OTP:Enable()
 		end
+	end
+	if opts.without then
+		if opts.enabling then opts.enabling(st, nil) end
+		return st, nil
 	end
 	local TR = st:GetModule('Tracker')
 	if opts.enabling then opts.enabling(st, TR) end
