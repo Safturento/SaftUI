@@ -645,3 +645,94 @@ test('FollowColor refuses a group or a key that does not exist', function()
 	end
 	st:UnfollowColor(o)
 end)
+
+------------------------------------------------------------------ edges (the re-review of Task 1)
+
+test("a follow made during a pass is not painted in it, whichever list it goes in (not hash-order dependent)", function()
+	reset()
+	local late, a = Obj(), Obj()
+	-- The group's own list is walked after the color's: a follow applied at once
+	-- would always be painted in this pass.
+	st:FollowColor(a, 'text', 'danger', function() st:FollowColor(late, 'text', nil, P) end)
+	st:ColorChanged('text', 'danger')
+	eq(painted(late), '', 'not in the pass that made it')
+	st:ColorChanged('text', 'danger')
+	eq(painted(late), 'danger', 'in the next')
+	st:UnfollowColor(a); st:UnfollowColor(late)
+end)
+
+test('EndColorEdit outside an edit prints no second debug line', function()
+	reset()
+	load_string_format()
+	st.DEBUG = true
+	local ok, err = pcall(function()
+		local lines = printed_by(function()
+			st:BeginColorEdit()
+			st:ColorChanged('text', 'danger'); C.step(st)
+			st:EndColorEdit()
+			st:EndColorEdit()
+		end)
+		eq(#lines, 1, 'one line for one edit')
+	end)
+	st.DEBUG = false
+	if not ok then error(err, 0) end
+end)
+
+test('a color changed again by its own pass runs next frame', function()
+	reset()
+	local o, again = Obj(), false
+	st:FollowColor(o, 'class', 'MAGE', function()
+		if not again then again = true; st:ColorChanged('class', 'MAGE') end
+	end)
+	st:BeginColorEdit()
+	st:ColorChanged('class', 'MAGE')
+	C.step(st)
+	eq(told(), 'class:MAGE')
+	check(CO.ticker:IsShown(), 'due again')
+	C.step(st)
+	eq(told(), 'class:MAGE,class:MAGE')
+	st:EndColorEdit()
+	st:UnfollowColor(o)
+end)
+
+test("the field font takes Text > Normal when /sui's fonts are applied", function()
+	reset()
+	local normal = st.config.profile.colors.text.normal
+	local keep = { normal:GetRGB() }
+	normal:SetRGB(0.1, 0.6, 0.3)
+	W.GetFont():SetTextColor(0.5, 0.5, 0.5)
+	W.UpdateFonts()
+	eq(string.format('%.2f,%.2f,%.2f', W.GetFont():GetTextColor()), '0.10,0.60,0.30')
+	normal:SetRGB(unpack(keep))
+	W.UpdateFonts()
+end)
+
+test('an edit ended and another begun inside one due pass: the new edit keeps its mark and its pass runs next frame', function()
+	reset()
+	local o, done = Obj(), false
+	st:FollowColor(o, 'text', 'danger', function()
+		if done then return end
+		done = true
+		st:EndColorEdit()
+		st:BeginColorEdit()
+		st:ColorChanged('class', 'MAGE')
+	end)
+	st:BeginColorEdit()
+	st:ColorChanged('text', 'danger')
+	st:ColorChanged('text', 'muted')
+	C.step(st)
+	check(st:InColorEdit(), 'the new edit is on')
+	check(CO.ticker:IsShown(), 'its pass is due')
+	forget()
+	C.step(st)
+	eq(told(), 'class:MAGE', "the new edit's color passes, and nothing of the old one")
+	-- and the color can still be marked in a later edit (its mark was not left set)
+	st:EndColorEdit()
+	forget()
+	st:BeginColorEdit()
+	st:ColorChanged('class', 'MAGE')
+	C.step(st)
+	eq(told(), 'class:MAGE', 'a later edit passes it too')
+	st:EndColorEdit()
+	st:UnfollowColor(o)
+end)

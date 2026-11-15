@@ -173,6 +173,7 @@ for _, group in ipairs(st.COLOR_GROUPS) do markSet[group] = {} end
 local touchedList, touchedSet, touched = {}, {}, 0 -- the groups this edit marked, in the order first marked
 local endList, endTop = {}, 0 -- the groups an edit's end is running the whole passes of
 local editing = false
+local editSerial = 0 -- which edit: RunDue tells an edit ended and another begun inside one pass
 
 -- The edit's numbers, one table reset in place at st:BeginColorEdit.
 local stats = { passes = 0, total = 0, slowest = 0, slowestGroup = nil, slowestKey = nil, waited = 0 }
@@ -207,14 +208,14 @@ end
 -- that ends inside a pass drops the rest and counts nothing more.
 local function RunDue()
 	local t0 = debugprofilestop()
-	local n = marked
+	local n, serial = marked, editSerial
 	for i = 1, n do
-		if not editing then return end
+		if serial ~= editSerial or not editing then return end
 		local group, key = markGroup[i], markKey[i]
 		markSet[group][key == nil and ALL or key] = nil
 		local start = debugprofilestop()
 		RunPass(group, key)
-		if not editing then return end
+		if serial ~= editSerial or not editing then return end
 		Record(group, key, debugprofilestop() - start)
 	end
 	local rest = marked - n
@@ -245,6 +246,7 @@ end)
 function st:BeginColorEdit()
 	if editing then return end
 	editing = true
+	editSerial = editSerial + 1
 	stats.passes, stats.total, stats.slowest, stats.slowestGroup, stats.slowestKey, stats.waited = 0, 0, 0, nil, nil, 0
 	CO.wait = 0
 end
