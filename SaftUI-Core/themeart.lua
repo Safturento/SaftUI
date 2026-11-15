@@ -563,7 +563,18 @@ function ThemeArt.SetBorder(frame, look, kind, host, r, g, b, a)
 			if art.own then art.own:Hide() end
 			return
 		end
-		local own = Piece(art, host or Holder(frame), 'own', style.border, RING_LAYER, OWN_SUBLEVEL)
+		local own = art.own
+		if own and art.ownStyle == style.border and art.ownHost == host then
+			-- Already textured and placed for this art: only its color (a pass
+			-- recolors every border it holds, and places nothing). A frame with no
+			-- host keeps its holder above it, as every call did: Holder raises it.
+			if not host then Holder(frame) end
+			own:SetVertexColor(r, g, b, a)
+			own:Show()
+			return
+		end
+		own = Piece(art, host or Holder(frame), 'own', style.border, RING_LAYER, OWN_SUBLEVEL)
+		art.ownStyle, art.ownHost = style.border, host
 		own:ClearAllPoints()
 		own:SetAllPoints(frame)
 		own:SetVertexColor(r, g, b, a)

@@ -96,6 +96,10 @@ test("a theme.accent that is not a color reads as the default", function()
 	st.config.profile.theme.accent = keep
 end)
 
+-- What a profile update says last: theme and accent, then every other group's
+-- whole pass in the Colors page's order (color_live_test.lua checks the keys).
+local WHOLE = 'theme,accent,text,button,class,roles,reaction,renown,factions,power,item_quality,loot,status,threat,objectives$'
+
 -- A recording of st:ColorsChanged for fn.
 local function Recorded(fn)
 	local log, real = {}, st.ColorsChanged
@@ -105,9 +109,9 @@ local function Recorded(fn)
 	return table.concat(log, ',')
 end
 
-test('a profile update fires accent after theme', function()
+test('a profile update fires accent after theme, then every other group', function()
 	local log = Recorded(function() st.config:SetProfile('Three') end)
-	check(log:find('theme,accent$'), 'theme then accent at the end: ' .. log)
+	check(log:find(WHOLE), 'theme, accent, then every other group at the end: ' .. log)
 end)
 
 test('a profile update in combat: migrated at once, theme then accent after combat', function() -- Review Focus 2
@@ -123,7 +127,7 @@ test('a profile update in combat: migrated at once, theme then accent after comb
 	end)
 	check(not log:find('theme', 1, true) and not log:find('accent', 1, true), 'neither in combat: ' .. log)
 	log = Recorded(function() stub.fire_event('PLAYER_REGEN_ENABLED') end)
-	check(log:find('theme,accent$'), 'theme then accent after combat: ' .. log)
+	check(log:find(WHOLE), 'theme, accent, then every other group after combat: ' .. log)
 	eq(#stub.blocked, 0)
 	st.config:SetProfile('Two')
 end)

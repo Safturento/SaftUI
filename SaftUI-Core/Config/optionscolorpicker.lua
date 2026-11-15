@@ -391,6 +391,7 @@ local function Okay()
 	RememberColor(S.r, S.g, S.b, done.hasAlpha and S.a or 1)
 	spec = nil
 	frame:Hide()
+	st:EndColorEdit() -- after the hide: the OnHide that runs Cancel finds no spec
 end
 
 -- Cancel (and Esc, the window closing, combat): the opening color back through
@@ -403,6 +404,7 @@ function Cancel()
 	frame:Hide()
 	if done.onChange then xpcall(done.onChange, geterrorhandler(), done.r, done.g, done.b, done.hasAlpha and done.a or 1) end
 	if done.onCancel then xpcall(done.onCancel, geterrorhandler()) end
+	st:EndColorEdit() -- after the restore and onCancel: its whole passes cover them
 end
 
 function W.CloseColorPicker(within)
@@ -631,6 +633,11 @@ local function Classes()
 	return out
 end
 
+-- A class chip in its class's color.
+local function PaintChip(chip, color)
+	chip:Paint(color.r, color.g, color.b, 1)
+end
+
 local function FillClassChips()
 	local row, n = F.classes, 0
 	for _, class in ipairs(Classes()) do
@@ -638,13 +645,45 @@ local function FillClassChips()
 		if color then
 			n = n + 1
 			local chip = Chip(row, n)
-			chip:Paint(color.r, color.g, color.b, 1)
+			chip.class = class.token
+			PaintChip(chip, color)
 			chip.tip = function() return class.name end
 			chip.pick = function() SetRGBA(color.r, color.g, color.b) end
 			chip:Show()
 		end
 	end
-	for i = n + 1, #row.chips do row.chips[i]:Hide() end
+	for i = n + 1, #row.chips do
+		row.chips[i].class = nil
+		row.chips[i]:Hide()
+	end
+end
+
+-- Each shown class chip in its class's color, the colors part of
+-- FillClassChips: a follower of Class (st:FollowColor in Build) while the
+-- picker is open, for the class that changed or, on a whole pass (key nil),
+-- every chip. Nothing is made, shown or moved.
+local function PaintClassChips(_, key)
+	if not spec then return end
+	local classes = Colors().class
+	for _, chip in ipairs(F.classes.chips) do
+		local token = chip.class
+		if token and (key == nil or key == token) then
+			local color = classes[token]
+			if color then PaintChip(chip, color) end
+		end
+	end
+end
+
+-- The picker's own Text colors: its captions and the chevron in Muted, the
+-- number boxes' labels in Normal. A follower of Text (st:FollowColor in Build)
+-- while it is open, and the color part of Look.
+local function PaintText()
+	if not spec then return end
+	local r, g, b = st:Color('text', 'muted'):GetRGB()
+	for _, caption in ipairs(F.captions) do caption:SetTextColor(r, g, b) end
+	F.arrow:SetVertexColor(r, g, b)
+	r, g, b = st:Color('text', 'normal'):GetRGB()
+	for _, edit in ipairs(F.edits) do edit.label:SetTextColor(r, g, b) end
 end
 
 local function RecentList()
@@ -793,6 +832,8 @@ local function Build()
 	F.classCaption:SetPoint('TOPLEFT', frame, 'TOPLEFT', PAD, -CLASS_CAPTION_Y)
 	F.recentCaption:SetPoint('TOPLEFT', frame, 'TOPLEFT', PAD, -RECENT_CAPTION_Y)
 	F.classes, F.recent = { y = CLASS_Y, chips = {} }, { y = RECENT_Y, chips = {} }
+	st:FollowColor(frame, 'text', nil, PaintText)
+	st:FollowColor(frame, 'class', nil, PaintClassChips)
 
 	for i, entry in ipairs(BoxSpecs()) do
 		local edit = NewBox(frame, entry)
@@ -891,11 +932,7 @@ local function Look()
 	for _, edit in ipairs(F.edits) do LookInput(edit, blizzard, BOX_HEIGHT) end
 	W.LookControl(F.okay, blizzard)
 	W.LookControl(F.cancel, blizzard)
-	local r, g, b = st:Color('text', 'muted'):GetRGB()
-	for _, caption in ipairs(F.captions) do caption:SetTextColor(r, g, b) end
-	F.arrow:SetVertexColor(r, g, b)
-	r, g, b = st:Color('text', 'normal'):GetRGB()
-	for _, edit in ipairs(F.edits) do edit.label:SetTextColor(r, g, b) end
+	PaintText()
 end
 
 -- The picker beside owner's field: its top left by M.Place, on whole units.
@@ -937,6 +974,9 @@ function W.OpenColorPicker(owner, options)
 	frame:SetFrameStrata('FULLSCREEN_DIALOG')
 	frame:SetFrameLevel(LEVEL)
 	PlaceBeside(owner)
+	-- Last before it shows, so a failure above leaves no edit on: changes now
+	-- pass once a frame, and closing runs each touched group's whole pass.
+	st:BeginColorEdit()
 	frame:Show()
 	Paint()
 	return true
