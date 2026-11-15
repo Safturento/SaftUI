@@ -401,17 +401,17 @@ function H.fresh(opts)
 	return ZT
 end
 
--- The profile's text color named key ('blue', 'red', 'yellow') as the hex
--- digits of a |cff color code.
-function H.hex(key)
-	local r, g, b = SaftUI.config.profile.colors.text[key]:GetRGB()
+-- The profile's Factions color of a faction word ('Alliance', 'Horde',
+-- 'Neutral') as the hex digits of a |cff color code.
+function H.hex(faction)
+	local r, g, b = SaftUI.config.profile.colors.factions[faction]:GetRGB()
 	local function byte(v) return math.floor(v * 255 + 0.5) end
 	return ('%02x%02x%02x'):format(byte(r), byte(g), byte(b))
 end
 
 -- A faction word in its color, as the zone text and the map show it.
-function H.colored(word, key)
-	return '|cff' .. H.hex(key) .. word .. '|r'
+function H.colored(word)
+	return '|cff' .. H.hex(word) .. word .. '|r'
 end
 
 -- The anchor of region at point, as { rel =, relPoint =, x =, y = }, or nil.

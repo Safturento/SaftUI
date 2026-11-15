@@ -66,13 +66,13 @@ test("hovering a zone shows its faction from the table, in the faction's color",
 	set_maps()
 	hover(ELWYNN)
 	eq(H.label.Name:GetText(), 'Elwynn Forest|cffffff00 (1-10)|r', "Blizzard's label names the zone and its levels")
-	eq(line(), H.colored('Alliance', 'blue'), 'Elwynn Forest: Alliance')
+	eq(line(), H.colored('Alliance'), 'Elwynn Forest: Alliance')
 	hover(TIRISFAL)
-	eq(line(), H.colored('Horde', 'red'), 'Tirisfal Glades: Horde')
+	eq(line(), H.colored('Horde'), 'Tirisfal Glades: Horde')
 	hover(STRANGLETHORN)
-	eq(line(), H.colored('Neutral', 'yellow'), 'Stranglethorn Vale: Neutral')
+	eq(line(), H.colored('Neutral'), 'Stranglethorn Vale: Neutral')
 	hover(WESTFALL)
-	eq(line(), H.colored('Alliance', 'blue'), 'Westfall: Alliance')
+	eq(line(), H.colored('Alliance'), 'Westfall: Alliance')
 	eq(#take_errors(), 0, 'nothing written onto the locked map or label')
 end)
 
@@ -114,28 +114,28 @@ test("no line while another label, a point of interest's, shows over the zone's"
 	eq(line(), nil, 'so no faction line')
 	H.label:ClearLabel(MAP_AREA_LABEL_TYPE.POI)
 	hover(ELWYNN)
-	eq(line(), H.colored('Alliance', 'blue'), 'back on the zone')
+	eq(line(), H.colored('Alliance'), 'back on the zone')
 end)
 
 test("for the zone you're in, the game's live PvP status wins over the table", function()
 	set_maps()
 	hover(ELWYNN)
-	eq(line(), H.colored('Alliance', 'blue'), 'Elwynn Forest from elsewhere: the table')
+	eq(line(), H.colored('Alliance'), 'Elwynn Forest from elsewhere: the table')
 	-- The map stays open, the cursor on Elwynn Forest, as you walk into it.
 	stub.player_map, stub.pvp = 1429, { type = 'contested' }
 	H.enter('Elwynn Forest')
 	hover(ELWYNN)
-	eq(line(), H.colored('Neutral', 'yellow'), 'once you enter it, contested right now: Neutral')
+	eq(line(), H.colored('Neutral'), 'once you enter it, contested right now: Neutral')
 	hover(WESTFALL)
-	eq(line(), H.colored('Alliance', 'blue'), "Westfall, where you aren't: the table")
+	eq(line(), H.colored('Alliance'), "Westfall, where you aren't: the table")
 	stub.player_map, stub.pvp = 9100, { type = 'hostile', faction = 'Horde' }
 	H.enter('Elwynn Forest', 'Jasperlode Mine', 'ZONE_CHANGED_INDOORS')
 	hover(ELWYNN)
-	eq(line(), H.colored('Horde', 'red'), 'from a cave in Elwynn Forest: still the live status')
+	eq(line(), H.colored('Horde'), 'from a cave in Elwynn Forest: still the live status')
 	stub.player_map, stub.pvp = 9001, { type = 'friendly', faction = 'Alliance' }
 	H.enter('Testlands')
 	hover(TESTLANDS)
-	eq(line(), H.colored('Alliance', 'blue'), 'and for a zone the table lacks')
+	eq(line(), H.colored('Alliance'), 'and for a zone the table lacks')
 end)
 
 test("for the zone you're in with no live status, the table decides", function()
@@ -143,7 +143,7 @@ test("for the zone you're in with no live status, the table decides", function()
 	stub.player_map, stub.pvp = 1429, { type = '' }
 	H.enter('Elwynn Forest')
 	hover(ELWYNN)
-	eq(line(), H.colored('Alliance', 'blue'), "Elwynn Forest, the game giving '': the table's Alliance")
+	eq(line(), H.colored('Alliance'), "Elwynn Forest, the game giving '': the table's Alliance")
 	stub.player_map, stub.pvp = 9001, { type = '' }
 	H.enter('Testlands')
 	hover(TESTLANDS)
@@ -170,15 +170,21 @@ test('a zone under the cursor that is not the one the label names gets no line',
 	eq(ZT:HoveredZone('Westfall|cffffff00 (9-18)|r'), nil, 'a label for another zone (a gamepad cursor elsewhere)')
 end)
 
-test('a text color change shows on the next frame', function()
+test('a Factions change shows on the next frame, and a Text > Blue change does not', function()
 	set_maps()
 	hover(ELWYNN)
-	local blue = st.config.profile.colors.text.blue
+	local blue = st.config.profile.colors.factions.Alliance
+	st.config.profile.colors.factions.Alliance = CreateColor(0, 0, 1)
+	st:ColorsChanged('factions')
+	hover(ELWYNN)
+	eq(line(), '|cff0000ffAlliance|r', 'the new color, without moving the cursor')
+	st.config.profile.colors.factions.Alliance = blue
+	local text = st.config.profile.colors.text.blue
 	st.config.profile.colors.text.blue = CreateColor(0, 0, 1)
 	st:ColorsChanged('text')
 	hover(ELWYNN)
-	eq(line(), '|cff0000ffAlliance|r', 'the new blue, without moving the cursor')
-	st.config.profile.colors.text.blue = blue
+	eq(line(), H.colored('Alliance'), 'a Text > Blue change reaches no faction')
+	st.config.profile.colors.text.blue = text
 end)
 
 test('a world map that loads after SaftUI is hooked when it loads', function()
@@ -192,6 +198,6 @@ test('a world map that loads after SaftUI is hooked when it loads', function()
 	check(ZT.mapLine ~= nil, 'hooked once Blizzard_WorldMap loads')
 	set_maps()
 	hover(ELWYNN)
-	eq(line(), H.colored('Alliance', 'blue'), 'and it works')
+	eq(line(), H.colored('Alliance'), 'and it works')
 	eq(#take_errors(), 0, 'with nothing written onto the map or label')
 end)

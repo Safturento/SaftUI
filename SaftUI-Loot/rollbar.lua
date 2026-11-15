@@ -9,10 +9,10 @@ local LT = st:GetModule('Loot')
 -- NormalTexture in GroupLootFrame.xml, the same on Forever and retail), which
 -- SaftUI's own bars draw too.
 local roll_buttons = {
-	{name = 'Pass', icon_text = 'P', color = 'red', atlas = 'lootroll-toast-icon-pass-up'},
-	{name = 'Greed', icon_text = 'G', color = 'yellow', atlas = 'lootroll-toast-icon-greed-up'},
-	{name = 'Transmog', icon_text = 'DE', color = 'purple', atlas = 'lootroll-toast-icon-transmog-up'},
-	{name = 'Need', icon_text = 'N', color = 'white', atlas = 'lootroll-toast-icon-need-up'},
+	{name = 'Pass', icon_text = 'P', color = 'pass', atlas = 'lootroll-toast-icon-pass-up'},
+	{name = 'Greed', icon_text = 'G', color = 'greed', atlas = 'lootroll-toast-icon-greed-up'},
+	{name = 'Transmog', icon_text = 'DE', color = 'transmog', atlas = 'lootroll-toast-icon-transmog-up'},
+	{name = 'Need', icon_text = 'N', color = 'need', atlas = 'lootroll-toast-icon-need-up'},
 }
 
 ------------------------------------

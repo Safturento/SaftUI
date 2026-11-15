@@ -37,9 +37,9 @@ local CHECK = '|TInterface\\RaidFrame\\ReadyCheck-Ready:0|t'
 -- The choices in the tooltip, in the game's order of precedence, each in its
 -- roll button's colour (roll.lua). Passes get one line of names after these.
 local CHOICES = {
-	{ label = 'Need', color = 'white', states = { [STATE.NeedMainSpec] = true, [STATE.NeedOffSpec] = true } },
-	{ label = 'Transmog', color = 'purple', states = { [STATE.Transmog] = true } },
-	{ label = 'Greed', color = 'yellow', states = { [STATE.Greed] = true } },
+	{ label = 'Need', color = 'need', states = { [STATE.NeedMainSpec] = true, [STATE.NeedOffSpec] = true } },
+	{ label = 'Transmog', color = 'transmog', states = { [STATE.Transmog] = true } },
+	{ label = 'Greed', color = 'greed', states = { [STATE.Greed] = true } },
 }
 
 local openRolls = {} -- results still waiting for the winner's loot message
@@ -54,12 +54,8 @@ local entryByKey = setmetatable({}, { __mode = 'v' })
 ---- Tooltip lines -----------------
 ------------------------------------
 
-local function TextRGB(key)
-	return st.config.profile.colors.text[key]:GetRGB()
-end
-
 local function Colored(text, key)
-	return st.StringFormat:ColorString(text, TextRGB(key))
+	return st.StringFormat:ColorString(text, st:Color('loot', key):GetRGB())
 end
 
 local function ClassColored(name, class)
@@ -124,7 +120,7 @@ function LT:AddRollLines(tooltip, rolls, live)
 	tooltip:AddLine(' ')
 
 	if rolls.allPassed then
-		tooltip:AddLine(ALL_PASSED, TextRGB('red'))
+		tooltip:AddLine(ALL_PASSED, st:Color('loot', 'pass'):GetRGB())
 		return
 	end
 
@@ -138,7 +134,7 @@ function LT:AddRollLines(tooltip, rolls, live)
 		for _, line in ipairs(list) do
 			if IsLine(line) and choice.states[line.state] then
 				if not header then
-					tooltip:AddLine(choice.label, TextRGB(choice.color))
+					tooltip:AddLine(choice.label, st:Color('loot', choice.color):GetRGB())
 					header = true
 				end
 
@@ -154,7 +150,7 @@ function LT:AddRollLines(tooltip, rolls, live)
 				end
 
 				local r, g, b = 1, 1, 1
-				if line == winner then r, g, b = TextRGB('green') end
+				if line == winner then r, g, b = st:Color('text', 'green'):GetRGB() end
 				tooltip:AddDoubleLine('  ' .. name, roll and tostring(roll) or '', 1, 1, 1, r, g, b)
 			end
 		end
@@ -162,7 +158,7 @@ function LT:AddRollLines(tooltip, rolls, live)
 
 	local passed = NameList(list, STATE.Pass)
 	if passed then
-		tooltip:AddLine(Colored('Pass: ', 'red') .. passed, 1, 1, 1, true)
+		tooltip:AddLine(Colored('Pass: ', 'pass') .. passed, 1, 1, 1, true)
 	end
 
 	if live and not winner then
@@ -193,7 +189,7 @@ end
 
 -- The feed line's right side: the winner, class-coloured, or "All passed".
 local function ResultText(rolls)
-	if rolls.allPassed then return Colored(ALL_PASSED, 'red') end
+	if rolls.allPassed then return Colored(ALL_PASSED, 'pass') end
 	local winner = Winner(rolls)
 	return winner and ClassColored(winner.name, winner.class) or ''
 end

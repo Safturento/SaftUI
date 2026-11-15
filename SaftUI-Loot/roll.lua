@@ -86,7 +86,7 @@ function LT:SkinRollFrame(frame)
 			skin.buttonText[info.name] = text
 			text:SetFontObject(GameFontNormal)
 			text:SetPoint('CENTER', 1, 0)
-			text:SetVertexColor(st.config.profile.colors.text[info.color]:GetRGB())
+			text:SetVertexColor(st:Color('loot', info.color):GetRGB())
 			self:CreateRollCounts(counts, button, info.name)
 		end
 	end

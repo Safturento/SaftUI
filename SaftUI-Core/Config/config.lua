@@ -86,6 +86,10 @@ function Config:InitializeAceConfig()
 	-- Background before any module reads it. Every profile change, copy or
 	-- reset does the same for the profile it lands on (UpdateConfig).
 	st:MigrateTemplateKeys(st.config.profile)
+	-- The same for a profile saved before the colors were named for their
+	-- roles: its customized colors move to their new keys (Media/colors.lua).
+	-- In xpcall, so a profile it can't read is reported and the UI still loads.
+	xpcall(st.MigrateColors, geterrorhandler(), st, st.config.profile)
     self.db.RegisterCallback(self, 'OnProfileChanged', 'UpdateConfig')
 	self.db.RegisterCallback(self, 'OnProfileCopied', 'UpdateConfig')
 	self.db.RegisterCallback(self, 'OnProfileReset', 'UpdateConfig')
@@ -264,6 +268,9 @@ function Config:UpdateConfig()
 	-- its template choices: they become a Theme and Background first, so every
 	-- module reads them. Nothing to do on a profile already migrated.
 	st:MigrateTemplateKeys(st.config.profile)
+	-- And its colors, which a profile saved before their roles' keys has under
+	-- the old ones (table writes only, so this runs in combat too).
+	Safely(function() st:MigrateColors(st.config.profile) end)
 
 	-- On a profile change AceDB switches to the new profile's tables and strips
 	-- defaults from the old ones, so cached module.config references go stale

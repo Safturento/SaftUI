@@ -4,9 +4,10 @@ local CO = st:NewModule('Colors')
 
 -- Tells every module that shows profile colors that a group of them changed
 -- (the Colors tab calls this after an edit). group is 'text', 'button',
--- 'class', 'reaction', 'renown', 'power', 'item_quality', 'status' or
--- 'threat' or 'objectives'. Each module's OnColorsChanged(group) runs in xpcall, so one that
--- errors doesn't stop the rest.
+-- 'class', 'roles', 'reaction', 'renown', 'factions', 'power', 'item_quality',
+-- 'loot', 'status', 'threat' or 'objectives'. Each module's
+-- OnColorsChanged(group) runs in xpcall, so one that errors doesn't stop the
+-- rest.
 function st:ColorsChanged(group)
 	for _, module in pairs(st.modules) do
 		if module.OnColorsChanged then
@@ -22,7 +23,174 @@ function st:QualityColor(quality)
 	return st.config.profile.colors.item_quality[quality] or (ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality])
 end
 
-local RELOAD_NOTE = 'Most of SaftUI reads these when it builds its frames: reload (Reload UI, bottom right) to see a change everywhere.'
+------------------------------------------------------------------ the accessor
+
+-- The color for a group and key, as an object with r, g, b and a. The default
+-- decides what exists: st.defaults.colors[group][key] (for 'accent', which
+-- takes no key, st.defaults.theme.accent), or the read raises
+-- 'SaftUI: no color <group>.<key>' at the caller of st:Color, whatever the
+-- profile holds. The value is the active profile's own object, read now (so a
+-- profile switch reaches the new one), else the default's: a profile that has
+-- no config yet, or a group or color that isn't a table, reads as the default.
+local function Resolve(group, key, level)
+	local defaults = st.defaults
+	local default
+	if group == 'accent' then
+		default = defaults and defaults.theme and defaults.theme.accent
+	else
+		local from = defaults and defaults.colors and defaults.colors[group]
+		if type(from) == 'table' then
+			if key == nil then default = from else default = from[key] end
+		end
+	end
+	if type(default) ~= 'table' then
+		local name = (group == 'accent' or key == nil) and tostring(group) or (tostring(group) .. '.' .. tostring(key))
+		error('SaftUI: no color ' .. name, level)
+	end
+
+	local profile = st.config and st.config.profile
+	if type(profile) ~= 'table' then return default end
+	local saved
+	if group == 'accent' then
+		saved = type(profile.theme) == 'table' and profile.theme.accent
+	else
+		local colors = profile.colors
+		local holder = type(colors) == 'table' and colors[group]
+		if key == nil then saved = holder elseif type(holder) == 'table' then saved = holder[key] end
+	end
+	if type(saved) == 'table' then return saved end
+	return default
+end
+
+function st:Color(group, key)
+	return Resolve(group, key, 3)
+end
+
+-- r, g, b and the alpha a reader draws: its strength times the color's own
+-- opacity (a color with no a is fully opaque).
+function st:ColorRGBA(group, key, strength)
+	local c = Resolve(group, key, 3)
+	return c.r, c.g, c.b, (strength or 1) * (c.a or 1)
+end
+
+------------------------------------------------------------------ the migration
+
+-- Today's shipped value of every retired key, frozen (AceDB saves only the
+-- channels that differ from a default; once a default is gone, the rest come
+-- from here). Never edited after it lands.
+CO.OLD_COLORS = {
+	['text.grey'] = { r = 150/255, g = 150/255, b = 150/255 },
+	['text.white'] = { r = 1, g = 1, b = 1 },
+	['text.red'] = { r = 220/255, g = 100/255, b = 100/255 },
+	['text.orange'] = { r = 220/255, g = 150/255, b = 100/255 },
+	['text.yellow'] = { r = 200/255, g = 200/255, b = 100/255 },
+	['text.green'] = { r = 60/255, g = 240/255, b = 60/255 },
+	['text.blue'] = { r = 0, g = 0.68, b = 0.94, a = 1 },
+	['text.purple'] = { r = 197/255, g = 128/255, b = 255/255 },
+	['text.cyan'] = { r = 120/255, g = 202/255, b = 250/255 },
+	['button.red'] = { r = 0.6, g = 0.1, b = 0.1, a = 0.8 },
+	['button.green'] = { r = 0.1, g = 0.6, b = 0.1, a = 0.8 },
+	['button.blue'] = { r = 0, g = 0.68, b = 0.94, a = 0.8 },
+	['button.yellow'] = { r = 0.6, g = 0.6, b = 0.1, a = 0.8 },
+	['button.grey'] = { r = 150/255, g = 150/255, b = 150/255 },
+}
+
+-- One step per change of the colors' keys, run in order on a profile saved
+-- before it. A step is { copy, retire }: copy lists { source, destination, ...}
+-- (a customized source's color goes into each destination), retire the paths
+-- that leave. A path is 'group.key' under profile.colors. The steps are never
+-- edited once shipped; each change appends one.
+CO.MIGRATION_STEPS = {
+	{
+		copy = {
+			{ 'text.white', 'loot.need' },
+			{ 'text.yellow', 'loot.greed', 'factions.Neutral' },
+			{ 'text.purple', 'loot.transmog' },
+			{ 'text.red', 'loot.pass', 'roles.DAMAGER', 'factions.Horde' },
+			{ 'text.green', 'roles.HEALER' },
+			{ 'text.blue', 'roles.TANK', 'factions.Alliance' },
+			{ 'button.yellow', 'loot.mount' },
+		},
+		retire = { 'text.purple', 'button.yellow' },
+	},
+}
+
+local function SplitPath(path)
+	return path:match('^([^.]+)%.(.+)$')
+end
+
+local function Byte(v) return math.floor(v * 255 + 0.5) end
+
+-- The color a source was customized to, as { r, g, b }, or nil when it was
+-- not: no saved table, or a color that is its old value to the byte (the
+-- Colors tab's SameColor). A channel saved as anything but a number takes the
+-- old value's.
+local function CustomizedColor(profile, path)
+	local group, key = SplitPath(path)
+	local holder = profile.colors[group]
+	local saved = type(holder) == 'table' and holder[key]
+	local old = CO.OLD_COLORS[path]
+	if type(saved) ~= 'table' or not old then return nil end
+	local c = {}
+	for _, channel in ipairs({ 'r', 'g', 'b' }) do
+		c[channel] = type(saved[channel]) == 'number' and saved[channel] or old[channel]
+	end
+	if Byte(c.r) == Byte(old.r) and Byte(c.g) == Byte(old.g) and Byte(c.b) == Byte(old.b) then return nil end
+	return c
+end
+
+-- Puts c's r, g and b (never an alpha) into a destination. A color table that
+-- is there is written into in place, so the active profile's keeps its
+-- methods; else a plain one is made, and its group first when that isn't a
+-- table.
+local function WriteColor(profile, path, c)
+	local group, key = SplitPath(path)
+	local holder = profile.colors[group]
+	if type(holder) ~= 'table' then
+		holder = {}
+		profile.colors[group] = holder
+	end
+	local dest = holder[key]
+	if type(dest) == 'table' then
+		dest.r, dest.g, dest.b = c.r, c.g, c.b
+	else
+		holder[key] = { r = c.r, g = c.g, b = c.b }
+	end
+end
+
+local function RunStep(profile, step)
+	for _, copy in ipairs(step.copy or {}) do
+		local c = CustomizedColor(profile, copy[1])
+		if c then
+			for i = 2, #copy do WriteColor(profile, copy[i], c) end
+		end
+	end
+	for _, path in ipairs(step.retire or {}) do
+		local group, key = SplitPath(path)
+		local holder = profile.colors[group]
+		if type(holder) == 'table' then holder[key] = nil end
+	end
+end
+
+-- Brings a profile's colors up to the last step: every step after the
+-- profile's colors.version runs, then the version is the last step's. A
+-- version only rises (a number at or above the last step runs nothing and
+-- stays; anything else counts as 0). Table writes only, so it runs in combat,
+-- and running it again changes nothing. A profile with no colors table is left
+-- alone. Called at login and on every profile change, copy and reset
+-- (Config:UpdateConfig).
+function st:MigrateColors(profile)
+	if type(profile) ~= 'table' or type(profile.colors) ~= 'table' then return end
+	local colors = profile.colors
+	local from = type(colors.version) == 'number' and colors.version or 0
+	local last = #CO.MIGRATION_STEPS
+	for n = from + 1, last do
+		RunStep(profile, CO.MIGRATION_STEPS[n])
+	end
+	if last > from then colors.version = last end
+end
+
+local RELOAD_NOTE ='Most of SaftUI reads these when it builds its frames: reload (Reload UI, bottom right) to see a change everywhere.'
 
 -- The Colors tab's sections, in order. A section is { key, name, note,
 -- hasAlpha, colors }: key is its group's key, note shows under its title,
@@ -48,14 +216,13 @@ CO.SECTIONS = {
 		colors = Colors('text', {
 			{ 'normal', 'Text', "Ordinary text: the options window, totem timers, the flyout arrow on the totem bar's summon button, and an enemy nameplate's threat text while your threat on it is fine." },
 			{ 'grey', 'Grey', "Dimmed text: the options window's hints and disabled controls, and a unit frame's level tag for a far lower level." },
-			{ 'red', 'Red', "Warnings and Pass: loot roll Pass buttons and timers, a unit frame's level tag for a much higher level, DPS role marks, expiring totem timers, and Horde on the zone text and the world map's zone names. Also a durability under 20% in the durability figure's tooltip." },
+			{ 'red', 'Red', "Warnings: loot roll timers under a minute, a unit frame's level tag for a much higher level and expiring totem timers. Also a durability under 20% in the durability figure's tooltip." },
 			{ 'orange', 'Orange', "A unit frame's level tag for a somewhat higher level, and the poor end of the micro menu's stats. Also a durability from 20% to 49% in the durability figure's tooltip." },
-			{ 'yellow', 'Yellow', "Greed on loot rolls, a unit frame's level tag near your level, unfriendly names, the micro menu's alert flash and the middle of its stats, and Neutral on the zone text and the world map's zone names (a contested zone or a sanctuary)." },
-			{ 'green', 'Green', "Good or active things: edit mode being on, healer role marks, a lower level's tag, bag item levels for a Bind on Equip item, and the good end of the micro menu's stats. Also a durability from 50% up in the durability figure's tooltip." },
-			{ 'blue', 'Blue', "Selected options window tabs and rows, tank role marks on unit frames, and Alliance on the zone text and the world map's zone names." },
-			{ 'purple', 'Purple', 'Transmog on loot rolls: the roll buttons and the roll counts.' },
+			{ 'yellow', 'Yellow', "A unit frame's level tag near your level, unfriendly names, and the micro menu's alert flash and the middle of its stats." },
+			{ 'green', 'Green', "Good things: a lower level's tag, bag item levels for a Bind on Equip item, the winner's roll in the loot feed's roll tooltip, and the good end of the micro menu's stats. Also a durability from 50% up in the durability figure's tooltip." },
+			{ 'blue', 'Blue', "Selected options window tabs and rows." },
 			{ 'cyan', 'Cyan', 'Warbound item levels and the warband bank count in bags.' },
-			{ 'white', 'White', 'Need on loot rolls, and plain item levels and counts in bags, and item levels on the character frame.' },
+			{ 'white', 'White', 'Plain item levels and counts in bags, and item levels on the character frame.' },
 		}),
 	},
 	{
@@ -67,7 +234,6 @@ CO.SECTIONS = {
 			{ 'red', 'Red', "Locked bank slots, and the flash on an action bar or totem button." },
 			{ 'green', 'Green', "The border of an equipped item's action button." },
 			{ 'blue', 'Blue', 'The accent color: hovered and active controls, the options window\'s tabs and slider fill, loot roll timer bars, and the border and label of a loot roll you\'ve chosen on.' },
-			{ 'yellow', 'Yellow', "A fresh mount's entry in the loot feed: its border and fill." },
 			{ 'grey', 'Grey', "The combined bank's visibility toggle and the edit mode picker's hint line." },
 		}),
 	},
@@ -78,6 +244,14 @@ CO.SECTIONS = {
 			{ 'EVOKER', 'Evoker' }, { 'HUNTER', 'Hunter' }, { 'MAGE', 'Mage' }, { 'MONK', 'Monk' },
 			{ 'PALADIN', 'Paladin' }, { 'PRIEST', 'Priest' }, { 'ROGUE', 'Rogue' }, { 'SHAMAN', 'Shaman' },
 			{ 'WARLOCK', 'Warlock' }, { 'WARRIOR', 'Warrior' },
+		}),
+	},
+	{
+		key = 'roles', name = 'Roles', note = RELOAD_NOTE,
+		colors = Colors('roles', {
+			{ 'TANK', 'Tank', "The role corner of a tank on unit frames, and in the group test previews." },
+			{ 'HEALER', 'Healer', "The role corner of a healer on unit frames, and in the group test previews." },
+			{ 'DAMAGER', 'Damage', "The role corner of a damage dealer, or of a unit with no role, on unit frames and in the group test previews: shown with Show damage dealers." },
 		}),
 	},
 	{
@@ -96,6 +270,14 @@ CO.SECTIONS = {
 		end)(),
 	},
 	{
+		key = 'factions', name = 'Factions', note = RELOAD_NOTE,
+		colors = Colors('factions', {
+			{ 'Alliance', 'Alliance', "Alliance on the zone text and the world map's zone names: a zone the Alliance holds." },
+			{ 'Horde', 'Horde', "Horde on the zone text and the world map's zone names: a zone the Horde holds." },
+			{ 'Neutral', 'Neutral', "Neutral on the zone text and the world map's zone names: a contested zone or a sanctuary." },
+		}),
+	},
+	{
 		key = 'power', name = 'Power',
 		colors = Colors('power', {
 			{ 'MANA', 'Mana' }, { 'RAGE', 'Rage' }, { 'FOCUS', 'Focus' }, { 'ENERGY', 'Energy' },
@@ -112,6 +294,16 @@ CO.SECTIONS = {
 		colors = Colors('item_quality', {
 			{ 0, 'Poor' }, { 1, 'Common' }, { 2, 'Uncommon' }, { 3, 'Rare' }, { 4, 'Epic' }, { 5, 'Legendary' },
 			{ 6, 'Artifact' }, { 7, 'Heirloom' }, { 8, 'WoW Token' },
+		}),
+	},
+	{
+		key = 'loot', name = 'Loot', note = RELOAD_NOTE,
+		colors = Colors('loot', {
+			{ 'need', 'Need', "Need on loot rolls: the Need button's letter, and Need in the loot feed's roll tooltip." },
+			{ 'greed', 'Greed', "Greed on loot rolls: the Greed button's letter, the roll counts of Greed and its line in the loot feed's roll tooltip." },
+			{ 'transmog', 'Transmog', "Transmog on loot rolls: the Transmog button's letter, the roll counts of Transmog and its line in the loot feed's roll tooltip." },
+			{ 'pass', 'Pass', "Pass on loot rolls: the Pass button's letter, and All passed and Pass: in the loot feed's roll tooltip." },
+			{ 'mount', 'Mount', "A fresh mount's entry in the loot feed: its border and fill, and its icon's border." },
 		}),
 	},
 	{

@@ -183,7 +183,7 @@ test("a shown mount entry keeps its yellow border, fill and icon border through 
 
 	local mount, other = feed.items[1], feed.items[2]
 	check(mount:IsShown() and other:IsShown(), 'both entries show')
-	local yellow = T.text(profile.colors.button.yellow:GetRGB())
+	local yellow = T.text(profile.colors.loot.mount:GetRGB())
 	local saved = profile.templates.thick.bordercolor
 	local THICK_EDGE = T.text(unpack(saved))
 	eq(T.edge(mount.backdrop), yellow .. ',1.00', "the mount's border is yellow")
