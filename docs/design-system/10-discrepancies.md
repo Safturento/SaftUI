@@ -156,7 +156,8 @@ Standard: every icon that replaces a word has a tooltip (the owner's rule).
 
 **34. Spelling.** UI strings say "color" but one desc, "in the element's colour" (`SaftUI-Misc/totemoptions.lua:21`); 85 Lua comments say "colour"; the README has 5 "colour" to 22 "color", the followups 21 to 163.
 
-**35. The loot popup's old close.** It hands Blizzard's close button to `st:CreateHeader`, which draws the old 20 x 10 red strip (`SaftUI-Loot/popup.lua:74`, `panels.lua:233-241`); the popup is on the "looks unused" list (`docs/followups.md:378`).
+**35. The loot popup's old close.** It handed Blizzard's close button to `st:CreateHeader`, which draws the old 20 x 10 red strip (`SaftUI-Loot/popup.lua:74`, `panels.lua:233-241`); the popup was on the "looks unused" list (`docs/followups.md:378`).
+Resolved (2026-11-15, the owner kept the popup, `fb-lootpopup`): the popup no longer calls `st:CreateHeader`. Under Thick and Thin it keeps Blizzard's title and close button and restyles them without writing fields: the title in the Window titles font, the close button's four textures faded and a Lucide `x` of SaftUI's over it, Muted at rest and Danger under the mouse, as `st:CreateCloseButton`'s cross is. Under Blizzard and None it is Blizzard's own. The old 20 x 10 close path in `panels.lua` has no popup caller left; it is Core's to delete (Code changes, the "safe" list).
 
 ## The Blizzard theme, handled ad hoc
 

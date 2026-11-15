@@ -655,6 +655,7 @@ end
 
 local DEFAULT_GAP = 6 -- the icon's right edge this far left of what the control draws
 local LABEL_ROOM = 4 -- the label (and a hover line) end at least this far before the icon
+local TITLE_BAND = 16 -- a titled bare row's title line, 6 down its cell
 local BLOCK_LINE = 24 -- a position block's first line (its dropdowns), 6 down its cell
 -- Rows with no value of their own to reset: the field is left alone on them.
 local NO_DEFAULT = { execute = true, description = true }
@@ -663,13 +664,19 @@ local NO_DEFAULT = { execute = true, description = true }
 -- it shown, its regions and its children's, down the tree. Under Blizzard a
 -- control's art reaches past its frame (a dropdown's glow, the check box's
 -- art), and the icon keeps clear of it.
-local function DrawnLeft(region, left)
+local DrawnLeft
+-- The regions or children as varargs, so no table is made per region.
+local function DrawnLeftOf(left, ...)
+	for i = 1, select('#', ...) do left = DrawnLeft(select(i, ...), left) end
+	return left
+end
+DrawnLeft = function(region, left)
 	if not region:IsShown() then return left end
 	local l = region:GetLeft()
 	if l and (not left or l < left) then left = l end
 	if region.GetRegions then
-		for _, part in ipairs({ region:GetRegions() }) do left = DrawnLeft(part, left) end
-		for _, child in ipairs({ region:GetChildren() }) do left = DrawnLeft(child, left) end
+		left = DrawnLeftOf(left, region:GetRegions())
+		left = DrawnLeftOf(left, region:GetChildren())
 	end
 	return left
 end
@@ -701,8 +708,47 @@ local function DefaultText(body, row, state)
 		end
 	elseif row.type == 'range' and type(first) == 'number' and OM.Member(body.root, row, 'isPercent') then
 		return floor(first * 100 + 0.5) .. '%'
+	elseif row.type == 'multiselect' then
+		-- The ticked values' labels in the list's order, or none.
+		local names = {}
+		if type(first) == 'table' then
+			for _, entry in ipairs(OM.Values(body.root, row)) do
+				if first[entry.key] then names[#names + 1] = tostring(entry.name) end
+			end
+		end
+		return #names > 0 and table.concat(names, ', ') or 'none'
+	elseif row.type == 'input' then
+		if first == nil or first == '' then return 'empty' end
+	elseif row.type == 'keybinding' then
+		if first == nil or first == '' then return 'Not bound' end
+		return GetBindingText and GetBindingText(first) or tostring(first)
+	elseif row.type == 'position' and type(first) == 'table' then
+		local EM = st.EditModeFrames
+		if not (EM and EM.CoordinatesText) then return nil end
+		if row.option.target == 'select' then
+			-- A unit frame part is anchored to an element of its unit frame, to a
+			-- frame by name, or to the unit frame: say which.
+			local at = {}
+			for k, v in pairs(first) do at[k] = v end
+			local parent
+			if first.element then
+				parent = tostring(first.element)
+			elseif not first.frame then
+				parent = 'the unit frame'
+			end
+			if parent then
+				at.frame = '\0anchor'
+				return EM.CoordinatesText(at, function() return parent end)
+			end
+		end
+		return EM.CoordinatesText(first, EM.MoverNameOf)
 	end
 	if type(first) == 'string' or type(first) == 'number' then return tostring(first) end
+end
+
+-- The default in words for a row and its state (OM.DefaultState), for the tests.
+function OB.DefaultWords(root, row, state)
+	return DefaultText({ root = root }, row, state)
 end
 
 -- The icon's tooltip: Reset, then what it does and the default.
@@ -716,12 +762,15 @@ local function DefaultTip(owner, cell)
 end
 
 --[[
-	A setting's own reset (its option's default field, optionsmodel.lua): the
-	reset icon (ResetIcon, the hover line's piece and look) just left of the
-	row's control, only while the value differs from its default and the row
+	A setting's own reset (its option's reset source, optionsdefault.lua's
+	OM.DefaultSource: a hand default field, a mover's Position, or a default
+	derived from where the row is saved): the reset icon (ResetIcon, the hover
+	line's piece and look) just left of the row's control, only while the value
+	differs from its default (OM.DefaultDiffers, nothing else asked) and the row
 	isn't disabled; its tooltip says what it does and names the default; a
-	click runs default.reset (no confirm), then the body's onChanged(true),
-	which draws the page again. The body's PlaceRow calls this before
+	click runs the reset (OM.DefaultReset, no confirm), then the body's
+	onChanged(true), which draws the page again, or onChanged(false, message)
+	for a reset a validation refused. The body's PlaceRow calls this before
 	OB.PlaceShare, and its Refresh again mid-drag, so the icon follows a
 	dragged value.
 	  - where: its right edge DEFAULT_GAP left of what the control draws
@@ -736,8 +785,10 @@ end
 	  - a row whose share has own (a member page: its hover line's Reset
 	    acts on it) never shows it: one reset per row, the share's. A
 	    source page's row, whose line has no Reset, does.
-	  - execute and description rows (no value) and custom types (W.Define)
-	    leave it alone.
+	  - a titled custom type (W.Define's titled: the bags' rule) has it 6 after
+	    its title's text, on the title's line, the title and its hover frame
+	    cut to leave it room; any other custom type, an execute and a
+	    description (no value) leave it alone.
 	The icon is the row frame's (frame.defaultReset, made the first time a
 	row needs one, hidden on every row that doesn't); frame.defaultCell is
 	the cell it acts on.
@@ -751,21 +802,39 @@ function OB.PlaceDefault(cell)
 	-- (cell.shareCut): what an icon took is given back while none shows.
 	local label, cut = cell.label, cell.shareCut or 0
 	if cell.labelWidth then label:SetWidth(max(1, cell.labelWidth - cut)) end
+	-- A titled row's hover frame over its title is as wide as the whole title
+	-- again (the icon cuts it below).
+	local tip = frame.titleTip
+	if tip and tip:IsShown() then tip:SetWidth(max(1, ceil(label:GetUnboundedStringWidth()))) end
 	cell.lineEnd = cell.ownLineEnd
-	if not (body and widget) or NO_DEFAULT[row.type] or W.CUSTOM[row.type] then return end
+	if not (body and widget) or NO_DEFAULT[row.type] then return end
+	-- A custom type (W.Define) has no control to put it by, except a titled
+	-- bare row, whose title takes it.
+	local custom = W.CUSTOM[row.type]
+	if custom and not custom.titled then return end
 	local share = row.option.share
 	if type(share) == 'table' and share.own ~= nil then return end
 	if widget:IsDisabled() then return end
-	local state = OM.DefaultState(body.root, row)
-	if not (state and state.differs) then return end
+	-- Whether it differs, and nothing else (no words, no value): asked for
+	-- every row on every render. Without optionsdefault.lua, as before.
+	local differs
+	if OM.DefaultDiffers then
+		differs = OM.DefaultDiffers(body.root, row)
+	else
+		local state = OM.DefaultState(body.root, row)
+		differs = state and state.differs
+	end
+	if not differs then return end
 
 	local icon = frame.defaultReset
 	if not icon then
 		icon = ResetIcon(frame, function(self) DefaultTip(self, frame.defaultCell) end, function()
 			local at = frame.defaultCell
 			if not at then return end
-			OM.DefaultReset(at.body.root, at.row)
-			if at.body.onChanged then at.body.onChanged(true) end
+			local ok, message = OM.DefaultReset(at.body.root, at.row)
+			if not at.body.onChanged then return end
+			-- A reset that failed (a validation) says why on the status line, as a failed set does.
+			if ok == false and message then at.body.onChanged(false, message) else at.body.onChanged(true) end
 		end)
 		frame.defaultReset = icon
 	end
@@ -773,6 +842,16 @@ function OB.PlaceDefault(cell)
 	ResetAtRest(icon)
 	icon:ClearAllPoints()
 	icon:Show()
+	if custom then
+		-- A titled bare row: 6 after its title's text, centred on the title's
+		-- band, the title cut to leave it room.
+		local left = min(max(1, ceil(label:GetUnboundedStringWidth())) + DEFAULT_GAP, frame:GetWidth() - RESET_SIZE)
+		icon:SetPoint('TOPLEFT', frame, 'TOPLEFT', left, -(6 + floor((TITLE_BAND - RESET_SIZE) / 2)))
+		if cell.labelWidth then label:SetWidth(max(1, min(cell.labelWidth, left - LABEL_ROOM))) end
+		-- The hover frame over the title must not cover the icon: it is cut as the title is.
+		if tip and tip:IsShown() then tip:SetWidth(max(1, min(ceil(label:GetUnboundedStringWidth()), label:GetWidth()))) end
+		return
+	end
 	if row.type == 'position' then
 		icon:SetPoint('TOPLEFT', frame, 'TOPLEFT', ceil(widget:GetWidth()) + DEFAULT_GAP,
 			-(6 + floor((BLOCK_LINE - RESET_SIZE) / 2)))

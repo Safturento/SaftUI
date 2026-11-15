@@ -11,6 +11,7 @@
 	  load_saftui(path)              runs a SaftUI file, from the repo root, the way WoW does.
 	  load_test_file(path)           runs a helper or fixture file, from tests/.
 	  read_saftui_source(path)       a SaftUI file's text (a TOC, XML or Lua file), from the repo root.
+	  read_test_source(path)         a file under tests/'s text (CRLF made LF), by its path from tests/; nil and the reason if missing.
 	  addon_namespace(addon)         the namespace table load_saftui hands that addon's files.
 	  reset_world()                  rebuilds the WoW stubs and the core shell.
 	  take_errors()                  the errors reported to the game's error handler so far in this case.
@@ -103,6 +104,15 @@ function read_saftui_source(path)
 		error(format('read_saftui_source reads files in the SaftUI-* addon folders, not %s', path), 2)
 	end
 	return read_source(REPO_ROOT .. '/' .. path)
+end
+
+-- The text of a file under tests/, by its path from there (the same path rules
+-- as load_test_file), CRLF made LF: for a test that scans another test file
+-- (the reset coverage scan). Returns nil and the reason for a file that isn't
+-- there.
+function read_test_source(path)
+	check_relative_path(path, 'read_test_source', 2)
+	return read_source(TESTS_DIR .. '/' .. path)
 end
 
 -- Runs a helper or fixture file by its path from tests/, e.g.

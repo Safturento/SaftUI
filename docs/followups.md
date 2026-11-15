@@ -7,6 +7,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-15 — Auto Vendor counts a fresh purchase in a just-sold slot as a refused sale](#2026-11-15--auto-vendor-counts-a-fresh-purchase-in-a-just-sold-slot-as-a-refused-sale)
+  - [2026-11-15 — Auto Vendor's second question overstates the earlier stacks that leave](#2026-11-15--auto-vendors-second-question-overstates-the-earlier-stacks-that-leave)
   - [2026-11-15 — Nameplates: Blizzard's friendly plates key binding and the next login](#2026-11-15--nameplates-blizzards-friendly-plates-key-binding-and-the-next-login)
   - [2026-11-15 — Unit frames: a part switched off in the new profile keeps its old points](#2026-11-15--unit-frames-a-part-switched-off-in-the-new-profile-keeps-its-old-points)
   - [2026-11-15 — Two lines of the profile switch fix that no test pins](#2026-11-15--two-lines-of-the-profile-switch-fix-that-no-test-pins)
@@ -75,9 +77,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Edit Mode snapping under Blizzard measures the frames' borders, not the selection art](#2026-11-11--edit-mode-snapping-under-blizzard-measures-the-frames-borders-not-the-selection-art)
   - [2026-11-11 — Per-dispel-type debuff art on SaftUI's own aura buttons](#2026-11-11--per-dispel-type-debuff-art-on-saftuis-own-aura-buttons)
   - [2026-11-11 — Loot feed: retail item quality text and profession overlay sit under the Blizzard ring](#2026-11-11--loot-feed-retail-item-quality-text-and-profession-overlay-sit-under-the-blizzard-ring)
-  - [2026-11-11 — The disabled loot popup writes nametext onto Blizzard's LootButton](#2026-11-11--the-disabled-loot-popup-writes-nametext-onto-blizzards-lootbutton)
   - [2026-11-11 — Blizzard theme: the bags' rule editor and Categories list keep the options window's own look](#2026-11-11--blizzard-theme-the-bags-rule-editor-and-categories-list-keep-the-options-windows-own-look)
-  - [2026-11-11 — Grays/Auto Vendor: a finished edit that broadens its rule sells at the next merchant](#2026-11-11--graysauto-vendor-a-finished-edit-that-broadens-its-rule-sells-at-the-next-merchant)
   - [2026-11-11 — Rule editor: a level mode picked before a number is typed does nothing](#2026-11-11--rule-editor-a-level-mode-picked-before-a-number-is-typed-does-nothing)
   - [2026-11-11 — Bag categories: in-game checks](#2026-11-11--bag-categories-in-game-checks)
   - [2026-11-11 — Bag categories: a Set checkbox is dead while the Equipment sets entry hides the window](#2026-11-11--bag-categories-a-set-checkbox-is-dead-while-the-equipment-sets-entry-hides-the-window)
@@ -97,7 +97,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-10 — panels.tab_height has no option, because nothing live reads it](#2026-11-10--panelstab_height-has-no-option-because-nothing-live-reads-it)
   - [2026-11-10 — Colors tab: role and rune colors, and a switch for Blizzard's class colors](#2026-11-10--colors-tab-role-and-rune-colors-and-a-switch-for-blizzards-class-colors)
   - [2026-11-09 — st:Kill and st:SkinIcon still write onto Blizzard pieces (roll bars and elsewhere)](#2026-11-09--stkill-and-stskinicon-still-write-onto-blizzard-pieces-roll-bars-and-elsewhere)
-  - [2026-11-09 — st:CreateHeader writes title and close_button onto the Blizzard panels it skins](#2026-11-09--stcreateheader-writes-title-and-close_button-onto-the-blizzard-panels-it-skins)
   - [2026-11-09 — Unit frame Portrait, and AuraWatch as Grid2-style corner indicators](#2026-11-09--unit-frame-portrait-and-aurawatch-as-grid2-style-corner-indicators)
   - [2026-11-09 — Aura timer bars: stacked bars instead of icons](#2026-11-09--aura-timer-bars-stacked-bars-instead-of-icons)
   - [2026-11-09 — Edit mode movers for unit frame parts placed on the screen](#2026-11-09--edit-mode-movers-for-unit-frame-parts-placed-on-the-screen)
@@ -118,6 +117,9 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-11 — Grays/Auto Vendor: a finished edit that broadens its rule sells at the next merchant](#2026-11-11--graysauto-vendor-a-finished-edit-that-broadens-its-rule-sells-at-the-next-merchant)
+  - [2026-11-11 — The disabled loot popup writes nametext onto Blizzard's LootButton](#2026-11-11--the-disabled-loot-popup-writes-nametext-onto-blizzards-lootbutton)
+  - [2026-11-09 — st:CreateHeader writes title and close_button onto the Blizzard panels it skins](#2026-11-09--stcreateheader-writes-title-and-close_button-onto-the-blizzard-panels-it-skins)
   - [2026-11-11 — Nameplates: a profile switch doesn't set the game's friendly plates](#2026-11-11--nameplates-a-profile-switch-doesnt-set-the-games-friendly-plates)
   - [2026-11-12 — Unit frames: a profile switch places a frame's parts against the old profile's anchors](#2026-11-12--unit-frames-a-profile-switch-places-a-frames-parts-against-the-old-profiles-anchors)
   - [2026-11-14 — Copy from writes default tables into keys the source unit doesn't have](#2026-11-14--copy-from-writes-default-tables-into-keys-the-source-unit-doesnt-have)
@@ -182,6 +184,30 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-15 — Auto Vendor counts a fresh purchase in a just-sold slot as a refused sale
+
+**What:** `Account` (`SaftUI-Bags/autovendor.lua`) decides a stack was sold when its slot is empty or holds another item or count. A stack bought from the merchant that is the same item in the same count as one just sold, landing in the slot that stack left before the next pass (2 seconds), reads as a refused sale. `tailSold` is one short, the purchase is sold again with no question, and at a visit already at 12 one stack leaves the buyback list unasked.
+
+**Why noticed:** The re-review of Auto Vendor's fix round 1 (probe L3, "Check of fix round 2", 2026-11-15). All five conditions must hold together: a caught item the merchant sells, the same count, the first free slot being the one just emptied, inside one pass window, and a visit already at 12. The reviewer called it rare and costing one stack, and the owner accepted it for the merge.
+
+**Anchors:** `SaftUI-Bags/autovendor.lua` (`Account`, `Sell`); `tests/bags/autovendor_sale_test.lua`.
+
+**What's been considered:** A bought-back stack in the same slot is harmless to the count (its buyback entry is removed, so the list still matches) but it is sold again, which undoes the buyback. A fresh purchase removes no entry, which is why only it breaks the promise.
+
+**Shape of work:** Small. Record `C_Item.GetItemGUID(ItemLocation:CreateFromBagAndSlot(bag, slot))` in `Sell` and compare it in `Account`: a different GUID counts as sold. `GetItemGUID` is in `ItemDocumentation.lua` on both branches. A purchase has a new GUID; a bought-back stack keeps its GUID (counted as now, correct) or gets a new one (counted twice, which only asks sooner), so the count is never short. Optionally also a post-hook (`hooksecurefunc`, `.agents/taint.md` rule 2) on `BuyMerchantItem` and `BuybackItem` to end the unasked part of a visit once the player starts buying, which would also stop SaftUI selling back what the player just bought back. Tests need a stub GUID per item.
+
+**Open questions:** Whether to also end the unasked sales when the player buys.
+
+### 2026-11-15 — Auto Vendor's second question overstates the earlier stacks that leave
+
+**What:** The second question of a visit says how many stacks sold earlier this visit will leave the buyback ("... and N stacks sold earlier this visit will leave the buyback"). Once a visit has already sold more than 12 (after a Sell them to 13 stacks, say) the number is too high: with a 14th stack the question says 2 and the true number is 1. The formula `min(earlier + in flight, earlier + in flight + its own - size)` is right while `earlier + in flight` is 12 or fewer.
+
+**Why noticed:** The re-review of Auto Vendor's fix round 1 (probe N7b, 2026-11-15). It errs on the safe side (the question warns of more than will happen), so it was left for later.
+
+**Anchors:** `SaftUI-Bags/autovendor.lua` (`QuestionText`, the `pushed` figure); `tests/bags/autovendor_sale_test.lua` ("N-2").
+
+**Shape of work:** Small. With `e = tailSold + pendingTail` and `n` the new stacks, only `min(e, size)` of the earlier stacks are still in the buyback, so the number that leave is `min(e, size) - min(min(e, size), max(0, size - n))`; or cap it at `min(n, ...)`. Add a test for a visit past 12.
 
 ### 2026-11-15 — Nameplates: Blizzard's friendly plates key binding and the next login
 
@@ -876,11 +902,11 @@ What's left needs evidence from the game. In the order they'd be checked:
 - **Possible bugs, need an in-game check:**
   - Bags: `INV:SelectBankCategory` (`SaftUI-Bags/inventory.lua`) sets the Character bank type for the `warband` container and Account for `bank`. They look swapped. [1, bug 6]
   - Bags: the `combinedbank` window is offered only when `HasWarbandBank()` is true (`categoriestab.lua`). Intended? [1, bug 7]
-  - Core: `TaintFix:OnInitalize` (`SaftUI-Core/taintfix.lua`) is misspelled and never runs. Fixing the spelling alone would error at login (`ClickBindingFrame` is load-on-demand). Fix it properly, or delete the file? [1, bug 11]
+  - ~~Core: `TaintFix:OnInitalize` (`SaftUI-Core/taintfix.lua`) is misspelled and never runs. Fixing the spelling alone would error at login (`ClickBindingFrame` is load-on-demand). Fix it properly, or delete the file? [1, bug 11]~~ *Deleted 2026-11-15 (the owner's decision): the file and both Core TOC lines are gone, and `tests/core/toc_files_test.lua` checks that every TOC line names a file that exists.*
 - **Writes onto Blizzard frames (taint rule 1), not traced:** `Blizzard_WeeklyRewards.lua`'s `ShouldShowOverlay`, `st:EnableResizing` on `WorldMapFrame`, `st:Kill`'s other callers (see also "st:Kill and st:SkinIcon still write onto Blizzard pieces"), the totem bar's setup on classes with no totems. [1]
 - **Migrations that may be finished** (delete once every profile has passed through them): Bags `categories.lua` and `movers.lua`, `CHT:MigratePosition`, `st:ResolveLegacyTemplate` with its seven "defaults look as they did" tests and `T.old_names`. [2.3, 6.3]
 - **Features that look unused, keep or delete:**
-  - the loot window popup (`SaftUI-Loot/popup.lua`, with its two accidental globals);
+  - ~~the loot window popup (`SaftUI-Loot/popup.lua`, with its two accidental globals);~~ *Kept and rebuilt 2026-11-15 (the owner's decision, `fb-lootpopup`): it is on again by default, with an Enable, Theme, Background and Font on the Loot window page.*
   - the honor feed;
   - the keybinding widget (`SaftUI-Core/Config/optionskeybinding.lua`);
   - the old bag Edit view;
@@ -1406,18 +1432,6 @@ Loot feed, retail: the item's `n/m` quality text and the profession overlay unde
 
 **Shape of work:** Small, one helper and its two callers; an in-game check on retail.
 
-### 2026-11-11 — The disabled loot popup writes nametext onto Blizzard's LootButton
-
-**What:** `SaftUI-Loot/popup.lua` (~38) sets `button.nametext = _G['LootButton'..ID..'Text']` on Blizzard's loot buttons, and elsewhere `st:Kill`s their `IconBorder` and `IconOverlay`. That writes a field onto a Blizzard frame (`.agents/taint.md` rule 1). The popup is disabled (`SaftUI-Loot/init.lua`, `-- self:InitializeLootFrame()` is commented out), so it never runs today.
-
-**Why noticed:** The Blizzard theme's reviews (2026-11-11): the popup's draw calls were re-tagged and a scan of Loot for writes onto Blizzard frames found it. Related to the older "SaftUI-Loot writes onto Blizzard frames and globals" entry in Resolved.
-
-**Anchors:** `SaftUI-Loot/popup.lua`; `SaftUI-Loot/init.lua` (~17); `.agents/taint.md` rule 1.
-
-**What's been considered:** Keep the font strings in a weak table keyed by the button, and replace `st:Kill` with `SetAlpha(0)` where Blizzard never sets the alpha.
-
-**Shape of work:** Fix it before re-enabling the popup; no work while it stays off.
-
 ### 2026-11-11 — Blizzard theme: the bags' rule editor and Categories list keep the options window's own look
 
 **What:** Under SaftUI's theme Blizzard, `/sui` → Bags → Categories is only partly in Blizzard's Settings art. What it borrows from Core takes the Blizzard look: the editor's ordinary rows (Name, On, Show in, Reset, Delete), the lists and check lists its pickers open, the Reset all confirm, and the item strips' icon borders (kind `action`). *Update 2026-11-11 (Blizzard theme round 2, Tasks 5 and 9):* the rule editor's value fields now follow too (the compact Settings dropdown, `W.LookDropdown(field, blizzard, true)`), and the category list's rows are the Settings category list (`Options_List_Active` and `Options_List_Hover`, gold names, white when picked). Still in the options window's `Box` look: the rule editor's text and number boxes, the "whole word" check box, the NOT toggles and the AND/OR badges (`bagrule`); the list's drag handles keep their look.
@@ -1433,20 +1447,6 @@ Loot feed, retail: the item's `n/m` quality text and the profession overlay unde
 **Open questions:** Should the AND/OR badges keep their blue and orange under Blizzard, since the colors carry the operator?
 
 Also check in game, under Blizzard: the item strips' (Pinned items, Caught now) action ring sits over each icon. `LayItems` (`categoriestab.lua`) moves each icon and its border's frame to new levels on every draw, and the ring's holder is a child of that border frame (`themeart.lua`, `Holder`), so it may end up level with the icon rather than above it. The stubs don't model frame level stacking.
-
-### 2026-11-11 — Grays/Auto Vendor: a finished edit that broadens its rule sells at the next merchant
-
-**What:** Auto vendor sells whatever Grays/Auto Vendor's rule catches, and every editor change saves at once. A half-built rule can no longer widen it (an AND holding a block or group that isn't filled in catches nothing), but a finished edit that says "everything but" does, at the next merchant: NOT on an Old gear or Protected block in its inner OR (both are complete the moment they're added), flipping its root AND to OR (one click on the badge), removing its inner OR group with the X, or "Has vendor price: yes" in the inner OR. Each sells every priced item that `INV:IsAutoVendorItem` doesn't refuse (Protected, Cosmetic, fishing, account-bound, in a set, tooltip missing). Selling can't be undone, and buyback holds 12 items.
-
-**Why noticed:** The bag categories final review (2026-11-11), under "Declined to judge": these are deliberate edits, and the spec says auto vendor follows the rule, but the reviewer called a confirm on the selling category's root flip or group removal "a cheap product decision for the user". The fix for the review's C-1 (half-built rules) left them as they are, and `tests/bags/category_store_test.lua` ("a half-edited Grays/Auto Vendor rule never sells more than the shipped one") skips NOT Old gear and NOT Protected in the inner OR for this reason.
-
-**Anchors:** `SaftUI-Bags/ruleeditor.lua` (the badge's flip, the X, NOT, `Edit`); `SaftUI-Bags/categories.lua` (`INV:IsAutoVendorItem`); `SaftUI-Bags/autovendor.lua` (`INV:AutoVendor`); the slot's junk coin and the tab's Caught now, which already show what would sell before a merchant is opened.
-
-**What's been considered:** A confirm in the editor before an edit widens the selling category's rule (the root flip, removing a group, NOT); a cap on what one merchant visit sells, with a prompt above it; or nothing, since the coins show the change first.
-
-**Shape of work:** A product decision first, then a small change in the editor or in auto vendor, with tests.
-
-**Open questions:** Which of these, if any?
 
 ### 2026-11-11 — Rule editor: a level mode picked before a number is typed does nothing
 
@@ -1771,7 +1771,7 @@ On retail:
 - `st:Kill` writes `Show`, `_Show` and `SetAtlas`;
 - `st:SkinIcon` wrote `__stTexCoord`, plus a hook. *Update 2026-11-11 (commit 28c0448):* it keeps its crop and its hooked flag in weak tables of `skinning.lua`'s, so it now writes nothing onto the icon but its hook. `st:Kill` still writes.
 
-The roll bar skin (`SaftUI-Loot/roll.lua`) calls them on Blizzard pieces: `IconFrame.Border`, `Timer.Background`, `NameFrame`, `Corner`, `IconFrame.Count`, `IconFrame.Icon`. That breaks `.agents/taint.md` rule 1. Other skins likely do the same. Separately, `SaftUI-Loot/popup.lua` writes `LootFrame.skinned`, but that file isn't loaded; it goes away with the loot window reskin.
+The roll bar skin (`SaftUI-Loot/roll.lua`) calls them on Blizzard pieces: `IconFrame.Border`, `Timer.Background`, `NameFrame`, `Corner`, `IconFrame.Count`, `IconFrame.Icon`. That breaks `.agents/taint.md` rule 1. Other skins likely do the same. Separately, `SaftUI-Loot/popup.lua` wrote `LootFrame.skinned`; *fixed 2026-11-15: the popup is rewritten and calls neither helper (`fb-lootpopup`).*
 
 **Why noticed:** The roll bar side-table fix (2026-11-09) left these alone, because the followup it fixed didn't list them. Both its implementer and its reviewer flagged them.
 
@@ -1782,18 +1782,6 @@ The roll bar skin (`SaftUI-Loot/roll.lua`) calls them on Blizzard pieces: `IconF
 - For icons: keep the tex-coord state in a weak table, keyed by the texture (done for `st:SkinIcon` in 28c0448; what is left of it is the hook it puts on the icon).
 
 **Shape of work:** An audit of the callers, then a side-table version of `st:Kill` for Blizzard targets (and a look at `st:SkinIcon`'s hook).
-
-### 2026-11-09 — st:CreateHeader writes title and close_button onto the Blizzard panels it skins
-
-**What:** `st:CreateHeader(frame, title, close_button)` (`SaftUI-Core/panels.lua`) writes `frame.title`, `frame.close_button` and `frame.header` onto the frame it's given. That frame can be a Blizzard panel: the unloaded loot window code (`SaftUI-Loot/popup.lua`) hands it `LootFrame`, and is the only such caller left since the codebase cleanup deleted `SK:SkinBlizzardPanel` (2026-11-12). Its other callers pass SaftUI's own frames (`SaftUI-Bags/container.lua`, and `st:CreatePanel` in `SaftUI-Core/panels.lua`). Writing them breaks `.agents/taint.md` rule 1. It also keeps the frame inside the screen edge margin (`st:KeepInScreenMargin`), which is meant for SaftUI's own frames only (2026-11-10). The loot window code isn't loaded, so no Blizzard frame gets these writes today.
-
-**Why noticed:** The options window rework (2026-11-09) fixed the same class of write in `st:CreateCloseButton`, which now uses a weak side table and `st:GetCloseButton(frame)`. Its re-reviewer pointed out that `CreateHeader` still does it. That's old code, outside that task.
-
-**Anchors:** `SaftUI-Core/panels.lua` (`CreateHeader`, `closeOf`, `headerTitles`), `SaftUI-Loot/popup.lua`.
-
-**What's been considered:** Use the same pattern: weak side tables keyed by frame, with accessors such as `st:GetHeader(frame)`. Then find every reader of `.header`, `.title` and `.close_button` and switch it over.
-
-**Shape of work:** A small refactor in `panels.lua`, plus its readers.
 
 ### 2026-11-09 — Unit frame Portrait, and AuraWatch as Grid2-style corner indicators
 
@@ -1886,7 +1874,7 @@ The roll bar skin (`SaftUI-Loot/roll.lua`) calls them on Blizzard pieces: `IconF
 - **Action bars:** `actionbars.template`.
 - **Bags:** `inventory.enable`, `template`, `padding`, `categoryTitleHeight`, `scrollSpeed`, `autorepair`, `autovendor`, `combinedBank`, `inverted`, `fonts.titles` and `fonts.icons` now have options (Task 5 of the options layout project, 2026-11-09): Bags → General and Look.
 - **Chat:** ~~`chat.linespacing` is left without an option, because nothing applies it. Only `CHT:ChatFrame_OnUpdate` (`SaftUI-Chat/chatframe.lua`) reads it, and its `SecureHook` is commented out, so the setting is read by nothing. Either hook it back up (the function sets each line's spacing once, so a change would also need the lines un-marked `handled`, and it writes a field onto Blizzard's chat lines, which `.agents/taint.md` forbids, so it needs a side table) and give it an option, or remove the key.~~ *Done 2026-11-12 (codebase cleanup, Task 4): the key and `CHT:ChatFrame_OnUpdate`, its only reader, were removed.*
-- **Loot:** `loot.popup.*` (template, font, name_wrap, width, button_height, spacing) is in fact read by nothing. `SaftUI-Loot/popup.lua` isn't in the TOC, and `LT:InitializeLootFrame()` has been commented out of `init.lua` since the Loot addon was added. The skin is also written for the classic loot window (`LootButton1`-`4`, `LootFrameInset`), which current clients don't have, and it writes onto `LootFrame`. Skinning the loot window means a new skin for today's `LootFrame`, with these settings.
+- **Loot:** *(done 2026-11-15, `fb-lootpopup`: the popup is rewritten for today's window and reads `loot.popup.enable`, `.theme`, `.background` and `.font`; `width`, `button_height`, `spacing` and `name_wrap` are gone, since Blizzard sizes the window and its rows.)* `loot.popup.*` (template, font, name_wrap, width, button_height, spacing) was in fact read by nothing. `SaftUI-Loot/popup.lua` isn't in the TOC, and `LT:InitializeLootFrame()` has been commented out of `init.lua` since the Loot addon was added. The skin is also written for the classic loot window (`LootButton1`-`4`, `LootFrameInset`), which current clients don't have, and it writes onto `LootFrame`. Skinning the loot window means a new skin for today's `LootFrame`, with these settings.
 - **Unit frames:** these now have options (Tasks 8 and 9 of the options layout project, 2026-11-09), each only on the units where it does something:
   - `range_alpha.inside` and `.outside`: on party and the raids, the only frames with oUF's Range element.
   - `boss.spacing`, with the rest of boss's layout: boss has a Layout group.
@@ -2245,6 +2233,50 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-11 — Grays/Auto Vendor: a finished edit that broadens its rule sells at the next merchant
+
+**What:** Auto vendor sells whatever Grays/Auto Vendor's rule catches, and every editor change saves at once. A half-built rule can no longer widen it (an AND holding a block or group that isn't filled in catches nothing), but a finished edit that says "everything but" does, at the next merchant: NOT on an Old gear or Protected block in its inner OR (both are complete the moment they're added), flipping its root AND to OR (one click on the badge), removing its inner OR group with the X, or "Has vendor price: yes" in the inner OR. Each sells every priced item that `INV:IsAutoVendorItem` doesn't refuse (Protected, Cosmetic, fishing, account-bound, in a set, tooltip missing). Selling can't be undone, and buyback holds 12 items.
+
+**Why noticed:** The bag categories final review (2026-11-11), under "Declined to judge": these are deliberate edits, and the spec says auto vendor follows the rule, but the reviewer called a confirm on the selling category's root flip or group removal "a cheap product decision for the user". The fix for the review's C-1 (half-built rules) left them as they are, and `tests/bags/category_store_test.lua` ("a half-edited Grays/Auto Vendor rule never sells more than the shipped one") skips NOT Old gear and NOT Protected in the inner OR for this reason.
+
+**Anchors:** `SaftUI-Bags/ruleeditor.lua` (the badge's flip, the X, NOT, `Edit`); `SaftUI-Bags/categories.lua` (`INV:IsAutoVendorItem`); `SaftUI-Bags/autovendor.lua` (`INV:AutoVendor`); the slot's junk coin and the tab's Caught now, which already show what would sell before a merchant is opened.
+
+**What's been considered:** A confirm in the editor before an edit widens the selling category's rule (the root flip, removing a group, NOT); a cap on what one merchant visit sells, with a prompt above it; or nothing, since the coins show the change first.
+
+**Shape of work:** A product decision first, then a small change in the editor or in auto vendor, with tests.
+
+**Open questions:** Which of these, if any?
+
+**Resolved 2026-11-15:** The owner decided against a prompt on every broadened edit: "what if we order the sales by priority so that grays are sold first, then only show that prompt if permanent losses would be risky (like if there's over 12 non-gray items". `SaftUI-Bags/autovendor.lua` now sells grays first, then everything else the rules catch, the cheapest stack first (so the merchant's buyback list, which keeps the last 12 sales, ends up holding the most valuable), and when more than `INV:BuybackSize()` (the game's `BUYBACK_ITEMS_PER_PAGE`, 12) non-gray stacks would sell, it sells the grays and asks Sell them or Keep them before the rest; Keep sells nothing more at that merchant and the question returns at the next. Tests: `tests/bags/autovendor_sale_test.lua`.
+
+### 2026-11-11 — The disabled loot popup writes nametext onto Blizzard's LootButton
+
+**What:** `SaftUI-Loot/popup.lua` (~38) sets `button.nametext = _G['LootButton'..ID..'Text']` on Blizzard's loot buttons, and elsewhere `st:Kill`s their `IconBorder` and `IconOverlay`. That writes a field onto a Blizzard frame (`.agents/taint.md` rule 1). The popup is disabled (`SaftUI-Loot/init.lua`, `-- self:InitializeLootFrame()` is commented out), so it never runs today.
+
+**Why noticed:** The Blizzard theme's reviews (2026-11-11): the popup's draw calls were re-tagged and a scan of Loot for writes onto Blizzard frames found it. Related to the older "SaftUI-Loot writes onto Blizzard frames and globals" entry in Resolved.
+
+**Anchors:** `SaftUI-Loot/popup.lua`; `SaftUI-Loot/init.lua` (~17); `.agents/taint.md` rule 1.
+
+**What's been considered:** Keep the font strings in a weak table keyed by the button, and replace `st:Kill` with `SetAlpha(0)` where Blizzard never sets the alpha.
+
+**Shape of work:** Fix it before re-enabling the popup; no work while it stays off.
+
+**Resolved 2026-11-15:** the owner asked for the popup back (`fb-lootpopup`). `SaftUI-Loot/popup.lua` is rewritten for today's scroll box `LootFrame` (the `LootButton1`-`4` code, `nametext` and the `st:Kill` calls are gone): SaftUI's pieces live in weak tables keyed by Blizzard's frames, only post-hooks, no script replaced, and `tests/loot/popup_test.lua` locks every Blizzard widget so a field write fails.
+
+### 2026-11-09 — st:CreateHeader writes title and close_button onto the Blizzard panels it skins
+
+**What:** `st:CreateHeader(frame, title, close_button)` (`SaftUI-Core/panels.lua`) writes `frame.title`, `frame.close_button` and `frame.header` onto the frame it's given. That frame can be a Blizzard panel: the unloaded loot window code (`SaftUI-Loot/popup.lua`) hands it `LootFrame`, and is the only such caller left since the codebase cleanup deleted `SK:SkinBlizzardPanel` (2026-11-12). Its other callers pass SaftUI's own frames (`SaftUI-Bags/container.lua`, and `st:CreatePanel` in `SaftUI-Core/panels.lua`). Writing them breaks `.agents/taint.md` rule 1. It also keeps the frame inside the screen edge margin (`st:KeepInScreenMargin`), which is meant for SaftUI's own frames only (2026-11-10). The loot window code isn't loaded, so no Blizzard frame gets these writes today.
+
+**Why noticed:** The options window rework (2026-11-09) fixed the same class of write in `st:CreateCloseButton`, which now uses a weak side table and `st:GetCloseButton(frame)`. Its re-reviewer pointed out that `CreateHeader` still does it. That's old code, outside that task.
+
+**Anchors:** `SaftUI-Core/panels.lua` (`CreateHeader`, `closeOf`, `headerTitles`), `SaftUI-Loot/popup.lua`.
+
+**What's been considered:** Use the same pattern: weak side tables keyed by frame, with accessors such as `st:GetHeader(frame)`. Then find every reader of `.header`, `.title` and `.close_button` and switch it over.
+
+**Shape of work:** A small refactor in `panels.lua`, plus its readers.
+
+**Resolved 2026-11-15:** its only Blizzard caller, the loot popup, no longer calls `st:CreateHeader` (it leaves Blizzard's title and close button and restyles them without writing fields, `fb-lootpopup`). The remaining callers pass SaftUI's own frames (`SaftUI-Bags/container.lua`, `st:CreatePanel`), where the writes are fine. The helper itself is unchanged: it still writes onto the frame it is given, so a future Blizzard caller would need the side-table refactor described above.
 
 ### 2026-11-11 — Nameplates: a profile switch doesn't set the game's friendly plates
 

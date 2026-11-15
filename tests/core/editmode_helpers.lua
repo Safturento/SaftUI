@@ -7,7 +7,8 @@
 -- control(key)   the bar's control, by key
 -- frame_of(key)  that control's frame
 -- set_screen(width, height)   a screen of width x height physical pixels at
---                SaftUI's scale: a UIParent unit a pixel
+--                SaftUI's Pixel for pixel scale (UIScale.Resolve, then the
+--                tokens): a UIParent unit a pixel
 -- look(name)     switches the theme ('thick', 'thin' or 'blizzard') and tells
 --                SaftUI
 
@@ -19,7 +20,9 @@ local function frame_of(key) return EM():BarControl(key).frame end
 
 local function set_screen(width, height)
 	stub.screen_width, stub.screen_height = width, height
-	UIParent:SetScale(768 / height)
+	local resolved = SaftUI.UIScale.Resolve({ mode = 'pixel' }, { width = width, height = height })
+	UIParent:SetScale(resolved.uiScale)
+	SaftUI.UIScale:SetTokens()
 end
 
 local function look(name)

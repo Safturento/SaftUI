@@ -173,24 +173,32 @@ end
 
 -------------------------------------------------------------------- reset
 
--- Whether the mover can go back to its default place, and if not, why.
-function EM:CanReset(mover)
+-- Whether the mover can go back to its default place, and if not, why. With
+-- quiet (the options kit's icon check, on every render) it answers true or
+-- false and makes no table and no text.
+function EM:CanReset(mover, quiet)
 	if not mover then return false, 'Select a frame first.' end
 	local def = mover.def
-	local default = self:GetDefaultPosition(mover)
+	local default = self:PeekDefaultPosition(mover)
 	if not default then
+		if quiet then return false end
 		return false, def.noDefaultReason or (EM.MoverName(mover) .. ' has no default place.')
 	end
 	if EM.SamePosition(def.getPosition(), default) then
+		if quiet then return false end
 		return false, EM.MoverName(mover) .. ' is already in its default place.'
 	end
-	if InCombatLockdown() then return false, "Can't reset in combat." end
+	if InCombatLockdown() then
+		if quiet then return false end
+		return false, "Can't reset in combat."
+	end
 	-- The default may anchor to a frame that is anchored to this one since; the
 	-- same check Undo and Redo make before they put an anchor back.
 	local anchor = default.frame
 	if anchor ~= nil and anchor ~= UIParent and anchor ~= 'UIParent' then
 		local valid, why = st:ValidateAnchor(def.frame, anchor)
 		if not valid then
+			if quiet then return false end
 			return false, ("%s can't go back to its default place: %s."):format(EM.MoverName(mover), why)
 		end
 	end

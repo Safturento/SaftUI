@@ -1,14 +1,13 @@
 local st = SaftUI
 
 st.defaults.loot = {
+	-- Blizzard's loot window (popup.lua). Its size, its rows' height and where it
+	-- opens are Blizzard's, so there are no such settings.
 	popup = {
+		enable = true,
 		theme = 'theme',
 		background = 'solid',
-		font = 'pixel',
-		name_wrap = true,
-		width = 400,
-		button_height = 30,
-		spacing = 7,
+		font = 'normal',
 	},
 	feed = {
 		width = 400,

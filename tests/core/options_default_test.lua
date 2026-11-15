@@ -14,6 +14,9 @@
 -- OnLeave with true as the game passes them.
 local H = load_test_file('core/options_window_helpers.lua')
 local st = SaftUI
+-- With the derived defaults loaded, as in the game: every case below must pass
+-- as it did without them (the hand defaults, the shares).
+load_saftui('SaftUI-Core/Config/optionsdefault.lua')
 local OM, W, OB, OW = st.OptionsModel, st.OptionsWidgets, st.OptionsBody, st.OptionsWindow
 local click, cell, close_all = H.click, H.cell, H.close_all
 
@@ -676,4 +679,302 @@ test("Global settings' Colors and Theme: no Reset buttons; a changed color's own
 	restore()
 	close_all()
 	if not ok then error(err, 0) end
+end)
+
+------------------------------------------------------------------ derived defaults
+
+-- A page whose defaults are derived from where it is saved (optionsdefault.lua),
+-- one row of every built-in type with a value but a font.
+local DERIVED = {
+	toggle = true, range = 0.25, select = 'a', input = '', keybinding = '',
+	color = { r = 1, g = 0, b = 0, a = 0.5 }, multi = { a = true, b = true }, item = true,
+	position = { point = 'TOPRIGHT', rel_point = 'TOPRIGHT', frame = 'UIParent', x_off = -320, y_off = -275 },
+}
+local dv
+local function derived_reset()
+	st.defaults.dv_ = st.tablecopy(DERIVED, true)
+	dv = st.tablecopy(DERIVED, true)
+	st.config.profile.dv_ = dv
+end
+local function DerivedPage()
+	return { page = { type = 'group', name = 'Page', args = {
+		toggle = { type = 'toggle', name = 'A toggle', desc = 'x', order = 1 },
+		range = { type = 'range', name = 'A range', desc = 'x', order = 2, min = 0, max = 1, step = 0.01, isPercent = true },
+		select = { type = 'select', name = 'A select', desc = 'x', order = 3, values = { a = 'Apple', b = 'Banana' } },
+		input = { type = 'input', name = 'Name', desc = 'x', order = 4 },
+		keybinding = { type = 'keybinding', name = 'Key', desc = 'x', order = 5 },
+		color = { type = 'color', name = 'A color', desc = 'x', order = 6, hasAlpha = true,
+			get = function() local c = dv.color; return c.r, c.g, c.b, c.a end,
+			set = function(_, r, g, b, a) dv.color = { r = r, g = g, b = b, a = a } end,
+			saved = st.Config.SavedAt('dv_', 'color') },
+		multi = { type = 'multiselect', name = 'Show in', desc = 'x', order = 7, values = { a = 'Bags', b = 'Bank', c = 'Other' },
+			get = function(_, key) return dv.multi[key] end,
+			set = function(_, key, value) dv.multi[key] = value end,
+			saved = st.Config.SavedAt('dv_', 'multi') },
+		item = { type = 'item', name = 'Hotkey', desc = 'x', order = 8, size = 'small',
+			get = function() return dv.item end, set = function(_, value) dv.item = value end,
+			saved = st.Config.SavedAt('dv_', 'item'),
+			menu = { type = 'group', name = 'Hotkey', args = {} } },
+		position = st.Config.generators.position(9, true, function(part) return dv.position[part] end,
+			function(part, value) dv.position[part] = value end, nil, 'Where it sits.', 'Position',
+			st.Config.SavedAt('dv_', 'position')),
+	}, get = function(info) return dv[info[#info]] end, set = function(info, value) dv[info[#info]] = value end,
+		saved = st.Config.SavedIn('dv_') } }
+end
+local DERIVED_KEYS = { 'toggle', 'range', 'select', 'input', 'keybinding', 'color', 'multi', 'item', 'position' }
+local function change_all()
+	dv.toggle, dv.range, dv.select, dv.input, dv.keybinding = false, 0.5, 'b', 'Bob', 'F'
+	dv.color = { r = 0, g = 1, b = 0, a = 1 }
+	dv.multi = { a = false, b = true }
+	dv.item = false
+	dv.position = { point = 'CENTER', rel_point = 'CENTER', frame = 'UIParent', x_off = 10, y_off = 10 }
+end
+
+test('a derived row shows the icon only while it differs, on every built-in type, under Thick and Blizzard', function()
+	for _, look in ipairs({ 'thick', 'blizzard' }) do
+		in_look(look, function(tip)
+			derived_reset()
+			local body, by = draw(DerivedPage())
+			for _, key in ipairs(DERIVED_KEYS) do check(not shown(by[key]), look .. ' ' .. key .. ': at its default, none') end
+			body:Release()
+
+			change_all()
+			body, by = draw(DerivedPage())
+			for _, key in ipairs(DERIVED_KEYS) do
+				local c = by[key]
+				check(shown(c), look .. ' ' .. key .. ': it differs, its reset shows')
+				local icon = icon_of(c)
+				eq(icon:GetWidth() .. 'x' .. icon:GetHeight(), '14x14', key .. ': the same icon')
+				if key == 'position' then
+					eq(icon_of(c):GetLeft() - c.frame:GetLeft(), math.ceil(c.widget:GetWidth()) + 6, 'position: 6 after the block')
+				elseif key == 'item' then
+					eq(icon:GetRight(), c.widget.dots and c.widget.dots:GetLeft() or c.frame:GetRight() - 6, 'item: by its dots or the edge')
+				else
+					local left = leftmost(c.widget.frame)
+					eq(icon:GetRight() - c.frame:GetLeft(), math.floor(left - c.frame:GetLeft()) - 6, key .. ': 6 left of what the control draws')
+					check(c.label:GetLeft() + c.label:GetWidth() <= icon:GetLeft() - 4, key .. ': the label ends before it')
+				end
+			end
+
+			-- A click on each puts the default back through its set, and the page draws again.
+			for _, key in ipairs(DERIVED_KEYS) do
+				local told = {}
+				body:Release()
+				body, by = draw(DerivedPage(), function(ok) told[#told + 1] = tostring(ok) end)
+				stub.click(icon_of(by[key]))
+				eq(table.concat(told, ','), 'true', key .. ': then onChanged(true)')
+				body:Release()
+				body, by = draw(DerivedPage())
+				check(not shown(by[key]), look .. ' ' .. key .. ': after its reset, none')
+			end
+			eq(dv.toggle, true, 'toggle back')
+			eq(dv.input, '', 'input back as text')
+			eq(dv.multi.a, true, 'multiselect back')
+			eq(dv.color.a, 0.5, 'color back, alpha too')
+			eq(dv.position.point, 'TOPRIGHT', 'position back')
+			check(dv.position ~= st.defaults.dv_.position and dv.color ~= st.defaults.dv_.color, 'tables are copies, not the ones in st.defaults')
+			body:Release()
+		end)
+	end
+end)
+
+test("the tooltip's new words: a multiselect's labels or none, an input's text or empty, a key or Not bound, a position in words", function()
+	in_look('thick', function(tip)
+		derived_reset()
+		change_all()
+		local body, by = draw(DerivedPage())
+		local function line(key)
+			stub.fire_script(icon_of(by[key]), 'OnEnter', true)
+			local text = tip.lines[2]
+			stub.fire_script(icon_of(by[key]), 'OnLeave', true)
+			return text
+		end
+		eq(line('multi'), 'Show in goes back to its default: Bags, Bank.', "a multiselect's ticked labels")
+		eq(line('input'), 'Name goes back to its default: empty.', 'an empty input')
+		eq(line('keybinding'), 'Key goes back to its default: Not bound.', 'no key')
+		eq(line('position'), 'Position goes back to its default: Top right of the screen: -320, -275.', 'a position in words')
+		eq(line('toggle'), 'A toggle goes back to its default: on.', 'a toggle')
+		eq(line('range'), 'A range goes back to its default: 25%.', 'a percent range')
+		eq(line('color'), 'A color goes back to its default: #FF0000 \194\183 50%.', 'a color with its opacity')
+		body:Release()
+
+		st.defaults.dv_.multi, st.defaults.dv_.input, st.defaults.dv_.keybinding = {}, 'Words', 'F5'
+		dv.multi = { a = true }
+		body, by = draw(DerivedPage())
+		eq(line('multi'), 'Show in goes back to its default: none.', 'a multiselect with none ticked')
+		eq(line('input'), 'Name goes back to its default: Words.', 'an input with text')
+		eq(line('keybinding'), 'Key goes back to its default: F5.', 'a key')
+		body:Release()
+	end)
+end)
+
+test('a failed reset says why on the status line and keeps the icon', function()
+	in_look('thick', function()
+		derived_reset()
+		change_all()
+		local root = DerivedPage()
+		root.page.validate = function(_, value) if value == 'Bob' then return 'nope' end return true end
+		-- The input's default is refused by a validate: the page's own.
+		st.defaults.dv_.input, dv.input = 'Bob', 'other'
+		local told
+		local content = CreateFrame('Frame', nil, UIParent)
+		content:SetSize(774, 900)
+		local body = OB.New(content, root, function(...) told = { ... } end, 774)
+		body:Draw(OM.BuildView(root, 'page').sections)
+		local cell
+		for _, c in ipairs(body.cells) do if c.row.key == 'input' then cell = c end end
+		check(shown(cell), 'it differs')
+		stub.click(icon_of(cell))
+		eq(told and told[1], false, 'onChanged(false, message)')
+		eq(told and told[2], 'nope', 'with the validation message')
+		eq(dv.input, 'other', 'nothing was written')
+		body:Release()
+	end)
+end)
+
+test('a titled custom row with a default: the icon 6 after its title, the title cut for it', function()
+	in_look('thick', function()
+		local function build(w)
+			w.frame = CreateFrame('Frame', nil, UIParent)
+			w.frame:SetSize(60, 20)
+		end
+		W.Define('derivedtitled', { bare = true, titled = true, build = build, methods = { Refresh = function() end } })
+		local differsNow = true
+		local always = { differs = function() return differsNow end, reset = function() end }
+		local root = { page = { type = 'group', name = 'Page', args = {
+			short = { type = 'derivedtitled', name = 'Rule', size = 'wide', order = 1, default = always },
+			long = { type = 'derivedtitled', name = string.rep('A very long title ', 20), size = 'wide', order = 2, default = always },
+			none = { type = 'derivedtitled', name = 'No reset', size = 'wide', order = 3 },
+		} } }
+		local body, by = draw(root)
+		local c = by.short
+		check(shown(c), 'it differs: its reset shows')
+		local text = math.ceil(c.label:GetUnboundedStringWidth())
+		eq(icon_of(c):GetLeft() - c.frame:GetLeft(), text + 6, '6 after its title\'s text')
+		eq(icon_of(c):GetTop() - c.frame:GetTop(), -7, 'centred on the title line (6 down, a 16 line)')
+		check(c.label:GetLeft() + math.min(text, c.label:GetWidth()) <= icon_of(c):GetLeft() - 4, 'the title ends before it')
+		local long = by.long
+		check(shown(long), 'a long title: its reset shows')
+		eq(icon_of(long):GetLeft() - long.frame:GetLeft(), long.frame:GetWidth() - 14, 'at the cell\'s edge when the title fills the line')
+		eq(long.label:GetWidth(), long.frame:GetWidth() - 14 - 4, 'the title cut to leave it room and 4')
+		check(not shown(by.none), 'a titled row with no default: none')
+		differsNow = false
+		body:Release()
+		body, by = draw(root)
+		check(not shown(by.short), 'at its default: none')
+		eq(by.short.label:GetWidth(), by.short.frame:GetWidth(), 'and the title is whole again')
+		body:Release()
+	end)
+end)
+
+test('the derived icons and the titled row\'s sit on whole pixels, under Thick, Thin and Blizzard, with size noise', function()
+	local P = load_test_file('lib/pixels.lua')
+	local function build(w)
+		w.frame = CreateFrame('Frame', nil, UIParent)
+		w.frame:SetSize(60, 20)
+	end
+	W.Define('derivedtitled', { bare = true, titled = true, build = build, methods = { Refresh = function() end } })
+	for _, look in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		in_look(look, function()
+			derived_reset()
+			change_all()
+			local page = DerivedPage()
+			page.page.args.rule = { type = 'derivedtitled', name = 'Rule', size = 'wide', order = 20,
+				default = { differs = function() return true end, reset = function() end } }
+			for _, noise in ipairs({ 2 ^ -14, -2 ^ -14, 0 }) do
+				stub.size_noise = noise
+				local body, by, content = draw(page)
+				check(shown(by.toggle) and shown(by.rule) and shown(by.position), look .. ': the icons show')
+				local off = P.off(content)
+				eq(#off, 0, look .. ' noise ' .. noise .. ': ' .. P.report(off))
+				body:Release()
+			end
+			stub.size_noise = 0
+		end)
+	end
+end)
+
+test('a derived row\'s icon follows a drag: Body:Refresh places it for every row with a source, and takes it back', function()
+	in_look('thick', function()
+		derived_reset()
+		local body, by = draw(DerivedPage())
+		check(not shown(by.range), 'at its default: none')
+		dv.range = 0.9 -- what a drag of another row's preview does to this one
+		body:Refresh()
+		check(shown(by.range), 'after Refresh the derived row shows its icon')
+		dv.range = 0.25
+		body:Refresh()
+		check(not shown(by.range), 'and loses it at its default')
+		dv.position = { point = 'CENTER', rel_point = 'CENTER', frame = 'UIParent', x_off = 10, y_off = 10 }
+		body:Refresh()
+		check(shown(by.position), 'a position row too')
+		body:Release()
+
+		-- A mover's Position.
+		local frame = CreateFrame('Frame', 'DragMoverFrame', UIParent)
+		local cfg = { position = { point = 'CENTER', rel_point = 'CENTER', frame = 'UIParent', x_off = 0, y_off = 0 } }
+		st:RegisterConfigMover(frame, { key = 'dv_drag', label = 'Drag', config = function() return cfg end, apply = function() end,
+			configPath = { 'page', 'general' }, getDefaultPosition = function() return { point = 'CENTER', rel_point = 'CENTER', frame = 'UIParent', x_off = 0, y_off = 0 } end })
+		local root = { page = { type = 'group', name = 'Page', args = { general = { type = 'group', name = 'General', args = {
+			position = st.Config.generators.position(1, true, function(part) return cfg.position[part] end,
+				function(part, value) cfg.position[part] = value end) } } } } }
+		local content = CreateFrame('Frame', nil, UIParent)
+		content:SetSize(774, 900)
+		body = OB.New(content, root, nil, 774)
+		body:Draw(OM.BuildView(root, 'page', { tab = 'general' }).sections)
+		local cell
+		for _, c in ipairs(body.cells) do if c.row.key == 'position' then cell = c end end
+		check(cell and not shown(cell), 'a mover row at its default: none')
+		cfg.position.x_off = 40
+		body:Refresh()
+		check(shown(cell), 'moved: its icon shows on Refresh')
+		body:Release()
+		st.EditModeFrames.movers.dv_drag = nil
+	end)
+end)
+
+test('a long title\'s hover frame stops short of the reset icon', function()
+	in_look('thick', function()
+		local function build(w)
+			w.frame = CreateFrame('Frame', nil, UIParent)
+			w.frame:SetSize(60, 20)
+		end
+		W.Define('derivedtitled', { bare = true, titled = true, build = build, methods = { Refresh = function() end } })
+		local root = { page = { type = 'group', name = 'Page', args = {
+			long = { type = 'derivedtitled', name = string.rep('A very long title ', 20), size = 'wide', order = 1,
+				default = { differs = function() return true end, reset = function() end } },
+			short = { type = 'derivedtitled', name = 'Rule', size = 'wide', order = 2,
+				default = { differs = function() return true end, reset = function() end } },
+		} } }
+		local body, by = draw(root)
+		for _, key in ipairs({ 'long', 'short' }) do
+			local c = by[key]
+			local tip = c.frame.titleTip
+			check(tip and tip:IsShown(), key .. ': the title has its hover frame')
+			check(tip:GetRight() <= icon_of(c):GetLeft(), key .. ': it ends before the icon (' .. tostring(tip:GetRight()) .. ' vs ' .. tostring(icon_of(c):GetLeft()) .. ')')
+		end
+		body:Release()
+	end)
+end)
+
+test('placing a shown icon on every drag step builds no tables of its own: DrawnLeft walks regions as varargs', function()
+	-- The stubs allocate on every layout read and SetPoint, so bytes can't pin it; the walk's own
+	-- tables (one per region, two per control) were the kit's, and the source says there are none.
+	local source = read_saftui_source('SaftUI-Core/Config/optionsshare.lua')
+	local from = source:find('DrawnLeft = function', 1, true)
+	local walk = source:sub(from, source:find('\nend\n', from, true))
+	check(not walk:find('{', 1, true), 'DrawnLeft makes no table of a region\'s regions or children')
+	check(source:find('DrawnLeftOf(left, region:GetRegions())', 1, true) ~= nil, 'they are walked as varargs')
+	in_look('blizzard', function()
+		derived_reset()
+		change_all()
+		local body, by = draw(DerivedPage())
+		for _, key in ipairs(DERIVED_KEYS) do
+			local left = leftmost(by[key].widget.frame)
+			if key ~= 'position' and key ~= 'item' then
+				eq(icon_of(by[key]):GetRight() - by[key].frame:GetLeft(), math.floor(left - by[key].frame:GetLeft()) - 6, key .. ': the icon still clears the art')
+			end
+		end
+		body:Release()
+	end)
 end)

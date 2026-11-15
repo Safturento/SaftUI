@@ -1,12 +1,14 @@
--- Whole pixels, for tests of what SaftUI draws. SaftUI's scale makes a unit
--- of UIParent a pixel, and a 1px border or line whose edge sits between two
--- pixels blurs (or the game snaps it away, or doubles it), so a frame and
--- every part of it must start and end on whole units. Loaded with
+-- Whole pixels, for tests of what SaftUI draws. A 1px border or line whose
+-- edge sits between two pixels blurs (or the game snaps it away, or doubles
+-- it), so a frame and every part of it must start and end on whole physical
+-- pixels, whatever UIParent's scale is (a unit is a pixel at k 1, 4/3 of one
+-- at 0.75). Loaded with
 -- local P = load_test_file('lib/pixels.lua') (no globals).
 --
 -- P.off(root) -> a list of '<where>: <edge> <value>', one for each edge of a
 -- shown frame or texture under root (root too) that isn't on a whole pixel
--- of the screen (UIParent's units; within a hair, below), in the order
+-- of the screen (measured in pixels, from UIParent's size of one; within a
+-- hair, below), in the order
 -- they're walked; empty when
 -- every edge is. Font strings are left out: the game draws text on whole
 -- pixels itself. So are a slider's own textures (the slider is checked):
@@ -19,9 +21,9 @@ local P = {}
 
 local EDGES = { 'left', 'right', 'top', 'bottom' }
 
--- Within a hair of a whole unit: a size read back from the game (with
+-- Within a hair of a whole pixel: a size read back from the game (with
 -- stub.size_noise, a hair off what it was given) and placed from leaves an
--- edge that far off, which the game draws on its pixel. Half a unit isn't.
+-- edge that far off, which the game draws on its pixel. Half a pixel isn't.
 local HAIR = 1e-3
 
 local function whole(v)
@@ -35,9 +37,11 @@ local function walk(region, where, out)
 	if kind ~= 'FontString' then
 		local edges = { left = region:GetLeft(), right = region:GetRight(), top = region:GetTop(), bottom = region:GetBottom() }
 		if edges.left then
+			-- An edge in UIParent's units, over one pixel in them, is in pixels.
 			local k = region:GetEffectiveScale() / UIParent:GetEffectiveScale()
+			local pixel = (768 / select(2, GetPhysicalScreenSize())) / UIParent:GetEffectiveScale()
 			for _, edge in ipairs(EDGES) do
-				local v = edges[edge] * k
+				local v = edges[edge] * k / pixel
 				if not whole(v) then out[#out + 1] = ('%s %s: %s %s'):format(where, kind, edge, tostring(v)) end
 			end
 		end

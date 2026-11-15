@@ -33,6 +33,7 @@ Libraries\AceGUI-3.0-SharedMediaWidgets\widget.xml
 init.lua
 constants.lua
 api.lua
+uiscale.lua
 Widgets\load.xml
 skinning.lua
 panels.lua
@@ -49,8 +50,6 @@ Media\theme.lua
 Config\load.xml
 
 EditMode\load.xml
-
-taintfix.lua
 
 Utilities\load.xml
 Dev\load.xml
