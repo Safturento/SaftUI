@@ -1234,3 +1234,32 @@ test('P.off measures pixels: at 0.75 a frame at 4/3 units is whole and one at 1 
 	f:SetPoint('BOTTOMLEFT', UIParent, 'BOTTOMLEFT', 3.5, 4)
 	check(#P.off(f) > 0, 'k 1: half a unit')
 end)
+
+test('test_scale() is 1 in a normal run, and the world is at k 1', function()
+	eq(TEST_SCALE, nil, 'the runner sets no TEST_SCALE in a normal run')
+	eq(test_scale(), 1)
+	check(near(1 / SaftUI.pixel, 1), 'the world draws at k 1: pixel ' .. tostring(SaftUI.pixel))
+	reset_world()
+	check(near(1 / SaftUI.pixel, 1), 'and still after reset_world')
+end)
+
+-- at the top level, where test() and scaled_test() register: a test() name
+-- already taken errors in scaled_test, and a bad call errors naming this file.
+-- (That a scaled_test is a case of the normal run, and shares test's names, is
+-- pinned by runner_fixtures/scaled_ok.lua in the runner's self-check.)
+local plain_name_again = select(2, pcall(function() scaled_test('test_scale() is 1 in a normal run, and the world is at k 1', function() end) end))
+local scaled_bad_usage = select(2, pcall(function() scaled_test('no function') end))
+local plain_bad_usage = select(2, pcall(function() test('no function') end))
+
+test('scaled_test refuses a name test() took, and a bad call, naming this file and not the harness', function()
+	for _, text in ipairs({ plain_name_again, scaled_bad_usage, plain_bad_usage }) do
+		check(tostring(text):find('harness_self_test.lua:', 1, true) and not tostring(text):find('harness.lua:', 1, true),
+			'the error names the test file: ' .. tostring(text))
+	end
+	check(tostring(plain_name_again):find('there is already a test named', 1, true), tostring(plain_name_again))
+	check(tostring(scaled_bad_usage):find('usage: scaled_test', 1, true), tostring(scaled_bad_usage))
+	check(tostring(plain_bad_usage):find('usage: test(', 1, true), tostring(plain_bad_usage))
+	local ok, err = pcall(scaled_test, 'inside a case', function() end)
+	eq(ok, false, 'scaled_test inside a case errors')
+	check(tostring(err):find('top level', 1, true), tostring(err))
+end)

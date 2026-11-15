@@ -2,7 +2,7 @@
 -- wide the category list is a menu on a button over the editor, which takes the
 -- whole width. The button names the category and its place, two icon buttons
 -- step through the list, and the menu holds the list's own rows, counts, handles,
--- ghost and drop line, with + New category and Reset all at its foot.
+-- ghost and drop line, with + New category and the order's reset at its foot.
 --
 -- Real: the Categories tab's world (categories_world.lua: the views world on
 -- Core's real config and the options window, with SaftUI-Bags' options.lua,
@@ -178,9 +178,9 @@ test('the button opens the list as a menu: the same rows and counts; a pick clos
 	check(w.rows[1].tint:IsShown(), 'the selected row is tinted')
 	eq(w.listScroll:GetHeight(), 14 * 22, 'its view is 14 rows')
 	check(#w.rows > 14, 'there are more rows than that')
-	check(w.addButton:IsVisible() and w.resetButton:IsVisible(), '+ New category and Reset all in it')
+	check(w.addButton:IsVisible(), '+ New category in it')
 	check(w.addButton:GetBottom() > w.menu:GetBottom(), 'inside it')
-	check(w.resetButton:GetBottom() > w.menu:GetBottom())
+	check(not w.resetOrder:IsShown(), "the order's reset waits for a change of order")
 
 	click(w.rows[3].frame)
 	eq(INV.categoryEditor.selected, list[3].id, 'the row is the category edited')
@@ -268,7 +268,7 @@ test('the menu closes with the window, and with a page of another tab', function
 	st.Config:Close()
 end)
 
-test('the menu stays open through a drop, Reset all, a bag update and a redraw', function()
+test("the menu stays open through a drop, the order's reset, a bag update and a redraw", function()
 	world()
 	open(); half()
 	local w = tab()
@@ -282,12 +282,13 @@ test('the menu stays open through a drop, Reset all, a bag update and a redraw',
 	check(w.menu:IsShown(), 'a drop leaves it open')
 	check(w.listPane:IsVisible(), 'with its list')
 	check(INV.categoryEditor.menuOpen)
-	-- Reset all
-	click(w.resetButton)
-	yes()
+	-- the order's reset, in the menu's foot
+	check(w.resetOrder:IsShown() and w.resetOrder:IsVisible(), "the order's reset shows in the menu")
+	check(w.resetOrder:GetBottom() > w.menu:GetBottom(), 'inside it')
+	click(w.resetOrder)
 	tick()
 	w = tab()
-	check(w.menu:IsShown(), 'Reset all leaves it open')
+	check(w.menu:IsShown(), "the order's reset leaves it open")
 	eq(ids(), before, 'the order is the default again')
 	-- a bag update
 	B.put(0, 7, B.item(102, 'Elixir', 'Consumable', 30))
@@ -699,7 +700,7 @@ end)
 
 ------------------------------------------------------------------ fix round 1
 
-test("at half the Reset button never passes the editor, whatever the category is called; at full it keeps its name", function()
+test("at half the editor's field resets work as they do at full, and nothing passes the editor, whatever the category is called", function()
 	for _, name in ipairs({ 'thick', 'blizzard' }) do
 		world()
 		look(name)
@@ -712,19 +713,21 @@ test("at half the Reset button never passes the editor, whatever the category is
 			INV.categoryEditor.selected = entry.id
 			OW:Render()
 			local w = tab()
-			for _, key in ipairs({ 'reset', 'delete' }) do
-				local c = w:EditorCell(key)
-				if c then
-					check(c.widget.frame:GetRight() <= w.editorScroll:GetRight() + 0.01,
-						('%s: %s: the %s button ends inside the editor'):format(name, entry.id, key))
-				end
+			eq(w:EditorCell('reset'), nil, entry.id .. ': no Reset button')
+			local c = w:EditorCell('delete')
+			if c then
+				check(c.widget.frame:GetRight() <= w.editorScroll:GetRight() + 0.01,
+					('%s: %s: the Delete button ends inside the editor'):format(name, entry.id))
 			end
 		end
-		INV.categoryEditor.selected = long
+		-- Toys's long name has a reset of its own, which puts the shipped one back.
+		INV.categoryEditor.selected = 'Toys'
 		OW:Render()
-		eq(tab():EditorCell('reset').widget.text:GetText(), 'Reset to default', name .. ': the face names the category')
-		OW:SetWindowSize('full'); stub.time = stub.time + 1
-		eq(tab():EditorCell('reset').widget.text:GetText(), 'Reset ' .. long .. ' to default', name .. ': full as before')
+		local icon = tab():EditorCell('name').frame.defaultReset
+		check(icon and icon:IsShown(), name .. ": the Name's reset shows at half")
+		click(icon)
+		eq(INV:CategoryName('Toys'), 'Toys', name .. ': and puts the shipped name back')
+		check(not (tab():EditorCell('name').frame.defaultReset and tab():EditorCell('name').frame.defaultReset:IsShown()), name .. ': the icon goes')
 		st.Config:Close()
 	end
 end)

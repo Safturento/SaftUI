@@ -20,6 +20,11 @@ Files run in parallel (-jN, default the CPU count): each file in its own worker
 process, so still its own Lua state, and the report is printed in file order
 whatever order the files finish in, with the same text as a serial run. -j1 runs
 them one after another in this process, with no worker processes.
+
+A file with scaled_test cases runs once more after its normal run, with only
+those cases, in a world at one other UI scale (0.75, 1.25 or 1.55; see
+rotation_scale). --scales=all runs them at all three; SAFTUI_TEST_SCALE=<scale>
+puts every file's scaled run at that scale.
 """
 
 import argparse
@@ -36,6 +41,11 @@ lua51 = LuaError = None  # imported in entry(), so a missing lupa is reported as
 CRASH_IN_RUN_FILE = False  # set by --crash-for-self-check=run_file
 EXIT_BADLY_FOR = None  # set by --crash-for-self-check=worker_exit: a worker running this file exits 3 after sending its result
 KILL_WORKER_FOR = None  # set by --crash-for-self-check=worker_death: a worker running this file dies
+
+SCALES = (0.75, 1.25, 1.55)  # the scales a scaled run can be at, in rotation order
+SCALES_ALL = False  # set by --scales=all: every file's scaled cases run at all of SCALES
+FORCED_SCALE = None  # set by SAFTUI_TEST_SCALE: every file's scaled run is at this scale
+SCALE_VARIABLE = 'SAFTUI_TEST_SCALE'
 
 TESTS_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(TESTS_DIR)
@@ -86,18 +96,39 @@ def lua_list(table):
     return [table[i] for i in range(1, len(table) + 1)] if table is not None else []
 
 
-def run_file(path):
-    """Runs one test file in a fresh Lua state and returns the harness's result table."""
+def scale_text(scale):
+    return f'{scale:g}'
+
+
+def rotation_scale(path):
+    """The scale a file's scaled run is at: 0.75, 1.25 or 1.55 by the sum of the
+    bytes of its repo-relative path, so files spread over the three."""
+    return SCALES[sum(shown_path(path).replace(os.sep, '/').encode('utf-8')) % len(SCALES)]
+
+
+def scales_for(path):
+    """The scales a file's scaled cases run at, after its normal run."""
+    if SCALES_ALL:
+        return list(SCALES)
+    return [FORCED_SCALE or rotation_scale(path)]
+
+
+def run_file(path, scale=None):
+    """Runs one test file in a fresh Lua state and returns the harness's result
+    table. With a scale (one of SCALES) only its scaled cases run, in a world at
+    that scale."""
     if CRASH_IN_RUN_FILE:
         raise RuntimeError('runner crash in run_file (self-check)')
     lua = lua51.LuaRuntime(unpack_returned_tuples=True, register_eval=False, register_builtins=False)
     lua.globals().REPO_ROOT = REPO_ROOT
     lua.globals().TESTS_DIR = TESTS_DIR
+    if scale is not None:
+        lua.globals().TEST_SCALE = scale
     with open(HARNESS, encoding='utf-8') as f:
         source = f.read()
     compile_chunk = lua.eval('function(source, name) return assert(loadstring(source, name)) end')
     harness_run = compile_chunk(source, '@tests/lib/harness.lua')()
-    return harness_run(path, shown_path(path))
+    return harness_run(path, shown_path(path), scale)
 
 
 def print_lines(lines, indent):
@@ -113,36 +144,52 @@ def count(n, noun):
 def report(path, verbose):
     """Runs a file, prints its result, and returns (passed, checks, failures).
 
-    A failing file shows its problems, its failing cases and what they printed.
-    verbose shows every case and all output.
+    The file runs at k = 1, then, when it has scaled_test cases, once more with
+    only those cases at each scale scales_for gives; their cases are shown as
+    '<name> [at 0.75]' and count in the file's totals. A failing file shows its
+    problems, its failing cases and what they printed. verbose shows every case
+    and all output.
     """
+    scale = None  # the scale being run, for a harness error's message
     try:
         result = run_file(path)
+        scaled_runs = []
+        if result.scaled:
+            for scale in scales_for(path):
+                scaled_runs.append((scale, run_file(path, scale)))
     except LuaError as error:  # the Lua harness failed on this file. Python exceptions are runner bugs and propagate to entry()
         print(f'FAIL  {shown_path(path)}')
-        print_lines([f'harness error: {error}'], '      ')
+        print_lines([f'harness error{"" if scale is None else f" [at {scale_text(scale)}]"}: {error}'], '      ')
         return False, 0, 1
 
-    cases = lua_list(result.cases)
-    passed = bool(result.ok)
-    summary = f'{count(len(cases), "case")}, {count(result.checks, "check")}'
-    if result.failures:
-        summary += f', {result.failures} failed'
+    runs = [(None, result)] + scaled_runs
+    cases = []  # (name as shown, case)
+    for scale, run in runs:
+        tag = '' if scale is None else f' [at {scale_text(scale)}]'
+        cases.extend((case.name + tag, case) for case in lua_list(run.cases))
+    checks = sum(run.checks for _, run in runs)
+    failures = sum(run.failures for _, run in runs)
+    passed = all(bool(run.ok) for _, run in runs)
+    summary = f'{count(len(cases), "case")}, {count(checks, "check")}'
+    if failures:
+        summary += f', {failures} failed'
     print(f'{"ok  " if passed else "FAIL"}  {result.path}  ({summary})')
 
-    print_lines(lua_list(result.problems), '      ')
-    output = lua_list(result.output)
-    if output and (not passed or verbose):
-        print_lines(['output while loading:'] + output, '      ')
-    for case in cases:
+    for scale, run in runs:
+        tag = '' if scale is None else f'[at {scale_text(scale)}] '
+        print_lines([tag + str(text) for text in lua_list(run.problems)], '      ')
+        output = lua_list(run.output)
+        if output and (not run.ok or verbose):
+            print_lines([f'{tag}output while loading:'] + output, '      ')
+    for name, case in cases:
         if case.ok and not verbose:
             continue
-        print(f'      {"ok  " if case.ok else "FAIL"}  {case.name}  ({count(case.checks, "check")})')
+        print(f'      {"ok  " if case.ok else "FAIL"}  {name}  ({count(case.checks, "check")})')
         print_lines(lua_list(case.problems), '            ')
         output = lua_list(case.output)
         if output:
             print_lines(['output:'] + output, '            ')
-    return passed, result.checks, result.failures
+    return passed, checks, failures
 
 
 def render(path, verbose):
@@ -230,7 +277,32 @@ FIXTURE_EXPECTED = {
     'failing_check.lua': (EXIT_FAILED, 'one is not two: expected 2, got 1'),
     'case_error.lua': (EXIT_FAILED, 'error: tests/lib/runner_fixtures/case_error.lua:4: boom'),
     'endless_loop.lua': (EXIT_FAILED, 'so the harness stopped it'),
+    # the first two rotate to 1.25 and the third to 1.55 (see rotation_scale), so a plain run has the
+    # first two pass and the third fail while loading at 1.55
+    'scaled_ok.lua': (0, 'ok    tests/lib/runner_fixtures/scaled_ok.lua  (5 cases, 57 checks)'),
+    'scaled_fail_155.lua': (0, 'ok    tests/lib/runner_fixtures/scaled_fail_155.lua  (2 cases, 2 checks)'),
+    'scaled_load_155.lua': (EXIT_FAILED, '[at 1.55] error while loading the file:'),
 }
+# Scaled runs: (fixture, flags, SAFTUI_TEST_SCALE or None, exit status, texts the output must contain,
+# texts it must not). -v lists the passing cases, so a scaled case shows by name.
+SCALED_EXPECTED = [
+    ('scaled_ok.lua', ['-v'], None, 0, ['plain  (1 check)', 'scaled  (4 checks)', 'scaled [at 1.25]  (4 checks)', 'rebuilt worlds [at 1.25]  (24 checks)'], ['[at 0.75]', '[at 1.55]']),
+    ('scaled_ok.lua', ['-v', '--scales=all'], None, 0, ['scaled [at 0.75]', 'scaled [at 1.25]', 'scaled [at 1.55]'], []),
+    ('scaled_ok.lua', ['-v'], '1.55', 0, ['scaled [at 1.55]'], ['[at 1.25]']),
+    ('scaled_ok.lua', ['-v', '--scales=all'], None, 0, ['rebuilt worlds [at 0.75]  (24 checks)', 'rebuilt worlds [at 1.25]  (24 checks)', 'rebuilt worlds [at 1.55]  (24 checks)', '(9 cases, 113 checks)'], []),
+    # a failing scaled case: the file's cases, checks and failures, and the last line, count every run
+    ('scaled_fail_155.lua', ['--scales=all'], None, EXIT_FAILED,
+     ['FAIL  fails at 1.55 [at 1.55]', 'this case fails at 1.55', 'FAIL  tests/lib/runner_fixtures/scaled_fail_155.lua  (4 cases, 4 checks, 1 failed)',
+      '1 file: 0 passed, 1 failed (4 checks, 1 failed)'], ['[at 0.75]', '[at 1.25]']),
+    # a load problem or output while loading at a scale is shown with its scale; the plain run rotates this one to 1.55
+    ('scaled_load_155.lua', [], None, EXIT_FAILED,
+     ['[at 1.55] error while loading the file:', 'load fails at 1.55', '[at 1.55] output while loading:', 'printed while loading at 1.55'], []),
+    ('scaled_load_155.lua', ['--scales=all'], None, EXIT_FAILED, ['[at 1.55] error while loading the file:'], ['[at 0.75] error', '[at 1.25] error']),
+    ('scaled_fail_155.lua', [], '1.55', EXIT_FAILED, ['fails at 1.55 [at 1.55]'], []),
+    ('scaled_fail_155.lua', [], '0.75', 0, ['ok    tests/lib/runner_fixtures/scaled_fail_155.lua'], ['FAIL']),
+    ('scaled_ok.lua', ['--scales=all'], '1.250', 2, [], []),  # a bad value is a bad argument even when --scales=all ignores it
+    ('scaled_ok.lua', [], '2', 2, [], []),  # an unknown scale is a bad argument
+]
 # The runner is made to crash on passing.lua with the hidden --crash-for-self-check flag, in main() or inside run_file().
 CRASH_FIXTURES = [  # (fixture, flag value, text on stderr, -j flag)
     ('passing.lua', 'main', 'runner crash (self-check)', '-j1'),
@@ -263,9 +335,12 @@ def self_check():
     import subprocess
     bad = 0
 
-    def run(path, *flags):
+    clean_env = {k: v for k, v in os.environ.items() if k != SCALE_VARIABLE}  # a scale set around the self-check must not reach it
+
+    def run(path, *flags, scale=None):
+        env = dict(clean_env, **({SCALE_VARIABLE: scale} if scale else {}))
         return subprocess.run([sys.executable, os.path.abspath(__file__), *flags, path],
-                              capture_output=True, text=True)
+                              capture_output=True, text=True, env=env)
 
     for name, (expected, text) in FIXTURE_EXPECTED.items():
         done = run(os.path.join(FIXTURES, name))
@@ -286,6 +361,31 @@ def self_check():
             bad += 1
             print_lines((done.stdout + done.stderr).splitlines(), '      ')
 
+    for name, flags, scale, expected, texts, absent in SCALED_EXPECTED:
+        done = run(os.path.join(FIXTURES, name), *flags, scale=scale)
+        kind = classify(done)
+        want = 'pass' if expected == 0 else 'fail'
+        problems = []
+        if expected == 2:
+            if done.returncode != 2 or TRACEBACK in done.stderr + done.stdout:
+                problems.append(f'exit {done.returncode}, expected 2')
+        else:
+            if kind != want:
+                problems.append(f'classified {kind}, expected {want}')
+            if done.returncode != expected:
+                problems.append(f'exit {done.returncode}, expected {expected}')
+            if done.stderr.strip():
+                problems.append('wrote to stderr')
+        problems += [f'output lacks {text!r}' for text in texts if text not in done.stdout]
+        problems += [f'output has {text!r}' for text in absent if text in done.stdout]
+        label = ' '.join([name, *flags] + ([f'{SCALE_VARIABLE}={scale}'] if scale else []))
+        kind = 'bad argument' if expected == 2 else kind
+        print(f'{"FAIL" if problems else "ok  "}  {label}: exit {done.returncode} ({kind})'
+              + (f' - {"; ".join(problems)}' if problems else ''))
+        if problems:
+            bad += 1
+            print_lines((done.stdout + done.stderr).splitlines(), '      ')
+
     for name, where, text, jobs in CRASH_FIXTURES:
         done = run(os.path.join(FIXTURES, name), f'--crash-for-self-check={where}', jobs)
         kind = classify(done)
@@ -299,8 +399,8 @@ def self_check():
     # -j1 (serial, in one process) and the default (parallel, a process per file)
     # must give the same report and exit status for every fixture, in file order
     paths = [os.path.join(FIXTURES, name) for name in sorted(FIXTURE_EXPECTED)]
-    serial = subprocess.run([sys.executable, os.path.abspath(__file__), '-j1', *paths], capture_output=True, text=True)
-    parallel = subprocess.run([sys.executable, os.path.abspath(__file__), '-j2', *paths], capture_output=True, text=True)
+    serial = subprocess.run([sys.executable, os.path.abspath(__file__), '-j1', *paths], capture_output=True, text=True, env=clean_env)
+    parallel = subprocess.run([sys.executable, os.path.abspath(__file__), '-j2', *paths], capture_output=True, text=True, env=clean_env)
     same = (serial.stdout, serial.stderr, serial.returncode) == (parallel.stdout, parallel.stderr, parallel.returncode)
     print(f'{"ok  " if same else "FAIL"}  -j1 and -j2 give the same report for the fixtures')
     if not same:
@@ -316,7 +416,7 @@ def self_check():
     bad += not good
     for value in ('0', 'x', '-3'):
         done = subprocess.run([sys.executable, os.path.abspath(__file__), f'-j{value}',
-                               os.path.join(FIXTURES, 'passing.lua')], capture_output=True, text=True)
+                               os.path.join(FIXTURES, 'passing.lua')], capture_output=True, text=True, env=clean_env)
         good = done.returncode == 2 and TRACEBACK not in done.stderr
         print(f'{"ok  " if good else "FAIL"}  -j{value}: exit {done.returncode}, expected 2')
         bad += not good
@@ -353,6 +453,8 @@ def main():
     parser.add_argument('-v', '--verbose', action='store_true', help='list every case and show what tests printed')
     parser.add_argument('-j', '--jobs', type=jobs_count, default=None, metavar='N',
                         help='run N files at once, each in its own process (default: the CPU count; -j1 runs them one after another in this process)')
+    parser.add_argument('--scales', choices=['all'], default=None,
+                        help="run each file's scaled_test cases at all three scales (0.75, 1.25 and 1.55), not at the one its path picks")
     parser.add_argument('--timings', metavar='FILE', help=argparse.SUPPRESS)  # per-file seconds, tab separated, for measuring the run
     parser.add_argument('--self-check', action='store_true',
                         help="check the runner itself: each file in tests/lib/runner_fixtures must give the exit status it should")
@@ -366,6 +468,17 @@ def main():
         CRASH_IN_RUN_FILE = True
     if args.self_check:
         return self_check()
+
+    global SCALES_ALL, FORCED_SCALE
+    SCALES_ALL = args.scales == 'all'
+    forced = os.environ.get(SCALE_VARIABLE)
+    if forced:
+        matching = [scale for scale in SCALES if scale_text(scale) == forced]
+        if not matching:
+            print(f'tests/run: {SCALE_VARIABLE}={forced!r} is not a scale: use ' + ', '.join(scale_text(x) for x in SCALES),
+                  file=sys.stderr)
+            return 2
+        FORCED_SCALE = matching[0]
 
     try:
         files = collect(args.paths)

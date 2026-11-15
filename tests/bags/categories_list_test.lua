@@ -1,6 +1,6 @@
 -- The Categories tab in /sui > Bags (SaftUI-Bags/categoriestab.lua), the list on
 -- the left: the Bags page's Categories tab, the list with its handles, counts
--- and markers, + New category, Reset all, the list under Blizzard, and the open
+-- and markers, + New category, the order's reset icon, the list under Blizzard, and the open
 -- tab following bag updates, EditCategory (INV:EditCategory) and a profile
 -- switch.
 --
@@ -173,14 +173,14 @@ test('the list: every category in order, counts from the bag window, the edited 
 		eq(row.handle:IsShown(), row.id ~= MISC, row.id .. ': a handle unless Miscellaneous')
 	end
 
-	-- Under the list: + New category and Reset all, in blue, under its view
-	-- (the shipped list is longer than it shows; see the scrolling tests).
+	-- Under the list: + New category, in blue, under its view (the shipped list
+	-- is longer than it shows; see the scrolling tests). The order's reset icon
+	-- is not there while the order is as shipped.
 	eq(w.addButton.text:GetText(), '+ New category', '+ New category')
-	eq(w.resetButton.text:GetText(), 'Reset all', 'Reset all')
 	check(same_rgb({ w.addButton.text:GetTextColor() }, rgb('accent')), 'in blue')
-	check(same_rgb({ w.resetButton.text:GetTextColor() }, rgb('accent')), 'both')
 	eq(w.listScroll:GetBottom() - w.addButton:GetTop(), 8, "8 under the list's view")
-	check(w.resetButton:GetLeft() > w.addButton:GetRight(), 'side by side')
+	check(not w.resetOrder:IsShown(), "no order's reset at the shipped order")
+	eq(w.resetButton, nil, 'no Reset all')
 
 	-- The editor pane: from 234, 540 wide.
 	eq(w.pane:GetLeft() - left, 234, 'the editor starts at 234')
@@ -239,31 +239,94 @@ test('+ New category adds one above Miscellaneous and selects it; with a deleted
 	st.Config:Close()
 end)
 
-test('Reset all asks first, then resets', function()
+test("the order's reset: shown once a shipped category moves, it puts SaftUI's order back with your own where they are", function()
 	world()
-	local shipped = ids()
-	INV:RenameCategory('Armor', 'Plate')
-	local mine = INV:AddUserCategory()
-	INV:RemoveCategory('Toys')
+	local shipped = INV:GetCategoryList()
+	local shippedIds = {}
+	for i, entry in ipairs(shipped) do shippedIds[i] = entry.id end
+	INV:RenameCategory('Armor', 'Plate') -- an edit of another field is no difference of order
 	INV:PinItem(301, 'Consumables')
+	check(not INV:CategoryOrderDiffers(), 'a rename leaves the order as shipped')
+	local mine = INV:AddUserCategory()
+	check(not INV:CategoryOrderDiffers(), 'so does a category of your own, last above Miscellaneous')
+	INV:MoveCategory('Toys', INV:GetCategoryList().byId.Reputation.place)
+	INV:MoveCategory(mine, INV:GetCategoryList().byId.Toys.place + 1) -- right after Toys
+	local at = INV:GetCategoryList().byId
+	check(at.Toys.place < at.Reputation.place and at[mine].place == at.Toys.place + 1, 'Toys is above Reputation now, yours right after it')
+	check(INV:CategoryOrderDiffers(), 'the order differs')
 	open()
-	click(tab().resetButton)
-	eq(W.ConfirmText(), "Reset all categories to SaftUI's defaults? Your own categories are deleted. Pinned and Protected items are kept.",
-		'it asks')
-	no()
-	eq(INV:CategoryName('Armor'), 'Plate', 'No changes nothing')
-	check(INV:GetCategoryList().byId[mine] ~= nil, 'yours stays')
-	click(tab().resetButton)
-	yes()
-	eq(INV:CategoryName('Armor'), 'Armor', 'Yes: the rename is gone')
-	eq(INV:GetCategoryList().byId[mine], nil, 'yours are deleted')
-	eq(ids(), shipped, 'the shipped list')
-	eq(INV:GetPin(301), 'Consumables', 'a pin to a default stays')
 	local w = tab()
+	check(w.resetOrder:IsShown(), "the order's reset shows")
+	eq(w.resetButton, nil, 'there is no Reset all')
+	check(same_rgb({ w.resetOrder.icon:GetVertexColor() }, rgb('text', 'muted')), 'in Text > Muted at rest')
+	check(w.resetOrder:GetLeft() > w.addButton:GetRight(), 'after + New category')
+	local tip, saved = { lines = {} }, _G.GameTooltip
+	_G.GameTooltip = {
+		SetOwner = function(_, frame) tip.owner = frame; tip.lines = {} end,
+		AddLine = function(_, text) tip.lines[#tip.lines + 1] = text end,
+		Show = function() end,
+		IsOwned = function(_, frame) return tip.owner == frame end,
+		Hide = function() tip.owner = nil end,
+	}
+	stub.fire_script(w.resetOrder, 'OnEnter')
+	eq(tip.owner, w.resetOrder, 'it has a tooltip')
+	eq(table.concat(tip.lines, ' | '), "Reset | Order goes back to its default: SaftUI's order, with your own categories where they are.", 'its words')
+	check(same_rgb({ w.resetOrder.icon:GetVertexColor() }, rgb('accent')), 'the accent under the mouse')
+	stub.fire_script(w.resetOrder, 'OnLeave')
+	_G.GameTooltip = saved
+	eq(tip.owner, nil, 'the tooltip goes')
+	check(same_rgb({ w.resetOrder.icon:GetVertexColor() }, rgb('text', 'muted')), 'and Muted again')
+
+	click(w.resetOrder)
+	eq(W.ConfirmText(), nil, 'it asks nothing')
+	local now = {}
+	for i, entry in ipairs(INV:GetCategoryList()) do now[i] = entry.id end
+	local want = {}
+	for _, id in ipairs(shippedIds) do
+		if id ~= MISC then want[#want + 1] = id end
+		if id == 'Toys' then want[#want + 1] = mine end
+	end
+	want[#want + 1] = MISC
+	eq(table.concat(now, ','), table.concat(want, ','), "SaftUI's order, yours right after Toys, Miscellaneous last")
+	check(not INV:CategoryOrderDiffers(), 'the order is the default')
+	eq(INV:CategoryName('Armor'), 'Plate', 'a rename stays')
+	eq(INV:GetPin(301), 'Consumables', 'a pin stays')
+	w = tab()
+	check(not w.resetOrder:IsShown(), 'the icon goes')
 	eq(#w.rows, #INV:GetCategoryList(), 'the list is drawn again')
-	eq(row_of(w, 'Armor').name:GetText(), 'Armor', 'with the shipped names')
 	eq(#take_errors(), 0, 'no errors')
 	st.Config:Close()
+end)
+
+test("the order's reset with a deleted default, a run of two and one of yours first: none comes back, none is lost, the run stays together", function()
+	world()
+	local function order()
+		local out = {}
+		for i, entry in ipairs(INV:GetCategoryList()) do out[i] = entry.id end
+		return out
+	end
+	local shipped = order()
+	INV:RemoveCategory('Quest')
+	check(not INV:CategoryOrderDiffers(), 'a deleted default is no difference of order')
+	local a, b, c = INV:AddUserCategory(), INV:AddUserCategory(), INV:AddUserCategory()
+	check(not INV:CategoryOrderDiffers(), 'nor are yours, last above Miscellaneous')
+	INV:MoveCategory('Toys', INV:GetCategoryList().byId.Reputation.place)
+	INV:MoveCategory(a, INV:GetCategoryList().byId.Toys.place + 1)
+	INV:MoveCategory(b, INV:GetCategoryList().byId[a].place + 1)
+	INV:MoveCategory(c, 1)
+	check(INV:CategoryOrderDiffers(), 'Toys moved: it differs')
+	check(INV:ResetCategoryOrder(), 'it resets')
+	local want = { c }
+	for _, id in ipairs(shipped) do
+		if id ~= 'Quest' and id ~= MISC then want[#want + 1] = id end
+		if id == 'Toys' then want[#want + 1] = a; want[#want + 1] = b end
+	end
+	want[#want + 1] = MISC
+	eq(table.concat(order(), ','), table.concat(want, ','), 'yours first stays first; the run of two stays right after Toys; Quest is still gone')
+	check(INV:GetCategoryList().byId.Quest == nil and INV:CategoryStore().deleted.Quest, 'Quest is still deleted')
+	check(not INV:CategoryOrderDiffers(), 'the order is the default')
+	check(not INV:ResetCategoryOrder(), 'a second reset does nothing')
+	eq(#take_errors(), 0, 'no errors')
 end)
 
 ------------------------------------------------------------------ the editor's footer

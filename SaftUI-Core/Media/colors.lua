@@ -2,18 +2,315 @@ local st = SaftUI
 
 local CO = st:NewModule('Colors')
 
--- Tells every module that shows profile colors that a group of them changed
--- (the Colors tab calls this after an edit). group is 'text', 'button',
--- 'class', 'roles', 'reaction', 'renown', 'factions', 'power', 'item_quality',
--- 'loot', 'status', 'threat' or 'objectives', or 'accent' (Theme > Accent,
--- which fires after every 'theme' too). Each module's
--- OnColorsChanged(group) runs in xpcall, so one that errors doesn't stop the
--- rest.
-function st:ColorsChanged(group)
+------------------------------------------------------------------ the pass
+
+-- How a color change reaches what draws it. A Colors row's set or reset (and
+-- the Accent's) says st:ColorChanged(group, key): the one color that changed.
+-- During an edit (the color picker open: st:BeginColorEdit) it only marks the
+-- color, and one pass runs on the next frame from CO.ticker, however many
+-- changes came; outside an edit it passes at once. A pass runs the followers
+-- of that color (st:FollowColor), those of its whole group, then every
+-- module's OnColorsChanged(group, key). st:ColorsChanged(group) is the whole
+-- pass: every follower of the group, then every module's
+-- OnColorsChanged(group) with no key, meaning any color of the group may have
+-- changed. An edit's end runs the whole pass of each group it touched, and the
+-- profile update runs every group's (config.lua).
+--
+-- A pass only colors: no frame, texture or font string made, nothing shown,
+-- hidden, placed or sized, no table or closure made, so it is safe in combat.
+-- Nothing is made per pass here either: the follower tables and the marks are
+-- made once and cleared in place, and every call goes through a function made
+-- at load (the game's xpcall passes arguments on; the test stub's makes a
+-- closure for them).
+--
+-- group is 'text', 'button', 'class', 'roles', 'reaction', 'renown',
+-- 'factions', 'power', 'item_quality', 'loot', 'status', 'threat' or
+-- 'objectives', or 'accent' (Theme > Accent, which fires after every 'theme'
+-- too); key is the color in it, nil for 'accent' and 'renown'.
+st.COLOR_GROUPS = { 'text', 'button', 'class', 'roles', 'reaction', 'renown', 'factions', 'power',
+	'item_quality', 'loot', 'status', 'threat', 'objectives', 'accent' }
+
+CO.PASS_BUDGET_MS = 8 -- a pass during an edit over this makes the next wait a frame per this much
+CO.MAX_WAIT = 3 -- frames, at most
+CO.wait = 0 -- frames the ticker still waits before the due pass
+
+local ALL = '*' -- a follower's key when it follows every color of the group
+local KNOWN_GROUP = { theme = true }
+for _, group in ipairs(st.COLOR_GROUPS) do KNOWN_GROUP[group] = true end
+
+-- followers[group][key or ALL] = { [object] = paint }, weak on the object, made
+-- when a first one registers.
+local followers = {}
+local function Weak() return setmetatable({}, { __mode = 'k' }) end
+
+local pass = 0 -- how deep the passes run now (a paint may say another color changed)
+local pendingObject, pendingGroup, pendingKey, pendingPaint, pending = {}, {}, {}, {}, 0 -- follows made during a pass
+
+local function Follow(object, group, key, paint)
+	local byGroup = followers[group]
+	if not byGroup then
+		byGroup = {}
+		followers[group] = byGroup
+	end
+	key = key == nil and ALL or key
+	local list = byGroup[key]
+	if paint == nil then
+		if list then list[object] = nil end
+		return
+	end
+	if not list then
+		list = Weak()
+		byGroup[key] = list
+	end
+	list[object] = paint
+end
+
+-- paint(object, key) runs on every pass of that color (key nil: of any color
+-- of the group) with the changed key, nil on a whole pass. It reads its colors
+-- as it runs, and never closes over object (the table holds the object weakly,
+-- and Lua 5.1 has no ephemerons). Nothing paints as it registers: the caller
+-- has just colored the object. A follow made during a pass takes effect after
+-- it; paint nil forgets this registration.
+function st:FollowColor(object, group, key, paint)
+	if object == nil or group == nil then error('SaftUI: FollowColor needs an object and a group', 2) end
+	-- A typo registers nothing that ever paints, so it is refused: the group is
+	-- one of st.COLOR_GROUPS (or 'theme'), the key one the group has (the
+	-- default decides, as st:Color does); 'accent' and 'renown' take none.
+	if not KNOWN_GROUP[group] then error('SaftUI: FollowColor: no color group ' .. tostring(group), 2) end
+	if key ~= nil then
+		local from = st.defaults and st.defaults.colors and st.defaults.colors[group]
+		if group == 'accent' or group == 'renown' or group == 'theme' or (type(from) == 'table' and from[key] == nil) then
+			error('SaftUI: FollowColor: no color ' .. tostring(group) .. '.' .. tostring(key), 2)
+		end
+	end
+	if paint ~= nil and type(paint) ~= 'function' then error('SaftUI: FollowColor paint is not a function', 2) end
+	if pass > 0 then
+		pending = pending + 1
+		pendingObject[pending], pendingGroup[pending], pendingKey[pending], pendingPaint[pending] = object, group, key, paint or false
+		return
+	end
+	Follow(object, group, key, paint)
+end
+
+-- Forgets every registration of object (a pool that releases it must call this).
+function st:UnfollowColor(object)
+	for _, byGroup in pairs(followers) do
+		for _, list in pairs(byGroup) do list[object] = nil end
+	end
+	for i = 1, pending do
+		if pendingObject[i] == object then pendingObject[i] = false end
+	end
+end
+
+local function ApplyPending()
+	local n = pending
+	pending = 0
+	for i = 1, n do
+		local object = pendingObject[i]
+		if object then Follow(object, pendingGroup[i], pendingKey[i], pendingPaint[i] or nil) end
+		pendingObject[i], pendingGroup[i], pendingKey[i], pendingPaint[i] = nil, nil, nil, nil
+	end
+end
+
+-- What a pass calls goes through these: xpcall takes no arguments in Lua 5.1,
+-- and the game's makes nothing for them, but a function made per call would.
+local paintObject, paintFn, paintKey
+local function CallPaint() return paintFn(paintObject, paintKey) end
+local moduleObject, moduleGroup, moduleKey
+local function CallModule() return moduleObject:OnColorsChanged(moduleGroup, moduleKey) end
+
+-- Paints every follower in list; one whose paint errors is reported once (by
+-- the error handler) and forgotten, so a drag doesn't report it every frame.
+-- Clearing the field being walked is allowed.
+local function PaintList(list, key)
+	for object, paint in pairs(list) do
+		paintObject, paintFn, paintKey = object, paint, key
+		if not xpcall(CallPaint, geterrorhandler()) then list[object] = nil end
+	end
+end
+
+local function RunModules(group, key)
 	for _, module in pairs(st.modules) do
 		if module.OnColorsChanged then
-			xpcall(module.OnColorsChanged, geterrorhandler(), module, group)
+			moduleObject, moduleGroup, moduleKey = module, group, key
+			xpcall(CallModule, geterrorhandler())
 		end
+	end
+end
+
+-- The pass of one color: its followers, its group's, then the modules.
+local function RunPass(group, key)
+	pass = pass + 1
+	local byGroup = followers[group]
+	if byGroup then
+		if key ~= nil and byGroup[key] then PaintList(byGroup[key], key) end
+		if byGroup[ALL] then PaintList(byGroup[ALL], key) end
+	end
+	RunModules(group, key)
+	pass = pass - 1
+	if pass == 0 and pending > 0 then ApplyPending() end
+end
+
+-- The whole pass of a group: every follower of it, then each module with no key.
+function st:ColorsChanged(group)
+	pass = pass + 1
+	local byGroup = followers[group]
+	if byGroup then
+		for _, list in pairs(byGroup) do PaintList(list, nil) end
+	end
+	RunModules(group, nil)
+	pass = pass - 1
+	if pass == 0 and pending > 0 then ApplyPending() end
+end
+
+------------------------------------------------------------------ edits
+
+-- The marked colors, in the order marked: parallel arrays and a set per group,
+-- cleared in place. markSet[group][key or ALL] says a color is marked already.
+local markGroup, markKey, marked = {}, {}, 0
+local markSet = {}
+for _, group in ipairs(st.COLOR_GROUPS) do markSet[group] = {} end
+local touchedList, touchedSet, touched = {}, {}, 0 -- the groups this edit marked, in the order first marked
+local endList, endTop = {}, 0 -- the groups an edit's end is running the whole passes of
+local editing = false
+local editSerial = 0 -- which edit: RunDue tells an edit ended and another begun inside one pass
+
+-- The edit's numbers, one table reset in place at st:BeginColorEdit.
+local stats = { passes = 0, total = 0, slowest = 0, slowestGroup = nil, slowestKey = nil, waited = 0 }
+function CO.EditStats() return stats end
+
+local function Record(group, key, ms)
+	stats.passes = stats.passes + 1
+	stats.total = stats.total + ms
+	if ms > stats.slowest or stats.slowestGroup == nil then
+		stats.slowest, stats.slowestGroup, stats.slowestKey = ms, group, key
+	end
+end
+
+-- The rest of what Timed's fn returned, its time added to the edit's stats.
+local function Timed(group, key, t0, ...)
+	Record(group, key, debugprofilestop() - t0)
+	return ...
+end
+
+-- Runs fn(...) and returns what it returns. While an edit is on its time is
+-- one pass in the edit's stats, named group and key (the Theme tab's recolor
+-- is timed as 'theme').
+function CO.Timed(group, key, fn, ...)
+	if not editing then return fn(...) end
+	return Timed(group, key, debugprofilestop(), fn(...))
+end
+
+-- The due passes, one per color marked when the frame began, in the order
+-- marked, each timed; a color marked again while they run is due next frame.
+-- The frame's whole cost decides how long the next waits: more than the budget
+-- makes it wait a frame for each budget it took, at most MAX_WAIT. An edit
+-- that ends inside a pass drops the rest and counts nothing more.
+local function RunDue()
+	local t0 = debugprofilestop()
+	local n, serial = marked, editSerial
+	for i = 1, n do
+		if serial ~= editSerial or not editing then return end
+		local group, key = markGroup[i], markKey[i]
+		markSet[group][key == nil and ALL or key] = nil
+		local start = debugprofilestop()
+		RunPass(group, key)
+		if serial ~= editSerial or not editing then return end
+		Record(group, key, debugprofilestop() - start)
+	end
+	local rest = marked - n
+	for j = 1, rest do
+		markGroup[j], markKey[j] = markGroup[n + j], markKey[n + j]
+	end
+	for j = rest + 1, marked do markGroup[j], markKey[j] = nil, nil end
+	marked = rest
+	local cost = debugprofilestop() - t0
+	CO.wait = cost > CO.PASS_BUDGET_MS and math.min(CO.MAX_WAIT, math.floor(cost / CO.PASS_BUDGET_MS)) or 0
+	if marked == 0 then CO.ticker:Hide() end
+end
+
+CO.ticker = CreateFrame('Frame')
+CO.ticker:Hide()
+CO.ticker:SetScript('OnUpdate', function(self)
+	if CO.wait > 0 then
+		CO.wait = CO.wait - 1
+		stats.waited = stats.waited + 1
+		return
+	end
+	self:Hide()
+	RunDue()
+end)
+
+-- The color picker opens on a color: changes wait for the next frame, one pass
+-- for all that came. Nothing happens if an edit is on already.
+function st:BeginColorEdit()
+	if editing then return end
+	editing = true
+	editSerial = editSerial + 1
+	stats.passes, stats.total, stats.slowest, stats.slowestGroup, stats.slowestKey, stats.waited = 0, 0, 0, nil, nil, 0
+	CO.wait = 0
+end
+
+function st:InColorEdit() return editing end
+
+-- One color changed (a Colors row's set or reset, the Accent's).
+function st:ColorChanged(group, key)
+	if not editing then
+		RunPass(group, key)
+		return
+	end
+	local set = markSet[group]
+	if not set then
+		set = {}
+		markSet[group] = set
+	end
+	if not touchedSet[group] then
+		touchedSet[group] = true
+		touched = touched + 1
+		touchedList[touched] = group
+	end
+	local id = key == nil and ALL or key
+	if set[id] then return end
+	set[id] = true
+	marked = marked + 1
+	markGroup[marked], markKey[marked] = group, key
+	CO.ticker:Show()
+end
+
+-- The picker closed: a pass still due is dropped, the whole pass of each group
+-- the edit touched runs in the order first touched (it covers what a held-back
+-- pass or a reader that filters by key missed), and with /sui debug on one line
+-- says what the edit cost.
+function st:EndColorEdit()
+	if not editing then return end
+	editing = false
+	CO.ticker:Hide()
+	CO.wait = 0
+	for i = 1, marked do
+		local key = markKey[i]
+		markSet[markGroup[i]][key == nil and ALL or key] = nil
+		markGroup[i], markKey[i] = nil, nil
+	end
+	marked = 0
+	-- The touched groups are taken out first, into a scratch stretch of
+	-- endList, so an edit a handler begins meanwhile keeps its own (and an end
+	-- inside this one uses the stretch after).
+	local n, base = touched, endTop
+	for i = 1, n do
+		local group = touchedList[i]
+		endList[base + i] = group
+		touchedSet[group] = nil
+		touchedList[i] = nil
+	end
+	touched = 0
+	endTop = base + n
+	for i = 1, n do st:ColorsChanged(endList[base + i]) end
+	for i = 1, n do endList[base + i] = nil end
+	endTop = base
+	if st.DEBUG and stats.passes > 0 then
+		local name = stats.slowestKey == nil and stats.slowestGroup or (stats.slowestGroup .. ' ' .. tostring(stats.slowestKey))
+		st:Debug('Colors', ('%d passes, slowest %.1f ms (%s), mean %.1f ms, %d frames waited.'):format(
+			stats.passes, stats.slowest, name, stats.total / stats.passes, stats.waited))
 	end
 end
 
@@ -287,7 +584,7 @@ local ACCENT_RELOAD_NOTE = 'Most of SaftUI reads it when it builds its frames: r
 -- The Colors tab's sections, in order. A section is { key, name, note,
 -- hasAlpha, colors }: key is its group's key, note shows under its title,
 -- hasAlpha gives its swatches an opacity slider. A color is { group, key,
--- name, desc }: group is the profile key st:ColorsChanged takes, key the
+-- name, desc }: group is the profile key st:ColorChanged takes, key the
 -- subkey of st.config.profile.colors[group] (nil for renown, which is that
 -- key's color itself).
 local function Colors(group, list)
@@ -477,15 +774,14 @@ end
 
 -- A color's own reset (the options kit's default field, optionsmodel.lua): a
 -- reset icon by the color's swatch while it differs from SaftUI's default; it
--- puts that back, alpha too, and says the group changed, as a Reset of the
--- whole section did for each of its colors.
+-- puts that back, alpha too, and says the color changed (st:ColorChanged).
 local function ColorDefault(section, color)
 	return {
 		differs = function() return not SameColor(ProfileColor(color), DefaultColor(color), section.hasAlpha) end,
 		reset = function()
 			local from, c = DefaultColor(color), ProfileColor(color)
 			c.r, c.g, c.b, c.a = from.r, from.g, from.b, from.a
-			st:ColorsChanged(color.group)
+			st:ColorChanged(color.group, color.key)
 		end,
 		value = function()
 			local from = DefaultColor(color)
@@ -511,7 +807,7 @@ local function SectionGroup(section, index)
 				local c = ProfileColor(color)
 				c.r, c.g, c.b = r, g, b
 				if section.hasAlpha then c.a = a end
-				st:ColorsChanged(color.group)
+				st:ColorChanged(color.group, color.key)
 			end,
 			default = ColorDefault(section, color),
 		}
@@ -543,7 +839,7 @@ end
 
 -- The Accent row of Global settings > Theme (Media/theme.lua places it): one
 -- color for every theme, with no opacity and its own reset. A set or a reset
--- says 'accent', which what draws in the accent listens for.
+-- says st:ColorChanged('accent'), which what draws in the accent listens for.
 function CO:AccentOption(order)
 	return {
 		type = 'color',
@@ -557,14 +853,14 @@ function CO:AccentOption(order)
 		set = function(_, r, g, b)
 			local c = ProfileAccent()
 			c.r, c.g, c.b = r, g, b
-			st:ColorsChanged('accent')
+			st:ColorChanged('accent')
 		end,
 		default = {
 			differs = function() return not SameColor(st:Color('accent'), st.defaults.theme.accent) end,
 			reset = function()
 				local from, c = st.defaults.theme.accent, ProfileAccent()
 				c.r, c.g, c.b = from.r, from.g, from.b
-				st:ColorsChanged('accent')
+				st:ColorChanged('accent')
 			end,
 			value = function()
 				local from = st.defaults.theme.accent

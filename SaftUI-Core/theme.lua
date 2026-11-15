@@ -85,6 +85,14 @@ local LEGACY = {
 -- reads as this one, so every frame still draws.
 local FALLBACK = 'thick'
 
+-- The name a Theme override draws in: it, or the profile's, or FALLBACK for a
+-- name this version doesn't have. (st:SetBorderColor asks it without a look.)
+local function ResolveName(theme)
+	local name = THEMES[theme] and theme or st.config.profile.theme.name
+	if not THEMES[name] then name = FALLBACK end
+	return name
+end
+
 -- The look for a Theme and Background override, drawn as kind:
 -- { name, inset, alpha, colors, kind }, or nil for None. A transparent
 -- background is see-through at the profile's Opacity, even one asked for while
@@ -94,8 +102,7 @@ local FALLBACK = 'thick'
 function st:ResolveTheme(theme, background, kind)
 	if theme == 'none' then return nil end
 	local profile = st.config.profile
-	local name = THEMES[theme] and theme or profile.theme.name
-	if not THEMES[name] then name = FALLBACK end
+	local name = ResolveName(theme)
 
 	local inset = INSETS[name]
 	if name == 'blizzard' then
@@ -611,19 +618,30 @@ end
 -- frame never drawn and one drawn None are left alone: a control shows its
 -- state in art of its own. A recolor or redraw takes the color off again, so
 -- the module that set it sets it on OnColorsChanged('theme') too.
+-- What ThemeArt.SetBorder reads of a look (its colors), reused: a recolor runs
+-- this for every border it holds, so it makes no look table per call.
+local borderLook = {}
+
 function st:SetBorderColor(frame, r, g, b, a)
 	local entry = drawn[frame]
 	if not entry then return end
-	local look, kind = DrawLook(entry.theme, entry.background, entry.kind)
-	if not look then return end
-	if look.name == 'blizzard' then
-		st.ThemeArt.SetBorder(frame, look, kind, Host(entry), r, g, b, a)
+	local kind = entry.kind
+	if kind == nil then return end
+	-- The look's name and colors, as DrawLook would resolve them, with no table.
+	local strip = IsStrip(kind)
+	local theme = (not strip) and entry.theme or nil
+	if theme == 'none' then return end
+	local name = ResolveName(theme)
+	local colors = st.config.profile.templates[name]
+	if name == 'blizzard' then
+		borderLook.name, borderLook.colors = name, colors
+		st.ThemeArt.SetBorder(frame, borderLook, kind, Host(entry), r, g, b, a)
 	elseif r then
 		frame:SetBackdropBorderColor(r, g, b, a or 1)
-	elseif IsStrip(kind) then
+	elseif strip then
 		frame:SetBackdropBorderColor(0, 0, 0, 0)
 	else
-		frame:SetBackdropBorderColor(unpack(look.colors.bordercolor))
+		frame:SetBackdropBorderColor(unpack(colors.bordercolor))
 	end
 end
 

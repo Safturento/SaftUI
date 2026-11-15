@@ -19,6 +19,9 @@ apply_defaults()
 load_test_file('lib/options_walk.lua')
 local T = load_test_file('lib/theme_helpers.lua')
 load_saftui('SaftUI-Core/Config/optionsmodel.lua')
+load_saftui('SaftUI-Core/Config/optionsdefault.lua')
+assert(SaftUI.OptionsModel.DefaultSource, 'derived defaults are on the options model')
+load_saftui('SaftUI-Core/Config/optionsdefault.lua') -- after the model, as the TOC has it
 load_saftui('SaftUI-Core/Config/optionsbody.lua')
 local st = SaftUI
 local OM, OB = st.OptionsModel, st.OptionsBody
@@ -271,6 +274,7 @@ test("Action bars: tooltips, Position last on each bar and extra, Theme and Back
 	AB.UpdateBar, AB.UpdateBars, AB.LayoutBar = count('UpdateBar'), count('UpdateBars'), count('LayoutBar')
 	AB.LayoutExtra, AB.UpdateConfig = count('LayoutExtra'), count('UpdateConfig')
 	load_saftui('SaftUI-ActionBars/shared.lua')
+	AB.COUNTDOWN_CVAR = 'countdownForCooldowns' -- skin.lua's, which this world stands in for
 	load_saftui('SaftUI-ActionBars/textoptions.lua')
 	load_saftui('SaftUI-ActionBars/options.lua')
 	AB:ConvertProfile() -- the world the game reaches: a converted profile
