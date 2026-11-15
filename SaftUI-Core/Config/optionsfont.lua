@@ -29,12 +29,13 @@ local Kit = W.Kit
 	  w:Open()  opens the list; w:Pick(key) saves a pick (below)
 	  w:Menu()  -> group, title | nil: the typeface's own menu, which
 	            OW:OpenMenu draws (optionsmenu.lua); nil unless w.kind is
-	            'typeface' and the row isn't faceOnly. Its title is the row's
+	            'typeface', the row isn't faceOnly and isn't disabled. Its title is the row's
 	            name, ': ' and the face ("Header font: Colus"); its group holds
 	            Fonts' FN.FieldOptions(read, write, 'text', option.fontFields)
 	            rows (Size, Outline, Shadow offset X and Y, Line spacing, or the
-	            fields the row names). A row reads st:FontFields(w.value); a
-	            change commits a whole new table (FN.WithField of a fresh
+	            fields the row names). The rows read and write through the row's
+	            live widget (its body and path, found again: widgets are pooled).
+	            A row reads st:FontFields(w.value); a change commits a whole new table (FN.WithField of a fresh
 	            st:FontFields) through OM.Set, never an edit of the saved one,
 	            and writes nothing once the value is no longer a typeface
 	  w:OpenMenu(), w:ToggleMenu()  the dots' click: the menu, or closed when
@@ -107,7 +108,6 @@ function W.FontEntries(value, faceOnly)
 	return entries, selected
 end
 
-local DOTS_LINES = { 'Its own size, outline, shadow and line spacing.' }
 local LINK_LINES = {
 	'A shared font. Its typeface, size and outline are set on Global settings > Fonts, and change every text that uses it.',
 	'Click to go there.',
@@ -125,7 +125,7 @@ builders.font = function(w)
 	dots:SetPoint('RIGHT', frame, 'RIGHT', 0, 0)
 	dots.tip = function()
 		if w.kind == 'typeface' then
-			return st:FontFields(w.value).font_name .. ' for ' .. w.row.name, DOTS_LINES
+			return Fonts().DotsTitle(w.row.option.fontFields, st:FontFields(w.value).font_name)
 		end
 		return st:FontLabel(w.linkKey), LINK_LINES
 	end
@@ -178,24 +178,35 @@ define('font', {
 		self.dots:SetShown(kind == 'shared' or not self.faceOnly)
 	end,
 
-	-- The typeface's own menu (see the top), built on each ask.
+	-- The typeface's own menu (see the top), built on each ask. Its rows read
+	-- and write through the row's live widget, found again by the body and
+	-- path it was built for: widgets are pooled, so after a render that left a
+	-- busy menu's rows in place this widget may be another row's.
 	Menu = function(self)
-		if self.kind ~= 'typeface' or self.faceOnly or not self.row then return nil end
+		if self.kind ~= 'typeface' or self.faceOnly or self.disabled or not self.row then return nil end
 		local title = self.row.name .. ': ' .. st:FontFields(self.value).font_name
-		local function read(field)
-			return Fonts().FieldValue(st:FontFields(self.value), field)
+		local body, path = self.rowBody, self.row.path
+		local function live()
+			if self.row and self.rowBody == body and SamePath(self.row.path, path) then return self end
+			for _, cell in ipairs(body and body.cells or {}) do
+				local widget = cell.widget
+				if widget and cell.row.path and SamePath(cell.row.path, path) and widget.Menu then return widget end
+			end
 		end
-		local path = self.row.path
+		local function read(field)
+			local widget = live()
+			return Fonts().FieldValue(st:FontFields(widget and widget.value), field)
+		end
 		local function write(field, value)
-			-- Only this menu's own row: a widget is pooled, so a menu left over
-			-- from a page drawn again may find the widget on another row.
-			if not self.row or self.disabled or not SamePath(self.row.path, path) then return end
+			local widget = live()
+			if not (widget and widget.row) or widget.disabled then return end
 			-- The value as it is now: a menu left over from a typeface that a
 			-- shared font has replaced writes nothing.
-			self:Refresh()
-			if self.kind ~= 'typeface' or self.faceOnly then return end
-			OM.Set(self.root, self.row, Fonts().WithField(st:FontFields(self.value), field, value))
-			self:Refresh()
+			widget:Refresh()
+			if widget.kind ~= 'typeface' or widget.faceOnly then return end
+			local ok, err = OM.Set(widget.root, widget.row, Fonts().WithField(st:FontFields(widget.value), field, value))
+			widget:Refresh()
+			if ok == false and err and widget.onChanged then widget.onChanged(false, err) end
 		end
 		local fields = self.row.option.fontFields
 		return { type = 'group', name = title, args = Fonts().FieldOptions(read, write, 'text', fields) }, title
@@ -209,7 +220,7 @@ define('font', {
 
 	-- The dots' click: the menu, or closed when it's this row's.
 	ToggleMenu = function(self)
-		if self.disabled or not self.row then return end
+		if not self.row then return end
 		local OW = st.OptionsWindow
 		if OW and OW.IsMenuShown and OW:IsMenuShown(self) then
 			OW:CloseMenu()

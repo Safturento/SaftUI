@@ -26,7 +26,7 @@ The icon's name from `st.icons` (`x`, `chevronDown`, `chevronUp`, `rotateCcw`, `
 | `chevron-down` | dropdown caret; the rule editor's field (a copy) | 16 | `text-grey` |
 | `rotate-ccw` | reset | 14 | `accent`, `white` |
 | `diff` | diff icon | 16 | `diff` |
-| `ellipsis-vertical` | the menu item's icon (spec; in the `sb-task5` build) | 16 | `text-grey`, `accent` |
+| `ellipsis-vertical` | the menu item's icon, and the font row's slot for a typeface (spec; in the `sb-task5` build) | 16 | `text-grey`, `accent` |
 | `chevron-up`, `chevron-down` | the position nudges (12 x 12, one texture per arrow) | 12 | `text-grey`, `text` |
 | `log-out`, `grid-3x3`, `magnet`, `align-start-vertical`, `layers`, `map-pin`, `eye`, `power-off`, `search`, `undo-2`, `redo-2`, `history`, `picture-in-picture-2`, `panel-top`, `square-mouse-pointer`, `square-dashed-mouse-pointer` | the edit mode bar (registered with the kit's icon button; see Button) | 16 | `text-grey`, `accent` |
 | `minimize-2`, `maximize-2` | the window's size buttons: shrink and grow, in the header and (grow) on the bar | 16 | `text-grey`, `accent` |

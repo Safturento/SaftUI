@@ -42,7 +42,7 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	menuTitle, else its name; the section font, grey) 12 in and 10 down;
 	under it a plain content frame (no scroll frame: it is as tall as what it
 	holds, so nothing opened from it is cut off) holding a body of its own,
-	OB.New(content, OM.MenuRoot(option), MenuChanged, 376, { oneColumn =
+	OB.New(content, OM.MenuRoot({ menu = group }), MenuChanged, 376, { oneColumn =
 	true }), which draws OM.BuildView(root, OM.MENU_KEY).sections: every row
 	a line of its own, on panels under Thick and Thin (a closing line of
 	buttons floats under its panel), none under Blizzard. The menu is as tall
@@ -79,7 +79,8 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	nil (a font row whose value is a shared font again), it closes.
 	While it's busy (a list or a confirm open from it, its slider held, one of
 	its boxes typed in) its rows aren't drawn again, as FollowDialog waits: it
-	only moves onto its item's new dots.
+	only moves onto its item's new dots, unless that cell is gone or its
+	widget gives no menu, when it closes.
 
 	It closes on Esc, a click outside, OW:Navigate, a tab or pick (Select), a
 	search result's GoTo (through OW:Navigate), the window hiding (combat

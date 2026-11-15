@@ -829,6 +829,22 @@ function DOTS:GetConfigTable()
 	}
 end
 
+local PICK = st:NewModule('FontDotsPick')
+function PICK:GetConfigTable()
+	local function unit(name, key)
+		return {
+			name = name, type = 'group', childGroups = 'tab',
+			args = { text = { order = 1, type = 'group', name = 'Text', args = {
+				[key] = FontRow(key, 1, nil, { name = 'Font' }),
+			} } },
+		}
+	end
+	return {
+		name = 'Font dots pick', type = 'group', category = 'Frames', childGroups = 'select',
+		args = { a = unit('Unit A', 'fa'), b = unit('Unit B', 'fb') },
+	}
+end
+
 local COLUS = { font_name = 'Colus', font_size = 15, font_outline = 'NONE', shadow_offset = { 0, 0 }, spacing = 4 }
 local function colus()
 	return { font_name = 'Colus', font_size = 15, font_outline = 'NONE', shadow_offset = { 0, 0 }, spacing = 4 }
@@ -869,9 +885,8 @@ test('a typeface picked: the dots in the slot, grey, lit under the mouse (white 
 			stub.fire_script(w.dots, 'OnEnter', true)
 			eq(rgb(w.dots.icon:GetVertexColor()), look == 'blizzard' and rgb(1, 1, 1) or blue(), 'lit under the mouse')
 			eq(tip.owner, w.dots)
-			eq(tip.lines[1], 'Colus for Header font')
-			eq(tip.lines[2], 'Its own size, outline, shadow and line spacing.')
-			eq(#tip.lines, 2)
+			eq(tip.lines[1], 'Size, outline, shadow and line spacing for Colus')
+			eq(#tip.lines, 1, 'the title alone')
 			stub.fire_script(w.dots, 'OnLeave', true)
 			check(not tip.shown, 'and the tip goes')
 			-- Back to a shared font: the link, with its own tooltip.
@@ -1140,4 +1155,186 @@ test('a faceOnly row never shows dots, so no menu opens inside an item menu', fu
 		eq(c.widget:Menu(), nil)
 		close_dots()
 	end)
+end)
+
+------------------------------------------------------------------ fix round 1
+
+test("the dots' tooltip lists only what the row's menu shows", function()
+	in_look('thick', function(tip)
+		local function title(opts)
+			local w = row_widget('header', colus(), opts)
+			stub.fire_script(w.dots, 'OnEnter', true)
+			local text = tip.lines[1]
+			stub.fire_script(w.dots, 'OnLeave', true)
+			return text
+		end
+		eq(title(nil), 'Size, outline, shadow and line spacing for Colus')
+		eq(title({ fields = { 'font_size', 'font_outline', 'shadow_x', 'shadow_y' } }), 'Size, outline and shadow for Colus')
+		eq(title({ fields = { 'font_size', 'font_outline' } }), 'Size and outline for Colus')
+		eq(title({ fields = { 'font_size' } }), 'Size for Colus')
+	end)
+end)
+
+local function three_rows()
+	open_dots()
+	vals.header = colus()
+	vals.tip = { font_name = 'Homespun', font_size = 9, font_outline = 'THICKOUTLINE', shadow_offset = { 3, 3 }, spacing = 9 }
+	vals.chat = { font_name = 'Bebas Neue', font_size = 30, font_outline = 'MONOCHROME', shadow_offset = { -2, -2 }, spacing = 1 }
+	OW:Render()
+end
+
+local function menu_get(field)
+	return OW.GetMenuFrames().body.root.menu.args[field].get()
+end
+
+test('a render under a busy menu: a held slider keeps reading and writing its own row (I1)', function()
+	in_look('thick', function()
+		three_rows()
+		stub.click(dots_of('header'))
+		local tip, chat = vals.tip, vals.chat
+		local slider = mcell('font_size').widget
+		stub.mouse_buttons.LeftButton = true
+		slider.dragging = true
+		slider:Commit(16)
+		eq(vals.header.font_size, 16)
+		for _ = 1, 3 do OW:Render() end
+		slider = mcell('font_size').widget
+		slider.dragging = true
+		slider:Commit(17)
+		eq(vals.header.font_size, 17, 'the next step lands on the header row')
+		eq(menu_get('font_outline'), 'NONE', "the menu reads the header's outline, not another row's")
+		eq(menu_get('shadow_x'), 0)
+		check(vals.tip == tip and vals.chat == chat, 'no other row was written')
+		stub.mouse_buttons.LeftButton = nil
+		slider.dragging = nil
+		close_dots()
+	end)
+end)
+
+test('a render under a busy menu: a typed box keeps its row (I1)', function()
+	in_look('thick', function()
+		three_rows()
+		stub.click(dots_of('header'))
+		local box = mcell('font_size').widget.edit
+		box:SetFocus()
+		OW:Render()
+		OW:Render()
+		box:SetText('33')
+		stub.fire_script(box, 'OnEnterPressed')
+		eq(vals.header.font_size, 33, 'Enter lands on the header row')
+		eq(vals.tip.font_size, 9)
+		eq(vals.chat.font_size, 30)
+		box:ClearFocus()
+		close_dots()
+	end)
+end)
+
+test('the unit picker changing with the menu open never writes the other unit (I1)', function()
+	in_look('thick', function()
+		fresh()
+		vals.fa, vals.fb = colus(), { font_name = 'Homespun', font_size = 8 }
+		st.Config:Open('FontDotsPick', 'a', 'text')
+		stub.click(H.cell('fa').widget.dots)
+		check(OW:IsMenuShown(), 'open on unit a')
+		local held = H.cell('fa').widget:Menu()
+		local b = vals.fb
+		st.Config:Open('FontDotsPick', 'b', 'text')
+		check(not OW:IsMenuShown(), 'the pick closed it')
+		held.args.font_size.set(nil, 50)
+		check(vals.fb == b, "unit b's value is untouched")
+		eq(vals.fa.font_size, 15, "and so is a's: a closed menu's rows write nothing now")
+		close_dots()
+	end)
+end)
+
+test('the value turned shared or replaced under a busy menu: no write of the old table (m1)', function()
+	in_look('thick', function()
+		three_rows()
+		stub.click(dots_of('header'))
+		local box = mcell('font_size').widget.edit
+		box:SetFocus()
+		-- Busy: the render leaves its rows. The value became a shared font.
+		vals.header = 'heading'
+		OW:Render()
+		check(OW:IsMenuShown() == false, 'a shared font closes it even while busy')
+		box:ClearFocus()
+		-- Direct: the menu's own write with the value changed and no render.
+		vals.header = colus()
+		OW:Render()
+		stub.click(dots_of('header'))
+		local count = #sets
+		local menu = OW.GetMenuFrames().body.root.menu.args
+		vals.header = 'pixel'
+		menu.font_size.set(nil, 40)
+		eq(#sets, count, 'no set for a value that is no longer a typeface')
+		eq(vals.header, 'pixel')
+		-- Replaced by another typeface: the write is a copy of that one.
+		vals.header = { font_name = 'Bebas Neue', font_size = 9, font_outline = 'OUTLINE', shadow_offset = { 1, 2 }, spacing = 3 }
+		local other = vals.header
+		menu.font_size.set(nil, 41)
+		eq(#sets, count + 1)
+		eq(vals.header.font_name, 'Bebas Neue', "a copy of the table that is there now, not the one the menu was built from")
+		eq(vals.header.font_outline, 'OUTLINE')
+		eq(vals.header.shadow_offset[2], 2)
+		eq(vals.header.font_size, 41)
+		check(vals.header ~= other and other.font_size == 9, 'a new table')
+		close_dots()
+	end)
+end)
+
+test("FollowMenu closes at once, though busy, when its cell is gone or its widget has no menu (m2)", function()
+	in_look('thick', function()
+		three_rows()
+		take_errors()
+		-- Its cell gone while a list opened from the menu is open.
+		stub.click(dots_of('header'))
+		local outline = mcell('font_outline').widget
+		stub.click(outline.face or outline.frame)
+		hideHeader = true
+		OW:Render()
+		check(not OW:IsMenuShown(), 'the menu closed')
+		eq(W.ListOwner(), nil, 'and its list with it')
+		hideHeader = nil
+		OW:Render()
+		-- A box typed in, and the value shared.
+		stub.click(dots_of('header'))
+		local box = mcell('font_size').widget.edit
+		box:SetFocus()
+		vals.header = 'heading'
+		OW:Render()
+		check(not OW:IsMenuShown(), 'a shared font closes it, busy as it is')
+		box:ClearFocus()
+		eq(#take_errors(), 0)
+		close_dots()
+	end)
+end)
+
+test('a row disabled under an open menu closes the menu (m3)', function()
+	in_look('thick', function()
+		three_rows()
+		stub.click(dots_of('header'))
+		local row = H.cell('header').row.option
+		row.disabled = function() return true end
+		OW:Render()
+		check(not OW:IsMenuShown(), 'the menu closed')
+		row.disabled = nil
+		close_dots()
+	end)
+end)
+
+test('the typeface menu sits on whole pixels under Thick, Thin and Blizzard (m7)', function()
+	for _, look in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		for _, noise in ipairs({ 0, 2 ^ -14, -2 ^ -14 }) do
+			in_look(look, function()
+				stub.size_noise = noise
+				three_rows()
+				stub.click(dots_of('header'))
+				local off = P.off(OW.GetMenuFrames().frame)
+				eq(#off, 0, look .. ', noise ' .. noise .. ': ' .. P.report(off))
+				close_dots()
+				stub.size_noise = 0
+			end)
+		end
+	end
+	stub.size_noise = 0
 end)
