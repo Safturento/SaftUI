@@ -462,6 +462,26 @@ test('a title longer than the line is cut with dots inside it, the count kept', 
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+test("in Compact a title longer than its column is cut with dots inside it too, the count kept, on whole pixels", function()
+	for _, title in ipairs({ 'Flasks/Potions/Food (22)', 'Professions/Recipes (14)', 'Paladin/Priest/Warlock (1)' }) do
+		local c = world('compact', { Weapon = 2 })
+		local weapons = c.categories.Weapons
+		local items = {}
+		for _, s in ipairs(weapons.slots) do if s.info then table.insert(items, s.info) end end
+		-- Colus 15 is wider than the stubs' size-only measure: a long name stands in.
+		local long = title .. ' and then some more words to be sure it cannot fit'
+		INV:UpdateCategory('bag', 'Weapons', items, long, F)
+		local text = weapons.header.text
+		check(text:GetUnboundedStringWidth() <= weapons:GetWidth(), title .. ': the title fits its column')
+		check(text:GetText():find('%.%.%.'), title .. ': cut with dots: ' .. tostring(text:GetText()))
+		eq(weapons:GetWidth() % 1, 0, 'the column is a whole width')
+		eq(text:GetWidth() % 1, 0, 'and the title is cut to a whole width')
+		INV:UpdateCategory('bag', 'Weapons', items, 'Short (2)', F)
+		eq(text:GetText(), 'Short (2)', 'a short title is left alone')
+	end
+	eq(#take_errors(), 0, 'no errors')
+end)
+
 ------------------------------------------------------------------ Compact, Items per row changed while closed
 
 -- No two shown category frames overlap (Compact has several columns), each
