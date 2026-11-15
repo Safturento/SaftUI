@@ -21,10 +21,11 @@ end
 -- A Colors tab change, or a theme recolor or redraw (st:ColorsChanged): the
 -- feed (Feed/feed.lua), the roll bars (roll.lua) and the loot window's skin
 -- (popup.lua) put back the colors they give their own frames.
-function LT:OnColorsChanged(group)
-	if self.ColorFeed then self:ColorFeed(group) end
-	if self.ColorRollBars then self:ColorRollBars(group) end
-	if self.ColorPopup then self:ColorPopup(group) end
+-- `key` is the changed color, nil for a whole group (a pass at an edit's end).
+function LT:OnColorsChanged(group, key)
+	if self.ColorFeed then self:ColorFeed(group, key) end
+	if self.ColorRollBars then self:ColorRollBars(group, key) end
+	if self.ColorPopup then self:ColorPopup(group, key) end
 end
 
 -- A profile change: re-applies the rolls' and feed's size, spacing, theme,
