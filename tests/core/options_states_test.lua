@@ -6,7 +6,7 @@
 -- W4 (half, collapsed) and W5 (the bar), and W6, the bar with the sidebar
 -- collapsed (it keeps the sidebar's state). The matrix walks them on both
 -- clients, under Thick, Thin and Blizzard, on the pages the window really has
--- (Global settings, Profiles, Action bars, Unit frames with its
+-- (Global settings, the Theme tab of Fonts, Profiles, Action bars, Unit frames with its
 -- Unit, Copy from, Profile and Manage line, the Bags' Categories tab, Loot, Skinning and a
 -- search), one transition at a time, and at each state checks: every edge on a
 -- whole pixel (with the size noise up, down and off, in turn); no two of the
