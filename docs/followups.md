@@ -296,7 +296,9 @@ Then, with the switch on, the spec's G1 to G12, each with the task that built it
 
 **Anchors:** `SaftUI-Bags/header.lua` (`INV:HeaderMinWidth`), `SaftUI-Bags/layout.lua:284` and `:355`, `INV:UpdateContainer`.
 
-**Shape of work:** small: an `INV:OnFontsChanged` that lays out each open container again (out of combat; a bag window can be protected, so it goes through the combat queue), with a test. The bags' footer texts move to the shared fonts in Task 7, so it fits there.
+**What's been considered:** fonts Task 7 (2026-11-15) looked at it and left it, because the one-line `INV:OnFontsChanged() self:UpdateConfig() end` (which already waits for the end of combat through `st:QueueAfterCombat('Inventory')`) also runs `CategoriesChanged`, a full re-sort of every item, on each step of a Size drag on any font (`st:FontsChanged()` fires on every step), and a narrower re-fit of the least width alone needs `layout.lua`'s held layout (`ReleaseLayout`, `layoutPending`) understood and checked in game. A debounce to one run a frame would cut it but not the re-sort. Task 7 did move the bags' footer texts and search box to Text, so Window titles no longer reaches anything in a window but its title.
+
+**Shape of work:** small, but needs a design look at the layout first: an `INV:OnFontsChanged` that re-fits each open container's least width only (out of combat; a bag window can be protected, so it goes through the combat queue), with a test, and only when the title's font is what changed (its value, or a shared font it names, changed since the last run).
 
 ### 2026-11-14 — Position rows of secure frames can anchor to a frame that is moved in combat
 
