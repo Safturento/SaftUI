@@ -1,7 +1,7 @@
 -- SaftUI-Loot/roll.lua's skin of Blizzard's GroupLootFrames: it must write no
 -- field onto them (.agents/taint.md rule 1), keep its pieces in its own tables,
 -- and still drive the skin from those, and it does no math on the icon frame's
--- level, which can be secret. Loads the real roll.lua and rollinfo.lua.
+-- level, which can be secret. Loads the real roll.lua, rollinfo.lua, Feed/loothistory.lua and Feed/rolls.lua.
 -- The stub roll frame mirrors Blizzard's GroupLootFrameTemplate on Forever: the
 -- buttons sit in a LootButtonContainer child.
 --
@@ -22,6 +22,11 @@ local function world()
 	GetLootRollItemInfo = function(rollID)
 		return 134400, 'Drakefire Amulet', 1, 4, true, true, true, false
 	end
+	-- No tooltip is open on anything the skin makes.
+	GameTooltip = { IsOwned = function() return false end }
+	GetLootRollItemLink = function(rollID)
+		return '|cffa335ee|Hitem:19019::::::::60:::::|h[Drakefire Amulet]|h|r'
+	end
 	load_saftui('SaftUI-Core/skinning.lua')
 	load_saftui('SaftUI-Loot/config.lua')
 	apply_defaults()
@@ -35,6 +40,11 @@ local function world()
 	load_saftui('SaftUI-Loot/roll.lua')
 	load_saftui('SaftUI-Loot/rolltest.lua')
 	load_saftui('SaftUI-Loot/rollinfo.lua')
+	-- loothistory.lua hands rollinfo.lua its plain-value helpers (LT.PlainNumber)
+	-- and rolls.lua its item helpers (ItemString, ItemID), so UpdateRollBars runs.
+	load_saftui('SaftUI-Loot/Feed/history.lua')
+	load_saftui('SaftUI-Loot/Feed/loothistory.lua')
+	load_saftui('SaftUI-Loot/Feed/rolls.lua')
 	return LT
 end
 
