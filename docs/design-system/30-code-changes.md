@@ -101,7 +101,7 @@ The organisational changes that would make this system real in the addon: one pl
 Each a few lines and safe:
 - the toggle's literal 34 (`optionstypes.lua:36`) to `OB.FLAT.rowHeight`;
 - the close hover red read from `templates.close`;
-- the chat prefix `|cff00adef` (`api.lua:122`) and the error `|cFFFF0000` (`:129`) read from the profile's blue and red;
+- the chat prefix `|cff00adef` (`api.lua:122`) and the error `|cFFFF0000` (`:129`) read from the profile's blue and red (the prefix is done: it is the accent's hex at print time; the error prefix waits for Danger, color roles Task 4);
 - `OB.SHARE` colours read through `Colors()`;
 - the float gap to the owner's 24 (`OB.FLOAT_GAP`, `optionsbody.lua:133`);
 - delete the unreferenced TGAs and the 20 x 10 close path once the loot popup is decided;

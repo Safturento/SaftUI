@@ -15,7 +15,7 @@ The share fields' "who differs and with what": a list of member names and their 
 | Part | Value | Tokens |
 | --- | --- | --- |
 | Icon | `diff` drawn 16, tinted `diff` (orange), 4 after the label's text; the label is cut to leave it room | `icon-diff`, `diff`, `diff-gap` |
-| Tooltip | the setting's name in `white`, "All bars: value", then two columns: member names, values in `own` | `white`, `tooltip-gold`, `own` |
+| Tooltip | the setting's name in `white`, "All bars: value", then two columns: member names, values in `accent` | `white`, `tooltip-gold`, `accent` |
 | Hover line | on the row: "Apply to: All \| Multiple" (here All makes every bar follow; Multiple lists the bars that own it) | `small`, `accent` |
 
 ## States

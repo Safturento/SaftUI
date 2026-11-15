@@ -24,7 +24,7 @@ The game's tooltip in SaftUI's theme: a `tooltip`-kind frame holding a white tit
 | Title | white | `white` |
 | Desc | GameTooltip's default line colour, Blizzard's gold, because the kit passes none | `tooltip-gold` |
 | Why it's disabled | Text > Red | `text-red` |
-| Diff tooltip | the name, "All bars: value", then two columns: member names, then their values in light blue | `own` |
+| Diff tooltip | the name, "All bars: value", then two columns: member names, then their values in the accent | `accent` |
 | Unit tooltips | the border and status bar in the unit's class or reaction colour | `class-*`, `reaction-*` |
 | Item tooltips | the border in the item's quality colour; the Bags add "Category:" in blue and "Caught by:" in yellow | `quality-*`, `accent`, `text-yellow` |
 

@@ -28,7 +28,7 @@ SaftUI replaces World of Warcraft's interface with flat, dark frames that sit qu
 - **Surfaces.** In-world frames take `backdrop` at `alpha-theme` (0.9) with a `border` line; Thick adds `border-alt` lines outside and inside it. The options window draws `backdrop` solid, its sidebar `sidebar`, and each section's rows sit on `panel-fill` with `hairline` lines between them. Controls are Boxes: `kit-field` inside a `kit-edge` line with a `kit-alt` line outside; buttons and open lists fill with `kit-bg`.
 - **Text.** `text` for labels, values, titles and the tab you are on; `text-grey` for section titles, notes, captions, other tabs, carets and anything dimmed; `white` for a tooltip's title and the colour bar's hex code; `text-red` for errors and why something is disabled. Under Thin, `text-grey` and `text-red` miss 4.5:1 on `backdrop` (4.3:1 and 3.6:1); on `panel-fill` grey passes (5.2:1) and red is still short (4.4:1).
 - **Accent.** `accent` is the only accent: the check mark, slider fill, picked dot, the selected sidebar entry's bar and the tab underline, a hovered or focused control's edge, links, the own mark, a selected mover. `accent-fill` (25%) sits behind a selected or hovered row. Never use a second blue for these.
-- **Shared settings.** `own` (light blue) marks a member's own value; `diff` (orange) marks a setting some member changed. They differ from each other in lightness as well as hue. Use them for nothing else.
+- **Shared settings.** The `accent` marks a member's own value (the bar and the label); `diff` (orange) marks a setting some member changed. Use them for nothing else on these rows.
 - **Data colours.** `class-*`, `reaction-*`, `power-*`, `quality-*` (through `st:QualityColor`), `threat-*` and `status-offline` colour bars, names and borders by what they show. They are profile settings: never hard-code them, never use them as decoration.
 - **Profile Buttons colours.** `button-normal` is a Core button's highlight and `button-hover` a checked Core check box, despite their names. New work uses the kit's states below instead.
 
@@ -73,11 +73,11 @@ All lines are `line-width` (1px); marks and underlines are `mark-width` (2px). A
 | On | an accent square inside the check box | `accent`, `check-inset` |
 | Selected | accent fill with an accent bar (sidebar), accent underline (tab) | `accent-fill`, `mark-width` |
 | Disabled | the control at 40%, its label grey; the tooltip says why | `alpha-disabled`, `text-grey`, `text-red` |
-| Own | 2px accent bar, label light blue | `accent`, `own` |
+| Own | 2px accent bar, label in the accent | `accent` |
 | Differs | orange diff icon after the label | `diff` |
 | Error | the status line or tooltip line in red | `text-red` |
 
-State is always visible; hover only offers actions. In-world icon buttons keep their own set: hover `accent` added, pressed `pressed-fill`, checked `checked-fill`, flash `flash-fill`, equipped `button-green` border.
+State is always visible; hover only offers actions. In-world icon buttons keep their own set: hover `accent` added, pressed `pressed-fill`, checked `checked-fill`, flash `flash-fill`, equipped `accent` border.
 
 ### Layering
 
@@ -103,7 +103,7 @@ Every page whose frames SaftUI draws offers Theme and Background, with "Use Saft
 1. **Lucide icons** wherever an icon fits (see `Icons`). An icon that replaces a word has a tooltip saying what it does.
 2. **Reset per setting.** A `ResetIcon` (rotate-ccw, `icon-reset`, `accent`) sits beside a control, shown only while its value differs from its default, or from the shared value on a member page. No section or page Reset buttons.
 3. **Menus for parts.** A part with three or more settings, or settings that only apply sometimes, is a one-line `MenuItem` (Show box, name, `ellipsis-vertical`) with its settings in a menu titled with the part's name, `menu-width` (400) wide. Play it by ear where a page feels crowded.
-4. **Shared settings.** An "All" entry first in the picker, which every member follows. A member's own setting is marked with `OwnMark` (`accent` bar, `own` label) and a hover line: Own, the reset icon, Apply to: All | Multiple (`ApplyList`). The All page shows an orange `DiffIcon` whose tooltip lists who differs and with what. State is always visible; hover only offers actions.
+4. **Shared settings.** An "All" entry first in the picker, which every member follows. A member's own setting is marked with `OwnMark` (`accent` bar and label) and a hover line: Own, the reset icon, Apply to: All | Multiple (`ApplyList`). The All page shows an orange `DiffIcon` whose tooltip lists who differs and with what. State is always visible; hover only offers actions.
 5. **Sections on panels.** Under Thick and Thin a `Section`'s rows sit on `panel-fill` with a `hairline` column divider and hairlines between lines. The Blizzard theme keeps Blizzard's art and flat layout.
 6. **Buttons float.** A line that holds only buttons has no panel behind it. A section's or dialog's closing buttons float under the panel with `float-gap` (24) above and below.
 7. **The color field** (`ColorBar`) is as wide as a dropdown (`control-width`): a swatch at its left (a see-through color over a checker), its hex code beside it in `text`, with `· NN%` when its opacity is under 100%.
