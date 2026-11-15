@@ -397,8 +397,11 @@ What the owner will see on his own profile, if he never set them:
 - The bags' category titles in Colus 15 in place of AgencyFB Bold 16, on the same line of their title
   band (Category title height, 50 by default; G3). The search box as it is.
 - If his SaftUI tracker is on (it is off by default), its header line, count and zone headers in Colus 15.
-- `/sui`'s titles as they are, unless he changed Colus's face on the Fonts tab: then they go back to Colus,
-  from Heading (Question 2).
+- `/sui`'s titles as they are, whether or not he changed Colus's face on the Fonts tab: at upgrade, once,
+  a profile that holds a face for Huge title other than Colus gives that face to Heading (while Heading's
+  own face is still Colus), and the profile is marked so it never runs again; any other profile keeps
+  Heading at Colus. A profile switched to, copied or imported later takes the same step the first time it
+  loads (Question 2, Settled 3).
 - On the Fonts tab: the new names and order, Heading's section, no Pixel Huge or Normal Med, no Name rows,
   Window titles gone to the Theme tab.
 - Every font row in `/sui`: the new list, and the link icon beside every one (every default is a shared
@@ -628,9 +631,14 @@ of text rows' reload notes.
    and the quest count at the tracker's top as well as the zone headers. As written, Heading takes both. The
    other way is a separate Zone header font, a new setting defaulting to Heading, with Header font staying
    Text.
+
+   **Answered (Settled 2):** as written. Heading takes both.
 2. **Did you ever change Colus's face on the Fonts tab?** `/sui`'s titles have followed it. As written,
    Heading starts as Colus whatever Huge title holds, so a changed face would leave `/sui`'s titles. If you
    did, Heading can start from Huge title's face instead, once, at upgrade.
+
+   **Answered (Settled 3):** not known, so both cases are covered: Heading starts from Huge title's face
+   once, at upgrade, when the profile holds a changed one, else Colus.
 
 ## Calls made while writing this
 
@@ -677,3 +685,20 @@ Ordered by how much the owner is likely to care.
 26. **"Text" names both a shared font and a color**, on their own tabs.
 27. **The phases' order:** values, Fonts tab, the row, then readers and Heading's defaults in either order,
     then the action bars' and buffs' lists.
+
+## Settled with the owner after the draft (2026-11-14)
+
+These override anything above that they contradict.
+
+1. **The design is approved.** "I'm good with all of those suggestions, if any feel off we can adjust".
+   Every call under "Calls made while writing this" (1 to 27) stands as written.
+2. **Question 1: Heading takes both.** `tracker.header_font` stays one setting, defaulting to Heading,
+   for SaftUI's tracker's header line ("Objectives" and the quest count, `window.lua`) and its zone
+   headers (`rows.lua`). There is no separate Zone header font.
+3. **Question 2: both cases are covered.** Whether the owner ever changed Colus's face is not known. At
+   upgrade, Heading's face starts from Huge title's face when the profile holds a changed one (a face
+   other than Colus), as a one-time step marked in the profile; otherwise Heading's face is Colus. The step
+   leaves a Heading face the player already set alone, and runs once for each profile, the first time it
+   loads (a profile switched to, copied or imported later included). `/sui`'s titles therefore keep the
+   face they show today in either case. This replaces "then they go back to Colus, from Heading" under
+   "What changes on screen at upgrade", which now says so.
