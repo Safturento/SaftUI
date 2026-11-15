@@ -31,6 +31,8 @@ local function world(client, build, opts)
 	end)
 	load_core_helpers()
 	load_editmode()
+	load_saftui('SaftUI-Core/Config/optionsmodel.lua') -- the page's saved fields (st.Config.SavedIn)
+	load_saftui('SaftUI-Core/Config/optionsdefault.lua')
 	UIParent:SetScale(768 / 600)
 	st = SaftUI
 	load_saftui('SaftUI-Misc/config.lua')
@@ -327,7 +329,9 @@ end
 test('the Durability page: the settings, then Position', function()
 	world('forever')
 	load_test_file('lib/options_walk.lua')
+	local R = load_test_file('lib/reset_walk.lua')
 	local tree = DUR:GetConfigTable()
+	R.check_page({ Durability = tree }, 'Durability')
 	eq(tree.category, 'Info', 'in the Info group')
 	eq(tree.name, 'Durability', 'the page')
 	local general = tree.args.general
@@ -348,6 +352,18 @@ test('the Durability page: the settings, then Position', function()
 	general.set({ 'move' }, false)
 	eq(profile.durability.move, false, 'writes durability.move')
 	check(general.args.position.validate({}, 'frame', 'DurabilityFrame') ~= true, "Position can't be anchored to the figure")
+	clean()
+end)
+
+test("the durability figure's Position has a mover but no default place: no reset, however far it is moved", function()
+	world('forever')
+	local OM = st.OptionsModel
+	local root = { Durability = DUR:GetConfigTable() }
+	local position = root.Durability.args.general.args.position
+	local row = { option = position, path = { 'Durability', 'general', 'position' }, type = 'position', key = 'position' }
+	eq(OM.DefaultSource(root, row), 'mover', 'the mover is its source')
+	position.set({}, 'y_off', -300)
+	check(not OM.DefaultDiffers(root, row), "moved: still no icon (the mover's noDefaultReason)")
 	clean()
 end)
 

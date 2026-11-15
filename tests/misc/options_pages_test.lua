@@ -13,12 +13,14 @@
 -- Blizzard_BuffFramePosition.lua; Blizzard_SwingTimerPosition.lua;
 -- skinning.lua), Misc's defaults, Core's generators and the options model.
 load_core_helpers()
+load_editmode() -- the pages' Position rows reset through their movers
 load_saftui('SaftUI-Misc/config.lua')
 apply_defaults()
 load_test_file('lib/options_walk.lua')
 local T = load_test_file('lib/theme_helpers.lua')
 load_saftui('SaftUI-Core/Config/optionsmodel.lua')
 load_saftui('SaftUI-Core/Config/optionsbody.lua')
+local R = load_test_file('lib/reset_walk.lua')
 local st = SaftUI
 local OM, OB = st.OptionsModel, st.OptionsBody
 local profile = st.config.profile
@@ -73,6 +75,27 @@ local function layout(root, page, tab)
 	return table.concat(got, ', '), view
 end
 
+-- The model's row for a path under the root (as tests/core/options_saved_test.lua makes one).
+local function row_of(root, ...)
+	local path = { ... }
+	local option = { args = root }
+	for _, key in ipairs(path) do option = OM.SubOption(option, key) end
+	return { option = option, path = path, type = option.type, key = path[#path] }
+end
+
+-- Moves a row's value through its own set, checks the icon shows, resets it, checks the icon goes
+-- and the saved value is the default again.
+local function reset_roundtrip(root, name, get_saved, default, change, ...)
+	local row = row_of(root, ...)
+	check(not OM.DefaultDiffers(root, row), name .. ': fresh, no icon')
+	change()
+	check(OM.DefaultDiffers(root, row), name .. ': changed, the icon shows')
+	local ok = OM.DefaultReset(root, row)
+	check(ok, name .. ': the reset runs')
+	eq(get_saved(), default, name .. ': back to the default')
+	check(not OM.DefaultDiffers(root, row), name .. ': and the icon is gone')
+end
+
 local function position(x_off) return { point = 'TOP', rel_point = 'TOP', x_off = x_off or 0, y_off = 0, frame = 'UIParent' } end
 
 test('Tooltip: Theme, Background and Font read and write the profile, and a Theme or Background change re-skins', function()
@@ -84,8 +107,19 @@ test('Tooltip: Theme, Background and Font read and write the profile, and a Them
 	-- tooltip.lua's UpdateConfig (it needs Blizzard's tooltips), and the anchor update, counted.
 	function TT:UpdateConfig() reskins = reskins + 1 end
 	function TT:UpdateTooltipAnchor() anchors = anchors + 1 end
+	-- tooltipposition.lua's mover (SetupTooltipPosition needs Blizzard's tooltip), with its fields.
+	st:RegisterConfigMover(TT.tooltipHolder, {
+		key = 'tooltip', label = 'Tooltip', config = function() return TT.config end, apply = function() end,
+		configPath = { 'Tooltip', 'general' }, module = 'Misc', defaults = function() return st.defaults.tooltip end,
+	})
 	local tree = TT:GetConfigTable()
 	eq(check_page('Tooltip', tree), 1, 'one Position')
+	R.check_page({ Tooltip = tree }, 'Tooltip')
+	reskins, anchors = 0, 0 -- the walk's sets counted
+	local tt_root = { Tooltip = tree }
+	reset_roundtrip(tt_root, "Tooltip's Font", function() return profile.tooltip.font end, st.defaults.tooltip.font,
+		function() tree.args.general.set(info_for('font'), 'pixel') end, 'Tooltip', 'general', 'font')
+	reskins = 0
 	local general = tree.args.general
 	eq(general.args.theme.type, 'select', 'Theme is a select')
 	eq(general.args.background.type, 'select', 'Background is a select')
@@ -128,9 +162,27 @@ test('Totem bar: one small color per element, read and written as the bar reads 
 	for _, name in ipairs({ 'ApplySkin', 'ApplyTimerLayout', 'ApplyButtonLayout', 'Apply' }) do
 		TB[name] = function() applied[#applied + 1] = name end
 	end
+	-- totemposition.lua's mover: no default place (it took Blizzard's).
+	st:RegisterMover('totembar', {
+		frame = TB.holder, label = 'Totem Bar', getPosition = function() return TB:GetPosition() end,
+		setPosition = function(position) TB.config.position = position end, apply = function() end,
+		configPath = { 'TotemBar', 'general' }, module = 'Misc', noDefaultReason = 'no default place',
+	})
 	local tree = TB:GetConfigTable()
 	eq(tree.name, 'Totem bar', 'sentence case, as the sidebar shows it')
 	eq(check_page('TotemBar', tree), 1, 'one Position')
+	R.check_page({ TotemBar = tree }, 'TotemBar')
+	do
+		local fire = st.defaults.totembar.colors.fire
+		local row = row_of({ TotemBar = tree }, 'TotemBar', 'general', 'color_fire')
+		check(not OM.DefaultDiffers({ TotemBar = tree }, row), "the fire color: fresh, no icon")
+		tree.args.general.args.color_fire.set(nil, 0.1, 0.2, 0.3)
+		check(OM.DefaultDiffers({ TotemBar = tree }, row), 'the fire color: changed, the icon shows')
+		check(OM.DefaultReset({ TotemBar = tree }, row), 'the reset runs')
+		eq(profile.totembar.colors.fire[1] .. profile.totembar.colors.fire[2] .. profile.totembar.colors.fire[3], fire[1] .. fire[2] .. fire[3],
+			'the fire color is the default again')
+	end
+	applied = {}
 	local args = tree.args.general.args
 
 	local elements = { 'earth', 'fire', 'water', 'air' }
@@ -179,16 +231,44 @@ end
 
 test('Buffs: the text positions are Position options over the same keys', function()
 	local AP = auras()
-	local real = { UpdateFont = AP.UpdateFont, UpdateText = AP.UpdateText, GetGeometry = AP.GetGeometry }
+	local real = { UpdateFont = AP.UpdateFont, UpdateText = AP.UpdateText, GetGeometry = AP.GetGeometry,
+		ApplyHolder = AP.ApplyHolder, RestoreUnderMax = AP.RestoreUnderMax, LayoutButtons = AP.LayoutButtons }
 	AP.holders = { buffs = CreateFrame('Frame', nil, UIParent), debuffs = CreateFrame('Frame', nil, UIParent) }
 	AP.maxAuras = { buffs = 32, debuffs = 16 }
 	AP.config = profile.auras
-	function AP:GetGeometry() return { horizontal = true, grow = 'LEFT', wrap = 'DOWN' } end
+	-- Refresh (every General set) re-lays the holder and Blizzard's buttons, which the stand-in has none of.
+	AP.geometry = AP.geometry or {}
+	function AP:ApplyHolder() end
+	function AP:RestoreUnderMax() end
+	function AP:LayoutButtons() end
+	-- The values in use, as the real one answers them for valid settings (its cache and holders are not needed).
+	function AP:GetGeometry(key)
+		local c = AP.config[key]
+		return { horizontal = c.grow == 'LEFT' or c.grow == 'RIGHT', grow = c.grow, wrap = c.wrap }
+	end
+	for _, key in ipairs({ 'buffs', 'debuffs' }) do AP:RegisterAuraMover({ key = key, label = key }) end
 	local updates = 0
 	function AP:UpdateText() updates = updates + 1 end
 	function AP:UpdateFont() end
 	local tree = AP:GetConfigTable()
 	eq(check_page('Auras', tree), 6, 'a Position in General, Duration and Stack count of each of the two frames')
+	-- Grow also writes Wrap (allowed); their get shows the values in use.
+	R.check_page({ Auras = tree }, 'Auras', { allow = { ['Auras.buffs.general.grow'] = { 'auras.buffs.wrap' },
+		['Auras.debuffs.general.grow'] = { 'auras.debuffs.wrap' } } })
+	updates = 0 -- the walk's sets counted
+	local aroot = { Auras = tree }
+	reset_roundtrip(aroot, "a buff's Icon size", function() return profile.auras.buffs.size end, st.defaults.auras.buffs.size,
+		function() tree.args.buffs.args.general.set(info_for('size'), 44) end, 'Auras', 'buffs', 'general', 'size')
+	-- Wrap's reset while Grow runs up: its default is the wrap the layout keeps, Left, so the icon goes.
+	tree.args.buffs.args.general.set(info_for('grow'), 'UP')
+	local wraprow = row_of(aroot, 'Auras', 'buffs', 'general', 'wrap')
+	profile.auras.buffs.wrap = 'RIGHT'
+	check(OM.DefaultDiffers(aroot, wraprow), 'Wrap Right differs (Grow up: the default is Left)')
+	check(OM.DefaultReset(aroot, wraprow), 'its reset runs')
+	eq(profile.auras.buffs.wrap, 'LEFT', 'and writes the wrap the layout keeps')
+	check(not OM.DefaultDiffers(aroot, wraprow), 'so the icon goes')
+	tree.args.buffs.args.general.set(info_for('grow'), st.defaults.auras.buffs.grow)
+	profile.auras.buffs.wrap = st.defaults.auras.buffs.wrap
 
 	local duration = tree.args.buffs.args.text.args.duration
 	local p = duration.args.position
@@ -300,9 +380,18 @@ test('Swing timer: sizes and descs, Position last', function()
 	STP.config = profile.swingtimer
 	function STP:ApplyAppearance() end
 	function STP:ApplyHolder() end
+	STP.movers = {}
+	function STP:IsHiddenByBlizzard() return false end
+	for _, info in ipairs({ { key = 'mainhand', label = 'Main Hand' }, { key = 'offhand', label = 'Off Hand' }, { key = 'ranged', label = 'Ranged' } }) do
+		STP:RegisterBarMover(info)
+	end
 	local tree = STP:GetConfigTable()
 	eq(tree.name, 'Swing timer', 'sentence case, as the sidebar shows it')
 	eq(check_page('SwingTimer', tree), 3, 'three Positions')
+	R.check_page({ SwingTimer = tree }, 'SwingTimer')
+	reset_roundtrip({ SwingTimer = tree }, "the main hand's Width", function() return profile.swingtimer.mainhand.width end,
+		st.defaults.swingtimer.mainhand.width, function() tree.args.mainhand.args.general.set(info_for('width'), 321) end,
+		'SwingTimer', 'mainhand', 'general', 'width')
 	local got = layout({ SwingTimer = tree }, 'SwingTimer', 'mainhand')
 	eq(got, 'width:normal 1, height:normal 2, showtitle:small 1/1, showtime:small 1/2, opacity:normal 2', 'Width | Height, the toggles | Opacity')
 end)
@@ -316,6 +405,8 @@ test('Skinning: a page with the shared Theme, Background and font, which re-appl
 	function skin:UpdateConfig() reapplied = reapplied + 1 end
 	local tree = SK:GetConfigTable()
 	eq(check_page('Skinning', tree), 0, 'no Position')
+	R.check_page({ Skinning = tree }, 'Skinning')
+	reapplied = 0 -- the walk's sets counted
 	eq(tree.category, 'Info', 'in the Info group')
 	local general = tree.args.general
 	eq(general.args.theme.type, 'select', 'Theme is a select')

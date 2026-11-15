@@ -15,6 +15,7 @@ local WINDOWS_NOTE = "The margin keeps all of SaftUI's frames that far from the 
 -- a set, for a setting that can be re-applied to what's already built.
 local function Setting(order, name, min, max, step, desc, group, key, apply)
 	local option = st.Config.generators.range(order, name, min, max, step, desc)
+	option.saved = st.Config.SavedAt(group, key)
 	option.get = function() return st.config.profile[group][key] end
 	option.set = function(_, value)
 		st.config.profile[group][key] = value

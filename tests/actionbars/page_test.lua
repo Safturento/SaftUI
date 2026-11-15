@@ -53,6 +53,7 @@ local function fresh()
 	apply_defaults()
 	for _, file in ipairs(FILES) do load_saftui(file) end
 	load_saftui('SaftUI-Core/Config/optionsmodel.lua')
+	load_saftui('SaftUI-Core/Config/optionsdefault.lua') -- st.Config.SavedIn, the reset sources
 	load_test_file('lib/options_walk.lua')
 	OM = st.OptionsModel
 	AB = st:GetModule('ActionBars')
@@ -419,6 +420,68 @@ test('a text item: own-marked by its menu, its diff lines naming the settings', 
 	eq(AB:GetSetting('bar2', 'hotkey.position', 'point'), 'TOPRIGHT', "the rest copied from All bars'")
 	eq(table.concat(calls, ','), 'UpdateBar:bar2', 'Bar 2 is updated')
 	no_errors()
+end)
+
+test('every action bar row has a reset or its share, and each derived one round-trips', function()
+	fresh()
+	local R = load_test_file('lib/reset_walk.lua')
+	-- The extras' movers, as AB:SetupExtras registers them: their Position rows reset through them.
+	for _, file in ipairs(editmode_files()) do load_saftui(file) end
+	AB.movers = AB.movers or {}
+	for _, id in ipairs(AB.EXTRA_IDS) do AB:RegisterExtraMover(id) end
+	R.check_page({ ActionBars = AB:GetConfigTable() }, 'ActionBars')
+end)
+
+test("All bars' Cooldown Show resets to Blizzard's default, through the model", function()
+	fresh()
+	load_test_file('lib/reset_walk.lua')
+	local r = root()
+	local item = row(r, 'all', 'countdown')
+	eq(AB.COUNTDOWN_CVAR, CVAR, 'one name for the setting')
+	eq(C_CVar.GetCVarDefault(CVAR), '1', "the stub knows Blizzard's default")
+	eq(OM.DefaultSource(r, item), 'default', 'a hand default')
+	eq(OM.DefaultDiffers(r, item), false, 'on, as the game ships it: no icon')
+	C_CVar.SetCVar(CVAR, '0')
+	eq(OM.DefaultDiffers(r, item), true, 'off differs')
+	OM.DefaultReset(r, item)
+	eq(C_CVar.GetCVarBool(CVAR), true, 'reset: on')
+	eq(stub.cvars[CVAR], '1', "reset: '1'")
+	eq(OM.DefaultDiffers(r, item), false, 'and no icon again')
+end)
+
+test("All bars' Cooldown Show has no reset where the client gives no CVar default (no function, or a nil answer)", function()
+	for _, how in ipairs({ 'no function', 'nil answer' }) do
+		fresh()
+		load_test_file('lib/reset_walk.lua')
+		local had, hadDefault = C_CVar.GetCVarDefault, stub.cvar_defaults[CVAR]
+		if how == 'no function' then C_CVar.GetCVarDefault = nil else stub.cvar_defaults[CVAR] = nil end
+		local r = { ActionBars = AB:GetConfigTable() }
+		local item = row(r, 'all', 'countdown')
+		C_CVar.GetCVarDefault, stub.cvar_defaults[CVAR] = had, hadDefault
+		C_CVar.SetCVar(CVAR, '0')
+		eq(OM.DefaultSource(r, item), 'none', how .. ': none')
+		eq(item.option.default, nil, how .. ': no default, so never "off"')
+		eq(item.option.noReset, "Blizzard's own setting, and this client gives no default for it.", how .. ': with its reason')
+	end
+end)
+
+test("an extra button's reset re-lays the button", function()
+	fresh()
+	load_test_file('lib/reset_walk.lua')
+	AB.movers = AB.movers or {}
+	for _, file in ipairs(editmode_files()) do load_saftui(file) end
+	for _, id in ipairs(AB.EXTRA_IDS) do AB:RegisterExtraMover(id) end
+	local r = root()
+	local item = row(r, 'zone', 'scale')
+	OM.Set(r, item, 1.5)
+	eq(st.config.profile.actionbars.zone.scale, 1.5, 'changed')
+	eq(OM.DefaultDiffers(r, item), true, 'differs')
+	calls = {}
+	OM.DefaultReset(r, item)
+	eq(st.config.profile.actionbars.zone.scale, 1, 'reset to the default')
+	local laid = false
+	for _, c in ipairs(calls) do if c == 'LayoutExtra:zone' then laid = true end end
+	check(laid, 'the zone ability was laid out again')
 end)
 
 test("the cooldown numbers: Show is Blizzard's setting on All bars, none on a bar; no Reset button", function()

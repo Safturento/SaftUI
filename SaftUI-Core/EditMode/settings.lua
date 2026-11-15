@@ -70,6 +70,7 @@ function EM:GetConfigTable()
 				type = 'group',
 				inline = true,
 				order = 1,
+				saved = st.Config.SavedIn('editmode'),
 				get = function(info) return self:GetSettings()[info[#info]] end,
 				set = function(info, value) self:SetSetting(info[#info], value) end,
 				args = {
