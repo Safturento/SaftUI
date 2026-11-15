@@ -118,8 +118,9 @@ end
 function TR:NewChevron(parent, getTip)
 	local button = CreateFrame('Button', nil, parent)
 	button:SetSize(L.CHEVRON, L.CHEVRON)
-	-- (a window faded out takes no mouse, visibility.lua)
-	if TR.inputOff then button:EnableMouse(false) end
+	-- (a chevron made while the window is faded out takes no mouse either: its
+	-- row's SetRowMouse, called as the row is made, turns it off and records it,
+	-- so it is turned on again when the window returns, visibility.lua)
 	local icon = button:CreateTexture(nil, 'OVERLAY')
 	icon:SetSize(L.CHEVRON, L.CHEVRON)
 	icon:SetPoint('CENTER')

@@ -7,6 +7,13 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-15 — SaftUI's tracker: experiments and in-game checks before the switch turns on](#2026-11-15--saftuis-tracker-experiments-and-in-game-checks-before-the-switch-turns-on)
+  - [2026-11-15 — SaftUI's tracker phase 2: task quests (bonus objectives and world quests)](#2026-11-15--saftuis-tracker-phase-2-task-quests-bonus-objectives-and-world-quests)
+  - [2026-11-15 — SaftUI's tracker phase 3: scenarios and dungeons](#2026-11-15--saftuis-tracker-phase-3-scenarios-and-dungeons)
+  - [2026-11-15 — SaftUI's tracker phase 4: Mythic+](#2026-11-15--saftuis-tracker-phase-4-mythic)
+  - [2026-11-15 — SaftUI's tracker phase 5: other tracking](#2026-11-15--saftuis-tracker-phase-5-other-tracking)
+  - [2026-11-15 — SaftUI's tracker phase 6: zone widgets](#2026-11-15--saftuis-tracker-phase-6-zone-widgets)
+  - [2026-11-15 — SaftUI's tracker: do quest items work under [vehicleui] and [overridebar]?](#2026-11-15--saftuis-tracker-do-quest-items-work-under-vehicleui-and-overridebar)
   - [2026-11-15 — Chat's font size against Blizzard's per-window Font Size](#2026-11-15--chats-font-size-against-blizzards-per-window-font-size)
   - [2026-11-15 — A bag window's least width ignores a Window titles change](#2026-11-15--a-bag-windows-least-width-ignores-a-window-titles-change)
   - [2026-11-14 — Position rows of secure frames can anchor to a frame that is moved in combat](#2026-11-14--position-rows-of-secure-frames-can-anchor-to-a-frame-that-is-moved-in-combat)
@@ -148,6 +155,122 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-15 — SaftUI's tracker: experiments and in-game checks before the switch turns on
+
+**What:** SaftUI's own objective tracker (`SaftUI-Tracker`, Phase 1: quests) is built, reviewed and green on stubs, and ships **off** (`tracker.enable = false`). Nothing about either tracker changes until the owner has run the experiments and checks below in game and flipped the default. The steps for each are in `docs/superpowers/plans/2026-11-15-saftui-tracker-phase-1-in-game-checklist.md`, in the order a player does them, with what to look for and, for each experiment, the one function that changes on a failure. **Flipping the default (`enable = true` in `SaftUI-Tracker/config.lua`) is the last step, a one-line change** (the checklist's Part 7 lists what moves with it).
+
+**Why noticed:** The owner approved the design with the switch off and building before the experiments ("if you want to start building the core quest tracker we can handle the finer details after", the spec's Settled 4). The last task of the Phase 1 plan (`docs/superpowers/plans/2026-11-14-saftui-objective-tracker-phase-1.md`, Task 13) wrote the checklist and this entry. The parts that decide whether the tracker is safe (the secure item buttons, the concealment of Blizzard's tracker, the handover) can only be confirmed in the game, and a taint bug there blocks quest items in combat for the session.
+
+**Anchors:** `docs/superpowers/specs/2026-11-14-saftui-objective-tracker-design.md` ("What only the game can confirm", "Experiments to run before the build"), the plan's "Experiment seams" table, `.agents/taint.md` rules 5 and 14 to 17, `tests/tracker/states_test.lua`, the task reports and reviews in `.superpowers/sdd/2026-11-14-saftui-objective-tracker-phase-1/` (git-excluded).
+
+**Shape of work:** Run in order, Forever first and then retail, with `/console taintLog 1`. Each experiment is one function, so a failure is a small change plus its tests.
+
+Experiments, before turning the switch on (with today's skin and mover), each with the task that built what it decides:
+1. **P1.** A quest item used in combat from Blizzard's tracker with today's skin, and `issecurevariable` on `dirty` and `isDirty`. The baseline everything else assumes. A failure stops the work. (Task 6's concealment depends on it.)
+2. **P2.** Concealing Blizzard's tracker by the C methods only (clamp off, one `SetPoint` off screen), quest progress and a quest item in combat while it is concealed. Built in Task 6 (`TR:PlaceBlizzard`); on failure only its `'concealed'` branch changes.
+3. **P3.** A secure `item` button made before combat uses a quest item in combat, and by a key. Built in Tasks 8 to 10; on failure `TR.ItemAttributes` (`items.lua`) returns the `macro` form.
+4. **P4.** What Forever has: which Blizzard sections fill in the open world and in a dungeon, that headers match `GetRealZoneText()`, that distance and the quest area answer. Used by Tasks 11 (`TR.SectionHandsOver`, `probes.lua`) and 10 (`TR.ChooseNearest`, `nearest.lua`); on failure each seam is one function. Decides which Phase comes next.
+5. **P5.** Opening the map, quest details and Abandon from addon code, in and out of combat. Built in Task 7 (`TR.ShowOnMapAllowed`, `TR.QuestDetailsAllowed`, `TR.AbandonAllowed`, `clicks.lua`); on failure the one constant becomes false.
+6. **P6.** Track and untrack from SaftUI's clicks leave no lasting taint (Task 7, `TR.WatchChangeAllowed`, `clicks.lua`); run with the tracker on. (Added by Task 7's review; the spec has P1 to P5.)
+
+Then, with the switch on, the spec's G1 to G12, each with the task that built it:
+- **G1** a quest item used from a row button, the column and the nearest button by its key, with nothing in the taint log (Tasks 8, 9, 10).
+- **G2** `issecurevariable` on `dirty`, `isDirty` and `isCollapsed` prints `true true true` after an hour of questing, a dungeon and a handover in combat (Tasks 6, 11).
+- **G3** the handover: Blizzard's tracker in place and beside, and in combat (Task 11).
+- **G4** row buttons and the column in combat: dimming, the wheel (Tasks 8, 9).
+- **G5** every visibility trigger and choice, with Hide quest items on and off (Task 12).
+- **G6** the look under Thick, Thin and Blizzard, Width, Max height, Grow up, the scroll bar, zone groups, collapse states after `/reload` (Tasks 4, 5).
+- **G7** `/reload` in combat (Task 8).
+- **G8** an auto quest popup clicked in combat, and an auto-complete quest (Tasks 5, 7).
+- **G9** the right-click menu, Abandon's confirm, Share (Task 7).
+- **G10** edit mode: the outline, drag, `/reload`, the first position (Task 4).
+- **G11** the Colors tab's Objectives colors recolor both trackers, old custom colors carried over (Task 2).
+- **G12** the right column's frames against the tracker's header at the default spot (Task 4).
+
+**Open questions:** The results. Rulings made for the owner to check are in the checklist's Part 5: the spot's floor (Ruling 33), the hover area including Blizzard's revealed tracker, watch changes held out of combat, Shift-click on an item button using the item, the nearest button's refused anchors, numbers counting only expanded groups, the column clamped to the scroll view, and the menu using the game's strings.
+
+### 2026-11-15 — SaftUI's tracker phase 2: task quests (bonus objectives and world quests)
+
+**What:** SaftUI's tracker draws tasks in the area (bonus objectives) and watched world quests, with their progress bars, time left and rewards in the tooltip, and gives their quest items the same secure buttons as quests'. It removes the most common handover on retail (today a bonus objective or a watched world quest hands the tracker to Blizzard's).
+
+**Why noticed:** The spec's Phasing section (`docs/superpowers/specs/2026-11-14-saftui-objective-tracker-design.md`) lists six phases; Phase 1 (quests) is built and each later phase is a followup so it is not only in the spec. The owner isn't particular about the order after version one ("I'm not picky with where to start"); call 35 gives the order task quests, scenarios and dungeons, Mythic+, other tracking, zone widgets, with scenarios first if P4 shows Forever's dungeons are scenarios.
+
+**Anchors:** The spec's Phasing and "How SaftUI knows a section has content"; `SaftUI-Tracker/probes.lua` (`TR.SECTIONS` entries `bonus` and `world`: Phase 2 stops these handing over, by drawing them), `SaftUI-Tracker/model.lua` (where tasks join the model: `GetTasksTable`, `GetTaskInfo`, `C_QuestLog.IsWorldQuest`, `GetNumWorldQuestWatches`), `SaftUI-Tracker/items.lua` (task quests have special items too); `.agents/clients.md` ("The objective tracker's sections").
+
+**What's been considered:** Mostly retail; on Forever only if P4 shows it has any. Phase 1 already shows Blizzard's tracker for them through the handover, so nothing is lost meanwhile. A task quest's progress bar and timer are the existing row lines; the new parts are reading the tasks and world quest watches into the model and the tooltip's rewards.
+
+**Shape of work:** One plan of its own: the model (tasks and watched world quests, with the display rules), rows and bars, the tooltip, item buttons through the existing layer, and `TR.SECTIONS`'s two entries no longer handing over.
+
+**Open questions:** What P4 finds on Forever. Whether task quests group under their zone's header or a section of their own.
+
+### 2026-11-15 — SaftUI's tracker phase 3: scenarios and dungeons
+
+**What:** SaftUI's tracker draws a scenario's name, stage, criteria and their bars, stage timers, delves (tier, lives), proving grounds and warfronts, the scenario's spell buttons (secure, like item buttons, under the same rules) and its bonus steps, and the Maw's buffs (read out of combat only, or kept handing over for them). Secret criteria values (`GetUnitCriteriaProgressValues`) are passed to widgets, never compared.
+
+**Why noticed:** The spec's Phasing section. A dungeon today hands the tracker to Blizzard's; this phase replaces that in the most common content. It moves ahead of Phase 2 if P4 shows Forever's dungeons are scenarios.
+
+**Anchors:** The spec's Phasing and "Secret values"; `SaftUI-Tracker/probes.lua` (`TR.SECTIONS` entry `scenario`, `TR.Probes.Scenario`), `SaftUI-Tracker/handover.lua`; `.agents/taint.md` rules 5, 6 and 15 (the buttons would be secure); `.agents/clients.md`.
+
+**What's been considered:** The Maw's buffs read aura data, which is secret in combat, so they are read out of combat or kept handing over. The spell buttons follow the item buttons' rules exactly (made, placed and given attributes only out of combat, never under a frame that moves in combat).
+
+**Shape of work:** One plan: the scenario reader (pure, secret-safe), its rows and bars, the stage timer, delves and proving grounds, the spell buttons through the item layer's mechanism, then `TR.SECTIONS`'s `scenario` entry no longer handing over (the seam `TR.SectionHandsOver`).
+
+**Open questions:** Whether Forever's dungeons are scenarios (P4).
+
+### 2026-11-15 — SaftUI's tracker phase 4: Mythic+
+
+**What:** SaftUI's tracker draws the challenge mode: the key level, affixes, the timer with its +2 and +3 marks, deaths and the enemy forces bar. Retail.
+
+**Why noticed:** The spec's Phasing section. It needs Phase 3 (a Mythic+ run is a scenario). Until then Blizzard's tracker shows for a key through the handover (`C_ChallengeMode.IsChallengeModeActive`).
+
+**Anchors:** The spec's Phasing; `SaftUI-Tracker/visibility.lua` (the Mythic+ trigger already reads `C_ChallengeMode.IsChallengeModeActive`), `SaftUI-Tracker/probes.lua`; `.agents/clients.md` ("Boss fights and Mythic+").
+
+**Shape of work:** One plan, after Phase 3: the challenge mode reader, the rows (timer, deaths, forces bar), and the handover no longer applying for a key.
+
+**Open questions:** None yet; the secret-value rules are Phase 3's.
+
+### 2026-11-15 — SaftUI's tracker phase 5: other tracking
+
+**What:** SaftUI's tracker draws achievements, tracked recipes with reagent counts, monthly activities, endeavors and collection tracking, each as a section of its own under the window's header, with a section header showing once more than one section has content.
+
+**Why noticed:** The spec's Phasing section. Today each of these hands the tracker to Blizzard's through the probes (`TR.SECTIONS`: `achievements`, `professions`, `activities`, `endeavors`, `collections`). On retail a tracked recipe or a Traveler's Log activity in the open world replaces SaftUI's tracker, which is the reason to do this early on retail.
+
+**Anchors:** The spec's Phasing; `SaftUI-Tracker/probes.lua` (`TR.Probes`: `Achievements`, `Professions`, `Activities`, `Endeavors`, `Collections`), `SaftUI-Tracker/handover.lua`.
+
+**What's been considered:** Small, independent parts; each can be split into its own plan.
+
+**Shape of work:** A section framework in the window (a section header, per-section collapse), then one small task per section, each removing its entry from the handover.
+
+**Open questions:** Whether each section collapses on its own or the whole tracker does; the section header's look.
+
+### 2026-11-15 — SaftUI's tracker phase 6: zone widgets
+
+**What:** SaftUI's tracker draws the objective tracker's widget set (`C_UIWidgetManager.GetObjectiveTrackerWidgetSetID()`), which removes the last reason to show Blizzard's tracker.
+
+**Why noticed:** The spec's Phasing section. After this phase the handover stays only as a safety net for a section a later patch adds, and the concealment stays for good (Blizzard's tracker keeps auto-tracking accepted quests and sorting the watch list for SaftUI's).
+
+**Anchors:** The spec's Phasing; `SaftUI-Tracker/probes.lua` (`TR.SECTIONS` entry `widgets`, `ObjectiveTrackerUIWidgetContainer:GetNumWidgetsShowing()`).
+
+**What's been considered:** Blizzard's widget frames are pooled and shared with the screen's other widget containers, so hosting them in a SaftUI container could taint those. It needs its own taint study first.
+
+**Shape of work:** A taint study (a design note and an in-game experiment like P2/P3), then a plan only if the study passes.
+
+**Open questions:** Whether hosting the widget set is safe at all; if not, the handover for widgets stays.
+
+### 2026-11-15 — SaftUI's tracker: do quest items work under [vehicleui] and [overridebar]?
+
+**What:** The item layer's visibility driver is `[petbattle] hide; show` plus the player's triggers; it has no `[vehicleui]` or `[overridebar]`, which SaftUI's action bars hide on by default. Phase 1 chose to leave both out (the plan's Ruling 21). The question is whether quest items can be used in a vehicle or on an override bar; if they can't, the buttons should hide there like the action bars do.
+
+**Why noticed:** The spec leaves it to the builder ("Whether the item layer's driver also hides on `[vehicleui]` and `[overridebar]` (the action bars' defaults), after checking that quest items can't be used then"), and the plan ruled it out of Phase 1 with this followup.
+
+**Anchors:** `SaftUI-Tracker/items.lua` (`TR.ITEM_DRIVER`, `TR.PET_BATTLE_HIDE`), `SaftUI-Tracker/visibility.lua` (`Visibility.Driver`: the one place the layer's string is built), `SaftUI-Tracker/nearest.lua` (`TR.NearestDriver()`: its own driver, the pet battle's alone), `SaftUI-ActionBars/` (the bars' visibility drivers), `tests/tracker/visibility_test.lua` (the pinned strings).
+
+**What's been considered:** The layer's and the nearest button's drivers are separate strings, so either can change alone. A quest item shown over a vehicle's bar that does nothing is the cost of leaving it.
+
+**Shape of work:** First the check in game: use a quest item on a vehicle and on an override bar (a quest with a vehicle or a possess), with the item buttons shown. If it works, nothing changes. If not, add the two conditions to `Visibility.Driver` (and `TR.NearestDriver()`), with the test strings.
+
+**Open questions:** The result of the in-game check.
 
 ### 2026-11-15 — Chat's font size against Blizzard's per-window Font Size
 
@@ -339,8 +462,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 **Asked for next (the owner, 2026-11-13):** "I'll probably want some additional enhancements like zone grouping, objective status coloring, is it possible to set a max height and a scroll frame on it? I'd also love the mover to fill the full height of the tracker not just the header."
 - ~~*The mover filling the tracker's height*~~ **Built 2026-11-13** (`OTP:UpdateFootprint`): in edit mode the outline is as tall as the tracker, from the holder's top; the holder and what is saved are unchanged.
 - ~~*Objective status colouring*~~ **Built 2026-11-13** (completed and failed lines): two colours on the tracker's page, Objective colors (Completed default Blizzard's dim green, Failed the text red). In-game: a failed line shows Blizzard's brighter red while hovered; "in progress" keeps Blizzard's normal color, as there is no third state to colour.
-- *Zone grouping:* Blizzard's tracker groups by module (Quests, Campaign, ...), not zone. Regrouping its blocks means changing its layout, which the skin never does today (taint: a tainted layout makes the quest item buttons it creates tainted). Needs a design and a taint study; it may only be safe as a SaftUI-drawn list beside or in place of Blizzard's.
-- *A max height and a scroll frame:* the same hazard. Blizzard already limits the tracker's height (its Edit Mode Height) and collapses modules that don't fit; putting its container in a scroll frame means re-parenting or sizing it from addon code. To be studied with zone grouping.
+- *Zone grouping:* Blizzard's tracker groups by module (Quests, Campaign, ...), not zone. Regrouping its blocks means changing its layout, which the skin never does today (taint: a tainted layout makes the quest item buttons it creates tainted). Needs a design and a taint study; it may only be safe as a SaftUI-drawn list beside or in place of Blizzard's. **Taken up 2026-11-15 by SaftUI's own tracker (`SaftUI-Tracker`, Phase 1): a SaftUI-drawn list grouped by zone, the current zone first. It moves to Resolved when the switch is on and the checks in the entry "SaftUI's tracker: experiments and in-game checks before the switch turns on" pass.**
+- *A max height and a scroll frame:* the same hazard. Blizzard already limits the tracker's height (its Edit Mode Height) and collapses modules that don't fit; putting its container in a scroll frame means re-parenting or sizing it from addon code. To be studied with zone grouping. **Taken up 2026-11-15 by SaftUI's own tracker (Phase 1): Width and Max height, and a scroll frame with its bar shown under the mouse, on a SaftUI-drawn list (Blizzard's tracker is never put in a scroll frame). Resolved with the zone grouping above.**
 
 **Left out, for later:** a Height setting (sizing the tracker from addon code may taint its layout; only the game can show whether it is safe) and Blizzard's Opacity and Text Size, which SaftUI's edit mode now hides; the large art panels (auto quest popups, the scenario stage, challenge mode and proving grounds banners), the bars' round reward icon, the map pin and find group buttons; standing down for another tracker addon; a default spot clear of SaftUI's minimap and experience bars.
 

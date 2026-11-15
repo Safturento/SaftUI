@@ -839,3 +839,82 @@ both('the item layer\'s driver reaches the nearest button only by the pet battle
 	RW.later(1)
 	eq(TR.nearestButton:GetAlpha(), 1, 'the nearest button never wears the fade')
 end, { nearest = true, visibility = { items = true, combat = 'hide', boss = 'hide' } })
+
+------------------------------------------------------------------ Task 13: leftovers
+
+-- A zone's chevron made while the window is faded to 0, with the mouse on it as
+-- the game makes a Button (the stubs' start without it), takes the mouse again
+-- when the window comes back: only what SetRowMouse turned off is turned on.
+both('a zone row made while the window is faded to 0 gets its chevron\'s mouse back when it returns', function(st, TR)
+	set(TR, { mouseoff = 'fade', fade_alpha = 0 })
+	fade_done(TR)
+	eq(TR.window:GetAlpha(), 0, 'faded out')
+	-- A Button takes the mouse in the game: every one made from here does.
+	local create = CreateFrame
+	CreateFrame = function(...)
+		local frame = create(...)
+		if frame:GetObjectType() == 'Button' then frame:EnableMouse(true) end
+		return frame
+	end
+	local entries = { Q.header('Elwynn Forest'), Q.quest(1), Q.header('Westfall'), Q.quest(2) }
+	Q.set(entries, { 1, 2 })
+	stub.fire_event('QUEST_LOG_UPDATE')
+	RW.later(1)
+	CreateFrame = create
+	local chevron = RW.zone(TR, 'Westfall').chevron
+	check(chevron ~= nil, 'a zone row for the new zone')
+	check(not chevron:IsMouseEnabled(), 'its chevron takes no mouse while faded out')
+	RW.mouse_on(TR.window)
+	stub.fire_script(TR.fader, 'OnUpdate', 0.016)
+	check(chevron:IsMouseEnabled(), 'the mouse arrives: its chevron takes the mouse again')
+	check(RW.zone(TR, 'Westfall'):IsMouseEnabled(), 'and its row')
+end, { ids = { 1 } })
+
+-- F10: the driver is cached by the settings it reads; a change of Boss fights alone
+-- must make a new string.
+both('Boss fights alone changes the item layer\'s driver, both ways (the cache is keyed by it)', function(st, TR)
+	eq(layer_driver(TR), '[petbattle] hide; show', 'start: the pet battle\'s alone')
+	set(TR, { boss = 'hide' })
+	eq(layer_driver(TR), '[petbattle] hide; [@boss1,exists] hide; show', 'Boss fights Hide alone adds the boss frames')
+	set(TR, { boss = 'fade' })
+	eq(layer_driver(TR), '[petbattle] hide; show', 'Fade is not a hide: the string goes back')
+	set(TR, { boss = 'hide' })
+	eq(layer_driver(TR), '[petbattle] hide; [@boss1,exists] hide; show', 'and Hide again')
+	local v = setmetatable({ items = true, boss = 'show' }, { __index = st.defaults.tracker.visibility })
+	eq(TR.Visibility.Driver(v), '[petbattle] hide; show', 'the pure function: Show')
+	v.boss = 'hide'
+	eq(TR.Visibility.Driver(v), '[petbattle] hide; [@boss1,exists] hide; show', 'then Hide, with nothing else changed')
+end, { visibility = { items = true } })
+
+-- F5: the mouse is watched only while the window is shown.
+both('the hover poll stops while a trigger hides the window and starts again when it shows', function(st, TR)
+	set(TR, { mouseoff = 'fade' })
+	check(TR.fader:GetScript('OnUpdate') ~= nil, 'Mouse off: the mouse is watched')
+	set(TR, { nocombat = 'hide' })
+	check(not TR.window:IsShown(), 'out of combat the window is hidden')
+	check(not TR.hoverWatch, 'nothing is hovered while it is hidden: no watch')
+	check(TR.fader:GetScript('OnUpdate') == nil, 'and the fader runs nothing')
+	TW.combat(true)
+	check(TR.window:IsShown(), 'in combat it is shown')
+	check(TR.fader:GetScript('OnUpdate') ~= nil, 'and the mouse is watched again')
+	TW.combat(false)
+	check(TR.fader:GetScript('OnUpdate') == nil, 'hidden again: the watch stops')
+end)
+
+both('Boss fights says the buttons follow the boss frames only with Hide quest items with the tracker on', function(st, TR)
+	local desc = TR.VisibilityTab().args.boss.desc
+	check(desc:find('With Hide quest items with the tracker on, its quest item buttons go by the boss frames', 1, true), 'the desc says the boss frames apply with the setting on')
+	check(desc:find('With it off, they stay.', 1, true), 'and that with it off the buttons stay')
+end)
+
+-- M8: the nearest button is made with its own driver, not the layer's. The next
+-- refresh would put a wrong string right (SyncNearestDriver), so the string is
+-- read straight after the build, before any refresh.
+both('the nearest button is built with the pet battle\'s driver alone, whatever the layer\'s triggers are, before any refresh', function(st, TR)
+	eq(layer_driver(TR), '[petbattle] hide; [combat] hide; [@boss1,exists] hide; show', 'the layer\'s own string has the triggers')
+	TR.config.items.nearest = true
+	local button = TR:BuildNearestButton()
+	check(button ~= nil and TR.nearestDriver ~= nil, 'the button and its driver frame were made')
+	eq(stub.state(TR.nearestDriver).state_drivers['state-visibility'], '[petbattle] hide; show', 'its driver, as built: the pet battle\'s alone')
+	eq(TR.nearestDriverSet, '[petbattle] hide; show', 'and that is what it remembers it set')
+end, { visibility = { items = true, combat = 'hide', boss = 'hide' } })
