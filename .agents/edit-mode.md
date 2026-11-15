@@ -1,7 +1,7 @@
 ---
 name: edit-mode
 description: SaftUI's edit mode (movers), the /sui options tree, and SaftUI's options window with its model, body, widgets and dialog
-last_updated: 2026-11-14
+last_updated: 2026-11-15
 covers:
   - 'SaftUI-Core/EditMode/**'
   - 'SaftUI-Core/api.lua'
@@ -40,6 +40,8 @@ covers:
   - 'SaftUI-*/options.lua'
   - 'SaftUI-*/movers.lua'
   - 'SaftUI-Misc/Skinning/blizzard/*Position.lua'
+  - 'SaftUI-Tracker/window.lua'
+  - 'SaftUI-Tracker/nearest.lua'
   - 'SaftUI-Misc/tooltipposition.lua'
   - 'SaftUI-Misc/totembar.lua'
   - 'SaftUI-Misc/totemlayout.lua'

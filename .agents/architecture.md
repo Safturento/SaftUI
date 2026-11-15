@@ -1,7 +1,7 @@
 ---
 name: architecture
 description: How SaftUI's addons, modules, config, profiles and load order fit together
-last_updated: 2026-11-14
+last_updated: 2026-11-15
 covers:
   - 'SaftUI-*/*.toc'
   - 'SaftUI-Core/init.lua'
