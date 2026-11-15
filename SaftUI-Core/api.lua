@@ -24,28 +24,87 @@ function st:DefaultTrackerPosition()
 end
 
 -- Size of one physical pixel in frame's (or UIParent's) coordinate space, or nil if unknown.
+-- The game hands a scale back in single precision (768 / 1440 comes back as
+-- 0.5333333611488342, a pixel of 0.99999995), so at a whole number of pixels to a unit (k = 1 / pixel,
+-- 1 on a 1440p screen) the division would give 0.99999995 and every line and
+-- token built from it would carry that noise. Within 1e-6 (relative) of a
+-- whole k the pixel is exactly 1 / k.
 function st:GetPixelSize(frame)
 	local physicalHeight = select(2, GetPhysicalScreenSize())
 	local scale = (frame or UIParent):GetEffectiveScale()
 	if not physicalHeight or physicalHeight == 0 or not scale or scale == 0 then
 		return nil
 	end
-	return (768 / physicalHeight) / scale
+	local pixel = (768 / physicalHeight) / scale
+	local k = 1 / pixel
+	local whole = math.floor(k + 0.5)
+	if whole >= 1 and math.abs(k - whole) < 1e-6 * whole then
+		return 1 / whole
+	end
+	return pixel
+end
+
+-- A whole number of pixels as a length: pixel sizes like 0.99999995 leave float
+-- noise (25px -> 24.999998), so it is trimmed to keep stored offsets clean.
+-- 1e-4 is far below a pixel at any UI scale.
+local function PixelsToLength(pixels, pixel)
+	if pixels == 0 then return 0 end -- avoid -0
+	return math.floor(pixels * pixel * 10000 + 0.5) / 10000
 end
 
 -- Rounds a value (in frame's coordinate space) to the nearest physical pixel.
-function st:RoundToPixel(value, frame)
+-- A value that isn't zero but is under minPixels pixels is minPixels pixels
+-- instead (its sign kept), when minPixels is given: a line that must show.
+function st:RoundToPixel(value, frame, minPixels)
 	local pixel = st:GetPixelSize(frame)
 	if not pixel then
 		return value
 	end
+	if value == 0 then return 0 end
 	local pixels = math.floor(math.abs(value) / pixel + 0.5)
-	if pixels == 0 then return 0 end -- avoid -0
-
-	-- Pixel sizes like 0.99999995 leave float noise (25px -> 24.999998); trim it
-	-- so stored offsets stay clean. 1e-4 is far below a pixel at any UI scale.
-	local result = math.floor(pixels * pixel * 10000 + 0.5) / 10000
+	if minPixels and minPixels > 0 and pixels < minPixels then pixels = minPixels end
+	if pixels == 0 then return 0 end
+	local result = PixelsToLength(pixels, pixel)
 	return value < 0 and -result or result
+end
+
+-- One line in frame's (or UIParent's) coordinate space: st.lineWeight pixels,
+-- never trimmed. nil if the pixel size is unknown.
+function st:GetLineSize(frame)
+	local pixel = st:GetPixelSize(frame)
+	if not pixel then return nil end
+	return st.lineWeight * pixel
+end
+
+-- A value's whole pixel below it, in frame's coordinate space. A value within
+-- 1e-6 of a pixel is on it.
+function st:FloorToPixel(value, frame)
+	local pixel = st:GetPixelSize(frame)
+	if not pixel then return value end
+	return PixelsToLength(math.floor(value / pixel + 1e-6), pixel)
+end
+
+-- A value's whole pixel above it, in frame's coordinate space. A value within
+-- 1e-6 of a pixel is on it.
+function st:CeilToPixel(value, frame)
+	local pixel = st:GetPixelSize(frame)
+	if not pixel then return value end
+	return PixelsToLength(math.ceil(value / pixel - 1e-6), pixel)
+end
+
+-- A value rounded to the nearest whole pixel, then one more away from zero
+-- when that count is odd (-45 pixels is -46): a length whose edges and centre
+-- sit on whole pixels, for a frame anchored by its centre (see "Half pixels
+-- from centred anchors" in .agents/architecture.md). Lengths are never
+-- negative, but where this goes away from zero on a negative odd count,
+-- EvenIfCentred (SaftUI-ActionBars/bars.lua) goes toward it: a move onto this
+-- must not assume the two agree for negatives.
+function st:EvenPixels(value, frame)
+	local pixel = st:GetPixelSize(frame)
+	if not pixel then return value end
+	local pixels = math.floor(value / pixel + 0.5)
+	if pixels % 2 ~= 0 then pixels = pixels + (pixels > 0 and 1 or -1) end
+	return PixelsToLength(pixels, pixel)
 end
 
 -- How far across and up a frame each anchor point is.

@@ -315,7 +315,7 @@ test('a saved height the screen no longer fits, or under the least', function()
 	eq(open(5000):GetHeight(), 700, 'the least wins')
 	eq(open(nil):GetHeight(), 700, 'none saved: the least')
 	stub.screen_height = 1080
-	UIParent:SetScale(st.scale)
+	UIParent:SetScale(768 / stub.screen_height)
 	eq(OW.WindowHeight(OW.LAYOUT.blizzard), 728, "none saved under Blizzard: its 728")
 	st.config.global.optionsWindow = { point = 'CENTER', x = 0, y = 0, height = 900 }
 	eq(OW.WindowHeight(OW.LAYOUT.blizzard), 900, 'the saved height in either look')
