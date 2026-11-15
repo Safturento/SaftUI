@@ -359,6 +359,7 @@ function DUR:GetConfigTable()
 				name = 'General',
 				type = 'group',
 				order = 1,
+				saved = st.Config.SavedIn('durability'),
 				get = function(info) return self.config[info[#info]] end,
 				set = function(info, value)
 					self.config[info[#info]] = value

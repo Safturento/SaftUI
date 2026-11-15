@@ -46,6 +46,7 @@ local function world(client, setup)
 	use_client(client, setup)
 	load_test_file('core/config_helpers.lua')
 	load_saftui('SaftUI-Core/Config/optionsmodel.lua')
+	load_saftui('SaftUI-Core/Config/optionsdefault.lua')
 	load_options_widgets()
 	load_saftui('SaftUI-Core/Config/optionsbody.lua')
 	load_options_window()
@@ -249,7 +250,14 @@ test("Theme > Window titles reaches /sui's Blizzard title bar and a header's tit
 		eq(F.titleText:GetFontObject(), st:GetFont('subtitle'), client .. ': the title bar, at once')
 		eq(panel.title:GetFontObject(), st:GetFont('subtitle'), client .. ': a window header, at once')
 		eq(st.config.profile.fonts.normal.font_name, st.defaults.fonts.normal.font_name, client .. ': Text is untouched')
-		row.default.reset({})
+		local root = st.Config:GetOptionsTable()
+		local titles
+		for _, section in ipairs(st.OptionsModel.BuildView(root, 'Fonts', { tab = 'theme' }).sections) do
+			for _, r in ipairs(section.rows) do
+				if r.key == 'font' and r.path[#r.path - 1] == 'window_titles' then titles = r end
+			end
+		end
+		eq(st.OptionsModel.DefaultReset(root, titles), true, client .. ': the derived reset ran')
 		eq(F.titleText:GetFontObject(), st:GetFont('normal'), client .. ': its reset, at once')
 		eq(#take_errors(), 0, client .. ': no errors')
 	end

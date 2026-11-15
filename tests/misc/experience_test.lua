@@ -17,6 +17,7 @@ load_saftui('SaftUI-Misc/experience.lua')
 -- The page's layout, as the options window lays it out.
 load_saftui('SaftUI-Core/Config/optionsmodel.lua')
 load_saftui('SaftUI-Core/Config/optionsbody.lua')
+local R = load_test_file('lib/reset_walk.lua')
 
 -- Rested experience present, so the bar's first update takes the rested path.
 stub.rested_xp = 300
@@ -26,6 +27,12 @@ local XP = st:GetModule('Experience')
 XP:Enable()
 local exp = XP.bars.experience
 local profile = st.config.profile
+
+test('every value row of the Experience page has a reset, and each derived one round-trips', function()
+	-- first: the walk wants the profile as a fresh one has it, before a test changes a value
+	local tree = XP:GetConfigTable()
+	R.check_page({ Experience = tree }, 'Experience')
+end)
 
 test('frame levels: backdrop 3, rested 4, fill 5', function()
 	eq(exp.backdrop:GetFrameLevel(), 3, 'backdrop at 3')

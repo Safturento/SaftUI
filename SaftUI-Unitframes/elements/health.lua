@@ -157,7 +157,7 @@ local function GetConfigTable(unit)
 			end,
 			UF:ConfigTarget(unit, 'Health', 'text'),
 			"Where the health text sits: which of its points goes to which point of what it's attached to, then moved by X and Y.",
-			'Text position'
+			'Text position', UF.SavedAt(unit, 'health', 'text', 'position')
 		),
 	}
 	-- PostUpdateHealth adds it for a unit whose level is -1 (a skull).
@@ -170,6 +170,7 @@ local function GetConfigTable(unit)
 		type = 'group',
 		name = 'Health',
 		order = 1,
+		saved = UF.SavedIn(unit, 'health'),
 		get = function(info)
 			return UnitConfig().health[info[#info]]
 		end,
@@ -193,7 +194,7 @@ local function GetConfigTable(unit)
 			},
 			alpha = G.alpha(6, 'How solid the health bar is, from see-through to opaque.'),
 			framelevel = G.framelevel(7, 'Draws the bar over the parts of the unit frame with a lower frame level, and under those with a higher one.'),
-			size = UF.GenerateRelativeSizeConfigGroup(8),
+			size = UF.GenerateRelativeSizeConfigGroup(8, UF.SavedIn(unit, 'health')),
 			colors = UF.GenerateColorsConfigGroup(9, unit, 'health',
 				{ 'colorDisconnected', 'colorTapping', 'colorClass', 'colorClassNPC', 'colorClassPet', 'colorReaction', 'colorSmooth', 'colorHealth' },
 				function() return UnitConfig().health end, Update),
@@ -202,6 +203,7 @@ local function GetConfigTable(unit)
 				name = 'Text',
 				type = 'group',
 				inline = true,
+				saved = UF.SavedIn(unit, 'health', 'text'),
 				get = function(info)
 					return UnitConfig().health.text[info[#info]]
 				end,
@@ -216,6 +218,7 @@ local function GetConfigTable(unit)
 				name = 'Bar background',
 				type = 'group',
 				inline = true,
+				saved = UF.SavedIn(unit, 'health', 'bg'),
 				get = function(info)
 					return UnitConfig().health.bg[info[#info]]
 				end,
@@ -239,7 +242,8 @@ local function GetConfigTable(unit)
 					Update()
 				end,
 				UF:ConfigTarget(unit, 'Health'),
-				"Where the health bar sits: which of its points goes to which point of what it's attached to, then moved by X and Y."
+				"Where the health bar sits: which of its points goes to which point of what it's attached to, then moved by X and Y.",
+				nil, UF.SavedAt(unit, 'health', 'position')
 			),
 		}
 	}

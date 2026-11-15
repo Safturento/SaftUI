@@ -105,6 +105,7 @@ local function world(client)
 	end
 	AB.UpdateBar, AB.UpdateBars, AB.LayoutBar, AB.LayoutExtra, AB.UpdateConfig = nothing(), nothing(), nothing(), nothing(), nothing()
 	load_saftui('SaftUI-ActionBars/shared.lua')
+	AB.COUNTDOWN_CVAR = 'countdownForCooldowns' -- skin.lua's, which this world stands in for
 	load_saftui('SaftUI-ActionBars/textoptions.lua')
 	load_saftui('SaftUI-ActionBars/options.lua')
 	take_errors()

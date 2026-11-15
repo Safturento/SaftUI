@@ -134,6 +134,37 @@ function LT:CreateFeedButtons()
 	end)
 end
 
+-- An item or currency entry's name in its quality's color, as it is now: the
+-- entry keeps its plain name (`plain`), its `quality` and what follows the name
+-- (`suffix`, a currency's counts), so a changed Item quality color reaches a line
+-- already drawn (LT:ColorFeed) and one drawn later. An entry with no plain name
+-- (gold, skills, a roll result with no item data yet) shows its `name` as it is.
+function LT.FeedItemName(info)
+	local plain = info.plain
+	if not plain then return info.name end
+	local color = info.quality and st.config.profile.colors.item_quality[info.quality]
+	if color then
+		-- The color code LibStringFormat's ColorString makes (the same text), without
+		-- its table per call: a pass runs this for every line of that quality.
+		local r, g, b = color:GetRGB()
+		if r < 0 or r > 1 then r = r / 255 end
+		if g < 0 or g > 1 then g = g / 255 end
+		if b < 0 or b > 1 then b = b / 255 end
+		plain = ('|cff%02x%02x%02x%s|r'):format(r * 255, g * 255, b * 255, plain)
+	end
+	if info.suffix then return plain .. info.suffix end
+	return plain
+end
+
+-- A progress snapshot's bar color: the profile's color it names (colorGroup and
+-- colorKey) as it is now, else the color it was taken in.
+function LT.ProgressRGB(progress)
+	local color = st.config.profile.colors[progress.colorGroup]
+	if progress.colorKey ~= nil and type(color) == 'table' then color = color[progress.colorKey] end
+	if type(color) == 'table' and color.GetRGB then return color:GetRGB() end
+	return progress.r, progress.g, progress.b
+end
+
 -- A mount's entry in the Loot > Mount color: its border and fill, and its
 -- icon's border. Every other entry has the feed's Theme and Background (drawn by DrawEntry).
 local function ColorMount(item)
@@ -158,19 +189,39 @@ local function DrawEntry(item, info, config)
 	end
 end
 
--- After a theme recolor (st:RecolorThemed gave every line the theme's colors):
--- the shown mount entries take their Loot > Mount color back. From LT:OnColorsChanged (init.lua).
-function LT:ColorFeed(group)
+-- A color change (st:ColorChanged, through LT:OnColorsChanged, init.lua); `key`
+-- is nil on a whole group. Only colors are set, on the lines shown:
+--   'text' and 'accent': the buttons' icons;
+--   'theme' (st:RecolorThemed gave every line the theme's colors) and Loot >
+--     Mount: the mount entries take their Loot > Mount color back;
+--   'item_quality': the lines of that quality set their name again (SetText on
+--     SaftUI's own font string);
+--   'reaction' and 'renown': the progress lines' bars that name that color.
+function LT:ColorFeed(group, key)
 	if not self.feed then return end
 	-- The buttons' icons are tinted in Colors -> Text and the accent.
 	if group == 'text' or group == 'accent' then
 		TintButton(self.feed.filterButton)
 		TintButton(self.feed.reset_button)
+		return
 	end
-	if group ~= 'theme' then return end
+	local mounts = group == 'theme' or (group == 'loot' and (key == nil or key == 'mount'))
+	local names = group == 'item_quality'
+	local bars = group == 'reaction' or group == 'renown'
+	if not (mounts or names or bars) then return end
 	for _, item in ipairs(self.feed.items) do
-		if item:IsShown() and item.info and item.info.itemSubType == "Mount" then
-			ColorMount(item)
+		local info = item:IsShown() and item.info
+		if info then
+			if mounts and info.itemSubType == "Mount" then
+				ColorMount(item)
+			end
+			if names and info.plain and info.quality and (key == nil or key == info.quality) then
+				item.text:SetText(self.FeedItemName(info))
+			end
+			local progress = info.progress
+			if bars and progress and progress.colorGroup == group and (key == nil or key == progress.colorKey) then
+				item.progressBar:SetStatusBarColor(self.ProgressRGB(progress))
+			end
 		end
 	end
 end
@@ -205,7 +256,7 @@ function LT:UpdateFeed(recentlyScrolled, useCache)
 					Util:SetItemQuality(item, info.link, item.icon)
 				end
 
-				item.text:SetText(info.name)
+				item.text:SetText(self.FeedItemName(info))
 			end
 
 			item.rightText:SetText(info.rightText or '')
@@ -219,7 +270,7 @@ function LT:UpdateFeed(recentlyScrolled, useCache)
 			if progress then
 				item.progressBar:SetMinMaxValues(0, progress.max)
 				item.progressBar:SetValue(progress.value)
-				item.progressBar:SetStatusBarColor(progress.r, progress.g, progress.b)
+				item.progressBar:SetStatusBarColor(self.ProgressRGB(progress))
 			end
 			item.progressBar:SetShown(progress ~= nil)
 
@@ -265,6 +316,14 @@ function LT:UpdateAllFeedTimers(index)
 	end
 end
 
+-- Two entries are the same item: the plain name and quality when both have them
+-- (`name` keeps the color it was pushed in, which a pick may since have changed),
+-- else the name.
+local function SameName(a, b)
+	if a.plain and b.plain then return a.plain == b.plain and a.quality == b.quality and a.suffix == b.suffix end
+	return a.name == b.name
+end
+
 function LT:LootFeedPush(info)
 	info.time = GetTime()
 	info.when = time()
@@ -287,7 +346,7 @@ function LT:LootFeedPush(info)
 		top.time = info.time
 		top.when = info.when
 		self:SaveFeedEntry(top)
-	elseif top and info.name == top.name and info.craftQuality == top.craftQuality and info.rightText == top.rightText then
+	elseif top and SameName(info, top) and info.craftQuality == top.craftQuality and info.rightText == top.rightText then
 		top.count = (top.count or 1) + (info.count or 1)
 		top.time = info.time
 		-- The merged entry now stands for the latest gain, so it shows that snapshot.
@@ -313,13 +372,6 @@ function LT:LootFeedPush(info)
 	self:UpdateFeed()
 end
 
-local function colorItemName(name, quality)
-	local item_color = st.config.profile.colors.item_quality[quality]
-	if not item_color then return st:Debug('Loot', ('Invalid quality (%d) for item %s'):format(quality, name)) end
-
-	return st.StringFormat:ColorString(name, item_color:GetRGB())
-end
-
 function LT:LootFeedAddCurrency(match)
 	if not match['currency'] then return end
 
@@ -330,15 +382,25 @@ function LT:LootFeedAddCurrency(match)
 		return
 	end
 
-	local name
+	local suffix
 	if info.maxQuantity > 0 then
-		name = ("%s (%d/%d)"):format(colorItemName(info.name, info.quality), info.quantity, info.maxQuantity)
+		suffix = (" (%d/%d)"):format(info.quantity, info.maxQuantity)
 	else
-		name = ("%s (%d)"):format(colorItemName(info.name, info.quality), info.quantity)
+		suffix = (" (%d)"):format(info.quantity)
+	end
+
+	local entry = { plain = info.name, quality = info.quality, suffix = suffix }
+	-- The entry's text, as it was drawn (saved with it, and what a merge compares).
+	entry.name = self.FeedItemName(entry)
+	if not st.config.profile.colors.item_quality[info.quality] then
+		st:Debug('Loot', ('Invalid quality (%d) for item %s'):format(info.quality, info.name))
 	end
 
 	self:LootFeedPush({
-		name = name,
+		name = entry.name,
+		plain = entry.plain,
+		quality = entry.quality,
+		suffix = entry.suffix,
 		icon = info.iconFileID,
 		link = match['link'],
 		count = match['count'],
@@ -363,10 +425,14 @@ function LT:LootFeedAddItem(match)
 	local item_color = st.config.profile.colors.item_quality[quality]
 	if not item_color then return st:Debug('Loot', ('Invalid quality (%d) for item %s'):format(quality, name)) end
 
-	name = st.StringFormat:ColorString(name, item_color:GetRGB())
+	-- The plain name and quality are kept: the line colors the name as it draws.
+	local plain = name
+	name = self.FeedItemName({ plain = plain, quality = quality })
 
 	self:LootFeedPush({
 		name = name,
+		plain = plain,
+		quality = quality,
 		rightText = match['player'],
 		icon = texture,
 		link = match['link'],
