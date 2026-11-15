@@ -72,10 +72,12 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	waits, as the window does.
 
 	The menu's frame is anchored to its item's dots, which belong to a pooled
-	widget, so it is taken off them (ClearAllPoints) when it hides and before
-	each draw of its rows: those are drawn before it is anchored again, and a
-	row's widget may be that very widget (a face-only font row), which would
-	anchor a row to a cell that hangs from its own dots, an anchor loop.
+	widget, so it is taken off them (ClearAllPoints) when it hides, which is
+	what stops the loop reproduced from a font row's menu, and again before each
+	draw of its rows, as defence for a redraw while shown (FollowMenu): those
+	rows are drawn before the menu is anchored again, and a row's widget may be
+	that very widget (a face-only font row), which would anchor a row to a cell
+	that hangs from its own dots, an anchor loop. Each has a test of its own.
 
 	Following its item (S.FollowMenu, on every render after the dialog's): it
 	finds its item's cell again in owner.body's cells by path, asks that
@@ -352,6 +354,13 @@ end
 ------------------------------------------------------------------ the API
 
 function OW:OpenMenu(widget)
+	-- Not guarded: a menu opened from a widget inside the menu itself. Closing
+	-- the open one first releases that widget, and Draw would then anchor to its
+	-- dots (or to its own descendant, if the redraw takes the widget back: the
+	-- loop again). No menu can do it today (a face-only font row hides its dots
+	-- on a typeface and its link only navigates; no menu holds an item row), so
+	-- whoever puts an item or a typeface row in a menu adds
+	-- `if widget.rowBody == M.body then return false end` here.
 	if InCombatLockdown() then return false end
 	if widget and widget.disabled then return false end
 	local row = widget and widget.row

@@ -125,6 +125,12 @@ function W.CloseList()
 		list.isChecked, list.onToggle, list.onApply = nil, nil, nil
 		if list.apply then list.apply:Hide() end -- only the Apply list shows it
 		for _, button in ipairs(list.checkButtons) do button:Hide() end -- and a check list with buttons theirs
+		for _, row in ipairs(list.rows) do -- a cut name's tooltip goes with the list
+			if row.tipShown then
+				row.tipShown = nil
+				W.HideTip(row)
+			end
+		end
 		list.catcher:Hide()
 		if owner then PaintFace(owner) end
 	end
@@ -212,19 +218,19 @@ local function BuildList()
 		row.hover:SetAlpha(st.TINT_ROW)
 		row.hover:Hide()
 		-- One line, cut at the row. A font string wraps unless told not to, so a
-		-- name wider than the list ran onto a second line over the next entry
-		-- (without wrapping the game cuts it, as every face's text is cut). An
-		-- entry drawn in its own face can be taller than the row too: the text
-		-- is in a frame inside one that clips its children, whose rect is the
-		-- row's, so a glyph never reaches the rows beside it. (Clipping is the
-		-- cut a face's glyphs need; shrinking a face to fit would show it at a
-		-- size it is not picked at.)
+		-- name wider than the list ran onto a second line over the next entry;
+		-- without wrapping the game cuts it and ends it with "..." (the notes in
+		-- optionssizes.lua and optionslayout.lua say the same). An entry drawn
+		-- in its own face can be taller than the row too, so the text is on a
+		-- frame that clips its children, whose rect is the row's: a glyph never
+		-- reaches the rows beside it. (Clipping is the cut a face's glyphs need;
+		-- shrinking a face to fit would show it at a size it is not picked at.)
+		-- A frame clips its own regions too, as the hover lines' text does
+		-- (optionsshare.lua), so no frame is needed between.
 		row.clip = CreateFrame('Frame', nil, row)
 		row.clip:SetAllPoints(row)
 		row.clip:SetClipsChildren(true)
-		row.view = CreateFrame('Frame', nil, row.clip)
-		row.view:SetAllPoints(row.clip)
-		row.text = NewText(row.view, 'LEFT')
+		row.text = NewText(row.clip, 'LEFT')
 		row.text:SetWordWrap(false)
 		row.text:SetPoint('LEFT', row, 'LEFT', 8, 0)
 		row.text:SetPoint('RIGHT', row, 'RIGHT', -10, 0)
@@ -233,8 +239,21 @@ local function BuildList()
 		row:SetScript('OnEnter', function(self)
 			local entry = self.entry
 			if not (entry and (entry.caption or entry.disabled)) then self.hover:Show() end
+			-- A name cut to the row shows whole in a tooltip. Asked on the hover
+			-- only (IsTruncated is the game's own answer for the text as drawn):
+			-- nothing is measured while the list fills or scrolls.
+			if entry and not entry.caption and self.text:IsTruncated() then
+				self.tipShown = true
+				W.ShowTip(self, entry.label)
+			end
 		end)
-		row:SetScript('OnLeave', function(self) self.hover:Hide() end)
+		row:SetScript('OnLeave', function(self)
+			self.hover:Hide()
+			if self.tipShown then
+				self.tipShown = nil
+				W.HideTip(self)
+			end
+		end)
 		row:SetScript('OnClick', function(self)
 			if self.entry and (self.entry.caption or self.entry.disabled) then return end
 			if list.onToggle then return ToggleCheck(self) end

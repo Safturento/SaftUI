@@ -17,7 +17,7 @@ A choice of three or more (Ace `select`), the page picker, the position block's 
 | Box | 170 x 24, Box look, text `field` 8 in | `control-width`, `field-height`, `list-text` |
 | Caret | Lucide `chevron-down` drawn 16 (an 8 x 4 chevron), centred 12 in from the right, `text-muted` in every state; an open list doesn't flip it | `icon-chevron`, `caret-right`, `text-muted` |
 | List | as wide as the box, Box look in `kit-bg` | `kit-bg` |
-| List rows | 22 tall, text 8 in; up to 12 rows, then the kit's 3px scroll bar; the wheel moves 3 rows. An entry is one line: a label too wide for the list is cut at its right edge (no wrapping, no tooltip), and an entry in its own face that is taller than the row is cut at the row, so it never touches the rows beside it | `list-row`, `scrollbar-width` |
+| List rows | 22 tall, text 8 in; up to 12 rows, then the kit's 3px scroll bar; the wheel moves 3 rows. An entry is one line: a label too wide for the list is cut and ends in "..." (no wrapping), with the full name in a tooltip under the mouse (only when it is cut), and an entry in its own face that is taller than the row is cut at the row, so it never touches the rows beside it. The select box clips its text to the box the same way | `list-row`, `scrollbar-width` |
 | Row under the mouse | `accent-fill` | `accent-fill` |
 | Current choice | its text in `accent` | `accent` |
 | Layer | `strata-popups`, over a click catcher (levels 50 and 60) | `level-list-catcher`, `level-list` |

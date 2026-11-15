@@ -1470,13 +1470,13 @@ local function check_rows_hold(list, where)
 			check(row.clip ~= nil and row.clip:DoesClipChildren(), label .. ': a frame cuts what the text draws at the row')
 			if row.clip then
 				eq(row.clip:GetParent(), row, label .. ': the clip is the row\'s')
+				eq(row.text:GetParent(), row.clip, label .. ': the text is a region of the clip frame, with no frame between')
+				eq(row.view, nil)
 				eq(row.clip:GetNumPoints(), 2, label .. ': the clip is anchored by two corners')
 				for p = 1, 2 do
 					local _, relative = row.clip:GetPoint(p)
 					eq(relative, row, label .. ': both on the row')
 				end
-				local view = row.text:GetParent()
-				eq(view:GetParent(), row.clip, label .. ': the text is in a child of the clip, the frame that is cut')
 			end
 		end
 	end
@@ -1526,4 +1526,97 @@ test('a plain select list with a long label is one line cut at its row too', fun
 			W.CloseList()
 		end)
 	end
+end)
+
+test('a list row whose text is cut shows the full name in a tooltip, and only then (M4)', function()
+	for _, look in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		in_look(look, function(tip)
+			for _, name in ipairs(LONG_NAMES) do st.LSM:Register('font', name, 'Fonts\\ARIALN.TTF') end
+			local w = row_widget('header', 'Text')
+			local list = open(w)
+			local function row_of(label)
+				for i = 1, #list.entries do
+					if list.entries[i].label == label then
+						list.offset = math.max(0, math.min(#list.entries - 12, i - 1))
+						stub.fire_script(list.frame, 'OnMouseWheel', 0)
+						for _, row in ipairs(list.rows) do
+							if row:IsShown() and row.entry == list.entries[i] then return row end
+						end
+					end
+				end
+			end
+			local long = row_of(LONG_NAMES[1]) -- the rows are shared: the next scroll refills this one
+			check(long, look .. ': the long name is in a row')
+			stub.fire_script(long, 'OnEnter', true)
+			check(tip.shown and tip.owner == long, look .. ': a cut name has a tooltip')
+			eq(tip.lines[1], LONG_NAMES[1], 'the full name')
+			stub.fire_script(long, 'OnLeave', true)
+			check(not tip.shown, look .. ': it goes when the mouse leaves')
+			local short = row_of('Text')
+			check(short, look .. ': a short name is in a row')
+			stub.fire_script(short, 'OnEnter', true)
+			check(not tip.shown, look .. ': a name that fits has none')
+			stub.fire_script(short, 'OnLeave', true)
+			-- A caption has none either.
+			stub.fire_script(list.rows[1], 'OnEnter', true)
+			check(not tip.shown, 'a caption has none')
+			-- It does not outlive the list.
+			long = row_of(LONG_NAMES[1])
+			stub.fire_script(long, 'OnEnter', true)
+			check(tip.shown, 'shown again')
+			W.CloseList()
+			check(not tip.shown, 'closing the list takes it down')
+		end)
+	end
+end)
+
+test("the select face that shows a typeface cuts what it draws at the face (M6)", function()
+	for _, look in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		in_look(look, function()
+			local w = row_widget('header', { font_name = 'Colus', font_size = 15 }, nil, { name = 'Header font' })
+			local face = w.face
+			check(face.clip ~= nil and face.clip:DoesClipChildren(), look .. ': a clip frame')
+			eq(face.text:GetParent(), face.clip, 'the text is on it')
+			eq(face.text:CanWordWrap(), false, 'one line')
+			for p = 1, 2 do
+				local _, relative = face.clip:GetPoint(p)
+				eq(relative, face, 'the clip lies on the face')
+			end
+		end)
+	end
+end)
+
+------------------------------------------------------------------ each ClearAllPoints of the menu (M8)
+
+test("the menu's frame has no points once it hides, whatever draws next (M8: OnHide's clear)", function()
+	in_look('thick', function()
+		open_dots()
+		stub.click(dots_of('header'))
+		check(OW.GetMenuFrames().frame:GetNumPoints() > 0, 'anchored while open')
+		OW:CloseMenu()
+		eq(OW.GetMenuFrames().frame:GetNumPoints(), 0, 'off its dots when it hides')
+		close_dots()
+	end)
+end)
+
+test("the menu's frame is off any old anchor when its rows are drawn (M8: Draw's clear)", function()
+	in_look('thick', function()
+		open_dots()
+		stub.click(dots_of('header'))
+		local M = OW.GetMenuFrames()
+		OW:CloseMenu()
+		-- A stale anchor, as a menu left on a pooled widget would hold.
+		M.frame:SetPoint('TOPLEFT', dots_of('tip'), 'BOTTOMLEFT', 0, 0)
+		local at
+		local body = M.body
+		local draw = body.Draw
+		body.Draw = function(self, ...)
+			at = M.frame:GetNumPoints()
+			return draw(self, ...)
+		end
+		stub.click(dots_of('chat'))
+		body.Draw = draw
+		eq(at, 0, 'no point on the frame when the rows are drawn')
+		close_dots()
+	end)
 end)

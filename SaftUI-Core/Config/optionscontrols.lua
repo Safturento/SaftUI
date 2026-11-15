@@ -330,7 +330,12 @@ function W.SelectFace(parent, width, onClick)
 	local face = Box(st:CreateFrame('Button', nil, parent))
 	face.boxed, face.onClick = true, onClick
 	face:SetSize(width, FIELD_HEIGHT)
-	face.text = NewText(face, 'LEFT')
+	-- A face drawn in a typeface taller than the face is cut at the face (the
+	-- list's rows are cut the same way, optionslist.lua).
+	face.clip = CreateFrame('Frame', nil, face)
+	face.clip:SetAllPoints(face)
+	face.clip:SetClipsChildren(true)
+	face.text = NewText(face.clip, 'LEFT')
 	face.text:SetWordWrap(false)
 	face.text:SetPoint('LEFT', face, 'LEFT', 8, 0)
 	face.text:SetPoint('RIGHT', face, 'RIGHT', -22, 0)
