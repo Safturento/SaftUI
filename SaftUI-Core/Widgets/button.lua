@@ -1,11 +1,31 @@
 local st = SaftUI
 
-function st:CreateButton(name, parent, text, theme, background)
-	local button = self:CreateFrame('Button', name and 'SaftUI_'..name or nil, parent)
-	button.text = self:CreateFontString(button, 'pixel', text)
-	button.text:SetAllPoints()
+-- Core's Button text setting (Global settings > Fonts), read when a button's
+-- label is drawn or follows.
+local function ButtonsFont() return st.config.profile.buttons.font end
 
-    self:SkinButton(button, theme, background)
+-- Puts a font object on a button's own normal, highlight and disabled states,
+-- which is what draws its label. Passed to st:FollowFont, since a Button has
+-- no SetFontObject to follow with.
+local function ApplyStates(button, fontObject)
+	if button.SetNormalFontObject then
+		button:SetNormalFontObject(fontObject)
+		button:SetHighlightFontObject(fontObject)
+		button:SetDisabledFontObject(fontObject)
+	end
+end
+
+-- Makes a SaftUI button with its label in button.text. font, if given (a
+-- shared font's key or a typeface), is the label's own and follows nothing but
+-- that font; by default the label is Button text and follows its changes at
+-- once (the micro menu's clock is given Small text, which the bar keeps).
+function st:CreateButton(name, parent, text, theme, background, font)
+	local button = self:CreateFrame('Button', name and 'SaftUI_'..name or nil, parent)
+	button.text = self:CreateFontString(button, font or ButtonsFont(), text)
+	button.text:SetAllPoints()
+	if not font then st:FollowFont(button.text, ButtonsFont) end
+
+    self:SkinButton(button, theme, background, font)
 
 	return button
 end
@@ -205,23 +225,33 @@ end
 
 -- Draws button's backdrop in theme and background (Use SaftUI's theme and
 -- Solid by default) as a control, and gives it font and SaftUI's hover,
--- pushed and disabled looks. Under the Blizzard theme it's Blizzard's panel
+-- pushed and disabled looks. font is a shared font's key or a typeface; with
+-- none the button's label is Button text and follows it (its normal,
+-- highlight and disabled font objects, or its font strings on a frame with no
+-- states). Under the Blizzard theme it's Blizzard's panel
 -- button instead (see above), which follows a theme switch.
 function st:SkinButton(button, theme, background, font)
 	assert(button)
 	theme, background = theme or 'theme', background or 'solid'
 	st:SetBackdrop(button, theme, background, 'control')
 
-    local fontObject = st:FontObject(font or 'pixel')
+	local fontObject = st:FontObject(font or ButtonsFont())
 	if button.SetNormalFontObject then
 		button:SetNormalFontObject(fontObject)
 		button:SetHighlightFontObject(fontObject)
 		button:SetDisabledFontObject(fontObject)
 		button:SetPushedTextOffset(0, 0)
+		-- Button text follows from here on; a font of its own stops it.
+		st:FollowFont(button, font == nil and ButtonsFont or nil, ApplyStates)
 	else
 		for _,region in pairs({ button:GetRegions() }) do
 			if region:GetObjectType() == 'FontString' then
-				region:SetFontObject(fontObject)
+				if font == nil then
+					st:FollowFont(region, ButtonsFont)
+				else
+					st:FollowFont(region, nil)
+					region:SetFontObject(fontObject)
+				end
 			end
 		end
 	end

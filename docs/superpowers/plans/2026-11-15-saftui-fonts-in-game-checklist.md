@@ -127,3 +127,11 @@ Each of these is a call made while building, and the tests pin it as it stands. 
 ## M. Design System
 
 `docs/design-system/` changed across the plan (README's Type table, `tokens.json`, the Select, Icons, Options window and Position block pages, discrepancies 2 and 20, Code change 3): republish the Design System artifact.
+
+## N. Feedback round: Kinds of text, the totem timers' font, the action bars' defaults (branch fb-fontfeat)
+
+Kinds of text does what its rows say:
+
+- Global settings > Fonts > Kinds of text > Button text: pick Heading. The labels of the bags' Bag Slots button (open a bag), the bank's Warband Bank and Deposit buttons and its category tabs, and keybind mode's Done (`/sui kb`) change at once, in size and face, with no reload. Pick a typeface: the same. Reset: they are back in Small text (Homespun 10, monochrome outline, no shadow), exactly as before the change. The micro menu's clock does not change (it keeps Small text).
+- The same Button text pick still changes the totem bar's key bindings, counts and names and the bag slot bars' texts, and no longer the totem timers.
+- Check box labels: SaftUI has only one label, the bags' Edit toggle, and it is hidden, so changing the row shows nothing. The row says so. (The Edit toggle drew Small text before this change and draws Check box labels, Text by default, now; nothing shows it today.)

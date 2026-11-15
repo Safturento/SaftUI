@@ -169,7 +169,6 @@ function INV:CreateEditToggle(container)
 	local filterButton = st:CreateCheckButton(nil, container.header, 'button')
 	container.header.filterButton = filterButton
 	filterButton.text:SetAllPoints(filterButton)
-	filterButton:SetTextFont('pixel')
 	filterButton:SetText('Edit')
 	filterButton:SetScript('OnClick', function()
 		-- Showing or hiding the hidden categories re-packs the window.
