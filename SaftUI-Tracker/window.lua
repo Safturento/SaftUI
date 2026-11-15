@@ -151,7 +151,11 @@ end
 
 -- The first position (call 26): where the player's tracker was, so SaftUI's
 -- starts there. The skin's saved position when Misc's tracker mover is loaded
--- and the profile has one, else Blizzard's default spot:
+-- and the profile has one, else where Blizzard's Edit Mode had the tracker
+-- (EditModeSpot, below: the C_EditMode API, a top point copied, another
+-- converted), else Blizzard's default spot. The skin's comes first because
+-- while Misc's mover had a position it kept Blizzard's tracker there, whatever
+-- Edit Mode's anchor said. The skin's:
 --   - a position by a top point (TOPLEFT, TOP, TOPRIGHT) is copied (the five
 --     keys, never the skin's own table, which is AceDB's with its metatable):
 --     the tracker hangs from its top, so the spot is the same either way;
@@ -204,29 +208,68 @@ local function ConvertSkinPosition(self, skin, saved)
 	return st:RoundToPixel(holderLeft + width - right, self.holder), st:RoundToPixel(holderBottom + height - top, self.holder)
 end
 
--- Where the player's tracker was in Blizzard's Edit Mode, as the TOPRIGHT form
--- (x_off, y_off from the screen's top right, whole pixels), for a profile with
--- no position of its own. Read through the C_EditMode API alone: no field or
--- method of Blizzard's tracker frame is touched (taint.md rule 5). Returns
--- known, x, y: `known` false when the answer isn't there yet (no API on this
--- client, or the layouts not loaded: they arrive with EDIT_MODE_LAYOUTS_UPDATED),
--- and `known` with no x when the tracker is where Blizzard's default puts it.
--- Source (Gethe/wow-ui-source, `forever` and `live` alike): C_EditMode.GetLayouts()
--- returns EditModeLayouts { layouts = the SAVED layouts, activeLayout }; Blizzard's
--- EditModeManager puts the preset layouts (Enum.EditModePresetLayoutsMeta.NumValues
--- of them: 3 on Forever, 2 on retail) in front of the saved ones, so activeLayout
--- counts them; a preset layout is Blizzard's default spot. A layout's `systems`
--- holds an EditModeSystemInfo per system, the tracker's with `system` equal to
--- Enum.EditModeSystem.ObjectiveTracker, `isInDefaultPosition` and an
--- `anchorInfo` { point, relativeTo, relativePoint, offsetX, offsetY } (relativeTo
--- is a frame name). Only a spot hung from the screen by a top point is used: the
--- tracker's height isn't known without reading its frame, its width is taken
--- from Misc's skin when it has one, else 260 (Blizzard's tracker's, as Misc's
--- own fallback). Offsets are in the tracker's scale, which is 1.
-local TRACKER_WIDTH = 260
-local function EditModeSpot(self, skin)
+-- Where the player's tracker was in Blizzard's Edit Mode, as a position (the
+-- five keys), for a profile with no position of its own. Read through the
+-- C_EditMode API alone, plus one read of Blizzard's Edit Mode manager (below):
+-- no field, method or rect of Blizzard's tracker frame is touched (taint.md
+-- rule 5). Returns known, spot: `known` false when the answer isn't there yet
+-- (no API on this client, or Blizzard's manager hasn't applied the layouts: they
+-- arrive with EDIT_MODE_LAYOUTS_UPDATED), and `known` with no spot when the
+-- tracker is where Blizzard's default puts it or can't be placed.
+-- `ready` says the event itself has just fired, so the layouts are there.
+-- Source (Gethe/wow-ui-source, `forever` and `live` alike):
+--   - C_EditMode.GetLayouts() returns EditModeLayouts { layouts = the SAVED
+--     layouts, activeLayout }; EditModeManagerFrameMixin:UpdateLayoutInfo
+--     (EditModeManager.lua) puts the preset layouts
+--     (Enum.EditModePresetLayoutsMeta.NumValues of them: 3 on Forever, 2 on
+--     retail) in front of the saved ones, so activeLayout counts them; a preset
+--     layout is Blizzard's default spot;
+--   - a layout's `systems` holds an EditModeSystemInfo per system, the tracker's
+--     with `system` equal to Enum.EditModeSystem.ObjectiveTracker (12),
+--     `isInDefaultPosition`, `settings` and an `anchorInfo` { point, relativeTo
+--     (a frame's name), relativePoint, offsetX, offsetY }; the offsets are in
+--     UIParent units whatever the scale (UpdateSystemAnchorInfo saves them
+--     multiplied by the frame's scale);
+--   - the tracker's template sets no alwaysUseTopRightAnchor (EditModeSystemTemplates.xml),
+--     so it keeps whatever point a drag or a snap left: a snap to the screen's
+--     side alone is RIGHT or LEFT, not a top point.
+-- A top point is copied as it is, like the skin's (the tracker hangs from its
+-- top, so the same point and offsets put SaftUI's window where Blizzard's was,
+-- and no width is needed). Any other point is converted to the TOPRIGHT form
+-- from the tracker's width (Misc's skin's, else TRACKER_WIDTH) and its height,
+-- which is Edit Mode's Height setting from the same layout (TrackerHeight):
+-- a moved tracker is exactly that tall (ObjectiveTrackerContainerMixin:UpdateHeight:
+-- math.max(editModeHeight, the modules' mustFit, which none sets)).
+local TRACKER_WIDTH = 260 -- ObjectiveTrackerContainerTemplate's <Size x="260"> (Blizzard_ObjectiveTrackerContainer.xml)
+local HEIGHT_DEFAULT = 800 -- the presets' Height (raw 40), what a layout without the setting gets (ReconcileWithModern)
+
+-- Edit Mode's Height for the tracker system `system`: the raw setting is shown as
+-- clamp(raw * 10 + 400, 400, 1000) (EditModeSettingDisplayInfo.lua ConvertValueDefault).
+local function TrackerHeight(system)
+	local id = Enum.EditModeObjectiveTrackerSetting and Number(Enum.EditModeObjectiveTrackerSetting.Height)
+	if id and type(system.settings) == 'table' then
+		for _, info in ipairs(system.settings) do
+			if type(info) == 'table' and info.setting == id then
+				local raw = Number(info.value)
+				if raw then return math.min(1000, math.max(400, raw * 10 + 400)) end
+			end
+		end
+	end
+	return HEIGHT_DEFAULT
+end
+
+-- Whether Blizzard's Edit Mode manager has applied the layouts (its
+-- EDIT_MODE_LAYOUTS_UPDATED handler set layoutInfo: EditModeManagerFrameMixin:IsInitialized).
+-- Before that GetLayouts' answer can look like a preset being active. A read only.
+local function LayoutsLoaded()
+	local manager = _G.EditModeManagerFrame
+	return manager == nil or manager.layoutInfo ~= nil
+end
+
+local function EditModeSpot(self, skin, ready)
 	if not (C_EditMode and type(C_EditMode.GetLayouts) == 'function'
 		and Enum and Enum.EditModeSystem and Enum.EditModePresetLayoutsMeta) then return false end
+	if not ready and not LayoutsLoaded() then return false end
 	local trackerSystem = Number(Enum.EditModeSystem.ObjectiveTracker)
 	local presets = Number(Enum.EditModePresetLayoutsMeta.NumValues)
 	if not (trackerSystem and presets) then return false end
@@ -241,19 +284,26 @@ local function EditModeSpot(self, skin)
 		if type(system) == 'table' and system.system == trackerSystem then
 			if system.isInDefaultPosition ~= false then return true end
 			local anchor = system.anchorInfo
-			if type(anchor) ~= 'table' then return true end
-			local relativeTo = anchor.relativeTo
-			if not (relativeTo == 'UIParent' or relativeTo == UIParent) then return true end
+			-- (a frame's name: the API types relativeTo as a string)
+			if type(anchor) ~= 'table' or anchor.relativeTo ~= 'UIParent' then return true end
 			local px, py = POINT_X[anchor.point], POINT_Y[anchor.point]
 			local rx, ry = POINT_X[anchor.relativePoint], POINT_Y[anchor.relativePoint]
 			local xo, yo = Number(anchor.offsetX), Number(anchor.offsetY)
+			if not (px and py and rx and ry and xo and yo) then return true end
+			if TOP_POINTS[anchor.point] then
+				return true, { point = anchor.point, frame = 'UIParent', rel_point = anchor.relativePoint, x_off = xo, y_off = yo }
+			end
 			local width = Number(skin and skin.width) or TRACKER_WIDTH
+			local height = TrackerHeight(system)
 			local left, right = Number(UIParent:GetLeft()), Number(UIParent:GetRight())
 			local bottom, top = Number(UIParent:GetBottom()), Number(UIParent:GetTop())
-			if not (py == 1 and px and rx and ry and xo and yo and left and right and bottom and top) then return true end
+			if not (left and right and bottom and top) then return true end
 			local cornerX = left + (right - left) * rx + xo + width * (1 - px)
-			local cornerY = bottom + (top - bottom) * ry + yo
-			return true, st:RoundToPixel(cornerX - right, self.holder), st:RoundToPixel(cornerY - top, self.holder)
+			local cornerY = bottom + (top - bottom) * ry + yo + height * (1 - py)
+			return true, {
+				point = 'TOPRIGHT', frame = 'UIParent', rel_point = 'TOPRIGHT',
+				x_off = st:RoundToPixel(cornerX - right, self.holder), y_off = st:RoundToPixel(cornerY - top, self.holder),
+			}
 		end
 	end
 	return true
@@ -270,8 +320,10 @@ local function FirstPosition(self)
 	local saved = profile and profile.position
 	if type(saved) ~= 'table' then
 		-- No skin position to copy: where Blizzard's Edit Mode had the tracker.
-		local known, x, y = EditModeSpot(self, skin)
-		if x then position.x_off, position.y_off = x, y end
+		local known, spot = EditModeSpot(self, skin)
+		if spot then
+			for key, value in pairs(spot) do position[key] = value end
+		end
 		return position, not known and C_EditMode ~= nil
 	end
 	if TOP_POINTS[saved.point or position.point] then
@@ -285,27 +337,34 @@ local function FirstPosition(self)
 	return position
 end
 
+-- The first position's watch for Edit Mode's layouts is over: nothing more to ask.
+local function StopWatching(self)
+	self.firstWritten, self.firstTable = nil, nil
+	if self.layoutsFrame then self.layoutsFrame:UnregisterEvent('EDIT_MODE_LAYOUTS_UPDATED') end
+end
+
 -- Edit Mode's layouts arrived after the first position was written (the game
 -- sends them around login): if the position is still exactly what was written
 -- and Edit Mode has the tracker moved, it moves there, once. A position the
--- player has set since is never touched.
+-- player has set since is never touched. The event's own payload is not read:
+-- Blizzard's handler (registered first, a synchronous event) changes that same
+-- table in place (the presets are put in front of the layouts), so it is not
+-- the saved list; GetLayouts is asked again, and the event itself is the signal
+-- that the layouts are there, whether or not Blizzard's handler has run yet.
 local function OnLayoutsUpdated(self)
 	local written = self.firstWritten
 	if not written then return end
 	local position = self.config.position
 	-- (the very table that was written: another profile's, with the same values, is not it)
-	if position ~= self.firstTable then self.firstWritten, self.firstTable = nil, nil return end
+	if position ~= self.firstTable then return StopWatching(self) end
 	for key, value in pairs(written) do
-		if not (position and position[key] == value) then
-			self.firstWritten, self.firstTable = nil, nil
-			return
-		end
+		if position[key] ~= value then return StopWatching(self) end
 	end
-	local known, x, y = EditModeSpot(self, st:GetModule('ObjectiveTracker', true))
+	local known, spot = EditModeSpot(self, st:GetModule('ObjectiveTracker', true), true)
 	if not known then return end
-	self.firstWritten, self.firstTable = nil, nil
-	if x then
-		position.x_off, position.y_off = x, y
+	StopWatching(self)
+	if spot then
+		for key, value in pairs(spot) do position[key] = value end
 		self:ApplyHolder()
 	end
 end
@@ -314,11 +373,13 @@ local function WatchLayouts(self, position)
 	local copy = {}
 	for key, value in pairs(position) do copy[key] = value end
 	self.firstWritten, self.firstTable = copy, position
-	if self.layoutsFrame or (C_EventUtils and C_EventUtils.IsEventValid and not C_EventUtils.IsEventValid('EDIT_MODE_LAYOUTS_UPDATED')) then return end
-	local frame = CreateFrame('Frame')
-	frame:RegisterEvent('EDIT_MODE_LAYOUTS_UPDATED')
-	frame:SetScript('OnEvent', function() OnLayoutsUpdated(self) end)
-	self.layoutsFrame = frame
+	if C_EventUtils and C_EventUtils.IsEventValid and not C_EventUtils.IsEventValid('EDIT_MODE_LAYOUTS_UPDATED') then return end
+	if not self.layoutsFrame then
+		local frame = CreateFrame('Frame')
+		frame:SetScript('OnEvent', function() OnLayoutsUpdated(self) end)
+		self.layoutsFrame = frame
+	end
+	self.layoutsFrame:RegisterEvent('EDIT_MODE_LAYOUTS_UPDATED')
 end
 
 -- The holder's position: the profile's. A profile with none (a new or reset
