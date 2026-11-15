@@ -43,6 +43,9 @@ local MUTED_PAGE = st:NewModule('MutedPage')
 function MUTED_PAGE:GetConfigTable()
 	return {
 		name = 'Muted page', type = 'group', category = 'Frames',
+		footer = { name = 'Footer label', type = 'group', args = {
+			on = { type = 'toggle', name = 'A footer toggle', order = 1, get = function() return true end, set = function() end },
+		} },
 		args = { general = { name = 'General', type = 'group', args = {
 			section = { name = 'A section', desc = 'Its note.', type = 'group', inline = true, order = 1, args = {
 				off = { type = 'toggle', name = 'Off row', order = 1, disabled = true,
@@ -166,8 +169,7 @@ test('a changed Muted reaches them after the window draws again', function()
 		eq(ink(F.profile), '0.90,0.30,0.10', 'the sidebar\'s profile line')
 		eq(ink(F.brandSub), '0.90,0.30,0.10', "the brand's Options line")
 		eq(seen['text "Titled off"'], '0.90,0.30,0.10', "a disabled titled row's label")
-		-- The footer control is unused by any page (.agents/edit-mode.md), so its label
-		-- is pinned only at build, above.
+		eq(ink(F.footerLabel), '0.90,0.30,0.10', "the footer control's label, repainted at each draw (optionswindow.lua's DrawFooterControl)")
 		st.Config:Open('MutedEmpty')
 		OW:Render()
 		eq(ink(F.placeholder), '0.90,0.30,0.10', 'the empty-page line')
