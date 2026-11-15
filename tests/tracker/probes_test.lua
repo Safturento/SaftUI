@@ -585,6 +585,25 @@ both('three sections held at once: each drops on its own retry, the soonest firs
 	TR.ProbePass = pass
 end)
 
+both('a probe pass waiting when combat starts runs at once, as a refresh does, and its timer runs no second one', function(st, TR)
+	RW.later(1)
+	local runs = 0
+	local scenario = TR.Probes.Scenario
+	TR.Probes.Scenario = function() runs = runs + 1 return scenario() end
+	stub.probes.scenario = { stages = 2 }
+	stub.fire_event('SCENARIO_UPDATE')
+	eq(TR.probePending, true, 'the pass is asked for, on the next frame')
+	eq(runs, 0, 'and has not run')
+	-- (the game runs the handlers out of lockdown, which begins after them)
+	stub.fire_event('PLAYER_REGEN_DISABLED')
+	eq(TR.probePending, false, 'combat starting runs it')
+	eq(runs, 1, 'once')
+	eq(TR.handoverState, 'blizzard', 'with what the game allows out of lockdown: SaftUI\'s hides and Blizzard\'s shows in its place')
+	RW.later(1)
+	eq(runs, 1, 'its timer finds nothing to run')
+	TR.Probes.Scenario = scenario
+end)
+
 both('a probe that errors is reported once, and counts as no after that', function(st, TR)
 	local real = TR.Probes.Bonus
 	TR.Probes.Bonus = function() error('the API changed') end

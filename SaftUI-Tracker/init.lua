@@ -290,9 +290,20 @@ function TR:OnEvent(event, ...)
 	-- event's handlers, so a refresh already waiting runs now, the last moment
 	-- the buttons can still be set (the harness starts lockdown first).
 	if event == 'PLAYER_REGEN_DISABLED' then
+		local flushed = false
 		if self.pending then
 			self.pending = false
 			self:Refresh()
+			flushed = true
+		end
+		-- A probe pass waiting runs now too, while SaftUI's secure buttons can still
+		-- be hidden for a handover that is needed (the pass's timer finds it done).
+		if self.probePending then
+			self.probePending = false
+			self:ProbePass()
+			flushed = true
+		end
+		if flushed then
 			-- Nothing runs after lockdown begins unless asked: the next frame draws what
 			-- combat changes (the dimming, the scroll lock's tooltip and bar).
 			C_Timer.After(0, function() self:RefreshItems() end)
