@@ -443,10 +443,17 @@ local function rows()
 	return lines
 end
 
+-- The filter button as the player clicks it: it shows while the mouse is over
+-- the feed (a frame passes), so the click is one the game delivers.
+local function click_filter()
+	mouse_on(feed)
+	frame_passes()
+	stub.click(filterButton)
+end
+
 test("the filter button opens the options kit's check list with the nine entries, Self Only first", function()
 	reset()
-	mouse_on(feed)
-	stub.click_unchecked(filterButton)
+	click_filter()
 	eq(W.ListOwner(), feed.filterMenuAnchor, "the kit's list is open, owned by the menu's anchor")
 	local lines = rows()
 	eq(#lines, 9, 'nine rows')
@@ -460,10 +467,12 @@ end)
 
 test('the list opens beside the button, on the side away from the feed, in the button row', function()
 	reset()
-	stub.click(filterButton)
+	eq(W.ListOwner(), nil, 'the list is closed before the click')
+	click_filter()
 	local anchor = feed.filterMenuAnchor
 	check(anchor:GetRight() <= filterButton:GetLeft(), 'the anchor is left of the button (the feed is on the right of the screen)')
 	eq(anchor:GetHeight(), filterButton:GetHeight(), "as tall as the button, so the list lies under or over the button's row")
+	eq(W.ListOwner(), anchor, 'the click opened the list, owned by the anchor')
 	check(W.GetListFrames().frame:IsShown(), 'the list is shown')
 	W.CloseList()
 end)
@@ -471,7 +480,7 @@ end)
 test('the rows show the filters as they are, and a click flips one at once, redraws the feed, and leaves the list open', function()
 	reset()
 	config.filters.Self, config.filters.Gold = false, false
-	stub.click_unchecked(filterButton)
+	click_filter()
 	local lines = rows()
 	local function checked(i) return W.GetListFrames().isChecked(ORDER[i]) end
 	eq(checked(1), false, 'Self Only off')
@@ -495,10 +504,10 @@ test('a toggle changes what the feed shows', function()
 	tinsert(stack, { name = 'G', type = 'Gold', gold = 5, icon = 1, time = 100 })
 	tinsert(stack, { name = 'L', type = 'Loot', icon = 1, time = 100 })
 	eq(#LT:GetFilteredItems(), 2, 'both show')
-	stub.click_unchecked(filterButton)
-	stub.click_unchecked(rows()[4]) -- Gold
+	click_filter()
+	stub.click(rows()[4]) -- Gold
 	eq(#LT:GetFilteredItems(), 1, 'Gold off: one entry')
-	stub.click_unchecked(rows()[4])
+	stub.click(rows()[4])
 	eq(#LT:GetFilteredItems(), 2, 'Gold on: both again')
 	W.CloseList()
 end)

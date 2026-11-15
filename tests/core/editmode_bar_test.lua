@@ -549,26 +549,29 @@ test('in combat the bar hides with edit mode and its buttons do nothing', functi
 	check(not bar:IsShown(), 'entering combat: hidden')
 	check(not EM.active, 'edit mode off')
 	EM.active = true -- the bar's buttons, should one be pressed in that last moment
+	-- The bar is hidden by now, so the game would deliver none of these presses: they
+	-- model one that arrives as combat starts, and the bar's own Guard is under test.
+	local press = stub.click_unchecked
 	stub.in_combat = true
 	settings().grid = false
-	stub.click(frame_of('grid'))
+	press(frame_of('grid'))
 	eq(settings().grid, false, 'Grid unchanged')
-	stub.click(frame_of('snapFrames'))
+	press(frame_of('snapFrames'))
 	eq(settings().snap_frames, false, 'Snap to frames unchanged')
-	stub.click(frame_of('dim'))
+	press(frame_of('dim'))
 	eq(settings().dim, true, 'Dim world unchanged')
-	stub.click(frame_of('coordinates'))
+	press(frame_of('coordinates'))
 	eq(settings().coordinates, false, 'Coordinates unchanged')
 	settings().grid = true
-	stub.click(frame_of('gridSize').pair.up)
+	press(frame_of('gridSize').pair.up)
 	eq(settings().grid_size, 32, 'Grid size arrow does nothing')
 	frame_of('gridSize').edit:SetText('50')
 	stub.fire_script(frame_of('gridSize').edit, 'OnEnterPressed')
 	eq(settings().grid_size, 32, 'a typed size does nothing')
 	settings().grid = false
-	stub.click(frame_of('options'))
+	press(frame_of('options'))
 	check(not OW:IsShown(), 'Options opens nothing')
-	stub.click(frame_of('exit'))
+	press(frame_of('exit'))
 	check(EM.active, 'Exit does nothing')
 	EM.active = false
 	reset_edit_mode()

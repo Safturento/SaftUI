@@ -188,7 +188,9 @@ test('a released widget is hidden, detached and forgets its row', function()
 	check(not frame:IsShown(), 'hidden')
 	eq(frame:GetParent(), nil, 'no parent')
 	eq(w.row, nil, 'row dropped')
-	click(frame)
+	-- A stray press that reaches the released frame (the game would not deliver it:
+	-- the frame is hidden); the widget's own guard is what is under test.
+	stub.click_unchecked(frame)
 	eq(sets, 0, 'a stray click on the released frame sets nothing')
 	w:Release() -- twice is harmless
 	local count = W.Pooled('toggle')

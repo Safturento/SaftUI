@@ -601,6 +601,7 @@ test("a section title carries its block's marks and the line beside it", functio
 		watch(entry.parts)
 
 		-- Reset from the title's line acts on the block's option.
+		-- (the reset is part of the hover line, hidden once the cursor moved off: press it unchecked)
 		stub.click_unchecked(entry.parts.reset)
 		eq(calls[1].action .. ' ' .. calls[1].key, 'reset pos')
 
@@ -1176,6 +1177,7 @@ test("an item's row: its line's tooltips name its Show, its diff tooltip has no 
 			check(not parts.line:IsShown(), 'gone')
 			local lp, _, _, lx = point(c.label)
 			eq(lp .. ' ' .. lx, 'LEFT 26', 'the label back at 26')
+			-- (the reset is part of the hover line, hidden once the cursor moved off: press it unchecked)
 			stub.click_unchecked(parts.reset)
 			eq(calls[1].action .. ' ' .. calls[1].key, 'reset hotkey', "Reset acts on the item's own share, its Show")
 

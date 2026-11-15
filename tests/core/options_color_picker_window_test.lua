@@ -89,7 +89,9 @@ test('Okay after the field was released records nothing', function()
 	OW:Navigate('Loot')
 	tick()
 	local F = W.GetColorPickerFrames()
-	if F.okay:IsShown() then stub.click(F.okay) end
+	-- Okay is still shown but under the window the navigation hid: the press that
+	-- arrives as the field is released, which the code's own guard must refuse.
+	if F.okay:IsShown() then stub.click_unchecked(F.okay) end
 	eq(#st.config.global.colorPicker.recent, 0, 'nothing recorded')
 	close_all()
 end)

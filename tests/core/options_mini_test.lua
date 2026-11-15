@@ -164,7 +164,8 @@ test('a bar only from half; shrink twice quickly stops at half; Shrink and Grow 
 	eq(OW:GetWindowSize(), 'mini')
 	eq(OW:Shrink(), false, 'nothing past the bar')
 	eq(OW:SetWindowSize('mini'), false, 'no change')
-	wait(); click(F.miniGrow); click(F.miniGrow)
+	wait(); click(F.miniGrow)
+	eq(stub.try_click(F.miniGrow), false, 'the button went at half: a fast second click is not delivered')
 	eq(OW:GetWindowSize(), 'half', 'grow then a fast second click stays at half')
 	check(not F.miniGrow:IsVisible(), 'grow gone at half')
 	wait(); stub.in_combat = true
@@ -352,6 +353,7 @@ test('/sui, a path, and a mover\'s click while the bar shows grow it to half on 
 	OW:Navigate('Chat'); wait(); OW:Shrink()
 	eq(OW:GetWindowSize(), 'mini')
 	mover.dragged = false
+	-- (the stubs never show the mover overlay of a mover not in edit mode: press it unchecked)
 	stub.click_unchecked(mover.overlay)
 	eq(OW:GetWindowSize(), 'half', 'a click on the selected mover grows the bar'); eq(OW:GetState().page, 'Loot', 'to the mover\'s page')
 	OW:Navigate('Chat')

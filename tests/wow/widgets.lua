@@ -1658,24 +1658,36 @@ function stub.fire_script(widget, script, ...)
 	return run_script(widget, script, ...)
 end
 
--- The user clicks a button: its OnClick, with any arguments given (the mouse
--- button, down), through stub.fire_script. Returns what fire_script returns, or
--- false when the game would not have delivered the click.
--- The user clicks a button as the game lets them: nothing happens for a hidden
--- button (or one under a hidden frame), a disabled one, or a mouse button the
--- button wasn't registered for (RegisterForClicks; a button registers only
--- LeftButtonUp until it says otherwise). The mouse button is the first argument
--- ('LeftButton' by default); 'AnyUp' and 'AnyDown' register every button.
-function stub.click(button, mouse, ...)
+-- The user clicks a button as the game lets them: its OnClick, with any
+-- arguments given (the mouse button, down), through stub.fire_script, which
+-- returns what it returns. The game delivers no click to a hidden button (or one
+-- under a hidden frame), a disabled one, or for a mouse button the button did not
+-- register (RegisterForClicks: LeftButtonUp until it says otherwise; a
+-- <button>Down or 'AnyDown' registration clicks on the press, 'AnyUp' on any
+-- release). stub.click ERRORS then, so a test that clicks a button it forgot to
+-- show fails loudly instead of passing without its click; a test that means to
+-- show a refusal says so with stub.try_click, which returns false for it.
+local function click_refusal(button, mouse)
 	local s = stub.state(button)
 	local which = mouse or 'LeftButton'
-	if not is_visible(s) or s.enabled == false then return false end
-	local registered = s.click_buttons or { 'LeftButtonUp' }
-	local ok = false
-	for _, name in ipairs(registered) do
-		if name == which .. 'Up' or name == 'AnyUp' then ok = true end
+	if not is_visible(s) then return 'it is hidden (or under a hidden frame)' end
+	if s.enabled == false then return 'it is disabled' end
+	for _, name in ipairs(s.click_buttons or { 'LeftButtonUp' }) do
+		if name == which .. 'Up' or name == which .. 'Down' or name == 'AnyUp' or name == 'AnyDown' then return nil end
 	end
-	if not ok then return false end
+	return 'it is not registered for ' .. tostring(which)
+end
+
+function stub.click(button, mouse, ...)
+	local why = click_refusal(button, mouse)
+	if why then error('stub.click: the game would not deliver this click: ' .. why .. ' (stub.try_click is for a test that means to show that)', 2) end
+	return stub.fire_script(button, 'OnClick', mouse, ...)
+end
+
+-- stub.click for a refusal that is the point of the test: false when the game
+-- would not deliver the click, else what stub.click returns.
+function stub.try_click(button, mouse, ...)
+	if click_refusal(button, mouse) then return false end
 	return stub.fire_script(button, 'OnClick', mouse, ...)
 end
 

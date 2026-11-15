@@ -547,7 +547,7 @@ test('the title opens the page list, grouped as the sidebar is, while the sideba
 	-- With the sidebar shown the button takes no click.
 	OW:SetSidebarShown(true)
 	check(not F.titleArrow:IsVisible() and not F.titleButton:IsVisible())
-	click(F.titleButton)
+	eq(stub.try_click(F.titleButton), false, 'the hidden button takes no click')
 	eq(W.ListOwner(), nil, 'no list')
 	eq(#take_errors(), 0, 'no errors')
 	reset()

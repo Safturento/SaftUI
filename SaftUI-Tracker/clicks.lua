@@ -332,9 +332,17 @@ function TR:OpenMenu(row)
 					-- Polled by the menu (Blizzard's SetEnabled takes a function), so it
 					-- follows combat starting or ending while the menu is open.
 					element:SetEnabled(poll)
-					if type(element.SetTooltip) == 'function' then
-						element:SetTooltip(function(tooltip)
-							if not poll() then tooltip:SetText(OUT_OF_COMBAT) end
+					-- The tooltip only while it is disabled: Blizzard's SetTooltip shows the
+					-- tooltip after its initializer whatever it wrote (an empty box on an
+					-- enabled entry), and the menu's buttons keep their hover scripts while
+					-- disabled. SetOnEnter + MenuUtil.ShowTooltipEx are on both clients.
+					if type(element.SetOnEnter) == 'function' and type(element.GetTooltipFrame) == 'function'
+						and type(MenuUtil.ShowTooltipEx) == 'function' then
+						element:SetOnEnter(function(frame)
+							if poll() then return end
+							MenuUtil.ShowTooltipEx(frame, element:GetTooltipFrame(), function(tooltip)
+								tooltip:SetText(OUT_OF_COMBAT)
+							end)
 						end)
 					end
 				end
@@ -390,9 +398,10 @@ function TR:HideRowTooltip(row)
 	if GameTooltip:IsOwned(row) then GameTooltip:Hide() end
 end
 
--- The quest icon's tooltip: what its click does (an icon-only control has one).
+-- The quest icon's tooltip: what its click does (an icon-only control has one),
+-- shown with Tooltips on, like the row's.
 function TR:ShowIconTooltip(button, row)
-	if not row.quest then return end
+	if not row.quest or not self.config.quests.tooltips then return end
 	PlaceTooltip(button, row)
 	local focused = type(C_SuperTrack) == 'table' and C_SuperTrack.GetSuperTrackedQuestID() == row.quest.id
 	GameTooltip:SetText(focused and Str('STOP_SUPER_TRACK_QUEST', 'Remove Focus') or Str('SUPER_TRACK_QUEST', 'Focus'), 1, 1, 1)

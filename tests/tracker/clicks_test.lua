@@ -25,10 +25,17 @@ local function menu_stand_in()
 		list[#list + 1] = item
 		-- Blizzard's SetEnabled takes a boolean or a function the menu polls.
 		function item:SetEnabled(enabled) self.enabled = enabled end
-		function item:SetTooltip(fn) self.tooltip = fn end
+		-- Blizzard's SetOnEnter(function(frame)) and GetTooltipFrame: the hover script.
+		function item:SetOnEnter(fn) self.onEnter = fn end
+		function item:GetTooltipFrame() return 'the tooltip' end
 		return item
 	end
 	_G.MenuUtil = {
+		-- MenuUtil.ShowTooltipEx(frame, tooltip, initializer): the initializer writes
+		-- on the tooltip, then the tooltip shows (the text in MenuUtil.last_tip).
+		ShowTooltipEx = function(frame, tooltip, initializer)
+			initializer({ SetText = function(_, text) _G.MenuUtil.last_tip = text end })
+		end,
 		CreateContextMenu = function(owner, generator)
 			local root = { owner = owner, list = {} }
 			local description = {}
@@ -49,11 +56,12 @@ local function enabled(item)
 end
 
 -- What a menu element's tooltip callback writes on a tooltip.
+-- (the hover script ran with the menu's stand-in; nil when nothing was shown).
 local function tip_of(item)
-	if not item.tooltip then return nil end
-	local shown
-	item.tooltip({ SetText = function(_, text) shown = text end, AddLine = function(_, text) shown = shown or text end }, item)
-	return shown
+	if not item.onEnter then return nil end
+	MenuUtil.last_tip = nil
+	item.onEnter('the button')
+	return MenuUtil.last_tip
 end
 
 local function texts(list)
@@ -288,6 +296,10 @@ RW.both('left: Show on map out of combat, focus in combat; Left click Focus: foc
 	eq(stub.state(GameTooltip).texts[1], STOP_SUPER_TRACK_QUEST, 'the icon of the focused quest offers to stop focusing')
 	stub.fire_script(icon, 'OnLeave', true)
 	check(not GameTooltip:IsShown(), 'and hides the tooltip')
+	TR.config.quests.tooltips = false
+	stub.fire_script(icon, 'OnEnter', true)
+	check(not GameTooltip:IsShown(), 'Tooltips off: the icon shows none either')
+	TR.config.quests.tooltips = true
 end)
 
 RW.both('a click on a row in a long, scrolled list leaves the scroll alone; tracking from the menu scrolls only by the existing rule', function(st, TR)
@@ -429,6 +441,25 @@ RW.both('in combat details, Show on map, Abandon and the watch changes are disab
 	for _, text in ipairs({ OBJECTIVES_VIEW_IN_QUESTLOG, OBJECTIVES_SHOW_QUEST_MAP, ABANDON_QUEST_ABBREV }) do entry(list, text).onClick() end
 	eq(calls(), '', 'nor does any of the Blizzard UI Lua')
 	stub.in_combat = false
+end)
+
+RW.both('Track Quest is disabled in combat with the tip, and refuses to track when clicked', function(st, TR)
+	zone()
+	TR.config.quests.show = 'zone'
+	stub.quests.watched = { 2 }
+	TR:Refresh()
+	local opened = menu_stand_in()
+	stub.in_combat = true
+	click(RW.quest(TR, 1), 'RightButton')
+	local track = entry(opened[1].list, TRACK_QUEST)
+	eq(enabled(track), false, 'Track Quest is disabled in combat')
+	eq(tip_of(track), 'Out of combat only', 'with the tip')
+	stub.ui_errors = {}
+	track.onClick()
+	eq(table.concat(stub.quests.watched, ','), '2', 'and tracks nothing')
+	stub.in_combat = false
+	eq(enabled(track), true, 'enabled again out of combat')
+	eq(tip_of(track), nil, 'and its hover shows no tooltip: an enabled entry has nothing to say')
 end)
 
 RW.both('a menu open when combat starts greys out, and comes back when it ends', function(st, TR)
@@ -652,7 +683,7 @@ RW.both('with Quest icons off the icon button is hidden and takes no click: the 
 	TR:Refresh()
 	local row = RW.quest(TR, 1)
 	check(not row.iconButton:IsShown(), 'no icon button over the title')
-	eq(stub.click(row.iconButton), false, 'a click there is the row\'s, not the icon\'s')
+	eq(stub.try_click(row.iconButton), false, 'a click there is the row\'s, not the icon\'s')
 	check(stub.quests.focused == 0, 'nothing was focused')
 	TR.config.quests.icons = true
 	TR:Refresh()

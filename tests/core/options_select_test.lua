@@ -320,7 +320,7 @@ test('W.OpenCheckList: rows show their marks; a click toggles one and the list s
 	stub.fire_script(list.catcher, 'OnKeyDown', 'ESCAPE')
 	check(not list.catcher:IsShown(), 'Esc closes it')
 	eq(W.ListOwner(), nil, 'and ListOwner says so')
-	click(list.rows[1])
+	eq(stub.try_click(list.rows[1]), false, 'a closed list takes no click')
 	eq(#toggled, 2, "a closed list's row toggles nothing")
 
 	open()
