@@ -27,8 +27,8 @@ local TR = st.Tracker
 	A quest is { id, logIndex, watchIndex | nil, tracked, title, headerTitle |
 	nil, campaign | nil, level | nil, elite, tags, difficultyColor | nil, complete,
 	failed, ready, auto, completionText | nil, objectives, sequenced, money |
-	nil, timeLeft | nil, readAt | nil, item | nil, inArea | nil, distanceSq |
-	nil, onContinent | nil, calling, overrides, waypoint | nil }; see Read.
+	nil, timeLeft | nil, readAt | nil, item | nil, calling, overrides, waypoint |
+	nil }; see Read.
 ]]
 
 local Model = {}
@@ -302,15 +302,8 @@ local function ReadQuest(questID, watchIndex, context)
 	if complete and type(GetQuestLogCompletionText) == 'function' then
 		quest.completionText = Text(GetQuestLogCompletionText(logIndex))
 	end
-	if Exists(C_Minimap, 'IsInsideQuestBlob') then quest.inArea = Flag(C_Minimap.IsInsideQuestBlob(questID)) end
-	if Exists(C_QuestLog, 'GetDistanceSqToQuest') then
-		local distanceSq, onContinent = C_QuestLog.GetDistanceSqToQuest(questID)
-		distanceSq = PlainNumber(distanceSq)
-		if distanceSq then
-			quest.distanceSq = distanceSq
-			quest.onContinent = Flag(onContinent)
-		end
-	end
+	-- (No area and no distance: only the nearest button's choice uses them, and it
+	-- reads them fresh for the quests it chooses among, nearest.lua `Candidates`.)
 	if context.focused == questID and Exists(C_QuestLog, 'GetNextWaypointText') then
 		quest.waypoint = Text(C_QuestLog.GetNextWaypointText(questID))
 	end

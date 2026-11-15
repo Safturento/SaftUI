@@ -391,7 +391,7 @@ git commit -m "core: move the objective colors to Global settings > Colors, conv
   - `TR.Model.Shown(info) -> boolean`: not a task, not a bounty (Ruling 10), not disabled for the session, not hidden.
   - `TR.Model.Compare(a, b)`: callings first, then `overridesSortOrder`, then `watchIndex`.
   - `TR.Model.Read(show) -> model`. The model is `{ quests, popups, counts = { inLog, max, watched, watchMax }, zoneNames, focused, arena }`.
-    - Each quest is `{ id, logIndex, watchIndex | nil, tracked, title, headerTitle, campaign, level, elite, tags, difficultyColor, complete, failed, ready, auto, completionText, objectives, sequenced, money = { have, need } | nil, timeLeft | nil, item | nil, inArea, distanceSq, onContinent, calling, overrides, waypoint }`.
+    - Each quest is `{ id, logIndex, watchIndex | nil, tracked, title, headerTitle, campaign, level, elite, tags, difficultyColor, complete, failed, ready, auto, completionText, objectives, sequenced, money = { have, need } | nil, timeLeft | nil, item | nil, calling, overrides, waypoint }` (no area or distance: the final review found nothing reading them, the nearest button reads its own).
     - In an arena, `quests` and `popups` are empty. Popups are left out while `SplashFrame` is shown. A quest with no title is skipped.
   - `TR.TitleText(quest, settings) -> text`: `"[12] "` or `"[12+] "` with Level on, and the tags with Tags on (Ruling 13).
   - `TR.QuestLines(quest, settings, now) -> { { kind, text, state, value } ... }`. Kinds: `objective`, `bar`, `failed`, `completion`, `complete`, `click`, `money`, `timer`, `waypoint`, in Ruling 11's order. A sequenced quest stops at its first unfinished objective. `hide_finished` and `finished_objectives` apply.
