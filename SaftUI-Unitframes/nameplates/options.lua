@@ -182,7 +182,7 @@ local function NameplateGeneral()
 	local args = {
 		enable = enable,
 		threat_solo = G.toggle(2, 'Threat when solo',
-			"Tints enemy health bars by your threat while you're on your own too. In a party or raid they're always tinted.", 'small'),
+			"Tints enemy health bars by your threat, and shows the threat percent, while you're on your own too. In a party or raid they're always tinted.", 'small'),
 		use_friendly = box,
 		sourced = sourced,
 		theme = G.theme(4, "How the border and background around each whole enemy nameplate are drawn. Its bars have their own, on their tabs."),

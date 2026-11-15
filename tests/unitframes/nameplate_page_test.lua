@@ -155,7 +155,7 @@ test('the Enemy nameplates page follows Raid 40; General has Nameplates, Threat 
 			eq(general.args[key].name, name, client .. ': ' .. key .. ' is ' .. name)
 		end
 		eq(general.args.enable.desc, "Draws nameplates in SaftUI's look: enemies and neutral units, and friendly ones outside instances. Changes after a reload.", client .. ": Nameplates' desc")
-		eq(general.args.threat_solo.desc, "Tints enemy health bars by your threat while you're on your own too. In a party or raid they're always tinted.", client .. ": Threat when solo's desc")
+		eq(general.args.threat_solo.desc, "Tints enemy health bars by your threat, and shows the threat percent, while you're on your own too. In a party or raid they're always tinted.", client .. ": Threat when solo's desc")
 		eq(general.args.width.desc, "Enemy nameplates' width: the health bar and the area you click. The game stacks every nameplate at this size.", client .. ": Width's desc")
 		eq(general.args.height.desc, "Enemy nameplates' height: the health bar and the area you click. The game stacks every nameplate at this size.", client .. ": Height's desc")
 		check(general.args.theme.desc:find('nameplate', 1, true) ~= nil, client .. ": Theme says it's the plates': " .. general.args.theme.desc)
