@@ -5,7 +5,10 @@
 --                       by path from the repo root ('SaftUI-Tracker/init.lua').
 --   TW.world(opts)      a fresh world: st, TR. opts:
 --                         client   'forever' (default) or 'retail'
---                         on       the profile's switch (tracker.enable)
+--                         on       the profile's switch (tracker.enable); off
+--                                  unless a test says on, so a test that doesn't care
+--                                  runs with it off; `on = 'default'` leaves the
+--                                  shipped default (on) as the game has it
 --                         misc     Misc's config loaded (true), or a table
 --                                  { skinning, skin, otp } to load those too
 --                         blizzard Blizzard's tracker built from the misc
@@ -214,7 +217,7 @@ function TW.world(opts)
 	apply_defaults()
 	if not opts.without then
 		st:GetModule('Tracker').NewScrollFrame = TW.scroll_frame
-		if opts.on ~= nil then st.config.profile.tracker.enable = opts.on end
+		if opts.on ~= 'default' then st.config.profile.tracker.enable = opts.on == true end
 	end
 	if opts.combat then stub.in_combat = true end
 
