@@ -54,6 +54,11 @@ local function ListFill()
 	local entries, offset = list.entries, list.offset
 	for i, row in ipairs(list.rows) do
 		local entry = entries[offset + i]
+		-- A scroll gives the row another entry: the cut name's tooltip was its last's.
+		if row.tipShown then
+			row.tipShown = nil
+			W.HideTip(row)
+		end
 		if entry then
 			row.entry = entry
 			-- Each row's font is set outright (a pooled row had another entry's
@@ -244,7 +249,7 @@ local function BuildList()
 			-- nothing is measured while the list fills or scrolls.
 			if entry and not entry.caption and self.text:IsTruncated() then
 				self.tipShown = true
-				W.ShowTip(self, entry.label)
+				W.ShowTip(self, entry.label, nil, 'ANCHOR_RIGHT') -- beside the list, never over its rows
 			end
 		end)
 		row:SetScript('OnLeave', function(self)

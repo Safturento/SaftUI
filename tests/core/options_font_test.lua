@@ -68,7 +68,7 @@ local function watch_tooltip()
 	local tip = { lines = {} }
 	local saved = _G.GameTooltip
 	_G.GameTooltip = {
-		SetOwner = function(_, frame) tip.owner = frame end,
+		SetOwner = function(_, frame, anchor) tip.owner, tip.anchor = frame, anchor end,
 		ClearLines = function() tip.lines = {} end,
 		AddLine = function(_, text) tip.lines[#tip.lines + 1] = text end,
 		AddDoubleLine = function(_, left) tip.lines[#tip.lines + 1] = left end,
@@ -1619,4 +1619,44 @@ test("the menu's frame is off any old anchor when its rows are drawn (M8: Draw's
 		eq(at, 0, 'no point on the frame when the rows are drawn')
 		close_dots()
 	end)
+end)
+
+test("a scroll of the list takes a cut name's tooltip down, and the tooltip anchors to the right of its row (M-a, M-b)", function()
+	in_look('thick', function(tip)
+		for _, name in ipairs(LONG_NAMES) do st.LSM:Register('font', name, 'Fonts\\ARIALN.TTF') end
+		local list = open(row_widget('header', 'Text'))
+		local at
+		for i, entry in ipairs(list.entries) do
+			if entry.label == LONG_NAMES[1] then at = i end
+		end
+		list.offset = math.max(0, math.min(#list.entries - 12, at - 1))
+		stub.fire_script(list.frame, 'OnMouseWheel', 0)
+		local row
+		for _, r in ipairs(list.rows) do
+			if r:IsShown() and r.entry == list.entries[at] then row = r end
+		end
+		stub.fire_script(row, 'OnEnter', true)
+		check(tip.shown, 'shown')
+		eq(tip.anchor, 'ANCHOR_RIGHT', 'beside the list, not over its rows')
+		stub.fire_script(list.frame, 'OnMouseWheel', 1)
+		check(not tip.shown, 'a scroll takes it down: the row holds another entry now')
+		W.CloseList()
+	end)
+end)
+
+test('the plain select face is one line and cut at the box too (M-c)', function()
+	for _, look in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		in_look(look, function()
+			fresh()
+			vals.pick = 'a'
+			local _, by = draw(Page({ pick = {
+				order = 1, type = 'select', name = 'Pick', desc = 'Pick one.', values = { a = 'A label far too long for the face' },
+				get = function() return vals.pick end, set = function() end,
+			} }))
+			local w = by.pick.widget
+			eq(w.text:CanWordWrap(), false, look .. ': one line')
+			check(w.frame.clip ~= nil and w.frame.clip:DoesClipChildren(), look .. ': cut at the box')
+			eq(w.text:GetParent(), w.frame.clip)
+		end)
+	end
 end)

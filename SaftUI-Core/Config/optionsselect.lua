@@ -217,7 +217,14 @@ builders.select = function(w)
 	local button = Box(st:CreateFrame('Button', nil, UIParent))
 	button:SetSize(W.WIDTH.select, FIELD_HEIGHT)
 	w.frame = button
-	w.text = NewText(button, 'LEFT')
+	-- One line, cut at the box, as the list's rows and W.SelectFace's text are
+	-- (optionslist.lua): a long choice ends in "..." and a tall typeface stays
+	-- inside the box.
+	button.clip = CreateFrame('Frame', nil, button)
+	button.clip:SetAllPoints(button)
+	button.clip:SetClipsChildren(true)
+	w.text = NewText(button.clip, 'LEFT')
+	w.text:SetWordWrap(false)
 	w.text:SetPoint('LEFT', button, 'LEFT', 8, 0)
 	w.text:SetPoint('RIGHT', button, 'RIGHT', -22, 0)
 	button.text = w.text
