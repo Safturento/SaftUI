@@ -90,6 +90,15 @@ test('a class color change recolors every unit frame lightly', function()
 		eq(f.Power.updates, 1, 'power updated')
 		eq(f.tags, 1, 'tags updated')
 	end
+	eq(a.AdditionalPower.updates + b.AdditionalPower.updates, 0, 'additional power is not a class-colored bar')
+	eq(a.ClassPower.updates, 0, 'nor is class power')
+end)
+
+test('a power color change updates the power bars, the additional power where enabled, and class power', function()
+	reset()
+	UF:OnColorsChanged('power')
+	eq(a.Power.updates, 1, 'power updated')
+	eq(a.Health.updates + a.tags, 0, 'no health, no tags')
 	eq(a.AdditionalPower.updates, 0, 'disabled additional power left alone')
 	eq(b.AdditionalPower.updates, 1, 'enabled additional power updated')
 	eq(a.ClassPower.updates, 1, 'class power updated (it sets its color only on a visibility check)')
@@ -113,14 +122,16 @@ test('the test previews are drawn again', function()
 	local drawn = {}
 	UF.testGroups = { party = true }
 	UF.UpdateGroupPreview = function(_, group) drawn[#drawn + 1] = group end
-	UF:OnColorsChanged('status')
+	UF:OnColorsChanged('class')
 	eq(#drawn, 1, 'one preview')
 	eq(drawn[1], 'party', 'the party preview')
+	UF:OnColorsChanged('status')
+	eq(#drawn, 1, 'a status color is not in a preview')
 end)
 
 test('a change to colors unit frames do not use recolors nothing', function()
 	reset()
-	for _, group in ipairs({ 'text', 'button', 'item_quality', 'renown' }) do
+	for _, group in ipairs({ 'button', 'item_quality', 'renown' }) do
 		UF:OnColorsChanged(group)
 	end
 	eq(total_updates(), 0, 'nothing force-updated')
