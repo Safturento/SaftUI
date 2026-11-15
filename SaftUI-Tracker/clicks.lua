@@ -28,7 +28,8 @@ local L = TR.LAYOUT
 	tracking are disabled. What stays allowed in combat: focus
 	(C_SuperTrack.SetSuperTrackedQuestID: SUPER_TRACKING_CHANGED is not
 	synchronous), ShowQuestComplete and RemoveAutoQuestPopUp (the game's own
-	functions, no Lua of Blizzard's), Share (two C calls) and Blizzard's two
+	functions, no Lua of Blizzard's, but the events they lead to are synchronous:
+	behind TR.PopupClickAllowed(), experiment P7, allowed by ruling), Share (two C calls) and Blizzard's two
 	read-only helpers (QuestUtil.CanRemoveQuestWatch, which only reads
 	C_PlayerInfo.IsPlayerNPERestricted, and the chat link's ChatFrameUtil.
 	TryInsertQuestLinkForQuestID, which puts text in the edit box, as every
@@ -83,6 +84,29 @@ local function Say(text)
 	if type(UIErrorsFrame) == 'table' and type(UIErrorsFrame.AddMessage) == 'function' then
 		UIErrorsFrame:AddMessage(text, 1, 0.1, 0.1, 1)
 	end
+end
+
+-- Whether a popup's click or an auto-complete quest's click may run in combat
+-- (experiment P7). ShowQuestOffer and ShowQuestComplete run no Lua of Blizzard's
+-- themselves, but the events they lead to, QUEST_DETAIL and QUEST_COMPLETE, are
+-- SynchronousEvents: if the client fires them inside our call rather than after
+-- the server's reply (the likely case), QuestFrame's handlers (ShowUIPanel)
+-- would run in our tainted chain. Allowed in combat by the owner's ruling
+-- (finishing a quest from its popup in combat is the point of the popup), until
+-- the in-game check (the checklist's P7, /console taintLog 1) says otherwise.
+-- Flip TR.POPUP_CLICK_IN_COMBAT to false on a failure: both clicks then do
+-- nothing in combat and say "Out of combat only". Out of combat they always run.
+TR.POPUP_CLICK_IN_COMBAT = true
+
+function TR.PopupClickAllowed()
+	return TR.POPUP_CLICK_IN_COMBAT or not InCombatLockdown()
+end
+
+-- True (after saying why) when a popup or auto-complete click must not run now.
+function TR.RefusePopupClick()
+	if TR.PopupClickAllowed() then return false end
+	Say(OUT_OF_COMBAT)
+	return true
 end
 
 function TR.SetWatched(questID, on)
@@ -213,6 +237,7 @@ function TR:OnQuestClick(row, button)
 	elseif action == 'track' then
 		TR.SetWatched(id, true)
 	elseif action == 'complete' then
+		if TR.RefusePopupClick() then return end
 		-- Blizzard's order: the popup goes, then the turn-in opens (both the game's
 		-- own functions, as the popups' click uses).
 		Call(_G, 'RemoveAutoQuestPopUp', id)
