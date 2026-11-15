@@ -201,3 +201,20 @@ test('a world map that loads after SaftUI is hooked when it loads', function()
 	eq(line(), H.colored('Alliance'), 'and it works')
 	eq(#take_errors(), 0, 'with nothing written onto the map or label')
 end)
+
+test('the same label text on two maps with same-named zones is worked out for each', function()
+	set_maps()
+	-- Retail's copies of a zone: one name on two maps, with different factions.
+	-- Here Kalimdor's copy of "Elwynn Forest" is Tirisfal Glades's map (Horde).
+	stub.maps[1414] = { name = 'Kalimdor', mapType = Enum.UIMapType.Continent }
+	local shown = H.map:GetMapID()
+	hover(ELWYNN)
+	eq(line(), H.colored('Alliance'), "the Eastern Kingdoms' Elwynn Forest")
+	stub.maps[1429].area = nil
+	stub.maps[1420].name, stub.maps[1420].parentMapID, stub.maps[1420].area = 'Elwynn Forest', 1414, { 0.40, 0.70, 0.50, 0.80 }
+	rawset(H.map, 'mapID', 1414)
+	hover(ELWYNN) -- the cursor stays on the label; its text is identical
+	eq(H.label.Name:GetText(), 'Elwynn Forest|cffffff00 (1-10)|r', 'the label reads the same')
+	eq(line(), H.colored('Horde'), "Kalimdor's copy answers for itself")
+	rawset(H.map, 'mapID', shown)
+end)

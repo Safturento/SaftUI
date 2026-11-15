@@ -242,7 +242,6 @@ end
 -- frame needs nothing: Blizzard sets it again every frame.
 function LT:UpdateRollBars()
 	local PlainNumber, PlainString = self.PlainNumber, self.PlainString
-	if not PlainNumber then return end
 
 	local frames, shown = {}, {}
 	for frame, state in pairs(bars) do
@@ -401,7 +400,6 @@ local CHOICE_FOR_ROLL_TYPE = { [0] = 'Pass', [1] = 'Need', [2] = 'Greed', [3] = 
 -- once; cancelling it leaves the bar up, and the next choice replaces it.
 local function OnRollChosen(rollID, rollType)
 	local PlainNumber = LT.PlainNumber
-	if not PlainNumber then return end
 	rollID, rollType = PlainNumber(rollID), PlainNumber(rollType)
 	local choice = rollType and CHOICE_FOR_ROLL_TYPE[rollType]
 	if not (rollID and choice) then

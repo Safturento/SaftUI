@@ -332,3 +332,33 @@ test('a Factions change recolors a line still on screen, and a Text > Danger cha
 	check(math.abs(nr2 - 0.2) < 1e-6 and math.abs(ng2 - 0.6) < 1e-6 and math.abs(nb2 - 0.4) < 1e-6, 'the zone line is Text > Normal')
 	normal:SetRGB(0.9, 0.9, 0.8)
 end)
+
+test("a PvP subzone's status is the subzone's: the zone line takes the table's word for the zone", function()
+	place(1429, 'arena') -- a free-for-all subzone in Elwynn Forest, an Alliance zone
+	stub.pvp.subzone = true
+	eq(ZT:LiveFaction(), nil, "the live status isn't the zone's, so it isn't a word for the zone")
+	eq(line_after_entering('Elwynn Forest', 'Pit'), 'Level 1' .. DASH .. '10 ' .. DOT .. ' ' .. H.colored('Alliance'),
+		"the zone's own faction, not Neutral")
+	place(9001, 'arena') -- a zone the table lacks
+	stub.pvp.subzone = true
+	eq(ZT:MapFaction(1429), 'Alliance', 'on the map too, the table decides for the zone')
+	stub.pvp.subzone = nil
+end)
+
+test("a subzone crossed after a banner cleared the zone name brings back neither line", function()
+	place(1429, 'friendly', 'Alliance')
+	H.enter('Elwynn Forest', 'Goldshire')
+	ZoneText_Clear()
+	stub.zone_text, stub.subzone_text = 'Elwynn Forest', 'Northshire'
+	stub.fire_event('ZONE_CHANGED')
+	eq(ZoneTextString:GetText(), '', 'the zone name is still blank')
+	eq(ZT.ZoneLineString:GetText(), '', 'so the level and faction line stays off')
+
+	place(9200, 'sanctuary', nil, DEADMINES)
+	H.enter('The Deadmines')
+	ZoneText_Clear()
+	stub.subzone_text = 'The Mast Room'
+	stub.fire_event('ZONE_CHANGED')
+	eq(ZT.DifficultyTextString:GetText(), '', 'nor does the difficulty line')
+	eq(#take_errors(), 0, 'nothing written onto the locked frames')
+end)

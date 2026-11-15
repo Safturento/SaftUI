@@ -32,7 +32,9 @@ function ZT:SetZoneDifficultyText()
 
 	-- The difficulty shows with the zone name, which Blizzard's handler (run
 	-- before this) shows when you enter a zone.
-	if maxPlayers == 0 or not ZoneTextFrame:IsShown() then
+	-- A banner can clear the zone name while its frame fades on (ZoneText_Clear):
+	-- a subzone crossed then brings no difficulty line back under a blank name.
+	if maxPlayers == 0 or not ZoneTextFrame:IsShown() or (ZoneTextString:GetText() or '') == '' then
 		self.DifficultyTextString:SetText("")
 		return
 	end
@@ -70,11 +72,13 @@ function ZT.FactionFromPvP(pvpType, factionName)
 end
 
 -- Who holds the zone the player stands in, by the game's live PvP status; nil
--- when the game gives none (an empty pvpType, or nothing at all). Both clients
--- have it as C_PvP's (neither has a global GetZonePVPInfo).
+-- when the game gives none (an empty pvpType, or nothing at all) or gives the
+-- status of a PvP subzone (isSubZonePvP: a free-for-all or sanctuary subzone,
+-- whose status Blizzard shows under the subzone name), which is not the zone's.
+-- Both clients have it as C_PvP's (neither has a global GetZonePVPInfo).
 function ZT:LiveFaction()
-	local pvpType, _, factionName = C_PvP.GetZonePVPInfo()
-	if pvpType == nil or pvpType == '' then return nil end
+	local pvpType, isSubZonePvP, factionName = C_PvP.GetZonePVPInfo()
+	if pvpType == nil or pvpType == '' or isSubZonePvP then return nil end
 	return ZT.FactionFromPvP(pvpType, factionName)
 end
 
@@ -116,6 +120,15 @@ local function PlayerMaps()
 	return maps
 end
 
+-- Who holds the zone the player stands in, by the table, when the game's live
+-- status is a PvP subzone's (so not the zone's): the zone is the last of their
+-- maps. nil otherwise, and for a zone the table doesn't list.
+function ZT:SubZoneZoneFaction()
+	if not select(2, C_PvP.GetZonePVPInfo()) then return nil end
+	local maps = PlayerMaps()
+	return maps[1] and self:GetZoneFaction(maps[#maps]) or nil
+end
+
 -- The level range of the zone the player is in: the first of their maps the
 -- game gives one for. Nothing without one.
 function ZT:PlayerZoneLevels()
@@ -152,7 +165,7 @@ end
 -- when there's neither.
 function ZT:ZoneLine()
 	local levels = ZT.FormatLevels(self:PlayerZoneLevels())
-	local faction = not IsInInstance() and self:ColorFaction(self:LiveFaction() or 'Neutral') or nil
+	local faction = not IsInInstance() and self:ColorFaction(self:LiveFaction() or self:SubZoneZoneFaction() or 'Neutral') or nil
 	if levels and faction then
 		return levels .. ' ' .. MIDDLE_DOT .. ' ' .. faction
 	end
@@ -168,6 +181,9 @@ local LINE_GAP = 6
 -- which SaftUI's replaces, or under the zone name; this runs after it, each time.
 function ZT:UpdateZoneLine()
 	local line = self:ZoneLine()
+	-- A banner can clear the zone name while its frame fades on (ZoneText_Clear):
+	-- a subzone crossed then brings no line back under a blank name.
+	if (ZoneTextString:GetText() or '') == '' then line = '' end
 	self.ZoneLineString:SetTextColor(st:Color('text', 'normal'):GetRGB())
 	self.ZoneLineString:SetText(line)
 	if line ~= '' and ZoneTextFrame:IsShown() then
@@ -231,7 +247,7 @@ end
 -- After the zone label's OnUpdate, each frame: while it shows a zone's name
 -- (its AREA_NAME label, rather than a point of interest's), the faction line
 -- shows under the name, or under the description when there is one. Worked out
--- again only when the name changes.
+-- again only when the name or the map it's on changes.
 function ZT:UpdateMapLine(label)
 	local line = self.mapLine
 	local info = label.labelInfoByType and label.labelInfoByType[MAP_AREA_LABEL_TYPE.AREA_NAME]
@@ -241,8 +257,11 @@ function ZT:UpdateMapLine(label)
 		line:Hide()
 		return
 	end
-	if name == self.mapLineFor then return end
-	self.mapLineFor = name
+	-- Retail has same-named copies of a zone with different factions, on
+	-- different maps: the map's ID is part of the key.
+	local key = tostring(self.worldMap:GetMapID()) .. ':' .. name
+	if key == self.mapLineFor then return end
+	self.mapLineFor = key
 
 	local faction = self:MapFaction(self:HoveredZone(name))
 	if not faction then

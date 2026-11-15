@@ -139,3 +139,20 @@ test("a reputation entry's bar takes the profile's reaction color, not Blizzard'
 	check(math.abs(progress.r - 0.8) < 0.001 and math.abs(progress.g - 0.4) < 0.001 and math.abs(progress.b - 0.2) < 0.001,
 		"the bar is the profile's color")
 end)
+
+test('a merge while scrolled leaves the scroll offset; an insert moves it by one', function()
+	reset_feed()
+	LT:LootFeedPush({ name = 'Gold', type = 'Gold', gold = 5 })
+	LT:LootFeedPush(entry('Older'))
+	LT.feed.offset = 2
+
+	LT:LootFeedPush(entry('Older')) -- merges into the top entry
+	eq(LT.feed.offset, 2, 'an item merge adds no entry, so the view stays')
+
+	LT:LootFeedPush({ name = 'Gold', type = 'Gold', gold = 3 })
+	LT:LootFeedPush({ name = 'Gold', type = 'Gold', gold = 4 }) -- merges (gold into gold)
+	eq(LT.feed.offset, 3, 'the gold push inserted (+1), its merge did not')
+
+	LT:LootFeedPush(entry('Brand new'))
+	eq(LT.feed.offset, 4, 'an inserted entry pushes the view by one line')
+end)

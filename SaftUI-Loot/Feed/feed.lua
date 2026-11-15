@@ -272,6 +272,7 @@ function LT:LootFeedPush(info)
 	-- removed) later; they never merge with real entries.
 	info.test = self.pushingTest or nil
 
+	local inserted = false
 	local top = feed_stack[1]
 	if top and (top.test or false) ~= (info.test or false) then top = nil end
 	-- Restored entries are history; new gains start their own entry.
@@ -300,10 +301,12 @@ function LT:LootFeedPush(info)
 		end
 		tinsert(feed_stack, 1, info)
 		self:SaveFeedEntry(info)
+		inserted = true
 	end
 
-	-- If scrolling through history, don't push the feed upwards
-	if self.feed.offset > 0 then
+	-- If scrolling through history, don't push the feed upwards. A merge adds
+	-- no entry, so it moves nothing.
+	if inserted and self.feed.offset > 0 then
 		self.feed.offset = self.feed.offset + 1
 	end
 
