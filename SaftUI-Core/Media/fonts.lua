@@ -614,11 +614,11 @@ function FN.FontSettingDefault(read, write, default)
 end
 
 -- The Kinds of text section: which font each kind of text uses, as
--- { row key, profile key, name, default, desc }. A row reads and writes
+-- { row key, profile key, name, desc }. A row reads and writes
 -- st.config.profile[profile key].font. Each kind's texts follow their setting
 -- (st:FollowFont), so a change reaches them at once.
 local TEXT_FONTS = {
-	{ 'button_text', 'buttons', 'Button text', 'pixel',
+	{ 'button_text', 'buttons', 'Button text',
 		"The labels of SaftUI's buttons (such as the bags' Bag Slots and Warband Bank and keybind mode's Done), the totem bar's key bindings, counts and names, and the bag slot bars' and the bank's bag slots' texts. The totem timers have a font of their own on the Totem bar's page." },
 }
 
@@ -627,19 +627,15 @@ local TEXT_FONTS_NOTE = 'Which font each kind of text uses. A change shows at on
 local function TextFontsGroup()
 	local args = {}
 	for i, entry in ipairs(TEXT_FONTS) do
-		local key, profile_key, name, default, desc = unpack(entry)
+		local key, profile_key, name, desc = unpack(entry)
 		local option = st.Config.generators.font(i, desc)
 		option.name = name
-		local function read() return st.config.profile[profile_key].font end
-		local function write(_, value)
+		option.get = function() return st.config.profile[profile_key].font end
+		option.set = function(_, value)
 			st.config.profile[profile_key].font = value
-		end
-		option.get = read
-		option.set = function(info, value)
-			write(info, value)
 			st:FontsChanged()
 		end
-		option.default = FN.FontSettingDefault(read, write, default)
+		option.saved = st.Config.SavedAt(profile_key, 'font')
 		args[key] = option
 	end
 	return {

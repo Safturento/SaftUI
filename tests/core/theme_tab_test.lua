@@ -19,6 +19,7 @@
 load_test_file('core/config_helpers.lua')
 local st = SaftUI
 load_saftui('SaftUI-Core/Config/optionsmodel.lua')
+load_saftui('SaftUI-Core/Config/optionsdefault.lua')
 local OM = st.OptionsModel
 
 local function Tab() return st.Config:GetOptionsTable().Fonts.args.theme end
@@ -458,7 +459,7 @@ test('Window titles: a section after Options windows with one Font row, saved in
 	eq(st.config.profile.headers.font, 'subtitle', 'saved where it always was')
 	root, row = Row('font')
 	local state = OM.DefaultState(root, row)
-	eq(state.differs, true); eq(state.text, 'Text', 'the reset names Text')
+	eq(state.differs, true); eq(st:FontLabel(state.value[1]), 'Text', 'the reset names Text')
 	local face = { font_name = 'Homespun', font_size = 13, font_outline = 'OUTLINE', shadow_offset = { 0, 0 }, spacing = 4 }
 	OM.Set(root, row, face)
 	root, row = Row('font')
