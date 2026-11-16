@@ -268,6 +268,7 @@ end
 -- and commits it (the window draws again).
 local function Edit(w, fn)
 	if w.disabled or not w.row then return end
+	w.levelPick = nil
 	local rule = R.Copy(Current(w))
 	if fn(rule) then w:Commit(rule) end
 end
@@ -276,6 +277,7 @@ end
 -- with no render while the list is open.
 local function Write(w, fn)
 	if w.disabled or not w.row then return end
+	w.levelPick = nil
 	local rule = R.Copy(Current(w))
 	if not fn(rule) then return end
 	OM.Set(w.root, w.row, rule)
@@ -462,7 +464,9 @@ function Lay:Box(name, width, shown, commit)
 end
 
 -- A box for a number param of the block; percent shows and takes a share as a percent.
-function Lay:NumberBox(name, width, percent)
+-- both: a number typed sets the max with the min (a mode between, picked
+-- before any number: the number is both bounds, as a mode switch makes it).
+function Lay:NumberBox(name, width, percent, both)
 	local w, path = self.w, self.path
 	local value = self.node[name]
 	if percent and is_num(value) then value = value * 100 end
@@ -473,6 +477,7 @@ function Lay:NumberBox(name, width, percent)
 		EditNode(w, path, function(node)
 			if node[name] == number then return false end
 			node[name] = number
+			if both then node.max = number end
 		end)
 	end)
 end
@@ -625,13 +630,31 @@ local function LevelMode(node)
 end
 
 -- A mode picked moves the number typed to the bound it needs. With no number
--- yet there is nothing to move, and nothing is invented: a block with no
--- number can't be read (rules.lua), where "at least 0" would catch everything.
+-- yet there is nothing to move, and nothing is invented (a block with no
+-- number can't be read, rules.lua, where "at least 0" would catch everything):
+-- the pick is kept in the editor alone (w.levelPick: the block's path and
+-- type and the mode), so the row shows it and its boxes, until the number is
+-- typed, which the mode then places; any other edit forgets it.
 local function LevelFields(lay, node)
 	local w, path = lay.w, lay.path
 	local mode = LevelMode(node)
+	local pick = w.levelPick
+	local blank = not is_num(node.min) and not is_num(node.max)
+	local pathKey = tconcat(path, ',')
+	if blank and pick and pick.path == pathKey and pick.block == node.block then mode = pick.mode end
 	lay:Field('mode', MODE_WIDTH, MODE_LABEL[mode], function(field)
 		W.OpenList(field, MODES, mode, function(key)
+			local now = NodeNow(w, path)
+			if now and now.block == node.block and not is_num(now.min) and not is_num(now.max) then
+				if w.disabled or not w.row then return end
+				local picked = w.levelPick
+				if (picked and picked.path == pathKey and picked.mode or 'atleast') == key then return end
+				w.levelPick = key ~= 'atleast' and { path = pathKey, block = node.block, mode = key } or nil
+				w.keepPick = true
+				w:Refresh()
+				w.keepPick = nil
+				return
+			end
 			EditNode(w, path, function(n)
 				if LevelMode(n) == key then return false end
 				local min = is_num(n.min) and n.min or nil
@@ -648,7 +671,7 @@ local function LevelFields(lay, node)
 			end)
 		end)
 	end)
-	if mode ~= 'atmost' then lay:NumberBox('min', NUMBER_BOX) end
+	if mode ~= 'atmost' then lay:NumberBox('min', NUMBER_BOX, nil, blank and mode == 'between') end
 	if mode == 'between' then lay:Caption('and') end
 	if mode ~= 'atleast' then lay:NumberBox('max', NUMBER_BOX) end
 end
@@ -1048,7 +1071,10 @@ W.Define('bagrule', {
 		w.drawDrag = function() DrawDrag(w) end
 	end,
 	methods = {
-		Refresh = function(w) Layout(w) end,
+		Refresh = function(w)
+			if not w.keepPick then w.levelPick = nil end
+			Layout(w)
+		end,
 
 		-- The body's width (a bare row). Rows wrap at the width, so a new one
 		-- lays them out again.
@@ -1075,7 +1101,7 @@ W.Define('bagrule', {
 				parts.badge.path = nil
 			end
 			wipe(w.rows)
-			w.outline, w.highlight = nil, nil
+			w.outline, w.highlight, w.levelPick = nil, nil, nil
 		end,
 	},
 })

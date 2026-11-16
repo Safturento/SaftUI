@@ -594,6 +594,7 @@ test('a new Item level, Required level, Crafting reagent or Has vendor price blo
 			pick(mode)
 			eq(#ed.sets, 0, id .. ': ' .. mode .. ' with no number sets nothing')
 			check(R.Equal(ed.stored.items[1], { block = id }), id .. ': ' .. mode .. ': still no number')
+			eq(ed.w.rows[1].fields.mode.text:GetText(), mode, id .. ': ' .. mode .. ': the row shows the mode picked')
 		end
 		enter(ed.w.rows[1].fields.min, '5')
 		check(R.Equal(ed.stored.items[1], { block = id, min = 5 }), id .. ': a number typed sets it')
@@ -972,5 +973,45 @@ test("under Blizzard a rule's value fields are compact Settings dropdowns; under
 	eq(size(field), thickSize, 'Thick again: its size unchanged')
 	ed.w:Release()
 	theme(themeWas)
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a level mode picked before a number is typed stays, and the number typed goes to the bound it needs', function()
+	for _, id in ipairs({ 'ilvl', 'reqlevel' }) do
+		local function fresh()
+			local ed = editor(grp('or', { R.NewBlock(id) }))
+			return ed
+		end
+		-- At most: only the max box shows, and a number typed is the max.
+		local ed = fresh()
+		click(ed.w.rows[1].fields.mode)
+		pick('at most')
+		eq(ed.w.rows[1].fields.mode.text:GetText(), 'at most', id .. ': at most shows')
+		check(ed.w.rows[1].fields.min == nil or not ed.w.rows[1].fields.min:IsShown(), id .. ': no min box')
+		enter(ed.w.rows[1].fields.max, '7')
+		check(R.Equal(ed.stored.items[1], { block = id, max = 7 }), id .. ': the number is the most')
+		W.CloseList()
+		ed.w:Release()
+		-- Between: both boxes show, and a number typed in the first is both bounds.
+		ed = fresh()
+		click(ed.w.rows[1].fields.mode)
+		pick('between')
+		eq(ed.w.rows[1].fields.mode.text:GetText(), 'between', id .. ': between shows')
+		check(ed.w.rows[1].fields.min and ed.w.rows[1].fields.max, id .. ': two boxes')
+		enter(ed.w.rows[1].fields.min, '3')
+		check(R.Equal(ed.stored.items[1], { block = id, min = 3, max = 3 }), id .. ': between, the number is both')
+		eq(ed.w.rows[1].fields.mode.text:GetText(), 'between', id .. ': and it stays between')
+		W.CloseList()
+		ed.w:Release()
+		-- Any other edit forgets the pick.
+		ed = editor(grp('or', { R.NewBlock(id), R.NewBlock('reagent') }))
+		click(ed.w.rows[1].fields.mode)
+		pick('at most')
+		click(ed.w.rows[2].fields.value)
+		pick('Yes')
+		eq(ed.w.rows[1].fields.mode.text:GetText(), 'at least', id .. ': another edit puts at least back')
+		W.CloseList()
+		ed.w:Release()
+	end
 	eq(#take_errors(), 0, 'no errors')
 end)
