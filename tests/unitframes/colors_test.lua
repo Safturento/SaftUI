@@ -160,3 +160,25 @@ test('before unit frames are enabled a change does nothing', function()
 	UF.UpdateColors = original
 	eq(called, 0, 'UpdateColors not called')
 end)
+
+test('a color oUF lacks is copied in, so a later profile switch cannot write into the old profile', function()
+	reset()
+	local old = CreateColor(0.1, 0.2, 0.3)
+	profile_colors.class.ZZZ = old
+	UF:UpdateColors()
+	assert(UF.oUF.colors.class.ZZZ ~= old, 'the whole pass aliased the profile color')
+	eq(rgb(UF.oUF.colors.class.ZZZ), '0.10,0.20,0.30')
+	-- the switch: another profile's value for the same key
+	profile_colors.class.ZZZ = CreateColor(0.7, 0.8, 0.9)
+	UF:UpdateColors()
+	eq(rgb(old), '0.10,0.20,0.30', 'the old profile keeps its color')
+	eq(rgb(UF.oUF.colors.class.ZZZ), '0.70,0.80,0.90', 'oUF follows the new one')
+	-- the by-key path
+	UF.oUF.colors.class.ZZZ = nil
+	local third = CreateColor(0.4, 0.5, 0.6)
+	profile_colors.class.ZZZ = third
+	UF:UpdateColors('class', 'ZZZ')
+	assert(UF.oUF.colors.class.ZZZ ~= third, 'the key pass aliased the profile color')
+	profile_colors.class.ZZZ = nil
+	UF.oUF.colors.class.ZZZ = nil
+end)

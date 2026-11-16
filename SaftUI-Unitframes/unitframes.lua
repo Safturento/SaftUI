@@ -222,15 +222,34 @@ end
 
 -- Copies one profile color into oUF's color of the same name, in place (a
 -- table already there keeps its identity and its methods, and nothing is
--- made); a color oUF has none of yet is put there.
+-- made); a color oUF has none of yet gets a copy of the profile's, never the
+-- profile's own table: a later merge writes into oUF's table, and would write
+-- the next profile's values into this profile's.
 local function CopyColor(group, key, from)
 	if from == nil then return end
 	local to = group[key]
 	if type(to) == 'table' and type(from) == 'table' then
 		to.r, to.g, to.b = from.r, from.g, from.b
 		if from.a ~= nil then to.a = from.a end
+	elseif type(from) == 'table' then
+		group[key] = st.tablecopy(from, true)
 	else
 		group[key] = from
+	end
+end
+
+-- st.tablemerge(to, from, true) for a group of colors, but a color or a table
+-- of colors that `to` has none of is copied in, not put there as `from`'s own.
+local function MergeColors(to, from)
+	if not from then return end
+	for key, value in pairs(from) do
+		if type(value) == 'table' and type(to[key]) == 'table' then
+			MergeColors(to[key], value)
+		elseif type(value) == 'table' then
+			to[key] = st.tablecopy(value, true)
+		else
+			to[key] = value
+		end
 	end
 end
 
@@ -250,17 +269,17 @@ function UF:UpdateColors(group, key)
 		return
 	end
 	if group == nil or group == 'status' then
-		st.tablemerge(oUFColors.disconnected, profile.status.disconnected, true)
-		st.tablemerge(oUFColors.tapped, profile.status.tapped, true)
+		MergeColors(oUFColors.disconnected, profile.status.disconnected)
+		MergeColors(oUFColors.tapped, profile.status.tapped)
 	end
 	if group == nil or group == 'reaction' then
-		st.tablemerge(oUFColors.reaction, profile.reaction, true)
+		MergeColors(oUFColors.reaction, profile.reaction)
 	end
 	if group == nil or group == 'power' then
-		st.tablemerge(oUFColors.power, profile.power, true)
+		MergeColors(oUFColors.power, profile.power)
 	end
 	if group == nil or group == 'class' then
-		st.tablemerge(oUFColors.class, profile.class, true)
+		MergeColors(oUFColors.class, profile.class)
 	end
 	-- The profile has no runes colors by default; use oUF's then instead of
 	-- wiping them. Set every time, so a profile without them doesn't keep the
@@ -361,8 +380,14 @@ function UF.ColorReaches(frame, group, key)
 		local reaction = UnitReaction(unit, 'player')
 		return issecretvalue(reaction) or reaction == key
 	elseif group == 'power' then
-		local _, token = UnitPowerType(unit)
-		return issecretvalue(token) or token == key
+		local powerType, token, altR = UnitPowerType(unit)
+		if issecretvalue(token) then return true end
+		-- A power type oUF has no color for (a vehicle's) is drawn in Mana's
+		-- (oUF's power.lua), unless the game hands its own color (altR).
+		if altR == nil and UF.oUF.colors.power[token] == nil and UF.oUF.colors.power[powerType] == nil then
+			token = 'MANA'
+		end
+		return token == key
 	elseif group == 'status' then
 		if key == 'disconnected' then
 			local connected = UnitIsConnected(unit)

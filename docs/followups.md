@@ -16,8 +16,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-15 — Edit mode: a Theme pass with edit mode on still does the full look and list refresh](#2026-11-15--edit-mode-a-theme-pass-with-edit-mode-on-still-does-the-full-look-and-list-refresh)
   - [2026-11-15 — Unit frames: a Warrior class pick updates every Warrior NPC plate](#2026-11-15--unit-frames-a-warrior-class-pick-updates-every-warrior-npc-plate)
   - [2026-11-15 — Unit frames: what a color pass's real element updates cost](#2026-11-15--unit-frames-what-a-color-passs-real-element-updates-cost)
-  - [2026-11-15 — Unit frames: a color oUF lacks is set to the profile's own table](#2026-11-15--unit-frames-a-color-ouf-lacks-is-set-to-the-profiles-own-table)
-  - [2026-11-15 — Unit frames: a vehicle power type with no oUF color falls back to Mana](#2026-11-15--unit-frames-a-vehicle-power-type-with-no-ouf-color-falls-back-to-mana)
   - [2026-11-15 — A roll result line's All passed and winner color are baked in at push](#2026-11-15--a-roll-result-lines-all-passed-and-winner-color-are-baked-in-at-push)
   - [2026-11-15 — A Position reset runs a unit frame's update once for every part it writes](#2026-11-15--a-position-reset-runs-a-unit-frames-update-once-for-every-part-it-writes)
   - [2026-11-15 — After a UI scale change, a reset half-pixel Position can show its icon again](#2026-11-15--after-a-ui-scale-change-a-reset-half-pixel-position-can-show-its-icon-again)
@@ -136,6 +134,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-15 — Unit frames: a vehicle power type with no oUF color falls back to Mana](#2026-11-15--unit-frames-a-vehicle-power-type-with-no-ouf-color-falls-back-to-mana)
+  - [2026-11-15 — Unit frames: a color oUF lacks is set to the profile's own table](#2026-11-15--unit-frames-a-color-ouf-lacks-is-set-to-the-profiles-own-table)
   - [2026-11-15 — Two Misc readers break "a pass only colors"](#2026-11-15--two-misc-readers-break-a-pass-only-colors)
   - [2026-11-11 — UIParent's scale is set once, at login, so plates leave whole pixels after a UI scale or display change](#2026-11-11--uiparents-scale-is-set-once-at-login-so-plates-leave-whole-pixels-after-a-ui-scale-or-display-change)
   - [2026-11-15 — A reset on every font row](#2026-11-15--a-reset-on-every-font-row)
@@ -323,34 +323,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 **Shape of work:** an in-game read of the debug line first (Class and Text > Normal in a raid, Test mode with Raid 40), then a ticket only if one is slow.
 
 **Open questions:** the slowest pass the owner sees in game.
-
-### 2026-11-15 — Unit frames: a color oUF lacks is set to the profile's own table
-
-**What:** `CopyColor` (`SaftUI-Unitframes/unitframes.lua`) sets a color oUF has none of to the profile's own table, as `st.tablemerge` did. A later profile switch's merge then writes the new profile's values into the table of the old profile. It matters only if oUF lacks a SaftUI color key in game (the test world lacks every key); which keys, if any, is unchecked.
-
-**Why noticed:** Review of the live colors Task 3, `.superpowers/sdd/2026-11-15-saftui-live-colors/task-3-review.md`, n3. The behavior is older than the task; the commit kept it.
-
-**Anchors:** `UF:UpdateColors`, `CopyColor`, oUF's `Libraries/oUF/colors.lua` (read only), `st.config.profile.colors`.
-
-**What's been considered:** Copying into a new color object (`UF.oUF:CreateColor`) instead of aliasing would make it safe.
-
-**Shape of work:** list the keys SaftUI's Colors page has that oUF's table lacks, and make the fallback a copy.
-
-**Open questions:** whether any key is missing in game.
-
-### 2026-11-15 — Unit frames: a vehicle power type with no oUF color falls back to Mana
-
-**What:** Power reaches a frame by its unit's power token. A unit whose token oUF has no color for (a vehicle's power type) falls back to Mana's color in oUF's `power.lua`, so a Mana pick misses that frame. Rare; the edit's whole pass covers it.
-
-**Why noticed:** Review of the live colors Task 3, `.superpowers/sdd/2026-11-15-saftui-live-colors/task-3-review.md`, n4.
-
-**Anchors:** `UF.ColorReaches` (the `power` branch), oUF's `Libraries/oUF/elements/power.lua` (read only).
-
-**What's been considered:** Treat a token with no oUF color as `MANA`.
-
-**Shape of work:** one line in `UF.ColorReaches` and a test.
-
-**Open questions:** none.
 
 ### 2026-11-15 — A roll result line's All passed and winner color are baked in at push
 
@@ -2478,6 +2450,38 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-15 — Unit frames: a vehicle power type with no oUF color falls back to Mana
+
+**What:** Power reaches a frame by its unit's power token. A unit whose token oUF has no color for (a vehicle's power type) falls back to Mana's color in oUF's `power.lua`, so a Mana pick misses that frame. Rare; the edit's whole pass covers it.
+
+**Why noticed:** Review of the live colors Task 3, `.superpowers/sdd/2026-11-15-saftui-live-colors/task-3-review.md`, n4.
+
+**Anchors:** `UF.ColorReaches` (the `power` branch), oUF's `Libraries/oUF/elements/power.lua` (read only).
+
+**What's been considered:** Treat a token with no oUF color as `MANA`.
+
+**Shape of work:** one line in `UF.ColorReaches` and a test.
+
+**Open questions:** none.
+
+**Resolved 2026-11-15:** `UF.ColorReaches`' power branch reads a token oUF has no color for (and no game color) as `MANA`; `tests/unitframes/color_cost_test.lua` pins it (its stand-in oUF now holds the colors for the tokens it uses).
+
+### 2026-11-15 — Unit frames: a color oUF lacks is set to the profile's own table
+
+**What:** `CopyColor` (`SaftUI-Unitframes/unitframes.lua`) sets a color oUF has none of to the profile's own table, as `st.tablemerge` did. A later profile switch's merge then writes the new profile's values into the table of the old profile. It matters only if oUF lacks a SaftUI color key in game (the test world lacks every key); which keys, if any, is unchecked.
+
+**Why noticed:** Review of the live colors Task 3, `.superpowers/sdd/2026-11-15-saftui-live-colors/task-3-review.md`, n3. The behavior is older than the task; the commit kept it.
+
+**Anchors:** `UF:UpdateColors`, `CopyColor`, oUF's `Libraries/oUF/colors.lua` (read only), `st.config.profile.colors`.
+
+**What's been considered:** Copying into a new color object (`UF.oUF:CreateColor`) instead of aliasing would make it safe.
+
+**Shape of work:** list the keys SaftUI's Colors page has that oUF's table lacks, and make the fallback a copy.
+
+**Open questions:** whether any key is missing in game.
+
+**Resolved 2026-11-15:** `UF:UpdateColors` (the whole pass's merge and `CopyColor`) now copies a color oUF lacks instead of aliasing the profile's table; `tests/unitframes/colors_test.lua` pins both paths and the old profile staying untouched after a switch.
 
 ### 2026-11-15 — Two Misc readers break "a pass only colors"
 

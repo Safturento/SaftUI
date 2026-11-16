@@ -23,7 +23,9 @@ local S = load_test_file('lib/secrets.lua')
 load_core_helpers()
 addon_namespace('SaftUI-Unitframes').oUF = {
 	colors = {
-		class = {}, reaction = {}, power = {},
+		class = {}, reaction = {},
+		-- real oUF has a color for every power token the units here use
+		power = { MANA = CreateColor(0, 0, 1), RAGE = CreateColor(1, 0, 0), ENERGY = CreateColor(1, 1, 0) },
 		disconnected = CreateColor(1, 1, 1), tapped = CreateColor(1, 1, 1),
 		roles = {}, runes = {},
 	},
@@ -564,6 +566,16 @@ test('a profile color with no value leaves the color oUF has', function()
 	UF:UpdateColors('class', 'ZZZ')
 	eq(rgb(oUFColors.class.ZZZ), '0.50,0.50,0.50')
 	oUFColors.class.ZZZ = nil
+end)
+
+test('UF.ColorReaches: a power type oUF has no color for is drawn as Mana, so a Mana pick reaches it', function()
+	powerOf.raid2 = 'VEHICLE_POWER'
+	eq(UF.ColorReaches(raid[2], 'power', 'MANA'), true, 'a Mana pick reaches it')
+	eq(UF.ColorReaches(raid[2], 'power', 'RAGE'), false, 'a Rage pick does not')
+	eq(UF.ColorReaches(raid[2], 'power', 'VEHICLE_POWER'), false, 'a key oUF lacks is never drawn')
+	powerOf.raid2 = 'RAGE'
+	eq(UF.ColorReaches(raid[2], 'power', 'MANA'), false, 'a type oUF has a color for keeps its own')
+	powerOf.raid2 = 'MANA'
 end)
 
 test('UF.ColorReaches: key nil reaches every frame, a group with no rule too', function()
