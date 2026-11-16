@@ -115,7 +115,7 @@ test('edit mode off: a pass of any group costs nothing (no call, no Hide, no Set
 				if name == 'SetAlpha' or name == 'SetBackdropBorderColor' or name == 'SetTexCoord' or name == 'SetVertexColor' then setters = setters + n end
 			end
 			eq(setters, m.calls.total, label .. ': only the states helper\'s setters: ' .. by(m.calls.by or {}))
-			check(m.calls.total <= 40 * 100, label .. ': bounded: ' .. m.calls.total)
+			eq(m.calls.total, 20 * 100, label .. ': exactly the measured 20 setters a pass (the bar\'s 4 selected and 4 disabled controls)')
 		else
 			eq(m.calls.total, 0, label .. ': no setter')
 		end

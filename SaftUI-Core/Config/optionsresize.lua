@@ -142,10 +142,10 @@ local function BuildResize(window)
 		handle:SetScript('OnMouseUp', EndResize)
 	end
 	F.grip, F.sizer = grip, sizer
-	-- A glyph (after the scripts above): the corner is white, the lighter tone of the accent under
+	-- A glyph, the pushed texture too: the game shows it instead of the normal one while held (after the scripts above): the corner is white, the lighter tone of the accent under
 	-- the mouse or held; under Blizzard the game's own highlight and pushed art.
 	st:AddStates(grip, 'glyph', {
-		glyph = grip.normal, glyphRest = function() return 1, 1, 1 end,
+		glyph = { grip.normal, grip.pushed }, glyphRest = function() return 1, 1, 1 end,
 		blizzard = function() return S.blizzard == true end,
 	})
 end
@@ -172,7 +172,7 @@ local function LookGrip()
 		for _, texture in ipairs({ grip.normal, grip.highlight, grip.pushed }) do texture:SetTexture(st.textures.cornerbr) end
 		grip.highlight:SetBlendMode('BLEND')
 		grip.highlight:SetAlpha(0)
-		grip.pushed:SetAlpha(0)
+		grip.pushed:SetAlpha(1) -- the game shows it in place of the normal corner while held: it is the corner too
 	end
 	st:RestyleStates(grip)
 	st:PaintStates(grip) -- the rest color back on the corner

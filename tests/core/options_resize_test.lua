@@ -38,7 +38,7 @@ end
 
 ------------------------------------------------------------------ /sui grows taller
 
-test("the grip's corner is a glyph: white at rest, the lighter tone of the accent under the mouse and held, its highlight and pushed textures clear", function()
+test("the grip's corner is a glyph: white at rest, the lighter tone of the accent under the mouse and held (the pushed texture shows the corner too: the game swaps it for the normal one while held), its highlight clear", function()
 	close_all()
 	theme('thick')
 	st.config.global.optionsWindow = nil
@@ -46,9 +46,10 @@ test("the grip's corner is a glyph: white at rest, the lighter tone of the accen
 	local F = frames()
 	local normal = F.grip:GetNormalTexture()
 	eq(rgba(normal:GetVertexColor()), rgba(1, 1, 1, 1), 'white at rest')
-	for _, state in ipairs({ 'Highlight', 'Pushed' }) do
-		eq(F.grip['Get' .. state .. 'Texture'](F.grip):GetAlpha(), 0, state .. ': clear (the corner itself changes color)')
-	end
+	eq(F.grip:GetHighlightTexture():GetAlpha(), 0, 'Highlight: clear (the corner itself changes color)')
+	local pushed = F.grip:GetPushedTexture()
+	eq(pushed:GetAlpha(), 1, 'Pushed: visible, it replaces the normal corner while held')
+	eq(rgba(pushed:GetVertexColor()), rgba(1, 1, 1, 1), 'white at rest too')
 	stub.fire_script(F.grip, 'OnEnter', true)
 	local r, g, b = st:StateColor('edgeHover')
 	eq(rgba(normal:GetVertexColor()), rgba(r, g, b, 1), 'under the mouse: the lighter tone')
@@ -56,6 +57,7 @@ test("the grip's corner is a glyph: white at rest, the lighter tone of the accen
 	eq(rgba(normal:GetVertexColor()), rgba(1, 1, 1, 1), 'white again')
 	stub.fire_script(F.grip, 'OnMouseDown', 'LeftButton')
 	eq(rgba(normal:GetVertexColor()), rgba(r, g, b, 1), 'held: the same')
+	eq(rgba(pushed:GetVertexColor()), rgba(r, g, b, 1), 'and the texture the game shows while held is the lighter tone too')
 	stub.fire_script(F.grip, 'OnMouseUp', 'LeftButton')
 	close_all()
 end)
@@ -104,7 +106,7 @@ test('/sui grows taller by its bottom edge or its grip: its width and top stay, 
 	for _, state in ipairs({ 'Highlight', 'Pushed' }) do
 		local texture = F.grip['Get' .. state .. 'Texture'](F.grip)
 		eq(texture:GetTexture(), st.textures.cornerbr, state .. ': the corner')
-		eq(texture:GetAlpha(), 0, state .. ': clear: the corner itself takes the tone (a glyph)')
+		eq(texture:GetAlpha(), state == 'Pushed' and 1 or 0, state .. (state == 'Pushed' and ': the corner while held (a glyph)' or ': clear'))
 	end
 	eq(F.grip:GetHighlightTexture():GetBlendMode(), 'BLEND', 'the highlight blends, as st:EnableResizing has it')
 	eq(F.grip:GetHighlightTexture():GetDrawLayer(), st.ThemeArt.HOVER_LAYER, 'in the highlight layer')

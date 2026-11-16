@@ -1163,6 +1163,7 @@ test('under Blizzard /sui grows taller from 728; the inner frame and the sidebar
 		switch('thick'); eq(at(F.window), '0,0 1040x828', client .. ': the dragged height under Thick too')
 		eq(F.grip:GetNormalTexture():GetTexture(), st.textures.cornerbr, client)
 		eq(F.grip:GetHighlightTexture():GetAlpha(), 0, client .. ': Thick: the corner takes the tone itself (a glyph): the highlight is clear')
+		eq(F.grip:GetPushedTexture():GetAlpha(), 1, client .. ': Thick: the pushed texture shows the corner while held')
 		st.config.global.optionsWindow.height = 700; switch('blizzard'); eq(F.window:GetHeight(), 728, client .. ": a height under Blizzard's least")
 		eq(table.concat({ F.grip:GetHighlightTexture():GetVertexColor() }, ','), '1,1,1,1', client .. ": Blizzard's highlight untinted")
 		eq(F.grip:GetHighlightTexture():GetBlendMode(), 'ADD', client .. ": and added, as a HighlightTexture's default")

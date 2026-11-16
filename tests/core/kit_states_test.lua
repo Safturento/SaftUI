@@ -642,12 +642,60 @@ test('a pass over the open window: under 300 calls, nothing made or forbidden, u
 	accent_c:SetRGB(unpack(keep))
 	st:ColorChanged('accent')
 	local per = m.calls.total / 100
-	check(per < 300, 'calls per pass: ' .. per)
+	eq(per, 32, 'calls per pass (measured; the brief budget was under 300)')
 	eq(m.forbidden.total, 0, 'nothing forbidden')
 	eq(m.made, 0, 'nothing made')
 	check(m.kb < 4, 'garbage over 100 passes: ' .. m.kb .. ' KB')
 	C.print('the kit, a pass of the accent', m)
 	W.CloseList()
 	w:Release()
+	close_all()
+end)
+
+test('the hover Layer and the fade sit inside the box\'s own 1 unit edge (inset 1): the border is never covered', function()
+	theme('thick')
+	local b = put(W.Button(new_parent(), 'Go', function() end))
+	enter(b)
+	local layer = look(b).pieces.layer
+	eq(layer:GetLeft() - b:GetLeft(), 1, 'in 1 on the left')
+	eq(b:GetRight() - layer:GetRight(), 1, 'and on the right')
+	eq(b:GetTop() - layer:GetTop(), 1, 'and the top')
+	leave(b)
+end)
+
+test('a disabled number box does not tint under the mouse, and its pressed layer follows the mouse like every input\'s', function()
+	theme('thick')
+	local value = 5
+	local box = put(W.NumberBox(new_parent(), { get = function() return value end, set = function(v) value = v end, tip = function() return 'T', {} end }))
+	stub.fire_script(box.edit, 'OnMouseDown', 'LeftButton')
+	check(lit(look(box.edit).layer) and st:GetState(box.edit, 'pushed'), 'a press tints the edit box darker')
+	eq(string.format('%.2f', look(box.edit).layer.a), string.format('%.2f', select(4, st:StateColor('pushed'))), 'at the pushed strength')
+	stub.fire_script(box.edit, 'OnMouseUp', 'LeftButton')
+	check(not st:GetState(box.edit, 'pushed'), 'let go')
+	W.SetEnabled(box, false)
+	enter(box.edit)
+	check(not lit(look(box.edit).layer), 'disabled: no hover tint')
+	stub.fire_script(box.edit, 'OnMouseDown', 'LeftButton')
+	check(not st:GetState(box.edit, 'pushed'), 'and no pushed')
+	leave(box.edit)
+	W.SetEnabled(box, true)
+end)
+
+test('a disabled sidebar page is dimmed to the Disabled opacity and takes no hover tint', function()
+	theme('thick')
+	st.Config:Open('Fonts', 'theme')
+	local item
+	for _, i in ipairs(frames().nav) do if i.key and not i.active then item = i end end
+	item.disabled = true
+	OW:Navigate('Fonts', { tab = 'theme' })
+	local f
+	for _, i in ipairs(frames().nav) do if i.key == item.key then f = i end end
+	check(f, 'the page is drawn')
+	f.disabled = true
+	st:SetState(f, 'disabled', true)
+	eq(f:GetAlpha(), st:StateAlpha(), 'dimmed')
+	enter(f)
+	check(not lit(look(f).layer), 'no tint')
+	leave(f)
 	close_all()
 end)

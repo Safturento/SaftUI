@@ -185,8 +185,10 @@ end
 --[[
 	A kit box (a field, a button, a face, a check box) as a state frame: hover
 	and pushed tint its body, selected and focus light its edge, disabled dims
-	it (Widgets/states.lua). isDisabled, optional, says whether the widget is
-	disabled now: a disabled box shows neither hover nor pushed. extra, optional,
+	it (Widgets/states.lua). isDisabled is unused (a caller's answer is
+	nil while its widget is built, and asking it once at registration dimmed the rule
+	editor's fields for good); disabled is st:SetState(frame, 'disabled', ...), after which
+	the box shows neither hover nor pushed. Task 11 removes the parameter with W.HoverEdge. extra, optional,
 	adds to the helper's options (shape, text, glyph, mark, solid...). The
 	Layer, Fill and Bar sit inside the box's own 1 unit edge. Call it after the
 	widget's own SetScript of OnEnter, OnLeave, OnMouseDown, OnMouseUp and OnHide
@@ -199,7 +201,6 @@ function W.HoverStates(frame, isDisabled, extra)
 		if key == 'shape' then shape = value else opts[key] = value end
 	end
 	st:AddStates(frame, shape, opts)
-	if isDisabled and isDisabled() then st:SetState(frame, 'disabled', true) end
 	return frame
 end
 -- Task 11 removes this alias (the rule editor's two calls).

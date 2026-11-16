@@ -77,6 +77,9 @@ local function ListFill()
 			-- text the state says.
 			if entry.caption then
 				row.text:SetTextColor(st:Color('text', 'muted'):GetRGB())
+			elseif list.blizzard and entry.key ~= nil and entry.key == list.selected then
+				-- the Settings art has no picked mark: the picked entry's text keeps the Accent there
+				row.text:SetTextColor(st:StateColor('edge'))
 			else
 				row.text:SetTextColor(st:Color('text', 'normal'):GetRGB())
 			end

@@ -281,8 +281,7 @@ local function ShowChecker(owner, shown, x, y, width, height, cell)
 	if not checker then
 		if not shown then return end
 		checker = { squares = {} }
-		-- BORDER, not ARTWORK: a swatch's hover Layer (ARTWORK -8) lies over its color and checker
-		checker.back = owner:CreateTexture(nil, 'BORDER', nil, 1)
+		checker.back = owner:CreateTexture(nil, 'ARTWORK', nil, 1)
 		checker.back:SetColorTexture(unpack(CHECKER_DARK))
 		Place(checker.back, owner, x, y, width, height)
 		local n = 0
@@ -290,7 +289,7 @@ local function ShowChecker(owner, shown, x, y, width, height, cell)
 			for col = 0, math.ceil(width / cell) - 1 do
 				if (row + col) % 2 == 0 then
 					n = n + 1
-					local square = owner:CreateTexture(nil, 'BORDER', nil, 2)
+					local square = owner:CreateTexture(nil, 'ARTWORK', nil, 2)
 					square:SetColorTexture(unpack(CHECKER_LIGHT))
 					Place(square, owner, x + col * cell, y + row * cell,
 						min(cell, width - col * cell), min(cell, height - row * cell))
@@ -309,7 +308,7 @@ end
 local function NewSwatch(parent, width, height)
 	local swatch = Box(st:CreateFrame('Button', nil, parent), { 0, 0, 0, 1 })
 	swatch:SetSize(width, height)
-	swatch.color = swatch:CreateTexture(nil, 'BORDER', nil, 3) -- under the hover Layer, which tints the color
+	swatch.color = swatch:CreateTexture(nil, 'ARTWORK', nil, 3) -- over the hover Layer (-8): a swatch shows its color exactly, never tinted
 	Place(swatch.color, swatch, 1, 1, width - 2, height - 2)
 	function swatch:Paint(r, g, b, a)
 		self.color:SetColorTexture(r, g, b, a)

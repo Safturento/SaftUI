@@ -548,7 +548,12 @@ function W.NumberBox(parent, opts)
 		st:SetState(self, 'hover', false)
 		box:Tip(false)
 	end)
-	edit:HookScript('OnHide', function(self) st:SetState(self, 'hover', false) end)
+	edit:HookScript('OnHide', function(self) st:SetState(self, 'hover', false); st:SetState(self, 'pushed', false) end)
+	-- pressed tints it darker, like every input (not while the box is disabled)
+	edit:HookScript('OnMouseDown', function(self, button)
+		if not box.disabled and (button == nil or button == 'LeftButton') then st:SetState(self, 'pushed', true) end
+	end)
+	edit:HookScript('OnMouseUp', function(self) st:SetState(self, 'pushed', false) end)
 	edit:SetScript('OnEnterPressed', function(self)
 		if box.disabled then return end
 		local n = tonumber(strtrim(self:GetText()))

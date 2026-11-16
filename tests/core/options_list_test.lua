@@ -555,12 +555,13 @@ test('a list with captions and disabled entries: a caption takes no click and no
 		local list = W.GetListFrames()
 		local rows = list.rows
 		local grey = string.format('%.2f,%.2f,%.2f', st.config.profile.colors.text.muted.r, st.config.profile.colors.text.muted.g, st.config.profile.colors.text.muted.b)
+		local accent = string.format('%.2f,%.2f,%.2f', st:StateColor('edge'))
 		local normal = string.format('%.2f,%.2f,%.2f', st.config.profile.colors.text.normal.r, st.config.profile.colors.text.normal.g, st.config.profile.colors.text.normal.b)
 		local function color(r) return string.format('%.2f,%.2f,%.2f', r.text:GetTextColor()) end
 		-- under Thick the states helper's Layer lights a row, under Blizzard the menu's own highlight
 		local function lit(r) return look == 'blizzard' and r.hover:IsShown() or st:StateLook(r).layer.shown end
 		eq(rows[1].text:GetText(), 'Frames', look .. ': the caption')
-		eq(color(rows[1]), grey, look .. ': a caption is grey'); eq(color(rows[2]), normal, look .. ': the picked entry is Normal (selected: a bar and the fade)')
+		eq(color(rows[1]), grey, look .. ': a caption is grey'); eq(color(rows[2]), look == 'blizzard' and accent or normal, look .. ': the picked entry is Normal over its bar and fade (the accent under Blizzard: the art has no picked mark)')
 		check(st:GetState(rows[2], 'selected') and not st:GetState(rows[1], 'selected'), look .. ': only the picked entry is selected')
 		stub.fire_script(rows[1], 'OnEnter', true)
 		check(not lit(rows[1]), look .. ': a caption shows no hover')
@@ -580,7 +581,7 @@ test('a list with captions and disabled entries: a caption takes no click and no
 		eq(table.concat(picked, ','), 'a', look .. ': a pick runs'); eq(W.ListOwner(), nil, 'and closes')
 		-- The rows are shared: a plain list afterwards draws them whole again.
 		W.OpenList(owner, { { key = 'x', label = 'X' }, { key = 'y', label = 'Y' }, { key = 'z', label = 'Z' } }, 'x', function() end)
-		eq(rows[3]:GetAlpha(), 1, look .. ': a row is whole again'); eq(color(rows[1]), normal)
+		eq(rows[3]:GetAlpha(), 1, look .. ': a row is whole again'); eq(color(rows[1]), look == 'blizzard' and accent or normal)
 		W.CloseList()
 	end
 	theme('thick')
@@ -622,4 +623,17 @@ test("a caption keeps the group font after a pooled row drew an entry's own face
 	eq(list.rows[1].text:GetFont(), (st.OptionsBody.Font('group'):GetFont()), "and its face, not the last entry's")
 	eq(list.rows[2].text:GetFont(), (W.GetFont():GetFont()), 'an entry with no font is in the field font again')
 	W.CloseList()
+end)
+
+test("under Blizzard a dropdown's picked entry still shows which one it is: its text in the accent (the Settings art has no picked mark)", function()
+	theme('blizzard')
+	local owner = CreateFrame('Button', nil, parent)
+	owner:SetSize(200, 26); owner:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+	W.OpenList(owner, { { key = 'a', label = 'A' }, { key = 'b', label = 'B' } }, 'b', function() end)
+	local rows = W.GetListFrames().rows
+	local function color(r) return string.format('%.2f,%.2f,%.2f', r.text:GetTextColor()) end
+	eq(color(rows[2]), string.format('%.2f,%.2f,%.2f', st:StateColor('edge')), 'the picked entry: the accent')
+	eq(color(rows[1]), string.format('%.2f,%.2f,%.2f', st.config.profile.colors.text.normal:GetRGB()), 'the other: Normal')
+	W.CloseList()
+	theme('thick')
 end)
