@@ -34,8 +34,8 @@ local PLAYERS, NPCS = 'nameplateShowFriendlyPlayers', 'nameplateShowFriendlyNpcs
 -- texts and icons are rows of General's Parts (Threat on the Enemy page only).
 local ENEMY_TABS = 'general,Health,Castbar,Auras'
 local FRIENDLY_TABS = 'general,Health,Castbar,Auras'
--- General's Parts rows after its own rows. While a box is checked they are hidden (UF.HidePlateParts,
--- the plates' task's keptParts later), but for the Enemy page's Threat, which stays.
+-- General's Parts rows after its own rows. While a box is checked they are hidden (each plate page's
+-- keptParts in nameplates/options.lua names the ones that stay), but for the Enemy page's Threat, which stays.
 local ENEMY_PARTS = ',name,subtext,healthtext,threat,raidtarget,quest'
 local FRIENDLY_PARTS = ',name,subtext,healthtext,raidtarget,quest'
 local ENEMY_BOX, FRIENDLY_BOX = "Use friendly nameplates' settings", "Use enemy nameplates' settings"
@@ -46,8 +46,8 @@ local ENEMY_USES_THIS = "Enemy nameplates use this page's settings, all but thre
 local DRAWN_BY_PLATER = "Nameplates are drawn by Plater. Turn it off to use SaftUI's."
 -- The centred line in place of General's other settings while a page's box is checked.
 local FRIENDLY_SOURCED, ENEMY_SOURCED = 'Sourced from enemy nameplates', 'Sourced from friendly nameplates'
-local ENEMY_BOX_DESC = "Draws enemy and neutral nameplates with the Friendly nameplates page's settings. This page's own are set aside, kept for when it's unchecked: its other tabs are disabled and General's other settings hidden. Threat when solo and the Threat tab stay, and still apply."
-local FRIENDLY_BOX_DESC = "Draws friendly nameplates with the Enemy nameplates page's settings. This page's own are set aside, kept for when it's unchecked: its other tabs are disabled and General's other settings hidden. Friendly nameplates never show threat."
+local ENEMY_BOX_DESC = "Draws enemy and neutral nameplates with the Friendly nameplates page's settings. This page's own are set aside, kept for when it's unchecked: its Health, Cast bar and Auras tabs are disabled, and General's other settings and parts are hidden. Threat when solo and the Threat part stay, and still apply."
+local FRIENDLY_BOX_DESC = "Draws friendly nameplates with the Enemy nameplates page's settings. This page's own are set aside, kept for when it's unchecked: its Health, Cast bar and Auras tabs are disabled, and General's other settings and parts are hidden. Friendly nameplates never show threat."
 -- The tabs the Friendly page's box disables, and the Enemy page's (Threat stays).
 local FRIENDLY_OFF_TABS = 'Health,Castbar,Auras'
 local ENEMY_OFF_TABS = FRIENDLY_OFF_TABS
@@ -332,7 +332,7 @@ test("checking a box: the page's tabs stay where they are, disabled but General 
 		check(set(UF, 'nameplate', 'use_friendly', true), client .. ': the Enemy box checked')
 		eq(UF:GetProfileConfig().nameplate.use_friendly, true, client .. ': saved')
 		root, view = page(UF, 'nameplate')
-		eq(keys(view), 'enable,threat_solo,use_friendly,sourced,threat', client .. ': Nameplates, Threat when solo, the box and the line')
+		eq(keys(view), 'enable,threat_solo,use_friendly,threat,sourced', client .. ': Nameplates, Threat when solo, the box and the line')
 		eq(row_for(view, 'sourced').name, ENEMY_SOURCED, client .. ': saying where the settings come from')
 		eq(tabs(view), ENEMY_TABS, client .. ': every tab still there')
 		eq(disabled_tabs(view), ENEMY_OFF_TABS, client .. ': all but General and Threat disabled')
@@ -580,7 +580,14 @@ test("General's toggles keep their panel while the box is checked: only the cent
 			eq(-top, first.y, label .. ': from the first row')
 			if checked then
 				check(sourced ~= nil, label .. ': the centred line')
-				eq(-top + panels[1]:GetHeight(), sourced.y, label .. ': to the line, which is not under it')
+				if name == 'nameplate' then
+					-- The kept Threat row's section sits directly under the toggles' panel, then the line under it.
+					local _, _, _, _, top2 = panels[2]:GetPoint(1)
+					eq(-top2 + panels[2]:GetHeight(), sourced.y, label .. ': the line directly under the Parts panel')
+					check(-top2 >= -top + panels[1]:GetHeight(), label .. ': the Parts panel is below the toggles')
+				else
+					eq(-top + panels[1]:GetHeight(), sourced.y, label .. ': to the line, which is not under it')
+				end
 				local _, _, _, x = sourced.frame:GetPoint(1)
 				eq(x .. '+' .. sourced.frame:GetWidth(), '0+774', label .. ': the line bare, the whole width')
 				local _, _, _, fx = first.frame:GetPoint(1)

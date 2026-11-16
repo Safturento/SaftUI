@@ -139,11 +139,12 @@ local function PlateBox(unit, order, name, desc)
 		UF:GetProfileConfig()[unit][plate.box] = value
 		UF:UpdateConfig('nameplate')
 	end
-	-- After General's other settings, which are hidden while it shows: in the
+	-- After General's other settings and its Parts (order 2000; the kept Threat row sits
+	-- directly under the box's section, then this line), which are hidden while it shows: in the
 	-- middle of what the switches leave of the page, across and down (a fill
 	-- row, as the window draws a description with fill).
 	local sourced = {
-		order = 100,
+		order = 2001,
 		type = 'description',
 		name = plate.sourced,
 		justifyH = 'CENTER',
@@ -182,7 +183,7 @@ local function NameplateGeneral()
 	end
 
 	local box, sourced = PlateBox('nameplate', 3, "Use friendly nameplates' settings",
-		"Draws enemy and neutral nameplates with the Friendly nameplates page's settings. This page's own are set aside, kept for when it's unchecked: its other tabs are disabled and General's other settings hidden. Threat when solo and the Threat tab stay, and still apply.")
+		"Draws enemy and neutral nameplates with the Friendly nameplates page's settings. This page's own are set aside, kept for when it's unchecked: its Health, Cast bar and Auras tabs are disabled, and General's other settings and parts are hidden. Threat when solo and the Threat part stay, and still apply.")
 
 	local args = {
 		enable = enable,
@@ -235,7 +236,7 @@ local function FriendlyNameplateGeneral()
 	end
 
 	local box, sourced = PlateBox('friendlynameplate', 2, "Use enemy nameplates' settings",
-		"Draws friendly nameplates with the Enemy nameplates page's settings. This page's own are set aside, kept for when it's unchecked: its other tabs are disabled and General's other settings hidden. Friendly nameplates never show threat.")
+		"Draws friendly nameplates with the Enemy nameplates page's settings. This page's own are set aside, kept for when it's unchecked: its Health, Cast bar and Auras tabs are disabled, and General's other settings and parts are hidden. Friendly nameplates never show threat.")
 
 	local args = {
 		friendly = friendly,

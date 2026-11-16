@@ -722,7 +722,7 @@ test("with Use friendly nameplates' settings checked only Threat stays in Parts;
 		root, view = page(UF)
 		local keys = {}
 		for _, row in ipairs(rows(view)) do keys[#keys + 1] = row.key end
-		eq(table.concat(keys, ','), 'enable,threat_solo,use_friendly,sourced,threat', client .. ': Threat alone, after the line')
+		eq(table.concat(keys, ','), 'enable,threat_solo,use_friendly,threat,sourced', client .. ': Threat alone, then the line')
 		eq(row_for(view, 'threat').disabled, false, client .. ': Threat is enabled')
 		local tabs = {}
 		for _, tab in ipairs(view.tabs) do tabs[tab.key] = tab.disabled and true or false end
@@ -741,7 +741,7 @@ test("with Use friendly nameplates' settings checked only Threat stays in Parts;
 	end
 end)
 
-test('the plate part rows have no share and a menu reset', function()
+test('the plate part rows have no share and their reset reads where each box is saved', function()
 	local _, UF = world('forever')
 	local OM = SaftUI.OptionsModel
 	local root = { Unitframes = UF:GetConfigTable() }
