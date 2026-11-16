@@ -216,6 +216,59 @@ local function IsDark(r, g, b)
 	return math.abs(r - dark[1]) <= TOL and math.abs(g - dark[2]) <= TOL and math.abs(b - dark[3]) <= TOL
 end
 
+-- A label that followed a font object (kit labels do: W.ColorFonts recolors the object when
+-- Text > Normal changes) loses that the moment anything calls SetTextColor on it, and the game
+-- has no call that gives it back that is the same on every client (SetFontObject is not relied
+-- on). So the helper notes that it followed (rec.follows[i] = the object) when it first writes the
+-- dark text, gives the label the object's CURRENT color when the dark goes (also when Text >
+-- Normal changed while it was on), and repaints it on every Text pass while it holds that record
+-- (rec.fpaint[...] is what it painted last: a label that no longer has it was recolored by its
+-- owner, which is then left alone).
+local function Close(r1, g1, b1, r2, g2, b2)
+	return math.abs(r1 - r2) <= TOL and math.abs(g1 - g2) <= TOL and math.abs(b1 - b2) <= TOL
+end
+
+local function FollowText(rec) -- (a named function: the registry holds no closure)
+	local follows, fpaint, keep = rec.follows, rec.fpaint, rec.keep
+	if not follows then return end
+	for i = 1, #rec.texts do
+		local object, at = follows[i], i * 4
+		if object and not (keep and keep[at]) then
+			local r, g, b = PlainColor(rec.texts[i])
+			local fr, fg, fb = PlainColor(object)
+			if r and g and b and fr and fg and fb then
+				if Close(r, g, b, fpaint[at - 3], fpaint[at - 2], fpaint[at - 1]) then
+					if not Close(r, g, b, fr, fg, fb) then rec.texts[i]:SetTextColor(fr, fg, fb) end
+					fpaint[at - 3], fpaint[at - 2], fpaint[at - 1] = fr, fg, fb
+				else
+					follows[i] = false -- its owner recolored it
+				end
+			end
+		end
+	end
+end
+
+-- Notes that label i followed its font object, when it did (its color is the object's).
+local function NoteFollow(rec, i, label, r, g, b)
+	local follows = rec.follows
+	if follows and follows[i] then return end
+	local object = label.GetFontObject and label:GetFontObject()
+	if not (object and object.GetTextColor) then return end
+	local fr, fg, fb = PlainColor(object)
+	if not (fr and fg and fb and Close(r, g, b, fr, fg, fb)) then return end
+	if not follows then
+		follows, rec.follows, rec.fpaint = {}, {}, {}
+		follows = rec.follows
+	end
+	follows[i] = object
+	local at = i * 4
+	rec.fpaint[at - 3], rec.fpaint[at - 2], rec.fpaint[at - 1] = fr, fg, fb
+	if not rec.textFollowed then
+		rec.textFollowed = true
+		st:FollowColor(rec, 'text', nil, FollowText)
+	end
+end
+
 local function KeepText(rec, d, layer, fill)
 	local texts, keep = rec.texts, rec.keep
 	if not keep then
@@ -230,18 +283,28 @@ local function KeepText(rec, d, layer, fill)
 		local r, g, b = PlainColor(label)
 		if r and g and b then
 			-- the dark text on, and its owner has recolored it since: that color is the label's own
-			if keep[at] and not IsDark(r, g, b) then keep[at] = false end
+			if keep[at] and not IsDark(r, g, b) then
+				keep[at] = false
+				if rec.follows then rec.follows[i] = false end
+			end
 			local lr, lg, lb = r, g, b
 			if keep[at] then lr, lg, lb = keep[at - 3], keep[at - 2], keep[at - 1] end
 			local pr, pg, pb = ST().PickText(lr, lg, lb, cr, cg, cb)
 			if pr == dark[1] and pg == dark[2] and pb == dark[3] and not (lr == pr and lg == pg and lb == pb) then
 				if not keep[at] then
+					NoteFollow(rec, i, label, r, g, b)
 					keep[at - 3], keep[at - 2], keep[at - 1], keep[at] = r, g, b, true
 					label:SetTextColor(pr, pg, pb)
 				end
 			elseif keep[at] then
 				keep[at] = false
+				local object = rec.follows and rec.follows[i]
+				if object then
+					local fr, fg, fb = PlainColor(object)
+					if fr and fg and fb then lr, lg, lb = fr, fg, fb end
+				end
 				label:SetTextColor(lr, lg, lb)
+				if object then rec.fpaint[at - 3], rec.fpaint[at - 2], rec.fpaint[at - 1] = lr, lg, lb end
 			end
 		end
 	end
@@ -255,8 +318,22 @@ local function KeepRest(rec)
 		if keep[at] then
 			keep[at] = false
 			local r, g, b = PlainColor(texts[i])
-			-- still the dark text we wrote: its own color is back; anything else is its owner's
-			if r and g and b and IsDark(r, g, b) then texts[i]:SetTextColor(keep[at - 3], keep[at - 2], keep[at - 1]) end
+			-- still the dark text we wrote: its own color is back (a font object's current one if it
+			-- followed); anything else is its owner's
+			if r and g and b and IsDark(r, g, b) then
+				local pr, pg, pb = keep[at - 3], keep[at - 2], keep[at - 1]
+				local object = rec.follows and rec.follows[i]
+				if object then
+					local fr, fg, fb = PlainColor(object)
+					if fr and fg and fb then
+						pr, pg, pb = fr, fg, fb
+						rec.fpaint[at - 3], rec.fpaint[at - 2], rec.fpaint[at - 1] = fr, fg, fb
+					end
+				end
+				texts[i]:SetTextColor(pr, pg, pb)
+			elseif rec.follows then
+				rec.follows[i] = false
+			end
 		end
 	end
 end

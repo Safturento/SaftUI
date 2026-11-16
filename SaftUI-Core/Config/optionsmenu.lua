@@ -31,7 +31,8 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	      below; its left edge past the margin's, TOPLEFT on BOTTOMLEFT
 	      instead (unless that goes further past the right one); its bottom
 	      past the margin's, above (BOTTOM* on TOP*, 4 above) when there's
-	      more room there.
+	      more room there; with room on neither, beside the dots (TOPLEFT on their TOPRIGHT, 4
+	      right of them, or TOPRIGHT on their TOPLEFT when that passes the margin's right).
 	  OW.GetMenuFrames() -> { frame, catcher, title, content, body, keys,
 	      owner = { body, path } } (owner nil while closed), for tests.
 	  A part row's dots (an item with a summary) are drawn in the accent while
@@ -67,9 +68,9 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	close them and leave the menu, and Esc closes the list first.
 
 	A menu group with colorEdit = true (the Accent's) begins a color edit as it opens
-	(st:BeginColorEdit, when none is on) and ends it as it closes, so a drag in it is one
-	pass of the colors a frame and the whole pass runs at the close; it ends only an edit
-	it began (the color picker's is the picker's). The menu and the picker never overlap:
+	(st:HoldColorEdit) and lets go as it closes, so a drag in it is one pass of the colors a
+	frame and the whole pass runs at the close; the edit is counted, so with the color picker
+	open too it ends when the last of them lets go, in either order. The menu and the picker never overlap:
 	the catcher takes the click outside the menu.
 
 	A set in it (MenuChanged): a failed validate shows in the status line of
@@ -142,6 +143,14 @@ function OW.MenuPlace(anchor, width, height, screenWidth, screenHeight, margin)
 	-- Below, unless its bottom passes the margin's and above has more room.
 	local below = anchor.bottom - DOTS_GAP - height - margin.bottom
 	local above = screenHeight - margin.top - (anchor.top + DOTS_GAP + height)
+	if below < 0 and above < 0 then
+		-- Neither side has room (a tall menu on a short UI): beside the dots, top to top, so
+		-- it never covers its own row: to their right, or their left when that passes the margin's.
+		if anchor.right + DOTS_GAP + width <= screenWidth - margin.right then
+			return 'TOPLEFT', 'TOPRIGHT', DOTS_GAP, 0
+		end
+		return 'TOPRIGHT', 'TOPLEFT', -DOTS_GAP, 0
+	end
 	if below < 0 and above > below then
 		return 'BOTTOM' .. side, 'TOP' .. side, 0, DOTS_GAP
 	end
@@ -335,7 +344,7 @@ local function Build()
 		-- The color edit it began ends last: its whole pass covers what the menu set.
 		if M.beganEdit then
 			M.beganEdit = nil
-			st:EndColorEdit()
+			st:ReleaseColorEdit()
 		end
 	end)
 	-- Its sets can reach protected frames, as the dialog's.
@@ -395,8 +404,8 @@ function OW:OpenMenu(widget)
 	Draw(widget.rowBody, row, widget.dots, menu, title)
 	-- A menu that changes colors (colorEdit) edits as the picker does: changes pass once a
 	-- frame, the whole pass at the close. Only an edit it began is its to end.
-	if menu.colorEdit == true and not st:InColorEdit() then
-		st:BeginColorEdit()
+	if menu.colorEdit == true then
+		st:HoldColorEdit()
 		M.beganEdit = true
 	end
 	M.frame:Show()

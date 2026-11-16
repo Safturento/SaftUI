@@ -276,7 +276,7 @@ end
 ]]
 local STATE_TILE, STATE_BUTTON_WIDTH, STATE_BUTTON_HEIGHT, STATE_BUTTON_X = 58, 46, 20, 6
 local STATE_TILE_GAP = 4
-local STATE_NAMES = { 'Rest', 'Hover', 'Pushed', 'Selected', 'Sel. + hover', 'Disabled' }
+local STATE_NAMES = { 'Rest', 'Hover', 'Pushed', 'Selected', 'Sel+hov', 'Disabled' }
 local STATE_HELD = {
 	{}, { hover = true }, { pushed = true }, { selected = true }, { selected = true, hover = true }, { disabled = true },
 }

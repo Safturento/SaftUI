@@ -739,7 +739,7 @@ test('the states kind: six tiles 58 by 44 at 0, 62, 124, 187, 249 and 312, each 
 		eq(rgb3(p.captions[i]:GetTextColor()), rgb3(st:Color('text', 'muted'):GetRGB()), 'caption ' .. i .. ' in Muted')
 	end
 	eq(table.concat(xs, ','), '0,62,124,187,249,312', 'the first at the left edge, the last at the right')
-	eq(table.concat(names, '|'), 'Rest|Hover|Pushed|Selected|Sel. + hover|Disabled')
+	eq(table.concat(names, '|'), 'Rest|Hover|Pushed|Selected|Sel+hov|Disabled')
 	eq(F.preview:GetRight() - p.tiles[6]:GetRight() < 0.001, true, 'the last tile ends at the strip\'s right edge')
 	reset()
 end)

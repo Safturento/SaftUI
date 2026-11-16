@@ -1387,11 +1387,19 @@ function OM.Search(root, text)
 		local sections = {}
 		Feed(sections, within, menu, { OM.MENU_KEY }, false)
 		for _, section in ipairs(sections) do
+			local sectionMatch = matches(section.title)
 			for _, inner in ipairs(section.rows) do
-				-- (a picture a menu shows, a bare custom row such as the Accent menu's states strip, is no setting)
+				-- (a picture a menu shows, a bare custom row such as the Accent menu's states strip, is no
+				-- setting: only its own name finds it, and the row's name or a tab's does not list it)
 				local widgets = st.OptionsWidgets
 				local picture = widgets and widgets.CUSTOM and widgets.CUSTOM[inner.type] and widgets.CUSTOM[inner.type].bare
-				if inner.type ~= 'description' and not picture and (tabMatch or itemMatch or matches(inner.name)) then
+				local hit
+				if picture then
+					hit = matches(inner.name)
+				else
+					hit = tabMatch or itemMatch or sectionMatch or matches(inner.name)
+				end
+				if inner.type ~= 'description' and hit then
 					results[#results + 1] = {
 						pageKey = pageKey,
 						path = at or row.path,

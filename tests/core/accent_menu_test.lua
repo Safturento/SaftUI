@@ -410,27 +410,41 @@ test('a drag in the menu is one pass a frame, and the whole pass at close (Revie
 	close_all()
 end)
 
-test('the menu ends only the edit it began; the picker opened elsewhere ends only its own', function()
+test('L2: the edit is counted: the picker and the menu each hold it, in either order, and it ends when the last lets go', function()
 	fresh()
-	-- an edit begun elsewhere (the picker's): the menu does not end it
-	st:BeginColorEdit()
-	open_menu()
-	check(st:InColorEdit())
-	OW:CloseMenu()
-	check(st:InColorEdit(), "an edit the menu did not begin is not its to end")
-	st:EndColorEdit()
-	-- the picker's own: opened and closed with the menu shut
 	st.Config:Open('Fonts', 'theme')
 	local row = cell('accent')
+	-- picker first, then the menu, then the picker closes first: the throttle stays until the menu closes
 	row.widget:Pick()
 	check(st:InColorEdit(), "the picker's edit")
+	row.widget:OpenMenu()
+	check(OW:IsMenuShown(), 'the menu opens over it')
+	W.CloseColorPicker(row.widget.frame)
+	check(st:InColorEdit(), 'the picker let go: the menu still holds it')
+	count_passes()
+	local hover = menu_cell('hover').widget
+	stub.fire_script(hover.slider, 'OnMouseDown')
+	for i = 1, 5 do hover.slider:SetValue(0.2 + i * 0.01) end
+	eq(passes, 0, 'changes still wait for the frame')
+	C.step(st)
+	eq(passes, 1, 'one pass for the five')
+	stub.fire_script(hover.slider, 'OnMouseUp')
+	OW:CloseMenu()
+	check(not st:InColorEdit(), 'ended when the last (the menu) let go')
+	-- the reverse: the menu first, the picker, the menu closes first
+	row = cell('accent')
+	row.widget:OpenMenu()
+	check(st:InColorEdit(), 'the menu holds it')
+	row.widget:Pick()
+	OW:CloseMenu()
+	check(st:InColorEdit(), 'the menu let go: the picker still holds it')
 	W.CloseColorPicker(row.widget.frame)
 	check(not st:InColorEdit(), "ended with the picker's")
-	-- the menu's edit across the picker's open and close elsewhere
-	click(row.widget.dots)
-	check(st:InColorEdit(), 'the menu began one')
-	OW:CloseMenu()
-	check(not st:InColorEdit(), 'and ended it')
+	-- the picker alone, and the menu alone
+	row.widget:Pick()
+	check(st:InColorEdit()); W.CloseColorPicker(row.widget.frame); check(not st:InColorEdit())
+	click(cell('accent').widget.dots)
+	check(st:InColorEdit()); OW:CloseMenu(); check(not st:InColorEdit())
 	close_all()
 end)
 
@@ -616,5 +630,118 @@ test('composite widgets follow the Disabled slider: range, font row, position bl
 		eq(w.frame:GetAlpha(), 1, kind .. ': enabled again: full')
 	end
 	for _, w in pairs(made) do w:Release() end
+	close_all()
+end)
+
+test('L4: every caption of the strip fits its tile at 54 and at 58 wide', function()
+	fresh()
+	open_menu()
+	local p = strip()
+	local kind = W.PreviewKinds().states
+	for _, width in ipairs({ 348, 370, 402 }) do
+		kind.Layout(p, width)
+		for i, caption in ipairs(p.captions) do
+			local need = caption:GetUnboundedStringWidth()
+			check(need <= p.tiles[i]:GetWidth(), ('%s needs %s of a %s tile at %d'):format(caption:GetText(), need, p.tiles[i]:GetWidth(), width))
+		end
+	end
+	kind.Layout(p, 348)
+	close_all()
+end)
+
+scaled_test('L6: the menu at the scales: its rows, the strip and the slot are laid out the same, the strip inside the menu', function()
+	fresh()
+	open_menu()
+	eq(rows(), 'preview,mode,hover,pushed,selected,fade,disabled,step,shift,direction,chroma')
+	local widget = menu_cell('preview').widget
+	local frame = widget.frame
+	for i, tile in ipairs(strip().tiles) do
+		check(tile:GetLeft() >= frame:GetLeft() - 0.001 and tile:GetRight() <= frame:GetRight() + 0.001, 'tile ' .. i .. ' inside the strip')
+	end
+	check(M().frame:GetBottom() <= cell('accent').frame:GetBottom() + 1000, 'a menu')
+	close_all()
+end)
+
+test('L1: the Accent dots rest brighter and say how many settings differ while any menu row differs', function()
+	fresh()
+	st.Config:Open('Fonts', 'theme')
+	local dots = cell('accent').widget.dots
+	check(not dots.lit, 'at the defaults: Muted')
+	click(dots)
+	menu_cell('hover').widget:Commit(0.3)
+	menu_cell('pushed').widget:Commit(0.5)
+	OW:CloseMenu()
+	dots = cell('accent').widget.dots
+	check(dots.lit, 'a menu row differs: lit')
+	local r, g, b = dots.icon:GetVertexColor()
+	local n = st:Color('text', 'normal')
+	eq(T.rgb(r, g, b), T.rgb(n.r, n.g, n.b), 'at rest in Text > Normal, as the part rows')
+	stub.fire_script(dots, 'OnEnter', true)
+	eq(GameTooltip:GetOwner(), dots)
+	stub.fire_script(dots, 'OnLeave', true)
+	eq(select(2, st.OptionsWidgets.Kit.DotsTip(cell('accent').widget))[1], '2 settings here differ from their defaults.')
+	click(dots)
+	stub.click(reset_icon(menu_cell('hover')))
+	stub.click(reset_icon(menu_cell('pushed')))
+	OW:CloseMenu()
+	check(not cell('accent').widget.dots.lit, 'back to Muted once none differs')
+	close_all()
+end)
+
+test('L3: when neither above nor below the dots has room the menu is beside them, not over its own row', function()
+	fresh()
+	open_menu()
+	local height = M().frame:GetHeight()
+	OW:CloseMenu()
+	check(height > 600, 'a tall menu')
+	-- a 960-unit UI, the row mid-screen
+	local function at(top, bottom) return table.concat({ OW.MenuPlace({ left = 800, right = 816, top = top, bottom = bottom }, 400, height, 1707, 960) }, ',') end
+	eq(at(500, 476), 'TOPLEFT,TOPRIGHT,4,0', 'mid-screen: beside, to the right')
+	eq(at(300, 276), 'TOPLEFT,TOPRIGHT,4,0', 'lower: beside')
+	eq(at(940, 916), 'TOPRIGHT,BOTTOMRIGHT,0,-4', 'near the top there is room below: below')
+	close_all()
+end)
+
+test('L5: searching "tones" or "states" finds the Accent row and opens the menu', function()
+	fresh()
+	local root = st.Config:GetOptionsTable()
+	local function find(text)
+		local out = {}
+		for _, r in ipairs(OM.Search(root, text)) do
+			if r.menu and r.pageKey == 'Fonts' then out[#out + 1] = r.name .. '@' .. r.path[#r.path] end
+		end
+		return table.concat(out, ',')
+	end
+	eq(find('tones'), 'Lightness step@accent', 'a menu section title is searched')
+	eq(find('states'), 'States@accent', 'the strip is found by its own name only')
+	for _, word in ipairs({ 'tones', 'states' }) do
+		st.Config:Open('Fonts', 'general')
+		OW.GetFrames().search:SetText(word)
+		tick(0.3)
+		local found
+		for _, c in ipairs(OW.GetDrawnRows()) do
+			if c.row.menu and c.row.path[#c.row.path] == 'accent' then found = c end
+		end
+		check(found, word .. ': a result on the Accent row')
+		click(found.frame)
+		check(OW:IsMenuShown(cell('accent').widget), word .. ': the menu opens')
+		OW:CloseMenu()
+	end
+	close_all()
+end)
+
+test('L6: the note under the strip under Blizzard takes 18 units: the menu rows start under it', function()
+	fresh()
+	open_menu()
+	local top = menu_cell('preview').widget.frame
+	eq(top:GetHeight(), 64, 'Thick: the strip alone')
+	OW:CloseMenu()
+	T.theme('blizzard')
+	open_menu()
+	local w = menu_cell('preview').widget
+	eq(w.frame:GetHeight(), 64 + 18, 'Blizzard: the note adds 18')
+	check(w.note:GetBottom() >= w.frame:GetBottom() - 0.001, 'the note is inside its row')
+	check(menu_cell('mode').frame:GetTop() <= w.frame:GetBottom() + 0.001, 'Derivation starts under the strip row')
+	T.theme('thick')
 	close_all()
 end)

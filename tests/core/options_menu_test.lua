@@ -126,9 +126,12 @@ test('MenuPlace: under the dots, right-aligned; flipped above near the bottom; l
 	eq(at({ left = 600, right = 616, top = 200, bottom = 176 }, 400, 300, 1920, 1080), 'BOTTOMRIGHT,TOPRIGHT,0,4', 'above, near the bottom')
 	eq(at({ left = 100, right = 116, top = 500, bottom = 476 }, 400, 300, 1920, 1080), 'TOPLEFT,BOTTOMLEFT,0,-4', 'to the right, near the left')
 	eq(at({ left = 100, right = 116, top = 200, bottom = 176 }, 400, 300, 1920, 1080), 'BOTTOMLEFT,TOPLEFT,0,4', 'both')
-	-- No room either way: the side with more of it.
-	eq(at({ left = 600, right = 616, top = 300, bottom = 276 }, 400, 300, 1920, 500), 'TOPRIGHT,BOTTOMRIGHT,0,-4', 'more room below')
-	eq(at({ left = 600, right = 616, top = 224, bottom = 200 }, 400, 300, 1920, 500), 'BOTTOMRIGHT,TOPRIGHT,0,4', 'more room above')
+	-- No room above or below: beside the dots (never over their own row), the right first.
+	eq(at({ left = 600, right = 616, top = 300, bottom = 276 }, 400, 300, 1920, 500), 'TOPLEFT,TOPRIGHT,4,0', 'beside, to the right')
+	eq(at({ left = 600, right = 616, top = 224, bottom = 200 }, 400, 300, 1920, 500), 'TOPLEFT,TOPRIGHT,4,0', 'beside, to the right')
+	eq(at({ left = 1600, right = 1616, top = 300, bottom = 276 }, 400, 300, 1920, 500), 'TOPRIGHT,TOPLEFT,-4,0', 'no room to the right: to the left')
+	-- Room above (even with none below): above, as before.
+	eq(at({ left = 600, right = 616, top = 224, bottom = 200 }, 400, 300, 1920, 600), 'BOTTOMRIGHT,TOPRIGHT,0,4', 'more room above')
 end)
 
 ------------------------------------------------------------------ opening

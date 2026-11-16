@@ -438,7 +438,7 @@ local function Okay()
 	RememberColor(S.r, S.g, S.b, done.hasAlpha and S.a or 1)
 	spec = nil
 	frame:Hide()
-	st:EndColorEdit() -- after the hide: the OnHide that runs Cancel finds no spec
+	st:ReleaseColorEdit() -- after the hide: the OnHide that runs Cancel finds no spec
 end
 
 -- Cancel (and Esc, the window closing, combat): the opening color back through
@@ -451,7 +451,7 @@ function Cancel()
 	frame:Hide()
 	if done.onChange then xpcall(done.onChange, geterrorhandler(), done.r, done.g, done.b, done.hasAlpha and done.a or 1) end
 	if done.onCancel then xpcall(done.onCancel, geterrorhandler()) end
-	st:EndColorEdit() -- after the restore and onCancel: its whole passes cover them
+	st:ReleaseColorEdit() -- after the restore and onCancel: its whole passes cover them
 end
 
 function W.CloseColorPicker(within)
@@ -1057,7 +1057,7 @@ function W.OpenColorPicker(owner, options)
 	PlaceBeside(owner)
 	-- Last before it shows, so a failure above leaves no edit on: changes now
 	-- pass once a frame, and closing runs each touched group's whole pass.
-	st:BeginColorEdit()
+	st:HoldColorEdit()
 	frame:Show()
 	Paint()
 	return true

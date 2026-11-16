@@ -361,6 +361,9 @@ local function MakeSlot(w)
 	local dots = Kit.NewSlot(w.frame, st.icons.ellipsisVertical)
 	dots.onClick = function() w:ToggleMenu() end
 	dots.tip = function()
+		-- how many settings in the menu differ, as an item's dots say (Kit.DotsTip)
+		local counted, lines = Kit.DotsTip(w)
+		if counted then return counted, lines end
 		local title = w.row and OM.Member(w.root, w.row, 'menuTitle')
 		if type(title) ~= 'string' or title == '' then title = w.row and w.row.name or '' end
 		return title .. ' states', { 'How hover, pushed, selected and disabled are made from the Accent.' }
@@ -428,6 +431,16 @@ define('color', {
 	end,
 
 	Refresh = function(self)
+		-- The slot's dots rest brighter while any menu row differs from its default: the item's rule
+		-- and code (OM.MenuOffers), with the same tooltip.
+		if self.dots and self.dots:IsShown() then
+			self.menuOffers, self.menuOwned, self.menuPage = OM.MenuOffers(self.root, self.row)
+			local lit = self.menuOffers > 0
+			if (self.dots.lit or false) ~= lit then
+				self.dots.lit = lit or nil
+				Kit.PaintSlot(self.dots, not self.dots.blizzard and st:GetState(self.dots, 'hover') and true or false)
+			end
+		end
 		local r, g, b, a = self:Value()
 		self.r, self.g, self.b, self.a = r or 0, g or 0, b or 0, a or 1
 		self.hasAlpha = OM.Member(self.root, self.row, 'hasAlpha') and true or false
@@ -477,6 +490,7 @@ define('color', {
 		if self.check and GameTooltip then W.HideTip(self.check) end
 		if self.dots then
 			if GameTooltip then W.HideTip(self.dots) end
+			self.dots.lit, self.menuOffers, self.menuOwned, self.menuPage = nil, nil, nil, nil
 			Kit.PaintSlot(self.dots, false)
 		end
 	end,

@@ -282,6 +282,20 @@ end
 
 function st:InColorEdit() return editing end
 
+-- An edit held by more than one holder (the color picker and the Accent menu can be open at
+-- once, in either order): each holds it and the edit ends when the last lets go.
+local holders = 0
+function st:HoldColorEdit()
+	holders = holders + 1
+	st:BeginColorEdit()
+end
+
+function st:ReleaseColorEdit()
+	if holders == 0 then return end
+	holders = holders - 1
+	if holders == 0 then st:EndColorEdit() end
+end
+
 -- One color changed (a Colors row's set or reset, the Accent's).
 function st:ColorChanged(group, key)
 	if not editing then
