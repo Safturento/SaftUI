@@ -131,6 +131,22 @@ end
 -- tabs SaftUI is holding at alpha 1 now (tabs.fade was off at the last HoldTabAlpha).
 local held = setmetatable({}, { __mode = 'k' })
 
+-- Holds a tab, or the dock's overflow button, at alpha 1 while tabs.fade is off: a
+-- post-hook on its SetAlpha (made once) that reads the profile each time and puts 1 back
+-- with the widget's own method, and 1 now.
+local function HoldAtOne(widget)
+	if not hooked[widget] then
+		hooked[widget] = true
+		hooksecurefunc(widget, 'SetAlpha', function(self, alpha)
+			if not CHT.config.tabs.fade and alpha ~= 1 then
+				SetTabAlpha(self, 1)
+			end
+		end)
+	end
+	held[widget] = true
+	if widget:GetAlpha() ~= 1 then SetTabAlpha(widget, 1) end
+end
+
 -- With tab fading off (tabs.fade) a tab stays at alpha 1: after Blizzard's own SetAlpha
 -- on it, which UIFrameFade makes at every step of a fade, a post-hook puts 1 back. The
 -- hook reads the profile each time. It calls the widget's own method, not the hooked
@@ -157,16 +173,7 @@ function CHT:HoldTabAlpha(frame)
 		end
 		return
 	end
-	if not hooked[tab] then
-		hooked[tab] = true
-		hooksecurefunc(tab, 'SetAlpha', function(widget, alpha)
-			if not CHT.config.tabs.fade and alpha ~= 1 then
-				SetTabAlpha(widget, 1)
-			end
-		end)
-	end
-	held[tab] = true
-	if tab:GetAlpha() ~= 1 then SetTabAlpha(tab, 1) end
+	HoldAtOne(tab)
 end
 
 -- The dock's overflow button (the tabs that don't fit) fades with the tabs: Blizzard's
@@ -187,16 +194,7 @@ function CHT:HoldOverflowAlpha()
 		end
 		return
 	end
-	if not hooked[button] then
-		hooked[button] = true
-		hooksecurefunc(button, 'SetAlpha', function(widget, alpha)
-			if not CHT.config.tabs.fade and alpha ~= 1 then
-				SetTabAlpha(widget, 1)
-			end
-		end)
-	end
-	held[button] = true
-	if button:GetAlpha() ~= 1 then SetTabAlpha(button, 1) end
+	HoldAtOne(button)
 end
 
 -- Every window's tab takes tabs.fade now (a profile change, the /sui toggle), and so does
@@ -287,10 +285,13 @@ function CHT:UpdateChatFrameDisplay(frame)
 	local own = pieces[frame]
 	if own then
 		local against = drawnBackdrop or frame
+		-- The backdrop's top already includes the combat log's quick button bar (`offset`);
+		-- the window's own top is that much lower.
+		local rise = drawnBackdrop and 1 or offset + 1
 		local editbox = own.editbox
 		editbox:ClearAllPoints()
-		editbox:SetPoint('BOTTOMLEFT', against, 'TOPLEFT', 0, 1)
-		editbox:SetPoint('BOTTOMRIGHT', against, 'TOPRIGHT', 0, 1)
+		editbox:SetPoint('BOTTOMLEFT', against, 'TOPLEFT', 0, rise)
+		editbox:SetPoint('BOTTOMRIGHT', against, 'TOPRIGHT', 0, rise)
 		local scrollbar = frame.ScrollBar
 		scrollbar:ClearAllPoints()
 		scrollbar:SetPoint('TOPLEFT', against, 'TOPRIGHT', 5, 0)

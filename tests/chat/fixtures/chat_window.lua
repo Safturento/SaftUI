@@ -64,6 +64,10 @@ function CW.build(id)
 	-- with no relative frame means UIParent, not the window.
 	local editbox = CreateFrame('EditBox', name .. 'EditBox', UIParent)
 	editbox:SetSize(400, 32)
+	-- Blizzard's XML anchors (FloatingChatFrame.xml): under the window's bottom left and to the
+	-- right of the scroll bar. A skin that doesn't clear them keeps both and stretches the box.
+	editbox:SetPoint('TOPLEFT', frame, 'BOTTOMLEFT', -5, -2)
+	editbox:SetPoint('RIGHT', frame.ScrollBar, 'RIGHT', 8, 0)
 	editbox:CreateFontString(name .. 'EditBoxHeader')
 	editbox:CreateFontString(name .. 'EditBoxHeaderSuffix')
 	-- The stubs have no SetAltArrowKeyMode (the game's is the widget's own method).
