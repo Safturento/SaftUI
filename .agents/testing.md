@@ -1,7 +1,7 @@
 ---
 name: testing
 description: SaftUI's Lua test suite in tests/ - running it, writing tests, the WoW stub rules, and when tests are required
-last_updated: 2026-11-16
+last_updated: 2026-11-15
 covers:
   - 'tests/**'
 ---
