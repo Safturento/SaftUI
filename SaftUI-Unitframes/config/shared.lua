@@ -611,6 +611,16 @@ end
 function UF:SharedReady(profile)
 	profile = profile or self:GetProfileConfig()
 	return type(profile) == 'table' and getmetatable(profile) ~= nil and Marker(profile) == UF.SHARED_VERSION
+		and not SharedFailed[profile]
+end
+
+-- Whether a page edit of a unit's shared setting can be marked as the unit's own: the profile has AceDB's tables
+-- and has been converted (by this version or a newer one). The flag only protects a value, so it is written
+-- whatever else is wrong with sharing (a part of the unit frames not loaded, a newer version's marker, a failed
+-- sync): the edit then survives every later sync.
+function UF:CanMarkOwn(profile)
+	profile = profile or self:GetProfileConfig()
+	return type(profile) == 'table' and getmetatable(profile) ~= nil and Marker(profile) >= 1
 end
 
 local function MissingElement()
@@ -628,6 +638,7 @@ local function NotReady(profile)
 	if type(profile) ~= 'table' then return 'There is no unit frame profile.' end
 	if getmetatable(profile) == nil then return 'The unit frame profile has no defaults yet: it shares settings from the next login.' end
 	if Marker(profile) ~= UF.SHARED_VERSION then return 'The unit frame profile is not converted to shared settings.' end
+	if SharedFailed[profile] then return 'Shared settings are paused for this unit frame profile: setting them up failed.' end
 	local missing = MissingElement()
 	if missing then return 'The unit frame element ' .. missing .. ' is not registered.' end
 end
@@ -726,8 +737,7 @@ end
 -- The member owns the key, and nothing else is written: what it shows stays what it shows.
 function UF:OwnShared(unit, key)
 	local profile = self:GetProfileConfig()
-	local why = NotReady(profile)
-	if why then return false, why end
+	if not self:CanMarkOwn(profile) then return false, 'The unit frame profile is not converted to shared settings.' end
 	if not (BY_KEY[key] and IS_MEMBER[unit] and self:HasShared(unit, key)) then return false, 'The unit has no such setting.' end
 	local config = ConfigOf(profile, unit)
 	if config then OwnTable(config)[key] = true end
@@ -1056,6 +1066,7 @@ function UF:RestoreShared(profile)
 	-- The owner asked to be back where they were: no login converts this profile again by itself.
 	-- UF:EnableShared (/sui uf share, or the button on the All units page) is the way back to sharing.
 	rawset(profile, 'restored', time())
+	rawset(profile, 'restoredTold', nil)
 	SharedFailed[profile] = nil
 	SharedTold[profile] = 'restored'
 	return true
@@ -1165,9 +1176,9 @@ function UF:SharedState(profile)
 	if UF.SharedRestored(profile) and Marker(profile) == 0 then return 'restored' end
 	local marker = Marker(profile)
 	if marker > UF.SHARED_VERSION then return 'newer' end
+	if SharedFailed[profile] then return 'failed' end
 	if MissingElement() then return 'missing' end
 	if marker == UF.SHARED_VERSION then return 'ready' end
-	if SharedFailed[profile] then return 'failed' end
 	return 'pending'
 end
 
@@ -1191,6 +1202,11 @@ end
 local function Tell(profile, state)
 	if SharedTold[profile] == state then return end
 	SharedTold[profile] = state
+	-- A restored profile says so at the first login after the restore only (the All units page keeps saying it).
+	if state == 'restored' then
+		if rawget(profile, 'restoredTold') then return end
+		rawset(profile, 'restoredTold', true)
+	end
 	local text = UF.SharedStateText(state, profile)
 	if text then st:Print(text) end
 end
@@ -1218,6 +1234,11 @@ function UF:PrepareShared(profile)
 		end)
 		if not ok then SharedFailed[profile] = type(err) == 'string' and err or true end
 		state = self:SharedState(profile)
+		-- Said whenever a profile is converted, so a login that finally can (after a part did not load, or an
+		-- error) tells the owner: sharing is on, nothing moved.
+		if ok and state == 'ready' then
+			st:Print('Shared unit frame settings are set up for this unit frame profile. Nothing changed on screen, and a backup was kept: /sui uf restore goes back.')
+		end
 	elseif state == 'ready' then
 		-- A converted profile: the sync puts right a drift (a hand edit, a default a later SaftUI changed).
 		local ok, err = xpcall(function() self:SyncShared(profile) end, function(message)
@@ -1225,8 +1246,10 @@ function UF:PrepareShared(profile)
 			return message
 		end)
 		if not ok then
+			-- Raised once: the profile's sharing is paused for the session (nothing is written, no page has a
+			-- share, edits are still marked as the unit's own), and the owner is told once.
 			SharedFailed[profile] = type(err) == 'string' and err or true
-			Tell(profile, 'failed')
+			state = self:SharedState(profile)
 		end
 	end
 	if state == 'ready' then return true end
@@ -1249,6 +1272,7 @@ function UF:EnableShared(profile)
 		rawset(profile, 'restored', nil)
 		rawset(profile, 'backup', nil)
 	end
+	rawset(profile, 'restoredTold', nil)
 	SharedFailed[profile] = nil
 	SharedTold[profile] = nil
 	local ok, why = self:PrepareShared(profile)

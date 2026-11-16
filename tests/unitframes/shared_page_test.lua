@@ -534,6 +534,131 @@ test("Copy from writes what it copies as the unit's own settings, and only where
 	eq(profile.target.name.font, 'header', 'so the font stays')
 end)
 
+------------------------------------------------------------------ the rule behind I1 and I2: no state loses an edit
+
+-- There is no state in which a page row writes a unit's shared setting and a later sync (or the next conversion)
+-- overwrites it: either the edit carries an own flag, or the profile's next conversion starts from what the unit
+-- shows. Each state of the review's writer table that a page can be drawn in, every shared row of Target set, then
+-- what the state's way back runs (a conversion, the end of a pause, a sync): every member shows what it showed.
+local function thrower() return setmetatable({}, { __index = function() error('boom', 0) end }) end
+
+local STATES = {
+	{ 'sharing off (not converted yet)',
+		function() world(); SW.customize(UF:GetProfileConfig()) end,
+		function() UF:PrepareShared() end },
+	{ 'restored',
+		function() convert(true); assert(UF:RestoreShared()) end,
+		function() assert(UF:EnableShared()) end },
+	{ 'paused: a part of the unit frames did not load',
+		function() convert(true); st.castbarElement = UF.elements.Castbar; UF.elements.Castbar = nil end,
+		function() UF.elements.Castbar = st.castbarElement; UF:PrepareShared() end },
+	{ 'a newer version\'s marker',
+		function() convert(true); rawset(rawget(UF:GetProfileConfig(), 'all'), 'version', UF.SHARED_VERSION + 1) end,
+		function() rawset(rawget(UF:GetProfileConfig(), 'all'), 'version', UF.SHARED_VERSION); UF:PrepareShared() end },
+	{ 'failed: a sync raised an error and sharing is paused',
+		function()
+			convert(true)
+			local profile = UF:GetProfileConfig()
+			st.goodPet = profile.pet
+			rawset(profile, 'pet', thrower())
+			UF:PrepareShared()
+			rawset(profile, 'pet', st.goodPet)
+			take_errors()
+			assert(UF:SharedState() == 'failed', UF:SharedState())
+		end,
+		function() assert(UF:EnableShared()) end },
+	{ 'in combat',
+		function() convert(true); stub.in_combat = true end,
+		function() stub.in_combat = false; UF:SyncShared(UF:GetProfileConfig()); UF:PrepareShared() end },
+	{ 'sharing in force (the control)',
+		function() convert(true) end,
+		function() UF:SyncShared(UF:GetProfileConfig()); UF:PrepareShared() end },
+}
+
+for _, case in ipairs(STATES) do
+	test('no state loses a page edit (I1, I2): ' .. case[1], function()
+		case[2]()
+		local profile = UF:GetProfileConfig()
+		local root = tree()
+		local sets = 0
+		for _, entry in ipairs(rows_of(root, 'target')) do
+			local path = saved_of(entry.root, entry.row, 'target')
+			local setting = path and UF.SHARED_BY_PATH[path]
+			if setting and UF:HasShared('target', setting.key) and mutate(entry.root, entry.row) then sets = sets + 1 end
+		end
+		stub.in_combat = case[1] == 'in combat'
+		check(sets > 100, 'rows set: ' .. sets)
+		local edited = SW.snapshot(profile)
+		take_errors()
+		case[3]()
+		take_errors()
+		stub.in_combat = false
+		local ok, diffs = SW.same(edited, SW.snapshot(UF:GetProfileConfig()))
+		check(ok, case[1] .. ': what it moved: ' .. table.concat(diffs, ', ', 1, math.min(#diffs, 12)))
+	end)
+end
+
+------------------------------------------------------------------ the fix round
+
+test('M5: Undo of Copy from gives back the ownership flags as they were: a unit that followed All units follows it again', function()
+	convert(true)
+	local profile = UF:GetProfileConfig()
+	local EM = st.EditModeFrames
+	EM.History:SetLimit(50)
+	EM.History:Clear()
+	profile.player.name.font = 'header'
+	local before = {}
+	for _, entry in ipairs(UF.SHARED) do
+		if entry.key:find('^name%.') and UF:HasShared('target', entry.key) then before[entry.key] = UF:IsOwn('target', entry.key) end
+	end
+	UF:CopySettings('target', 'player', { 'name' })
+	eq(UF:IsOwn('target', 'name.font'), true, 'the copy made the font its own')
+	check(EM.History:Undo(), 'Undo')
+	for key, was in pairs(before) do
+		eq(UF:IsOwn('target', key), was, key .. ' is as it was')
+		invariant(key, 'after Undo')
+	end
+	check(EM.History:Redo(), 'Redo')
+	eq(UF:IsOwn('target', 'name.font'), true, 'Redo makes it its own again')
+end)
+
+test('W8: ticking a Custom color check box is the unit\'s own setting', function()
+	convert(false)
+	local root = tree()
+	local row = row_at(root, { 'Unitframes', 'target', 'Health', 'colors', 'custom', 'customColor' })
+	check(not UF:IsOwn('target', 'health.customColor'))
+	row.option.toggle.set(nil, true)
+	eq(UF:IsOwn('target', 'health.customColor'), true)
+	eq(UF:SyncShared(UF:GetProfileConfig()), 0, 'and the sync keeps it')
+	eq(UF:GetProfileConfig().target.health.colorCustom, true)
+end)
+
+test('W27 and W29: All units\' Debuffs Enable has no reset on a fresh profile, and Class power and Additional power are not on it', function()
+	convert(false)
+	local root = tree()
+	local row = row_at(root, { 'Unitframes', 'all', 'Auras', 'Debuffs', 'enable' })
+	eq(OM.DefaultSource(root, row), 'default', 'a hand default says All units\' own default')
+	eq(OM.DefaultDiffers(root, row), false, 'a fresh All units shows no reset icon')
+	local all = root.Unitframes.args.all
+	eq(all.args.AdditionalPower, nil, 'no Additional power')
+	eq(all.args.Power.args.AdditionalPower, nil, 'not under Power either')
+	eq(all.args.general.args.parts.args.classpower, nil, 'no Class power')
+	eq(all.args.general.args.parts.args.subtext, nil, 'no Subtext')
+	eq(all.args.general.args.parts.args.threat, nil, 'no Threat')
+	check(all.args.general.args.parts.args.readycheck ~= nil, 'Ready check is on it')
+end)
+
+-- G13, pinned as it is: the options model lists search results in the picker's order and All units is the picker's
+-- first (spec 1), so a shared setting's first result is All units', then each unit's. Listing the unit pages first
+-- would be a change to Core's OM.Search (not made: the picker and search share one order); the search task owns it.
+test('G13: a search for a shared setting lists All units first, then the units, as the picker orders them', function()
+	convert(false)
+	local results = OM.Search(tree(), 'Show level')
+	check(#results >= 12, 'a result per page: ' .. #results)
+	eq(results[1].path[2], 'all', 'All units first')
+	eq(results[2].path[2], 'player', 'then Player')
+end)
+
 ------------------------------------------------------------------ cost
 
 test('cost: a held slider on All units makes little garbage, and each follower updates once per frame', function()

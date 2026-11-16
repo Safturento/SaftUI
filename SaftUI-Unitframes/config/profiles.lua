@@ -119,8 +119,15 @@ local function ConfirmDeleteProfile()
 		end
 		profiles.config_profile = next(profiles.profiles)
 		ClearHistory()
+		local was = UF:SharedReady(profiles.profiles[profiles.config_profile])
 		UF:UpdateConfig()
 		UF.RefreshPages()
+		local now = profiles.config_profile
+		local state = UF:SharedState(profiles.profiles[now])
+		st:Print(('Deleted. Unit frame profile %s is now in use%s'):format(now,
+			(was and ', and it was already set up for sharing.')
+			or (state == 'ready' and ', and it was just set up for sharing (nothing changed on screen).')
+			or '.'))
 	end)
 end
 
@@ -157,6 +164,15 @@ local function PromptImportProfile()
 		if not ok or type(data) ~= 'table' then
 			st:Print("That isn't an exported unit frame profile.")
 			return
+		end
+		-- The export's sharing (All units, the marker, each unit's own flags, a backup) is dropped: the
+		-- imported table is plain for this session, so a page edit made before the next login would get
+		-- no own flag, and that login's sync would put All units' value over it. With none of it, the
+		-- next login converts the profile from what each unit shows, edits included.
+		rawset(data, 'all', nil)
+		rawset(data, 'backup', nil)
+		for _, unit in pairs(data) do
+			if type(unit) == 'table' then rawset(unit, 'own', nil) end
 		end
 		local name = UnusedProfileName('Imported')
 		UFProfiles().profiles[name] = data

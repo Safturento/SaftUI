@@ -184,13 +184,53 @@ test('Import: a plain table, left alone in the session with one message, convert
 		if line:find('next login', 1, true) then told = told + 1 end
 	end
 	eq(told, 1, 'it says so once: ' .. table.concat(lines, ' | '))
-	-- Editing a plain table through the pages' sets writes nothing shared: no share is drawn.
+	-- I1: the export's sharing is dropped at the import (All units, the marker, every unit's flags, a backup), so
+	-- the next login converts the profile from what each unit shows.
 	eq(rawget(imported, 'backup'), nil)
+	eq(rawget(imported, 'all'), nil, 'no All units came with it')
+	for _, unit in ipairs(SW.MEMBERS) do eq(rawget(imported[unit], 'own'), nil, unit .. ' came with no flags') end
+	-- An edit made after the import and before the next login (the page draws no share on a plain table, so it
+	-- carries no flag) survives that login: Player's Name font, which the export's All units held at another value.
+	imported.player.name.font = 'header'
 	local snapshot = SW.snapshot(profile('SaftUI'))
+	snapshot.player['name.font'] = 'header'
 	db = SW.relog(db)
 	SW.enable()
 	check(UF:SharedReady(profile('Imported')), 'converted at the login (it carried the marker: a sync)')
 	local ok, diffs = SW.same(snapshot, SW.snapshot(profile('Imported')))
 	check(ok, 'and it shows what the exported profile showed: ' .. table.concat(diffs, ', ', 1, math.min(#diffs, 10)))
+	eq(profile('Imported').player.name.font, 'header', 'and the edit made before it survived')
+	eq(UF:IsOwn('player', 'name.font'), true, 'the unit owns it')
 	eq(#take_errors(), 0)
+end)
+
+test('M8: deleting a profile says which profile is now in use and that it was set up for sharing, or already was', function()
+	world(true)
+	P().profiles.Other.pet.name.font = 'pixel'
+	P().config_profile = 'SaftUI'
+	-- The profile switched to by a delete is `next(profiles)`: make the one left unconverted, then converted.
+	local lines = lines_of(function()
+		press('new')
+		type_and_enter('Doomed')
+		press('delete')
+		stub.fire_script(W.GetDialogFrames().yes, 'OnClick')
+	end)
+	local said = table.concat(lines, ' | ')
+	check(said:find('Deleted. Unit frame profile ', 1, true) and said:find('is now in use', 1, true), said)
+	check(said:find('already set up for sharing', 1, true) or said:find('just set up for sharing', 1, true), said)
+	eq(rawget(P().profiles, 'Doomed'), nil)
+	eq(UF:SharedReady(profile()), true)
+end)
+
+test('W16: a unit frame profile switch builds the open /sui window\'s tree again', function()
+	world(true)
+	local rooted
+	st.OptionsWindow = { IsShown = function() return true end, SetRoot = function(_, root) rooted = root end }
+	st.Config.RegisterOptions = function() return 'ROOT' end
+	UF.GenerateProfileConfigGroup().args.current.set(nil, 'Other')
+	eq(rooted, 'ROOT', 'the select rebuilt it')
+	rooted = nil
+	press('new')
+	type_and_enter('Fresh2')
+	eq(rooted, 'ROOT', 'New too')
 end)

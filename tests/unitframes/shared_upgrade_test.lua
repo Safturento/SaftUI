@@ -481,17 +481,30 @@ test('/sui uf restore: says what it would do, then puts the profile back as the 
 	local listed = listing(profile)
 	lines = printed_by(function() SW.enable() end)
 	eq(UF:SharedReady(profile), false, 'the login does not convert a restored profile')
-	check(listing(profile) == listed, 'and writes nothing')
+	local after = listing(profile)
+	check(after:gsub('[^\n]*restoredTold[^\n]*\n?', '') == listed:gsub('[^\n]*restoredTold[^\n]*\n?', ''), 'and writes nothing but that it said so')
 	eq(#lines, 1, 'one message about it: ' .. table.concat(lines, ' | '))
 	check(lines[1]:find('/sui uf share', 1, true), 'telling how to turn it on again')
+	-- M3: the next login does not say it again; the All units page does.
+	db = SW.relog(db)
+	profile = profile_of(db)
+	lines = printed_by(function() SW.enable() end)
+	eq(#lines, 0, 'the second login after the restore says nothing: ' .. table.concat(lines, ' | '))
+	check(UF:GetConfigTable().args.all.args.general.args.notice.name:find('/sui uf share', 1, true), 'the page keeps saying it')
 
-	-- /sui uf share turns it on again, and nothing on screen changes.
+	-- M4: /sui uf share says what it will do and needs confirm.
 	local was = SW.snapshot(profile)
 	lines = printed_by(function() UF:RunShareCommand('share') end)
+	eq(UF:SharedReady(profile), false, 'not without confirm')
+	check(lines[1]:find('replaces the old backup', 1, true) and lines[1]:find('NOW', 1, true) and lines[1]:find('share confirm', 1, true), tostring(lines[1]))
+	local button = UF:GetConfigTable().args.all.args.general.args.turnOn
+	check(button.confirm and button.confirm:find('replaces the old backup', 1, true), 'the page button asks with the same words')
+	lines = printed_by(function() UF:RunShareCommand('share confirm') end)
 	eq(UF:SharedReady(profile), true, 'asked for, it converts')
 	shows_the_same(was, profile, 'and nothing on screen changed')
 	check(UF.HasSharedBackup(profile), 'with a fresh backup')
-	check(lines[1] and lines[1]:find('Shared settings are on', 1, true), tostring(lines[1]))
+	local said = table.concat(lines, ' | ')
+	check(said:find('Shared settings are on', 1, true) and said:find('set up for this unit frame profile', 1, true), said)
 	db = SW.relog(db)
 	profile = profile_of(db)
 	SW.enable()
@@ -533,7 +546,7 @@ test('/sui uf restore refuses plainly with no backup, with an element missing, a
 	eq(#take_errors(), 0)
 end)
 
-test('wired: a profile switch in combat converts the new profile with table writes only, and the frames follow after combat', function()
+test('wired: a profile switch in combat builds the frames from the stored values and converts at the end of combat (M9)', function()
 	local C = load_test_file('lib/color_cost.lua')
 	world()
 	local db = SW.acedb({})
@@ -550,15 +563,17 @@ test('wired: a profile switch in combat converts the new profile with table writ
 	local m = C.measure(function() UF:UpdateConfig() end, 1, { [UF.sharedTicker] = true })
 	eq(m.forbidden.total, 0, 'no forbidden call in combat')
 	eq(m.made, 0, 'nothing made')
-	eq(UF:SharedReady(other), true, 'the new profile is converted')
-	shows_the_same(before, other, 'and shows what it showed')
+	eq(UF:SharedReady(other), false, 'no conversion in combat')
+	eq(rawget(other, 'all'), nil, 'nothing written into the profile')
+	shows_the_same(before, other, 'the frames read the stored values, which are what it shows')
 	eq(#record.applied, applied, 'no frame was updated in combat')
 	stub.in_combat = false
 	stub.fire_event('PLAYER_REGEN_ENABLED')
+	eq(UF:SharedReady(other), true, 'converted at the end of combat')
+	shows_the_same(before, other, 'and shows what it showed')
 	check(#record.applied > applied, 'the frames were updated when combat ended')
 	eq(#take_errors(), 0)
 end)
-
 ------------------------------------------------------------------ cost
 
 test('cost: a login that converts a large customized profile, and one that only syncs', function()
@@ -585,4 +600,121 @@ test('cost: a login that converts a large customized profile, and one that only 
 	local again = C.measure(function() UF:PrepareShared(profile) end, 1, ignore)
 	C.print('a login that only syncs', again)
 	check(again.kb < 8, ('a sync that has nothing to put right makes %.1f KB'):format(again.kb))
+end)
+
+------------------------------------------------------------------ the fix round: edits survive, one error, one line
+
+-- A part's menu row of the page of unit, as the options model reads it: the root and the row.
+local function menu_row(unit, part, key)
+	local OM = st.OptionsModel
+	local item = UF:GetConfigTable().args[unit].args.general.args.parts.args[part]
+	local root = OM.MenuRoot(item)
+	return root, { option = item.menu.args[key], path = { OM.MENU_KEY, key }, type = item.menu.args[key].type, key = key }
+end
+
+local function converted_world()
+	world()
+	local db = SW.acedb({})
+	SW.customize(profile_of(db))
+	db = SW.relog(db)
+	local record = SW.enable()
+	return db, record
+end
+
+test('I2: a page edit made while a part of the unit frames did not load is the unit\'s own, and the sync that follows keeps it', function()
+	local db = converted_world()
+	local profile = profile_of(db)
+	local castbar = UF.elements.Castbar
+	UF.elements.Castbar = nil
+	eq(UF:SharedState(profile), 'missing')
+	local root, row = menu_row('target', 'name', 'maxLength')
+	eq(st.OptionsModel.Get(root, row) ~= 77, true)
+	check(st.OptionsModel.Set(root, row, 77))
+	eq(UF:IsOwn('target', 'name.maxLength'), true, 'the flag is written although syncs are refused')
+	UF.elements.Castbar = castbar
+	UF:UpdateConfig()
+	eq(profile.target.name.maxLength, 77, 'nothing put it back when the part loaded')
+	db = SW.relog(db)
+	SW.enable()
+	eq(profile_of(db).target.name.maxLength, 77, 'nor at the next login')
+end)
+
+test('M2: a sync that fails on a converted profile raises one error and says so once; sharing is then paused for the session', function()
+	local db = converted_world()
+	local profile = profile_of(db)
+	local good = profile.pet
+	rawset(profile, 'pet', setmetatable({}, { __index = function() error('boom', 0) end }))
+	local lines = printed_by(function()
+		for _ = 1, 4 do UF:UpdateConfig() end -- a profile change, combat's end, a theme change, a scale change
+	end)
+	eq(#take_errors(), 1, 'one error over four updates')
+	local told = 0
+	for _, line in ipairs(lines) do if line:find('SaftUI', 1, true) then told = told + 1 end end
+	eq(told, 1, 'one chat line: ' .. table.concat(lines, ' | '))
+	eq(UF:SharedState(profile), 'failed')
+	eq(UF:SharedReady(profile), false, 'paused')
+	rawset(profile, 'pet', good)
+	-- Paused: a drift is not put right (nothing is written), and the page draws no share.
+	rawset(profile.target.name, 'font', 'header')
+	UF:UpdateConfig()
+	eq(profile.target.name.font, 'header', 'nothing was written')
+	eq(shares_in(UF:GetConfigTable()), 0, 'no share is drawn')
+	-- An edit still carries its flag, so the next login's sync keeps it.
+	local root, row = menu_row('target', 'name', 'maxLength')
+	check(st.OptionsModel.Set(root, row, 61))
+	eq(UF:IsOwn('target', 'name.maxLength'), true)
+	eq(#take_errors(), 0)
+end)
+
+test('M6: a login that finally converts says so in one line', function()
+	world()
+	local db = SW.acedb({})
+	SW.customize(profile_of(db))
+	db = SW.relog(db)
+	local castbar = UF.elements.Castbar
+	UF.elements.Castbar = nil
+	local first = printed_by(function() SW.enable() end)
+	eq(#first, 1, 'waiting: ' .. table.concat(first, ' | '))
+	UF.elements.Castbar = castbar
+	db = SW.relog(db)
+	local second = printed_by(function() SW.enable() end)
+	eq(#second, 1, 'one line: ' .. table.concat(second, ' | '))
+	check(second[1]:find('set up for this unit frame profile', 1, true), second[1])
+	db = SW.relog(db)
+	eq(#printed_by(function() SW.enable() end), 0, 'and nothing after')
+end)
+
+test('M7 and W5: the real UpdateConfig propagates an All units set into the followers and never applies "all" as a unit', function()
+	local db, record = converted_world()
+	local OM = st.OptionsModel
+	local root, row = menu_row('all', 'name', 'max_width')
+	local profile = profile_of(db)
+	local applied = #record.applied
+	check(OM.Set(root, row, 111))
+	for _, unit in ipairs(SW.MEMBERS) do
+		if UF:HasShared(unit, 'name.max_width') and not UF:IsOwn(unit, 'name.max_width') then
+			eq(profile[unit].name.max_width, 111, unit .. ' follows (the real UpdateConfig has the lines)')
+		end
+	end
+	eq(#record.applied, applied, 'ApplyConfig was not asked for "all"')
+	SW.step(UF)
+	for _, call in ipairs({ unpack(record.applied, applied + 1) }) do
+		check(call[1] ~= 'all', 'no update of the unit "all"')
+	end
+	check(#record.applied > applied, 'the followers were updated on the next frame')
+end)
+
+test('W24 and W21: a restore updates the frames, and turning sharing on again replaces the old backup', function()
+	local db, record = converted_world()
+	local profile = profile_of(db)
+	local applied = #record.applied
+	UF:RunShareCommand('restore confirm')
+	check(#record.applied > applied, 'the frames were updated by the restore')
+	profile.target.name.maxLength = 44 -- an edit made while restored
+	UF:RunShareCommand('share confirm')
+	eq(UF:SharedReady(profile), true)
+	UF:SetShared('all', 'name.maxLength', 50)
+	UF:SetShared('target', 'name.maxLength', 45)
+	eq(UF:RestoreShared(profile), true)
+	eq(profile.target.name.maxLength, 44, 'the new backup is of the moment sharing was turned on again')
 end)

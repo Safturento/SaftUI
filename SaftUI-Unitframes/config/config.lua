@@ -400,6 +400,35 @@ local ufsetting = {
 	missing = function(where) return ConfigOf(where) == nil end,
 }
 
+-- The ownership a Copy from made, as part of the same step: where = { profile, unit, keys }, a value a table of
+-- own flags by shared setting key (true, false or absent), so Undo gives back what the unit owned before the
+-- copy (a unit that followed All units follows it again) and Redo what the copy made it own. Table writes only.
+local ufown = {
+	read = function(where)
+		local config = ConfigOf(where)
+		local own = config and rawget(config, 'own')
+		local out = {}
+		for _, key in ipairs(where.keys) do out[key] = own and own[key] or nil end
+		return out
+	end,
+	write = function(where, value)
+		local config = ConfigOf(where)
+		if config == nil then return end
+		local own = rawget(config, 'own')
+		if not own then
+			if next(value) == nil then return end
+			own = {}
+			rawset(config, 'own', own)
+		end
+		for _, key in ipairs(where.keys) do own[key] = value[key] end
+	end,
+	finish = ufsetting.finish,
+	place = function(where) return 'ufown:' .. where.profile .. ':' .. where.unit end,
+	name = ufsetting.name,
+	check = ufsetting.check,
+	missing = function(where) return ConfigOf(where) == nil end,
+}
+
 -- The history, when edit mode is loaded (it always is in game; the unit
 -- frames' tests load this file without it). The kind is registered at load,
 -- and again before a step is pushed, so a world that loads edit mode after
@@ -407,7 +436,10 @@ local ufsetting = {
 local function History()
 	local EM = st.EditModeFrames
 	local history = EM and EM.History
-	if history then history:RegisterKind('ufsetting', ufsetting) end
+	if history then
+		history:RegisterKind('ufsetting', ufsetting)
+		history:RegisterKind('ufown', ufown)
+	end
 	return history
 end
 History()
@@ -515,17 +547,28 @@ function UF:CopySettings(unit, from, keys)
 	-- Shared settings (sharedoptions.lua): what was copied is the unit's own where it differs from what
 	-- All units holds, else the sync would put All units' value back at the next profile load, unmarked.
 	-- A setting that came out the same as All units' keeps following it. Table writes only.
+	local ownChange
 	if next(copied) and self:SharedReady() and UF.IsShareMember(unit) then
 		local all = rawget(config, 'all')
+		local own = rawget(config[unit], 'own')
+		local keys, old, new = {}, {}, {}
 		for _, entry in ipairs(UF.SHARED) do
-			if copied[entry.paths[1][1]] and all and self:HasShared(unit, entry.key)
-					and not UF.SameShared(entry, config[unit], all) then
-				self:OwnShared(unit, entry.key)
+			if copied[entry.paths[1][1]] and all and self:HasShared(unit, entry.key) then
+				keys[#keys + 1] = entry.key
+				old[entry.key] = own and own[entry.key] or nil
+				if not UF.SameShared(entry, config[unit], all) then self:OwnShared(unit, entry.key) end
+				local now = rawget(config[unit], 'own')
+				new[entry.key] = now and now[entry.key] or nil
 			end
+		end
+		-- The ownership goes into the same history step, so Undo gives it back with the values.
+		if #keys > 0 then
+			ownChange = { kind = 'ufown', where = { profile = profile, unit = unit, keys = keys }, old = old, new = new }
 		end
 	end
 	self:UpdateConfig()
 	local history = History()
+	if ownChange and #changes > 0 then changes[#changes + 1] = ownChange end
 	if not history or #changes == 0 then return nil, skipped end
 	return history:Push({
 		kind = 'bulk', label = 'Copied ' .. UnitName(from) .. ' to ' .. UnitName(unit), changes = changes,

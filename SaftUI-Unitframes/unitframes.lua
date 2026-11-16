@@ -696,17 +696,20 @@ function UF:UpdateConfig(unit, element_name)
 	if unit == 'all' then
 		return self:PropagateShared(element_name)
 	end
-	-- A profile change (a switch, copy, reset or import, a unit frame profile switch): convert the
-	-- profile to shared settings if it is not, and put every follower right, before anything reads
-	-- the profile. Table writes only, so it is safe in combat too. It writes nothing for a profile
-	-- it can't convert (UF:PrepareShared says why once), and the frames read the profile as it is.
-	if not unit then
-		self:PrepareShared()
-	end
-
 	if st:QueueAfterCombat('Unitframes', function() UF:UpdateConfig() end) then
+		-- In combat nothing is converted: the frames read the profile's stored values, which are what the
+		-- units show by construction (a conversion writes nothing into a unit), and the conversion runs when
+		-- this update does, at the end of combat.
 		self:RefreshConfigReferences()
 		return
+	end
+
+	-- A profile change (a switch, copy, reset or import, a unit frame profile switch): convert the
+	-- profile to shared settings if it is not, and put every follower right, before anything reads
+	-- the profile. Out of combat only. It writes nothing for a profile it can't convert
+	-- (UF:PrepareShared says why once), and the frames read the profile as it is.
+	if not unit then
+		self:PrepareShared()
 	end
 
 	if not unit then

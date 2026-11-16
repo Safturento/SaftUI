@@ -254,7 +254,7 @@ local function CheckFollowers(option, entry)
 	end
 end
 
-local function Decorate(unit, option, root, path, getNode, setNode)
+local function Decorate(unit, option, root, path, getNode, setNode, ownOnly)
 	if decorated[option] or not VALUE[option.type] then return end
 	local relative = SavedRelative(root, path, getNode, unit)
 	local entry = relative and UF.SHARED_BY_PATH[relative]
@@ -262,8 +262,9 @@ local function Decorate(unit, option, root, path, getNode, setNode)
 	local isAll = unit == 'all'
 	if not isAll and not UF:HasShared(unit, entry.key) then return end
 	decorated[option] = true
-	option.share = UF.SettingShare(unit, entry, option)
-	if isAll then
+	-- Sharing is paused or a newer version's (ownOnly): no share is drawn, but an edit is still the unit's own.
+	if not ownOnly then option.share = UF.SettingShare(unit, entry, option) end
+	if isAll and not ownOnly then
 		AllUnitsDefault(option, entry, getNode, setNode)
 		if option.type == 'position' then CheckFollowers(option, entry) end
 		return
@@ -278,21 +279,21 @@ local function Decorate(unit, option, root, path, getNode, setNode)
 	end
 end
 
-local function Walk(unit, root, group, path, getNode, setNode)
+local function Walk(unit, root, group, path, getNode, setNode, ownOnly)
 	for key, option in pairs(group.args or {}) do
 		if type(option) == 'table' then
 			path[#path + 1] = key
 			local get = (option.get ~= nil and not OM.HandsOn(option)) and option or getNode
 			local set = option.set ~= nil and option or setNode
 			if option.type == 'group' then
-				Walk(unit, root, option, path, get, set)
+				Walk(unit, root, option, path, get, set, ownOnly)
 			else
-				Decorate(unit, option, root, path, get, set)
+				Decorate(unit, option, root, path, get, set, ownOnly)
 				-- An item's menu is read through the menu's own root, as the kit reads it.
 				if option.type == 'item' and type(option.menu) == 'table' then
 					local menu = option.menu
 					Walk(unit, OM.MenuRoot(option), menu, { OM.MENU_KEY },
-						(menu.get ~= nil and not OM.HandsOn(menu)) and menu or nil, menu.set ~= nil and menu or nil)
+						(menu.get ~= nil and not OM.HandsOn(menu)) and menu or nil, menu.set ~= nil and menu or nil, ownOnly)
 				end
 			end
 			path[#path] = nil
@@ -304,10 +305,16 @@ end
 -- it was built, for a unit that is not a member and while the profile in use does not share.
 function UF.DecorateShares(unit, page)
 	if unit ~= 'all' and not UF.IsShareMember(unit) then return end
-	if not UF:SharedReady() then return end
+	local ownOnly = false
+	if not UF:SharedReady() then
+		-- Not sharing (paused, a newer version's marker): no share on any row, but on a converted profile an
+		-- edit of a unit's shared setting is still marked as the unit's own, so no later sync puts it back.
+		if unit == 'all' or not UF:CanMarkOwn() then return end
+		ownOnly = true
+	end
 	OM = OM or st.OptionsModel
 	local root = { Unitframes = { type = 'group', name = 'Unit frames', childGroups = 'select', args = { [unit] = page } } }
-	Walk(unit, root, page, { 'Unitframes', unit }, nil, nil)
+	Walk(unit, root, page, { 'Unitframes', unit }, nil, nil, ownOnly)
 end
 
 ------------------------------------------------------------------ the page while sharing is off
@@ -338,6 +345,7 @@ function UF.SharedNoticePage()
 						name = 'Turn on shared settings',
 						desc = "Sets up All units from what each unit frame shows now, so nothing changes on screen. A backup is kept, and /sui uf restore puts it back.",
 						hidden = not canTurnOn,
+						confirm = state == 'restored' and UF.ShareConfirmText(UF:GetProfile()) or nil,
 						func = function()
 							local ok, why = UF:EnableShared()
 							UF.RefreshPages()
@@ -412,8 +420,18 @@ function UF:RestoreSharedCommand(confirmed)
 	return self:RestoreSharedNow(name)
 end
 
+-- What turning sharing on again after a restore does, said before it acts (the command and the page's button).
+function UF.ShareConfirmText(name)
+	return ('Turning sharing on for unit frame profile %s sets All units up from what the units show NOW (nothing changes on screen) and replaces the old backup with one of this moment, so a later /sui uf restore returns to this point, not to before sharing was first turned on.')
+		:format(tostring(name))
+end
+
 -- /sui uf share: turns sharing on for the profile in use after a restore (or a failed setup).
-function UF:ShareCommand()
+function UF:ShareCommand(confirmed)
+	if self:SharedState() == 'restored' and not confirmed then
+		Say(UF.ShareConfirmText(self:GetProfile()) .. ' Type /sui uf share confirm to do it.')
+		return false
+	end
 	local ok, why = self:EnableShared()
 	UF.RefreshPages()
 	if ok then
@@ -429,7 +447,7 @@ function UF:RunShareCommand(text)
 	if word == 'restore' then
 		return self:RestoreSharedCommand(rest == 'confirm')
 	elseif word == 'share' then
-		return self:ShareCommand()
+		return self:ShareCommand(rest == 'confirm')
 	end
 	Say('/sui uf restore puts the unit frames\' shared settings back as they were before sharing; /sui uf share turns sharing on again after a restore.')
 end
