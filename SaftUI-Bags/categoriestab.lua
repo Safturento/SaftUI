@@ -299,9 +299,12 @@ function INV:CategoryEditorOptions(id, tab, items)
 		return items
 	end
 
-	local windows, sorting = { bag = WINDOW_NAMES.bag, bank = WINDOW_NAMES.bank }, { 'bag', 'bank' }
+	-- The combined bank is the default bank on both clients, so it is always
+	-- listed; the warband bank only where there is one.
+	local windows = { bag = WINDOW_NAMES.bag, bank = WINDOW_NAMES.bank, combinedbank = WINDOW_NAMES.combinedbank }
+	local sorting = { 'bag', 'bank', 'combinedbank' }
 	if self:HasWarbandBank() then
-		windows.warband, windows.combinedbank = WINDOW_NAMES.warband, WINDOW_NAMES.combinedbank
+		windows.warband = WINDOW_NAMES.warband
 		sorting = { 'bag', 'bank', 'warband', 'combinedbank' }
 	end
 
@@ -408,7 +411,8 @@ function INV:CategoryEditorOptions(id, tab, items)
 		}
 		args.show.default = {
 			-- Any window it is hidden in, even one Show in doesn't list on this
-			-- client (Forever's combined bank): nothing else clears that flag.
+			-- client (a warband flag in a profile carried over from retail to
+			-- Forever): nothing else clears that flag.
 			differs = function()
 				local e = Entry()
 				return e ~= nil and next(e.hide) ~= nil

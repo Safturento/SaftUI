@@ -594,6 +594,7 @@ test('a new Item level, Required level, Crafting reagent or Has vendor price blo
 			pick(mode)
 			eq(#ed.sets, 0, id .. ': ' .. mode .. ' with no number sets nothing')
 			check(R.Equal(ed.stored.items[1], { block = id }), id .. ': ' .. mode .. ': still no number')
+			eq(ed.w.rows[1].fields.mode.text:GetText(), mode, id .. ': ' .. mode .. ': the row shows the mode picked')
 		end
 		enter(ed.w.rows[1].fields.min, '5')
 		check(R.Equal(ed.stored.items[1], { block = id, min = 5 }), id .. ': a number typed sets it')
@@ -972,5 +973,224 @@ test("under Blizzard a rule's value fields are compact Settings dropdowns; under
 	eq(size(field), thickSize, 'Thick again: its size unchanged')
 	ed.w:Release()
 	theme(themeWas)
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a level mode picked before a number is typed stays, and the number typed goes to the bound it needs', function()
+	for _, id in ipairs({ 'ilvl', 'reqlevel' }) do
+		local function fresh()
+			local ed = editor(grp('or', { R.NewBlock(id) }))
+			return ed
+		end
+		-- At most: only the max box shows, and a number typed is the max.
+		local ed = fresh()
+		click(ed.w.rows[1].fields.mode)
+		pick('at most')
+		eq(ed.w.rows[1].fields.mode.text:GetText(), 'at most', id .. ': at most shows')
+		check(ed.w.rows[1].fields.min == nil or not ed.w.rows[1].fields.min:IsShown(), id .. ': no min box')
+		enter(ed.w.rows[1].fields.max, '7')
+		check(R.Equal(ed.stored.items[1], { block = id, max = 7 }), id .. ': the number is the most')
+		W.CloseList()
+		ed.w:Release()
+		-- Between: both boxes show, and a number typed in the first is both bounds.
+		ed = fresh()
+		click(ed.w.rows[1].fields.mode)
+		pick('between')
+		eq(ed.w.rows[1].fields.mode.text:GetText(), 'between', id .. ': between shows')
+		check(ed.w.rows[1].fields.min and ed.w.rows[1].fields.max, id .. ': two boxes')
+		enter(ed.w.rows[1].fields.min, '3')
+		check(R.Equal(ed.stored.items[1], { block = id, min = 3, max = 3 }), id .. ': between, the number is both')
+		eq(ed.w.rows[1].fields.mode.text:GetText(), 'between', id .. ': and it stays between')
+		W.CloseList()
+		ed.w:Release()
+		-- Any other edit forgets the pick.
+		ed = editor(grp('or', { R.NewBlock(id), R.NewBlock('reagent') }))
+		click(ed.w.rows[1].fields.mode)
+		pick('at most')
+		click(ed.w.rows[2].fields.value)
+		pick('Yes')
+		eq(ed.w.rows[1].fields.mode.text:GetText(), 'at least', id .. ': another edit puts at least back')
+		W.CloseList()
+		ed.w:Release()
+	end
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+-- A half-built rule catches less, never more (architecture.md, Bag categories):
+-- with a mode picked before any number, a number typed in either box of
+-- "between" is both bounds, so no order of typing saves a rule that catches
+-- more than the finished one.
+test('a level mode picked first, then a number in any box: every mode, both orders, saves what the finished rule saves', function()
+	local function fresh(id) return editor(grp('or', { R.NewBlock(id) })) end
+	local function mode_of(ed) return ed.w.rows[1].fields.mode.text:GetText() end
+	for _, id in ipairs({ 'ilvl', 'reqlevel' }) do
+		-- between: the first box, then the second box, first.
+		local ed = fresh(id)
+		click(ed.w.rows[1].fields.mode)
+		pick('between')
+		enter(ed.w.rows[1].fields.min, '3')
+		check(R.Equal(ed.stored.items[1], { block = id, min = 3, max = 3 }), id .. ': between, first box first: both bounds')
+		eq(mode_of(ed), 'between', id .. ': and it stays between')
+		W.CloseList()
+		ed.w:Release()
+		ed = fresh(id)
+		click(ed.w.rows[1].fields.mode)
+		pick('between')
+		enter(ed.w.rows[1].fields.max, '9')
+		check(R.Equal(ed.stored.items[1], { block = id, min = 9, max = 9 }), id .. ': between, second box first: both bounds, not "at most"')
+		eq(mode_of(ed), 'between', id .. ': and it stays between')
+		-- The finished rule: the other bound typed after.
+		enter(ed.w.rows[1].fields.min, '4')
+		check(R.Equal(ed.stored.items[1], { block = id, min = 4, max = 9 }), id .. ': between 4 and 9')
+		W.CloseList()
+		ed.w:Release()
+		-- A number first, then the mode: the same rule as the mode first.
+		for _, case in ipairs({
+			{ 'between', { min = 9, max = 9 } },
+			{ 'at most', { max = 9 } },
+			{ 'at least', { min = 9 } },
+		}) do
+			ed = fresh(id)
+			enter(ed.w.rows[1].fields.min, '9')
+			click(ed.w.rows[1].fields.mode)
+			pick(case[1])
+			local want = { block = id, min = case[2].min, max = case[2].max }
+			check(R.Equal(ed.stored.items[1], want), id .. ': 9 typed, then ' .. case[1])
+			W.CloseList()
+			ed.w:Release()
+		end
+		-- The mode first, then the number, for the modes with one box.
+		ed = fresh(id)
+		click(ed.w.rows[1].fields.mode)
+		pick('at most')
+		enter(ed.w.rows[1].fields.max, '9')
+		check(R.Equal(ed.stored.items[1], { block = id, max = 9 }), id .. ': at most, then 9')
+		W.CloseList()
+		ed.w:Release()
+		ed = fresh(id)
+		enter(ed.w.rows[1].fields.min, '9')
+		check(R.Equal(ed.stored.items[1], { block = id, min = 9 }), id .. ': at least, then 9')
+		ed.w:Release()
+	end
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+-- Any bag event redraws the window while the Categories tab is open, which
+-- releases the editor and builds it again over the same row: the pick waits
+-- through that, until its own row is edited or the editor closes.
+test('a level mode picked before a number survives a redraw, and goes when its row is edited or the editor closes', function()
+	local id = 'ilvl'
+	local function mode_of(ed, row) return ed.w.rows[row or 1].fields.mode.text:GetText() end
+	local stored
+	local ed = editor(grp('or', { R.NewBlock(id) }))
+	click(ed.w.rows[1].fields.mode)
+	pick('at most')
+	for _ = 1, 2 do -- two redraws
+		stored = ed.stored
+		W.CloseList()
+		ed.w:Release()
+		ed = editor(stored)
+		eq(mode_of(ed), 'at most', 'the pick is still shown after a redraw')
+	end
+	enter(ed.w.rows[1].fields.max, '7')
+	check(R.Equal(ed.stored.items[1], { block = id, max = 7 }), 'and the number typed goes to the bound it needs')
+	ed.w:Release()
+
+	-- Its own row edited (another edit of the editor): forgotten.
+	ed = editor(grp('or', { R.NewBlock(id), R.NewBlock('reagent') }))
+	click(ed.w.rows[1].fields.mode)
+	pick('at most')
+	click(ed.w.rows[2].fields.value)
+	pick('Yes')
+	stored = ed.stored
+	W.CloseList()
+	ed.w:Release()
+	ed = editor(stored)
+	eq(mode_of(ed), 'at least', 'an edit of the editor forgets the pick, redraw or not')
+	ed.w:Release()
+
+	-- A check list's toggle (written without a redraw) forgets it too.
+	ed = editor(grp('or', { R.NewBlock(id), blk('quality', { qualities = {} }) }))
+	click(ed.w.rows[1].fields.mode)
+	pick('between')
+	click(ed.w.rows[2].fields.qualities)
+	pick('Epic')
+	stored = ed.stored
+	W.CloseList()
+	ed.w:Release()
+	ed = editor(stored)
+	eq(mode_of(ed), 'at least', "a check list's toggle forgets the pick (the redraw it asks for shows it)")
+	ed.w:Release()
+	stub.run_timers()
+
+	-- The editor closes (released, and not built again in that frame): forgotten.
+	ed = editor(grp('or', { R.NewBlock(id) }))
+	click(ed.w.rows[1].fields.mode)
+	pick('at most')
+	stored = ed.stored
+	W.CloseList()
+	ed.w:Release()
+	stub.run_timers()
+	ed = editor(stored)
+	eq(mode_of(ed), 'at least', 'a closed editor forgets the pick')
+	ed.w:Release()
+
+	-- The pick is on its own block: two blank level blocks.
+	ed = editor(grp('or', { R.NewBlock(id), R.NewBlock(id) }))
+	click(ed.w.rows[2].fields.mode)
+	pick('at most')
+	eq(mode_of(ed, 1), 'at least', 'the first of two blank blocks keeps at least')
+	eq(mode_of(ed, 2), 'at most', 'and the pick shows on the second')
+	stored = ed.stored
+	W.CloseList()
+	ed.w:Release()
+	ed = editor(stored)
+	eq(mode_of(ed, 1), 'at least', 'after a redraw too: the first keeps at least')
+	eq(mode_of(ed, 2), 'at most', 'and the second its pick')
+	ed.w:Release()
+	stub.run_timers()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+-- The slot list writes in R.SLOTS order and R.Equal compares arrays in order, so
+-- the shipped Grays/Auto Vendor rule lists its two slots in that order: turning
+-- a slot on and off leaves the rule the shipped one, with no edit to reset.
+test("turning an Equip slot on and off in the shipped Grays/Auto Vendor rule leaves the shipped rule", function()
+	load_saftui('SaftUI-Bags/categorydefaults.lua')
+	local shipped
+	for _, def in ipairs(INV.CategoryDefaults.Build()) do
+		if def.id == 'Grays/Auto Vendor' then shipped = def.rule end
+	end
+	local ed = editor(R.Copy(shipped))
+	local row = row_at(ed.w, { 1, 2, 2 })
+	check(row and row.fields.slots, 'the shipped rule has its Equip slot block at {1,2,2}')
+	click(row.fields.slots)
+	pick(R.SLOTS[1][2]) -- Head on
+	check(not R.Equal(ed.stored, shipped), 'a slot on is an edit')
+	pick(R.SLOTS[1][2]) -- and off again
+	check(R.Equal(ed.stored, shipped), 'on and off again is the shipped rule, so no edit and no reset icon')
+	W.CloseList()
+	ed.w:Release()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+-- The options row's path is the same for every category (the editor's root is
+-- rebuilt per category), so the parked pick is keyed by the selected category
+-- too: it does not follow a switch to a category with a blank level block.
+test('a parked level pick does not follow a switch to another category', function()
+	local had = INV.categoryEditor
+	INV.categoryEditor = { selected = 'Toys' }
+	local ed = editor(grp('or', { R.NewBlock('ilvl') }))
+	click(ed.w.rows[1].fields.mode)
+	pick('at most')
+	local stored = ed.stored
+	W.CloseList()
+	ed.w:Release()
+	INV.categoryEditor.selected = 'Trade Goods'
+	ed = editor(stored)
+	eq(ed.w.rows[1].fields.mode.text:GetText(), 'at least', "another category's blank block does not show the pick")
+	ed.w:Release()
+	stub.run_timers()
+	INV.categoryEditor = had
 	eq(#take_errors(), 0, 'no errors')
 end)

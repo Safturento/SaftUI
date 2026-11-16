@@ -64,7 +64,11 @@ local DEFAULTS = {
 	{ id = 'Grays/Auto Vendor', sells = true, rule = AND(
 		OR(
 			{ block = 'quality', qualities = { 0 } },
-			{ block = 'oldgear', levels = 10, expansion = 9, share = 0.9 },
+			-- Old gear is never a shirt or a tabard (cosmetic slots: they sell for
+			-- little and are kept for their look). The slots are in the editor's
+			-- list order, so turning one on and off leaves this rule as shipped.
+			AND({ block = 'oldgear', levels = 10, expansion = 9, share = 0.9 },
+				NOT({ block = 'slot', slots = { 'INVTYPE_BODY', 'INVTYPE_TABARD' } })),
 			AND({ block = 'binding', states = { 'soulbound' } }, tooltip('cffff2020Classes:'))
 		),
 		-- A lot of special holiday stuff is Cosmetic, fishing or account

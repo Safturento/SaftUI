@@ -330,7 +330,9 @@ function compilers.vendorprice(node)
 end
 describers.vendorprice = function(node) return 'Has vendor price: ' .. (node.value == true and 'yes' or 'no') end
 
--- Today's isLegacyGear, with the thresholds from the block.
+-- Today's isLegacyGear, with the thresholds from the block. Its tabard and shirt
+-- exclusion compared a field no item info has and never matched: the shipped
+-- Grays/Auto Vendor rule says it with a slot block beside this one instead.
 local OLD_GEAR_TOOLTIP = { 'you may trade this item with players', 'account bound', 'cosmetic' }
 
 function compilers.oldgear(node)

@@ -288,23 +288,32 @@ end
 -- The empty slot infos for a list of bag records (see ReadBags), by mode:
 -- 'all' is one per free slot, in order; 'grouped' is one pointing at the first
 -- free slot, with `count` the number of free slots, or none if there are none.
+-- The grouped slot prefers a free slot in a bag that takes any item over one in
+-- a special bag (a herb bag's takes only herbs), so an item dropped on it lands.
 function INV:GetEmptySlots(id, bags, mode)
 	local empties = {}
 	if mode ~= 'all' and mode ~= 'grouped' then return empties end
-	local first, count = nil, 0
+	local first, plain, count = nil, nil, 0
 	for _, bag in ipairs(bags) do
+		local special -- asked once a bag (a game call), and only for the first free slot of it
 		for _, slotID in ipairs(bag.free) do
 			count = count + 1
 			if mode == 'all' then
 				tinsert(empties, GetEmptySlotInfo(bag.id, slotID, id))
-			elseif not first then
-				first = GetEmptySlotInfo(bag.id, slotID, id)
+			else
+				first = first or { bag.id, slotID }
+				if not plain then
+					if special == nil then special = self:IsSpecialBag(bag.id) end
+					if not special then plain = { bag.id, slotID } end
+				end
 			end
 		end
 	end
-	if first then
-		first.count = count
-		empties[1] = first
+	local point = plain or first
+	if point then
+		local info = GetEmptySlotInfo(point[1], point[2], id)
+		info.count = count
+		empties[1] = info
 	end
 	return empties
 end
@@ -385,6 +394,13 @@ function INV:GetSortedInventory(id)
 	return inventory, numItems, numLoading
 end
 
+-- The Edit view's checkbox of a category as the profile says: checked when
+-- hidden (a set the Equipment sets entry hides in this window is checked, and
+-- its click puts that back: see CreateCategory).
+function INV:UpdateFilterCheckbox(checkbox, windowId, categoryName)
+	checkbox:SetChecked(self:IsCategoryHidden(windowId, categoryName))
+end
+
 function INV:CreateCategory(id, categoryName, slotPoolFunc)
 	local container = self.containers[id]
 
@@ -418,12 +434,31 @@ function INV:CreateCategory(id, categoryName, slotPoolFunc)
     filterCheckbox:SetSize(8, 8)
     filterCheckbox:SetPoint('BOTTOM', header, 'BOTTOM', 0, 4)
     filterCheckbox:SetPoint('LEFT', header.text, 'RIGHT', 8, 0)
-    filterCheckbox:HookScript('OnClick', function(self)
-        INV:SetCategoryHidden(id, categoryName, self:GetChecked())
+	-- A set the Equipment sets entry hides in this window can't be shown by its
+	-- own flag, so its box does nothing: a click puts the check back, and a
+	-- hover says why. The box stays enabled: a disabled button gets no OnEnter
+	-- without SetMotionScriptsWhileDisabled, and SaftUI's check box has its
+	-- template's disabled-checked texture stripped, so it might draw no check.
+	filterCheckbox:HookScript('OnClick', function(self)
+		if INV:IsSetHiddenBySetsEntry(id, categoryName) then
+			INV:UpdateFilterCheckbox(self, id, categoryName)
+			return
+		end
+		INV:SetCategoryHidden(id, categoryName, self:GetChecked())
 		INV:UpdateContainerLayout(id)
-    end)
-	filterCheckbox:SetChecked(INV:IsCategoryHidden(id, categoryName))
+	end)
 	categoryFrame.filterCheckbox = filterCheckbox
+	filterCheckbox:HookScript('OnEnter', function(self)
+		if not INV:IsSetHiddenBySetsEntry(id, categoryName) then return end
+		GameTooltip:SetOwner(self, 'ANCHOR_RIGHT')
+		GameTooltip:SetText(string.format("Hidden in this window by the %s category's Show in (/sui > Bags > Categories).",
+			INV:CategoryName(INV.SETS_ENTRY)), nil, nil, nil, nil, true)
+		GameTooltip:Show()
+	end)
+	filterCheckbox:HookScript('OnLeave', function(self)
+		if GameTooltip:IsOwned(self) then GameTooltip:Hide() end
+	end)
+	INV:UpdateFilterCheckbox(filterCheckbox, id, categoryName)
 
 	container.categories[categoryName] = categoryFrame
 

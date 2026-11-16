@@ -1149,6 +1149,9 @@ function Frame.IsEventRegistered(self, s, event) return s.events[event] == true 
 
 function Button.RegisterForClicks(self, s, ...) s.click_buttons = { ... } end
 function Button.IsEnabled(self, s) return s.enabled end
+-- Without this a disabled button runs no OnEnter or OnLeave (stub.fire_script).
+function Button.SetMotionScriptsWhileDisabled(self, s, enabled) s.motion_while_disabled = enabled and true or false end
+function Button.GetMotionScriptsWhileDisabled(self, s) return s.motion_while_disabled == true end
 function Button.Enable(self, s)
 	if not s.enabled then
 		s.enabled = true
@@ -1839,6 +1842,13 @@ end
 function stub.fire_script(widget, script, ...)
 	local s = stub.state(widget)
 	check_script(s, script, 'fire_script')
+	-- A disabled button gets no OnEnter or OnLeave unless it asked for them
+	-- with SetMotionScriptsWhileDisabled(true) (SimpleButtonAPIDocumentation,
+	-- both branches of Gethe/wow-ui-source, read 2026-11-15).
+	if (script == 'OnEnter' or script == 'OnLeave') and s.groups.Button and s.enabled == false
+		and not s.motion_while_disabled then
+		return false
+	end
 	return run_script(widget, script, ...)
 end
 

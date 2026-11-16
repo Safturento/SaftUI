@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-15 — Auto Vendor: stop the unasked sales once the player buys or buys back](#2026-11-15--auto-vendor-stop-the-unasked-sales-once-the-player-buys-or-buys-back)
   - [2026-11-15 — The options kit's keybinding widget commits mouse buttons 6 to 31 raw](#2026-11-15--the-options-kits-keybinding-widget-commits-mouse-buttons-6-to-31-raw)
   - [2026-11-13 — Loot rolls: the roll bar doesn't hold after a choice](#2026-11-13--loot-rolls-the-roll-bar-doesnt-hold-after-a-choice)
   - [2026-11-15 — UI scale: the kit's buttons and labels are off whole pixels on every screen that is not 1440p](#2026-11-15--ui-scale-the-kits-buttons-and-labels-are-off-whole-pixels-on-every-screen-that-is-not-1440p)
@@ -24,9 +25,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-15 — After a UI scale change, a reset half-pixel Position can show its icon again](#2026-11-15--after-a-ui-scale-change-a-reset-half-pixel-position-can-show-its-icon-again)
   - [2026-11-15 — Shipped category names shown numbered: no test pins that they show no reset icon](#2026-11-15--shipped-category-names-shown-numbered-no-test-pins-that-they-show-no-reset-icon)
   - [2026-11-15 — Reset walk: the profile compare is most of a unit page's cost](#2026-11-15--reset-walk-the-profile-compare-is-most-of-a-unit-pages-cost)
-  - [2026-11-15 — Forever: Show in > Bank does nothing for the default bank (the combined bank)](#2026-11-15--forever-show-in--bank-does-nothing-for-the-default-bank-the-combined-bank)
-  - [2026-11-15 — Auto Vendor counts a fresh purchase in a just-sold slot as a refused sale](#2026-11-15--auto-vendor-counts-a-fresh-purchase-in-a-just-sold-slot-as-a-refused-sale)
-  - [2026-11-15 — Auto Vendor's second question overstates the earlier stacks that leave](#2026-11-15--auto-vendors-second-question-overstates-the-earlier-stacks-that-leave)
   - [2026-11-15 — Nameplates: Blizzard's friendly plates key binding and the next login](#2026-11-15--nameplates-blizzards-friendly-plates-key-binding-and-the-next-login)
   - [2026-11-15 — Bag search box: the magnifier and the clear button](#2026-11-15--bag-search-box-the-magnifier-and-the-clear-button)
   - [2026-11-15 — Tracker: an Edit Mode anchor to a frame other than UIParent gives the default spot](#2026-11-15--tracker-an-edit-mode-anchor-to-a-frame-other-than-uiparent-gives-the-default-spot)
@@ -51,7 +49,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-15 — SaftUI's tracker phase 6: zone widgets](#2026-11-15--saftuis-tracker-phase-6-zone-widgets)
   - [2026-11-15 — SaftUI's tracker: do quest items work under [vehicleui] and [overridebar]?](#2026-11-15--saftuis-tracker-do-quest-items-work-under-vehicleui-and-overridebar)
   - [2026-11-15 — Chat's font size against Blizzard's per-window Font Size](#2026-11-15--chats-font-size-against-blizzards-per-window-font-size)
-  - [2026-11-15 — A bag window's least width ignores a Window titles change](#2026-11-15--a-bag-windows-least-width-ignores-a-window-titles-change)
   - [2026-11-14 — Position rows of secure frames can anchor to a frame that is moved in combat](#2026-11-14--position-rows-of-secure-frames-can-anchor-to-a-frame-that-is-moved-in-combat)
   - [2026-11-14 — A first-run setup dialog: UI size, theme, unit frame layout](#2026-11-14--a-first-run-setup-dialog-ui-size-theme-unit-frame-layout)
   - [2026-11-14 — /sui at half with the sidebar collapsed: a validation error is cut or hidden in the footer](#2026-11-14--sui-at-half-with-the-sidebar-collapsed-a-validation-error-is-cut-or-hidden-in-the-footer)
@@ -86,10 +83,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Per-dispel-type debuff art on SaftUI's own aura buttons](#2026-11-11--per-dispel-type-debuff-art-on-saftuis-own-aura-buttons)
   - [2026-11-11 — Loot feed: retail item quality text and profession overlay sit under the Blizzard ring](#2026-11-11--loot-feed-retail-item-quality-text-and-profession-overlay-sit-under-the-blizzard-ring)
   - [2026-11-11 — Blizzard theme: the bags' rule editor and Categories list keep the options window's own look](#2026-11-11--blizzard-theme-the-bags-rule-editor-and-categories-list-keep-the-options-windows-own-look)
-  - [2026-11-11 — Rule editor: a level mode picked before a number is typed does nothing](#2026-11-11--rule-editor-a-level-mode-picked-before-a-number-is-typed-does-nothing)
   - [2026-11-11 — Bag categories: in-game checks](#2026-11-11--bag-categories-in-game-checks)
-  - [2026-11-11 — Bag categories: a Set checkbox is dead while the Equipment sets entry hides the window](#2026-11-11--bag-categories-a-set-checkbox-is-dead-while-the-equipment-sets-entry-hides-the-window)
-  - [2026-11-11 — Old gear's tabard and shirt exclusion never matched](#2026-11-11--old-gears-tabard-and-shirt-exclusion-never-matched)
   - [2026-11-11 — Auto Vendor pins now beat Grays' exclusions and equipment sets](#2026-11-11--auto-vendor-pins-now-beat-grays-exclusions-and-equipment-sets)
   - [2026-11-10 — Zone level and faction line: in-game checks](#2026-11-10--zone-level-and-faction-line-in-game-checks)
   - [2026-11-10 — Zone text's fade times are written onto Blizzard's frames](#2026-11-10--zone-texts-fade-times-are-written-onto-blizzards-frames)
@@ -125,6 +119,13 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-11 — Old gear's tabard and shirt exclusion never matched](#2026-11-11--old-gears-tabard-and-shirt-exclusion-never-matched)
+  - [2026-11-15 — A bag window's least width ignores a Window titles change](#2026-11-15--a-bag-windows-least-width-ignores-a-window-titles-change)
+  - [2026-11-11 — Bag categories: a Set checkbox is dead while the Equipment sets entry hides the window](#2026-11-11--bag-categories-a-set-checkbox-is-dead-while-the-equipment-sets-entry-hides-the-window)
+  - [2026-11-11 — Rule editor: a level mode picked before a number is typed does nothing](#2026-11-11--rule-editor-a-level-mode-picked-before-a-number-is-typed-does-nothing)
+  - [2026-11-15 — Auto Vendor's second question overstates the earlier stacks that leave](#2026-11-15--auto-vendors-second-question-overstates-the-earlier-stacks-that-leave)
+  - [2026-11-15 — Auto Vendor counts a fresh purchase in a just-sold slot as a refused sale](#2026-11-15--auto-vendor-counts-a-fresh-purchase-in-a-just-sold-slot-as-a-refused-sale)
+  - [2026-11-15 — Forever: Show in > Bank does nothing for the default bank (the combined bank)](#2026-11-15--forever-show-in--bank-does-nothing-for-the-default-bank-the-combined-bank)
   - [2026-11-14 — The options kit's keybinding widget doesn't know META or Blizzard's ignored keys](#2026-11-14--the-options-kits-keybinding-widget-doesnt-know-meta-or-blizzards-ignored-keys)
   - [2026-11-15 — Reset walks: the feed's, Minimap's and Micro menu's movers are registered inline, so the tests pin a copy](#2026-11-15--reset-walks-the-feeds-minimaps-and-micro-menus-movers-are-registered-inline-so-the-tests-pin-a-copy)
   - [2026-11-15 — Blizzard's tracker: the Position reset is tested on Forever only](#2026-11-15--blizzards-tracker-the-position-reset-is-tested-on-forever-only)
@@ -213,6 +214,20 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 ## Active
 
+### 2026-11-15 — Auto Vendor: stop the unasked sales once the player buys or buys back
+
+**What:** Auto Vendor's unasked sales go on for the whole visit, whatever the player does at the merchant. A stack the player buys back is sold again on the next pass (up to 3 tries a slot) while the visit is within 12 non-gray stacks, which undoes the buyback. A purchase of a caught item (the same item the merchant sells) can be sold again too, asked or not by the count. The question is whether buying or buying back should end the unasked part of the visit (every later stack then asks), and what a bought-back stack should do.
+
+**Why noticed:** The review of the bags package's fix round (2026-11-15, probes P2 and P3), after the GUID fix made a purchase count. The entry about a fresh purchase in a just-sold slot had it as an open question; the promise (every non-gray stack sold unasked is among the last 12 sold) holds without it.
+
+**Anchors:** `SaftUI-Bags/autovendor.lua` (`Account`, `Sell`, `VendorPass`); `tests/bags/autovendor_sale_test.lua`; Blizzard's `BuyMerchantItem` and `BuybackItem`.
+
+**What's been considered:** A post-hook (`hooksecurefunc`, `.agents/taint.md` rule 2) on `BuyMerchantItem` and `BuybackItem` that marks the visit as touched by the player and sends every later non-gray stack to a question. A bought-back stack could also be added to the visit's "do not sell again" list by its GUID (kept or new on the buyback, so by slot and item as well). Neither is needed for the promise.
+
+**Shape of work:** Small: the hooks and a flag on the visit, or the list; tests with a stand-in `BuybackItem`.
+
+**Open questions:** Should buying or buying back end the unasked sales for the visit, or only keep a bought-back stack from being sold again? Which is less surprising at a merchant?
+
 ### 2026-11-15 — The options kit's keybinding widget commits mouse buttons 6 to 31 raw
 
 **What:** The `keybinding` widget (`SaftUI-Core/Config/optionskeybinding.lua`) converts only `MiddleButton`, `Button4` and `Button5` (its `MOUSE_BUTTONS` table). Mouse buttons 6 to 31 reach `Press` as `Button6` and so on and are committed raw, where the game's binding names are `BUTTON6`. `/sui kb` converts every button with `GetConvertedKeyOrButton` (`SaftUI-ActionBars/keybindmode.lua`).
@@ -232,13 +247,10 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 **Anchors:** `SaftUI-Loot/rollinfo.lua` (`OnRollChosen`, the `RollOnLoot` post-hook that notes the choice; `OnBarHide`, which calls `LT:HoldRoll`; `LT:UpdateRollBars`, which releases a held bar whose drop isn't open); `SaftUI-Loot/roll.lua` (`LT:HoldRoll`, `LT:ReleaseHeldRoll`, `LT:UpdateHeldRolls`); `SaftUI-Loot/Feed/loothistory.lua` (`LT:GetOpenDrops`, `HasEnded`, `RollTimeOver`); `tests/loot/roll_held_test.lua` (19 tests, all passing on stubs); Forever's `Interface/AddOns/Blizzard_UIPanels_Game/Mainline/GroupLootFrame.lua` and `.xml`.
 
 **What's been considered:** A read of the code against Forever's source (2026-11-13) found no cause:
-
 - The cleanup didn't change the logic. 81bf0b4 swapped Loot's local plain-value helpers for Core's (`st.PlainNumber`, the same test), and the other commits only moved code between files. `LT.PlainNumber` is set before anything runs.
 - Blizzard's source matches what the code assumes: a roll button's click calls `RollOnLoot(rollID, rollType)`; `CANCEL_LOOT_ROLL` leads to `GroupLootFrame_Remove`, `GroupLootContainer_RemoveFrame` and `frame:Hide()`, which is where `OnBarHide` runs; a main spec Need plays its dice for 5 seconds first.
 - The timer's values are plain: the timer draws in game.
-
 What's left needs evidence from the game. In the order they'd be checked:
-
 1. An error inside `LT:HoldRoll` or `OnBarHide`. It would be in BugGrabber's log.
 2. The held bar is shown and released at once, because its drop isn't in `LT:GetOpenDrops()` when `LT:UpdateRollBars` runs right after the hide. That is by design when everyone else has already chosen (the roll is over). Otherwise `HasEnded` or `RollTimeOver` reads Forever's drop wrongly (the units of `startTime` and `duration`, or `winner` being a table before the roll ends).
 3. `chosen[rollID]` is never set: the frame's `rollID` or the timer's values aren't plain at the click, or the click doesn't go through the global `RollOnLoot`.
@@ -373,6 +385,7 @@ What's left needs evidence from the game. In the order they'd be checked:
 **Shape of work:** Small: remember the last look in `bar.lua` and `historylist.lua`, branch the Theme listeners, and run the edit mode cost cases for a Theme pass under Thick, Thin and Blizzard.
 
 **Open questions:** Whether a Theme pass can change anything but the look's color while the art stays the same (a Background change reaches the bar's backdrop through the theme's own recolor, not here).
+
 ### 2026-11-15 — Unit frames: a Warrior class pick updates every Warrior NPC plate
 
 **What:** `UF.ColorReaches` for Class matches the unit's class token for any unit, so a Class > Warrior (or Paladin, Rogue, Mage) pick also updates every NPC plate whose unit carries that token, though a plate's bar and name don't show NPC class (`colorClassNPC` is off on plates). The spec's L3 ("nothing else updates") doesn't hold near a pack. Nothing visible changes; it is only cost.
@@ -445,43 +458,20 @@ What's left needs evidence from the game. In the order they'd be checked:
 
 **Shape of work:** A cheaper way to see a write outside a row's saved path: a write log on the profile table, or comparing only the saved path's top-level key plus one whole-profile compare at the end of a page.
 
-### 2026-11-15 — Forever: Show in > Bank does nothing for the default bank (the combined bank)
 
-**What:** On Forever the bank opens as the combined bank by default (`combinedBank` is on), and that window reads the category's `hide.combinedbank` flag. But Show in in `/sui` > Bags > Categories lists only Bags and Bank there (the warband bank and Combined bank are listed only where `INV:HasWarbandBank()`), so unticking Bank sets `hide.bank`, which the combined bank never reads: the category still shows in the bank the player sees. The flag the combined bank does read can be set only by the window's own Edit view checkbox on a category header (`category.lua`, `INV:SetCategoryHidden(id, categoryName, ...)`), or by a migrated profile.
 
-**Why noticed:** Review of the reset-every-setting Task 5 (2026-11-15). Show in's reset first covered only the listed windows, so a category hidden in the combined bank on Forever stayed "edited" with no reset; the fix there makes Show in's reset and "differs" cover every window a category is hidden in. The older bug (Show in cannot hide a category in the bank Forever actually shows) is separate and unfixed.
 
-**Anchors:** `SaftUI-Bags/categoriestab.lua` (`INV:CategoryEditorOptions`: `windows`, `sorting`), `SaftUI-Bags/categories.lua` (`INV:SetCategoryHidden`, `INV:IsCategoryHidden`, `INV:ShowCategoryEverywhere`), `SaftUI-Bags/category.lua` (the header checkbox), `SaftUI-Bags/movers.lua` (`INV:GetMoverIds`), `tests/bags/categories_editor_test.lua` (Show in's reset test).
 
-**What's been considered:** List the window the bank really is on each client: on Forever, Combined bank in place of (or beside) Bank. Or have Show in > Bank write both `bank` and `combinedbank` while the bank is combined. The reviewer preferred adding the combined bank to Show in on Forever.
 
-**Shape of work:** Small change in `INV:CategoryEditorOptions` (which windows Show in lists and what its labels say) plus a test on Forever that unticking the window the bank is in hides the category there.
 
-**Open questions:** Does Forever's Show in list Combined bank alone, or Bank and Combined bank? What does Bank mean while the bank is combined?
 
-### 2026-11-15 — Auto Vendor counts a fresh purchase in a just-sold slot as a refused sale
 
-**What:** `Account` (`SaftUI-Bags/autovendor.lua`) decides a stack was sold when its slot is empty or holds another item or count. A stack bought from the merchant that is the same item in the same count as one just sold, landing in the slot that stack left before the next pass (2 seconds), reads as a refused sale. `tailSold` is one short, the purchase is sold again with no question, and at a visit already at 12 one stack leaves the buyback list unasked.
 
-**Why noticed:** The re-review of Auto Vendor's fix round 1 (probe L3, "Check of fix round 2", 2026-11-15). All five conditions must hold together: a caught item the merchant sells, the same count, the first free slot being the one just emptied, inside one pass window, and a visit already at 12. The reviewer called it rare and costing one stack, and the owner accepted it for the merge.
 
-**Anchors:** `SaftUI-Bags/autovendor.lua` (`Account`, `Sell`); `tests/bags/autovendor_sale_test.lua`.
 
-**What's been considered:** A bought-back stack in the same slot is harmless to the count (its buyback entry is removed, so the list still matches) but it is sold again, which undoes the buyback. A fresh purchase removes no entry, which is why only it breaks the promise.
 
-**Shape of work:** Small. Record `C_Item.GetItemGUID(ItemLocation:CreateFromBagAndSlot(bag, slot))` in `Sell` and compare it in `Account`: a different GUID counts as sold. `GetItemGUID` is in `ItemDocumentation.lua` on both branches. A purchase has a new GUID; a bought-back stack keeps its GUID (counted as now, correct) or gets a new one (counted twice, which only asks sooner), so the count is never short. Optionally also a post-hook (`hooksecurefunc`, `.agents/taint.md` rule 2) on `BuyMerchantItem` and `BuybackItem` to end the unasked part of a visit once the player starts buying, which would also stop SaftUI selling back what the player just bought back. Tests need a stub GUID per item.
 
-**Open questions:** Whether to also end the unasked sales when the player buys.
 
-### 2026-11-15 — Auto Vendor's second question overstates the earlier stacks that leave
-
-**What:** The second question of a visit says how many stacks sold earlier this visit will leave the buyback ("... and N stacks sold earlier this visit will leave the buyback"). Once a visit has already sold more than 12 (after a Sell them to 13 stacks, say) the number is too high: with a 14th stack the question says 2 and the true number is 1. The formula `min(earlier + in flight, earlier + in flight + its own - size)` is right while `earlier + in flight` is 12 or fewer.
-
-**Why noticed:** The re-review of Auto Vendor's fix round 1 (probe N7b, 2026-11-15). It errs on the safe side (the question warns of more than will happen), so it was left for later.
-
-**Anchors:** `SaftUI-Bags/autovendor.lua` (`QuestionText`, the `pushed` figure); `tests/bags/autovendor_sale_test.lua` ("N-2").
-
-**Shape of work:** Small. With `e = tailSold + pendingTail` and `n` the new stacks, only `min(e, size)` of the earlier stacks are still in the buyback, so the number that leave is `min(e, size) - min(min(e, size), max(0, size - n))`; or cap it at `min(n, ...)`. Add a test for a visit past 12.
 
 ### 2026-11-15 — Nameplates: Blizzard's friendly plates key binding and the next login
 
@@ -818,18 +808,6 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 
 **Open questions:** does `UPDATE_CHAT_WINDOWS` fire after `PLAYER_LOGIN`, and is chat at SaftUI's size or Blizzard's chat-cache size after login? Does a Fonts tab change that does not touch chat undo a size picked from the tab menu (it should not now)? Which of (a) and (b) does the owner want?
 
-### 2026-11-15 — A bag window's least width ignores a Window titles change
-
-**What:** A bag window's least width counts its title's width (`INV:HeaderMinWidth`, `SaftUI-Bags/header.lua`), and nothing lays the window out again when Window titles changes. The title itself follows at once (Task 5), so after a change to a wider font the title can run over the buttons until the window is next laid out.
-
-**Why noticed:** Review of fonts Task 5, m6. It already behaved this way for a Fonts tab change to Text; it is more visible now that Window titles applies at once.
-
-**Anchors:** `SaftUI-Bags/header.lua` (`INV:HeaderMinWidth`), `SaftUI-Bags/layout.lua:284` and `:355`, `INV:UpdateContainer`.
-
-**What's been considered:** fonts Task 7 (2026-11-15) looked at it and left it, because the one-line `INV:OnFontsChanged() self:UpdateConfig() end` (which already waits for the end of combat through `st:QueueAfterCombat('Inventory')`) also runs `CategoriesChanged`, a full re-sort of every item, on each step of a Size drag on any font (`st:FontsChanged()` fires on every step), and a narrower re-fit of the least width alone needs `layout.lua`'s held layout (`ReleaseLayout`, `layoutPending`) understood and checked in game. A debounce to one run a frame would cut it but not the re-sort. Task 7 did move the bags' footer texts and search box to Text, so Window titles no longer reaches anything in a window but its title.
-
-**Shape of work:** small, but needs a design look at the layout first: an `INV:OnFontsChanged` that re-fits each open container's least width only (out of combat; a bag window can be protected, so it goes through the combat queue), with a test, and only when the title's font is what changed (its value, or a shared font it names, changed since the last run).
-
 ### 2026-11-14 — Position rows of secure frames can anchor to a frame that is moved in combat
 
 **What:** A holder with a secure child is protected, and protection spreads to the frames it is anchored to. The Position row of any mover whose holder carries secure buttons accepts any frame name (`generators.position(..., true, ...)`, which only refuses loops), so a player can anchor it to a frame SaftUI sizes or moves in combat, which then gets `ADDON_ACTION_BLOCKED`. The tracker's nearest button's row now refuses the tracker's window (`TR.NearestAnchorRefusal`); the others don't.
@@ -859,6 +837,7 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 **Settled 2026-11-14:** the owner builds each unit frame layout in game as a unit frame profile, and it is migrated from the game's saved settings (SaftUI's SavedVariables in the WTF folder) into built-in defaults that ship with the addon. "yep I'd build them myself in game and you can just migrate the settings from the wtf folder to actual defaults". When migrating, only the settings go into the repo: no account, realm or character names from the file or its path.
 
 **Open questions:** How a shipped layout is stored and named (data files under `SaftUI-Unitframes/config/`, listed beside the player's own profiles and not editable in place?), and how one is refreshed when the owner changes it. Whether existing players see it after the update or only fresh installs. Whether it is per account or per character. What else belongs in it (action bar layout, bags view, the tracker switch).
+
 ### 2026-11-14 — /sui at half with the sidebar collapsed: a validation error is cut or hidden in the footer
 
 **What:** With the sidebar collapsed at half width (W4), the footer's status line, where a validation error such as "Size: a number, please" shows, has a region about 54 wide under Thick and Thin (96 under Blizzard), so the message is cut after two lines, and with one more icon command registered the region is 22, under `FOOTER_MIN_ROOM` (24), so the status line is hidden and no message shows anywhere. The page's field then keeps only the typed text.
@@ -1141,6 +1120,7 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 **What's been considered:** The buff skin's way carries over: post-hook the border texture's `SetAtlas` and its frame's `Show` and `Hide`, map the atlas to a color through `AuraUtil.GetDebuffDisplayInfoTable()`, put it on SaftUI's border with `st:SetBorderColor` and again in `OnColorsChanged('theme')`, fade Blizzard's art by alpha under Thick and Thin, and fall back on it for a secret atlas (on retail the aura data, and so the atlas, can be secret in combat).
 
 **Shape of work:** Small: one function and a test on the fixture, after the in-game check (step 4 of "Cooldown Manager skin: in-game checks") says whether Blizzard's border over SaftUI's reads badly.
+
 ### 2026-11-12 — Nameplates: the Friendly page's aura borders and cooldown never reach plate buttons
 
 **What:** An aura area's group is made once per frame, on its first update with the area on, and a plate's frame always gets its first update from Enemy nameplates (`nameplate`, its unit token's config). Which borders a button shows (Buffs' Stealable border, Debuffs' Dispel type border) and whether it has a cooldown swipe (Cooldown → Show) are baked into each button by oUF's `CreateButton` from the group's options. So while Enemy nameplates has an aura area on (both are, by default), Friendly nameplates' border and Cooldown → Show for that area never reach a plate's buttons, not even after a reload. With the Enemy page's area off, the group is made from whichever config first turns it on on that frame, so the Enemy page's can be the ones left out. With the Enemy page's box checked (enemies drawn from the Friendly page) the Enemy page's area Enable still decides, though the page hides it then: to make the Friendly page's reach the plates, uncheck the box, turn the Enemy page's area off, check the box again and reload. Since the final fix wave the two options' notes on both plate pages say which page's settings a plate's buttons take (`ReloadNote`); before, they said "Reload to apply", untrue on the Friendly page.
@@ -1601,23 +1581,6 @@ Loot feed, retail: the item's `n/m` quality text and the profession overlay unde
 
 Also check in game, under Blizzard: the item strips' (Pinned items, Caught now) action ring sits over each icon. `LayItems` (`categoriestab.lua`) moves each icon and its border's frame to new levels on every draw, and the ring's holder is a child of that border frame (`themeart.lua`, `Holder`), so it may end up level with the icon rather than above it. The stubs don't model frame level stacking.
 
-### 2026-11-11 — Rule editor: a level mode picked before a number is typed does nothing
-
-**What:** A new Item level or Required level block has no number, so it can't be read and catches nothing until it has one. Its mode list (at least, at most, between) moves the number typed to the bound the mode needs. With no number yet there's nothing to move, so picking "at most" or "between" on a new block changes nothing, and it still shows "at least". The user has to type a number first, then pick the mode.
-
-**Why noticed:** The fix for the bag categories final review's C-1 (2026-11-11). New level blocks used to start as `{ min = 0 }`, "at least 0", which caught every item the moment the block was added; in Grays/Auto Vendor's inner OR that sold every priced item at the next merchant. They now start as `{}`, and the mode switch no longer invents a 0 for a block with no number, so it has nothing to carry over.
-
-**Anchors:** `SaftUI-Bags/ruleeditor.lua` (`LevelMode`, `LevelFields`); `SaftUI-Bags/rules.lua` (`R.BLOCKS`' `new`, `level_block`); `tests/bags/rule_editor_test.lua` ("a new Item level, Required level, Crafting reagent or Has vendor price block shows nothing set ...").
-
-**What's been considered:**
-- Writing 0 again: that is what made a new block catch everything.
-- Keeping the picked mode in the saved block (a `mode` key, or `false` in the bound it means): new data in the profile for something only the editor shows.
-- Keeping it in the editor only, by the row's path, until a number is typed: no data change, but a row's path shifts when rows are added or moved above it, so it has to be dropped on any other edit.
-
-**Shape of work:** Small: the editor-only option in `LevelFields`, and a test.
-
-**Open questions:** Is it worth doing, or is "type the number, then pick the mode" fine?
-
 ### 2026-11-11 — Bag categories: in-game checks
 
 **What:** What the bag categories project could only be compile-checked and stub-tested for, to confirm in game on Forever and retail, and what to do with each answer. The first eight are the plan's own list (`docs/superpowers/plans/2026-11-10-saftui-bag-categories.md`, "In-game checks"); the rest are what the reviews and tests couldn't settle.
@@ -1653,30 +1616,6 @@ What the plan's list doesn't cover:
 15. **Auto vendor after a rename, a move or turning off:** it still sells, and the junk coin follows it (`INV:IsAutoVendorItem` finds the seller by its `sells` flag, not its name), after Grays/Auto Vendor is renamed or moved; turned off, nothing sells and no coin shows.
 
 **Open questions:** None until the answers come in.
-
-### 2026-11-11 — Bag categories: a Set checkbox is dead while the Equipment sets entry hides the window
-
-**What:** In the Edit view's Show in checkboxes, a `Set: <name>` checkbox unchecked while the Equipment sets entry already hides that window changes nothing. `INV:IsCategoryHidden` returns true for a `Set: ...` key as soon as the sets entry's `hide[windowId]` is set, before it looks at the set's own flag (`filters.categories[windowId]`), so the box is a dead control.
-
-**Why noticed:** The bag categories project's review of Show in (2026-11-11).
-
-**Anchors:** `SaftUI-Bags/categories.lua` (`INV:IsCategoryHidden` and `INV:SetCategoryHidden`, the "Show in" section, `IsSetKey`); the Edit view's checkbox in `SaftUI-Bags/category.lua` (~422-425).
-
-**What's been considered:** Disable or hide the set's checkbox while the entry hides the window, or let a set's own flag win. The first changes less.
-
-**Shape of work:** Small, with a test in `tests/bags/category_migration_test.lua` next to the Equipment sets entry's Show in cases.
-
-### 2026-11-11 — Old gear's tabard and shirt exclusion never matched
-
-**What:** The old Old gear filter meant to leave tabards and shirts out. It compared the localized slot name with an `INVTYPE_` token, so the test never matched and every tabard and shirt that met the other tests was caught. The category blocks leave the test out, so nothing changes for the user.
-
-**Why noticed:** The bag categories project's plan (Global Constraints and "What can't be written exactly in blocks", item 5, `docs/superpowers/plans/2026-11-10-saftui-bag-categories.md`), reading `filters.lua` at `8dc348c`.
-
-**Anchors:** `git show 8dc348c:SaftUI-Bags/filters.lua` (`isLegacyGear`); `SaftUI-Bags/categorydefaults.lua` (Old gear); `tests/bags/fixtures/old_filters.lua` (the oracle, which keeps the old behavior).
-
-**Shape of work:** Only if the user wants tabards and shirts kept out of Old gear: a block on the item's equipment slot (an `INVTYPE_` token compared with `GetItemInfoInstant`'s equip slot), and a fixture.
-
-**Open questions:** Does the user want that exclusion at all? It has never worked, so nobody has missed it.
 
 ### 2026-11-11 — Auto Vendor pins now beat Grays' exclusions and equipment sets
 
@@ -2203,7 +2142,7 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 
 ### 2026-11-08 — Specialty bags (herb, mining, etc.) count as normal bags in the bag window
 
-**What:** The bag window marks the reagent bag's items and empty slots (a green corner wedge), and the Empty Slots category's Grouped mode has one slot for the normal bags and one for the reagent bag. A specialty bag (herb, mining, enchanting, etc.) is treated as a normal bag: its items get no marker, and its free slots are counted in the normal group even though they only take that profession's items. Grouped's normal slot points at the first free normal-kind slot, which can be in a specialty bag, so dropping a non-matching item on it fails with the game's "That item doesn't go in that container" error.
+**What:** The bag window marks the reagent bag's items and empty slots (a green corner wedge), and the Empty Slots category's Grouped mode has one slot for the normal bags and one for the reagent bag. A specialty bag (herb, mining, enchanting, etc.) is treated as a normal bag: its items get no marker, and its free slots are counted in the normal group even though they only take that profession's items. (Part-closed 2026-11-15: Grouped's normal slot used to point at the first free normal-kind slot, which could be in a specialty bag, so dropping a non-matching item on it failed with the game's "That item doesn't go in that container" error. It now prefers a free slot in a bag that takes any item, `INV:GetEmptySlots` in `SaftUI-Bags/category.lua`, with a test in `tests/bags/views_data_test.lua`; the count still includes the specialty bags' free slots.)
 
 **Why noticed:** Brainstorming the reagent marker and Empty Slots category (2026-11-08). The user's problem was telling reagent bag items apart when moving reagents into a new reagent bag and swapping which items stay there. Specialty bags have the same "only some items fit" shape, but the user only raised the reagent bag, so they were left out to keep the change small.
 
@@ -2211,7 +2150,7 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 
 **What's been considered:** Grouping empty slots by bag family instead of normal/reagent would handle specialty bags with no special cases, and the first free slot of a normal-family bag would then always take any item. The marker would need a colour or shape per family, or one shared "special bag" marker.
 
-**Shape of work:** Small: group by bag family in the empty slot code, pick the Grouped normal slot from family-0 bags only, and decide the marker for specialty bags.
+**Shape of work:** Small: group by bag family in the empty slot code (so the count says what a normal item can use), and decide the marker for specialty bags.
 
 **Open questions:** Does the user (or anyone on Forever) use specialty bags enough to want them marked? One marker for all of them, or per profession?
 
@@ -2388,6 +2327,109 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-11 — Old gear's tabard and shirt exclusion never matched
+
+**What:** The old Old gear filter meant to leave tabards and shirts out. It compared the localized slot name with an `INVTYPE_` token, so the test never matched and every tabard and shirt that met the other tests was caught. The category blocks left the test out, and the Old gear block is one of the three ORs of Grays/Auto Vendor's rule, the category that sells: an old uncommon, rare or epic tabard or shirt was sold at the next merchant (the review of the bags package, 2026-11-15, probed it on both clients).
+
+**Why noticed:** The bag categories project's plan (Global Constraints and "What can't be written exactly in blocks", item 5, `docs/superpowers/plans/2026-11-10-saftui-bag-categories.md`), reading `filters.lua` at `8dc348c`.
+
+**Anchors:** `git show 8dc348c:SaftUI-Bags/filters.lua` (`isLegacyGear`); `SaftUI-Bags/categorydefaults.lua` (Old gear); `tests/bags/fixtures/old_filters.lua` (the oracle, which keeps the old behavior).
+
+**Shape of work:** Only if the user wants tabards and shirts kept out of Old gear: a block on the item's equipment slot (an `INVTYPE_` token compared with `GetItemInfoInstant`'s equip slot), and a fixture.
+
+**Open questions:** Does the user want that exclusion at all? It has never worked, so nobody has missed it.
+
+**Resolved 2026-11-15:** the shipped Grays/Auto Vendor rule now ANDs its Old gear block with NOT(Equip slot is `INVTYPE_TABARD`, `INVTYPE_BODY`) (`SaftUI-Bags/categorydefaults.lua`), so a tabard or a shirt is never in Old gear and never sold through it (a gray one is a gray, as before). A profile that has not edited the category's rule picks it up (an edit is stored against the shipped default, and a rename or On edit leaves the rule alone); one that edited the rule keeps its own. Test: `tests/bags/category_defaults_test.lua` (both clients), with fixtures in `fixtures/category_items.lua` marked changed, since the oracle keeps the old behavior.
+
+### 2026-11-15 — A bag window's least width ignores a Window titles change
+
+**What:** A bag window's least width counts its title's width (`INV:HeaderMinWidth`, `SaftUI-Bags/header.lua`), and nothing lays the window out again when Window titles changes. The title itself follows at once (Task 5), so after a change to a wider font the title can run over the buttons until the window is next laid out.
+
+**Why noticed:** Review of fonts Task 5, m6. It already behaved this way for a Fonts tab change to Text; it is more visible now that Window titles applies at once.
+
+**Anchors:** `SaftUI-Bags/header.lua` (`INV:HeaderMinWidth`), `SaftUI-Bags/layout.lua:284` and `:355`, `INV:UpdateContainer`.
+
+**What's been considered:** fonts Task 7 (2026-11-15) looked at it and left it, because the one-line `INV:OnFontsChanged() self:UpdateConfig() end` (which already waits for the end of combat through `st:QueueAfterCombat('Inventory')`) also runs `CategoriesChanged`, a full re-sort of every item, on each step of a Size drag on any font (`st:FontsChanged()` fires on every step), and a narrower re-fit of the least width alone needs `layout.lua`'s held layout (`ReleaseLayout`, `layoutPending`) understood and checked in game. A debounce to one run a frame would cut it but not the re-sort. Task 7 did move the bags' footer texts and search box to Text, so Window titles no longer reaches anything in a window but its title.
+
+**Shape of work:** small, but needs a design look at the layout first: an `INV:OnFontsChanged` that re-fits each open container's least width only (out of combat; a bag window can be protected, so it goes through the combat queue), with a test, and only when the title's font is what changed (its value, or a shared font it names, changed since the last run).
+
+**Resolved 2026-11-15:** `INV:OnFontsChanged` (`SaftUI-Bags/inventory.lua`) asks for a layout with `INV:QueueUpdate(true)`: one update a frame however many steps a font drag takes, which re-lays the window out to its least width (`SizeWindow`, `SectionLineSlots`) with no category rebuild or re-sort, and is held in combat as any layout is. Test: `tests/bags/views_width_test.lua`. Needs an in-game look.
+
+### 2026-11-11 — Bag categories: a Set checkbox is dead while the Equipment sets entry hides the window
+
+**What:** In the Edit view's Show in checkboxes, a `Set: <name>` checkbox unchecked while the Equipment sets entry already hides that window changes nothing. `INV:IsCategoryHidden` returns true for a `Set: ...` key as soon as the sets entry's `hide[windowId]` is set, before it looks at the set's own flag (`filters.categories[windowId]`), so the box is a dead control.
+
+**Why noticed:** The bag categories project's review of Show in (2026-11-11).
+
+**Anchors:** `SaftUI-Bags/categories.lua` (`INV:IsCategoryHidden` and `INV:SetCategoryHidden`, the "Show in" section, `IsSetKey`); the Edit view's checkbox in `SaftUI-Bags/category.lua` (~422-425).
+
+**What's been considered:** Disable or hide the set's checkbox while the entry hides the window, or let a set's own flag win. The first changes less.
+
+**Shape of work:** Small, with a test in `tests/bags/category_migration_test.lua` next to the Equipment sets entry's Show in cases.
+
+**Resolved 2026-11-15:** The Edit view's checkbox of a `Set: ...` category is disabled (still checked, with a tooltip saying why) while the Equipment sets entry hides that window (`INV:IsSetHiddenBySetsEntry`, `INV:UpdateFilterCheckbox`), the first of the entry's two options. Test: `tests/bags/category_migration_test.lua`.
+
+### 2026-11-11 — Rule editor: a level mode picked before a number is typed does nothing
+
+**What:** A new Item level or Required level block has no number, so it can't be read and catches nothing until it has one. Its mode list (at least, at most, between) moves the number typed to the bound the mode needs. With no number yet there's nothing to move, so picking "at most" or "between" on a new block changes nothing, and it still shows "at least". The user has to type a number first, then pick the mode.
+
+**Why noticed:** The fix for the bag categories final review's C-1 (2026-11-11). New level blocks used to start as `{ min = 0 }`, "at least 0", which caught every item the moment the block was added; in Grays/Auto Vendor's inner OR that sold every priced item at the next merchant. They now start as `{}`, and the mode switch no longer invents a 0 for a block with no number, so it has nothing to carry over.
+
+**Anchors:** `SaftUI-Bags/ruleeditor.lua` (`LevelMode`, `LevelFields`); `SaftUI-Bags/rules.lua` (`R.BLOCKS`' `new`, `level_block`); `tests/bags/rule_editor_test.lua` ("a new Item level, Required level, Crafting reagent or Has vendor price block shows nothing set ...").
+
+**What's been considered:**
+- Writing 0 again: that is what made a new block catch everything.
+- Keeping the picked mode in the saved block (a `mode` key, or `false` in the bound it means): new data in the profile for something only the editor shows.
+- Keeping it in the editor only, by the row's path, until a number is typed: no data change, but a row's path shifts when rows are added or moved above it, so it has to be dropped on any other edit.
+
+**Shape of work:** Small: the editor-only option in `LevelFields`, and a test.
+
+**Open questions:** Is it worth doing, or is "type the number, then pick the mode" fine?
+
+**Resolved 2026-11-15:** A mode picked on a level block with no number is kept in the editor alone (`w.levelPick` in `SaftUI-Bags/ruleeditor.lua`, no data change): the row shows it and its boxes, a number typed goes to the bound it needs (between sets both), and any other edit forgets it. Test: `tests/bags/rule_editor_test.lua`.
+
+### 2026-11-15 — Auto Vendor's second question overstates the earlier stacks that leave
+
+**What:** The second question of a visit says how many stacks sold earlier this visit will leave the buyback ("... and N stacks sold earlier this visit will leave the buyback"). Once a visit has already sold more than 12 (after a Sell them to 13 stacks, say) the number is too high: with a 14th stack the question says 2 and the true number is 1. The formula `min(earlier + in flight, earlier + in flight + its own - size)` is right while `earlier + in flight` is 12 or fewer.
+
+**Why noticed:** The re-review of Auto Vendor's fix round 1 (probe N7b, 2026-11-15). It errs on the safe side (the question warns of more than will happen), so it was left for later.
+
+**Anchors:** `SaftUI-Bags/autovendor.lua` (`QuestionText`, the `pushed` figure); `tests/bags/autovendor_sale_test.lua` ("N-2").
+
+**Shape of work:** Small. With `e = tailSold + pendingTail` and `n` the new stacks, only `min(e, size)` of the earlier stacks are still in the buyback, so the number that leave is `min(e, size) - min(min(e, size), max(0, size - n))`; or cap it at `min(n, ...)`. Add a test for a visit past 12.
+
+**Resolved 2026-11-15:** `QuestionText` now counts only the earlier stacks still in the buyback (`min(earlier, size)`) that the new ones push out, so a visit past 12 says 1 where it said 2. Test: `tests/bags/autovendor_sale_test.lua` ("N-2: past 12").
+
+### 2026-11-15 — Auto Vendor counts a fresh purchase in a just-sold slot as a refused sale
+
+**What:** `Account` (`SaftUI-Bags/autovendor.lua`) decides a stack was sold when its slot is empty or holds another item or count. A stack bought from the merchant that is the same item in the same count as one just sold, landing in the slot that stack left before the next pass (2 seconds), reads as a refused sale. `tailSold` is one short, the purchase is sold again with no question, and at a visit already at 12 one stack leaves the buyback list unasked.
+
+**Why noticed:** The re-review of Auto Vendor's fix round 1 (probe L3, "Check of fix round 2", 2026-11-15). All five conditions must hold together: a caught item the merchant sells, the same count, the first free slot being the one just emptied, inside one pass window, and a visit already at 12. The reviewer called it rare and costing one stack, and the owner accepted it for the merge.
+
+**Anchors:** `SaftUI-Bags/autovendor.lua` (`Account`, `Sell`); `tests/bags/autovendor_sale_test.lua`.
+
+**What's been considered:** A bought-back stack in the same slot is harmless to the count (its buyback entry is removed, so the list still matches) but it is sold again, which undoes the buyback. A fresh purchase removes no entry, which is why only it breaks the promise.
+
+**Shape of work:** Small. Record `C_Item.GetItemGUID(ItemLocation:CreateFromBagAndSlot(bag, slot))` in `Sell` and compare it in `Account`: a different GUID counts as sold. `GetItemGUID` is in `ItemDocumentation.lua` on both branches. A purchase has a new GUID; a bought-back stack keeps its GUID (counted as now, correct) or gets a new one (counted twice, which only asks sooner), so the count is never short. Tests need a stub GUID per item. (The optional post-hook on `BuyMerchantItem` and `BuybackItem` is its own entry now: "Auto Vendor: stop the unasked sales once the player buys or buys back".)
+
+**Resolved 2026-11-15:** `Sell` records the stack's `C_Item.GetItemGUID` (in ItemDocumentation on both clients' branches) and `Account` counts a stack in its slot with another GUID as sold, so a fresh purchase landing in a just-sold slot no longer reads as a refused sale and the tail count is never short. The part about ending the unasked sales once the player buys is its own Active entry. Test: `tests/bags/autovendor_sale_test.lua`.
+
+### 2026-11-15 — Forever: Show in > Bank does nothing for the default bank (the combined bank)
+
+**What:** On Forever the bank opens as the combined bank by default (`combinedBank` is on), and that window reads the category's `hide.combinedbank` flag. But Show in in `/sui` > Bags > Categories lists only Bags and Bank there (the warband bank and Combined bank are listed only where `INV:HasWarbandBank()`), so unticking Bank sets `hide.bank`, which the combined bank never reads: the category still shows in the bank the player sees. The flag the combined bank does read can be set only by the window's own Edit view checkbox on a category header (`category.lua`, `INV:SetCategoryHidden(id, categoryName, ...)`), or by a migrated profile.
+
+**Why noticed:** Review of the reset-every-setting Task 5 (2026-11-15). Show in's reset first covered only the listed windows, so a category hidden in the combined bank on Forever stayed "edited" with no reset; the fix there makes Show in's reset and "differs" cover every window a category is hidden in. The older bug (Show in cannot hide a category in the bank Forever actually shows) is separate and unfixed.
+
+**Anchors:** `SaftUI-Bags/categoriestab.lua` (`INV:CategoryEditorOptions`: `windows`, `sorting`), `SaftUI-Bags/categories.lua` (`INV:SetCategoryHidden`, `INV:IsCategoryHidden`, `INV:ShowCategoryEverywhere`), `SaftUI-Bags/category.lua` (the header checkbox), `SaftUI-Bags/movers.lua` (`INV:GetMoverIds`), `tests/bags/categories_editor_test.lua` (Show in's reset test).
+
+**What's been considered:** List the window the bank really is on each client: on Forever, Combined bank in place of (or beside) Bank. Or have Show in > Bank write both `bank` and `combinedbank` while the bank is combined. The reviewer preferred adding the combined bank to Show in on Forever.
+
+**Shape of work:** Small change in `INV:CategoryEditorOptions` (which windows Show in lists and what its labels say) plus a test on Forever that unticking the window the bank is in hides the category there.
+
+**Open questions:** Does Forever's Show in list Combined bank alone, or Bank and Combined bank? What does Bank mean while the bank is combined?
+
+**Resolved 2026-11-15:** Show in (`INV:CategoryEditorOptions`) now lists Combined bank on every client, between Bank and (on retail) the warband bank, so on Forever, where the combined bank is the default bank, unticking it hides the category there; Bank stays for the separate-bank layout. Test: `tests/bags/categories_editor_test.lua`.
 
 ### 2026-11-14 — The options kit's keybinding widget doesn't know META or Blizzard's ignored keys
 
@@ -3116,6 +3158,7 @@ Then, with the switch on, the spec's G1 to G12, each with the task that built it
 **Anchors:** `SaftUI-Tracker/` (`groups.lua`, `window.lua`, `rows.lua`), `docs/superpowers/specs/2026-11-14-saftui-objective-tracker-design.md`.
 
 **Resolved 2026-11-15:** SaftUI's own tracker draws a list grouped by zone (the current zone first), with Width and Max height and a scroll frame with its bar shown under the mouse; Blizzard's tracker is never put in a scroll frame. It ships on by default after the owner's in-game pass.
+
 ### 2026-11-15 — The action bars' and buffs' texts default to Small text
 
 **What:** The action bars' hotkey, stack count and macro name, and the buffs' and debuffs' duration and stack count, still ship a copy of Small text's look (Homespun 10, Monochrome outline) saved as a face name, a size and an outline. Their Font rows now list SaftUI's fonts (the fonts design, Task 8), so a player can pick Small text and follow it, but an untouched profile does not. Make Small text the default (the key `pixel`), with a conversion that writes today's copy into any text that set one of font, size or outline, so those keep their look.
