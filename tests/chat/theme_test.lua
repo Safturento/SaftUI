@@ -301,3 +301,110 @@ test("edit mode's outline sits on the chat's border, or on the chat under None",
 	check(point == 'TOPLEFT' and x == 0 and y == 0, 'on the chat itself under None')
 	profile.chat.theme = 'theme'
 end)
+
+-- The edit box and the scroll bar sit against the backdrop, or against the chat window itself
+-- under None (a nil relative frame would mean the box's parent, UIParent: the top of the screen).
+-- Every theme change places them again, as the backdrop's own appearance does.
+test("under None the edit box and scroll bar anchor to the chat window, and a theme change re-anchors them", function()
+	local frame, editbox = CW.build(17)
+	profile.chat.theme = 'none'
+	CHT:SkinChatFrame(frame)
+	local _, relative, relPoint = editbox:GetPoint(1)
+	eq(relative, frame, 'the box is anchored to the window, not to UIParent')
+	eq(relPoint, 'TOPLEFT', 'by its top')
+	eq(editbox:GetNumPoints(), 2, "two anchors: Blizzard's XML ones are cleared, none left over")
+	_, relative = frame.ScrollBar:GetPoint(1)
+	eq(relative, frame, 'the scroll bar too')
+
+	profile.chat.theme = 'theme'
+	CHT:ApplyChatFrameConfig(frame)
+	local backdrop = st:DrawnFrame(frame)
+	check(backdrop ~= nil, 'a theme draws the backdrop')
+	for i = 1, editbox:GetNumPoints() do
+		eq(select(2, editbox:GetPoint(i)), backdrop, 'the box follows the backdrop, anchor ' .. i)
+	end
+	eq(editbox:GetNumPoints(), 2, 'two anchors, no leftover')
+	eq(select(2, frame.ScrollBar:GetPoint(1)), backdrop, 'and so does the scroll bar')
+
+	profile.chat.theme = 'none'
+	CHT:ApplyChatFrameConfig(frame)
+	eq(select(2, editbox:GetPoint(1)), frame, 'back under None, the window again')
+	profile.chat.theme = 'theme'
+end)
+
+-- The dock's overflow button (the tabs that don't fit) is part of the tab row: it fades with
+-- the tabs (FCF_FadeInChatFrame and FCF_FadeOutChatFrame fade it through its SetAlpha to
+-- the selected tab's alphas), so Fade tabs off holds it at 1 too, and on gives it back.
+test("with Fade tabs off the dock's overflow button stays at 1, and fading on gives Blizzard's alpha back", function()
+	local had_dock, had_windows = _G.GENERAL_CHAT_DOCK, NUM_CHAT_WINDOWS
+	NUM_CHAT_WINDOWS = 0 -- the button only
+	local had = { _G.CHAT_FRAME_TAB_SELECTED_MOUSEOVER_ALPHA, _G.CHAT_FRAME_TAB_SELECTED_NOMOUSE_ALPHA }
+	_G.CHAT_FRAME_TAB_SELECTED_MOUSEOVER_ALPHA, _G.CHAT_FRAME_TAB_SELECTED_NOMOUSE_ALPHA = 1.0, 0.4
+	local button = CreateFrame('Button', nil, UIParent)
+	_G.GENERAL_CHAT_DOCK = { overflowButton = button }
+
+	profile.chat.tabs.fade = true
+	button:SetAlpha(0.4)
+	CHT:ApplyTabFading()
+	eq(button:GetAlpha(), 0.4, 'with fading on it is left to Blizzard')
+
+	profile.chat.tabs.fade = false
+	CHT:ApplyTabFading()
+	eq(button:GetAlpha(), 1, 'held at 1 at once')
+	button:SetAlpha(0.4) -- a fade step
+	eq(button:GetAlpha(), 1, 'and through a fade')
+	local hook = rawget(button, 'SetAlpha')
+	CHT:ApplyTabFading()
+	eq(rawget(button, 'SetAlpha'), hook, 'a second apply adds no second hook')
+
+	profile.chat.tabs.fade = true
+	CHT:ApplyTabFading()
+	eq(button:GetAlpha(), 0.4, "fading on again: Blizzard's no-mouse alpha")
+	button:SetAlpha(0.7)
+	eq(button:GetAlpha(), 0.7, 'and Blizzard fades it')
+
+	profile.chat.tabs.fade = false
+	_G.GENERAL_CHAT_DOCK, NUM_CHAT_WINDOWS = had_dock, had_windows
+	_G.CHAT_FRAME_TAB_SELECTED_MOUSEOVER_ALPHA, _G.CHAT_FRAME_TAB_SELECTED_NOMOUSE_ALPHA = had[1], had[2]
+end)
+
+-- The combat log's window top is lowered by its quick button bar (Blizzard's
+-- Blizzard_CombatLog_AdjustCombatLogHeight), which the themed backdrop adds back as `offset`.
+-- Under None the box anchors to the window, so it rises by the bar's height too and sits
+-- where the other windows' boxes do, above the bar.
+test("under None the combat log's edit box sits above its quick button bar", function()
+	local frame, editbox = CW.build(18)
+	local bar = CreateFrame('Frame', nil, frame)
+	bar:SetSize(100, 24)
+	rawset(frame, 'CombatLogQuickButtonFrame', bar)
+	profile.chat.theme = 'none'
+	CHT:SkinChatFrame(frame)
+	local _, relative, _, _, y = editbox:GetPoint(1)
+	eq(relative, frame, 'on the window')
+	eq(y, 25, "the bar's height and the 1 every box has")
+	profile.chat.theme = 'theme'
+	CHT:ApplyChatFrameConfig(frame)
+	local backdrop = st:DrawnFrame(frame)
+	_, relative, _, _, y = editbox:GetPoint(1)
+	eq(relative, backdrop, 'under a theme, on the backdrop')
+	eq(y, 1, 'which already includes the bar')
+end)
+
+-- The overflow button is held from the profile paths too: a profile change (UpdateConfig's
+-- ApplyAppearance) and the login (OnEnable).
+test("a profile change and the login hold the overflow button the same way", function()
+	local had_dock, had_windows = _G.GENERAL_CHAT_DOCK, NUM_CHAT_WINDOWS
+	NUM_CHAT_WINDOWS = 0
+	local button = CreateFrame('Button', nil, UIParent)
+	_G.GENERAL_CHAT_DOCK = { overflowButton = button }
+	button:SetAlpha(0.6)
+	profile.chat.tabs.fade = false
+	CHT:ApplyAppearance()
+	eq(button:GetAlpha(), 1, 'a profile switch to Fade tabs off holds it at 1')
+
+	local L = load_test_file('lib/source_lex.lua')
+	local code = select(1, L.Lex(read_saftui_source('SaftUI-Chat/chatframe.lua')))
+	local body = code:match('function CHT:OnEnable%\(%\).-\nend')
+	check(body and body:find('self:HoldOverflowAlpha()', 1, true), 'OnEnable holds it at login')
+	_G.GENERAL_CHAT_DOCK, NUM_CHAT_WINDOWS = had_dock, had_windows
+end)
