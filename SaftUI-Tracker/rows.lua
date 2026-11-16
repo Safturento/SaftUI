@@ -200,7 +200,9 @@ end
 -- Puts the fonts the page and the Fonts tab give on every text, and tells the
 -- measures when one changed (the page's Font or Header font, or the font
 -- object's own size, shadow or spacing, which the Fonts tab changes without
--- telling any module). Checked at the start of every draw.
+-- telling any module, or the UI scale, at which the game snaps glyphs to whole
+-- pixels and so can wrap a text to another number of lines at the same width).
+-- Checked at the start of every draw.
 function TR:CheckFonts()
 	local changed = false
 	local key = ''
@@ -216,6 +218,7 @@ function TR:CheckFonts()
 		end
 		key = key .. FontKey(font) .. '|'
 	end
+	key = key .. tostring(self.window:GetEffectiveScale())
 	if key ~= self.fontKey then
 		self.fontKey = key
 		changed = true
