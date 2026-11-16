@@ -1,4 +1,4 @@
-<!-- @dsCard group="Controls" height=320 width=830 subtitle="Four text items on one line (one own, one off, one under the mouse), and the Hotkey item's open menu" -->
+<!-- @dsCard group="Controls" height=470 width=830 subtitle="Quarter items (one own, one off, one under the mouse), a Parts section of half rows with summaries, and the Hotkey item's open menu" -->
 <!doctype html>
 <html>
 <head>
@@ -9,6 +9,11 @@
   .item.is-off .sui-label { color: var(--text-muted); }
   .item .more { display: flex; align-items: center; justify-content: center; }
   .item.is-hovered .more .sui-ic { stroke: var(--accent-light); }
+  .sui-line.is-halves { grid-template-columns: 1fr 1fr; }
+  .part .summary { flex: 1; text-align: right; color: var(--text-muted); white-space: nowrap; overflow: hidden; margin-right: 6px; }
+  .part .sui-hover { flex: 1; justify-content: flex-end; margin-right: 6px; }
+  .part.is-hovered { background-image: linear-gradient(color-mix(in srgb, var(--accent-light) calc(var(--state-hover) * 100%), transparent), color-mix(in srgb, var(--accent-light) calc(var(--state-hover) * 100%), transparent)); }
+  .part.is-lit .more .sui-ic { stroke: var(--text); }
   .menu { width: var(--menu-width); padding: var(--panel-pad) var(--dialog-pad) var(--dialog-pad); margin-left: auto; position: relative; }
   .menu .group-title { color: var(--text-muted); margin-bottom: var(--title-gap); }
   .menu .sui-section { width: 100%; }
@@ -25,6 +30,19 @@
         <div class="sui-cell item"><div class="sui-box sui-check is-on"></div><div class="sui-label label">Stack count</div><div class="more"><svg class="sui-ic sui-ic-menu" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg></div></div>
         <div class="sui-cell item is-off"><div class="sui-box sui-check"></div><div class="sui-label label">Macro name</div><div class="more"><svg class="sui-ic sui-ic-menu" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg></div></div>
         <div class="sui-cell item"><div class="sui-box sui-check is-on"></div><div class="sui-label label">Cooldown</div><div class="more"><svg class="sui-ic sui-ic-menu" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="sui-section">
+    <div class="section-title">Parts</div>
+    <div class="sui-panel">
+      <div class="sui-line is-halves">
+        <div class="sui-cell item part is-own is-lit"><div class="sui-box sui-check is-on"></div><div class="sui-label label">Name</div><div class="summary field">Health</div><div class="more"><svg class="sui-ic sui-ic-menu" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg></div></div>
+        <div class="sui-cell item part is-hovered"><div class="sui-box sui-check is-on"></div><div class="sui-label label">Health text</div><div class="sui-hover small"><span class="is-own-word">Own</span><svg class="sui-ic sui-ic-reset" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg><span>&middot; Apply to:</span><a>All</a><span>|</span><a>Multiple</a></div><div class="more"><svg class="sui-ic sui-ic-menu" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg></div></div>
+      </div>
+      <div class="sui-line is-halves">
+        <div class="sui-cell item part"><div class="sui-box sui-check is-on"></div><div class="sui-label label">Power text</div><div class="summary field">Power</div><div class="more"><svg class="sui-ic sui-ic-menu" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg></div></div>
+        <div class="sui-cell item part is-off"><div class="sui-box sui-check"></div><div class="sui-label label">Raid target</div><div class="summary field">Unit frame</div><div class="more"><svg class="sui-ic sui-ic-menu" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg></div></div>
       </div>
     </div>
   </div>

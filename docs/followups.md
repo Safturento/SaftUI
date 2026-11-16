@@ -7,6 +7,11 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-16 — Search stops at 100 results, so a part's name cuts the last pages](#2026-11-16--search-stops-at-100-results-so-a-parts-name-cuts-the-last-pages)
+  - [2026-11-16 — All units: small rules left open](#2026-11-16--all-units-small-rules-left-open)
+  - [2026-11-16 — Nameplates and All units](#2026-11-16--nameplates-and-all-units)
+  - [2026-11-16 — The Sourced-from line on a plate page could link to the other page](#2026-11-16--the-sourced-from-line-on-a-plate-page-could-link-to-the-other-page)
+  - [2026-11-16 — The TO dropdown names parts by key](#2026-11-16--the-to-dropdown-names-parts-by-key)
   - [2026-11-16 — The states scan misses hand-rolled states it should catch](#2026-11-16--the-states-scan-misses-hand-rolled-states-it-should-catch)
   - [2026-11-16 — A Buttons color saved by an older build after a downgrade stays as an orphan key](#2026-11-16--a-buttons-color-saved-by-an-older-build-after-a-downgrade-stays-as-an-orphan-key)
   - [2026-11-16 — The tracker's whole pixels at other scales](#2026-11-16--the-trackers-whole-pixels-at-other-scales)
@@ -79,7 +84,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-13 — Objective tracker skin: in-game checks and what was left out](#2026-11-13--objective-tracker-skin-in-game-checks-and-what-was-left-out)
   - [2026-11-13 — Scale SaftUI across resolutions and stay pixel perfect](#2026-11-13--scale-saftui-across-resolutions-and-stay-pixel-perfect)
   - [2026-11-13 — Bags: a general sort order of draggable blocks, with a per-category override](#2026-11-13--bags-a-general-sort-order-of-draggable-blocks-with-a-per-category-override)
-  - [2026-11-13 — Unit frames: shared settings across units, and small parts as menu items](#2026-11-13--unit-frames-shared-settings-across-units-and-small-parts-as-menu-items)
   - [2026-11-13 — Test mode: choose which elements the previews show](#2026-11-13--test-mode-choose-which-elements-the-previews-show)
   - [2026-11-13 — Unit frame profiles are hard to find in /sui](#2026-11-13--unit-frame-profiles-are-hard-to-find-in-sui)
   - [2026-11-13 — Codebase cleanup: small things left over](#2026-11-13--codebase-cleanup-small-things-left-over)
@@ -142,6 +146,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-13 — Unit frames: shared settings across units, and small parts as menu items](#2026-11-13--unit-frames-shared-settings-across-units-and-small-parts-as-menu-items)
   - [2026-11-11 — Old gear's tabard and shirt exclusion never matched](#2026-11-11--old-gears-tabard-and-shirt-exclusion-never-matched)
   - [2026-11-15 — A bag window's least width ignores a Window titles change](#2026-11-15--a-bag-windows-least-width-ignores-a-window-titles-change)
   - [2026-11-11 — Bag categories: a Set checkbox is dead while the Equipment sets entry hides the window](#2026-11-11--bag-categories-a-set-checkbox-is-dead-while-the-equipment-sets-entry-hides-the-window)
@@ -236,6 +241,81 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-16 — Search stops at 100 results, so a part's name cuts the last pages
+
+**What:** `/sui`'s search lists at most 100 results (`MAX_RESULTS` in `OM.Search`, `SaftUI-Core/Config/optionsmodel.lua`). A part's name matches its whole menu on every page, so searching a part by name over all fourteen picks (`Health text`, `Cast bar`) fills the 100 with the first pages (All units and the first eleven units) and never lists Raid 40's menu or the nameplates'.
+
+**Why noticed:** Task 7 of the unit frames parts and sharing plan wrote `tests/unitframes/search_test.lua`. Its brief's example, `Health text`, could not list a result per unit: the cap cut it. The test pins the cut as a fact; the per-unit cases use `Quest` and `Deficit`, whose matches fit.
+
+**Anchors:** `SaftUI-Core/Config/optionsmodel.lua` (`MAX_RESULTS`, `OM.Search`); `tests/unitframes/search_test.lua` (case 2, the cap); `docs/superpowers/plans/2026-11-15-saftui-unitframes-parts-and-sharing.md` (Task 7).
+
+**What's been considered:** Group the results per page and show a count ("Raid 40: 12 results"), so a page is never silently missing; rank a part row above its menu's settings, so the row of each page comes first and the menu's settings after; raise the cap (the cost is the results list's rows, and a list of 300 reads badly). The cap is Core's documented behavior and not unit-frame-specific, so a change is Core's and every page's search changes with it.
+
+**Shape of work:** Small model change in `OM.Search` (the order and a per-page cap or count) with the existing search tests updated, then the unit page cases in `search_test.lua` flipped from "pinned as a fact" to the new rule.
+
+**Open questions:** The owner's call: grouping with a count, ranking, or a higher cap. Whether a follower should be listed beside All units at all (search lists both today and knows no owner).
+
+### 2026-11-16 — All units: small rules left open
+
+**What:** Five small rules of the All units wiring that the owner has not decided or that no test pins:
+- A slider dragged away from the value a unit follows and back to it ends the drag as the unit's own setting, because the first step away made it own. A single set to the value it already shows keeps it following.
+- A Custom color picked while its box is unticked keeps the unit following, and the unit's hidden color is replaced if All units later ticks its box (0.9 became 0.3 in the review). Ticking the unit's own box first keeps it.
+- The rule that an owner stays an owner when it sets All units' value (the spec says an owner counts as differing even when equal) has no test: a mutant that makes it follow survives.
+- From the second login AceDB's wildcard leaves empty tables under the saved `backup` (`debuffs`, `grouproleindicator`, `questindicator`, `raidroleindicator`, `raidtargetindicator`, `range_alpha`). No value, harmless; storing the backup out of the wildcard's reach would avoid it.
+- The paused notice's wording, "a Reset there follows All units when sharing resumes": the paused Reset writes All units' value at once.
+
+**Why noticed:** The reviews of Task 6 (`.superpowers/sdd/2026-11-15-saftui-unitframes-parts-and-sharing/task-6-review.md`, the last two rounds): all Minor or Nit, left open when the owner said go to merge on 2026-11-16.
+
+**Anchors:** `SaftUI-Unitframes/config/shared.lua` (`UF:OwnShared`, the set rule, `MakeBackup`, the notices); `SaftUI-Unitframes/config/sharedoptions.lua` (`DecorateShares`, `UF.SharedText`); `tests/unitframes/shared_page_test.lua`, `shared_guard_test.lua`; `task-6-review.md` ("New findings", "Final residual risks").
+
+**What's been considered:** A drag's own flag could be decided at the end of the drag, when the value is compared (the kit's `applyOnRelease` is the hook); a color's hidden value could be kept apart from its box; the owner rule needs only a test.
+
+**Shape of work:** One small round: a test for the owner rule, the wording of the notice, then the two behaviors if the owner wants them changed. The backup's empty tables are optional.
+
+**Open questions:** Whether a slider dragged back to the followed value should follow again; whether a Custom color should be kept when its box is later ticked on All units.
+
+### 2026-11-16 — Nameplates and All units
+
+**What:** The nameplates (Enemy and Friendly) are not members of All units: their settings are their own, and a change on All units never reaches them. The plate pages have Parts rows and shared-looking settings (Theme, Background, Name, Health text) that a unit frame page would share.
+
+**Why noticed:** Ruling 4 of the unit frames parts and sharing plan (`.superpowers/sdd/2026-11-15-saftui-unitframes-parts-and-sharing/progress.md`), made while the owner slept: plates differ from frames by default (a 200 by 20 bar, a name inside, short health), so one "most units show" value would give every plate an own mark and every plate setting a diff on All units. It is cheap to reverse and was told to the owner.
+
+**Anchors:** `SaftUI-Unitframes/config/shared.lua` (`UF.SHARE_MEMBERS`: eleven members, no plate); `SaftUI-Unitframes/config/units/all.lua`; `SaftUI-Unitframes/nameplates/options.lua` (the plate pages); the spec's 4.9.
+
+**What's been considered:** Making each plate kind a member (Enemy and Friendly), with the plates' own defaults held in their own entries; or a second All entry for plates; or a note on the plate pages saying All units does not reach them (they have none today).
+
+**Shape of work:** A design pass first: which settings the plates share with the frames and what a plate's own default should read as. Then a members' list change, the plate pages' decorator (plate pages are built in `nameplates/options.lua`, not `GetUnitConfig`) and the conversion's tests over the plate profiles.
+
+**Open questions:** Whether the owner wants plates in All units at all; if yes, as one member or two.
+
+### 2026-11-16 — The Sourced-from line on a plate page could link to the other page
+
+**What:** With "Use friendly nameplates' settings" checked, the Enemy page shows a centred "Sourced from friendly nameplates" line (and the Friendly page the same for the enemy's). The line is text; it could be a link that opens the other plate page.
+
+**Why noticed:** An owner question from Task 5's review (`task-5-review.md`, "Left for the owner").
+
+**Anchors:** `SaftUI-Unitframes/nameplates/options.lua` (`sourced`, the line at order 2001); `SaftUI-Core/Config/optionsmodel.lua` (a way to reveal a path: `OW:Reveal`).
+
+**What's been considered:** The line's option is a description today; a link needs a row type or a `desc` with a click that selects the other pick through the window (`OW:Reveal` takes a path and opens the unit's page).
+
+**Shape of work:** Small: the line becomes a link row that reveals `Unitframes.friendlynameplate.general` (or the enemy's). A test that the click lands on the right pick.
+
+**Open questions:** Whether a link is wanted, or the line is enough.
+
+### 2026-11-16 — The TO dropdown names parts by key
+
+**What:** A Position block's TO dropdown on a unit frame lists the unit's parts by their element key ("ReadyCheckIndicator", "RaidTargetIndicator", "AdditionalPower"), not by the names the pages use ("Ready check", "Raid target", "Additional power"). The dropdown is now 136 wide (`selectWidth`), 4 less than it was, so a long key may be cut.
+
+**Why noticed:** An owner question from Task 5's review, with the in-game check "is AdditionalPower cut in the TO dropdown" (checklist section I, step 14).
+
+**Anchors:** `SaftUI-Core/Config/optionsposition.lua` (`toWidth`, `selectWidth`); `SaftUI-Unitframes/config/position.lua` (the anchor choices); `UF.ELEMENT_NAMES` in `SaftUI-Unitframes/config/parts.lua` (the page names); `tests/unitframes/parts_test.lua` (N1: select 136, name box the same, gap 12).
+
+**What's been considered:** Naming the list by `UF.ELEMENT_NAMES` while keeping the saved key (what the part summaries and tooltips already do, "Right of Cast bar: 2, 3"); the name box for a global frame is typed and unchanged.
+
+**Shape of work:** Small: the anchor list's display names, with the keys saved as before, plus a test that every key has a name.
+
+**Open questions:** Whether the owner saw a name cut in game; if not, the keys can stay until someone asks.
 
 ### 2026-11-16 — The states scan misses hand-rolled states it should catch
 
@@ -755,6 +835,8 @@ What's left needs evidence from the game. In the order they'd be checked:
 
 **Shape of work:** Small if the unit frame `set` learns a batching flag (`OM.batching`), but it touches every part page's set. Worth doing only if a reset of a unit frame Position is ever seen to hitch.
 
+**Update 2026-11-16:** an All units change reaches every follower, so the once-a-frame update (`UF:UpdateConfig('all')` propagating to each unit once a frame) is what bounds it; a Position reset on All units is still one write per part, and each runs its update. Not made worse by the sharing, not fixed by it.
+
 ### 2026-11-15 — After a UI scale change, a reset half-pixel Position can show its icon again
 
 **What:** A default whose offset is half a pixel (the player's Power at x 0.5) resets to the rounded value the position set stores. At the scale it was reset at it shows no icon, but after a UI scale change the rounding differs and the icon can come back; one more click clears it.
@@ -929,6 +1011,8 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 **Shape of work:** A font change restyles texts only, as the bags now do. For the action bars a text-only path (set the text config of each affected button and restyle HotKey, Count and Name, with no `LayoutBar`, `UpdateVisibility`, `UpdateBindings`, `SetBackdrop` or `SkinIcon`; at least run `UpdateBindings` once in `UpdateBars`); for the unit frames a font-only flag through `UF:UpdateConfig` and `UpdateUnitFrame` that skips `UpdateAllElements`; for the tracker a redraw from the cached model. Three small tickets or one.
 
 **Open questions:** Whether a held slider should also coalesce to one restyle per frame.
+
+**Update 2026-11-16:** a font Size drag on All units now reaches every unit that follows it, but through `UF:UpdateConfig('all')`, once per follower per frame (pinned by `tests/unitframes/shared_page_test.lua`: a held slider's cost is under 4 KB a step and nothing runs in combat). The element's full update on each step is still the cost named here.
 
 ### 2026-11-15 — Hide full with a secret health: lift the limit with a Step curve into the text's alpha
 
@@ -1167,6 +1251,8 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 
 **Open questions:** How a shipped layout is stored and named (data files under `SaftUI-Unitframes/config/`, listed beside the player's own profiles and not editable in place?), and how one is refreshed when the owner changes it. Whether existing players see it after the update or only fresh installs. Whether it is per account or per character. What else belongs in it (action bar layout, bags view, the tracker switch).
 
+**Update 2026-11-16:** a shipped unit frame layout (a preset) now carries All units: the unit frame profile's `all` table, each unit's own flags and the marker are part of a profile (`SaftUI-Unitframes/config/shared.lua`, `UF.CopyProfileData`), and Copy and Export carry them, so a preset is converted as it is loaded. A preset must be made on this build, since an older export is converted at the next login.
+
 ### 2026-11-14 — /sui at half with the sidebar collapsed: a validation error is cut or hidden in the footer
 
 **What:** With the sidebar collapsed at half width (W4), the footer's status line, where a validation error such as "Size: a number, please" shows, has a region about 54 wide under Thick and Thin (96 under Blizzard), so the message is cut after two lines, and with one more icon command registered the region is 22, under `FOOTER_MIN_ROOM` (24), so the status line is hidden and no message shows anywhere. The page's field then keeps only the typed text.
@@ -1275,16 +1361,6 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 
 **Open questions:** All of the above; not yet discussed. Start it once the action bars' shared settings are built.
 
-### 2026-11-13 — Unit frames: shared settings across units, and small parts as menu items
-
-**What:** The action bars' shared-settings model (an "All" entry, own marks, the diff icon, "Apply to: All | Multiple") applied across unit frames, and a unit's texts, icons and small parts drawn as one-line menu items on its General page, cutting Player's tabs from about thirteen to five.
-
-**Why noticed:** The user, 2026-11-13: the Apply to idea "is widely used for options across the action bars (we could also use it elsewhere, like a lot of unit frames changes)", and of the unit frame mockup: "the unitframe change is great". They asked to see the menu with the full unit frame position block (the TO dropdown) "to make sure that's also planned out"; it fits a 400 wide menu (the block is 351 wide).
-
-**Anchors:** `.superpowers/brainstorm/46409-1794604463/content/actionbars-shared-v4.html` (part 2, the mockup), `docs/superpowers/specs/2026-11-13-saftui-actionbars-shared-settings-design.md` ("Later"), `SaftUI-Unitframes/config/`, `SaftUI-Core/Config/optionsposition.lua`.
-
-**Shape of work:** A project of its own, after the action bars prove the kit pieces. Health, Power, Cast bar and Auras keep tabs. Needs its own design round: what "All units" means when units differ so much by default, and whether sharing is per unit group (party and raid) instead.
-
 ### 2026-11-13 — Test mode: choose which elements the previews show
 
 **What:** Let Test mode show or hide each kind of element on its preview frames: buffs, debuffs, raid markers and so on. Today a group's Test mode (`/sui` → Unitframes → Party, Raid 10, Raid 40 or Boss → Layout → Test mode) draws a fixed set: size, theme, health and power bars, name, role corner and range alpha. It draws no auras, castbars, portraits, raid targets, ready checks or leader icons, so those can't be placed or sized without a real group.
@@ -1298,6 +1374,8 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 **Shape of work:** A design pass first: which elements, whether the choice is one list of checkboxes beside Test mode or per element, whether it's saved in the profile or lasts until `/reload` like Test mode itself, and whether the single frames get previews. Then likely two or three tasks: preview data and frames per element, the options, and tests.
 
 **Open questions:** The ones in the design pass above. Should the sample auras follow each aura group's real filter, or always show?
+
+**Update 2026-11-16:** the unit frame pages now have a Parts section (`SaftUI-Unitframes/config/parts.lua`), and the group pages' Test mode previews follow a part's settings changed in its menu (pinned by `tests/unitframes/group_preview_test.lua`). Which elements a preview draws is still this entry's: the part rows are where a per-element Show for Test mode would sit.
 
 ### 2026-11-13 — Unit frame profiles are hard to find in /sui
 
@@ -2276,6 +2354,8 @@ The roll bar skin (`SaftUI-Loot/roll.lua`) calls them on Blizzard pieces: `IconF
 - Should every element be able to detach to the screen, or only the ones that do today?
 - Should dragging a frame-relative element in edit mode detach it?
 
+**Update 2026-11-16:** the parts are now rows in each unit's Parts section, each with a Position block as the last thing in its menu (`UF.PARTS`); a part placed against the screen is still moved by typing its offsets there, since no mover exists for it. A mover would sit beside the part row.
+
 ### 2026-11-09 — Settings with no /sui option, settings nothing reads, and frames with no edit mode mover
 
 **What:** An audit of every `st.defaults` table against `/sui` and edit mode. It found three kinds of gap. Some settings are read by the code but have no option. Some settings are read by nothing. Some frames SaftUI places have no edit mode mover. It also found a few broken options. Unit frame findings already listed in [Unit frame defaults that nothing reads, or that break when turned on](#2026-11-07--unit-frame-defaults-that-nothing-reads-or-that-break-when-turned-on) aren't repeated here.
@@ -2658,6 +2738,19 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-13 — Unit frames: shared settings across units, and small parts as menu items
+
+**What:** The action bars' shared-settings model (an "All" entry, own marks, the diff icon, "Apply to: All | Multiple") applied across unit frames, and a unit's texts, icons and small parts drawn as one-line menu items on its General page, cutting Player's tabs from about thirteen to five.
+
+**Why noticed:** The user, 2026-11-13: the Apply to idea "is widely used for options across the action bars (we could also use it elsewhere, like a lot of unit frames changes)", and of the unit frame mockup: "the unitframe change is great". They asked to see the menu with the full unit frame position block (the TO dropdown) "to make sure that's also planned out"; it fits a 400 wide menu (the block is 351 wide).
+
+**Anchors:** `.superpowers/brainstorm/46409-1794604463/content/actionbars-shared-v4.html` (part 2, the mockup), `docs/superpowers/specs/2026-11-13-saftui-actionbars-shared-settings-design.md` ("Later"), `SaftUI-Unitframes/config/`, `SaftUI-Core/Config/optionsposition.lua`.
+
+**Shape of work:** A project of its own, after the action bars prove the kit pieces. Health, Power, Cast bar and Auras keep tabs. Needs its own design round: what "All units" means when units differ so much by default, and whether sharing is per unit group (party and raid) instead.
+
+**Resolved 2026-11-16:** built as the plan `docs/superpowers/plans/2026-11-15-saftui-unitframes-parts-and-sharing.md` (spec `docs/superpowers/specs/2026-11-15-saftui-unitframes-parts-and-sharing-design.md`): a unit's texts, icons and small parts are half rows in a Parts section on its General page (`SaftUI-Unitframes/config/parts.lua`) and each unit has five tabs; an All units entry first in the Unit picker holds the settings the units share (`SaftUI-Unitframes/config/shared.lua`, `sharedoptions.lua`, `units/all.lua`), with own marks, the diff icon, Apply to and `/sui uf restore` and `/sui uf share`; Health text and Power text are in two places; search, the group and nameplate pages are pinned by tests. The owner's decisions are 64 to 70 in `docs/design-system/05-decisions.md`; the in-game checklist is `docs/superpowers/plans/2026-11-15-saftui-unitframes-parts-and-sharing-in-game-checklist.md`. What was left over is in the entries "Search stops at 100 results, so a part's name cuts the last pages", "All units: small rules left open", "Nameplates and All units", "The Sourced-from line on a plate page could link to the other page" and "The TO dropdown names parts by key".
+
 
 ### 2026-11-11 — Old gear's tabard and shirt exclusion never matched
 

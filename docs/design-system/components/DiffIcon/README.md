@@ -33,3 +33,7 @@ Same icon and colour.
 - Do keep the full list in the tooltip, so it can be long without growing the row.
 - Don't give the diff icon a colour of its own: it is Muted, a dimmed mark beside the label, and has no token of its own. Text > Warning (`text-warning`) is the bags' rule editor's OR, not this.
 - Don't hide the icon until hover.
+
+## On All units (decision 68)
+
+All units is the All page of the unit frames: a shared row some unit owns shows the diff icon after its name, and the tooltip lists each unit and its value ("Party: Show level"). On a part row (`MenuItem`) it follows the part's name, and the tooltip names each unit with the settings of the part that differ. Nameplates are not members, so they are never listed. A setting with no owner shows no icon.

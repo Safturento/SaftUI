@@ -31,3 +31,7 @@ The Settings check boxes and menu background; Apply is a panel button.
 
 - Do name members as the picker does ("Bar 4", "Pet").
 - Don't apply on each click: that is the `CheckList`, for lists that change things at once.
+
+## Units (decision 68)
+
+On the unit frame pages the members are units, in the Unit dropdown's order, named as the picker names them ("Target", "TargetTarget", "Raid 10"); Enemy and Friendly nameplates are not members. A unit is left out of the list where it has no such setting (a unit with no Cast bar). On a unit's page the chosen units take this value as their own (or simply follow it when it equals All units'); on All units the list holds the units that own the setting, and the chosen ones follow All units again. A part row's Apply to acts on its Show box only; open the menu for each setting's own Apply to.

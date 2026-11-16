@@ -59,3 +59,11 @@ The profile line at the sidebar's foot reads "Profile: Default", the label in `t
 - Do give every option a `desc`; the label's tooltip shows it.
 - Don't add tabs to a page that fits on one; fold small parts into `MenuItem`s first.
 - Don't draw your own controls on a page: the Bags' Categories tab does, and it is listed under Discrepancies.
+
+## The unit frame page's picker and tabs (decisions 64, 68)
+
+- **The Unit picker starts with All units** (14 picks: All units, Player, Target, TargetTarget, Focus, FocusTarget, Pet, PetTarget, Boss, Party, Raid 10, Raid 40, Enemy nameplates, Friendly nameplates). A pick's own control and the profile sit on the picker's line: Unit, Copy from (units only), Profile, Manage; a piece that would pass the body's width starts a new line.
+- **Five tabs per unit:** General, Health, Power, Cast bar, Auras. Under Power (Player) and Auras a **second row of tabs** (`childGroups = 'tab'` under a picker): Power bar and Additional power, Buffs and Debuffs. It sits under the tab row and above the Unit dropdown; the open sub tab is kept when the unit changes.
+- **General** reads Frame, Position, a group's Layout and Range, then Parts (decisions 64, 65). Parts are half rows: two to a line at full size, one at half size.
+- **Search** lists a part by its name and its settings by theirs, at the part, on every pick, All units first (a follower is listed like an owner); a click opens the unit's General with the part's menu open.
+- Nameplate pages: the same General without Frame; while a "use the other's settings" box is checked the part rows are hidden (not greyed), except the Enemy page's Threat.

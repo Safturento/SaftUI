@@ -36,3 +36,7 @@ Same colours. The mark sits at the cell's edge (`OB.FLAT.markX` 0) and the label
 - Do show the hover line only on rows that offer something, so plain rows never move under the mouse.
 - Don't use this mark for anything but a shared setting's own value.
 - Don't show "own" on the All page: there the sign is the `DiffIcon`.
+
+## On the unit frame pages (decisions 64, 68)
+
+A unit is a member of All units (the unit pages, as the action bars' bars are of All bars). A unit's setting is own when it differs from what All units holds; the row and the setting inside a part's menu carry the mark (the 2px accent bar and the accent label). A part row (`MenuItem`) is marked when its Show is own, or when anything in its menu is. Picking the value All units already holds changes nothing: the unit keeps following. Picking a different value makes it own; its Reset then makes the unit follow All units again. The hover line on a part row sits in the summary's place (nothing moves); the rows inside a menu keep the lifting line.

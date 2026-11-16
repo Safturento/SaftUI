@@ -40,3 +40,9 @@ Same icon and colours.
 - Do give it a tooltip; it replaces a word.
 - Do let it go when the value is back at its default, so its presence means "changed".
 - Don't reset a whole section with one button.
+
+## On a part row and on a shared unit row (decisions 50, 64, 68)
+
+- **A part row's reset is its Show box's:** the arrow beside the dots shows while the box differs from its default, and puts the box back. There is no whole-part reset: every setting inside the menu keeps its own arrow. The dots tell that something inside differs: they rest in `text` (not `text-muted`) while any setting in the menu would offer its reset, with a tooltip counting them.
+- **On a unit page a shared setting's Reset means "use All units' value",** not "this unit's own default": the unit follows All units again and the own mark goes. On a fresh profile some units own settings from the start (Party's Show level is off, All units' is on), so their Reset changes what is shown. A setting a unit owns outright (Enable, Width, Height, Position, Layout, Range) keeps the default reset.
+- **On All units** a row's Reset is the setting's default; every unit that follows takes it, and a unit that owns it keeps its own.
