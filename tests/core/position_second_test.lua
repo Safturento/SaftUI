@@ -83,6 +83,28 @@ test('the checker: a part\'s Position is skipped and named, not checked', functi
 	eq(#p3, 1, 'on a page that is not the unit frames, the castbar tab is checked')
 end)
 
+test("the unit frame part titles (Text position and the like) are a part's on the Unit frames page only", function()
+	walk_model()
+	local rows = { enable = { type = 'toggle', name = 'Enable', order = 1 } }
+	local function page(key, title)
+		return { [key] = { type = 'group', name = 'P', childGroups = 'tab', args = {
+			general = { type = 'group', name = 'General', order = 1, args = {
+				enable = rows.enable, layout = inline(3, 'Layout'), text = inline(4, 'Text'), position = position(1000, title),
+			} },
+		} } }
+	end
+	for title in pairs(PS.UNITFRAME_PART_TITLES) do
+		local problems, _, skipped = PS.problems(page('Unitframes', title), 'Unitframes')
+		eq(#problems, 0, title .. ' on the Unit frames page: a part\'s, left alone')
+		eq(#skipped, 1, title .. ' on the Unit frames page: named')
+		eq(#(PS.problems(page('Other', title), 'Other')), 1, title .. ' on another page: the frame\'s, checked')
+	end
+	-- The two titles that are a part's on every page stay so.
+	for title in pairs(PS.PART_TITLES) do
+		eq(#(PS.problems(page('Other', title), 'Other')), 0, title .. ' on another page: still a part\'s')
+	end
+end)
+
 -- The Positions this test leaves where their own section has them: a text's or an
 -- icon's within a unit frame's bar tab (Health's and Power's Text position, the cast
 -- bar's Spell name, Time and Icon, the auras' Timer and Count), built by
