@@ -131,6 +131,18 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	A description with SaftUI's fill set is a fill row too, its minHeight
 	the height it would have without: its text sits in the middle of it.
 
+	A part row (an item with a summary, optionsitem.lua) is the same item row
+	with a summary right of its label (OB.PlaceSummary, optionsshare.lua, run last
+	in PlaceRow and in a drag's Refresh), its hover line inline in the summary's
+	place (cell.lineInline, cell.lineX), a click on the row anywhere but on its
+	own controls that opens its menu (the row frame's OnMouseUp, frame.partRow:
+	the item widget, set by PlaceRow and cleared at every acquire), and the
+	interaction states' Row hover (st:AddStates(frame, 'row', { wire = false })
+	once per pooled frame; set on a part row's enter, cleared by an OnUpdate
+	watch of IsMouseOver, since moving onto the row's own controls fires its
+	OnLeave; cleared at every acquire; never RemoveStates: a pooled frame hosts
+	any row type).
+
 	Shareable options (SaftUI's share field) are drawn by optionsshare.lua,
 	which loads right after this file, and so is a setting's own reset (its
 	default field: OB.PlaceDefault, which PlaceRow runs before
@@ -832,6 +844,9 @@ local function PlaceRow(cell, x, y, width)
 		label:SetWidth(max(1, stop - (cell.labelX or 0)))
 		cell.lineEnd = stop
 		OB.PlaceLabel(cell, 0)
+		-- A part row (a summary): its click and hover, and its line inline.
+		frame.partRow = widget.isPart and widget or nil
+		cell.lineInline = widget.isPart or nil
 	else
 		label:SetText(row.name)
 		if row.disabled then label:SetTextColor(Muted()) else label:SetTextColor(Normal()) end
@@ -857,6 +872,8 @@ local function PlaceRow(cell, x, y, width)
 	if row.type == 'item' then
 		local state = frame.shareState
 		widget:ShiftBox(state and state.marked and cell.body and cell.body.metrics.markShift or 0)
+		-- A part row's summary and line, from where all of that ended up.
+		if OB.PlaceSummary then OB.PlaceSummary(cell) end
 	end
 end
 
@@ -867,6 +884,14 @@ local function PlaceResult(cell, x, y, width)
 end
 
 ------------------------------------------------------------------ the body
+
+-- A part row's hover look ends once the mouse is off the whole row (its own
+-- controls count as on it), and the watch with it.
+local function RowWatch(frame)
+	if frame:IsMouseOver() then return end
+	frame:SetScript('OnUpdate', nil)
+	st:SetState(frame, 'hover', false)
+end
 
 local Body = {}
 Body.__index = Body
@@ -886,12 +911,26 @@ function OB.New(content, root, onChanged, width, opts)
 			frame.label = Text(frame, 'label')
 			-- Wrapped: the game passes these scripts a second argument (motion),
 			-- which ShowTip and HideTip would take for the tooltip's owner. A
-			-- shareable row's hover line shows too (optionsshare.lua).
+			-- shareable row's hover line shows too (optionsshare.lua), and a part
+			-- row's hover look starts.
 			frame:SetScript('OnEnter', function(self)
 				ShowTip(self)
 				if OB.ShareEnter then OB.ShareEnter(self) end
+				local part = self.partRow
+				if part and not part.disabled then
+					st:SetState(self, 'hover', true)
+					self:SetScript('OnUpdate', RowWatch)
+				end
 			end)
 			frame:SetScript('OnLeave', function(self) HideTip(self) end)
+			-- A part row's click (anywhere but on its own controls) opens its menu.
+			frame:SetScript('OnMouseUp', function(self, button)
+				local part = self.partRow
+				if part then part:RowClick(button) end
+			end)
+			-- The Row hover, set by hand (wire = false: the pooled frame hosts any row
+			-- type, and OnLeave fires as the mouse moves onto the row's own controls).
+			st:AddStates(frame, 'row', { wire = false })
 			return frame
 		end),
 		result = Pool(function()
@@ -1034,6 +1073,10 @@ function Body:RowCell(row)
 	if not W.WIDTH[row.type] then return nil end -- not a type the widgets draw
 	local frame = Acquire(self.pools.row)
 	frame.row = row
+	-- A pooled frame starts at rest: no part row, no hover, no watch.
+	frame.partRow = nil
+	if st:GetState(frame, 'hover') then st:SetState(frame, 'hover', false) end
+	frame:SetScript('OnUpdate', nil)
 	-- Set as each row is acquired: a pooled frame may last have been a bare row's.
 	local bare = IsBare(row.type)
 	frame:EnableMouse(not bare)
@@ -1356,6 +1399,8 @@ function Body:Refresh(except)
 		if widget and OB.PlaceDefault then
 			OB.PlaceDefault(cell)
 			if OB.FollowShare then OB.FollowShare(cell) end
+			-- A part row's summary and line, after the icons came or went.
+			if cell.row.type == 'item' and OB.PlaceSummary then OB.PlaceSummary(cell) end
 		end
 	end
 end

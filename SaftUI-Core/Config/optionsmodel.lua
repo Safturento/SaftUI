@@ -98,12 +98,24 @@ local st = SaftUI
 	    share,         -- its Show's (above)
 	    menu = { type = 'group', name, args = { ... }, get, set, ... },
 	    menuTitle,     -- the menu's title (a string or a function of info;
-	                   -- the item's name when nil) }
+	                   -- the item's name when nil),
+	    summary }      -- SaftUI's field, read raw: function(info) -> text, tip.
+	                   -- An item with one is a part row (optionsitem.lua): the
+	                   -- text drawn right of its name, the tip its tooltip
 	Its menu (SaftUI's own field, never in args) is a group drawn in a menu
 	of its own (optionsmenu.lua) from the tree OM.MenuRoot(option) gives:
 	{ menu = option.menu }, so a menu option's path is { 'menu', key } and
 	it inherits get, set and the rest from the menu group only, not from the
 	item's page. Search finds a menu's settings (OM.Search).
+
+	A group may carry mirrorOf (SaftUI's own field, read raw): a list of keys,
+	the path of an item, from an ancestor of the group (the nearest one that holds
+	it), whose menu the group's rows are the very tables of, drawn a second time
+	(a part's settings on a tab beside the part row). OM.MirrorOf(root, path) gives
+	that item's path for any path through such a group, else nil. Search skips the
+	rows of a mirror (the item's menu lists them, once, opening the menu) and the
+	reset walk (tests/lib/reset_walk.lua) walks them at the item, checking each is
+	one of its menu's own options, or saved where its Show box is.
 
 	Any option may carry default (SaftUI's own field, read raw from the
 	option, never inherited): whether its value differs from its default
@@ -1170,6 +1182,125 @@ function OM.ToggleSet(root, row, value)
 	return (safecall(func, info, value and true or false)) and true or false
 end
 
+-- The first group on path (from options) that has mirrorOf, and where its list
+-- leads: the path of the option it names, read from the nearest ancestor of the
+-- group that holds it. nil when no group has one, or the list leads nowhere.
+local function MirrorIn(options, path)
+	local chain = { options }
+	local group = options
+	for i = 1, #path do
+		if type(group.args) ~= 'table' and not group.plugins then return nil end
+		group = GetSubOption(group, path[i])
+		if type(group) ~= 'table' then return nil end
+		chain[i + 1] = group
+		local list = group.mirrorOf
+		if type(list) == 'table' then
+			for depth = i - 1, 0, -1 do
+				local target = chain[depth + 1]
+				for _, key in ipairs(list) do
+					if type(target) == 'table' and (type(target.args) == 'table' or target.plugins) then
+						target = GetSubOption(target, key)
+					else
+						target = nil
+					end
+				end
+				if type(target) == 'table' then
+					local found = {}
+					for j = 1, depth do found[j] = path[j] end
+					for _, key in ipairs(list) do found[#found + 1] = key end
+					return found
+				end
+			end
+			return nil
+		end
+	end
+	return nil
+end
+
+--[[
+	The path of the item the group on path that has mirrorOf stands for (the
+	header), or nil: the first such group down the path decides. A path through
+	an item's menu is not read: the menu's rows are the item's.
+]]
+function OM.MirrorOf(root, path)
+	return MirrorIn(Options(root), path)
+end
+
+------------------------------------------------------------------ what an item's menu offers
+
+-- Per menu (weak, by its group): the menu's own tree and options, and its rows in
+-- a flat list, { option, path, type, key, up }, up the groups above a row inside
+-- the menu ({ child, path, up } each, nil for none). Built once, so asking whether
+-- a menu offers a reset makes no table.
+local menuRows = setmetatable({}, { __mode = 'k' })
+
+local function MenuRows(item)
+	local menu = item.menu
+	local cached = menuRows[menu]
+	if cached then return cached end
+	local root = OM.MenuRoot(item)
+	cached = { root = root, options = Options(root), rows = {} }
+	local function Collect(group, path, up)
+		if type(group.args) ~= 'table' then return end
+		for key, child in pairs(group.args) do
+			if type(child) == 'table' then
+				local childPath = Append(path, key)
+				if child.type == 'group' then
+					Collect(child, childPath, { child = child, path = childPath, up = up })
+				else
+					cached.rows[#cached.rows + 1] = { option = child, path = childPath, type = child.type, key = key, up = up }
+				end
+			end
+		end
+	end
+	Collect(menu, { OM.MENU_KEY })
+	menuRows[menu] = cached
+	return cached
+end
+
+-- Whether a row of a menu is left out of what it offers: hidden or disabled, or
+-- inside a group that is.
+local function MenuRowOff(options, row)
+	if IsHidden(row.option, options, row.path) or IsDisabled(row.option, options, row.path) then return true end
+	local above = row.up
+	while above do
+		if IsHidden(above.child, options, above.path) or IsDisabled(above.child, options, above.path) then return true end
+		above = above.up
+	end
+	return false
+end
+
+--[[
+	How many of an item's menu rows would offer their reset now, for a part row's
+	dots (optionsitem.lua): count, owned, page. A row offers it when it is shown
+	and enabled and either its share is a member page's (share.own) and says it is
+	the page's own, or it has no such share and OM.DefaultDiffers. owned is how
+	many of the count are a share's, and page the page as a sentence reads it
+	(share.pageText, else share.page) of the first of them, nil with none.
+	Nested groups count as part of the menu. Makes no table but the info of a
+	member page's own answer: the rows are listed once per menu.
+]]
+function OM.MenuOffers(root, row)
+	local item = row.option
+	if type(item) ~= 'table' or type(item.menu) ~= 'table' then return 0, 0, nil end
+	local cached = MenuRows(item)
+	local options, rows = cached.options, cached.rows
+	local count, owned, page = 0, 0, nil
+	for i = 1, #rows do
+		local each = rows[i]
+		local share = each.option.share
+		if type(share) == 'table' and share.own ~= nil then
+			if not MenuRowOff(options, each) and ShareAsk(share, 'own', (BuildInfo(each.option, options, each.path))) then
+				count, owned = count + 1, owned + 1
+				if not page then page = Title(share.pageText) or Title(share.page) end
+			end
+		elseif not MenuRowOff(options, each) and OM.DefaultDiffers(cached.root, each) then
+			count = count + 1
+		end
+	end
+	return count, owned, page
+end
+
 --[[
 	Rows whose name, section title or tab title has text in it, ignoring
 	case, across every page, tab and pick:
@@ -1250,6 +1381,10 @@ function OM.Search(root, text)
 		local sections = {}
 		Feed(sections, within or options, group, path, deep)
 		for _, section in ipairs(sections) do
+			-- A mirror's rows are its item's: the item's menu lists them, once.
+			for i = #section.rows, 1, -1 do
+				if MirrorIn(within or options, section.rows[i].path) then table.remove(section.rows, i) end
+			end
 			local sectionMatch = matches(section.title)
 			for _, row in ipairs(section.rows) do
 				-- searchText (SaftUI's own field, a plain string): more words a

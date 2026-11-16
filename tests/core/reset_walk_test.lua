@@ -340,3 +340,73 @@ test("the walk reads the live profile with rawget: a key a reset deleted is seen
 	check(has(problems, 't_.n'), 'a deleted key is a change outside the row: ' .. table.concat(problems, '; '))
 end)
 
+
+------------------------------------------------------------------ mirrors (a part's menu drawn again on a tab)
+
+-- A part row 'part' (its Show saved at t_.a, its menu's Size at t_.n) on a General tab,
+-- and a Text group on another tab that says it mirrors it. mirror(args) is that group
+-- with the given rows.
+local function mirror_world(mirror_args)
+	world()
+	local size = { type = 'range', name = 'Size', order = 1, min = 0, max = 10, step = 1 }
+	local part = { type = 'item', name = 'Part', order = 1,
+		get = function() return st.config.profile.t_.a end,
+		set = function(_, value) st.config.profile.t_.a = value end,
+		saved = st.Config.SavedAt('t_', 'a'),
+		menu = { type = 'group', name = 'Part', saved = st.Config.SavedIn('t_'),
+			get = function(info) return st.config.profile.t_[info[#info]] end,
+			set = function(info, value) st.config.profile.t_[info[#info]] = value end,
+			args = { n = size } } }
+	local args = mirror_args(size, part)
+	return { Page = { type = 'group', name = 'Page', childGroups = 'tab', args = {
+		general = { type = 'group', name = 'General', order = 1, args = { parts = { type = 'group', name = 'Parts', inline = true, args = { part = part } } } },
+		health = { type = 'group', name = 'Health', order = 2, args = {
+			text = { type = 'group', name = 'Text', inline = true, mirrorOf = { 'general', 'parts', 'part' }, args = args } } },
+	} } }, size, part
+end
+
+test("a mirror's rows are walked once, at their part", function()
+	local alone = mirror_world(function() return {} end)
+	local _, walkedAlone = R.problems(alone, 'Page')
+	local root = mirror_world(function(size) return { n = size } end)
+	local problems, walked = R.problems(root, 'Page')
+	eq(#problems, 0, 'the mirror passes: ' .. table.concat(problems, '; '))
+	eq(walked, walkedAlone, "walked as many as the part alone: the mirror's rows count at their part")
+	check(walkedAlone >= 2, "the part's own rows were walked (" .. walkedAlone .. ')')
+end)
+
+test("a mirror's Show, saved where the part's box is, passes: it is the part's own", function()
+	local root = mirror_world(function(size)
+		return {
+			n = size,
+			enable = { type = 'toggle', name = 'Enable', order = 0,
+				get = function() return st.config.profile.t_.a end,
+				set = function(_, value) st.config.profile.t_.a = value end,
+				saved = st.Config.SavedAt('t_', 'a') },
+		}
+	end)
+	local problems = R.problems(root, 'Page')
+	eq(#problems, 0, "a toggle saved at the part's box path passes: " .. table.concat(problems, '; '))
+	-- Saved at another setting: not the part's.
+	root = mirror_world(function(size)
+		return {
+			n = size,
+			enable = { type = 'toggle', name = 'Enable', order = 0,
+				get = function() return st.config.profile.t_.b end,
+				set = function(_, value) st.config.profile.t_.b = value end,
+				saved = st.Config.SavedAt('t_', 'b') },
+		}
+	end)
+	problems = R.problems(root, 'Page')
+	check(has(problems, "Page.health.text.enable: the mirror's enable is not the part's own option"), 'a leaf saved elsewhere fails: ' .. table.concat(problems, '; '))
+end)
+
+test('a mirror holding a copy of a leaf fails', function()
+	local root = mirror_world(function(size)
+		local copy = {}
+		for key, value in pairs(size) do copy[key] = value end
+		return { n = copy }
+	end)
+	local problems = R.problems(root, 'Page')
+	check(has(problems, "Page.health.text.n: the mirror's n is not the part's own option"), 'the problem names the mirror row: ' .. table.concat(problems, '; '))
+end)

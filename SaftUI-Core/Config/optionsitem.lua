@@ -30,6 +30,23 @@ local Kit = W.Kit
 	            (SaftUI's field: the box's room kept empty, so its name
 	            lines up with its neighbours'), else 0
 	  w.value   the Show box's value (nil without one)
+	A part row is an item whose option has a summary (SaftUI's field,
+	optionsmodel.lua): function(info) -> text, tip. The widget then also has
+	  w.summary     a font string (the window's field font, Text > Muted,
+	                right-aligned) holding the text, and w.summaryHit the frame
+	                over it that takes the mouse and shows the tip; the body
+	                places both (optionsshare.lua's OB.PlaceSummary), hiding them
+	                when there is no text, no room, or the hover line takes their
+	                place. w.isPart, w.summaryText and w.summaryTip hold what the
+	                last Refresh read.
+	  w:RowClick(button)  a left click on the row, not on its box, dots, reset
+	                icon, diff icon or line: opens the menu (the body's row frame
+	                runs it from its OnMouseUp, as the summary's frame does)
+	Its dots rest in Text > Normal (not Muted) while any row of its menu would
+	offer its reset (OM.MenuOffers: its settings that differ from their defaults,
+	or on a member page are the page's own), with a tooltip saying how many; and
+	are drawn in the accent while its menu is open (Kit.MarkSlot, which the menu
+	calls).
 	The box and the dots are centred on the widget's frame, which the body
 	makes as tall as the row.
 	  w:OpenMenu()       st.OptionsWindow:OpenMenu(w): true when it opened
@@ -54,16 +71,31 @@ local DOTS_WIDTH, DOTS_HEIGHT, DOTS_ICON = 16, 24, 16
 -- (white under Blizzard, as its Settings panel lights what's under the mouse). The
 -- slot is the item's dots and the font row's link: one look, so they change together.
 -- A slot is a glyph state frame (its icon): the tone is the helper's, hover set here.
-local function SlotRest() return st:Color('text', 'muted'):GetRGB() end
+-- At rest a part row's dots are Text > Normal while button.lit (its menu offers a
+-- reset), and the accent while button.open (its menu is open).
+local function SlotRest(button)
+	if button and button.open then
+		local r, g, b = st:StateColor('edge')
+		return r, g, b
+	end
+	if button and button.lit then return st:Color('text', 'normal'):GetRGB() end
+	return st:Color('text', 'muted'):GetRGB()
+end
 local function PaintSlot(button, over)
 	over = over and true or false
 	if button.blizzard then
-		if over then button.icon:SetVertexColor(1, 1, 1) else button.icon:SetVertexColor(SlotRest()) end
+		if over then button.icon:SetVertexColor(1, 1, 1) else button.icon:SetVertexColor(SlotRest(button)) end
 		if st:GetState(button, 'hover') then st:SetState(button, 'hover', false) end
 	else
 		if st:GetState(button, 'hover') ~= over then st:SetState(button, 'hover', over) end
-		if not over then button.icon:SetVertexColor(SlotRest()) end
+		if not over then button.icon:SetVertexColor(SlotRest(button)) end
 	end
+end
+
+-- The slot drawn open (its menu is) or not, whatever the mouse is doing.
+local function MarkSlot(button, open)
+	button.open = open and true or nil
+	PaintSlot(button, not button.blizzard and st:GetState(button, 'hover') and true or false)
 end
 
 -- The item's dots: its slot's look.
@@ -92,7 +124,7 @@ local function NewSlot(parent, icon)
 		PaintSlot(self, true)
 		if self.tip and not self.disabled then
 			local title, lines = self.tip(self)
-			W.ShowTip(self, title, lines)
+			if title then W.ShowTip(self, title, lines) end
 		end
 	end)
 	button:SetScript('OnLeave', function(self)
@@ -124,7 +156,41 @@ builders.item = function(w)
 	local dots = NewSlot(frame, st.icons.ellipsisVertical)
 	dots:SetPoint('RIGHT', frame, 'RIGHT', 0, 0)
 	dots.onClick = function() w:ToggleMenu() end
+	dots.tip = function() return w:DotsTip() end
 	w.dots = dots
+
+	-- A part row's summary and the frame over it that shows its tip (the body
+	-- places them: OB.PlaceSummary). Made for every item, hidden on the rest.
+	local OB = st.OptionsBody
+	local summary = OB.Text(frame, 'field', 'RIGHT')
+	summary:Hide()
+	w.summary = summary
+	local hit = CreateFrame('Frame', nil, frame)
+	hit:SetHeight(DOTS_HEIGHT)
+	hit:EnableMouse(true)
+	hit:Hide()
+	hit:SetScript('OnEnter', function(self)
+		if w.summaryTip and not w.disabled then W.ShowTip(self, w.summaryTip, nil, 'ANCHOR_TOPLEFT') end
+	end)
+	hit:SetScript('OnLeave', function(self) W.HideTip(self) end)
+	hit:SetScript('OnMouseUp', function(_, button) w:RowClick(button) end)
+	w.summaryHit = hit
+end
+
+-- The sentence a part row's dots say: how many settings in its menu offer a reset.
+local function DotsTip(w)
+	local count, owned, page = w.menuOffers or 0, w.menuOwned or 0, w.menuPage
+	if count == 0 then return nil end
+	local OB = st.OptionsBody
+	local owner = page and OB.Possessive(page) or 'the page\'s'
+	if owned == count then
+		if count == 1 then return w.row.name, { ('1 setting here is %s own.'):format(owner) } end
+		return w.row.name, { ('%d settings here are %s own.'):format(count, owner) }
+	elseif owned == 0 then
+		if count == 1 then return w.row.name, { '1 setting here differs from its default.' } end
+		return w.row.name, { ('%d settings here differ from their defaults.'):format(count) }
+	end
+	return w.row.name, { ('%d settings here differ from their defaults or are %s own.'):format(count, owner) }
 end
 
 define('item', {
@@ -160,6 +226,51 @@ define('item', {
 		else
 			self.value = nil
 		end
+		self:ReadPart()
+	end,
+
+	-- A part row (its option has a summary): its summary's text and tip, and how
+	-- many rows of its menu offer a reset, which colors its dots. Anything else
+	-- has none of them.
+	ReadPart = function(self)
+		local option = self.row.option
+		local dots = self.dots
+		self.isPart = type(option.summary) == 'function'
+		self.summaryText, self.summaryTip = nil, nil
+		self.menuOffers, self.menuOwned, self.menuPage = 0, 0, nil
+		if self.isPart then
+			local ok, text, tip = xpcall(function() return OM.Member(self.root, self.row, 'summary') end, geterrorhandler())
+			if ok and type(text) == 'string' and text ~= '' then
+				self.summaryText = text
+				if type(tip) == 'string' and tip ~= '' then self.summaryTip = tip end
+			end
+			self.menuOffers, self.menuOwned, self.menuPage = OM.MenuOffers(self.root, self.row)
+		end
+		local lit = self.menuOffers > 0
+		if (dots.lit or false) ~= lit then
+			dots.lit = lit or nil
+			PaintSlot(dots, not dots.blizzard and st:GetState(dots, 'hover') and true or false)
+		end
+	end,
+
+	DotsTip = DotsTip,
+
+	-- A left click on the row: its menu, but not when the mouse is on one of the
+	-- row's own controls (its box, dots, reset icon, diff icon or the hover line's
+	-- pieces), which take theirs.
+	RowClick = function(self, button)
+		if button ~= 'LeftButton' or self.disabled or not self.isPart or not self.hasMenu then return end
+		local function Over(frame) return frame ~= nil and frame:IsVisible() and frame:IsMouseOver() end
+		if Over(self.box) or Over(self.dots) then return end
+		local row = self.frame:GetParent()
+		if row then
+			if Over(row.defaultReset) then return end
+			local parts = row.share
+			if parts and (Over(parts.diff) or Over(parts.ownText) or Over(parts.reset) or Over(parts.all) or Over(parts.multiple)) then
+				return
+			end
+		end
+		self:OpenMenu()
 	end,
 
 	SetWidth = function(self, width)
@@ -197,9 +308,13 @@ define('item', {
 
 	OnRelease = function(self)
 		self.width, self.value, self.hasBox, self.hasMenu, self.labelX = W.WIDTH.item, nil, nil, nil, nil
+		self.isPart, self.summaryText, self.summaryTip, self.menuOffers, self.menuOwned, self.menuPage = nil, nil, nil, nil, nil, nil
+		self.dots.lit, self.dots.open = nil, nil
+		self.summary:Hide()
+		self.summaryHit:Hide()
 		self:ShiftBox(0)
 		PaintDots(self, false)
 	end,
 })
 
-Kit.NewSlot, Kit.PaintSlot = NewSlot, PaintSlot
+Kit.NewSlot, Kit.PaintSlot, Kit.MarkSlot = NewSlot, PaintSlot, MarkSlot
