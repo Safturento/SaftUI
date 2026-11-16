@@ -19,13 +19,19 @@ local LAB = LibStub('LibActionButton-1.0')
 	  - The icon is cropped square (st:SkinIcon). LibActionButton drops its round
 	    mask itself with hideElements.border.
 	  - Hover, pushed and checked are flat textures of SaftUI's, in place of the
-	    template's atlases. The template's own art is faded out for good:
-	    LibActionButton only shows, hides or sizes those regions, never changes
-	    their alpha.
+	    template's atlases, drawn by Core's state helpers (Widgets/states.lua:
+	    the button is an 'icon' with game = true, so the helper adopts these
+	    three textures and only colors them: the derived hover, pushed and the
+	    checked Fill, from the Accent). The template's own art is faded out for
+	    good: LibActionButton only shows, hides or sizes those regions, never
+	    changes their alpha.
 	  - The attack flash is a flat red tint over the icon.
-	  - An equipped item gets an accent border (Theme > Accent) on the backdrop, in place of the
-	    template's green glow (hideElements.equipped). It goes back on after a
-	    theme recolor or redraw (AB:OnColorsChanged).
+	  - An equipped item and a checked button (an active ability, a stance, a pet
+	    action) get an accent border on the backdrop, in place of the template's
+	    green glow (hideElements.equipped), through AB:PaintEdge. A checked
+	    button's comes from a post-hook on its SetChecked (AB.OnChecked), which
+	    only colors the backdrop, a frame of SaftUI's. The edge goes back on
+	    after a theme recolor or redraw (AB:OnColorsChanged).
 	  - A pet action's autocast corners and ants (the template's AutoCastOverlay)
 	    sit over the icon.
 	  - Cooldown swipes, charges, loss of control and the out-of-range and unusable
@@ -50,13 +56,9 @@ local LAB = LibStub('LibActionButton-1.0')
 ]]
 
 -- SaftUI's pieces of each skinned button: button -> { hover, pushed, checked,
--- equipped }. Kept here so no key on the button can clash
+-- equipped, flat }. Kept here so no key on the button can clash
 -- with LibActionButton's or the template's.
 local skins = {}
-
--- A hovered button's highlight: white at this alpha over the icon, faint enough
--- to leave the icon readable. The same on every bar, the pet and stance bars too.
-local HOVER_ALPHA = 0.15
 
 -- The template's art (ActionButtonTemplate, the same keys on forever and live).
 local TEMPLATE_ART = {
@@ -312,6 +314,51 @@ local function StyleCountdown(button, config)
 end
 
 ------------------------------------
+--- Edge ----------------------------
+------------------------------------
+
+-- The edge of a button's backdrop. An equipped item and a checked button
+-- (selected: an active ability, a stance, a pet action) both wear the Accent;
+-- the theme's own border otherwise. Under Blizzard a checked button's art is
+-- Blizzard's own, so only an equipped item is colored there. Called with a
+-- color by the state helper (selected: the Accent, edge in Widgets/states.lua),
+-- and with none, to put the right edge on for the state the button is in.
+-- Color only, on the backdrop, a frame of SaftUI's: safe in combat.
+function AB:PaintEdge(button, r, g, b)
+	local skin, backdrop = skins[button], button.backdrop
+	if not (skin and backdrop) then return end
+	if not r and (skin.equipped or (skin.flat ~= false and st:GetState(button, 'selected'))) then
+		r, g, b = st:StateColor('edge')
+	end
+	if r then
+		st:SetBorderColor(backdrop, r, g, b)
+	else
+		st:SetBorderColor(backdrop)
+	end
+end
+
+-- The helper's edge: the same, taking the button's colors.
+local function EdgeOf(button, r, g, b)
+	AB:PaintEdge(button, r, g, b)
+end
+
+-- Whether a button wears Blizzard's art (StyleButton sets skin.flat).
+local function IsBlizzardLook(button)
+	local skin = skins[button]
+	return skin ~= nil and skin.flat == false
+end
+
+-- A post-hook on the button's SetChecked (.agents/taint.md): the button is
+-- checked while its action is active. Only the state and the edge's color are
+-- touched, which no combat lockdown stops. A secret value counts as unchecked.
+function AB.OnChecked(button, checked)
+	if issecretvalue(checked) then checked = false end
+	checked = checked and true or false
+	if st:GetState(button, 'selected') == checked then return end
+	st:SetState(button, 'selected', checked)
+end
+
+------------------------------------
 --- Skin ----------------------------
 ------------------------------------
 
@@ -330,7 +377,7 @@ function AB:SkinButton(button)
 
 	skin.hover = button:CreateTexture(nil, 'OVERLAY')
 	skin.hover:SetTexture(st.BLANK_TEX)
-	button:SetHighlightTexture(skin.hover, 'ADD')
+	button:SetHighlightTexture(skin.hover, 'BLEND')
 
 	skin.pushed = button:CreateTexture(nil, 'OVERLAY')
 	skin.pushed:SetTexture(st.BLANK_TEX)
@@ -339,8 +386,14 @@ function AB:SkinButton(button)
 	skin.checked = button:CreateTexture(nil, 'OVERLAY')
 	skin.checked:SetTexture(st.BLANK_TEX)
 	button:SetCheckedTexture(skin.checked)
-	skin.checked:SetBlendMode('ADD')
 
+	-- The three textures are the button's own highlight, pushed and checked: the
+	-- helper adopts them (game = true) and only colors them, and leaves them to
+	-- ThemeArt.StyleState under Blizzard (AB:StyleButton). The edge is
+	-- AB:PaintEdge, which the helper calls when the button is selected (checked).
+	st:AddStates(button, 'icon', { game = true, checked = true, edge = EdgeOf, blizzard = IsBlizzardLook })
+
+	hooksecurefunc(button, 'SetChecked', AB.OnChecked)
 	hooksecurefunc(button.HotKey, 'SetText', ShortenHotkey)
 	ShortenHotkey(button.HotKey, button.HotKey:GetText())
 end
@@ -383,7 +436,8 @@ function AB:StyleButton(button, config, theme, background)
 
 	-- Hover, pushed, checked and the flash: under Blizzard its own art over the
 	-- ring's footprint, the whole button, with no tint; otherwise SaftUI's flat
-	-- textures over the icon.
+	-- textures over the icon, drawn and colored by the state helper (RestyleStates,
+	-- below). Under Blizzard the helper leaves the three textures wholly alone.
 	local state = self:BlizzardState(theme, background)
 	skin.flat = not state
 	if state then
@@ -397,20 +451,17 @@ function AB:StyleButton(button, config, theme, background)
 		ThemeArt.StyleState(button.Flash, state.flash, button, nil, false)
 	else
 		for _, region in ipairs({ skin.hover, skin.pushed, skin.checked }) do
-			region:SetTexture(st.BLANK_TEX)
-			region:SetTexCoord(0, 1, 0, 1)
 			region:SetDrawLayer('OVERLAY', 0)
 			region:ClearAllPoints()
 			region:SetAllPoints(icon)
 		end
 		-- Shown only under the mouse in this layer; moved out, all the time.
 		skin.hover:SetDrawLayer(st.ThemeArt.HOVER_LAYER, 0)
-		skin.hover:SetVertexColor(1, 1, 1, HOVER_ALPHA)
-		skin.pushed:SetVertexColor(0, 0, 0, 0.1)
-		skin.checked:SetVertexColor(1, 1, 1, 0.3)
-		skin.checked:SetBlendMode('ADD')
 		self:ColorFlash(button)
 	end
+	-- Last in the look: the texture, coordinates and BLEND of the three, and
+	-- their colors (the checked button's edge too).
+	st:RestyleStates(button)
 
 	-- LibActionButton set the fonts, anchors and the hotkey's and macro name's
 	-- showing from the bar's text settings (GetButtonConfig), with its own SetFont
@@ -514,14 +565,10 @@ function AB:OnFontsChanged()
 	end)
 end
 
--- An equipped item's border: the accent (Theme > Accent).
-local function ColorEquipped(backdrop)
-	st:SetBorderColor(backdrop, st:Color('accent'):GetRGB())
-end
-
 -- An accent border while the button holds an equipped item, the theme's border
--- otherwise. Only touches the backdrop when that changes. The pet and stance
--- buttons never hold an item, and have no IsEquipped.
+-- otherwise (and a checked button's: AB:PaintEdge). Only touches the backdrop
+-- when that changes. The pet and stance buttons never hold an item, and have no
+-- IsEquipped.
 function AB:UpdateEquippedBorder(button)
 	local skin = skins[button]
 	local backdrop = button.backdrop
@@ -533,11 +580,7 @@ function AB:UpdateEquippedBorder(button)
 	if equipped == skin.equipped then return end
 	skin.equipped = equipped
 
-	if equipped then
-		ColorEquipped(backdrop)
-	else
-		st:SetBorderColor(backdrop)
-	end
+	self:PaintEdge(button)
 end
 
 -- The attack flash's tint, Buttons > Danger at 0.4, on a button drawn in
@@ -551,14 +594,22 @@ function AB:ColorFlash(button)
 end
 
 -- A color changed. 'theme': a theme recolor or redraw put the theme's border
--- back on every button, so the equipped ones get their accent again. 'accent':
--- the equipped buttons' border. 'button' Danger (or the whole group): the
--- flash. Color only, so it is safe in combat.
+-- back on every button, so the equipped and the checked ones get their accent
+-- again. 'accent': the equipped buttons' border only (a checked button's is the
+-- helper's, which paints the edge of a selected button in its own pass; a button
+-- at rest costs nothing here). 'button' Danger (or the whole group): the flash.
+-- Color only, so it is safe in combat.
 function AB:OnColorsChanged(group, key)
-	if group == 'theme' or group == 'accent' then
+	if group == 'theme' then
 		for button, skin in pairs(skins) do
-			if skin.equipped and button.backdrop then
-				ColorEquipped(button.backdrop)
+			if skin.equipped or (skin.flat ~= false and st:GetState(button, 'selected')) then
+				self:PaintEdge(button)
+			end
+		end
+	elseif group == 'accent' then
+		for button, skin in pairs(skins) do
+			if skin.equipped and not (skin.flat ~= false and st:GetState(button, 'selected')) then
+				self:PaintEdge(button)
 			end
 		end
 	elseif group == 'button' and (key == nil or key == 'danger') then

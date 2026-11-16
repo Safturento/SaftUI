@@ -316,11 +316,12 @@ test("under Blizzard an action button's hover, pushed, checked and flash are Bli
 		local colors = st.config.profile.colors.button
 		eq(hover:GetAtlas(), nil, 'Thick: hover is no atlas')
 		eq(hover:GetTexture(), st.BLANK_TEX, 'Thick: hover is the flat texture')
-		eq(T.text(hover:GetVertexColor()), '1.00,1.00,1.00,0.15', 'Thick: hover is a faint white tint, so the icon shows through')
-		eq(hover:GetBlendMode(), 'ADD', 'Thick: hover is additive')
-		eq(T.text(pushed:GetVertexColor()), '0.00,0.00,0.00,0.10', 'Thick: pushed is the dark tint')
-		eq(T.text(checked:GetVertexColor()), '1.00,1.00,1.00,0.30', 'Thick: checked is the white tint')
-		eq(checked:GetBlendMode(), 'ADD', 'Thick: checked is additive')
+		-- (the derived states; the cases are in interaction_states_test.lua)
+		eq(T.text(hover:GetVertexColor()), T.text(st:StateColor('hover')), 'Thick: hover is the derived hover')
+		eq(hover:GetBlendMode(), 'BLEND', 'Thick: hover blends')
+		eq(T.text(pushed:GetVertexColor()), T.text(st:StateColor('pushed')), 'Thick: pushed is the derived pushed')
+		eq(T.text(checked:GetVertexColor()), T.text(st:StateColor('fill')), 'Thick: checked is the Fill')
+		eq(checked:GetBlendMode(), 'BLEND', 'Thick: checked blends')
 		eq(b.Flash:GetAtlas(), nil, 'Thick: the flash is no atlas')
 		eq(T.text(select(4, b.Flash:GetVertexColor())), '1.00', 'Thick: the flash')
 		for name, region in pairs({ hover = hover, pushed = pushed, checked = checked, flash = b.Flash }) do
