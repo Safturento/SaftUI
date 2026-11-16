@@ -455,7 +455,9 @@ function INV:CreateCategory(id, categoryName, slotPoolFunc)
 			INV:CategoryName(INV.SETS_ENTRY)), nil, nil, nil, nil, true)
 		GameTooltip:Show()
 	end)
-	filterCheckbox:HookScript('OnLeave', function() GameTooltip:Hide() end)
+	filterCheckbox:HookScript('OnLeave', function(self)
+		if GameTooltip:IsOwned(self) then GameTooltip:Hide() end
+	end)
 	INV:UpdateFilterCheckbox(filterCheckbox, id, categoryName)
 
 	container.categories[categoryName] = categoryFrame
