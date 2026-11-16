@@ -611,6 +611,49 @@ test("the bar lays out again on UI_SCALE_CHANGED and DISPLAY_SIZE_CHANGED: its s
 	reset_edit_mode()
 end)
 
+-- The profile update (the pass) taken out, so what a case shows is the scale's
+-- change callback alone, and not the margin's hooks the pass would also run.
+-- Returns the call that puts it back.
+local function without_the_pass()
+	local own = rawget(st.Config, 'UpdateConfig')
+	st.Config.UpdateConfig = function() end
+	return function() st.Config.UpdateConfig = own end
+end
+
+test('the change callback lays the bar out and places it on the next frame, with no screen event', function()
+	local restore = without_the_pass()
+	EM:Activate()
+	local bar = EM:GetBar()
+	local width = bar:GetWidth()
+	set_screen(1920, 1080)
+	start_uiscale({ mode = 'pixel', size = 1 })
+	st.UIScale:Apply({ mode = 'pixel', size = 1 })
+	eq(bar:GetLeft() - UIParent:GetLeft(), math.floor((UIParent:GetWidth() - width) / 2), 'in the middle of a 1920 wide screen')
+	-- SaftUI's own scale change fires no screen event: the scale's callback is all there is.
+	st.UIScale:Apply({ mode = 'auto', size = 1.5 })
+	local units = UIParent:GetWidth()
+	check(units > 1700 and units < 1710, 'the screen is 1707 units wide now: ' .. units)
+	stub.run_timers()
+	eq(bar:GetLeft() - UIParent:GetLeft(), math.floor((UIParent:GetWidth() - bar:GetWidth()) / 2), 'in the middle of the new screen, the next frame')
+	eq(bar:GetWidth(), width, 'the same width')
+	-- A bar slid toward the right edge is held inside the margin on the narrower
+	-- screen, and goes back to where it was slid on the wide one.
+	st.UIScale:Apply({ mode = 'pixel', size = 1 })
+	stub.run_timers()
+	EM:SetBarX(1900 - math.floor(bar:GetWidth()))
+	local slid = bar:GetLeft() - UIParent:GetLeft()
+	st.UIScale:Apply({ mode = 'auto', size = 1.5 })
+	stub.run_timers()
+	check(bar:GetRight() - UIParent:GetLeft() <= UIParent:GetWidth() - st.config.profile.misc.clamp_inset, 'inside the margin on the narrow screen: ' .. bar:GetRight())
+	st.UIScale:Apply({ mode = 'pixel', size = 1 })
+	stub.run_timers()
+	eq(bar:GetLeft() - UIParent:GetLeft(), slid, 'and where it was slid on the wide one')
+	restore()
+	st.config.global.uiScale = nil
+	set_screen(1920, 1080)
+	reset_edit_mode()
+end)
+
 test("every piece of the bar sits on whole pixels, at any screen, under each look, with the game's read-back noise, and after a UI scale change", function()
 	local HAIR = 2 ^ -14
 	EM:Activate()

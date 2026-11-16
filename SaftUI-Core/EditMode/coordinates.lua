@@ -150,9 +150,13 @@ local function GetFrame()
 	frame.text:SetPoint('BOTTOMLEFT', frame, 'BOTTOMLEFT', 0, 0)
 	frame:Hide()
 	-- The screen's size or scale changes where the label can sit.
+	-- (SaftUI's own scale change fires no event: the scale's change callback,
+	-- st.UIScale:OnChanged, runs it too.)
+	local function OnScreenChanged() EM:UpdateCoordinates() end
 	frame:RegisterEvent('UI_SCALE_CHANGED')
 	frame:RegisterEvent('DISPLAY_SIZE_CHANGED')
-	frame:SetScript('OnEvent', function() EM:UpdateCoordinates() end)
+	frame:SetScript('OnEvent', OnScreenChanged)
+	st.UIScale:OnChanged(OnScreenChanged)
 	EM.coordinates = frame
 	return frame
 end

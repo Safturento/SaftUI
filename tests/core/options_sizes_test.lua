@@ -25,6 +25,15 @@ end
 local function reset_screen()
 	stub.screen_width, stub.screen_height = 1920, 1080
 	UIParent:SetScale(SCALE)
+	st.UIScale:SetTokens()
+end
+
+-- Back to the world the file starts in, after a case that ran the runtime
+-- (start_uiscale, Apply): no saved choice, the stub's screen at k 1.
+local function end_runtime()
+	st.UIScale:Apply(nil)
+	st.config.global.uiScale = nil
+	reset_screen()
 end
 
 ------------------------------------------------------------------ the numbers
@@ -711,6 +720,61 @@ test('opens at the remembered size; one the screen cannot hold opens at half, an
 	st.Config:Open('Unitframes', 'player', 'general')
 	eq(OW:GetWindowSize(), 'full', '1920 again: full')
 	check(not frames().grow.disabled or not frames().grow:IsShown(), 'nothing disabled')
+	st.config.global.optionsWindow = nil
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a scale change that leaves the full window no room shows it at half and saves nothing', function()
+	-- 1024 x 768 in Automatic at 1.30: UIParent is 1050 units wide, and full (1040
+	-- and the margins each side) no longer fits. At 100% it is 1920 wide and does.
+	theme('thick')
+	stub.screen_width, stub.screen_height = 1024, 768
+	start_uiscale({ mode = 'auto', size = 1 })
+	st.Config:Open('Unitframes', 'player', 'general')
+	eq(OW:GetWindowSize(), 'full', 'full at 100%')
+	local before = frames().window:GetWidth()
+	eq(before, 1040)
+	eq(st.config.global.optionsWindow, nil, 'nothing saved yet')
+	local ok = st.UIScale:Apply({ mode = 'auto', size = 1.3 })
+	eq(ok, true)
+	eq(math.floor(UIParent:GetWidth() + 0.5), 1050, 'the screen, in units')
+	eq(OW:GetWindowSize(), 'half', 'half now')
+	eq(frames().window:GetWidth(), 654, 'drawn at half')
+	local saved = st.config.global.optionsWindow
+	eq(type(saved) == 'table' and saved.size or nil, nil, 'the save is left as it is: no size')
+	check(frames().grow.disabled, 'Grow says no, as the screen is narrow')
+	-- Back to 100% and reopened: the saved (none: full) size.
+	st.Config:Close()
+	st.UIScale:Apply(nil)
+	st.Config:Open('Unitframes', 'player', 'general')
+	eq(OW:GetWindowSize(), 'full', 'opens at the saved size again')
+	st.UIScale:Apply({ mode = 'auto', size = 1.3 })
+	eq(OW:GetWindowSize(), 'half', 'and again')
+	-- A window at half stays at half; a bar stays a bar.
+	eq(OW:FitToScreen(), false, 'nothing to fit at half')
+	st.Config:Close()
+	end_runtime()
+	st.config.global.optionsWindow = nil
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a scale change that leaves full room leaves the window at full, and a closed window alone', function()
+	theme('thick')
+	stub.screen_width, stub.screen_height = 1920, 1080
+	start_uiscale({ mode = 'auto', size = 1 })
+	st.Config:Open('Unitframes', 'player', 'general')
+	st.UIScale:Apply({ mode = 'auto', size = 1.1 })
+	eq(OW:GetWindowSize(), 'full', 'it still fits')
+	st.Config:Close()
+	local renders = 0
+	local render = OW.Render
+	OW.Render = function(...) renders = renders + 1; return render(...) end
+	eq(OW:FitToScreen(), false)
+	OW.Render = render
+	eq(renders, 0, 'a closed window is not drawn')
+	end_runtime()
 	st.config.global.optionsWindow = nil
 	close_all()
 	eq(#take_errors(), 0, 'no errors')

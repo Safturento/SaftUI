@@ -383,16 +383,20 @@ function EM:GetBarWindow()
 
 	-- The screen's size or scale, and the screen edge margin, change where it
 	-- can sit: it lays out again and is put back inside.
-	window:RegisterEvent('UI_SCALE_CHANGED')
-	window:RegisterEvent('DISPLAY_SIZE_CHANGED')
-	window:SetScript('OnEvent', function()
+	-- SaftUI's own scale change fires no screen event, so the scale's change
+	-- callback (st.UIScale:OnChanged, after the pass) runs it too.
+	local function OnScreenChanged()
 		if EM:IsBarFloating() then EM:LayoutBar() end
 		-- The events can fire before UIParent has its new size: place again on
 		-- the next frame, as the bar also lays out on its own size change.
 		C_Timer.After(0, function()
 			if EM:IsBarFloating() and window:IsShown() then EM:PlaceBarWindow() end
 		end)
-	end)
+	end
+	window:RegisterEvent('UI_SCALE_CHANGED')
+	window:RegisterEvent('DISPLAY_SIZE_CHANGED')
+	window:SetScript('OnEvent', OnScreenChanged)
+	st.UIScale:OnChanged(OnScreenChanged)
 	hooksecurefunc(st, 'UpdateScreenMargin', function()
 		if window:IsShown() then EM:PlaceBarWindow() end
 	end)

@@ -29,14 +29,14 @@ local function Frame(name)
 	return frame
 end
 
-test('PlaceAtPosition sets the frame from a full position, offsets as saved', function()
+test('PlaceAtPosition sets the frame from a full position, offsets on whole pixels', function()
 	local frame = Frame()
-	st:PlaceAtPosition(frame, { point = 'TOPLEFT', rel_point = 'BOTTOM', x_off = 12.5, y_off = -7 })
+	st:PlaceAtPosition(frame, { point = 'TOPLEFT', rel_point = 'BOTTOM', x_off = 12, y_off = -7 })
 	local points = Points(frame)
 	eq(#points, 1, 'one point')
 	eq(points[1][1], 'TOPLEFT', 'point')
 	eq(points[1][3], 'BOTTOM', 'relative point')
-	eq(points[1][4], 12.5, 'x, not rounded')
+	eq(points[1][4], 12, 'x, as saved at one pixel a unit')
 	eq(points[1][5], -7, 'y')
 end)
 
@@ -85,7 +85,7 @@ test('PlaceAtPosition errors for a frame name no frame has, as SetPoint does', f
 	check(not pcall(st.PlaceAtPosition, st, frame, { point = 'CENTER', frame = 'NoSuchFrame' }), 'errors')
 end)
 
-test('PlaceAtPosition hands the offsets to SetPoint as saved, even a string', function()
+test('PlaceAtPosition hands an offset that is not a number to SetPoint as saved, even a string', function()
 	local frame = Frame()
 	local got
 	frame.SetPoint = function(_, ...) got = { ... } end
@@ -94,12 +94,61 @@ test('PlaceAtPosition hands the offsets to SetPoint as saved, even a string', fu
 	eq(got[5], '-3', 'y as saved')
 end)
 
-test('PlaceAtPosition does not round the offsets', function()
+test("PlaceAtPosition: at k 1 whole offsets are today's numbers and a saved 1.3333 lands at 1; at 0.75 a saved 5 lands at 4 pixels", function()
+	use_scale(1)
 	local frame = Frame()
-	st:PlaceAtPosition(frame, { point = 'CENTER', x_off = 0.3, y_off = 0.7 })
+	for _, case in ipairs({ { 0, 0 }, { 5, -7 }, { 12, 300 }, { -157, -130 }, { 1.3333, -1.3333 }, { 0.3, 0.7 }, { 2560, -1440 } }) do
+		st:PlaceAtPosition(frame, { point = 'CENTER', x_off = case[1], y_off = case[2] })
+		local p = Points(frame)[1]
+		local wx, wy = math.floor(math.abs(case[1]) + 0.5), math.floor(math.abs(case[2]) + 0.5)
+		wx, wy = case[1] < 0 and -wx or wx, case[2] < 0 and -wy or wy
+		eq(p[4], wx, case[1] .. ' x')
+		eq(p[5], wy, case[2] .. ' y')
+	end
+	-- Whole offsets come out as the very numbers they went in (no float is made).
+	st:PlaceAtPosition(frame, { point = 'CENTER', x_off = -157, y_off = 130 })
+	check(rawequal(Points(frame)[1][4], -157) and rawequal(Points(frame)[1][5], 130), 'to the bit')
+	st:PlaceAtPosition(frame, { point = 'CENTER', x_off = 0, y_off = 0 })
+	check(rawequal(Points(frame)[1][4], 0) and rawequal(Points(frame)[1][5], 0), 'zero stays zero')
+	use_scale(0.75)
+	local pixel = st:GetPixelSize(frame)
+	st:PlaceAtPosition(frame, { point = 'CENTER', x_off = 5, y_off = -5 })
 	local p = Points(frame)[1]
-	eq(p[4], 0.3, 'x as saved')
-	eq(p[5], 0.7, 'y as saved')
+	eq(math.floor(p[4] / pixel + 0.5), 4, 'a saved 5 lands at 4 pixels')
+	eq(math.floor(p[5] / pixel + 0.5), -4, 'and a saved -5 at -4 pixels')
+	check(p[4] < 5.34 and p[4] > 5.33, 'which is 5.3333 units')
+	use_scale(1)
+end)
+
+scaled_test('PlaceAtPosition: a saved position is never written, and goes through a scale change and back with no drift', function()
+	local frame = Frame()
+	local position = { point = 'TOPLEFT', rel_point = 'TOPLEFT', x_off = 157.5, y_off = -130.3333 }
+	local saved = { x = position.x_off, y = position.y_off }
+	local first
+	for round = 1, 10 do
+		for _, k in ipairs({ 1.55, 0.75, test_scale() }) do
+			use_scale(k)
+			st:PlaceAtPosition(frame, position)
+			eq(position.x_off, saved.x, 'x is still as saved')
+			eq(position.y_off, saved.y, 'y is still as saved')
+		end
+		local p = Points(frame)[1]
+		if round == 1 then first = p[4] .. ',' .. p[5] end
+		eq(p[4] .. ',' .. p[5], first, 'round ' .. round .. ' lands where round 1 did')
+	end
+	-- Where it lands: whole pixels at this scale.
+	local pixel = st:GetPixelSize(frame)
+	local p = Points(frame)[1]
+	check(math.abs(p[4] / pixel - math.floor(p[4] / pixel + 0.5)) < 1e-3, 'x on whole pixels')
+	check(math.abs(p[5] / pixel - math.floor(p[5] / pixel + 0.5)) < 1e-3, 'y on whole pixels')
+	-- A drag's save (rounded to pixels by the edit mode, 1e-4 kept) placed again lands on itself.
+	position.x_off = st:RoundToPixel(157.5, frame)
+	st:PlaceAtPosition(frame, position)
+	eq(Points(frame)[1][4], position.x_off, 'a position the edit mode saved is placed where it was saved')
+	use_scale(1)
+	stub.screen_width, stub.screen_height = 1000, 600
+	UIParent:SetScale(768 / 600)
+	st.UIScale:SetTokens()
 end)
 
 -- A profile table for the movers to read, replaced as a profile switch does.

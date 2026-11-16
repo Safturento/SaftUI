@@ -605,16 +605,21 @@ function st:HoldFrame(frame, holder, x, y)
 end
 
 -- Clears frame's points and sets it from a saved position table (point, frame,
--- rel_point, x_off, y_off), as st:UnpackPoint reads one. Nothing else: the
--- offsets go as saved, not rounded or made numbers, and the frame is whatever
--- the position holds (a name is the game's to resolve, none is the frame's
--- parent). A site that rounds, resolves with st:ResolveFrame and falls back to
+-- rel_point, x_off, y_off), as st:UnpackPoint reads one. The offsets are
+-- rounded to whole pixels of frame (st:RoundToPixel), so a saved 5 is 4 pixels
+-- at a scale of 0.75 and a saved 1.3333 is 1 pixel at 1; the save itself is
+-- never written. An offset that isn't a number goes as it is. The frame is
+-- whatever the position holds (a name is the game's to resolve, none is the
+-- frame's parent). A site that resolves with st:ResolveFrame and falls back to
 -- UIParent, or has work between the clear and the set, keeps its own. A frame
 -- that can't move now (protected, in combat) is the caller's to queue
 -- (st:SafeReposition); this moves it.
 function st:PlaceAtPosition(frame, position)
+	local point, relative, rel_point, x, y = st:UnpackPoint(position)
+	if type(x) == 'number' then x = st:RoundToPixel(x, frame) end
+	if type(y) == 'number' then y = st:RoundToPixel(y, frame) end
 	frame:ClearAllPoints()
-	frame:SetPoint(st:UnpackPoint(position))
+	frame:SetPoint(point, relative, rel_point, x, y)
 end
 
 -- Sizes and places a holder of SaftUI's: getSize() gives its width and height,
@@ -670,11 +675,12 @@ local inMargin = {} -- frame -> true for those
 local reachOf = {} -- frame -> its reach, for a frame whose art reaches past it
 
 -- How far in from the screen's left, right, top and bottom edges the margin
--- keeps frame, in frame's own units: the profile's margin, plus frame's reach
--- if it has one. A frame SaftUI doesn't keep (the Minimap) gets the margin
--- alone, which only its drags and nudges keep to.
+-- keeps frame, in frame's own units: the profile's margin in whole pixels of
+-- frame (20 is 31 pixels at a scale of 1.55; at 1 it is 20), plus frame's
+-- reach as it gives it, if it has one. A frame SaftUI doesn't keep (the
+-- Minimap) gets the margin alone, which only its drags and nudges keep to.
 function st:GetScreenMargin(frame)
-	local inset = st.config.profile.misc.clamp_inset
+	local inset = st:RoundToPixel(st.config.profile.misc.clamp_inset, frame)
 	local left, right, top, bottom = 0, 0, 0, 0
 	if reachOf[frame] then left, right, top, bottom = reachOf[frame]() end
 	return inset + left, inset + right, inset + top, inset + bottom

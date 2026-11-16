@@ -500,7 +500,10 @@ test('a scale change re-pins every plate and re-applies the size, after the pass
 		end
 		eq(size(), driver(UF, 200, 20), client .. ': the size set again')
 		eq(order[1], 'pass', client .. ': after the pass')
-		check(near(one:GetWidth(), 200) and near(one:GetHeight(), 20), client .. ': still 200 by 20 of its own units')
+		-- On this 1080p screen at 1.25 a unit is 0.9375 pixels: 200 x 20 units are
+		-- 187.5 x 18.75 pixels, made the whole, even 188 x 18 (1.0667 units each).
+		local pixel = st:GetPixelSize(UIParent)
+		check(near(one:GetWidth() / pixel, 188) and near(one:GetHeight() / pixel, 18), client .. ': 188 by 18 pixels: ' .. one:GetWidth() .. ' x ' .. one:GetHeight())
 
 		-- The display, with the engine setting UIParent over SaftUI's: the check
 		-- puts it back and the plates are pinned to that.
@@ -580,6 +583,64 @@ test("the plate size is the config's in UIParent pixels", function()
 	UF:ApplyPlateSize()
 	check(near(pixels(plate, plate:GetWidth()), 160) and near(pixels(plate, plate:GetHeight()), 14), 'the config\'s 160 by 14')
 	WorldFrame:SetScale(1)
+end)
+
+-- The size the driver was given, in physical pixels: WorldFrame's units times
+-- its scale, in 768ths of the screen's height.
+local function driver_pixels(UF, width, height)
+	local w, h = UF.PlateDriverSize(width, height)
+	local per = WorldFrame:GetEffectiveScale() * stub.screen_height / 768
+	return w * per, h * per
+end
+
+test("the driver's size: 200 x 20 is 150 x 16 pixels at 0.75 and 310 x 32 at 1.55; at k 1 today's floats, rawequal", function()
+	local st, UF = world('forever')
+	local function pixels(k, width, height)
+		use_scale(k)
+		local w, h = driver_pixels(UF, width, height)
+		return ('%.4f x %.4f'):format(w, h)
+	end
+	eq(pixels(0.75, 200, 20), '150.0000 x 16.0000', '0.75: the 15 pixels of a 20 high bar made 16')
+	eq(pixels(1.55, 200, 20), '310.0000 x 32.0000', '1.55')
+	eq(pixels(1.25, 200, 20), '250.0000 x 26.0000', '1.25: 25 made 26 (a half goes up)')
+	-- At k = 1 it is the config's size times the ratio, bit for bit.
+	use_scale(1)
+	local ratio = UIParent:GetEffectiveScale() / WorldFrame:GetEffectiveScale()
+	for _, size in ipairs({ { 200, 20 }, { 240, 24 }, { 160, 14 }, { 180, 18 }, { 128, 12 }, { 2, 2 } }) do
+		local w, h = UF.PlateDriverSize(size[1], size[2])
+		check(rawequal(w, size[1] * ratio) and rawequal(h, size[2] * ratio), size[1] .. ' x ' .. size[2] .. ': the config times the ratio, to the bit')
+	end
+	-- WorldFrame at another scale: the pixels are the same.
+	use_scale(0.75)
+	WorldFrame:SetScale(1.25)
+	local w, h = driver_pixels(UF, 200, 20)
+	eq(('%.4f x %.4f'):format(w, h), '150.0000 x 16.0000', "WorldFrame's own scale is turned back")
+	WorldFrame:SetScale(1)
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+scaled_test("the driver's size is a whole, even number of pixels on each axis, at every scale", function()
+	local st, UF = world('forever')
+	use_scale(test_scale())
+	local pixel = st:GetPixelSize(UIParent)
+	for _, size in ipairs({ { 200, 20 }, { 240, 24 }, { 160, 14 }, { 181, 17 }, { 30, 6 } }) do
+		local w, h = driver_pixels(UF, size[1], size[2])
+		for axis, value in pairs({ width = w, height = h }) do
+			local whole = math.floor(value + 0.5)
+			check(math.abs(value - whole) < 1e-6, size[1] .. 'x' .. size[2] .. ' ' .. axis .. ' is whole: ' .. value)
+			eq(whole % 2, 0, size[1] .. 'x' .. size[2] .. ' ' .. axis .. ' is even')
+		end
+		local units = size[1] / pixel
+		check(math.abs(w - units) <= 1 + 1e-6, size[1] .. ' stays within a pixel of the config')
+	end
+	-- And the plate itself, through the driver: the frame covers it in whole pixels.
+	local frame = enemy('nameplate1')
+	UF:ApplyPlateSize()
+	local plate = C_NamePlate.GetNamePlateForUnit('nameplate1')
+	local per = plate:GetEffectiveScale() * stub.screen_height / 768
+	local pw = plate:GetWidth() * per
+	check(math.abs(pw - math.floor(pw + 0.5)) < 1e-6 and math.floor(pw + 0.5) % 2 == 0, 'the plate is an even number of pixels wide: ' .. pw)
+	eq(#take_errors(), 0, 'no errors')
 end)
 
 ------------------------------------------------------------------ the game's settings

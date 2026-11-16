@@ -350,6 +350,20 @@ function OW:SetWindowSize(size)
 	return true
 end
 
+-- After a change of the UI's scale: while the window shows at full and the
+-- screen can no longer hold full (OW.Fits), it shows half, drawn again once.
+-- The save is left as it is (S.size only, as OW:Open does for a screen too
+-- narrow), so the window opens at the saved size when the screen holds it
+-- again. The bar and half are always allowed; the corner stays.
+function OW:FitToScreen()
+	if S.size ~= 'full' or not self:IsShown() then return false end
+	if OW.Fits(S.layout, 'full', S.sidebar) then return false end
+	S.size = 'half'
+	S.keepRow = { OW.FirstInView(OW.GetDrawnRows(), S.scrollOffset) }
+	self:Render()
+	return true
+end
+
 -- Whether a size button was used a moment ago (OW.SIZE_GUARD).
 local function Guarded()
 	return S.sizedAt ~= nil and GetTime() - S.sizedAt < OW.SIZE_GUARD
@@ -456,3 +470,8 @@ function S.DrawMini(page, tab, path)
 	F.miniNames:SetPoint('TOPLEFT', F.mini, 'TOPLEFT', namesLeft, 0)
 	F.miniNames:SetSize(max(1, x - namesLeft), OW.MINI_HEIGHT)
 end
+
+-- The scale changed (SaftUI's own, the game's or the display's): the window
+-- shows at half when the screen no longer holds full. Heard after the pass,
+-- which has drawn an open window again and put it inside the margin.
+st.UIScale:OnChanged(function() OW:FitToScreen() end)

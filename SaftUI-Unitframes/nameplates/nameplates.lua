@@ -473,19 +473,28 @@ local function OnPlateEvent(_, event, unit)
 end
 
 -- The size handed to oUF's driver for the config's width and height. The
--- config's size is in UIParent's units, where one unit is a pixel, and SaftUI's
--- frame on each plate is pinned to UIParent's scale (pixels.lua). The plates
--- (NamePlate1, ...) are WorldFrame's children and take their size in its
--- units, so the size is turned into those: the plate, where the game takes
--- the clicks, and SaftUI's frame covering it are then the config's width and
--- height in pixels. A secret or zero scale gives the config's size as it is.
+-- config's size is in UIParent's units, and SaftUI's frame on each plate is
+-- pinned to UIParent's scale (pixels.lua). The plates (NamePlate1, ...) are
+-- WorldFrame's children and take their size in its units, so the size is
+-- counted in UIParent's pixels, made a whole, even number of them on each axis
+-- (the plates' rule, config/units/nameplate.lua, which holds in units only at a
+-- scale of 1: a 20 high bar is 15 pixels at 0.75), and turned into those units:
+-- the plate, where the game takes the clicks, and SaftUI's frame covering it
+-- are then that many pixels. At a scale of 1 it is the config's size times the
+-- ratio, as it was. A secret or zero scale, or an unknown pixel, gives the
+-- config's size as it is.
 function UF.PlateDriverSize(width, height)
 	local ui, world = UIParent:GetEffectiveScale(), WorldFrame:GetEffectiveScale()
 	if issecretvalue(ui) or issecretvalue(world) or ui == 0 or world == 0 then
 		return width, height
 	end
+	local pixel = st:GetPixelSize(UIParent)
+	if not pixel then return width, height end
 	local ratio = ui / world
-	return width * ratio, height * ratio
+	-- 2 * floor(n / 2 + 0.5), with a hair added so a count that is 15 less float
+	-- noise (20 / 1.3333) is 15 and not 14.99999.
+	local function Even(n) return 2 * math.floor(n / 2 + 0.5 + 1e-6) end
+	return Even(width / pixel) * pixel * ratio, Even(height / pixel) * pixel * ratio
 end
 
 -- Sets every plate's size through oUF's driver, from the enemy look's config:
