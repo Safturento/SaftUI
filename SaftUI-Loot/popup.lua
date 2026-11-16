@@ -38,8 +38,9 @@ local LT = st:GetModule('Loot')
 	    .NineSlice and .Bg faded; the title in the Window titles font; the close
 	    button's four textures faded and a Lucide cross of SaftUI's over it.
 	  - Each row: a card of SaftUI's (kind panel) in place of .NameFrame,
-	    .BorderFrame, .QualityStripe and the click textures, all faded; the card's
-	    border takes the accent while the mouse is over the row. The icon in a
+	    .BorderFrame, .QualityStripe and the click textures, all faded; the card
+	    tints (the states' hover) while the mouse is over the row; its border
+	    stays the theme's. The icon in a
 	    slot of SaftUI's (st:SetBackdropIn on .Item, kind slot) whose border is the
 	    item's quality color (st:QualityColor), with .IconBorder, the normal and
 	    pushed textures faded, the icon cropped by Icon zoom and its round mask
@@ -307,16 +308,13 @@ local function ColorSlot(element)
 	end
 end
 
--- The card's border, the accent while the mouse is over the row.
-local function ColorCard(element)
+-- The card's tint while the mouse is over the row (the states' hover Layer; the
+-- border stays the theme's). The holder takes no mouse of its own, so the row's
+-- own enter and leave set it.
+local function HoverCard(element)
 	local holder = cards[element]
-	local backdrop = holder and holder.backdrop
-	if not backdrop then return end
-	if hovering[element] then
-		st:SetBorderColor(backdrop, st:Color('accent'):GetRGB())
-	else
-		st:SetBorderColor(backdrop)
-	end
+	if not holder or st:GetState(holder, 'hover') == nil then return end
+	st:SetState(holder, 'hover', hovering[element] and true or false)
 end
 
 local function StyleCard(element, active)
@@ -343,7 +341,12 @@ local function StyleCard(element, active)
 	if active then
 		Round(holder)
 		Round(holder.backdrop)
-		ColorCard(element)
+		-- A row of states, the edge the theme's, no scripts (the holder takes no
+		-- mouse); registered after the draw, which a later one restyles.
+		st:AddStates(holder, 'row', { edge = false, wire = false })
+		HoverCard(element)
+	elseif st:GetState(holder, 'hover') ~= nil then
+		st:SetState(holder, 'hover', false)
 	end
 end
 
@@ -427,11 +430,11 @@ local function HookElement(element)
 	if item and item.HookScript then
 		item:HookScript('OnEnter', function()
 			hovering[element] = true
-			if Active() and cards[element] then Apply(ColorCard, element) end
+			if Active() and cards[element] then Apply(HoverCard, element) end
 		end)
 		item:HookScript('OnLeave', function()
 			hovering[element] = nil
-			if Active() and cards[element] then Apply(ColorCard, element) end
+			if Active() and cards[element] then Apply(HoverCard, element) end
 		end)
 	end
 end
@@ -511,16 +514,17 @@ function LT:InitializeLootFrame()
 end
 
 -- Colors of SaftUI's put again after a recolor or redraw took them off: a
--- slot's quality border, a card's hover and the close cross.
+-- slot's quality border and the close cross. A card's tint follows the Accent in
+-- the states' own pass, so the Accent group isn't one of them.
 function LT:ColorPopup(group)
+	-- The group first: Active() resolves the theme, which makes a table.
+	if group ~= 'theme' and group ~= 'item_quality' and group ~= 'text' then return end
 	if not installed or not Active() then return end
-	if group ~= 'theme' and group ~= 'item_quality' and group ~= 'accent' and group ~= 'text' then return end
 	local frame = _G.LootFrame
 	if not frame then return end
 	for _, element in ipairs(Elements(frame)) do
 		if styled[element] and element.Item then
 			Apply(ColorSlot, element)
-			Apply(ColorCard, element)
 		end
 	end
 	local cross = frame.ClosePanelButton and closes[frame.ClosePanelButton]

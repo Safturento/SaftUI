@@ -13,9 +13,10 @@
 --                          validator can check: SaftUI's own fields
 --                          (category, size, target, nameKey, pickerLabel,
 --                          align, disabledDesc, justifyH, fill, footer,
---                          share, menu, menuTitle, default, pickerControl,
---                          reserveBox, toggle, faceOnly, fontFields, saved,
---                          noReset, preview, applyOnRelease) are left off
+--                          share, menu, menuTitle, summary, mirrorOf, default,
+--                          pickerControl, reserveBox, toggle, faceOnly,
+--                          fontFields, saved, noReset, preview,
+--                          applyOnRelease) are left off
 --                          every option, and the options of SaftUI's own types
 --                          (SAFTUI_TYPES) are left out. AceConfig knows neither, so
 --                          its validator rejects them; everything else in the
@@ -31,6 +32,7 @@
 local SAFTUI_FIELDS = {
 	category = true, size = true, target = true, nameKey = true, pickerLabel = true, align = true,
 	disabledDesc = true, justifyH = true, fill = true, footer = true, share = true, menu = true, menuTitle = true,
+	summary = true, mirrorOf = true,
 	default = true, pickerControl = true, reserveBox = true, searchText = true, toggle = true,
 	faceOnly = true, fontFields = true, saved = true, noReset = true, preview = true, applyOnRelease = true,
 }

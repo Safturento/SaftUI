@@ -162,7 +162,7 @@ test('the dots open the menu: over the dialog, one column, titled, the position 
 
 	-- One column: every row the body's width, inside its padding.
 	eq(m.body.width, 376, 'the body 376 wide')
-	eq(m.body.oneColumn, true)
+	eq(m.body.half, true, 'a half body: two small rows to a line, the rest across')
 	for _, key in ipairs({ 'outline', 'size' }) do
 		local c = menuCell(key)
 		eq(c.frame:GetLeft() - m.content:GetLeft(), 14, key .. ': in the padding')
@@ -862,4 +862,139 @@ test('the menu and everything in it sit on whole pixels, from the page or the sm
 	stub.size_noise = 0
 	st.config.global.optionsWindow = nil
 	theme('thick')
+end)
+
+------------------------------------------------------------------ the half layout (part rows)
+
+-- The menu's body, the cells' places in its content: key -> { x, y, width, height } in
+-- whole units from the content's top left, y down.
+local function menu_rects()
+	local out = {}
+	for _, c in ipairs(M().body.cells) do
+		local f, top = c.frame, M().content:GetTop()
+		out[c.row.key] = string.format('%d,%d,%d,%d', f:GetLeft() - M().content:GetLeft(), top - f:GetTop(), f:GetWidth(), f:GetHeight())
+	end
+	return out
+end
+
+-- A part item whose menu holds four small toggles and a range, drawn in a dialog and opened.
+local function open_small_menu()
+	local function toggle(name, order)
+		return { type = 'toggle', name = name, desc = name .. '.', order = order, size = 'small',
+			get = function() return true end, set = function() end }
+	end
+	local item = { type = 'item', order = 1, name = 'Part', desc = 'A part.',
+		menu = { type = 'group', name = 'Part', args = {
+			a = toggle('A', 1), b = toggle('B', 2), c = toggle('C', 3), d = toggle('D', 4),
+			size = { type = 'range', name = 'Size', desc = 'Its size.', order = 5, min = 1, max = 9, step = 1,
+				get = function() return 5 end, set = function() end },
+		} } }
+	OW:OpenDialog('Dialog', { type = 'group', name = 'Dialog', args = { part = item } })
+	click(OW.GetDialogFrames().body.cells[1].widget.dots)
+	check(OW:IsMenuShown(), 'the menu is open')
+end
+
+test('a menu lays out small rows two to a line', function()
+	for _, look in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		theme(look)
+		open_small_menu()
+		local m = M()
+		local top = function(key) return menuCell(key).frame:GetTop() end
+		eq(top('a'), top('b'), look .. ': toggles 1 and 2 share a line')
+		eq(top('c'), top('d'), look .. ': toggles 3 and 4 the next')
+		check(top('c') < top('a'), look .. ': under the first')
+		check(top('size') < top('c'), look .. ': the range a line of its own')
+		check(menuCell('b').frame:GetLeft() > menuCell('a').frame:GetLeft(), look .. ': side by side')
+		eq(menuCell('size').frame:GetWidth(), look == 'blizzard' and 376 or 376 - 28, look .. ': the range across the body')
+		for _, key in ipairs({ 'a', 'b', 'c', 'd', 'size' }) do
+			local f = menuCell(key).frame
+			check(f:GetLeft() >= m.content:GetLeft(), look .. ' ' .. key .. ': inside the body, left')
+			check(f:GetRight() <= m.content:GetLeft() + 376, look .. ' ' .. key .. ': inside the 376 body')
+		end
+		eq(m.body.half, true, look .. ': a half body')
+		OW:CloseDialog()
+		close_all()
+	end
+	theme('thick')
+end)
+
+test("the action bars' text menus are laid out as before: every row wide, one to a line", function()
+	-- The menus the action bars and the fonts draw hold no small row, so the half layout changes
+	-- none of them: each row's rect is the one pinned from the one-column layout.
+	local expect = {
+		thick = { outline = '14,20,348,38', size = '14,58,348,38', position = '14,148,348,77', reset = '148,249,80,26' },
+		blizzard = { outline = '0,20,376,34', size = '0,54,376,34', position = '0,140,376,77', reset = '148,221,80,34' },
+	}
+	for look, rects in pairs(expect) do
+		theme(look)
+		open_items()
+		click(dots('hotkey'))
+		local got = menu_rects()
+		for key, want in pairs(rects) do eq(got[key], want, look .. ' ' .. key .. ': as before') end
+		close_all()
+	end
+	theme('thick')
+end)
+
+test('a Position block fits the menu body under Thick, Thin and Blizzard', function()
+	for _, look in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		theme(look)
+		open_items()
+		click(dots('hotkey'))
+		local block = menuCell('position').widget.frame
+		local body = M().content
+		check(block:GetRight() <= body:GetLeft() + 376, look .. ': its right is inside the body (' .. block:GetRight() - body:GetLeft() .. ')')
+		check(block:GetLeft() >= body:GetLeft(), look .. ': and its left')
+		close_all()
+	end
+	theme('thick')
+end)
+
+test('search lists a mirrored setting once, at its part, opening the menu', function()
+	local font = { type = 'select', name = 'Typeface', desc = 'Its typeface.', order = 1, values = { a = 'A' },
+		get = function() return 'a' end, set = function() end }
+	local box = { type = 'toggle', name = 'Enable', desc = 'On.', order = 0, get = function() return true end, set = function() end }
+	local item = { type = 'item', order = 1, name = 'Health text', desc = 'Its text.', get = function() return true end, set = function() end,
+		menu = { type = 'group', name = 'Health text', args = { font = font } } }
+	local root = { Mirror = { type = 'group', name = 'Mirror', childGroups = 'tab', args = {
+		general = { type = 'group', name = 'General', order = 1, args = {
+			parts = { type = 'group', name = 'Parts', inline = true, order = 1, args = { healthtext = item } } } },
+		health = { type = 'group', name = 'Health', order = 2, args = {
+			text = { type = 'group', name = 'Text', inline = true, order = 1,
+				mirrorOf = { 'general', 'parts', 'healthtext' }, args = { enable = box, font = font } } } },
+	} } }
+	local function find(text)
+		local out = {}
+		for _, r in ipairs(OM.Search(root, text)) do
+			out[#out + 1] = r.name .. '@' .. table.concat(r.path, '.') .. (r.menu and '+menu' or '')
+		end
+		return table.concat(out, ',')
+	end
+	eq(find('Typeface'), 'Typeface@Mirror.general.parts.healthtext+menu', 'one result, at the part, opening its menu')
+	eq(find('Enable'), '', "the mirror's own rows are not listed: the box is the part row's")
+	eq(find('Health text'), 'Health text@Mirror.general.parts.healthtext,Typeface@Mirror.general.parts.healthtext+menu', 'the part, then its menu')
+	-- A tab's name matches every row below it; the mirror's are still left out.
+	eq(find('Health'), 'Health text@Mirror.general.parts.healthtext,Typeface@Mirror.general.parts.healthtext+menu', 'by the tab: the same')
+	eq(table.concat(OM.MirrorOf(root, { 'Mirror', 'health', 'text', 'font' }), '.'), 'Mirror.general.parts.healthtext',
+		'OM.MirrorOf: the part the mirror stands for')
+	eq(OM.MirrorOf(root, { 'Mirror', 'general', 'parts', 'healthtext' }), nil, 'none for the part itself')
+	eq(OM.MirrorOf(root, { 'Mirror', 'nowhere', 'x' }), nil, 'none for a path that is not there')
+end)
+
+test('OM.MirrorOf reads the mirror from the nearest ancestor that holds it, not a farther one', function()
+	local function item(name) return { type = 'item', name = name, menu = { type = 'group', name = name, args = {} } } end
+	local function tree()
+		return { Page = { type = 'group', name = 'Page', args = {
+			general = { type = 'group', name = 'General', args = { parts = { type = 'group', name = 'Parts', args = { part = item('Far') } } } },
+			unit = { type = 'group', name = 'Unit', args = {
+				general = { type = 'group', name = 'General', args = { parts = { type = 'group', name = 'Parts', args = { part = item('Near') } } } },
+				health = { type = 'group', name = 'Health', args = {
+					text = { type = 'group', name = 'Text', mirrorOf = { 'general', 'parts', 'part' }, args = { x = { type = 'toggle', name = 'X' } } } } },
+			} },
+		} } }
+	end
+	eq(table.concat(OM.MirrorOf(tree(), { 'Page', 'unit', 'health', 'text', 'x' }), '.'), 'Page.unit.general.parts.part', 'the unit\'s, not the page\'s')
+	local root = tree()
+	root.Page.args.unit.args.general = nil
+	eq(table.concat(OM.MirrorOf(root, { 'Page', 'unit', 'health', 'text', 'x' }), '.'), 'Page.general.parts.part', 'a farther one when the nearer has none')
 end)

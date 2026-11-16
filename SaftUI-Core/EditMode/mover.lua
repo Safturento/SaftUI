@@ -83,27 +83,45 @@ end
 -- outside the frame (under Thick 2px, between two dark lines). Only that line
 -- takes the highlight color, so the outline sits exactly where a SaftUI
 -- frame's own border line is, and gaps between frames look the same in edit
--- mode as out of it. The fill stays see-through so the frame shows; the
--- selected frame's is tinted in the accent, since a 1px line alone is easy to
--- miss.
+-- mode as out of it. The fill stays see-through so the frame shows.
+-- The overlay is a state frame of shape 'mover' (Widgets/states.lua): under the
+-- mouse (or dragged) its body tints, and the selected one has the accent edge and
+-- the fade over its dim body; the helper draws them, from the Accent, on a pass too.
+-- Its rest line is white, put by RestEdge (the helper's edge function: r nil is
+-- the rest).
 -- The overlay is a control, so under Blizzard SaftUI draws no line or fill and
--- the selection art above shows instead, the kit for selected or not.
+-- Edit Mode's own selection art above shows instead, the kit for selected or not
+-- (the helper leaves all of it alone).
+local function RestEdge(overlay, r, g, b)
+	local backdrop = overlay.backdrop
+	if backdrop then st:SetBorderColor(backdrop, r or 1, g or 1, b or 1, 1) end
+end
+
+local function Blizzard() return st:IsBlizzardLook('theme', 'solid') end
+
+-- The mover's look and its selected state: out of a pass (a new mover, a selection,
+-- a theme recolor or redraw, which gives the backdrop the theme's colors back).
+local looks = setmetatable({}, { __mode = 'k' }) -- overlay -> { blizzard, inset } it was last restyled for
+
 local function SetBorderColor(mover, selected)
 	local overlay = mover.overlay
-	if st:IsBlizzardLook('theme', 'solid') then
+	-- A Theme recolor is a pass (it moves nothing): the states are restyled (their pieces
+	-- placed again) only when the look they were styled for changed, which is what a
+	-- theme switch and a scale change move.
+	local blizzard, inset = Blizzard(), st:DrawnInset(overlay)
+	local look = looks[overlay]
+	local flipped = not look or look.blizzard ~= blizzard or look.inset ~= inset
+	if flipped then looks[overlay] = { blizzard = blizzard, inset = inset } end
+	if blizzard then
 		ShowKit(overlay, selected and 'selected' or 'highlight')
-		return
-	end
-	ShowKit(overlay, nil)
-	local backdrop = overlay.backdrop
-	local r, g, b = 1, 1, 1
-	if selected then
-		r, g, b = st:Color('accent'):GetRGB()
-		backdrop:SetBackdropColor(st:ColorRGBA('accent', nil, st.TINT_OBJECT))
 	else
+		ShowKit(overlay, nil)
+		local backdrop = overlay.backdrop
 		backdrop:SetBackdropColor(0, 0, 0, 0.3)
+		RestEdge(overlay)
 	end
-	st:SetBorderColor(backdrop, r, g, b, 1)
+	if flipped then st:RestyleStates(overlay) end
+	st:SetState(overlay, 'selected', selected)
 end
 
 -- The anchor the mover's frame is positioned with, taken from its stored position.
@@ -345,6 +363,8 @@ function EM:CreateMover(key, def)
 		end
 	end)
 
+	-- after the scripts above: the states hook the overlay's enter, leave, press and release
+	st:AddStates(overlay, 'mover', { edge = RestEdge, blizzard = Blizzard })
 	SetBorderColor(mover, false)
 	self.movers[key] = mover
 	self:StackMover(mover) -- its own frame levels, on top (picker.lua)
@@ -353,8 +373,8 @@ function EM:CreateMover(key, def)
 end
 
 -- A theme recolor (or redraw) gives every drawn frame the theme's colors; the
--- overlays take their own back, and the selected one follows the accent at
--- once (only it wears the accent, and not under Blizzard, whose art it shows).
+-- overlays take their own back. The Accent is not here: the states helper
+-- colors the selected and the hovered ones on its own pass.
 -- While edit mode is on the pass is passed on as 'ColorsChanged' (group, key)
 -- for each part of it that draws a color; while it is off nothing is: each
 -- part looks again as edit mode comes on (the 'Enabled' event). A pass only
@@ -364,9 +384,6 @@ function EM:OnColorsChanged(group, key)
 		for _, mover in pairs(self.movers) do
 			SetBorderColor(mover, mover == self.selected)
 		end
-	elseif group == 'accent' then
-		local selected = self.selected
-		if selected and not st:IsBlizzardLook('theme', 'solid') then SetBorderColor(selected, true) end
 	end
 	if self.active then self:Fire('ColorsChanged', group, key) end
 end
