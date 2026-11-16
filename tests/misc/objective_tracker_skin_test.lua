@@ -500,18 +500,24 @@ test('a pooled block handed out again is hooked once and stays styled', function
 	clean()
 end)
 
-test("a quest item button's hover is the accent, at an accent that is not the default, and follows a change of it", function()
+test("a quest item button's hover is the states' hover tint, BLEND, and follows the Accent", function()
 	world('forever')
 	profile.theme.accent:SetRGB(0.9, 0.2, 0.4)
+	st:ColorsChanged('accent')
 	local blocks = OT.layout(quest_module(), { { id = 1, objectives = { 'One' }, item = 3 } })
 	local item = blocks[1].rightEdgeFrame
 	local hover = own_regions(item)[1]
 	check(hover ~= nil, 'a hover of SaftUI\'s')
-	eq(T.rgb(hover:GetVertexColor()), '0.90,0.20,0.40', 'the accent when it is made')
+	local function want() return T.text(st:StateColor('hover')) end
+	eq(T.text(hover:GetVertexColor()), want(), 'the derived hover when it is made')
+	eq(hover:GetBlendMode(), 'BLEND', 'BLEND, not added')
+	eq(hover:GetDrawLayer(), 'HIGHLIGHT', 'its own HIGHLIGHT texture')
+	check(item:GetHighlightTexture() ~= hover, 'never handed to SetHighlightTexture')
 	profile.theme.accent:SetRGB(0.1, 0.8, 0.5)
 	st:ColorsChanged('accent')
-	eq(T.rgb(hover:GetVertexColor()), '0.10,0.80,0.50', "a change of the accent (not 'theme' or 'button') reaches it")
+	eq(T.text(hover:GetVertexColor()), want(), 'a change of the Accent reaches it')
 	profile.theme.accent:SetRGB(0, 0.68, 0.94)
+	st:ColorsChanged('accent')
 	clean()
 end)
 

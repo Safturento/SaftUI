@@ -27,7 +27,7 @@ local L, Layout = TR.LAYOUT, TR.Layout
 	or a free one, or a new one. TR:ReleaseRows() hides every row not acquired
 	since TR:BeginRows(). TR:GetRow(kind, key) and TR:GetQuestRow(questID) find
 	the row a key has now. A quest row is a Button (the mouse for the hover, and
-	for the clicks of Task 7): .title (font string), .icon, .hover, .parts[i]
+	for the clicks of Task 7): .title (font string), .icon, .parts[i]
 	({ fs, bar }: the i-th line, a text or a progress bar), .quest (the model's),
 	.questID, .item ('row' where the quest's item sits in the row, whose room the
 	title and lines leave on the right: its top right corner is the row's top
@@ -156,7 +156,8 @@ end
 
 -- What the rows color themselves, put back after a Colors tab change: the
 -- texts (their status colors, the zone titles and counts) and every accent
--- piece (the focus bar, the hover, the map pin, a popup's bar). Nothing is
+-- piece (the focus bar, the map pin, a popup's bar; a row's hover follows the
+-- Accent through its states). Nothing is
 -- rebuilt or measured. Called by the module's one OnColorsChanged (init.lua).
 function TR:ColorRows()
 	if not self.fontStrings then return end
@@ -364,12 +365,6 @@ local function MakeQuestRow(self)
 	row:EnableMouse(true)
 	row.parts, row.nparts = {}, 0
 
-	local hover = row:CreateTexture(nil, 'BACKGROUND')
-	hover:SetPoint('TOPLEFT', row, 'TOPLEFT', 0, L.HOVER_PAD)
-	hover:SetPoint('BOTTOMRIGHT', row, 'BOTTOMRIGHT', 0, -L.HOVER_PAD)
-	hover:Hide()
-	row.hover = self:NewAccent(hover, st.TINT_ROW)
-
 	row.icon = row:CreateTexture(nil, 'ARTWORK')
 	row.icon:SetSize(L.ICON, L.ICON)
 	row.title = self:NewText(row, 'text')
@@ -434,6 +429,10 @@ local function MakeQuestRow(self)
 		TR:HoverRow(self, false)
 		TR:HideRowTooltip(self)
 	end)
+	-- The row's states (the Layer under the mouse, HOVER_PAD past the row), once for
+	-- the life of the pooled frame: after the SetScripts above, which the helper's
+	-- hooks follow. Cleared at every release (TR:ClearRowStates), never RemoveStates.
+	st:AddStates(row, 'row', { inset = -L.HOVER_PAD })
 	return row
 end
 
@@ -451,6 +450,8 @@ local function MakePopupRow(self)
 	row.title = self:NewText(row, 'text')
 	row.title:SetWordWrap(false)
 	row:SetScript('OnClick', function(self) TR:OnPopupClick(self) end)
+	-- a popup row is a row too: the same states, once for the pooled frame
+	st:AddStates(row, 'row', { inset = -L.HOVER_PAD })
 	return row
 end
 
@@ -500,10 +501,7 @@ function TR:ReleaseRows(all)
 			if row.inUse and (all or row.pass ~= self.pass) then
 				row.inUse = false
 				Shown(row, false)
-				if row.hover then
-					row.hovered = false
-					row.hover:Hide()
-				end
+				self:ClearRowStates(row)
 				if row.key ~= nil then pool.byKey[row.key] = nil end
 				row.key, row.quest, row.questID, row.item, row.timerPart = nil, nil, nil, nil, nil
 				if row.slot then
@@ -594,10 +592,18 @@ end
 
 ------------------------------------------------------------------ interaction
 
--- The accent fill under the mouse, TINT_ROW strong, HOVER_PAD beyond the row.
+-- The row's hover (the states' Layer at the derived hover, HOVER_PAD beyond the
+-- row), said by the row's own scripts and by its slot and icon button, which take
+-- the mouse from it.
 function TR:HoverRow(row, hovered)
-	row.hovered = hovered
-	row.hover:SetShown(hovered)
+	st:SetState(row, 'hover', hovered)
+end
+
+-- A row going back to its pool is at rest: no hover, no push. The frame keeps its
+-- states for its life (F8: AddStates once, never RemoveStates on a pool).
+function TR:ClearRowStates(row)
+	if st:GetState(row, 'hover') then st:SetState(row, 'hover', false) end
+	if st:GetState(row, 'pushed') then st:SetState(row, 'pushed', false) end
 end
 
 -- A zone header's collapse, kept per character (st.config.char.tracker.zones,

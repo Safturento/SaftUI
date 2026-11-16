@@ -648,7 +648,7 @@ RW.both('the tooltip: the quest link, party progress when grouped, the click hin
 	GameTooltip:SetOwner(UIParent, 'ANCHOR_NONE')
 	stub.fire_script(row, 'OnEnter', true)
 	check(not GameTooltip:IsOwned(row), 'Tooltips off: the row takes no tooltip')
-	check(row.hover:IsShown(), 'but the hover still shows')
+	check(st:GetState(row, 'hover'), 'but the hover still shows')
 end)
 
 RW.both('a secret title: the tooltip, the menu and the clicks pass it through', function(st, TR)

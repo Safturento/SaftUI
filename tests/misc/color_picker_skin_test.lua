@@ -3,8 +3,9 @@
 --     the Skinning look (following the frame's width, which Blizzard changes with
 --     the alpha slider), Blizzard's border and the header's metal faded, the
 --     title in the Skinning font; the Okay and Cancel buttons' art faded, a box
---     of SaftUI's drawn as a control and a hover; the hex box's border faded and
---     a backdrop of SaftUI's drawn as a control, with a white border while it has
+--     of SaftUI's drawn as a control and a hover tint (the interaction states, in
+--     tests/misc/skin_interaction_states_test.lua); the hex box's border faded and
+--     a backdrop of SaftUI's drawn as a control, with an Accent border while it has
 --     focus; the texts in the Skinning font;
 --   - the wheel, the sliders, the swatches and the checkerboard left alone;
 --   - off, or under the Blizzard theme, nothing touched; the theme switch and the
@@ -422,14 +423,14 @@ test('the Skinning page has the toggle, on by default', function()
 	eq(toggle.type, 'toggle', 'a toggle')
 end)
 
-test('a focused hex box shows a white border, and loses it again', function()
+test('a focused hex box shows the Accent border, and loses it again', function()
 	world('forever')
 	local hex = CP.frame.Content.HexBox
 	local backdrop = the_one(own_children(hex), 'the hex box backdrop')
 	local normal = T.edge(backdrop)
 	hex:SetFocus()
 	stub.fire_script(hex, 'OnEditFocusGained')
-	eq(T.edge(backdrop), T.text(1, 1, 1, 1), 'white while it has focus')
+	eq(T.edge(backdrop), T.text(profile.theme.accent:GetRGB()) .. ',1.00', 'the Accent while it has focus')
 	hex:ClearFocus()
 	stub.fire_script(hex, 'OnEditFocusLost')
 	eq(T.edge(backdrop), normal, "the theme's border again")
@@ -493,36 +494,32 @@ test('skinned once: a second Install and a repeated style add nothing', function
 	clean()
 end)
 
-test("hovering Okay or Cancel turns the edge of SaftUI's box blue; nothing covers the label", function()
+test("hovering Okay or Cancel tints SaftUI's box; nothing covers the label", function()
 	world('forever')
-	local blue = T.text(profile.theme.accent:GetRGB())
 	for _, key in ipairs({ 'OkayButton', 'CancelButton' }) do
 		local button = CP.frame.Footer[key]
 		local box = the_one(own_children(button), key .. "'s box")
 		local normal = T.edge(box)
-		check(normal ~= T.text(1, 1, 1, 1) and not normal:find(blue, 1, true), key .. ': not blue at rest')
+		check(not st:StateLook(box).layer.shown, key .. ': no tint at rest')
 		-- The game passes a second argument, motion, to OnEnter and OnLeave.
 		stub.fire_script(button, 'OnEnter', true)
-		check(T.edge(box):find(blue, 1, true) ~= nil, key .. ': blue under the mouse')
+		check(st:StateLook(box).layer.shown, key .. ': tinted under the mouse')
+		eq(T.edge(box), normal, key .. ': the edge is left as it was (hover is the body)')
 		eq(#own_regions(button), 0, key .. ": no texture of SaftUI's, which would sit over the label")
 		stub.fire_script(button, 'OnLeave', true)
-		eq(T.edge(box), normal, key .. ': back when the mouse leaves')
+		check(not st:StateLook(box).layer.shown, key .. ': back when the mouse leaves')
 	end
 	-- A recolor while hovered keeps the hover.
 	local button = CP.frame.Footer.OkayButton
+	local box = the_one(own_children(button), 'the box')
 	stub.fire_script(button, 'OnEnter', true)
 	st:ColorsChanged('theme')
-	check(T.edge(the_one(own_children(button), 'the box')):find(blue, 1, true) ~= nil, 'a recolor keeps the hover')
-	-- A change of the accent while hovered reaches it, and an accent that is not the default is the edge.
-	profile.theme.accent:SetRGB(0.9, 0.2, 0.4)
-	st:ColorsChanged('accent')
-	check(T.edge(the_one(own_children(button), 'the box')):find(T.text(0.9, 0.2, 0.4), 1, true) ~= nil, "a change of the accent reaches the hovered box")
-	profile.theme.accent:SetRGB(0, 0.68, 0.94)
-	st:ColorsChanged('accent')
+	check(st:StateLook(box).layer.shown, 'a recolor keeps the hover')
+	-- Under the Blizzard theme the hooks show nothing.
 	stub.fire_script(button, 'OnLeave', true)
-	-- Under the Blizzard theme the hooks color nothing.
 	switch('blizzard')
 	stub.fire_script(button, 'OnEnter', true)
+	check(not st:StateLook(box).layer.shown, 'Blizzard theme: nothing shown')
 	stub.fire_script(button, 'OnLeave', true)
 	clean()
 end)
@@ -883,10 +880,16 @@ test('the skin repaints for its groups only: a Class pass touches nothing', func
 		eq(m.calls.total, 0, group .. ': no color set')
 		eq(m.forbidden.total, 0, group .. ': nothing forbidden')
 	end
+	-- a hovered button's box and a focused hex box: what a pass colors
+	local okay = CP.frame.Footer.OkayButton
+	stub.fire_script(okay, 'OnEnter', true)
+	CP.frame.Content.HexBox:SetFocus()
+	stub.fire_script(CP.frame.Content.HexBox, 'OnEditFocusGained')
 	for _, group in ipairs({ 'accent', 'theme' }) do
 		st:ColorsChanged(group)
 		local m = C.measure(function() st:ColorChanged(group) end, 100)
-		check(m.calls.total > 0, group .. ': the hover edges are colored')
+		-- (a theme recolor reaches the states through the engine's own redraw, st:RecolorThemed)
+		if group == 'accent' then check(m.calls.total > 0, group .. ': the hovered box and the focused hex box are colored') end
 		eq(m.forbidden.total, 0, group .. ': nothing forbidden')
 		eq(m.made, 0, group .. ': nothing made')
 		check(m.kb < 4, group .. ': no table per pass: ' .. m.kb .. ' KB over 100 passes')

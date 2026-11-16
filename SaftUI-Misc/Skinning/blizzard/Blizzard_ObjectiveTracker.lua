@@ -43,7 +43,8 @@ local OT = SK:NewModule('Blizzard_ObjectiveTracker')
 	    SaftUI's drawn as an action button, the icon inside its border and
 	    cropped square (and kept cropped: Blizzard's SetItemButtonTexture puts
 	    the whole texture back on every SetUp), Blizzard's round frame, pushed
-	    and highlight art faded, a flat hover in the accent,
+	    and highlight art faded, a flat hover tint (the interaction states' hover,
+	    st:AddStates, an icon),
 	    the count in the Skinning font.
 
 	Left as Blizzard's: the tracker's background (NineSlice, Blizzard's Opacity
@@ -186,7 +187,7 @@ end
 
 local function ColorCollapse(entry)
 	entry.icon:SetVertexColor(st:Color('text', 'muted'):GetRGB())
-	entry.hover:SetVertexColor(st:Color('text', 'strong'):GetRGB()) -- the chevron under the mouse, as in SaftUI's own tracker
+	entry.hover:SetVertexColor(st:Color('text', 'strong'):GetRGB()) -- the chevron under the mouse (Text > Strong; its states are not drawn by the helper)
 end
 
 ------------------------------------------------------------------ headers
@@ -428,10 +429,6 @@ local function KeepCrop(icon)
 	end)
 end
 
-local function ColorItem(entry)
-	entry.hover:SetVertexColor(st:Color('accent'):GetRGB())
-end
-
 local function StyleItem(button, active)
 	local icon = button.icon
 	if not icon then return end
@@ -457,8 +454,12 @@ local function StyleItem(button, active)
 		entry.box = box
 		entry.hover = button:CreateTexture(nil, st.ThemeArt.HOVER_LAYER)
 		entry.hover:SetTexture(st.BLANK_TEX)
-		entry.hover:SetBlendMode('ADD')
 		items[button] = entry
+		-- The hover is a state: SaftUI's own HIGHLIGHT texture (never handed to
+		-- SetHighlightTexture) shown by the game under the mouse, tinted by the
+		-- helper at the derived hover, BLEND. The record is in a weak table; nothing
+		-- is written onto Blizzard's button. Under Blizzard's look it is left alone.
+		st:AddStates(button, 'icon', { pieces = { hover = entry.hover }, blizzard = function() return not Active() end })
 		KeepCrop(icon)
 	elseif entry.generation == generation then
 		return
@@ -485,7 +486,7 @@ local function StyleItem(button, active)
 		icon:SetTexCoord(0, 1, 0, 1)
 	end
 	entry.hover:SetShown(active)
-	ColorItem(entry)
+	st:RestyleStates(button)
 	StyleText(button.Count, 'count', active)
 end
 
@@ -633,8 +634,8 @@ function OT:UpdateConfig()
 	end
 end
 
--- A theme recolor or a color change: the header lines, the chevrons and the
--- item buttons' hover take the colors again, and the objective lines for a
+-- A theme recolor or a color change: the header lines and the chevrons take the
+-- colors again (the item buttons' hover follows the Accent through its states), and the objective lines for a
 -- change of the Objectives colors or of the theme (Blizzard's look back or ours).
 function OT:OnColorsChanged(group)
 	if group ~= 'text' and group ~= 'objectives' and group ~= 'accent' and group ~= 'theme' then return end
@@ -644,7 +645,6 @@ function OT:OnColorsChanged(group)
 		for _, entry in pairs(headers) do entry.line:SetVertexColor(LineColor()) end
 	end
 	for _, entry in pairs(collapses) do ColorCollapse(entry) end
-	for _, entry in pairs(items) do ColorItem(entry) end
 end
 
 -- Off (Skinning -> Objective tracker), nothing is hooked or touched until it's
