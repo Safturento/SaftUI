@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-16 — The tracker's wrapped text, one line short: the cause is inferred, not seen in the game](#2026-11-16--the-trackers-wrapped-text-one-line-short-the-cause-is-inferred-not-seen-in-the-game)
   - [2026-11-16 — All units' Position offers anchors some units lack (pre-flight ruling L7 was never built)](#2026-11-16--all-units-position-offers-anchors-some-units-lack-pre-flight-ruling-l7-was-never-built)
   - [2026-11-16 — Unit frames shared settings: dead code, stale comments, names with two meanings, and shared.lua at 1293 lines](#2026-11-16--unit-frames-shared-settings-dead-code-stale-comments-names-with-two-meanings-and-sharedlua-at-1293-lines)
   - [2026-11-16 — Search stops at 100 results, so a part's name cuts the last pages](#2026-11-16--search-stops-at-100-results-so-a-parts-name-cuts-the-last-pages)
@@ -243,6 +244,18 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-16 — The tracker's wrapped text, one line short: the cause is inferred, not seen in the game
+
+**What:** a quest's text that wraps to three lines was laid out as two, so the third line drew over the next quest's title. The fix keeps the rows' kept heights per scale; whether that was the whole cause is for the game to say.
+
+**Why noticed:** the owner's screenshot (Duskwood, a quest whose one text line wraps to three at the tracker's width, no Lua error), a week after testing `/sui scale`. Branch `fb-tracker-wrap`.
+
+**Anchors:** `SaftUI-Tracker/rows.lua` (`TR:Measure`, `TR:CheckFonts`), `tests/tracker/wrap_test.lua`, `SaftUI-Core/uiscale.lua` (`UIScale:OnChanged`).
+
+**What's been considered:** `TR:Measure` keeps a height per text and width, valid for `fontStamp`, which `CheckFonts` bumped only on a font change. A UI scale change moves glyph widths (the game snaps them to whole pixels), so the same text at the same width can wrap to another count while the kept height stays: the scale is now in the key. Ruled out by reading: the width measured is the width drawn (only `Measure` sets a row text's width; `Width` is the zone title's), and a no-objective quest's line takes the same width path as an objective's. Not ruled out without the game: a font file not loaded at the first measure, and `GetStringHeight` read before the client has laid the text out.
+
+**Shape of work:** the owner pastes the `/run` line from the report on a wrong row; if the numbers show the string height is 3 lines and the layout used 2 at the same scale as the last draw, the cause is another one (then measure by `GetNumLines` and `GetLineHeight`).
 
 ### 2026-11-16 — All units' Position offers anchors some units lack (pre-flight ruling L7 was never built)
 
