@@ -53,6 +53,8 @@ local KEYS = { hover = true, pushed = true, selected = true, focus = true, disab
 local records = setmetatable({}, { __mode = 'k' })
 local made = setmetatable({}, { __mode = 'k' })
 local hooked = setmetatable({}, { __mode = 'k' })
+-- the records with a label that followed a font object (st:RepaintKeptText walks only these)
+local followers = setmetatable({}, { __mode = 'k' })
 
 local function ST() return st.States end
 
@@ -160,11 +162,7 @@ local TOL = 1.5 / 255
 local function NoteOwner(rec)
 	if not rec.painted then return end
 	local texts = rec.texts
-	local own = rec.own
-	if not own then
-		own = {}
-		rec.own = own
-	end
+	local own = rec.own -- (made by AddStates: nothing is made inside a pass)
 	for i = 1, #texts do
 		local r, g, b = texts[i]:GetTextColor()
 		r, g, b = st.PlainNumber(r), st.PlainNumber(g), st.PlainNumber(b)
@@ -260,6 +258,7 @@ local function NoteFollow(rec, i, label, r, g, b)
 		follows, rec.follows, rec.fpaint = {}, {}, {}
 		follows = rec.follows
 	end
+	followers[rec] = true -- the few records st:RepaintKeptText walks
 	follows[i] = object
 	local at = i * 4
 	rec.fpaint[at - 3], rec.fpaint[at - 2], rec.fpaint[at - 1] = fr, fg, fb
@@ -588,8 +587,21 @@ local function Fill(list, given)
 	return list
 end
 
+-- The slots of a label that is no longer in the list (a merge that gave fewer labels): its
+-- owner's color, its kept color and its font object are forgotten, so a later merge that gives
+-- more labels starts them clean.
+local function DropSlots(rec, n)
+	local own, keep, follows, fpaint = rec.own, rec.keep, rec.follows, rec.fpaint
+	for k in pairs(own) do if k > n * 4 then own[k] = nil end end
+	if keep then for k in pairs(keep) do if k > n * 4 then keep[k] = nil end end end
+	if follows then for k in pairs(follows) do if k > n then follows[k] = nil end end end
+	if fpaint then for k in pairs(fpaint) do if k > n * 4 then fpaint[k] = nil end end end
+end
+
 local function Texts(rec)
+	local before = rec.texts and #rec.texts or 0
 	rec.texts = Fill(rec.texts or {}, rec.opts.text)
+	if #rec.texts < before then DropSlots(rec, #rec.texts) end
 end
 
 local function Piece(rec, kind, layer, sublevel)
@@ -755,7 +767,8 @@ local function KeptAll()
 	for _, rec in pairs(records) do
 		if rec.edgeKind == 'theme' then
 			keptRec = rec
-			xpcall(CallKept, ReportOnce)
+			-- a record that runs clean again may be reported again if it fails later
+			if xpcall(CallKept, ReportOnce) then rec.reported = nil end
 		end
 	end
 	keptRec = nil
@@ -849,7 +862,7 @@ end
 local function RestyleAll()
 	for _, rec in pairs(records) do
 		scaleRec = rec
-		xpcall(CallRestyle, ReportScaleOnce)
+		if xpcall(CallRestyle, ReportScaleOnce) then rec.reported = nil end
 	end
 	scaleRec = nil
 end
@@ -897,7 +910,7 @@ function st:AddStates(frame, shape, opts)
 			error(('SaftUI: AddStates: the frame is a %s already, not a %s'):format(rec.shape, shape), 2)
 		end
 	else
-		rec = { frame = frame, shape = shape, opts = {}, texts = {}, hover = false, pushed = false, selected = false,
+		rec = { frame = frame, shape = shape, opts = {}, texts = {}, own = {}, hover = false, pushed = false, selected = false,
 			focus = false, disabled = false }
 		made[frame] = made[frame] or {}
 		records[frame] = rec
@@ -977,9 +990,7 @@ end
 -- modules, and the kit's field font is recolored by a module (Config:OnColorsChanged), so the
 -- FollowText follower reads its old color: Config calls this once that font is recolored.
 function st:RepaintKeptText()
-	for _, rec in pairs(records) do
-		if rec.follows then FollowText(rec) end
-	end
+	for rec in pairs(followers) do FollowText(rec) end
 end
 
 function st:RestyleStates(frame)
@@ -996,6 +1007,7 @@ function st:RemoveStates(frame)
 	Refresh(rec)
 	if rec.disabled then rec.host:SetAlpha(rec.restAlpha or 1) end
 	st:FollowColor(rec, 'accent', nil, nil)
+	followers[rec] = nil
 	records[frame] = nil
 end
 
@@ -1039,6 +1051,7 @@ function st:StateLook(frame)
 		local r, g, b = rec.texts[1]:GetTextColor()
 		look.text = { r = r, g = g, b = b }
 	end
+	look.followsFont, look.ownMade = followers[rec] == true, rec.own ~= nil
 	if rec.glyphObject then
 		local r, g, b
 		local g1 = rec.glyphObject

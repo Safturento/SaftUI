@@ -284,16 +284,24 @@ function st:InColorEdit() return editing end
 
 -- An edit held by more than one holder (the color picker and the Accent menu can be open at
 -- once, in either order): each holds it and the edit ends when the last lets go.
-local holders = 0
+-- The holders end only the edit one of them began: an edit begun raw (st:BeginColorEdit, ended by
+-- its own st:EndColorEdit) is not ended by a holder's last release.
+local holders, heldSerial = 0, nil
 function st:HoldColorEdit()
 	holders = holders + 1
+	local began = not editing
 	st:BeginColorEdit()
+	if began and holders == 1 then heldSerial = editSerial end
 end
 
 function st:ReleaseColorEdit()
 	if holders == 0 then return end
 	holders = holders - 1
-	if holders == 0 then st:EndColorEdit() end
+	if holders == 0 then
+		local serial = heldSerial
+		heldSerial = nil
+		if serial and serial == editSerial then st:EndColorEdit() end
+	end
 end
 
 -- One color changed (a Colors row's set or reset, the Accent's).

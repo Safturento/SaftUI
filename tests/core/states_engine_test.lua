@@ -465,3 +465,92 @@ test('L4: a merge that changes only barOffset moves the bar', function()
 	local y1 = select(5, st:StateLook(f).pieces.bar:GetPoint(1))
 	check(y1 ~= y0, 'moved: ' .. y0 .. ' to ' .. y1)
 end)
+
+------------------------------------------------------------------ Task 11: the engine's nits
+
+local function labelled(n, opts)
+	local f = st:CreateFrame('Button', nil, UIParent)
+	f:SetSize(100, 24)
+	st:SetTemplate(f, 'theme', 'solid', 'control')
+	local labels = {}
+	for i = 1, n do labels[i] = f:CreateFontString(nil, 'OVERLAY') end
+	local o = { text = labels, textRest = function() return 1, 1, 1 end }
+	for k, v in pairs(opts or {}) do o[k] = v end
+	st:AddStates(f, 'box', o)
+	return f, labels
+end
+
+test("N1: the owner-color table is made by AddStates, never inside a pass", function()
+	world()
+	local f, labels = labelled(2)
+	check(st:StateLook(f).ownMade, 'made at registration')
+	-- a label recolored by its owner while lit is noted in the same table
+	st:SetState(f, 'hover', true)
+	labels[1]:SetTextColor(0.2, 0.9, 0.9)
+	st:SetState(f, 'hover', false)
+	eq(T.rgb(labels[1]:GetTextColor()), '0.20,0.90,0.90', "and still comes back in the owner's color")
+end)
+
+test("N2: a record's error is reported again when it fails again after it ran clean", function()
+	world()
+	local bad = false
+	local f = st:CreateFrame('Button', nil, UIParent)
+	f:SetSize(100, 24)
+	st:SetTemplate(f, 'theme', 'solid', 'control')
+	st:AddStates(f, 'box', { edge = 'theme', blizzard = function() if bad then error('boom') end return false end })
+	take_errors()
+	bad = true
+	st:RecolorThemed(); st:RecolorThemed()
+	eq(#take_errors(), 1, 'a failing record: once over two recolors')
+	bad = false
+	st:RecolorThemed()
+	eq(#take_errors(), 0, 'it runs clean')
+	bad = true
+	st:RecolorThemed(); st:RecolorThemed()
+	eq(#take_errors(), 1, 'and fails again: reported again, once')
+end)
+
+test('N3: a merge that gives fewer labels forgets the dropped ones; a later merge with more starts clean', function()
+	world()
+	local f, labels = labelled(2)
+	st:SetState(f, 'hover', true)
+	labels[2]:SetTextColor(0.2, 0.9, 0.9) -- its owner's, while lit
+	st:ColorChanged('accent') -- a pass notes it (slot 2)
+	st:AddStates(f, 'box', { text = { labels[1] } })
+	local fresh2 = f:CreateFontString(nil, 'OVERLAY')
+	-- (the color the lit label is painted in, so that it is no owner's color of its own)
+	fresh2:SetTextColor(labels[1]:GetTextColor())
+	st:AddStates(f, 'box', { text = { labels[1], fresh2 } })
+	st:SetState(f, 'hover', false)
+	eq(T.rgb(fresh2:GetTextColor()), '1.00,1.00,1.00', "the new second label gets textRest, not the dropped one's owner color")
+end)
+
+test('N4: RepaintKeptText walks the records that follow a font object, not every record', function()
+	world()
+	-- 300 state frames with no followed label, and one that follows the font object
+	for _ = 1, 300 do labelled(1) end
+	local fo = CreateFont('N4Font')
+	fo:SetTextColor(0.9, 0.9, 0.9)
+	local f, labels = labelled(1, { textKeep = true, textRest = false })
+	labels[1]:SetFontObject(fo)
+	labels[1]:SetTextColor(0.9, 0.9, 0.9)
+	check(not st:StateLook(f).followsFont, 'not yet: nothing has made the label dark')
+	-- a pale accent under hover at 60% turns the label dark; it followed the object when it did
+	st.config.profile.theme.accent = CreateColor(0.9, 0.78, 0.29)
+	st.config.profile.theme.states.hover = 0.6
+	ST.Changed()
+	st:SetState(f, 'hover', true)
+	check(st:StateLook(f).followsFont, 'it follows now: in the set')
+	local calls = C.measure(function() st:RepaintKeptText() end, 10)
+	check(calls.kb < 2, 'a repaint makes no garbage: ' .. calls.kb)
+	local others = {}
+	for i = 1, 5 do others[i] = labelled(1) end
+	for _, other in ipairs(others) do check(not st:StateLook(other).followsFont, 'a plain record is not in the set') end
+	fo:SetTextColor(0.4, 0.5, 0.6)
+	st:RepaintKeptText()
+	st:SetState(f, 'hover', false)
+	eq(T.rgb(labels[1]:GetTextColor()), '0.40,0.50,0.60', "the followed label is the object's current color")
+	-- a record that is removed leaves the set
+	st:RemoveStates(f)
+	check(st:StateLook(f) == nil, 'removed')
+end)

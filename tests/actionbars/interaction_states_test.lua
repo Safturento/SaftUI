@@ -268,3 +268,107 @@ test('a pass over 164 buttons: under 700 calls, nothing made, under 4 KB', funct
 	-- the call count is pinned: 4 a button at rest (3 colors and the Fill's coordinates), none else
 	eq(m.calls.total, 164 * 4, 'pinned')
 end)
+
+-- The pet and stance buttons through their own update (PetButton:Refresh, StanceButton:Refresh),
+-- made by their bars' own CreateButtons: the stubs have no ActionButtonTemplate, so a secure
+-- button's regions are made by hand as the Cooldown numbers test does.
+local function own_bar(id)
+	local header = CreateFrame('Frame', 'ISOwn' .. id, UIParent)
+	header.id, header.buttons = id, {}
+	function header:WrapScript() end
+	local real = CreateFrame
+	function CreateFrame(kind, name, parent, template, frameId)
+		local frame = real(kind, name, parent, template and template:find('Secure') and 'SecureActionButtonTemplate' or template, frameId)
+		if template and template:find('ActionButtonTemplate') then
+			frame.icon = frame:CreateTexture(nil, 'BACKGROUND')
+			frame.IconMask = frame:CreateMaskTexture()
+			frame.Flash = frame:CreateTexture(nil, 'ARTWORK')
+			frame.cooldown = real('Cooldown', nil, frame)
+			for _, key in ipairs({ 'HotKey', 'Count', 'Name' }) do frame[key] = frame:CreateFontString(nil, 'OVERLAY') end
+			frame.AutoCastOverlay = real('Frame', nil, frame)
+			function frame.AutoCastOverlay:ShowAutoCastEnabled() end
+		end
+		return frame
+	end
+	GetCVarBool = GetCVarBool or function(name) return stub.cvars[name] == '1' end
+	local ok, err = pcall(AB.barTypes[id].CreateButtons, header)
+	CreateFrame = real
+	check(ok, tostring(err))
+	for _, b in ipairs(header.buttons) do AB:StyleButton(b, AB:GetBarConfig(id), 'thick', 'solid') end
+	return header
+end
+
+test("L2: pet and stance buttons through their own update: checked is the helper's selected, a secret counts as unchecked", function()
+	fresh()
+	local restore = S.install()
+	local active, secret = false, false
+	GetPetActionInfo = function() return 'x', 'Interface\\Icons\\x', false, secret and S.secret('isActive') or active, false, false end
+	GetShapeshiftFormInfo = function() return 'Interface\\Icons\\x', secret and S.secret('isActive') or active, true end
+	GetNumShapeshiftForms = function() return 3 end
+	IsPetAttackAction = function() return false end
+	GetPetActionSlotUsable = function() return true end
+	GetPetActionCooldown = function() return 0, 0, 0 end
+	GetShapeshiftFormCooldown = function() return 0, 0, 0 end
+	for _, id in ipairs({ 'pet', 'stance' }) do
+		local ok, header = pcall(own_bar, id)
+		check(ok, id .. ': the bar made: ' .. tostring(header))
+		if ok then
+			local b = header.buttons[1]
+			local plain = edge(b)
+			active, secret = true, false
+			b:Refresh()
+			eq(st:GetState(b, 'selected'), true, id .. ': an active one is selected')
+			eq(edge(b), accent_hex(), id .. ': with the Accent edge')
+			eq(st:StateLook(b).checked_piece.a, 0.24, id .. ': and the fade')
+			active, secret = false, true
+			b:Refresh()
+			eq(st:GetState(b, 'selected'), false, id .. ': a secret is unchecked')
+			eq(edge(b), plain, id .. ': the theme border')
+			active, secret = false, false
+			b:Refresh()
+			eq(st:GetState(b, 'selected'), false, id .. ': an inactive one is not')
+		end
+	end
+	restore()
+end)
+
+test('L3: a checked, unequipped button under Blizzard is given no SaftUI edge color, also after an equipped item leaves it', function()
+	fresh()
+	st.config.profile.theme.name = 'thick'
+	local b = styled('ISBlizzEdge', 'theme')
+	T.theme('blizzard')
+	AB:StyleButton(b, AB:GetBarConfig('bar1'), 'theme', 'solid')
+	eq(st:StateLook(b).blizzard, true, 'the Blizzard look')
+	-- what PaintEdge hands the backdrop: a color, or none (the theme's own)
+	local given = {}
+	local real = st.SetBorderColor
+	st.SetBorderColor = function(self, frame, r, ...) if frame == b.backdrop then given[#given + 1] = r and 'color' or 'none' end return real(self, frame, r, ...) end
+	b:SetChecked(true)
+	AB:PaintEdge(b)
+	eq(given[#given], 'none', 'checked under Blizzard: no color, Blizzard draws it')
+	-- an equipped item that is checked, then leaves: the path where PaintEdge is asked with no color
+	b.equipped = true
+	AB:UpdateEquippedBorder(b)
+	eq(given[#given], 'color', 'an equipped item is colored')
+	b.equipped = false
+	AB:UpdateEquippedBorder(b)
+	eq(given[#given], 'none', 'unequipped and still checked: no color again')
+	st.SetBorderColor = real
+end)
+
+test('L3: an Accent pass paints an equipped and checked button once, not twice', function()
+	fresh()
+	local b = styled('ISBoth')
+	b.equipped = true
+	AB:UpdateEquippedBorder(b)
+	b:SetChecked(true)
+	local painted = 0
+	local real = AB.PaintEdge
+	AB.PaintEdge = function(...) painted = painted + 1; return real(...) end
+	st.config.profile.theme.accent:SetRGB(0.3, 0.9, 0.6)
+	st:ColorChanged('accent')
+	AB.PaintEdge = real
+	eq(painted, 1, 'once in a pass (the helper paints a selected edge; the module only an equipped, unselected one)')
+	eq(edge(b), accent_hex())
+	st.config.profile.theme.accent:SetRGB(0, 0.68, 0.94)
+end)
