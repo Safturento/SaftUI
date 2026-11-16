@@ -19,7 +19,7 @@ local function up(fn, name)
 	end
 end
 
-test("a bag bar slot's hover is the accent, at an accent that is not the default", function()
+test("a bag bar slot's hover follows the accent (T+ of it), at an accent that is not the default", function()
 	local restyle = up(INV.InitializePlayerBagSlots, 'RestyleBagSlot')
 	check(restyle, 'the restyle function')
 	local slot = CreateFrame('Button', nil, UIParent)
@@ -27,15 +27,19 @@ test("a bag bar slot's hover is the accent, at an accent that is not the default
 	slot:SetNormalTexture(st.BLANK_TEX)
 	slot:SetHighlightTexture(st.BLANK_TEX)
 	slot:SetPushedTexture(st.BLANK_TEX)
+	-- an icon of the states helper, as InitializePlayerBagSlots registers it
+	st:AddStates(slot, 'icon', {
+		pieces = { hover = slot:GetHighlightTexture(), pushed = slot:GetPushedTexture() },
+		blizzard = function() return false end,
+	})
 	st.config.profile.theme.accent:SetRGB(0.9, 0.2, 0.4)
 	restyle(slot)
-	local r, g, b = slot:GetHighlightTexture():GetVertexColor()
-	eq(string.format('%.2f,%.2f,%.2f', r, g, b), '0.90,0.20,0.40', 'the accent, set again whenever Blizzard rewrites the texture')
-	-- A pick reaches it at once (it follows Theme > Accent, as InitializePlayerBagSlots registers it), no restyle.
-	st:FollowColor(slot, 'accent', nil, up(INV.InitializePlayerBagSlots, 'PaintBagSlotHover'))
+	local function text(t) return string.format('%.2f,%.2f,%.2f,%.2f', t[1], t[2], t[3], t[4]) end
+	local function hover() local r, g, b, a = slot:GetHighlightTexture():GetVertexColor(); return text({ r, g, b, a }) end
+	eq(hover(), text({ st:StateColor('hover') }), 'T+ of the accent, set again whenever Blizzard rewrites the texture')
+	-- A pick reaches it at once (the helper's pass of the Accent), no restyle.
 	st.config.profile.theme.accent:SetRGB(0.2, 0.9, 0.5)
 	st:ColorChanged('accent')
-	r, g, b = slot:GetHighlightTexture():GetVertexColor()
-	eq(string.format('%.2f,%.2f,%.2f', r, g, b), '0.20,0.90,0.50', 'the accent that was picked')
+	eq(hover(), text({ st:StateColor('hover') }), 'the accent that was picked')
 	st.config.profile.theme.accent:SetRGB(0, 0.68, 0.94)
 end)

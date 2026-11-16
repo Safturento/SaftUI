@@ -236,13 +236,16 @@ test("the Accent: the bag bar's slots, the loading bars, the selected bank windo
 	local bar = CreateFrame('Button', nil, UIParent)
 	bar.icon = bar:CreateTexture(nil, 'BORDER')
 	bar:SetNormalTexture(st.BLANK_TEX); bar:SetHighlightTexture(st.BLANK_TEX); bar:SetPushedTexture(st.BLANK_TEX)
+	st:AddStates(bar, 'icon', {
+		pieces = { hover = bar:GetHighlightTexture(), pushed = bar:GetPushedTexture() },
+		blizzard = function() return false end,
+	})
 	up(INV.InitializePlayerBagSlots, 'RestyleBagSlot')(bar)
-	st:FollowColor(bar, 'accent', nil, up(INV.InitializePlayerBagSlots, 'PaintBagSlotHover'))
 	local accent = st.config.profile.theme.accent
 	accent:SetRGB(0.9, 0.2, 0.4)
 	local m = pass('accent', nil)
 	local want = T.text(0.9, 0.2, 0.4)
-	eq(T.text(bar:GetHighlightTexture():GetVertexColor()), want .. ',1.00', "a bag bar slot's hover")
+	eq(T.text(bar:GetHighlightTexture():GetVertexColor()), T.text(st:StateColor('hover')), "a bag bar slot's hover: T+ of the accent")
 	eq(T.text(bag.loadingOverlay.loadingBar:GetStatusBarColor()), want .. ',1.00', "the bag window's loading bar")
 	eq(T.text(bank.loadingOverlay.loadingBar:GetStatusBarColor()), want .. ',1.00', "the bank's loading bar")
 	eq(T.edge_rgb(bank.backdrop), want, 'the selected bank window')

@@ -158,15 +158,19 @@ test('the list: every category in order, counts from the bag window, the edited 
 	check(not row_of(w, 'Armor').strike:IsShown(), 'one that is on is not')
 	check(same_rgb({ row_of(w, 'Armor').name:GetTextColor() }, rgb('text', 'normal')), 'and its name is not grey')
 
-	-- The selected row: tinted blue with a 3px bar at its left.
+	-- The selected row: the helper's selected look (a two-line accent bar and the fade).
 	for _, row in ipairs(w.rows) do
-		eq(row.tint:IsShown(), row.id == 'Consumables', row.id .. ': tinted only when selected')
-		eq(row.bar:IsShown(), row.id == 'Consumables', row.id .. ': the bar only when selected')
+		eq((SaftUI:GetState(row.frame, 'selected') == true), row.id == 'Consumables', row.id .. ': tinted only when selected')
+		local barLook = st:StateLook(row.frame)
+		eq(barLook.bar ~= nil and barLook.bar.shown, row.id == 'Consumables', row.id .. ': the helper\'s bar only when selected')
 	end
-	eq(consumables.bar:GetWidth(), 3, 'the bar is 3 wide')
-	eq(consumables.bar:GetLeft(), consumables.frame:GetLeft(), 'at the left')
-	eq(consumables.bar:GetHeight(), 22, 'the whole row high')
-	check(same_rgb(stub.state(consumables.bar).color_texture, rgb('accent')), 'the accent')
+	-- the helper's bar: two lines wide (it was 3, flat), at the left, the whole row high, in the accent
+	local look = st:StateLook(consumables.frame)
+	eq(look.bar.width, 2 * st:GetLineSize(consumables.frame), 'the bar is two lines wide')
+	eq(look.pieces.bar:GetLeft(), consumables.frame:GetLeft(), 'at the left')
+	eq(look.pieces.bar:GetHeight(), 22, 'the whole row high')
+	check(same_rgb({ look.bar.r, look.bar.g, look.bar.b }, rgb('accent')), 'the accent')
+	check(look.fill.shown, 'and the fade')
 
 	-- A handle on every row but Miscellaneous.
 	for _, row in ipairs(w.rows) do
@@ -191,7 +195,7 @@ test('the list: every category in order, counts from the bag window, the edited 
 	click(row_of(w, 'Armor').frame)
 	eq(INV.categoryEditor.selected, 'Armor', 'selected')
 	w = tab()
-	check(row_of(w, 'Armor').tint:IsShown() and not row_of(w, 'Consumables').tint:IsShown(), 'the tint moved')
+	check((SaftUI:GetState(row_of(w, 'Armor').frame, 'selected') == true) and not (SaftUI:GetState(row_of(w, 'Consumables').frame, 'selected') == true), 'the tint moved')
 	eq(w:EditorCell('name').widget.frame:GetText(), 'Armor', 'and the editor')
 	eq(#take_errors(), 0, 'no errors')
 	st.Config:Close()
@@ -211,7 +215,7 @@ test('+ New category adds one above Miscellaneous and selects it; with a deleted
 	eq(INV.categoryEditor.selected, new.id, 'selected')
 	local w = tab()
 	eq(w:EditorCell('name').widget.frame:GetText(), 'New category', 'in the editor')
-	check(row_of(w, new.id).tint:IsShown(), 'and the list')
+	check((SaftUI:GetState(row_of(w, new.id).frame, 'selected') == true), 'and the list')
 
 	-- A deleted default: a list of New category and Restore a default...
 	INV:RemoveCategory('Toys')
@@ -226,7 +230,7 @@ test('+ New category adds one above Miscellaneous and selects it; with a deleted
 	pick('Toys')
 	check(INV:GetCategoryList().byId.Toys ~= nil, 'Toys is back')
 	eq(INV.categoryEditor.selected, 'Toys', 'and selected')
-	check(row_of(tab(), 'Toys').tint:IsShown(), 'in the list')
+	check(SaftUI:GetState(row_of(tab(), 'Toys').frame, 'selected') == true, 'in the list')
 
 	INV:RemoveCategory('Anima')
 	OW:Render()
@@ -350,7 +354,7 @@ test("under Blizzard the category list is the Settings category list; its handle
 		local sel, other, off = row_of(w, 'Consumables'), row_of(w, SETS), row_of(w, 'Quest')
 		eq(sel.tint:GetAtlas(), 'Options_List_Active', client .. ': the picked row on the active art')
 		eq(around(sel.tint, sel.frame), '0,0,0,0', client .. ': filling the row')
-		check(not sel.bar:IsShown(), client .. ': no blue bar')
+		check(st:StateLook(sel.frame).bar.alpha == 0, client .. ': no blue bar (the helper holds its pieces off)')
 		eq(color(sel.name), '1.00,1.00,1.00', client .. ': the picked name is white')
 		eq(color(other.name), '1.00,0.82,0.00', client .. ': the others are gold')
 		check(not other.tint:IsShown(), client .. ': not tinted')
@@ -387,22 +391,19 @@ test("under Blizzard the category list is the Settings category list; its handle
 		OW:Render()
 		w = tab()
 		sel = row_of(w, 'Consumables')
-		eq(sel.tint:GetAtlas(), nil, client .. ': Thick: a color tint')
-		check(sel.tint:IsShown() and sel.bar:IsShown(), client .. ': Thick: the blue tint and bar')
-		check(same_rgb({ sel.name:GetTextColor() }, rgb('text', 'normal')), client .. ': Thick: the normal text color')
-		check(same_rgb(stub.state(sel.bar).color_texture, rgb('accent')), client .. ': Thick: the accent')
-		local hover = row_of(w, SETS).frame.hover
-		stub.fire_script(row_of(w, SETS).frame, 'OnEnter')
-		eq(hover:GetAtlas(), nil, client .. ': Thick: no hover art')
-		check(hover:IsShown(), client .. ': Thick: the hover shows')
-		local c = stub.state(hover).color_texture
-		check(same_rgb(c, rgb('accent')), client .. ': Thick: an accent hover')
-		eq(c[4], st.TINT_ROW, client .. ': at the row tint, the same as the selected row')
-		eq(c[4], 0.25, client .. ': 25%')
-		eq(stub.state(sel.tint).color_texture[4], st.TINT_ROW, client .. ': the selected row at the row tint')
-		eq(hover:GetAlpha(), 1, client .. ': its alpha in its color')
-		stub.fire_script(row_of(w, SETS).frame, 'OnLeave')
-		check(not hover:IsShown(), client .. ': Thick: gone when the mouse leaves')
+		local look = st:StateLook(sel.frame)
+		check(not sel.tint:IsShown(), client .. ': Thick: no Settings art')
+		check(look.bar.shown and look.fill.shown, client .. ': Thick: the helper\'s bar and fade')
+		check(look.selected and not look.blizzard, client .. ': Thick: selected, in SaftUI\'s look')
+		check(same_rgb({ look.bar.r, look.bar.g, look.bar.b }, rgb('accent')), client .. ': Thick: the accent bar')
+		local hoverRow = row_of(w, SETS).frame
+		stub.fire_script(hoverRow, 'OnEnter', true)
+		local hover = st:StateLook(hoverRow)
+		check(hover.hover and hover.layer.shown, client .. ': Thick: the helper\'s Layer shows under the mouse')
+		check(not hoverRow.hover:IsShown(), client .. ': Thick: no hover art')
+		eq(hover.layer.a, ({ st:StateColor('hover') })[4], client .. ': at the Hover strength (T+ of the accent)')
+		stub.fire_script(hoverRow, 'OnLeave', true)
+		check(not st:StateLook(hoverRow).layer.shown, client .. ': Thick: gone when the mouse leaves')
 		eq(#take_errors(), 0, client .. ': no errors')
 		st.Config:Close()
 	end
@@ -481,11 +482,11 @@ test('EditCategory opens the tab with the category selected, the sets entry for 
 	eq(OW:GetState().page, 'Inventory', 'on Bags')
 	eq(OW:GetState().tab, 'categories', 'on the Categories tab')
 	eq(INV.categoryEditor.selected, 'Consumables', 'with the category selected')
-	check(row_of(tab(), 'Consumables').tint:IsShown(), 'in the list')
+	check(SaftUI:GetState(row_of(tab(), 'Consumables').frame, 'selected') == true, 'in the list')
 	eq(tab():EditorCell('name').widget.frame:GetText(), 'Consumables', 'and the editor')
 	INV:EditCategory('Set: Heal')
 	eq(INV.categoryEditor.selected, SETS, "a set's key selects the sets entry")
-	check(row_of(tab(), SETS).tint:IsShown(), 'in the list')
+	check(SaftUI:GetState(row_of(tab(), SETS).frame, 'selected') == true, 'in the list')
 	eq(#take_errors(), 0, 'no errors')
 	st.Config:Close()
 end)
@@ -495,7 +496,7 @@ test('a profile switch with the tab open selects a category of the new profile',
 	local mine = INV:AddUserCategory()
 	INV.categoryEditor.selected = mine
 	open()
-	check(row_of(tab(), mine).tint:IsShown(), 'yours is selected')
+	check(SaftUI:GetState(row_of(tab(), mine).frame, 'selected') == true, 'yours is selected')
 	st.config:SetProfile('Other')
 	tick()
 	local list = INV:GetCategoryList()
@@ -503,7 +504,7 @@ test('a profile switch with the tab open selects a category of the new profile',
 	eq(INV.categoryEditor.selected, list[1].id, 'the first category is selected')
 	local w = tab()
 	eq(#w.rows, #list, "the new profile's list")
-	check(w.rows[1].tint:IsShown(), 'in the list')
+	check((SaftUI:GetState(w.rows[1].frame, 'selected') == true), 'in the list')
 	eq(w:EditorCell('name').widget.frame:GetText(), list[1].name, 'and the editor')
 	eq(#take_errors(), 0, 'no errors')
 	st.Config:Close()

@@ -190,7 +190,6 @@ local function SkinBagSlot(slot)
 		if slot.SetPushedTexture then
 			local pushed = slot:CreateTexture(nil, 'OVERLAY')
 			pushed:SetTexture(st.BLANK_TEX)
-			pushed:SetVertexColor(0, 0, 0, .1)
 			slot:SetPushedTexture(pushed)
 			pushed:SetDrawLayer('OVERLAY', 0)
 			textures.pushed = pushed
@@ -206,12 +205,6 @@ local function SkinBagSlot(slot)
 	if textures.disabled then st:SetInside(textures.disabled, inset) end
 end
 
--- The hover is the accent (a follower of Theme > Accent, on the slot).
-local function PaintBagSlotHover(slot)
-	local hover = slot:GetHighlightTexture()
-	if hover then hover:SetVertexColor(st:Color('accent'):GetRGB()) end
-end
-
 -- Re-apply SaftUI styling on top of Blizzard's BaseBagSlotButtonMixin:UpdateTextures.
 local function RestyleBagSlot(slot)
 	slot:GetNormalTexture():SetAlpha(0)
@@ -221,17 +214,18 @@ local function RestyleBagSlot(slot)
 	-- SkinActionButton; Blizzard overwrites their atlas, size, anchors and blending.
 	local hover = slot:GetHighlightTexture()
 	hover:SetTexture(st.BLANK_TEX)
-	hover:SetVertexColor(st:Color('accent'):GetRGB())
-	hover:SetBlendMode('ADD')
+	hover:SetBlendMode('BLEND')
 	hover:SetAlpha(1)
 	hover:ClearAllPoints()
 	hover:SetAllPoints(slot.icon or slotIcons[slot])
 
 	local pushed = slot:GetPushedTexture()
 	pushed:SetTexture(st.BLANK_TEX)
-	pushed:SetVertexColor(0, 0, 0, .1)
 	pushed:ClearAllPoints()
 	pushed:SetAllPoints(slot.icon or slotIcons[slot])
+
+	-- Their colors are the states helper's: T+ under the mouse, T- while pressed.
+	st:PaintStates(slot)
 end
 
 function INV:InitializePlayerBagSlots()
@@ -283,6 +277,14 @@ function INV:InitializePlayerBagSlots()
 
 		st:Kill(slot.AnimIcon)
 
+		-- The slot is an 'icon' of the states helper: the game shows its hover and
+		-- pushed textures, the helper colors them (and follows the Accent). Its look
+		-- is SaftUI's tint in every theme (nothing of Blizzard's art is on it).
+		st:AddStates(slot, 'icon', {
+			pieces = { hover = slot:GetHighlightTexture(), pushed = slot:GetPushedTexture() },
+			blizzard = function() return false end,
+		})
+
 		-- Blizzard's UpdateTextures runs on load and on every bag change, re-applying
 		-- its frame atlas to the normal texture and its atlases to our hover/pushed
 		-- textures. Undo that after every call, and once now for the initial state.
@@ -290,8 +292,6 @@ function INV:InitializePlayerBagSlots()
 			self:SecureHook(slot, 'UpdateTextures', RestyleBagSlot)
 		end
 		RestyleBagSlot(slot)
-		-- Once, not on every UpdateTextures: the hover follows the accent.
-		st:FollowColor(slot, 'accent', nil, PaintBagSlotHover)
 
 		-- With the bar collapsed Blizzard hides the slots; ours should always show.
 		if slot.SetBarExpanded then
