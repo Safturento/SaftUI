@@ -37,8 +37,9 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	    drops), then '· Apply to: All
 	    | Multiple'; on the source page 'Apply to: All | Multiple'. The links
 	    are frames that take the mouse (the accent, white under it), the
-	    line 4 levels over the row frame and they one over the line, so they
-	    are above every part of the control. Reset runs OM.ShareCall(root,
+	    line 4 levels over the row frame and they one over the line, so
+	    they take the mouse over the row. The line ends before the control
+	    it never lies under (below, LineEnd). Reset runs OM.ShareCall(root,
 	    row, 'reset'), All 'applyAll', Multiple opens W.OpenApplyList with
 	    OM.ShareTargets, whose Apply runs 'apply' on the row it was opened
 	    for; each then calls the body's onChanged(true), which draws the
@@ -56,7 +57,9 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	    row's control (hooked once per pooled part, finding the row when it
 	    runs), so a row entered through its control shows its line too. The
 	    line starts under the label and ends no further right than its
-	    cell's right edge. When the whole line doesn't fit there it drops
+	    cell's right edge, and, on a row whose control sits right of its
+	    label on the label's line, LABEL_ROOM before the control's drawn
+	    left edge (LineEnd), whether or not a reset icon shows. When the whole line doesn't fit there it drops
 	    Own (the mark and the label still say it; Reset's tooltip gains
 	    Own's '<source>: <shared>' line), then the words before All ('·
 	    Apply to:'; All's and Multiple's tooltips are titled with them),
@@ -113,9 +116,10 @@ OB.SHARE_KINDS = {
 }
 
 local LINE_HEIGHT = 14 -- the hover line: the small font (13)
-local LINE_LEVEL = 4 -- the line over its row frame, above every part of the control
+local LINE_LEVEL = 4 -- the line over its row frame (it ends before the control, so it is over no part of it)
 local MARK_WIDTH, MARK_INSET = OB.MARK_WIDTH, 6
 local DIFF_SIZE, DIFF_GAP = 16, 4
+local LineEnd -- (cell, left): where a row's hover line ends; defined below, by DrawnLeft
 local RESET_SIZE, RESET_GAP = 14, 6
 local DEFAULT_GAP = 6 -- a setting's own reset icon's right edge this far left of what the control draws
 local WORD_GAP = 4 -- between the line's words and links
@@ -593,10 +597,10 @@ function OB.PlaceShare(cell)
 	if offers then
 		frame.shareOffers, frame.shareLifts = true, not cell.lineInline
 		if not cell.lineInline then
-			-- Under the label, and cut at the cell's right edge (or its lineEnd):
-			-- never in the next cell, nor over an item's dots.
+			-- Under the label, and cut before the control (LineEnd): never in the
+			-- next cell, nor over an item's dots, nor under the control.
 			local left = (cell.labelX or 0) + shift
-			FillLine(parts, state, (cell.lineEnd or frame:GetWidth()) - left)
+			FillLine(parts, state, LineEnd(cell) - left)
 			parts.line:ClearAllPoints()
 			parts.line:SetPoint('TOPLEFT', frame, 'TOPLEFT', left, -(LiftTop(cell) + OB.LABEL_HEIGHT))
 		end
@@ -616,7 +620,7 @@ function OB.FollowShare(cell)
 	if parts.diff:IsShown() then PlaceDiff(cell, parts) end
 	-- A part row's line is cut by OB.PlaceSummary, which the body's Refresh runs next.
 	if frame.shareOffers and not cell.lineInline then
-		FillLine(parts, frame.shareState, (cell.lineEnd or frame:GetWidth()) - (cell.labelX or 0) - (frame.shareShift or 0))
+		FillLine(parts, frame.shareState, LineEnd(cell) - (cell.labelX or 0) - (frame.shareShift or 0))
 	end
 end
 
@@ -787,6 +791,21 @@ DrawnLeft = function(region, left)
 		left = DrawnLeftOf(left, region:GetChildren())
 	end
 	return left
+end
+
+-- Where a row's hover line ends, from the cell's left: its own end (cell.lineEnd:
+-- an item's dots, the reset icon; nil, the cell's right edge), and for a row
+-- whose control sits right of its label on the label's line, LABEL_ROOM before
+-- the control's drawn left edge (as PlaceDefault measures it), whether or not
+-- a reset icon shows. A taller row (its control below the label's line) and a
+-- row with no control keep their own end.
+LineEnd = function(cell)
+	local frame, widget = cell.frame, cell.widget
+	local stop = cell.lineEnd or frame:GetWidth()
+	if not (widget and widget.frame and cell.row.type ~= 'item' and cell.height <= cell.rowHeight) then return stop end
+	local x0, drawn = frame:GetLeft(), DrawnLeft(widget.frame)
+	if not (x0 and drawn) then return stop end
+	return min(stop, floor(drawn - x0) - LABEL_ROOM)
 end
 
 --[[

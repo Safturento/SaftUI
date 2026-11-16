@@ -494,8 +494,8 @@ end)
 -- icon comes and goes with the dragged value, its label and its open hover
 -- line follow it in place: cut short of the icon while it shows, their own
 -- width again once it goes. A quarter toggle on a source page, a page
--- differing: its line, 'Apply to: All | Multiple', fits the cell without the
--- icon and not with it, so it drops 'Apply to:' while the icon shows.
+-- differing: its line, 'Apply to: All | Multiple', ends before the toggle
+-- (so it has dropped 'Apply to:' already), and before the icon while it shows.
 test("mid-drag, another row's label and hover line make room for its icon as it comes, and take it back as it goes", function()
 	in_look('thick', function()
 		fresh()
@@ -522,7 +522,10 @@ test("mid-drag, another row's label and hover line make room for its icon as it 
 		local labelWidth, parts = c.label:GetWidth(), c.frame.share
 		stub.fire_script(c.frame, 'OnEnter', true)
 		check(parts.line:IsShown(), 'its hover line')
-		check(parts.sep:IsShown(), "'Apply to:' fits without the icon")
+		-- The line ends before the toggle even without the icon (143 of the quarter's 165):
+		-- 'Apply to:' is already dropped there.
+		check(not parts.sep:IsShown(), "'Apply to:' dropped: the toggle leaves 143")
+		check(parts.line:GetRight() <= c.widget.frame:GetLeft() - 4, 'the line ends before the toggle')
 		local lineWidth = parts.line:GetWidth()
 
 		local slider = by.level.widget
@@ -536,7 +539,7 @@ test("mid-drag, another row's label and hover line make room for its icon as it 
 		local plainStop = icon_of(plain):GetLeft() - 4 - plain.frame:GetLeft()
 		eq(plain.label:GetWidth(), plainStop, "the plain row's label cut 4 before its icon")
 		check(parts.line:GetRight() <= icon_of(c):GetLeft() - 4, 'the line, cut again, short of the icon')
-		check(not parts.sep:IsShown(), "'Apply to:' dropped to fit")
+		check(not parts.sep:IsShown(), "'Apply to:' still dropped")
 
 		slider:Commit(3)
 		check(not shown(c), 'back at the default: gone')
@@ -544,7 +547,7 @@ test("mid-drag, another row's label and hover line make room for its icon as it 
 		eq(c.label:GetWidth(), labelWidth, 'its label its own width again')
 		eq(plain.label:GetWidth(), plainWidth, "the plain row's label its own width again")
 		eq(plain.lineEnd, nil, "and its line's end")
-		check(parts.sep:IsShown(), "'Apply to:' back")
+		check(not parts.sep:IsShown(), "'Apply to:' still dropped")
 		eq(parts.line:GetWidth(), lineWidth, 'the whole line again')
 		stub.mouse_buttons.LeftButton = nil
 		slider.dragging = nil

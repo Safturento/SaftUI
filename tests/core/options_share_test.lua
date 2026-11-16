@@ -476,7 +476,8 @@ test('the hover line: it shows on an offering row and stays while the mouse is o
 		local lp, lrel, _, lx, ly = point(parts.line)
 		eq(lp .. ' ' .. lx .. ',' .. ly, 'TOPLEFT 0,-20', 'the line under it')
 		check(lrel == c.frame)
-		check(parts.ownText:IsShown() and parts.reset:IsShown(), 'Own and the reset icon on a member page')
+		-- The line ends before the slider (it is a range): Own is dropped first, the reset icon stays.
+		check(not parts.ownText:IsShown() and parts.reset:IsShown(), 'the reset icon on a member page, Own dropped before the slider')
 		eq(parts.ownText.text:GetText(), 'Own')
 		eq(rgb(parts.ownText.text:GetTextColor()), OWN)
 		eq(parts.reset.icon:GetTexture(), st.icons.rotateCcw)
@@ -544,7 +545,7 @@ test('Reset, All and Multiple act through the share and draw the page again', fu
 		stub.fire_script(by.spacing.frame, 'OnEnter', true)
 
 		stub.fire_script(parts.reset, 'OnEnter', true)
-		eq(table.concat(tip.lines, '|'), "Reset|Spacing follows All bars again. Bar 3's own value is dropped.", "Reset's tooltip")
+		eq(table.concat(tip.lines, '|'), "Reset|Spacing follows All bars again. Bar 3's own value is dropped.|All bars: 3", "Reset's tooltip (with Own's line: Own is dropped before the slider)")
 		stub.click(parts.reset)
 		eq(#calls, 1, 'one call')
 		eq(calls[1].action .. ' ' .. calls[1].key, 'reset spacing')
@@ -903,16 +904,18 @@ test("the line sits above the control, its links over every part of it; in a qua
 		stub.fire_script(by.spacing.frame, 'OnEnter', true)
 		check(not sp.line:DoesClipChildren(), 'a line that fits is not cut')
 		eq(sp.line:GetRight(), sp.multiple:GetRight(), 'it ends at its last link')
-		for _, piece in ipairs({ 'ownText', 'reset', 'all', 'multiple' }) do
+		-- (Spacing's slider takes the cell's right 170 or so: Own is dropped before it, the rest whole.)
+		check(not sp.ownText:IsShown(), 'Own dropped before the slider')
+		for _, piece in ipairs({ 'reset', 'all', 'multiple' }) do
 			check(sp[piece]:IsShown(), piece .. ' shown')
 			eq((select(2, sp[piece]:GetHitRectInsets())), 0, piece .. ' takes the mouse whole')
 		end
 		stub.cursor_x, stub.cursor_y = 0, 0
 		watch(sp)
 
-		-- Own's tooltip names the source's value; Reset's doesn't need to.
+		-- Own's tooltip line moves to Reset's: its title, what it does, Own's source and value.
 		stub.fire_script(sp.reset, 'OnEnter', true)
-		eq(#tip.lines, 2, "a whole line's Reset: its title and what it does")
+		eq(#tip.lines, 3, "Reset's: its title, what it does, and the dropped Own's line")
 		stub.fire_script(sp.reset, 'OnLeave', true)
 
 		-- A, in the first quarter: its whole line is wider than the cell, so it
@@ -970,9 +973,11 @@ test("the line sits above the control, its links over every part of it; in a qua
 		eq(na.frame:GetWidth(), 102, 'a narrow quarter')
 		check(not np.ownText:IsShown() and not np.sep:IsShown(), 'Own and the words dropped first')
 		check(np.multiple:GetRight() > na.frame:GetRight(), 'still wider than its room')
-		eq(np.line:GetRight(), na.frame:GetRight(), "cut at the narrow cell's right edge")
+		-- Cut before the toggle's box (the cell's right edge less its room), not at the cell's edge.
+		local cut = np.line:GetRight() -- (on whole units from the cell's left: within a unit or two of the box less 4)
+		check(cut < na.frame:GetRight() - 10, 'the toggle takes the cell\'s right end')
+		check(cut <= na.widget.frame:GetLeft() - 4 and cut > na.widget.frame:GetLeft() - 6, "cut 4 before the toggle")
 		check(np.line:DoesClipChildren(), 'cut: what runs past is clipped')
-		local cut = na.frame:GetRight()
 		for _, piece in ipairs({ 'reset', 'all', 'multiple' }) do
 			local p = np[piece]
 			check(p:IsShown() and p:GetLeft() < cut, piece .. ' starts before the cut')
@@ -1120,7 +1125,7 @@ test("no tooltip builds s's: All and Multiple name no page's or source's own, th
 			texts[#texts + 1] = text
 			return text
 		end
-		eq(read('reset'), "Reset|Spacing follows All bars again. Totems' own value is dropped.")
+		eq(read('reset'), "Reset|Spacing follows All bars again. Totems' own value is dropped.|All bars: 3")
 		eq(read('all'), 'Apply to: All|All bars takes Spacing from Totems, and nothing keeps its own any more.')
 		eq(read('multiple'), 'Apply to: Multiple|Pick which take Spacing from Totems as their own.')
 		eq(read('ownText'), 'Spacing|All bars: 3')
@@ -1129,7 +1134,7 @@ test("no tooltip builds s's: All and Multiple name no page's or source's own, th
 		by = redraw(body, root)
 		parts = by.spacing.frame.share
 		stub.fire_script(by.spacing.frame, 'OnEnter', true)
-		eq(read('reset'), 'Reset|Spacing follows All bars again. Its own value is dropped.')
+		eq(read('reset'), 'Reset|Spacing follows All bars again. Its own value is dropped.|All bars: 3')
 		eq(read('all'), 'Apply to: All|All bars takes Spacing from this page, and nothing keeps its own any more.')
 
 		-- The source page, whose name ends in s.
@@ -1161,7 +1166,7 @@ test("a share's noun and pageText: the tooltips name the members ('every bar', '
 		local body, by = draw(root)
 		local parts = by.spacing.frame.share
 		stub.fire_script(by.spacing.frame, 'OnEnter', true)
-		eq(read_tip(tip, parts.reset), "Reset|Spacing follows All bars again. The Pet bar's own value is dropped.")
+		eq(read_tip(tip, parts.reset), "Reset|Spacing follows All bars again. The Pet bar's own value is dropped.|All bars: 3")
 		eq(read_tip(tip, parts.all), 'Apply to: All|All bars takes Spacing from the Pet bar, and no bar keeps its own any more.')
 		eq(read_tip(tip, parts.multiple), 'Apply to: Multiple|Pick which bars take Spacing from the Pet bar as their own.')
 		eq(read_tip(tip, parts.ownText), 'Spacing|All bars: 3', 'Own names no page')
@@ -1171,7 +1176,7 @@ test("a share's noun and pageText: the tooltips name the members ('every bar', '
 		by = redraw(body, root)
 		parts = by.spacing.frame.share
 		stub.fire_script(by.spacing.frame, 'OnEnter', true)
-		eq(read_tip(tip, parts.reset), "Reset|Spacing follows All bars again. Bar 3's own value is dropped.")
+		eq(read_tip(tip, parts.reset), "Reset|Spacing follows All bars again. Bar 3's own value is dropped.|All bars: 3")
 		eq(read_tip(tip, parts.all), 'Apply to: All|All bars takes Spacing from Bar 3, and no bar keeps its own any more.')
 
 		-- A noun that isn't two strings is no noun: the wording as without one.
@@ -1424,4 +1429,62 @@ test('ShareCall refuses an action it has no name for; ShareTargets leaves out a 
 	local targets = OM.ShareTargets(root, row)
 	eq(#targets, 1, 'only the target with a key')
 	eq(targets[1] and targets[1].key, 'bar2')
+end)
+
+------------------------------------------------------------------ the line ends before the control
+
+test("every row kind's hover line ends before its control, at full and half width, whole pixels, in the dropping order", function()
+	local P_ = load_test_file('lib/pixels.lua')
+	for _, look in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		in_look(look, function(tip)
+			fresh()
+			own.spacing, own.show, own.t, own.i, own.c = true, true, true, true, true
+			local root = Page('member', {
+				t = { type = 'toggle', name = 'Toggle', order = 3, share = true },
+				i = { type = 'input', name = 'Input', order = 4, share = true },
+				c = { type = 'color', name = 'Color', order = 5, share = true },
+			})
+			for _, width in ipairs({ 774, 388 }) do
+				local content = CreateFrame('Frame', nil, UIParent)
+				content:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 100, -100)
+				content:SetSize(width, 900)
+				local body = OB.New(content, root, nil, 774)
+				if width < 774 then body:SetWidth(width, true) end
+				body:Draw(OM.BuildView(root, 'page').sections)
+				eq(#P_.off(content), 0, look .. ' ' .. width .. ': whole pixels: ' .. P_.report(P_.off(content)))
+				for _, c in ipairs(body.cells) do
+					local label = look .. ' ' .. width .. ' ' .. c.row.key
+					stub.fire_script(c.frame, 'OnEnter', true)
+					local parts = c.frame.share
+					check(parts and parts.line:IsShown(), label .. ': the line shows')
+					if parts and parts.line:IsShown() then
+						-- the control's drawn left edge: the widget frame and all below it
+						local function left_of(region, left)
+							if not region:IsShown() then return left end
+							local l = region:GetLeft()
+							if l and (not left or l < left) then left = l end
+							if region.GetRegions then
+								for _, r in ipairs({ region:GetRegions() }) do left = left_of(r, left) end
+								for _, f in ipairs({ region:GetChildren() }) do left = left_of(f, left) end
+							end
+							return left
+						end
+						local limit = left_of(c.widget.frame) - 4
+						check(parts.line:GetRight() <= limit, label .. ': ends before the control: ' .. parts.line:GetRight() .. ' vs ' .. limit)
+						-- the order: Own goes first, then the words; the rest is kept whole
+						if parts.ownText:IsShown() then check(parts.sep:IsShown(), label .. ': Own only with the words') end
+						check(parts.reset:IsShown() and parts.all:IsShown() or not parts.reset:IsShown(), label .. ': Reset and All kept')
+						if parts.ownDropped then
+							stub.fire_script(parts.reset, 'OnEnter', true)
+							check(#tip.lines >= 3, label .. ": a dropped Own's text is in Reset's tooltip")
+							stub.fire_script(parts.reset, 'OnLeave', true)
+						end
+					end
+					stub.fire_script(c.frame, 'OnLeave', true)
+					stub.cursor_x, stub.cursor_y = 0, 0
+				end
+				body:Release()
+			end
+		end)
+	end
 end)
