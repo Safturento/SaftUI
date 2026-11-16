@@ -293,8 +293,9 @@ end
 local REFUSED = {
 	combat = "The UI size can't change in combat.",
 	screen = "SaftUI can't read this screen's size here.",
+	mode = "That isn't one of SaftUI's UI scales.",
 }
-KP.REFUSED = REFUSED -- the /sui rows' refusals use the same two lines
+KP.REFUSED = REFUSED -- the /sui rows' refusals use the same lines
 
 -- /sui scale and its forms (Config/config.lua hands them the rest of the line).
 function KP:Command(argument)
