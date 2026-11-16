@@ -38,7 +38,7 @@ The bar's effective config (`AB:GetBarConfig(id)`): size, spacing, and each text
 
 The action ring and Blizzard's state art; an own colour (equipped) shows as `UI-HUD-ActionBar-IconFrame-Border` over the icon's edge in that colour.
 
-As in Blizzard's template (45 x 45 button), every piece over the icon (the ring, the equipped border, hover, pushed, checked and the flash) is drawn 46/45 of the button's width by the button's height (the width in whole pixels), from the top left, so it hangs 1/45 of the width past the right edge; the pieces behind the icon fill the button exactly.
+Blizzard's template draws every piece over the icon (the ring, the equipped border, hover, pushed, checked and the flash) 46 x 45 from the top left of its 45 x 45 button. SaftUI draws each of them filling the button, cut by texture coordinates to the button's part (the left 45/46 and the whole height), so the metal reaches the button's right edge at any button size; the pieces behind the icon fill the button uncut.
 
 ## Known gaps
 

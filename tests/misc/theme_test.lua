@@ -482,10 +482,7 @@ test("under Blizzard the totem buttons take Blizzard's state art", function()
 	eq(summon.Flash:GetAtlas(), 'UI-HUD-ActionBar-IconFrame-Flash', "the flash is Blizzard's")
 	for name, region in pairs({ hover = hover, pushed = pushed, checked = checked, flash = summon.Flash }) do
 		eq(T.text(region:GetVertexColor()), '1.00,1.00,1.00,1.00', name .. ' has no tint')
-		-- The template's art is 46 x 45 from TOPLEFT on a 45 x 45 button.
-		eq(region:GetPoint(1), 'TOPLEFT', name .. ' is anchored TOPLEFT')
-		eq(T.text(region:GetWidth(), region:GetHeight()),
-			T.text(math.floor(summon:GetWidth() * 46 / 45 + 0.5), summon:GetHeight()), name .. ' is 46/45 of the button wide (whole pixels), and as tall')
+		eq(T.around(region, summon), '0,0,0,0', name .. " covers the button, the ring's footprint")
 	end
 
 	-- The ring and the own-color piece are textures of the button, over the icon,

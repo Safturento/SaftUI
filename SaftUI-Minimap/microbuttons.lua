@@ -115,7 +115,11 @@ local function StyleArt(button)
     if pushed then
         pushed:ClearAllPoints()
         if blizzard then
-            pushed:SetAtlas(micro.pushedBackground, false)
+            -- The flat look's fade left coordinates on this piece (the checked
+            -- piece of the state helper), which SetAtlas keeps unless it resets
+            -- them: reset them, and set the whole atlas after.
+            pushed:SetAtlas(micro.pushedBackground, false, nil, true)
+            pushed:SetTexCoord(0, 1, 0, 1)
             PlaceArt(pushed, button)
         else
             -- the Fill: its texture and color are the state helper's (RestyleStates,

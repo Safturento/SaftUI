@@ -417,8 +417,6 @@ function AB:StyleButton(button, config, theme, background)
 	if button.backdrop then
 		button.backdrop:ClearAllPoints()
 		button.backdrop:SetAllPoints(button)
-		-- The ring was laid for the place the backdrop started in.
-		st.ThemeArt.Refit(button.backdrop)
 	end
 	skin.equipped = nil -- the backdrop's border was just reset
 
@@ -436,8 +434,8 @@ function AB:StyleButton(button, config, theme, background)
 		end
 	end
 
-	-- Hover, pushed, checked and the flash: under Blizzard its own art, drawn as
-	-- the template does (46/45 of the button's width from TOPLEFT), with no tint; otherwise SaftUI's flat
+	-- Hover, pushed, checked and the flash: under Blizzard its own art over the
+	-- button, cut to the button's part (ThemeArt.CutOver), with no tint; otherwise SaftUI's flat
 	-- textures over the icon, drawn and colored by the state helper (RestyleStates,
 	-- below). Under Blizzard the helper leaves the three textures wholly alone.
 	local state = self:BlizzardState(theme, background)

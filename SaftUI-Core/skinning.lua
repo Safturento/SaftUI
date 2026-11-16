@@ -181,7 +181,6 @@ function st:SkinActionButton(button, config, kind)
     if config.trueSize then
         button.backdrop:ClearAllPoints()
         button.backdrop:SetAllPoints()
-        st.ThemeArt.Refit(button.backdrop)
     end
 
 	local name = button:GetName() or ''

@@ -168,44 +168,25 @@ function ThemeArt.State(kind)
 	return art and art.states and ForClient(art.states) or nil
 end
 
--- Puts an over-the-icon texture of an art (the ART table, a ring, an own-color
--- piece or a state texture) on frame. An art with no overWidth (a slot, an
--- aura) fills frame, as always. One with it (the action button) draws as
--- Blizzard's template does: from frame's TOPLEFT, overWidth/buttonSize of
--- frame's width wide and overHeight/buttonSize of its height tall, so it
--- hangs past the right edge. The size is read from frame when this runs, in
--- the units of the texture's parent (a drawn frame can have a scale of its
--- own), so it is current whenever the
--- button is styled again (a bar's size change runs AB:StyleBar, which paints
--- again; a UI scale change leaves the size in the button's own units, and the
--- ratio, as it was). A parent with no size yet gets the fill, and the next
--- styling puts it right.
-function ThemeArt.PlaceOver(texture, frame, art)
-	texture:ClearAllPoints()
-	-- frame's size in the parent's units: a drawn frame can have a scale of its
-	-- own, and can reach past the button it sits behind.
-	local parent = texture:GetParent() or frame
-	local width, height = frame:GetWidth(), frame:GetHeight()
-	if parent ~= frame and width and height then
-		local k = frame:GetEffectiveScale() / parent:GetEffectiveScale()
-		width, height = width * k, height * k
-	end
-	if art and art.overWidth and width and width > 0 and height and height > 0 then
-		texture:SetPoint('TOPLEFT', frame, 'TOPLEFT', 0, 0)
-		-- Whole pixels of the parent's: SaftUI keeps every region on the pixel grid
-		-- (the 46/45 of a 40 wide button is 41).
-		texture:SetSize(ThemeArt.Whole(width * art.overWidth / art.buttonSize, parent),
-			ThemeArt.Whole(height * art.overHeight / art.buttonSize, parent))
-	else
-		texture:SetAllPoints(frame)
+-- Cuts an over-the-icon texture of an art (the ART table: a ring, an own-color
+-- piece or a state texture) to the button's part of it, by coordinates, when
+-- the art says it hangs past the button (the action button's, artWidth x
+-- artHeight from TOPLEFT on a templateButton button): the left
+-- templateButton/artWidth and templateButton/artHeight of its height. An art
+-- with none (a slot's, an aura's, no art) is left as it is. The texture fills
+-- its frame (SetAllPoints) and is never sized, so this reads no size and holds
+-- in combat. Call it after the atlas is set, which keeps the coordinates a
+-- texture had unless told to reset them.
+function ThemeArt.CutOver(texture, art)
+	if art and art.artWidth then
+		texture:SetTexCoord(0, art.templateButton / art.artWidth, 0, art.templateButton / art.artHeight)
 	end
 end
 
 -- Puts Blizzard's state art (name, an atlas or a file from State) on texture,
 -- one of a button's state textures of SaftUI's (the hover, pushed or checked
--- texture; the flash too): over the button as kind's art covers it (the
--- action button's from TOPLEFT, 46/45 of its width: PlaceOver; a slot's, the
--- whole button), white, with no tint, blending as blend says (the button's own
+-- texture; the flash too): over the whole button, cut to the button's part
+-- when kind's art hangs past it (the action button's: CutOver), white, with no tint, blending as blend says (the button's own
 -- call sets the highlight's), and drawn in layer: the state layer above the
 -- ring when it's nil, the layer it has when it's false (the flash), or the
 -- layer named (the hover: HOVER_LAYER). kind is the kind the button is drawn
@@ -219,10 +200,10 @@ function ThemeArt.StyleState(texture, name, button, blend, layer, kind)
 	else
 		-- The flat look's Selected fade left coordinates on the checked
 		-- texture (StyleGame, Widgets/states.lua), and SetAtlas keeps the
-		-- coordinates a texture has unless told to reset them: put them back to
-		-- the whole atlas, both ways, so it holds whichever the client honours.
-		texture:SetTexCoord(0, 1, 0, 1)
+		-- coordinates a texture has unless told to reset them: reset them, and
+		-- set the whole atlas after, so it holds whichever the client honours.
 		texture:SetAtlas(name, false, nil, true)
+		texture:SetTexCoord(0, 1, 0, 1)
 	end
 	if layer == nil then
 		texture:SetDrawLayer(ThemeArt.STATE_LAYER, ThemeArt.STATE_SUBLEVEL)
@@ -231,8 +212,10 @@ function ThemeArt.StyleState(texture, name, button, blend, layer, kind)
 	end
 	texture:SetVertexColor(1, 1, 1, 1)
 	if blend then texture:SetBlendMode(blend) end
+	texture:ClearAllPoints()
+	texture:SetAllPoints(button)
 	local blizzard = kind and ThemeArt.KINDS[kind]
-	ThemeArt.PlaceOver(texture, button, blizzard and blizzard.art and ThemeArt.ART[blizzard.art])
+	ThemeArt.CutOver(texture, blizzard and blizzard.art and ThemeArt.ART[blizzard.art])
 end
 
 -- A control's art on this client (CONTROLS; the fields are ART[name]'s).
@@ -492,8 +475,8 @@ local OWN_SUBLEVEL = -1
 
 -- Where a button's state art draws (pushed, checked: StyleState; the hover
 -- has its own, HOVER_LAYER): the same layer as the ring and just over it,
--- level with the own-color piece, so it covers the ring's footprint (the
--- button's, or for an action button 46/45 of it: PlaceOver), over the icon and under the texts,
+-- level with the own-color piece, so it covers the ring's footprint, the
+-- whole button, over the icon and under the texts,
 -- which Blizzard's action and item button templates put in OVERLAY (the item
 -- button's count, its name) or in a frame over the button (the action
 -- button's hotkey and count, at level 500). Blizzard's own ring is its normal
@@ -509,9 +492,9 @@ ThemeArt.STATE_LAYER, ThemeArt.STATE_SUBLEVEL = 'ARTWORK', -1
 ThemeArt.HOVER_LAYER = 'HIGHLIGHT'
 
 -- A button's art on frame (the action or item button's): the art behind its
--- icon, filling frame, and the ring over the icon's edge, covering frame (a
--- slot's) or as the template draws it, 46/45 of frame's width from TOPLEFT
--- (an action button's: PlaceOver). The
+-- icon, filling frame, and the ring over the icon's edge, covering frame (an
+-- action button's ring cut to the button's part of Blizzard's 46 x 45 art:
+-- CutOver). The
 -- ring is a texture of host's, the button of SaftUI's frame sits behind, or
 -- with no host on frame's holder. A ring Blizzard draws ringSize on a
 -- buttonSize button, centred ringY low, is cut to the button's part, so it fits
@@ -531,8 +514,9 @@ local function LayButton(art, frame, button, host)
 	else
 		ring = Piece(art.over, Holder(frame), 'Ring', button.ring, RING_LAYER, RING_SUBLEVEL)
 	end
-	ThemeArt.PlaceOver(ring, frame, button)
-	art.overStyle = button
+	ring:ClearAllPoints()
+	ring:SetAllPoints(frame)
+	ThemeArt.CutOver(ring, button)
 	if button.ringSize then
 		local size, half, y = button.ringSize, button.buttonSize / 2, button.ringY
 		ring:SetTexCoord((size / 2 - half) / size, (size / 2 + half) / size,
@@ -563,20 +547,6 @@ function ThemeArt.Clear(frame)
 		for _, piece in pairs(set) do piece:Hide() end
 	end
 	if art.own then art.own:Hide() end
-	art.overStyle = nil
-end
-
--- Puts a button frame's over-the-icon art (the ring and the own-color piece)
--- right again for frame's size now. Frame's size is read when the art is laid
--- (PlaceOver), and a caller that moves the drawn frame after drawing it (the
--- action bars and the buttons' trueSize put it on the button itself, where it
--- starts at the kind's own place) calls this after. Moves nothing else.
-function ThemeArt.Refit(frame)
-	local art = drawnArt[frame]
-	local style = art and art.overStyle
-	if not style or not style.overWidth then return end
-	if art.over.Ring then ThemeArt.PlaceOver(art.over.Ring, frame, style) end
-	if art.own then ThemeArt.PlaceOver(art.own, frame, style) end
 end
 
 -- Puts a Blizzard look's colors and alpha on frame, drawn as kind: the fill
@@ -652,8 +622,6 @@ function ThemeArt.SetBorder(frame, look, kind, host, r, g, b, a)
 			-- recolors every border it holds, and places nothing). A frame with no
 			-- host keeps its holder above it, as every call did: Holder raises it.
 			if not host then Holder(frame) end
-			-- The button may have been resized since: an action button's follows it.
-			if style.overWidth then ThemeArt.PlaceOver(own, frame, style) end
 			own:SetVertexColor(r, g, b, a)
 			own:Show()
 			return
@@ -661,7 +629,9 @@ function ThemeArt.SetBorder(frame, look, kind, host, r, g, b, a)
 		own = Piece(art, host or Holder(frame), 'own', style.border, RING_LAYER, OWN_SUBLEVEL)
 		art.ownStyle, art.ownHost = style.border, host
 		st:SnapRegion(own)
-		ThemeArt.PlaceOver(own, frame, style)
+		own:ClearAllPoints()
+		own:SetAllPoints(frame)
+		ThemeArt.CutOver(own, style)
 		own:SetVertexColor(r, g, b, a)
 	end
 end

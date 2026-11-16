@@ -143,9 +143,7 @@ local function checkRingOnButton(st, owner, label)
 	check(depth(ring) > depth(owner.icon), label .. ': above the icon')
 	check(depth(ring) < depth(owner.text), label .. ': below its font strings')
 	eq(b:GetNumChildren(), 0, label .. ": no frame of the art's sits at or above the cooldown's level")
-	-- 46/45 of the frame wide from TOPLEFT for an action button (one pixel past
-	-- the right edge at 45), the frame itself for a slot.
-	eq(T.around(ring, b), label:find('action', 1, true) and '0,0,1,0' or '0,0,0,0', label .. ': the ring covers the drawn frame')
+	eq(T.around(ring, b), '0,0,0,0', label .. ': the ring covers the drawn frame')
 end
 
 local ACTION_ART = 'SlotArt=UI-HUD-ActionBar-IconFrame-Slot,SlotBackground=UI-HUD-ActionBar-IconFrame-Background'
@@ -343,7 +341,7 @@ test("a ring for a frame that isn't SaftUI's, or a texture, is on a frame of Saf
 		check(holder ~= nil and holder ~= owner, kind .. ": the ring isn't on Blizzard's button")
 		eq(holder and holder:GetParent(), b, kind .. ': it is on a child of the backdrop')
 		check(holder and holder:GetFrameLevel() > owner:GetFrameLevel(), kind .. ': one level above the button, over its icon')
-		eq(T.around(ring, b), kind == 'action' and '0,0,1,0' or '0,0,0,0', kind .. ': the ring covers the drawn frame')
+		eq(T.around(ring, b), '0,0,0,0', kind .. ': the ring covers the drawn frame')
 	end
 
 	-- An icon that's a texture (the options window's image): the ring follows
@@ -837,7 +835,7 @@ test("SetBorderColor under Blizzard: tooltip and metal pieces tinted, the action
 		eq(text(piece(st, a.backdrop, 'SlotArt'):GetVertexColor()), '1.00,1.00,1.00,1.00', client .. ' action: the slot art is untinted')
 		local o = own(st, a.backdrop)
 		eq(o:GetParent(), a, client .. " action: a texture of the button's own, as the ring is")
-		eq(T.around(o, a.backdrop), '0,0,1,0', client .. ' action: it covers the drawn frame, 46/45 wide from TOPLEFT')
+		eq(T.around(o, a.backdrop), '0,0,0,0', client .. ' action: it covers the drawn frame')
 		local ring = piece(st, a.backdrop, 'Ring', 'over')
 		check(depth(o) > depth(ring), client .. ' action: over the ring')
 		check(depth(o) > depth(a.icon), client .. ' action: over the icon')
