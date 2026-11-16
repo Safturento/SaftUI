@@ -17,7 +17,7 @@ The owner's rule: a part with three or more settings, or with settings that only
 | Part | Value | Tokens |
 | --- | --- | --- |
 | Item | a quarter cell: check box, label, menu icon; four to a line, a hairline after each but the last | `toggle-size`, `label`, `hairline` |
-| Menu icon | `ellipsis-vertical` 16, `text-muted`, `accent` under the mouse | `icon-chevron`, `text-muted`, `accent` |
+| Menu icon | `ellipsis-vertical` 16, `text-muted`, the lighter tone of the Accent under the mouse (the glyph rule) | `icon-chevron`, `text-muted`, `accent-light` |
 | Menu | about 400 wide, one column, a frame in the theme above the window, its own click catcher | `menu-width`, `strata-options` |
 | Menu title | the part's name in `group-title`, `text-muted` | `group-title` |
 | Menu rows | the body's rows, one column | `row-height` |

@@ -217,7 +217,7 @@ builders.range = function(w)
 		Edge(self, false)
 		w:Refresh()
 	end)
-	HoverStates(edit, function() return w.disabled end)
+	HoverStates(edit)
 	Kit.Track(w, edit)
 end
 

@@ -31,7 +31,7 @@ Every option in `/sui` and in the small dialog. The body packs rows into lines b
 - **Disabled**: the control at `alpha-disabled` (0.4), the label in `text-muted`; the control takes no mouse, so the row's tooltip shows and says why.
 - **Own** (a shared setting): see `OwnMark`. The label turns `accent`.
 - **Differs**: see `DiffIcon`.
-- A plain row never moves under the mouse; only a row with something to offer shows a hover line.
+- A plain row never moves under the mouse; only a row with something to offer shows a hover line. A row has no state of its own but Disabled: its control wears the kit's states (hover tints the control's body, selected and focus light its edge).
 
 ## Blizzard theme
 

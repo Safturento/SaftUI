@@ -19,10 +19,10 @@ Any on/off option (Ace `toggle`), the Show box of a `MenuItem`, and the rows of 
 
 ## States
 
-- Off: the empty box. On: the mark.
-- Under the mouse (the box itself): the edge turns `accent` (`HoverEdge`).
+- Off: the empty box. On (selected): the `accent` edge, the mark and the fade inside the box (`state-selected`).
+- Under the mouse (the box itself): the body tints in the lighter tone (`state-hover`); the edge stays.
 - Disabled: the box at `alpha-disabled`, the label `text-muted`; the box takes no mouse, so the row's tooltip shows and says why.
-- Click toggles; there is no pressed look.
+- Click toggles; while held the body tints darker (`state-pushed`).
 
 ## Blizzard theme
 
@@ -30,7 +30,7 @@ The Settings check box (30 x 29 art), in every place the kit draws a check box (
 
 ## Other check boxes in the code (not the standard)
 
-- Core's `st:SkinCheckButton`: 12 x 12, the whole box filled in `button-checked` (at its opacity, 100% by default) when checked, and `button-hover` at 40% under the mouse.
+- Core's `st:SkinCheckButton`: 12 x 12, a 2 in `accent` mark, the edge and the fade when checked, the hover tint under the mouse: the same states as the kit's (there is no Checked color).
 - The bags' rule editor: 14 x 14.
 - A bag category's filter box: 8 x 8 (hidden today).
 

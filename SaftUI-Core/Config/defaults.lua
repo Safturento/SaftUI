@@ -144,10 +144,9 @@ st.defaults.colors = {
 		shared		= CreateColor(120/255, 202/255, 250/255),
 	},
 	button = {
-		normal		=  CreateColor(0.1, 0.1, 0.1, 1),
-		hover 		=  CreateColor(0.3, 0.5, 0.7, 1),
-		pushed		=  CreateColor(0.3, 0.4, 0.5, 1),
-		checked		=  CreateColor(0.3, 0.5, 0.7, 1),
+		-- Danger only: a meaning, not a state. Hover, pushed, selected, focus and
+		-- disabled are derived from the Accent (Media/states.lua); the old
+		-- Normal, Hover, Pushed and Checked retired at migration step 8.
 		danger		=  CreateColor(0.6, 0.1, 0.1, 1),
 	},
 	roles = {

@@ -234,7 +234,7 @@ builders.select = function(w)
 		if W.ListOwner() == button then W.CloseList() end
 	end)
 	DropdownStates(button, function() return w.disabled end)
-	HoverStates(button, function() return w.disabled end) -- after the scripts above
+	HoverStates(button) -- after the scripts above
 	w.back = Stepper(w, button, -1)
 	w.next = Stepper(w, button, 1)
 	-- The choices' labels are measured on this (StepsFit), never shown.

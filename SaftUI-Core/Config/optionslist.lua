@@ -450,7 +450,7 @@ function ToggleCheck(row)
 	if list.onToggle == onToggle and list.catcher:IsShown() then ListFill() end
 end
 
--- A button of the list, made the first time: Box, accent-edged under the mouse,
+-- A button of the list, made the first time: a state frame Box (its body tints under the mouse),
 -- 80 wide and FIELD_HEIGHT tall, its text centred (the Apply list's, and a
 -- check list's). Hidden, until it's placed.
 local function NewListButton()
@@ -506,8 +506,8 @@ end
 
 ------------------------------------------------------------------ the Apply list
 
--- The Apply list's button, made the first time: Box, accent-edged under the
--- mouse, its text Apply; a click runs list.onApply.
+-- The Apply list's button, made the first time: a state frame Box (its body
+-- tints under the mouse), its text Apply; a click runs list.onApply.
 local function ApplyButton()
 	if not list.apply then
 		local button = NewListButton()

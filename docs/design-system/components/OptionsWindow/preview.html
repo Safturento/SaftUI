@@ -16,9 +16,9 @@
   .nav { padding-top: var(--nav-group); flex: 1; }
   .nav .entry { height: var(--nav-item); display: flex; align-items: center; padding-left: calc(var(--brand-pad) + var(--diff-gap)); position: relative; }
   .nav .entry.special { padding-left: var(--brand-pad); }
-  .nav .entry.on { background: var(--accent-fill); }
+  .nav .entry.on { background: linear-gradient(90deg, color-mix(in srgb, var(--accent) calc(var(--state-selected) * 100%), transparent), transparent calc(var(--state-fade) * 100%)); }
   .nav .entry.on::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: var(--mark-width); background: var(--accent); }
-  .nav .entry.hover { background: var(--sidebar-hover); }
+  .nav .entry.hover { background: color-mix(in srgb, var(--accent-light) calc(var(--state-hover) * 100%), transparent); }
   .nav .group { height: var(--nav-group); padding: var(--button-gap) 0 0 var(--brand-pad); color: var(--text-muted); }
   .nav .gap { height: var(--section-margin); }
   .profile { height: var(--footer-height); display: flex; align-items: center; padding-left: var(--brand-pad); color: var(--text-muted); }

@@ -129,6 +129,9 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		eq(st:StateLook(zone).shape, 'row', 'a zone header is a row')
 		stub.fire_script(zone, 'OnEnter', true)
 		check(st:StateLook(zone).layer.shown, 'tinted under the mouse')
+		local layer = st:StateLook(zone).pieces.layer
+		eq(layer:GetTop(), zone:GetTop() + 2, "a header's Layer is 2 past the row above")
+		eq(layer:GetBottom(), zone:GetBottom() - 2, 'and 2 below')
 		stub.fire_script(zone, 'OnLeave', true)
 		check(not st:StateLook(zone).layer.shown, 'and back')
 		stub.fire_script(zone.chevron, 'OnEnter', true)

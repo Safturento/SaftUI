@@ -76,8 +76,6 @@ local function world(client, theme)
 	MM.Container:SetPoint('TOPLEFT')
 	st.config.profile.theme.name = theme or 'thick'
 	st:RedrawThemed()
-	st.config.profile.colors.button.hover:SetRGB(0.1, 0.6, 0.8)
-	st.config.profile.colors.button.pushed:SetRGB(0.6, 0.2, 0.7)
 	st.config.profile.colors.text.caution:SetRGB(0.7, 0.7, 0.2)
 	return st
 end

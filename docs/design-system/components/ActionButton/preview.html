@@ -11,9 +11,10 @@
   .ab .ct { bottom: var(--hotkey-inset); right: var(--hotkey-inset); }
   .ab .cd { top: 50%; left: 0; right: 0; text-align: center; transform: translateY(-50%); }
   .ab .fx { position: absolute; inset: var(--line-width); }
-  .ab .fx.hover { background: var(--accent); mix-blend-mode: plus-lighter; }
-  .ab .fx.pressed { background: var(--pressed-fill); }
-  .ab .fx.checked { background: var(--checked-fill); mix-blend-mode: plus-lighter; }
+  .ab .fx.hover { background: color-mix(in srgb, var(--accent-light) calc(var(--state-hover) * 100%), transparent); }
+  .ab .fx.pressed { background: color-mix(in srgb, var(--accent-dark) calc(var(--state-pushed) * 100%), transparent); }
+  .ab .fx.checked { background: linear-gradient(90deg, color-mix(in srgb, var(--accent) calc(var(--state-selected) * 100%), transparent), transparent calc(var(--state-fade) * 100%)); }
+  .ab.is-checked { border-color: var(--accent); }
   .ab .fx.flash { background: var(--flash-fill); }
   .ab.is-equipped { border-color: var(--accent); }
   .ab.is-unusable .sui-art { filter: brightness(var(--alpha-disabled)); }
@@ -31,7 +32,7 @@
   </div>
   <div class="sui-stack"><div class="caption sui-state">Hover</div><div class="ab sui-iconbtn sui-frame"><div class="sui-art" style="background: var(--class-warrior)"></div><div class="fx hover"></div><span class="sui-pixeltext pixel sui-outline hk">1</span></div></div>
   <div class="sui-stack"><div class="caption sui-state">Pressed</div><div class="ab sui-iconbtn sui-frame"><div class="sui-art" style="background: var(--class-warrior)"></div><div class="fx pressed"></div><span class="sui-pixeltext pixel sui-outline hk">1</span></div></div>
-  <div class="sui-stack"><div class="caption sui-state">Checked</div><div class="ab sui-iconbtn sui-frame"><div class="sui-art" style="background: var(--class-warrior)"></div><div class="fx checked"></div><span class="sui-pixeltext pixel sui-outline hk">1</span></div></div>
+  <div class="sui-stack"><div class="caption sui-state">Checked</div><div class="ab sui-iconbtn sui-frame is-checked"><div class="sui-art" style="background: var(--class-warrior)"></div><div class="fx checked"></div><span class="sui-pixeltext pixel sui-outline hk">1</span></div></div>
   <div class="sui-stack"><div class="caption sui-state">Flash</div><div class="ab sui-iconbtn sui-frame"><div class="sui-art" style="background: var(--class-warrior)"></div><div class="fx flash"></div><span class="sui-pixeltext pixel sui-outline hk">1</span></div></div>
   <div class="sui-stack"><div class="caption sui-state">Equipped</div><div class="ab sui-iconbtn sui-frame is-equipped"><div class="sui-art" style="background: var(--class-rogue)"></div><span class="sui-pixeltext pixel sui-outline hk">E</span></div></div>
   <div class="sui-stack"><div class="caption sui-state">Unusable</div><div class="ab sui-iconbtn sui-frame is-unusable"><div class="sui-art" style="background: var(--class-mage)"></div><span class="sui-pixeltext pixel sui-outline hk">R</span></div></div>

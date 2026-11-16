@@ -18,6 +18,8 @@ The frame it closes. The icon rule asks for a tooltip, "Close". The `/sui` windo
 | Icon | `x` drawn 20 (a 10px cross), `text-muted` | `icon-close`, `text-muted` |
 | Under the mouse | fill `close-fill`, edge and X `text-danger` | `close-fill`, `text-danger` |
 | Pressed | the X moves down 1px | `line-width` |
+
+The close button keeps its own hover and is the one button that does not wear the Accent's states (decision 63): it closes, so under the mouse its body is `close-fill` and its edge and X `text-danger`, a meaning with a color of its own.
 | In a header | 10 in from its right | `close-inset` |
 | On `/sui` | 16 in, 14 down; on the small dialog 14 and 14 | `window-close-x`, `window-close-y` |
 

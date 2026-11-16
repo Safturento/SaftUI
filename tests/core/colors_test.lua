@@ -311,3 +311,16 @@ test('the state colors are the profile objects, each at its old default, and But
 	for _, old in ipairs({ 'white', 'red', 'orange', 'yellow', 'green', 'cyan' }) do eq(rawget(st.defaults.colors.text, old), nil, old .. ' has no default') end
 	eq(rawget(st.defaults.colors.button, 'red'), nil, 'nor Buttons > Red')
 end)
+
+test("st.defaults.colors.button has only danger; st:Color('button', 'hover') errors at the caller", function()
+	local keys = {}
+	for key in pairs(st.defaults.colors.button) do keys[#keys + 1] = key end
+	eq(table.concat(keys, ','), 'danger', 'Buttons > Danger alone')
+	for _, key in ipairs({ 'normal', 'hover', 'pushed', 'checked' }) do
+		eq(rawget(st.config.profile.colors.button, key), nil, key .. ' is not in the profile')
+		local ok, err = pcall(st.Color, st, 'button', key)
+		check(not ok, "st:Color('button', '" .. key .. "') errors")
+		check(tostring(err):find('no color button.' .. key, 1, true), 'naming the color: ' .. tostring(err))
+	end
+	eq(st.TINT_ROW, nil, 'the tint strengths are gone'); eq(st.TINT_OBJECT, nil); eq(st.HOVER_TINT, nil)
+end)

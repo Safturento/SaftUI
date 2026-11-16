@@ -1215,7 +1215,7 @@ RW.both('a Class or Power pass repaints nothing in the tracker; Text, Objectives
 		return n
 	end
 	for _, pair in ipairs({ { 'class', 'MAGE' }, { 'reaction', 4 }, { 'power', 'MANA' }, { 'status', 'tapped' },
-		{ 'button', 'normal' }, { 'roles', 'TANK' } }) do
+		{ 'button', 'danger' }, { 'roles', 'TANK' } }) do
 		eq(total(pair[1], pair[2]), 0, pair[1] .. ' repaints nothing')
 	end
 	eq(total('class'), 0, 'a whole Class pass repaints nothing')

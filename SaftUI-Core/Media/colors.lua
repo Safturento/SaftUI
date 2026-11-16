@@ -284,16 +284,24 @@ function st:InColorEdit() return editing end
 
 -- An edit held by more than one holder (the color picker and the Accent menu can be open at
 -- once, in either order): each holds it and the edit ends when the last lets go.
-local holders = 0
+-- The holders end only the edit one of them began: an edit begun raw (st:BeginColorEdit, ended by
+-- its own st:EndColorEdit) is not ended by a holder's last release.
+local holders, heldSerial = 0, nil
 function st:HoldColorEdit()
 	holders = holders + 1
+	local began = not editing
 	st:BeginColorEdit()
+	if began and holders == 1 then heldSerial = editSerial end
 end
 
 function st:ReleaseColorEdit()
 	if holders == 0 then return end
 	holders = holders - 1
-	if holders == 0 then st:EndColorEdit() end
+	if holders == 0 then
+		local serial = heldSerial
+		heldSerial = nil
+		if serial and serial == editSerial then st:EndColorEdit() end
+	end
 end
 
 -- One color changed (a Colors row's set or reset, the Accent's).
@@ -456,8 +464,9 @@ CO.OLD_COLORS = {
 	['button.blue'] = { r = 0, g = 0.68, b = 0.94, a = 0.8 },
 	['button.yellow'] = { r = 0.6, g = 0.6, b = 0.1, a = 0.8 },
 	['button.grey'] = { r = 150/255, g = 150/255, b = 150/255 },
-	-- The four state colors, retired at step 7 (the states are the Accent's now,
-	-- derived by Media/states.lua): the defaults they shipped with.
+	-- The four state colors, retired at step 7 and gone from st.defaults at step 8
+	-- (the states are the Accent's now, derived by Media/states.lua): the defaults
+	-- they shipped with, kept here for the record (nothing copies from them).
 	['button.normal'] = { r = 0.1, g = 0.1, b = 0.1, a = 1 },
 	['button.hover'] = { r = 0.3, g = 0.5, b = 0.7, a = 1 },
 	['button.pushed'] = { r = 0.3, g = 0.4, b = 0.5, a = 1 },
@@ -543,9 +552,18 @@ CO.MIGRATION_STEPS = {
 		-- 2026-11-15-saftui-interaction-states-design.md): Buttons > Normal,
 		-- Hover, Pushed and Checked are dropped, a change made to one with
 		-- them. Buttons > Danger stays (a meaning, not a state). Their
-		-- defaults stay in st.defaults until the last readers are converted, so
-		-- a live profile reads them at the default (RunStep puts it back in
-		-- place); a raw profile loses the key.
+		-- defaults stayed in st.defaults until the last readers were converted
+		-- (RunStep put a live profile's color back at its default); step 8
+		-- retires them again now that the defaults are gone.
+		retire = { 'button.normal', 'button.hover', 'button.pushed', 'button.checked' },
+	},
+	{
+		-- The same four, once more: the defaults are gone from st.defaults and
+		-- nothing reads the keys. A profile that ran step 7 while the defaults
+		-- stood (a live one put each back at its default in place) or that
+		-- carries a customized one saved since loses them here; no other color
+		-- is touched. Steps 5 and 6 (opacity, Hover into Checked) act on keys
+		-- that no longer have a default, so they change nothing a profile keeps.
 		retire = { 'button.normal', 'button.hover', 'button.pushed', 'button.checked' },
 	},
 }
@@ -647,18 +665,9 @@ local function RunStep(profile, step)
 		local group, key = SplitPath(path)
 		local holder = group and profile.colors[group]
 		if type(holder) == 'table' then
-			-- A key that still has a default (its readers and its Colors row not
-			-- converted yet: step 7's) is put back to that default in place on the
-			-- live profile's table (AceDB gave it its methods), never nil: the rows
-			-- that index it keep working. Anywhere else the key is dropped.
-			local default = st.defaults and st.defaults.colors and st.defaults.colors[group]
-			default = type(default) == 'table' and default[key]
-			local color = holder[key]
-			if type(default) == 'table' and type(color) == 'table' and color.GetRGB then
-				color.r, color.g, color.b, color.a = default.r, default.g, default.b, default.a
-			else
-				holder[key] = nil
-			end
+			-- A retired key is dropped; one that still has a default (none today)
+			-- would come back as the default on the live profile.
+			holder[key] = nil
 		end
 	end
 	for _, pair in ipairs(step.seed or {}) do SeedColor(profile, pair[1], pair[2]) end
@@ -719,7 +728,7 @@ CO.SECTIONS = {
 		colors = Colors('text', {
 			{ 'normal', 'Text', "Ordinary text: the options window, totem timers, the flyout arrow on the totem bar's summon button, and an enemy nameplate's threat text while your threat on it is fine." },
 			{ 'muted', 'Muted', "Dimmed text and icons: the options window's hints, captions, section titles and disabled controls, and the diff icon beside a setting that differs; edit mode's hint lines; the bag categories' counts and their edited and yours marker, and the combined bank's visibility toggle; SaftUI's objective tracker's zone headers, counts and chevrons; and a unit frame's level tag for a far lower level." },
-			{ 'strong', 'Strong', "Plain item levels and counts in bags, item levels on the character frame, a bank slot's price you can afford, the options window's share line under the mouse, loot roll timer text over a minute, and SaftUI's objective tracker's progress percent and the chevron under the mouse (in the skinned Blizzard tracker too)." },
+			{ 'strong', 'Strong', "Plain item levels and counts in bags, item levels on the character frame, a bank slot's price you can afford, the options window's share line under the mouse, loot roll timer text over a minute, and SaftUI's objective tracker's progress percent." },
 			{ 'danger', 'Danger', "Errors and refusals: status lines, why a control is disabled, edit mode's refusals, the bank's combat line and a price you can't afford, and the chat's Error prefix and DEBUG label. Also urgency (loot roll timers under a minute, expiring totems, a tracker item out of range), remove icons and the close button under the mouse, hostile names, a unit frame's level tag for a much higher level, and a durability under 20% in the durability figure's tooltip." },
 			{ 'warning', 'Warning', "A unit frame's level tag for a somewhat higher level, the poor end of the micro menu's stats, the bag rule editor's OR groups and its Caught now highlight, and a durability from 20% to 49% in the durability figure's tooltip." },
 			{ 'caution', 'Caution', "A unit frame's level tag near your level, unfriendly names, the micro menu's alert flash and the middle of its stats, and Caught by: in a bag item's tooltip." },

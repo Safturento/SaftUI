@@ -469,10 +469,10 @@ test('F3: W.Edge on a frame with no record paints the border directly, as it did
 	close_all()
 end)
 
-test('F4: W.HoverEdge stays as an alias of W.HoverStates until Task 11', function()
-	check(W.HoverEdge == W.HoverStates, 'the same function')
+test('F4: W.HoverEdge is gone; W.HoverStates takes the frame and its options, no isDisabled', function()
+	check(W.HoverEdge == nil, 'the alias is gone')
 	local box = W.Box(st:CreateFrame('Button', nil, UIParent))
-	W.HoverEdge(box, function() return false end)
+	W.HoverStates(box)
 	check(st:GetState(box, 'hover') == false, 'it makes a state frame')
 	enter(box)
 	check(st:GetState(box, 'hover'), 'and hover holds under the mouse')
@@ -679,6 +679,43 @@ test('a disabled number box does not tint under the mouse, and its pressed layer
 	check(not st:GetState(box.edit, 'pushed'), 'and no pushed')
 	leave(box.edit)
 	W.SetEnabled(box, true)
+end)
+
+test("a sidebar page the model says is disabled (a group's disabled) is dimmed, takes no hover tint and cannot be opened", function()
+	theme('thick')
+	local module = {
+		GetConfigTable = function()
+			return { name = 'Off page', type = 'group', order = 50, disabled = function() return true end,
+				args = { thing = { type = 'toggle', name = 'Thing', get = function() return false end, set = function() end } } }
+		end,
+	}
+	st.modules.StatesOffPage = module
+	st.Config:Open('Fonts', 'theme')
+	local f
+	for _, i in ipairs(frames().nav) do if i.key == 'StatesOffPage' then f = i end end
+	check(f, 'the page is in the sidebar')
+	check(f.disabled, "the entry came from the model's disabled")
+	eq(st:GetState(f, 'disabled'), true, 'a disabled state frame')
+	eq(f:GetAlpha(), st:StateAlpha(), 'dimmed to the Disabled opacity')
+	enter(f)
+	check(not lit(look(f).layer), 'no hover tint')
+	check(not st:GetState(f, 'hover'), 'and no hover state')
+	click(f)
+	local opened = false
+	for _, i in ipairs(frames().nav) do if i.key == 'StatesOffPage' and i.active then opened = true end end
+	check(not opened, 'a click does not open it')
+	leave(f)
+	-- an enabled page drawn on the same pooled frame is back at full opacity
+	module.GetConfigTable = function()
+		return { name = 'Off page', type = 'group', order = 50,
+			args = { thing = { type = 'toggle', name = 'Thing', get = function() return false end, set = function() end } } }
+	end
+	st.Config:Open('Fonts', 'theme')
+	for _, i in ipairs(frames().nav) do if i.key == 'StatesOffPage' then f = i end end
+	eq(st:GetState(f, 'disabled'), false, 'enabled: not disabled')
+	eq(f:GetAlpha(), 1, 'at full opacity')
+	st.modules.StatesOffPage = nil
+	close_all()
 end)
 
 test('a disabled sidebar page is dimmed to the Disabled opacity and takes no hover tint', function()

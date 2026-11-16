@@ -308,10 +308,8 @@ test("a micro button's flat highlight is T+ at 0.16 and its pushed background th
 	eq(T.text(button.PushedBackground:GetVertexColor()), T.text(st:StateColor('fill')), 'the pushed background is the Fill')
 	eq(button.PushedBackground:GetTexture(), st.textures.stateFade, 'the fade')
 	eq(button.PushedBackground:GetBlendMode(), 'BLEND')
-	-- the Buttons colors are not read
-	profile.colors.button.hover:SetRGB(0.9, 0.2, 0.6)
 	look('blizzard'); look('thick')
-	eq(T.text(highlight:GetVertexColor()), hover_text(), 'Buttons > Hover is not the highlight')
+	eq(T.text(highlight:GetVertexColor()), hover_text(), 'the highlight is still T+ after a redraw')
 	-- Blizzard re-applies its art on the highlight; the hooked swap puts the white texture back
 	button:SetHighlightAtlas('UI-HUD-MicroMenu-Questlog-Mouseover', 'BLEND')
 	eq(highlight:GetAtlas(), nil, 'after an atlas swap: no atlas')

@@ -8,11 +8,17 @@ local T = load_test_file('lib/theme_helpers.lua')
 -- A fresh world logged in with saved (SaftUI_DB as the game loads it from the
 -- SavedVariables file before login, or nil for a new install). The tests of
 -- steps 1 to 6 pin what those steps did to the Buttons colors (step 5's
--- opacities, step 6's seed of Buttons > Checked), which step 7 now drops
--- (the states are the Accent's): so by default the world has step 7 taken
--- out of the Colors module's list as colors.lua loads, before login's
--- migration runs, and those tests are as they shipped. fresh(saved, true)
--- keeps every step (the step 7 tests).
+-- opacities, step 6's seed of Buttons > Checked), which steps 7 and 8 drop
+-- (the states are the Accent's, and the four colors' defaults are gone from
+-- st.defaults): so by default the world has steps 7 and 8 taken out of the
+-- Colors module's list as colors.lua loads, before login's migration runs, and
+-- the four old defaults put back as defaults.lua loads, and those tests are as
+-- they shipped. fresh(saved, true) keeps every step and the real defaults (the
+-- step 7 and 8 tests).
+local OLD_DEFAULTS = {
+	normal = { 0.1, 0.1, 0.1, 1 }, hover = { 0.3, 0.5, 0.7, 1 },
+	pushed = { 0.3, 0.4, 0.5, 1 }, checked = { 0.3, 0.5, 0.7, 1 },
+}
 local function fresh(saved, all_steps)
 	reset_world()
 	SaftUI_DB = saved
@@ -21,8 +27,10 @@ local function fresh(saved, all_steps)
 		local result = real_load(path, ...)
 		if path == 'SaftUI-Core/Media/colors.lua' and not all_steps then
 			local steps = SaftUI:GetModule('Colors').MIGRATION_STEPS
-			check(#steps == 7, 'step 7 is the last step (the older tests run without it)')
-			steps[7] = nil
+			check(#steps == 8, 'step 8 is the last step (the older tests run without steps 7 and 8)')
+			steps[8] = nil; steps[7] = nil
+		elseif path == 'SaftUI-Core/Config/defaults.lua' and not all_steps then
+			for key, c in pairs(OLD_DEFAULTS) do SaftUI.defaults.colors.button[key] = CreateColor(c[1], c[2], c[3], c[4]) end
 		end
 		return result
 	end
@@ -744,36 +752,125 @@ test('step 6 in combat: a switch migrates at once', function()
 	eq(rgb(st.config.profile.colors.button.checked), RGB(0.9, 0.2, 0.6)); eq(#stub.blocked, 0); stub.in_combat = false
 end)
 
-test('step 7 drops the four Buttons state colors and keeps Danger (the states are the Accent\'s now)', function()
+local FOUR = { 'normal', 'hover', 'pushed', 'checked' }
+
+-- Customized Buttons state colors, with colors of every other group that must come through untouched.
+local function customized(version)
+	return { colors = { version = version,
+		button = {
+			normal = { r = 0, g = 1, b = 0 }, hover = { r = 1, g = 0, b = 0, a = 0.5 }, pushed = { r = 0, g = 0, b = 1 },
+			checked = { r = 1, g = 1, b = 0 }, danger = { r = 0.9, g = 0.2, b = 0.2 } },
+		class = { MAGE = { r = 0.1, g = 0.2, b = 0.3 } },
+		reaction = { [4] = { r = 0.5, g = 0.5, b = 0.5 } },
+		experience = { rested = { r = 0.9, g = 0.9, b = 0.1 } } },
+		theme = { accent = { r = 0.4, g = 0.5, b = 0.6 } } }
+end
+
+-- Everything but the four keys, as one string: what the retire must leave alone
+-- (Danger by its channels: step 5 puts its opacity back to 100%, as it always did).
+local function others(raw)
+	local c = raw.colors
+	local d = c.button and c.button.danger
+	return Dump({ danger = d and { d.r, d.g, d.b }, class = c.class, reaction = c.reaction, experience = c.experience, accent = raw.theme.accent })
+end
+
+test('steps 7 and 8 drop the four Buttons state colors and keep Danger (the states are the Accent\'s now)', function()
 	fresh(on({}), true)
-	local raw = { colors = { version = 6, button = {
-		hover = { r = 1, g = 0, b = 0 }, normal = { r = 0, g = 1, b = 0 }, pushed = { r = 0, g = 0, b = 1 },
-		checked = { r = 1, g = 1, b = 0 }, danger = { r = 0.9, g = 0.2, b = 0.2 } } } }
+	local Colors = st:GetModule('Colors')
+	eq(#Colors.MIGRATION_STEPS, 8, 'step 8 is the last step')
+	for _, n in ipairs({ 7, 8 }) do eq(table.concat(Colors.MIGRATION_STEPS[n].retire, ','), 'button.normal,button.hover,button.pushed,button.checked', 'step ' .. n) end
+	local raw = customized(6)
+	local want = others(raw)
 	st:MigrateColors(raw)
 	local button = raw.colors.button
-	for _, key in ipairs({ 'hover', 'normal', 'pushed', 'checked' }) do eq(button[key], nil, key .. ' dropped') end
+	for _, key in ipairs(FOUR) do eq(button[key], nil, key .. ' dropped') end
 	eq(rgb(button.danger), RGB(0.9, 0.2, 0.2), 'Danger kept')
-	eq(raw.colors.version, 7)
+	eq(others(raw), want, 'no other color touched')
+	eq(raw.colors.version, 8)
 	local once = Dump(raw)
 	st:MigrateColors(raw); eq(Dump(raw), once, 'run twice: no change')
-	-- a profile before step 6 seeds Checked from Hover, then step 7 drops both: neither survives
+	-- a profile before step 6 seeds Checked from Hover, then the retires drop both: neither survives
 	local old = { colors = { version = 5, button = { hover = { r = 1, g = 0, b = 0 } } } }
 	st:MigrateColors(old)
-	eq(old.colors.button.hover, nil); eq(old.colors.button.checked, nil); eq(old.colors.version, 7)
-	local frozen = st:GetModule('Colors').OLD_COLORS
+	eq(old.colors.button.hover, nil); eq(old.colors.button.checked, nil); eq(old.colors.version, 8)
+	local frozen = Colors.OLD_COLORS
 	eq(rgb(frozen['button.normal']), RGB(0.1, 0.1, 0.1)); eq(rgb(frozen['button.hover']), RGB(0.3, 0.5, 0.7))
 	eq(rgb(frozen['button.pushed']), RGB(0.3, 0.4, 0.5)); eq(rgb(frozen['button.checked']), RGB(0.3, 0.5, 0.7))
-	for _, key in ipairs({ 'normal', 'hover', 'pushed', 'checked' }) do eq(frozen['button.' .. key].a, 1, key .. ' opaque') end
-	eq(st:GetModule('Colors').MIGRATION_STEPS[7].retire[1], 'button.normal')
+	for _, key in ipairs(FOUR) do eq(frozen['button.' .. key].a, 1, key .. ' opaque') end
 end)
 
-test('step 7 on a live profile: the saved Buttons colors go at login, the defaults read as before', function()
-	fresh(on({ colors = { version = 6, button = { hover = { r = 1 }, normal = { g = 1 }, danger = { r = 0.9 } } } }), true)
-	eq(st.config.profile.colors.version, 7)
-	eq(rgb(st:Color('button', 'hover')), RGB(0.3, 0.5, 0.7), 'Hover reads its default until its readers are converted')
-	eq(rgb(st:Color('button', 'normal')), RGB(0.1, 0.1, 0.1))
+test('step 8: a profile saved at every earlier step loses the four and nothing else, once', function()
+	fresh(on({}), true)
+	for version = 0, 7 do
+		local raw = customized(version)
+		local want = others(raw)
+		check(pcall(st.MigrateColors, st, raw), 'version ' .. version .. ': no error')
+		for _, key in ipairs(FOUR) do eq(raw.colors.button[key], nil, 'version ' .. version .. ': ' .. key .. ' gone') end
+		-- (version 0 and 1 run steps 1 and 2 too: the accent takes Buttons > Blue, which this profile has not)
+		eq(others(raw), want, 'version ' .. version .. ': every other color as it was')
+		eq(raw.colors.version, 8, 'version ' .. version)
+		-- it ran once: a state color saved after it (a hand edit) is not dropped by a second run
+		raw.colors.button.hover = { r = 0.2, g = 0.2, b = 0.2 }
+		st:MigrateColors(raw)
+		eq(raw.colors.button.hover.r, 0.2, 'version ' .. version .. ': a second run drops nothing')
+	end
+end)
+
+test('step 8: no Buttons group, or one that is no table, is left as it is', function()
+	fresh(on({}), true)
+	for _, bad in ipairs({ 'x', 5, true }) do
+		local raw = { colors = { version = 7, button = bad } }
+		check(pcall(st.MigrateColors, st, raw)); eq(raw.colors.button, bad); eq(raw.colors.version, 8)
+	end
+	local raw = { colors = { version = 7 } }
+	st:MigrateColors(raw); eq(raw.colors.button, nil, 'no Buttons group made'); eq(raw.colors.version, 8)
+	raw = { colors = { version = 7, button = { normal = 'x', hover = 4, danger = { r = 1 } } } }
+	check(pcall(st.MigrateColors, st, raw)); eq(raw.colors.button.normal, nil); eq(raw.colors.button.hover, nil); eq(raw.colors.button.danger.r, 1)
+end)
+
+test('step 8 on a live profile: the saved Buttons colors go at login, the keys are not colors any more', function()
+	fresh(on(customized(7)), true)
+	local colors = st.config.profile.colors
+	eq(colors.version, 8)
+	for _, key in ipairs(FOUR) do
+		eq(colors.button[key], nil, key .. ' gone from the live profile')
+		check(not pcall(st.Color, st, 'button', key), "st:Color('button', '" .. key .. "') errors at the caller")
+	end
 	eq(st:Color('button', 'danger').r, 0.9, 'Danger kept')
+	eq(rgb(st:Color('class', 'MAGE')), RGB(0.1, 0.2, 0.3), 'and the other colors')
+	eq(st.config.profile.theme.accent.r, 0.4, 'the Accent')
 	st.config:SetProfile('Two')
 	local saved = SaftUI_DB.profiles.Old.colors.button
-	eq(saved.hover, nil); eq(saved.normal, nil); eq(saved.danger.r, 0.9)
+	for _, key in ipairs(FOUR) do eq(saved[key], nil, key .. ' not saved') end
+	eq(saved.danger.r, 0.9)
+	-- the same at version 6 (step 7 ran on a live profile while the defaults stood: it put each back): nothing left
+	fresh(on(customized(6)), true)
+	for _, key in ipairs(FOUR) do eq(st.config.profile.colors.button[key], nil, 'from version 6: ' .. key) end
+end)
+
+test('step 8: a switch to, a copy from and a reset of an unmigrated profile', function()
+	fresh(on({}), true)
+	SaftUI_DB.profiles.Two = customized(5)
+	SaftUI_DB.profiles.Three = customized(7)
+	st.config:SetProfile('Two')
+	for _, key in ipairs(FOUR) do eq(st.config.profile.colors.button[key], nil, 'a switch: ' .. key) end
+	eq(st.config.profile.colors.version, 8); eq(st.config.profile.colors.button.danger.r, 0.9)
+	st.config:SetProfile('Old'); st.config:CopyProfile('Three')
+	for _, key in ipairs(FOUR) do eq(st.config.profile.colors.button[key], nil, 'a copy: ' .. key) end
+	eq(st.config.profile.colors.version, 8); eq(st.config.profile.colors.button.danger.r, 0.9)
+	st.config.profile.colors.button.danger:SetRGB(0.1, 0.1, 0.1); st.config:ResetProfile()
+	for _, key in ipairs(FOUR) do eq(st.config.profile.colors.button[key], nil, 'a reset: ' .. key) end
+	eq(rgb(st.config.profile.colors.button.danger), RGB(0.6, 0.1, 0.1), 'the default Danger')
+end)
+
+test('step 8 in combat: a switch migrates at once', function()
+	fresh(on({}), true); SaftUI_DB.profiles.Two = customized(7)
+	stub.in_combat = true; st.config:SetProfile('Two')
+	eq(st.config.profile.colors.button.hover, nil); eq(st.config.profile.colors.version, 8); eq(#stub.blocked, 0); stub.in_combat = false
+end)
+
+test('step 8 migrates through a raising step like the others: the profile still loads', function()
+	-- a Buttons group of the wrong shape and a hand-edited version never stop the login
+	fresh(on({ colors = { version = 'x', button = { hover = 'x', danger = { r = 0.9 } } } }), true)
+	eq(st.config.profile.colors.version, 8); eq(st.config.profile.colors.button.hover, nil); eq(st.config.profile.colors.button.danger.r, 0.9)
 end)

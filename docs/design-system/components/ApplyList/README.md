@@ -16,7 +16,7 @@ The owner (the "Multiple" link), the entries (members, by name, in picker order)
 | --- | --- | --- |
 | List | the check list's frame and rows: 22 tall, an 18 box 6 in, the name 8 after | `list-row`, `toggle-size` |
 | Apply | 80 x 24 in `kit-field`, as the confirm's buttons; 6 under the rows and 6 over the list's bottom edge | `execute-min`, `field-height`, `apply-gap` |
-| Row under the mouse | `accent-fill` | `accent-fill` |
+| Row under the mouse | the lighter tone at `state-hover` over the row (its check box takes the row's hover) | `state-hover`, `accent-light` |
 
 ## States
 

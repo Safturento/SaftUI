@@ -53,7 +53,7 @@ The organisational changes that would make this system real in the addon: one pl
 
 ## 6. One icon-button state skin
 
-- **What.** A Core function for hover, pushed, checked and flash on action, totem and slot buttons, used by `ActionBars/skin.lua`, `totemskin.lua` and `st:SkinActionButton`; the countdown font rule in it once.
+- **What.** A Core function for hover, pushed, checked and flash on action, totem and slot buttons, used by `ActionBars/skin.lua`, `totemskin.lua` and `st:SkinActionButton`; the countdown font rule in it once. **Done (decision 63):** `st:AddStates` and `st:SetState` (`SaftUI-Core/Widgets/states.lua`), the one set of helpers every widget draws a state with, deriving each from the Accent (`Media/states.lua`); the flash stays `Buttons > Danger` at 0.4.
 - **Why.** Discrepancy 11: three copies of the same literals that will drift.
 - **Size.** Small to medium.
 - **Risk.** Medium: secure buttons, Blizzard's state art, the totem bar's combat rules (`.agents/taint.md`).
@@ -80,7 +80,7 @@ The organisational changes that would make this system real in the addon: one pl
 
 ## 9. One state vocabulary
 
-- **What.** Rename Buttons > Normal and Hover in the UI for what they do (keys stay), or remap them so Normal is the resting fill and Hover the hover; route every hover through it. **Done as a remap (decision 54):** Hover is the highlight under the mouse (slots, action buttons and close buttons keep the Accent and Text > Danger), Normal is a scroll bar thumb at rest and Checked (new) a checked check box; every highlight reads Hover at `st.HOVER_TINT` (0.4). **Color roles, Task 5 (before it):** Normal and Hover kept their names (the color roles design's non-goal), and their opacity is drawn: every Buttons read is `st:ColorRGBA('button', key, strength)`, the defaults are 100%, and a saved opacity went back to 100% once (migration step 5).
+- **What.** Rename Buttons > Normal and Hover in the UI for what they do (keys stay), or remap them so Normal is the resting fill and Hover the hover; route every hover through it. **Settled by decision 63 (2026-11-15): the four Buttons state colors are gone** (migration step 8; Buttons holds Danger alone), `st.HOVER_TINT`, `st.TINT_ROW` and `st.TINT_OBJECT` with them, and every state is derived from the Accent by rule (`st:StateColor`, `st:AddStates`; `tests/core/states_scan_test.lua` keeps anything from drawing one by hand). What follows is the earlier remap, as it was. **Done as a remap (decision 54):** Hover is the highlight under the mouse (slots, action buttons and close buttons keep the Accent and Text > Danger), Normal is a scroll bar thumb at rest and Checked (new) a checked check box; every highlight reads Hover at `st.HOVER_TINT` (0.4). **Color roles, Task 5 (before it):** Normal and Hover kept their names (the color roles design's non-goal), and their opacity is drawn: every Buttons read is `st:ColorRGBA('button', key, strength)`, the defaults are 100%, and a saved opacity went back to 100% once (migration step 5).
 - **Why.** Discrepancy 3: the names don't say their roles (`colors.lua:64-65`).
 - **Size.** Small code, a design call.
 - **Risk.** Low.

@@ -30,29 +30,30 @@ end)
 test('ColorRGBA: strength times opacity, a nil alpha as 1', function()
 	eq(select(4, st:ColorRGBA('text', 'normal')), 1)
 	eq(select(4, st:ColorRGBA('text', 'normal', 0.25)), 0.25)
-	st.config.profile.colors.button.hover.a = 0.5
-	eq(select(4, st:ColorRGBA('button', 'hover', 0.4)), 0.2)
+	st.config.profile.colors.button.danger.a = 0.5
+	eq(select(4, st:ColorRGBA('button', 'danger', 0.4)), 0.2)
+	st.config.profile.colors.button.danger.a = 1
 end)
 
 test('a hand-edited channel that is no number reads as the default, and nothing raises', function()
 	local c = st.config.profile.colors.button
-	local keep = c.hover
-	local default = st.defaults.colors.button.hover
+	local keep = c.danger
+	local default = st.defaults.colors.button.danger
 	for _, bad in ipairs({ { r = 'x' }, { g = true }, { b = {} }, { a = 'x' } }) do
 		local edited = CreateColor(0.9, 0.2, 0.6, 0.5)
 		for k, v in pairs(bad) do edited[k] = v end
-		c.hover = edited
-		local ok, r, g, b, a = pcall(st.ColorRGBA, st, 'button', 'hover', 0.4)
+		c.danger = edited
+		local ok, r, g, b, a = pcall(st.ColorRGBA, st, 'button', 'danger', 0.4)
 		check(ok, 'ColorRGBA raised on ' .. next(bad))
 		if ok then
 			eq(type(r) == 'number' and type(g) == 'number' and type(b) == 'number' and type(a) == 'number', true, 'four numbers for ' .. next(bad))
 			eq(r, default.r); eq(g, default.g); eq(b, default.b); eq(a, 0.4 * default.a, 'the default, at its strength')
 		end
-		check(st:Color('button', 'hover') == default, 'st:Color reads the default for ' .. next(bad))
+		check(st:Color('button', 'danger') == default, 'st:Color reads the default for ' .. next(bad))
 	end
-	c.hover = CreateColor(0.9, 0.2, 0.6, 0.5)
-	eq(select(4, st:ColorRGBA('button', 'hover', 0.4)), 0.2, 'a good one is read as it is')
-	c.hover = keep
+	c.danger = CreateColor(0.9, 0.2, 0.6, 0.5)
+	eq(select(4, st:ColorRGBA('button', 'danger', 0.4)), 0.2, 'a good one is read as it is')
+	c.danger = keep
 end)
 
 test('a nil key raises, except for a default that is itself a color (renown)', function() -- Ruling 5

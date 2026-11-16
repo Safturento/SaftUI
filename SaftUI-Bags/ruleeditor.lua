@@ -375,7 +375,7 @@ local function MakeField(f)
 		if W.ListOwner() == self then W.CloseList() end
 	end)
 	-- after the scripts above (a SetScript drops the helper's hooks)
-	W.HoverStates(field, IsDisabled)
+	W.HoverStates(field)
 	W.DropdownStates(field, IsDisabled)
 	return field
 end
@@ -393,7 +393,7 @@ local function MakeCheck(f)
 		if self.w and not self.w.disabled and self.toggle then self.toggle() end
 	end)
 	-- a check box of the helper: the edge, the mark and the fade when checked
-	W.HoverStates(check, function() return check.w == nil or check.w.disabled end, { shape = 'check', mark = check.mark })
+	W.HoverStates(check, { shape = 'check', mark = check.mark })
 	return check
 end
 
@@ -811,7 +811,7 @@ local function RowFrame(w, i)
 		if record then Edit(w, function(rule) return R.ToggleNot(rule, record.path) end) end
 	end)
 	-- after the scripts above (a SetScript drops the helper's hooks)
-	W.HoverStates(notBox, nil, { text = notBox.text, textRest = Muted })
+	W.HoverStates(notBox, { text = notBox.text, textRest = Muted })
 	f.notBox = notBox
 
 	f.label = Text(f)
@@ -946,12 +946,12 @@ local function GroupParts(w, g)
 	badge:SetSize(BADGE_WIDTH, BADGE_HEIGHT)
 	badge.text = Text(badge, OB.Font('caption'))
 	badge.text:SetPoint('CENTER', badge, 'CENTER', 0, 0)
-	badge:SetScript('OnEnter', function(self) self.text:SetAlpha(0.7) end)
-	badge:SetScript('OnLeave', function(self) self.text:SetAlpha(1) end)
 	badge:SetScript('OnClick', function(self)
 		local path = self.path
 		if path then Edit(w, function(rule) return R.Flip(rule, path) end) end
 	end)
+	-- a box of the helpers, after its scripts: the body tints under the mouse; its label keeps its own color
+	W.HoverStates(badge)
 	parts.badge = badge
 	w.groupParts[g] = parts
 	return parts

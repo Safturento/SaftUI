@@ -1,4 +1,4 @@
--- SaftUI-Core/constants.lua's st.TINT_ROW and st.TINT_OBJECT, and its st.icons:
+-- SaftUI-Core/constants.lua's st.icons:
 -- Lucide's icons by name, as TGA files in
 -- SaftUI-Core/Media/Textures (made by tools/lucide-to-tga.cjs).
 --
@@ -22,12 +22,8 @@ local function repo_path(texture)
 	return name and ('SaftUI-Core/Media/Textures/' .. name)
 end
 
--- Decision 29: a hovered or selected row in a list is tinted at 25%, a selected
--- object's fill at 15%.
-test('st.TINT_ROW and st.TINT_OBJECT: the two tint strengths', function()
-	eq(st.TINT_ROW, 0.25, 'a row, hovered or selected')
-	eq(st.TINT_OBJECT, 0.15, "a selected object's fill")
-end)
+-- (The tint strengths st.TINT_ROW and st.TINT_OBJECT retired with the states: a
+-- hovered or selected row is the helpers' now, states_scan_test.lua.)
 
 test('st.icons: every registered icon is a file on disk', function()
 	for _, name in ipairs(NAMES) do

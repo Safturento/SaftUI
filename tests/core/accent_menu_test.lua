@@ -461,8 +461,7 @@ test('the cost of a held slider: one accent pass a frame, nothing forbidden, und
 	eq(m.made, 0, 'nothing made')
 	check(m.kb < 4, 'under 4 KB over 100 passes (' .. m.kb .. ')')
 	eq(m.calls.total / 100, 23, 'the setter calls of one pass with the menu open (pinned)')
-	st:BeginColorEdit()
-	close_all()
+	close_all() -- (the menu's release finds the edit it began already ended: nothing to end)
 end)
 
 ------------------------------------------------------------------ search

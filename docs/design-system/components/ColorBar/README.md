@@ -34,7 +34,7 @@ The box takes its own click and has its own tooltip, which says what unticked me
 
 ## States
 
-- Under the mouse: the edge turns `accent`, as an input's.
+- Under the mouse: the body tints in the lighter tone (`state-hover`) around the swatch, which shows its color exactly and takes no tint; the edge stays, as a button's.
 - Disabled: `alpha-disabled`, label `text-muted`; it takes no mouse.
 - While the picker is open the swatch, the checker and the code follow the picked color live.
 
@@ -45,6 +45,10 @@ With a `preview` the picker is 94 taller (436, not 342) and shows a strip under 
 ## Legibility
 
 The code is ordinary field text, `text` on the field's dark fill (14.5:1 on `kit-field`), the same on every color (decision 9). It never sits on the color.
+
+## The Accent row's dots
+
+The Accent's field (`CO:AccentOption`) has a slot after it, a 16 x 24 button with Lucide's `ellipsis-vertical` (the control is 190 wide, 194 under Blizzard, the field staying 170), tooltip "Accent states". It opens a menu 400 wide hanging from the dots (an item's menu: closed by Esc, a click outside, navigation and combat), titled Accent, that sets how every state is made from the Accent (decision 63). It starts with a live strip of the states (Rest, Hover, Pushed, Selected, Selected and hovered, Disabled, each a button held in that state) that follows every setting as it moves, then **Derivation** (Layers, Tones or Hue-shifted tones), the **Strengths** (Hover, Pushed, Selected fill, Selected fade, Disabled, as percents), **Tones** (Lightness step) and **Hue shift** (Hue shift, Direction, Chroma change). A setting the chosen mode doesn't use is dimmed with why (never hidden, and it keeps its value); each setting has its own reset arrow while it differs from its default, and the row's own reset still puts the Accent back. A held slider is one pass of the colors a frame, and the whole pass runs when the menu closes. Under Blizzard the strip is drawn as Thick with the note "Shown as Thick: Blizzard's art draws its own."
 
 ## Blizzard theme
 
