@@ -516,18 +516,33 @@ test("Compact and Rows: Grouped's slot for the normal bags points at a normal ba
 	for slot = 6, 20 do W.put(0, slot, W.item(100 + slot, 'Filler ' .. slot, 'Miscellaneous', 1)) end
 	W.bags[1].family = 32
 	W.bag(3, 4, 'Bag')
-	for _, view in ipairs({ 'rows' }) do
-		local empties = section(INV:GetViewSections('bag', view), 'Empty Slots')
+	-- Compact has no sections: its Empty Slots category comes from the sorted inventory.
+	local function grouped(view)
+		if view == 'compact' then return INV:GetSortedInventory('bag')['Empty Slots'] end
+		return section(INV:GetViewSections('bag', view), 'Empty Slots').items
+	end
+	for _, view in ipairs({ 'compact', 'rows' }) do
+		local empties = grouped(view)
 		check(empties ~= nil, view .. ': an Empty Slots section')
-		local first = empties.items[1]
+		eq(#empties, 1, view .. ': one grouped slot')
+		local first = empties[1]
 		eq(first.bagID, 3, view .. ': the grouped slot is in the normal bag')
 		eq(first.slotID, 1, view .. ': its first free slot')
 		eq(first.count, 8 + 10 + 4, view .. ': and it still counts every free slot')
 	end
 	-- With no free slot in a normal bag, it points at the first free one there is.
 	for slot = 1, 4 do W.put(3, slot, W.item(200 + slot, 'More ' .. slot, 'Miscellaneous', 1)) end
-	local empties = section(INV:GetViewSections('bag', 'rows'), 'Empty Slots')
-	eq(empties.items[1].bagID, 1, 'with only herb bags free: the first free slot')
+	for _, view in ipairs({ 'compact', 'rows' }) do
+		eq(grouped(view)[1].bagID, 1, view .. ': with only herb bags free: the first free slot')
+	end
+	-- Whether a bag is special is asked once a bag, not once a free slot.
+	local asked = 0
+	local isSpecial = INV.IsSpecialBag
+	INV.IsSpecialBag = function(...) asked = asked + 1; return isSpecial(...) end
+	local infos = INV:GetEmptySlots('bag', { { id = 1, free = { 1, 2, 3, 4, 5 } }, { id = 3, free = { 1, 2 } } }, 'grouped')
+	INV.IsSpecialBag = isSpecial
+	eq(infos[1].bagID, 3, 'the grouped slot is the normal bag')
+	eq(asked, 2, 'IsSpecialBag is asked once for the herb bag and once for the normal bag, not for each free slot')
 	eq(#take_errors(), 0, 'no errors')
 end)
 
