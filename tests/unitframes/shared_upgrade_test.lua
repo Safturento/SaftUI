@@ -827,3 +827,65 @@ test('Copy from after a sync failed (sharing paused for the session) keeps the c
 		eq(UF:SharedState(profile), 'failed')
 	end, function() end)
 end)
+
+------------------------------------------------------------------ the final fix round: turning sharing on waits for combat
+
+local function restored_converted_world()
+	local db = converted_world()
+	UF:RunShareCommand('restore confirm')
+	eq(UF:SharedState(profile_of(db)), 'restored')
+	return db
+end
+
+-- Counts the calls of UF:UpdateConfig while fn runs.
+local function updates_during(fn)
+	local real, n = UF.UpdateConfig, 0
+	UF.UpdateConfig = function(self, ...) n = n + 1; return real(self, ...) end
+	local ok, err = pcall(fn)
+	UF.UpdateConfig = real
+	if not ok then error(err, 0) end
+	return n
+end
+
+test('/sui uf share confirm in combat: one line, nothing converts until combat ends, then the frames are updated', function()
+	local db = restored_converted_world()
+	local profile = profile_of(db)
+	stub.in_combat = true
+	local lines = printed_by(function() UF:RunShareCommand('share confirm') end)
+	eq(#lines, 1, 'one chat line: ' .. table.concat(lines, ' | '))
+	check(lines[1]:find('combat', 1, true), 'it says it waits: ' .. tostring(lines[1]))
+	eq(UF:SharedState(profile), 'restored', 'nothing converted in combat')
+	eq(UF:SharedReady(profile), false)
+	stub.in_combat = false
+	local updated
+	lines = printed_by(function()
+		updated = updates_during(function() stub.fire_event('PLAYER_REGEN_ENABLED') end)
+	end)
+	eq(UF:SharedReady(profile), true, 'converted when combat ended')
+	check(updated >= 1, 'the frames were updated (UF:UpdateConfig ran after the conversion)')
+	check(table.concat(lines, ' | '):find('Shared settings are on', 1, true), 'and it says so: ' .. table.concat(lines, ' | '))
+	eq(#take_errors(), 0)
+end)
+
+test('/sui uf share confirm out of combat updates the frames after converting', function()
+	local db = restored_converted_world()
+	local updated
+	printed_by(function() updated = updates_during(function() UF:RunShareCommand('share confirm') end) end)
+	eq(UF:SharedReady(profile_of(db)), true)
+	check(updated >= 1, 'UF:UpdateConfig ran after the conversion')
+end)
+
+test('the All units page\'s Turn on button in combat waits for combat\'s end as well', function()
+	local db = restored_converted_world()
+	local profile = profile_of(db)
+	local button = UF:GetConfigTable().args.all.args.general.args.turnOn
+	stub.in_combat = true
+	local lines = printed_by(function() button.func() end)
+	eq(#lines, 1, 'one chat line: ' .. table.concat(lines, ' | '))
+	eq(UF:SharedState(profile), 'restored', 'nothing converted in combat')
+	stub.in_combat = false
+	local updated = updates_during(function() stub.fire_event('PLAYER_REGEN_ENABLED') end)
+	eq(UF:SharedReady(profile), true, 'converted when combat ended')
+	check(updated >= 1, 'the frames were updated')
+	eq(#take_errors(), 0)
+end)
