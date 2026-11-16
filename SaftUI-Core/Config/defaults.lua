@@ -92,6 +92,14 @@ st.defaults.theme = {
 	-- current or under the mouse in SaftUI's frames and windows, its links and
 	-- the chat prefix. Read through st:Color('accent'); it has no opacity.
 	accent = CreateColor(0, 0.68, 0.94),
+	-- How every interaction state (hover, pushed, selected, focus, disabled) is
+	-- derived from the Accent (docs/superpowers/specs/2026-11-15-saftui-interaction-states-design.md,
+	-- section 2; read through Media/states.lua's ST.Settings, which clamps
+	-- these into their ranges, ST.RANGES). mode is 'layers', 'tones' or 'hue';
+	-- hover, pushed, selected, fade and disabled are strengths (0 to 1);
+	-- step is the Tones lightness step; shift (degrees), chroma and direction
+	-- ('warm': warm light, cool shadow; 'cool') are the Hue-shifted tones'.
+	states = { mode = 'tones', hover = 0.16, pushed = 0.32, selected = 0.24, fade = 0.70, disabled = 0.40, step = 0.08, shift = 20, chroma = 0.10, direction = 'warm' },
 }
 
 -- Each theme's colors, by its name, and the close button's fill. Thick draws

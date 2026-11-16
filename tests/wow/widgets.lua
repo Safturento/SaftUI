@@ -690,18 +690,26 @@ end
 -- URx, URy, LRx, LRy); any other count of numbers is a usage error, as in
 -- game. GetTexCoord gives the eight corners either way, the whole texture
 -- (0, 0, 0, 1, 1, 0, 1, 1) before any SetTexCoord.
+-- It writes into the table it has, so a color pass that sets a Fill's
+-- coordinates makes no garbage (tests/lib/color_cost.lua counts it).
+local COORD_NAMES = { 'coord 1', 'coord 2', 'coord 3', 'coord 4', 'coord 5', 'coord 6', 'coord 7', 'coord 8' }
 function Texture.SetTexCoord(self, s, ...)
 	local n = select('#', ...)
 	if n ~= 4 and n ~= 8 then
 		usage(s, ('SetTexCoord(): expects 4 or 8 numbers, got %d'):format(n))
 	end
-	local c = {}
-	for i = 1, n do c[i] = number_arg(s, (select(i, ...)), 'coord ' .. i) end
-	if n == 4 then
-		local left, right, top, bottom = c[1], c[2], c[3], c[4]
-		c = { left, top, left, bottom, right, top, right, bottom }
+	for i = 1, n do number_arg(s, (select(i, ...)), COORD_NAMES[i]) end
+	local c = s.tex_coord
+	if not c then
+		c = {}
+		s.tex_coord = c
 	end
-	s.tex_coord = c
+	if n == 4 then
+		local left, right, top, bottom = ...
+		c[1], c[2], c[3], c[4], c[5], c[6], c[7], c[8] = left, top, left, bottom, right, top, right, bottom
+	else
+		c[1], c[2], c[3], c[4], c[5], c[6], c[7], c[8] = ...
+	end
 end
 function Texture.GetTexCoord(self, s)
 	local c = s.tex_coord or { 0, 0, 0, 1, 1, 0, 1, 1 }

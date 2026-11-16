@@ -45,6 +45,7 @@ utilities.lua
 Media\sharedmedia.lua
 Media\fonts.lua
 Media\colors.lua
+Media\states.lua
 Media\theme.lua
 
 Config\load.xml

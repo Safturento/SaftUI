@@ -74,6 +74,7 @@ st.textures = {
 	eyeOpen = st:TexturePath('eye-visible.tga'),
 	atlas = st:TexturePath('SaftUIAtlas.blp'),
 	filter = st:TexturePath('funnel.tga'), -- a funnel: white, a 24x24 drawing centred on 32x32 (the bags' currency Filter button)
+	stateFade = st:TexturePath('state-fade.tga'), -- the selected Fill's ramp: white, alpha 1 at the left falling to 0 at the right (tools/fade-to-tga.cjs)
 }
 
 -- Lucide's icons (lucide.dev, ISC; see Media/Textures/LUCIDE-LICENSE.txt), by
