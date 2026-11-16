@@ -342,3 +342,83 @@ test('slider arrow edge cases', function()
 	v:Release()
 	eq(#take_errors(), 0, 'no errors')
 end)
+
+------------------------------------------------------------------ applyOnRelease
+
+-- A range with SaftUI's applyOnRelease, and every value its set was given.
+local function releasing(fields)
+	local value, sets = fields.value, {}
+	local option = opt('range', 'Amount', {
+		min = fields.min, max = fields.max, step = fields.step, isPercent = fields.isPercent,
+		applyOnRelease = fields.applyOnRelease,
+		get = function() return value end,
+		set = function(_, v) sets[#sets + 1] = v; value = v end,
+	})
+	local w, told = bind('range', 'amount', option)
+	return w, told, sets
+end
+
+test('applyOnRelease: a drag sets nothing until the button comes up, then once with the last value; an arrow and a typed value set at once; without it every step sets, as before', function()
+	local w, told, sets = releasing({ value = 1, min = 0.7, max = 1.5, step = 0.05, isPercent = true, applyOnRelease = true })
+	stub.fire_script(w.slider, 'OnMouseDown')
+	w.slider:SetValue(1.12)
+	eq(#sets, 0, 'the first step set nothing')
+	eq(w.edit:GetText(), '110%', 'the box follows the drag')
+	w.slider:SetValue(1.27)
+	w.slider:SetValue(1.31)
+	eq(#sets, 0, 'no step set anything')
+	eq(told.n, 0, 'the window was told nothing mid-drag')
+	eq(w.edit:GetText(), '130%', 'the value shown is the last one')
+	check(w.fill:GetWidth() > 1, 'the fill follows')
+	stub.fire_script(w.slider, 'OnMouseUp')
+	eq(#sets, 1, 'one set on release')
+	eq(sets[1], 1.3, 'with the value shown')
+	eq(told.n, 1, 'and the window told once')
+	eq(told.dragging, nil, 'not mid-drag')
+	eq(w.edit:GetText(), '130%', 'the box keeps it')
+
+	-- A drag that comes back to where it began sets nothing, and the row shows the saved value.
+	stub.fire_script(w.slider, 'OnMouseDown')
+	w.slider:SetValue(1.4)
+	w.slider:SetValue(1.3)
+	stub.fire_script(w.slider, 'OnMouseUp')
+	eq(#sets, 1, 'no change, no set')
+	eq(w.edit:GetText(), '130%')
+
+	-- A click on the track moves the slider before the button-down script runs.
+	stub.mouse_buttons.LeftButton = true
+	w.slider:SetValue(0.9)
+	eq(#sets, 1, 'a click on the track waits for the release too')
+	stub.mouse_buttons.LeftButton = nil
+	stub.fire_script(w.slider, 'OnMouseUp')
+	eq(sets[#sets], 0.9, 'and sets on it'); eq(#sets, 2)
+
+	-- An arrow's click and a typed value set at once.
+	w:StepBy(1)
+	eq(sets[#sets], 0.95, 'an arrow sets at once'); eq(#sets, 3)
+	type_into(w.edit, '115')
+	eq(sets[#sets], 1.15, 'a typed value sets at once'); eq(#sets, 4)
+	w:Release()
+
+	-- Without the field every step sets, as today.
+	local plain, _, plainSets = releasing({ value = 0, min = 0, max = 1, step = 0.05 })
+	stub.fire_script(plain.slider, 'OnMouseDown')
+	plain.slider:SetValue(0.37)
+	plain.slider:SetValue(0.52)
+	eq(#plainSets, 2, 'a range without the field sets on every step')
+	stub.fire_script(plain.slider, 'OnMouseUp')
+	eq(#plainSets, 2)
+	plain:Release()
+end)
+
+test('applyOnRelease: a widget released mid-drag keeps nothing for the next row it serves', function()
+	local w, _, sets = releasing({ value = 1, min = 0.7, max = 1.5, step = 0.05, applyOnRelease = true })
+	stub.fire_script(w.slider, 'OnMouseDown')
+	w.slider:SetValue(1.2)
+	w:Release()
+	local again, _, againSets = releasing({ value = 1, min = 0.7, max = 1.5, step = 0.05, applyOnRelease = true })
+	check(again == w, 'the pooled widget')
+	stub.fire_script(again.slider, 'OnMouseUp')
+	eq(#sets + #againSets, 0, 'nothing carried over')
+	again:Release()
+end)

@@ -176,9 +176,16 @@ builders.range = function(w)
 	end)
 	slider:SetScript('OnMouseDown', function() w.dragging = true end)
 	slider:SetScript('OnMouseUp', function()
-		local changed = w.dirty
-		w.dragging, w.dirty = nil, nil
-		if changed and w.onChanged then w.onChanged(true) end
+		local changed, pending = w.dirty, w.pending
+		w.dragging, w.dirty, w.pending = nil, nil, nil
+		if pending ~= nil then
+			-- applyOnRelease: the one set of the drag, with the value shown, if
+			-- it differs from the setting (a drag that came back sets nothing).
+			if not w.row then return end
+			if pending ~= w:Number() then w:Commit(pending) else w:Refresh() end
+		elseif changed and w.onChanged then
+			w.onChanged(true)
+		end
 	end)
 
 	edit:SetScript('OnEnterPressed', function(self)
@@ -216,10 +223,28 @@ local function RangeArrows(w)
 	w.forwardArrow.texture:SetDesaturated(not forward)
 end
 
+-- Shows a value without setting it: the box, the fill and the arrows. The
+-- slider's own knob is where the mouse has it (or Refresh puts it).
+local function Show(w, value)
+	w.value = value
+	local span = w.softMax - w.softMin
+	local fraction = span > 0 and max(0, min(1, (value - w.softMin) / span)) or 0
+	w.fill:SetWidth(max(1, (TRACK_WIDTH - 2) * fraction))
+	w.edit:SetText(Shown(value, w.percent) .. (w.percent and '%' or ''))
+	RangeArrows(w)
+end
+
 define('range', {
 	Bind = function(self, ...)
+		self.pending = nil -- a pooled widget released mid-drag keeps nothing
 		LookRange(self, BlizzardLook())
 		return Base.Bind(self, ...)
+	end,
+
+	-- The setting's value, a number or nil (the shown one may be a pending drag).
+	Number = function(self)
+		local value = self:Value()
+		return type(value) == 'number' and value or nil
 	end,
 
 	-- The slider's ends (softMin and softMax, else min and max, as
@@ -244,11 +269,18 @@ define('range', {
 	end,
 
 	-- The slider moved by the user: snapped to bigStep (or step) while
-	-- dragging.
+	-- dragging. With SaftUI's applyOnRelease a drag only shows the value
+	-- (the box, the fill, the arrows) and the mouse button coming up sets it
+	-- once; a move with no button down (the keys, the wheel) sets at once.
 	Dragged = function(self, value)
 		value = self:Cut(Snap(value, self.softMin, self.dragStep))
 		if value == self.value then return end
 		if self.dragging then self.dirty = true end
+		if self.dragging and OM.Member(self.root, self.row, 'applyOnRelease') then
+			self.pending = value
+			Show(self, value)
+			return
+		end
 		self:Commit(value)
 	end,
 

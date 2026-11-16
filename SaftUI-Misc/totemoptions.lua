@@ -18,10 +18,10 @@ function TB:GetConfigTable()
 	local buttonSpacing = generators.range(2, 'Spacing', 0, 20, 1, 'The gap between buttons.')
 
 	local timerBar = generators.toggle(3, 'Show timer bar',
-		"A bar above each element button that drains, in the element's colour, as that element's totem runs out. It turns red in the last 10 seconds.",
+		"A bar above each element button that drains, in the element's colour, as that element's totem runs out. It turns the Danger color (Global settings > Colors > Text) in the last 10 seconds.",
 		'small')
 	local timerText = generators.toggle(4, 'Show timer text',
-		"How long each element's totem has left, above its button. It turns red in the last 10 seconds.",
+		"How long each element's totem has left, above its button. It turns the Danger color (Global settings > Colors > Text) in the last 10 seconds.",
 		'small')
 
 	-- Text alone sits just above the button either way, so this only matters with both on.

@@ -8,7 +8,7 @@ Any number with a sensible range (Ace `range`): sizes, counts, spacing, opacity.
 
 ## What the consumer provides
 
-`min`, `max`, `step` (and `softMin`/`softMax`, `bigStep`), `isPercent` for a 0-1 value shown as a percent, `get`/`set`, `name`, `desc`.
+`min`, `max`, `step` (and `softMin`/`softMax`, `bigStep`), `isPercent` for a 0-1 value shown as a percent, `get`/`set`, `name`, `desc`. SaftUI's `applyOnRelease` for a setting too heavy to change at every step of a drag (the UI size).
 
 ## Sizes and tokens
 
@@ -23,6 +23,7 @@ Any number with a sensible range (Ace `range`): sizes, counts, spacing, opacity.
 ## States
 
 - Dragging sets as it goes; the window's other rows follow, and a dialog re-renders after the drag.
+- With `applyOnRelease` a drag only moves the knob, fill and box, and the value is set once when the mouse button comes up (not at all if it came back to where it began). An arrow's click and a typed value set at once.
 - Disabled: the whole range at `alpha-disabled`, label `text-muted`.
 - A percent reads "30%"; numbers show without float drift (0.065, 12, 33.5).
 

@@ -40,7 +40,7 @@ KP.LEVEL = 9900 -- FULLSCREEN_DIALOG: over /sui, the edit mode bar (9500), the l
 KP.KEEP_DELAY = 0.5 -- seconds after it shows that Keep takes no click (the second click of a double-click)
 KP.TITLE = 'Keep this UI size?'
 KP.COMBAT_LINE = 'Goes back when combat ends.'
-KP.MODE_NAMES = { auto = 'Automatic', pixel = 'Pixel for pixel', game = "The game's UI scale" }
+KP.MODE_NAMES = st.UIScale.MODE_NAMES
 
 local floor, ceil, max, min = math.floor, math.ceil, math.max, math.min
 
@@ -102,6 +102,14 @@ local function Hide()
 	StopTicker()
 	waiting = false
 	if ui then ui.frame:Hide() end
+end
+
+-- /sui's UI scale rows show the choice in effect: a Keep that changes nothing
+-- and a Go back to a choice that makes the same scale run no pass, which is
+-- what redraws an open /sui, so the rows are told here.
+local function TellOptions()
+	local config = st.Config
+	if config and config.Refresh then config:Refresh() end
 end
 
 local function SetKeys()
@@ -236,6 +244,7 @@ function KP:Keep()
 		st.UIScale:Revert()
 		st:Print("That UI size doesn't fit this screen any more, so it went back.")
 	end
+	TellOptions()
 end
 
 -- Goes back to the saved choice and closes; in combat the revert waits for the end of it.
@@ -244,6 +253,7 @@ function KP:GoBack()
 	local combat = InCombatLockdown()
 	if combat then Wait() else Hide() end
 	st.UIScale:Revert()
+	TellOptions()
 end
 
 -- Closes with nothing to revert (a reset ended the preview).
@@ -284,6 +294,7 @@ local REFUSED = {
 	combat = "The UI size can't change in combat.",
 	screen = "SaftUI can't read this screen's size here.",
 }
+KP.REFUSED = REFUSED -- the /sui rows' refusals use the same two lines
 
 -- /sui scale and its forms (Config/config.lua hands them the rest of the line).
 function KP:Command(argument)

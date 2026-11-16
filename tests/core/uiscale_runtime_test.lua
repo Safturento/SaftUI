@@ -905,3 +905,149 @@ test('Default is Resolve(DEFAULT) on the screen; Applied is nil before anything 
 	current.size = 9
 	eq(U:Current().size, 1, 'Current is a copy')
 end)
+
+------------------------------------------------------------------ the two chat lines (Rulings 16 and 17)
+
+local FIRST_LOGIN = "SaftUI now sizes itself to your screen: here it draws at %d%% of its 1440p size, so it takes the same share of the screen as on the screen it was laid out on. To keep the size it had before, type /sui scale pixel. The choices are in /sui > Global settings > General."
+local SLIDER = "SaftUI sets the UI's scale itself. To use the game's UI Scale, choose The game's UI scale in /sui > Global settings > General."
+
+-- The lines that name a UI scale ("[SaftUI]: ..." with the prefix off).
+local function said(lines)
+	local out = {}
+	for _, line in ipairs(lines) do out[#out + 1] = (line:gsub('^%[[^%]]*%]:%s*', '')) end
+	return out
+end
+
+test("the first login where the automatic size isn't 1: one line, once per account; none with a saved choice; none, and no marker, at k 1", function()
+	for _, client in ipairs(CLIENTS) do
+		-- 1920 x 1080, nothing saved: the spec's line with 75%.
+		world(client, 1920, 1080)
+		local lines = said(chat(function() start_uiscale() end))
+		eq(#lines, 1, client .. ': one line')
+		eq(lines[1], FIRST_LOGIN:format(75), client .. ": the spec's words, 75%")
+		eq(st.config.global.uiScaleNotice, 1, client .. ': the marker is 1')
+		eq(st.config.global.uiScale, nil, client .. ': nothing saved by it')
+		lines = said(chat(function() st.UIScale:Start() end))
+		eq(#lines, 0, client .. ': Start again: nothing')
+		-- A /reload keeps the marker (account-wide): a new world with the same global table.
+		local global = st.config.global
+		lines = said(chat(function() st.UIScale:Start() end))
+		eq(#lines, 0, client .. ': and the next login')
+		eq(st.config.global, global)
+
+		-- 3200 x 1800: 125%.
+		world(client, 3200, 1800)
+		lines = said(chat(function() start_uiscale() end))
+		eq(lines[1], FIRST_LOGIN:format(125), client .. ': 125% on 1800p')
+
+		-- A saved choice: no line, no marker (even Automatic at 100% saved as nothing is a saved nothing).
+		world(client, 1920, 1080)
+		lines = said(chat(function() start_uiscale({ mode = 'auto', size = 0.9 }) end))
+		eq(#lines, 0, client .. ': a saved size: none')
+		eq(st.config.global.uiScaleNotice, nil, client .. ': and no marker')
+		world(client, 1920, 1080)
+		lines = said(chat(function() start_uiscale({ mode = 'pixel', size = 1 }) end))
+		eq(#lines, 0, client .. ': Pixel for pixel saved: none')
+
+		-- The owner's screen: none, no marker; the same account on another screen is still told.
+		world(client, 2560, 1440)
+		lines = said(chat(function() start_uiscale() end))
+		eq(#lines, 0, client .. ': k 1: none')
+		eq(st.config.global.uiScaleNotice, nil, client .. ': and no marker')
+		stub.screen_width, stub.screen_height = 1920, 1080
+		lines = said(chat(function() st.UIScale:Start() end))
+		eq(#lines, 1, client .. ': on another screen it is shown')
+
+		-- A marker from a version that showed it: none.
+		world(client, 1920, 1080)
+		st.config.global.uiScaleNotice = 1
+		lines = said(chat(function() start_uiscale() end))
+		eq(#lines, 0, client .. ': the marker says it was shown')
+
+		-- No screen: nothing, no marker.
+		world(client, 0, 0)
+		lines = said(chat(function() start_uiscale() end))
+		eq(#lines, 0, client .. ': no screen: none')
+		eq(st.config.global.uiScaleNotice, nil)
+		eq(#take_errors(), 0, client .. ': no error')
+	end
+end)
+
+test("Blizzard's slider: one line a session, only when the setting changed and SaftUI set the scale back (Review Focus 3)", function()
+	for _, client in ipairs(CLIENTS) do
+		for _, mode in ipairs({ 'auto', 'pixel' }) do
+			world(client, 2560, 1440)
+			stub.cvars.useUiScale, stub.cvars.uiScale = '0', '1'
+			start_uiscale({ mode = mode, size = 1 })
+			local lines = said(chat(function()
+				-- A display change: the engine resets the scale, the setting is as it was.
+				stub.engine_set_scale(0.64)
+				frames()
+			end))
+			eq(#lines, 0, client .. ' ' .. mode .. ': a set-back with the setting unchanged says nothing')
+			check(near(UIParent:GetScale(), 768 / 1440, 1e-9), client .. ' ' .. mode .. ': it was set back')
+
+			lines = said(chat(function()
+				stub.cvars.useUiScale, stub.cvars.uiScale = '1', '0.8'
+				stub.fire_event('UI_SCALE_CHANGED'); stub.fire_event('DISPLAY_SIZE_CHANGED')
+				stub.engine_set_scale(0.8)
+				frames()
+			end))
+			eq(#lines, 1, client .. ' ' .. mode .. ': the slider: one line')
+			eq(lines[1], SLIDER, client .. ' ' .. mode .. ": the spec's words")
+			check(near(UIParent:GetScale(), 768 / 1440, 1e-9), client .. ' ' .. mode .. ': and the scale is back')
+
+			lines = said(chat(function()
+				stub.cvars.uiScale = '0.9'
+				stub.engine_set_scale(0.9)
+				frames()
+				stub.cvars.uiScale = '0.7'
+				stub.engine_set_scale(0.7)
+				frames()
+			end))
+			eq(#lines, 0, client .. ' ' .. mode .. ': once a session: no second line')
+			eq(#take_errors(), 0, client .. ' ' .. mode .. ': no error')
+		end
+
+		-- A burst of events for one slider move: one line.
+		world(client, 2560, 1440)
+		start_uiscale()
+		local lines = said(chat(function()
+			stub.cvars.useUiScale, stub.cvars.uiScale = '1', '0.8'
+			for _ = 1, 6 do stub.fire_event('UI_SCALE_CHANGED'); stub.fire_event('DISPLAY_SIZE_CHANGED') end
+			stub.engine_set_scale(0.8)
+			frames()
+		end))
+		eq(#lines, 1, client .. ': ten events in a burst: one line')
+
+		-- The setting moved but the engine left the scale alone: no set-back, no line; the
+		-- reading is taken, so a display change after it says nothing either.
+		world(client, 2560, 1440)
+		start_uiscale()
+		lines = said(chat(function()
+			stub.cvars.useUiScale, stub.cvars.uiScale = '1', '0.8'
+			stub.fire_event('UI_SCALE_CHANGED')
+			frames()
+			stub.engine_set_scale(0.64)
+			frames()
+		end))
+		eq(#lines, 0, client .. ': nothing set back by the slider: nothing said')
+
+		-- In The game's UI scale the check only reads: no line.
+		world(client, 2560, 1440)
+		start_uiscale({ mode = 'game', size = 1 })
+		lines = said(chat(function()
+			stub.cvars.useUiScale, stub.cvars.uiScale = '1', '0.8'
+			stub.engine_set_scale(0.8)
+			frames()
+		end))
+		eq(#lines, 0, client .. ": The game's UI scale: no line")
+
+		-- Our own Apply with the setting unchanged is not the slider.
+		world(client, 2560, 1440)
+		start_uiscale()
+		lines = said(chat(function() st.UIScale:Apply({ mode = 'auto', size = 1.25 }); frames() end))
+		eq(#lines, 0, client .. ': a change of ours says nothing')
+		eq(#take_errors(), 0, client .. ': no error')
+	end
+end)
