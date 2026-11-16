@@ -16,7 +16,7 @@ local FILES = {
 	'SaftUI-Unitframes/config/default.lua',
 }
 for _, unit in ipairs({ 'arena', 'boss', 'focus', 'focustarget', 'friendlynameplate', 'nameplate', 'party', 'pet',
-		'pettarget', 'player', 'raid10', 'raid40', 'target', 'targettarget' }) do
+		'pettarget', 'player', 'raid10', 'raid40', 'target', 'targettarget', 'all' }) do
 	FILES[#FILES + 1] = 'SaftUI-Unitframes/config/units/' .. unit .. '.lua'
 end
 
