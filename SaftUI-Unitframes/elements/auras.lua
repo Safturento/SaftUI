@@ -420,6 +420,9 @@ local function GetConfigTable(unit, aura_type)
 		desc = borderInfo.desc,
 		type = 'toggle',
 		size = 'small',
+		-- The first of the two places it is saved, which All units' decorator finds the setting by
+		-- (sharedoptions.lua); the reset reads the hand default below, not this.
+		saved = UF.SavedAt(unit, key, 'friend', borderInfo.key),
 		get = function() return eitherHostility(Config(), borderInfo.key) end,
 		set = function(_, value)
 			local config = Config()

@@ -18,9 +18,9 @@
 --
 --   UW.load_module(after)
 --     unitframes.lua, the group files (grouplayout.lua, groups.lua,
---     blizzardraid.lua, grouppreview.lua), config/profiles.lua,
---     config/groupoptions.lua, config/config.lua, constructors.lua and
---     updaters.lua, in the TOC's order (UW.MODULE_FILES), then the files after
+--     blizzardraid.lua, grouppreview.lua), config/shared.lua, config/profiles.lua,
+--     config/groupoptions.lua, config/parts.lua, config/sharedoptions.lua,
+--     config/config.lua, constructors.lua and updaters.lua, in the TOC's order (UW.MODULE_FILES), then the files after
 --     names (e.g. { 'tags', 'aurafilters' }), in its order. Set UF.oUF's
 --     stand-in first: unitframes.lua asserts it is there.
 --
@@ -69,8 +69,11 @@ UW.ELEMENTS = { 'auras', 'power', 'additionalpower', 'health', 'castbar', 'class
 -- unitframes.lua and the group files).
 UW.MODULE_FILES = {
 	'unitframes', 'grouplayout', 'groups', 'blizzardraid', 'grouppreview',
-	'config/profiles', 'config/groupoptions', 'config/parts', 'config/config', 'constructors', 'updaters',
+	'config/shared', 'config/profiles', 'config/groupoptions', 'config/parts', 'config/sharedoptions', 'config/config',
+	'constructors', 'updaters',
 }
+-- The files shared settings add (SW.world's opts.bare leaves them out: the world as it was without them).
+UW.SHARED_FILES = { ['config/shared'] = true, ['config/sharedoptions'] = true }
 
 -- oUF as far as unitframes.lua and the previews use it: its colors table,
 -- into which UF:UpdateColors merges the profile's.
@@ -89,9 +92,9 @@ function UW.ouf_colors()
 	}
 end
 
-function UW.load_module(after)
+function UW.load_module(after, bare)
 	for _, file in ipairs(UW.MODULE_FILES) do
-		load_saftui('SaftUI-Unitframes/' .. file .. '.lua')
+		if not (bare and UW.SHARED_FILES[file]) then load_saftui('SaftUI-Unitframes/' .. file .. '.lua') end
 	end
 	for _, file in ipairs(after or {}) do
 		load_saftui('SaftUI-Unitframes/' .. file .. '.lua')
@@ -109,7 +112,7 @@ function UW.world(opts)
 	end
 	apply_defaults()
 	addon_namespace('SaftUI-Unitframes').oUF = opts.ouf or UW.ouf_colors()
-	UW.load_module(opts.after)
+	UW.load_module(opts.after, opts.bare)
 	for _, file in ipairs(opts.elements or UW.ELEMENTS) do
 		load_saftui('SaftUI-Unitframes/elements/' .. file .. '.lua')
 	end

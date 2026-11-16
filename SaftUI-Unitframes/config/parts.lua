@@ -85,6 +85,10 @@ end
 -- its ValidUnit passes).
 local function HasElement(unit, element)
 	local registered = UF.elements and UF.elements[element]
+	if unit == 'all' then
+		-- All units: the elements some unit has a shared setting of (sharedoptions.lua).
+		return registered ~= nil and registered.GetConfigTable ~= nil and UF.SharesElement ~= nil and UF.SharesElement(element)
+	end
 	return registered ~= nil and registered.GetConfigTable ~= nil
 		and (not registered.ValidUnit or registered.ValidUnit(unit) and true or false)
 end

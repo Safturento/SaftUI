@@ -690,6 +690,20 @@ end
 function UF:UpdateConfig(unit, element_name)
 	if not self.units then return end -- not enabled
 
+	-- All units' page changed a setting: copy it into the units that follow it, and nothing else (each
+	-- follower is updated once on the next frame, through UF:UpdateConfig(unit, element), which waits
+	-- for the end of combat). Table writes only.
+	if unit == 'all' then
+		return self:PropagateShared(element_name)
+	end
+	-- A profile change (a switch, copy, reset or import, a unit frame profile switch): convert the
+	-- profile to shared settings if it is not, and put every follower right, before anything reads
+	-- the profile. Table writes only, so it is safe in combat too. It writes nothing for a profile
+	-- it can't convert (UF:PrepareShared says why once), and the frames read the profile as it is.
+	if not unit then
+		self:PrepareShared()
+	end
+
 	if st:QueueAfterCombat('Unitframes', function() UF:UpdateConfig() end) then
 		self:RefreshConfigReferences()
 		return
@@ -1020,6 +1034,11 @@ function UF:RegisterMovers()
 end
 
 function UF:OnEnable()
+	-- Shared settings first: every element file has registered by now, and nothing is spawned, so
+	-- the profile is converted (once per profile) and synced before any frame reads it. A profile it
+	-- can't convert is left as it is and the frames build from its stored values.
+	self:PrepareShared()
+
 	-- Before anything is spawned, so every frame gets it. Here rather than when
 	-- the file loads, where the tests' stand-in oUF has only its colors table.
 	self.oUF:RegisterInitCallback(UF.InitUnit)

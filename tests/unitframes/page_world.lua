@@ -3,7 +3,8 @@
 --
 --   local PW = load_test_file('unitframes/page_world.lua').world()
 --     PW.st, PW.UF, PW.OM, PW.OW, PW.W, PW.T, PW.AceConfigRegistry, PW.OF   the world's parts
---     PW.updates                                                              UF:UpdateConfig's calls
+--     PW.updates                                                              UF:UpdateConfig's calls (it has unitframes.lua's two
+--                                                                             lines for sharing: UpdateConfig('all') propagates)
 --
 -- Real: Core's helpers and profile defaults (load_core_helpers), the unit frames' defaults,
 -- filled the way AceDB fills them (apply_defaults), so a unit's settings are made by reading
@@ -25,7 +26,7 @@ function M.world()
 	-- Every unit's own defaults, as config/load.xml lists them (the nameplates'
 	-- are enable, friendly, threat_solo, the threat text, width, height).
 	for _, file in ipairs({ 'player', 'target', 'targettarget', 'focus', 'focustarget', 'pet', 'pettarget', 'boss',
-		'arena', 'party', 'raid10', 'raid40', 'nameplate', 'friendlynameplate' }) do
+		'arena', 'party', 'raid10', 'raid40', 'nameplate', 'friendlynameplate', 'all' }) do
 		load_saftui('SaftUI-Unitframes/config/units/' .. file .. '.lua')
 	end
 	apply_defaults()
@@ -44,7 +45,13 @@ function M.world()
 	-- (uf_world.lua's UW.module).
 	local UF = load_test_file('unitframes/uf_world.lua').module()
 	local PW = { updates = 0 }
-	function UF:UpdateConfig() PW.updates = PW.updates + 1 end
+	-- unitframes.lua's two lines for sharing, which the pages need (an All units set copies into the
+	-- followers; an update with no unit prepares the profile): the rest needs oUF.
+	function UF:UpdateConfig(unit, element)
+		PW.updates = PW.updates + 1
+		if unit == 'all' then return self:PropagateShared(element) end
+		if not unit then self:PrepareShared() end
+	end
 
 	UF.units, UF.groups, UF.holders = {}, {}, {}
 	for _, unit in ipairs({ 'boss', 'focustarget', 'player', 'pettarget', 'target', 'pet', 'targettarget', 'focus' }) do
@@ -64,9 +71,11 @@ function M.world()
 	function UF.IsPlateUnit(unit) return UF.PLATE_UNITS[unit] == true end
 	function UF:GetMoverFrame(unit) return self.holders[unit] or self.units[unit] end
 
+	load_saftui('SaftUI-Unitframes/config/shared.lua')
 	load_saftui('SaftUI-Unitframes/config/profiles.lua')
 	load_saftui('SaftUI-Unitframes/config/groupoptions.lua')
 	load_saftui('SaftUI-Unitframes/config/parts.lua')
+	load_saftui('SaftUI-Unitframes/config/sharedoptions.lua')
 	load_saftui('SaftUI-Unitframes/config/config.lua')
 	load_saftui('SaftUI-Unitframes/updaters.lua')
 	load_saftui('SaftUI-Unitframes/nameplates/nameplates.lua')

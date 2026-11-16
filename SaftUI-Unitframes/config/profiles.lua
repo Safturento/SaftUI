@@ -60,12 +60,25 @@ local function ClearHistory()
 	if EM and EM.History then EM.History:Clear() end
 end
 
--- Makes name the profile being edited and refreshes the frames and /sui.
+-- Draws /sui again after a unit frame profile change. The pages are built for the profile in use (a
+-- page has its shares only while that profile shares settings, UF:SharedReady), so an open window's
+-- tree is built again, as a SaftUI profile change does (Config:UpdateConfig); then it re-renders.
+function UF.RefreshPages()
+	local Config, OW = st.Config, st.OptionsWindow
+	if Config.RegisterOptions and OW and OW.IsShown and OW:IsShown() then
+		OW:SetRoot(Config:RegisterOptions())
+	end
+	Config:Refresh()
+end
+
+-- Makes name the profile being edited and refreshes the frames and /sui. UF:UpdateConfig converts the
+-- profile to shared settings first when it has not been (a new profile, a copy), so the frames and the
+-- pages read it ready.
 local function SwitchProfile(name)
 	UFProfiles().config_profile = name
 	ClearHistory()
 	UF:UpdateConfig()
-	st.Config:Refresh()
+	UF.RefreshPages()
 end
 
 -- The profile prompts are SaftUI's own dialog (st.OptionsWidgets Prompt and
@@ -89,8 +102,10 @@ local function PromptNewProfile(copy)
 		local name = UsableName(text)
 		if not name then return end
 		if copy then
+			-- Its own values, converted by the switch from ITS values: the backup of the profile it was
+			-- copied from belongs to that profile and stays there (UF.CopyProfileData).
 			local profiles = UFProfiles()
-			profiles.profiles[name] = st.tablecopy(profiles.profiles[profiles.config_profile], true)
+			profiles.profiles[name] = UF.CopyProfileData(profiles.profiles[profiles.config_profile])
 		end
 		SwitchProfile(name)
 	end, { accept = 'Create', cancel = 'Cancel' })
@@ -105,7 +120,7 @@ local function ConfirmDeleteProfile()
 		profiles.config_profile = next(profiles.profiles)
 		ClearHistory()
 		UF:UpdateConfig()
-		st.Config:Refresh()
+		UF.RefreshPages()
 	end)
 end
 
@@ -127,7 +142,8 @@ end
 local function PromptExportProfile()
 	local profiles = UFProfiles()
 	st.OptionsWidgets.Prompt('Copy this text to share the profile',
-		st.Config:Export(profiles.profiles[profiles.config_profile]),
+		-- Without the backup, which belongs to this profile on this account.
+		st.Config:Export(UF.CopyProfileData(profiles.profiles[profiles.config_profile])),
 		function() end,
 		-- An exported profile is longer than the default limit.
 		{ accept = 'Close', cancel = false, maxLetters = 0 })
@@ -197,7 +213,7 @@ function UF.GenerateProfileConfigGroup()
 					st.config.profile.unitframes.config_profile = value
 					if changed then ClearHistory() end
 					UF:UpdateConfig()
-					st.Config:Refresh()
+					UF.RefreshPages()
 				end
 			},
 			new = {

@@ -572,12 +572,18 @@ local function ConfigOf(profile, unit)
 	if type(config) == 'table' then return config end
 end
 
+-- All units' table. Without create it is only looked up with rawget: reading `all` through AceDB's
+-- wildcard would make an empty table that reaches the saved file (a profile that is not converted has
+-- none, and a read must not give it one).
 local function AllOf(profile, create)
-	local all = profile.all
+	local all = rawget(profile, 'all')
 	if type(all) == 'table' then return all end
 	if create then
-		all = {}
-		rawset(profile, 'all', all)
+		all = profile.all
+		if type(all) ~= 'table' then
+			all = {}
+			rawset(profile, 'all', all)
+		end
 		return all
 	end
 end
@@ -588,10 +594,23 @@ local function Marker(profile)
 	return type(version) == 'number' and version or 0
 end
 
--- Whether the profile (default: the one in use) has been converted: sharing is in force.
+-- What this session knows about a profile's table (weak: a profile that is deleted or reset lets go of it):
+-- why its setup failed (an error, so it is not tried again until UF:EnableShared asks), and the reason it
+-- was last told to the player (each is said once).
+local SharedFailed = setmetatable({}, { __mode = 'k' })
+local SharedTold = setmetatable({}, { __mode = 'k' })
+
+-- Whether a restore turned sharing off for the profile and nothing has asked for it back.
+function UF.SharedRestored(profile)
+	return type(profile) == 'table' and type(rawget(profile, 'restored')) == 'number'
+end
+
+-- Whether the profile (default: the one in use) has been converted: sharing is in force. A plain table
+-- with no AceDB metatable (an import in this session, which holds only the keys its export had) is
+-- never ready: a writer would copy All units' values over defaults it doesn't show.
 function UF:SharedReady(profile)
 	profile = profile or self:GetProfileConfig()
-	return type(profile) == 'table' and Marker(profile) == UF.SHARED_VERSION
+	return type(profile) == 'table' and getmetatable(profile) ~= nil and Marker(profile) == UF.SHARED_VERSION
 end
 
 local function MissingElement()
@@ -607,6 +626,7 @@ end
 -- setting for it, and would be written when it comes back).
 local function NotReady(profile)
 	if type(profile) ~= 'table' then return 'There is no unit frame profile.' end
+	if getmetatable(profile) == nil then return 'The unit frame profile has no defaults yet: it shares settings from the next login.' end
 	if Marker(profile) ~= UF.SHARED_VERSION then return 'The unit frame profile is not converted to shared settings.' end
 	local missing = MissingElement()
 	if missing then return 'The unit frame element ' .. missing .. ' is not registered.' end
@@ -1002,6 +1022,12 @@ function UF:RestoreShared(profile)
 	if type(profile) ~= 'table' or not UF.HasSharedBackup(profile) then
 		return false, 'There is no backup of the unit frame settings from before sharing.'
 	end
+	-- A member whose element is not registered has no setting for it: its values would be left as sharing
+	-- made them while the marker went, and a later restore would revert whatever changed since.
+	local missing = MissingElement()
+	if missing then
+		return false, 'The unit frame part ' .. missing .. ' did not load, so nothing was restored.'
+	end
 	for unit, saved in pairs(rawget(profile, 'backup').units) do
 		local config = IS_MEMBER[unit] and type(saved) == 'table' and ConfigOf(profile, unit)
 		if config then
@@ -1027,6 +1053,11 @@ function UF:RestoreShared(profile)
 		end
 	end
 	rawset(profile, 'all', nil)
+	-- The owner asked to be back where they were: no login converts this profile again by itself.
+	-- UF:EnableShared (/sui uf share, or the button on the All units page) is the way back to sharing.
+	rawset(profile, 'restored', time())
+	SharedFailed[profile] = nil
+	SharedTold[profile] = 'restored'
 	return true
 end
 
@@ -1119,19 +1150,108 @@ function UF:ConvertShared(profile)
 	rawset(all, 'version', UF.SHARED_VERSION)
 end
 
+-- Why sharing is not in force for the profile, without doing anything: nil while it is, else
+--   'none'      there is no profile
+--   'plain'     a table with no AceDB defaults (an import or copy made in this session: it shares from the next login)
+--   'restored'  the owner restored the backup: nothing converts it again until UF:EnableShared
+--   'newer'     a newer SaftUI converted it: its flags and values are left alone
+--   'missing'   a part of the unit frames did not load (an element an entry names is not registered)
+--   'failed'    the setup raised an error this session
+--   'pending'   not converted yet (the next UF:PrepareShared does it)
+function UF:SharedState(profile)
+	profile = profile or self:GetProfileConfig()
+	if type(profile) ~= 'table' then return 'none' end
+	if getmetatable(profile) == nil then return 'plain' end
+	if UF.SharedRestored(profile) and Marker(profile) == 0 then return 'restored' end
+	local marker = Marker(profile)
+	if marker > UF.SHARED_VERSION then return 'newer' end
+	if MissingElement() then return 'missing' end
+	if marker == UF.SHARED_VERSION then return 'ready' end
+	if SharedFailed[profile] then return 'failed' end
+	return 'pending'
+end
+
+-- The plain sentence for why sharing is off (a state of UF:SharedState), or nil for 'ready' and 'pending'.
+function UF.SharedStateText(state, profile)
+	if state == 'plain' then
+		return 'This unit frame profile was imported or copied during this session. Its settings start sharing between units at your next login.'
+	elseif state == 'restored' then
+		return 'Shared settings are off for this unit frame profile, as you restored it. Type /sui uf share to turn them on again.'
+	elseif state == 'newer' then
+		return 'This unit frame profile was saved by a newer SaftUI, so its shared settings are left as they are.'
+	elseif state == 'missing' then
+		return 'Shared settings are waiting: the unit frame part ' .. tostring(MissingElement()) .. ' did not load. Nothing was changed.'
+	elseif state == 'failed' then
+		return 'Shared settings could not be set up for this unit frame profile, so it is left exactly as it was.'
+			.. (type(SharedFailed[profile]) == 'string' and (' (' .. SharedFailed[profile] .. ')') or '')
+	end
+end
+
+-- Says why sharing is off, once for each profile and reason in this session.
+local function Tell(profile, state)
+	if SharedTold[profile] == state then return end
+	SharedTold[profile] = state
+	local text = UF.SharedStateText(state, profile)
+	if text then st:Print(text) end
+end
+
 -- Everything a login or a profile change does for sharing, guarded: the conversion, then the sync
--- only while the marker says the profile is converted. A profile the conversion can't read (a malformed
--- saved table, a missing element) is reported through the error handler, left without the marker, and
--- the frames build from the stored values as they are; the sync never runs over it. A plain table with no
--- AceDB metatable (an import in this session) is left alone, quietly: it converts at the next login.
--- Returns whether it ran clean (false, 'plain' for the plain table).
+-- only while the marker says the profile is converted. Nothing is written, and the frames build from
+-- the stored values exactly as before sharing existed, for a profile that is plain (an import or copy in
+-- this session: it converts at the login that gives it AceDB's tables), restored (the owner asked to be
+-- back), newer (a newer SaftUI's), or while an element is not registered; each says why once in chat
+-- (UF.SharedStateText). A profile the conversion can't read (a malformed saved table) raises an error
+-- through the game's handler once, is left without the marker, says so once, and is not tried again
+-- this session; the sync never runs over it. Returns true when sharing is in force, else false and the
+-- state.
 function UF:PrepareShared(profile)
 	profile = profile or self:GetProfileConfig()
-	if type(profile) ~= 'table' then return false, 'There is no unit frame profile.' end
-	if getmetatable(profile) == nil then return false, 'plain' end
-	local ok = xpcall(function()
-		if Marker(profile) < UF.SHARED_VERSION then self:ConvertShared(profile) end
-		if Marker(profile) == UF.SHARED_VERSION then self:SyncShared(profile) end
-	end, geterrorhandler())
-	return ok
+	if type(profile) ~= 'table' then return false, 'none' end
+	local state = self:SharedState(profile)
+	if state == 'pending' then
+		local ok, err = xpcall(function()
+			self:ConvertShared(profile)
+			if Marker(profile) == UF.SHARED_VERSION then self:SyncShared(profile) end
+		end, function(message)
+			geterrorhandler()(message)
+			return message
+		end)
+		if not ok then SharedFailed[profile] = type(err) == 'string' and err or true end
+		state = self:SharedState(profile)
+	elseif state == 'ready' then
+		-- A converted profile: the sync puts right a drift (a hand edit, a default a later SaftUI changed).
+		local ok, err = xpcall(function() self:SyncShared(profile) end, function(message)
+			geterrorhandler()(message)
+			return message
+		end)
+		if not ok then
+			SharedFailed[profile] = type(err) == 'string' and err or true
+			Tell(profile, 'failed')
+		end
+	end
+	if state == 'ready' then return true end
+	if state ~= 'pending' then Tell(profile, state) end
+	return false, state
+end
+
+-- Turns sharing on for a profile that is off (/sui uf share, or the All units page's button): clears the
+-- restore, forgets a failed setup, makes a fresh backup of the profile as it is now (the old one was of
+-- before the restore), then converts like a login. A plain or newer profile is refused, with why.
+-- Returns true when sharing is in force, else false and a sentence.
+function UF:EnableShared(profile)
+	profile = profile or self:GetProfileConfig()
+	local state = self:SharedState(profile)
+	if state == 'ready' then return true end
+	if state == 'none' or state == 'plain' or state == 'newer' or state == 'missing' then
+		return false, UF.SharedStateText(state, profile) or 'There is no unit frame profile.'
+	end
+	if UF.SharedRestored(profile) then
+		rawset(profile, 'restored', nil)
+		rawset(profile, 'backup', nil)
+	end
+	SharedFailed[profile] = nil
+	SharedTold[profile] = nil
+	local ok, why = self:PrepareShared(profile)
+	if ok then return true end
+	return false, UF.SharedStateText(why, profile) or 'Shared settings could not be turned on.'
 end

@@ -562,8 +562,11 @@ test('a conversion that fails leaves every member and flag as it was, and the sy
 	take_errors()
 	P.pet = good
 	eq(P.target.name.font, 'pixel')
-	-- Once the profile reads again it converts.
-	eq(UF:PrepareShared(P), true)
+	-- Not tried again this session (one message, not one per update): the owner's ask tries again, and
+	-- once the profile reads it converts.
+	eq(UF:PrepareShared(P), false, 'a failed profile is not retried by every update')
+	eq(UF:SharedState(P), 'failed')
+	eq(UF:EnableShared(P), true)
 	eq(UF:SharedReady(P), true)
 	eq(P.target.name.font, 'pixel')
 end)
@@ -578,7 +581,8 @@ test('PrepareShared converts, then syncs only a converted profile', function()
 	-- A marker above this version (a newer SaftUI converted it): left alone, no sync.
 	rawset(P.all, 'version', UF.SHARED_VERSION + 1)
 	rawset(P.target.name, 'font', 'pixel')
-	eq(UF:PrepareShared(P), true)
+	eq(UF:PrepareShared(P), false)
+	eq(UF:SharedState(P), 'newer')
 	eq(P.target.name.font, 'pixel')
 	-- A non-number marker counts as 0.
 	rawset(P.all, 'version', 'x')
@@ -645,8 +649,11 @@ test('the one-time backup holds the shared settings and their flags, and putting
 		if not (d:match('^player%.width$') or d:match('^player%.position$') or d:match('^raid10%.width$')) then only[#only + 1] = d end
 	end
 	eq(#only, 0, 'every shared setting is as it was: ' .. table.concat(only, ', '))
-	-- And a profile converts again after a restore.
-	UF:PrepareShared(P)
+	-- A restored profile is not converted again by a login or an update; asking for it is.
+	eq(UF:PrepareShared(P), false)
+	eq(UF:SharedState(P), 'restored')
+	eq(UF:SharedReady(P), false)
+	eq(UF:EnableShared(P), true)
 	eq(UF:SharedReady(P), true)
 	-- No backup, no restore.
 	world()

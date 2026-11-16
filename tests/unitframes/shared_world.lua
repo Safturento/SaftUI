@@ -47,11 +47,11 @@ function SW.world(opts)
 		if not (opts.bare and unit == 'all') then units[#units + 1] = unit end
 	end
 	for _, unit in ipairs(PLATES) do units[#units + 1] = unit end
-	local after = opts.bare and {} or { 'config/shared' }
+	local after = {}
 	for _, file in ipairs(opts.after or {}) do after[#after + 1] = file end
 	local st, UF, P = UW.world({
 		client = opts.client, position = true, units = units, after = after, elements = opts.elements or SW.ELEMENTS,
-		colors = opts.colors, ouf = opts.ouf,
+		colors = opts.colors, ouf = opts.ouf, bare = opts.bare,
 	})
 	UF.units, UF.groups = UF.units or {}, UF.groups or {}
 	for _, unit in ipairs({ 'player', 'target', 'targettarget', 'focus', 'focustarget', 'pet', 'pettarget', 'boss' }) do
@@ -324,6 +324,103 @@ end
 
 function SW.relog(db)
 	return SW.acedb_from(SW.logout(db))
+end
+
+-- SW.enable() -> record
+--   The real UF:OnEnable (unitframes.lua), on SW.world's module, with what needs the game stubbed: oUF is the
+--   fixture's (fixtures/ouf.lua), each Spawn makes a plain Button, and group headers, ApplyConfig, movers,
+--   Blizzard's raid frames and the plates do nothing (they need the group machinery and edit mode). record is
+--   { spawns = { { unit, ready }, ... } }: whether the profile was converted when each frame was spawned.
+--   UF:ApplyConfig and the colors are counted in record.applied, record.colors.
+function SW.enable()
+	local UF = SaftUI:GetModule('Unitframes')
+	local record = { spawns = {}, applied = {}, colors = 0 }
+	local ouf = load_test_file('unitframes/fixtures/ouf.lua').new()
+	UF.oUF = ouf
+	function ouf:Spawn(unit, name)
+		record.spawns[#record.spawns + 1] = { unit, UF:SharedReady() }
+		local frame = CreateFrame('Button', name, UIParent)
+		local base = unit:gsub('%d+$', '')
+		frame.base_unit, frame.elements = base, {}
+		frame.GetConfig = function() return UF:GetProfileConfig()[base] end
+		frame.config = frame:GetConfig()
+		return frame
+	end
+	function UF:CreateGroupHeaders() end
+	function UF:ApplyConfig(unit, element) record.applied[#record.applied + 1] = { unit, element } end
+	function UF:UpdateColors() record.colors = record.colors + 1 end
+	function UF:RegisterMovers() end
+	function UF:SetupBlizzardRaidFrames() end
+	function UF:WatchFramesForPreview() end
+	function UF:UpdateBlizzardRaidFrames() end
+	function UF:SpawnNameplates() return false end
+	function UF:NameplateAddon() return nil end
+	function UF:RestoreNameplateCVars() end
+	function UF:ApplyNameplateCVars() end
+	UF.holders = UF.holders or {}
+	UF:OnEnable()
+	return record
+end
+
+-- SW.saved_units(sv, name) -> { [unit] = plain table }
+--   Each unit of the unit frame profile `name` (default SaftUI) in saved data (SW.logout's: what the game's file
+--   holds, AceDB's defaults stripped), without its `own` flags, All units and the backup. Two of these equal
+--   mean no unit's saved configuration changed, which is what a login shows: the wildcard tables a reader
+--   fills in are not saved, so they are no difference.
+function SW.saved_units(sv, name)
+	local profile = sv.profiles.SaftUI.unitframes.profiles[name or 'SaftUI'] or {}
+	local out = {}
+	for unit, config in pairs(profile) do
+		if type(config) == 'table' and unit ~= 'all' and unit ~= 'backup' then
+			local copy = SavedCopy(config)
+			copy.own = nil
+			out[unit] = copy
+		end
+	end
+	return out
+end
+
+-- What every unit shows, whole: each unit frame profile table's raw keys but the sharing's own (`own` flags),
+-- as plain data (a color's methods and AceDB's wildcard tables left out). Two of these equal mean no unit's
+-- stored configuration changed, outside the flags, All units and the marker.
+function SW.effective(profile)
+	local out = {}
+	for unit, config in pairs(profile) do
+		if type(config) == 'table' and unit ~= 'all' and unit ~= 'backup' then
+			local copy = Plain(config)
+			copy.own = nil
+			out[unit] = copy
+		end
+	end
+	return out
+end
+
+-- Two SW.effective results, key for key: the paths that differ, sorted.
+function SW.effective_diff(a, b)
+	local diffs = {}
+	-- A table holding nothing but empty tables is no value: AceDB's wildcards make them when a reader reads.
+	local function Hollow(t)
+		if type(t) ~= 'table' then return false end
+		for _, v in pairs(t) do
+			if not Hollow(v) then return false end
+		end
+		return true
+	end
+	local function walk(x, y, path)
+		if x == nil and Hollow(y) then return end
+		if y == nil and Hollow(x) then return end
+		if type(x) ~= 'table' or type(y) ~= 'table' then
+			if x ~= y then diffs[#diffs + 1] = path end
+			return
+		end
+		for k, v in pairs(x) do walk(v, y[k], path .. '.' .. tostring(k)) end
+		for k, v in pairs(y) do
+			if x[k] == nil then walk(nil, v, path .. '.' .. tostring(k)) end
+		end
+	end
+	walk(a, b, 'profile')
+	table.sort(diffs)
+	return diffs
 end
 
 function SW.step(UF)
