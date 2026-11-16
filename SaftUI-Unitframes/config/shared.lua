@@ -975,11 +975,14 @@ function UF.HasSharedBackup(profile)
 	return type(backup) == 'table' and type(backup.version) == 'number'
 end
 
--- A copy of a unit frame profile for a new profile or an export: everything but the backup, which
--- belongs to the profile it was made for. (profiles.lua's New, Copy and Export use it when sharing is wired.)
+-- A copy of a unit frame profile for a Copy or an export: everything but what belongs to the profile it was
+-- made for: the backup, and the marks of a restore (restored, restoredTold), so the copy converts like any
+-- other profile. (profiles.lua's Copy and Export use it.)
 function UF.CopyProfileData(profile)
 	local copy = st.tablecopy(profile, true)
 	rawset(copy, 'backup', nil)
+	rawset(copy, 'restored', nil)
+	rawset(copy, 'restoredTold', nil)
 	return copy
 end
 
