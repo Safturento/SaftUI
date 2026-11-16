@@ -7,6 +7,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-15 — UI scale: the kit's buttons and labels are off whole pixels on every screen that is not 1440p](#2026-11-15--ui-scale-the-kits-buttons-and-labels-are-off-whole-pixels-on-every-screen-that-is-not-1440p)
+  - [2026-11-15 — UI scale: a kit confirm dialog or an open select list can cover the Keep prompt](#2026-11-15--ui-scale-a-kit-confirm-dialog-or-an-open-select-list-can-cover-the-keep-prompt)
   - [2026-11-15 — An addon's direct RollOnLoot on a roll with no confirmation is not held](#2026-11-15--an-addons-direct-rollonloot-on-a-roll-with-no-confirmation-is-not-held)
   - [2026-11-15 — The color picker's preview copies other widgets' geometry](#2026-11-15--the-color-pickers-preview-copies-other-widgets-geometry)
   - [2026-11-15 — UI scale: a frame drawn parentless and parented later into a frame with a scale of its own keeps UIParent's line](#2026-11-15--ui-scale-a-frame-drawn-parentless-and-parented-later-into-a-frame-with-a-scale-of-its-own-keeps-uiparents-line)
@@ -16,8 +18,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-15 — Edit mode: a Theme pass with edit mode on still does the full look and list refresh](#2026-11-15--edit-mode-a-theme-pass-with-edit-mode-on-still-does-the-full-look-and-list-refresh)
   - [2026-11-15 — Unit frames: a Warrior class pick updates every Warrior NPC plate](#2026-11-15--unit-frames-a-warrior-class-pick-updates-every-warrior-npc-plate)
   - [2026-11-15 — Unit frames: what a color pass's real element updates cost](#2026-11-15--unit-frames-what-a-color-passs-real-element-updates-cost)
-  - [2026-11-15 — Unit frames: a color oUF lacks is set to the profile's own table](#2026-11-15--unit-frames-a-color-ouf-lacks-is-set-to-the-profiles-own-table)
-  - [2026-11-15 — Unit frames: a vehicle power type with no oUF color falls back to Mana](#2026-11-15--unit-frames-a-vehicle-power-type-with-no-ouf-color-falls-back-to-mana)
   - [2026-11-15 — A roll result line's All passed and winner color are baked in at push](#2026-11-15--a-roll-result-lines-all-passed-and-winner-color-are-baked-in-at-push)
   - [2026-11-15 — A Position reset runs a unit frame's update once for every part it writes](#2026-11-15--a-position-reset-runs-a-unit-frames-update-once-for-every-part-it-writes)
   - [2026-11-15 — After a UI scale change, a reset half-pixel Position can show its icon again](#2026-11-15--after-a-ui-scale-change-a-reset-half-pixel-position-can-show-its-icon-again)
@@ -29,18 +29,13 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-15 — Buffs and debuffs: Wrap's hand reset copies the General group's set](#2026-11-15--buffs-and-debuffs-wraps-hand-reset-copies-the-general-groups-set)
   - [2026-11-15 — Blizzard's tracker: the Position reset is tested on Forever only](#2026-11-15--blizzards-tracker-the-position-reset-is-tested-on-forever-only)
   - [2026-11-15 — Nameplates: Blizzard's friendly plates key binding and the next login](#2026-11-15--nameplates-blizzards-friendly-plates-key-binding-and-the-next-login)
-  - [2026-11-15 — Unit frames: a part switched off in the new profile keeps its old points](#2026-11-15--unit-frames-a-part-switched-off-in-the-new-profile-keeps-its-old-points)
-  - [2026-11-15 — Two lines of the profile switch fix that no test pins](#2026-11-15--two-lines-of-the-profile-switch-fix-that-no-test-pins)
-  - [2026-11-15 — getHealthPercentText's floor branch is never used](#2026-11-15--gethealthpercenttexts-floor-branch-is-never-used)
-  - [2026-11-15 — Unit frame defaults: string offsets left outside the castbars](#2026-11-15--unit-frame-defaults-string-offsets-left-outside-the-castbars)
   - [2026-11-15 — Bag search box: the magnifier and the clear button](#2026-11-15--bag-search-box-the-magnifier-and-the-clear-button)
   - [2026-11-15 — Tracker: an Edit Mode anchor to a frame other than UIParent gives the default spot](#2026-11-15--tracker-an-edit-mode-anchor-to-a-frame-other-than-uiparent-gives-the-default-spot)
   - [2026-11-15 — The bag bar and Hekili: what still writes onto Blizzard's frames](#2026-11-15--the-bag-bar-and-hekili-what-still-writes-onto-blizzards-frames)
-  - [2026-11-15 — Chat's Fade tabs: ChatFrameUtil.GetTabAlphas isn't in the retail source](#2026-11-15--chats-fade-tabs-chatframeutilgettabalphas-isnt-in-the-retail-source)
-  - [2026-11-15 — With IM chat style the tab row is always hidden, and the dock's overflow button still fades](#2026-11-15--with-im-chat-style-the-tab-row-is-always-hidden-and-the-docks-overflow-button-still-fades)
+  - [2026-11-15 — With IM chat style the tab row is always hidden](#2026-11-15--with-im-chat-style-the-tab-row-is-always-hidden)
   - [2026-11-15 — Temporary chat windows (whispers, pet battle log) are never skinned](#2026-11-15--temporary-chat-windows-whispers-pet-battle-log-are-never-skinned)
-  - [2026-11-15 — Chat's edit box can sit off the top of the screen when the chat Theme is None](#2026-11-15--chats-edit-box-can-sit-off-the-top-of-the-screen-when-the-chat-theme-is-none)
-  - [2026-11-15 — Chat: the dock hook adds a second anchor to docked tabs 2 to n, and the dock test can't see it](#2026-11-15--chat-the-dock-hook-adds-a-second-anchor-to-docked-tabs-2-to-n-and-the-dock-test-cant-see-it)
+  - [2026-11-15 — Chat's scroll bar loses SaftUI's anchor at every dock or lock change](#2026-11-15--chats-scroll-bar-loses-saftuis-anchor-at-every-dock-or-lock-change)
+  - [2026-11-15 — Chat's dock hook leaves Blizzard's tab layout after a resize, an overflow-list pick or an undock](#2026-11-15--chats-dock-hook-leaves-blizzards-tab-layout-after-a-resize-an-overflow-list-pick-or-an-undock)
   - [2026-11-15 — A font Size drag restyles too much on the action bars, unit frames and tracker](#2026-11-15--a-font-size-drag-restyles-too-much-on-the-action-bars-unit-frames-and-tracker)
   - [2026-11-15 — Hide full with a secret health: lift the limit with a Step curve into the text's alpha](#2026-11-15--hide-full-with-a-secret-health-lift-the-limit-with-a-step-curve-into-the-texts-alpha)
   - [2026-11-15 — Option descriptions that say "red" or "yellow" for what Danger and Caution color](#2026-11-15--option-descriptions-that-say-red-or-yellow-for-what-danger-and-caution-color)
@@ -136,6 +131,16 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-15 — Auto Vendor's second question overstates the earlier stacks that leave](#2026-11-15--auto-vendors-second-question-overstates-the-earlier-stacks-that-leave)
   - [2026-11-15 — Auto Vendor counts a fresh purchase in a just-sold slot as a refused sale](#2026-11-15--auto-vendor-counts-a-fresh-purchase-in-a-just-sold-slot-as-a-refused-sale)
   - [2026-11-15 — Forever: Show in > Bank does nothing for the default bank (the combined bank)](#2026-11-15--forever-show-in--bank-does-nothing-for-the-default-bank-the-combined-bank)
+||||||| base
+  - [2026-11-15 — Chat's Fade tabs: ChatFrameUtil.GetTabAlphas isn't in the retail source](#2026-11-15--chats-fade-tabs-chatframeutilgettabalphas-isnt-in-the-retail-source)
+  - [2026-11-15 — Chat: the dock hook adds a second anchor to docked tabs 2 to n, and the dock test can't see it](#2026-11-15--chat-the-dock-hook-adds-a-second-anchor-to-docked-tabs-2-to-n-and-the-dock-test-cant-see-it)
+  - [2026-11-15 — Chat's edit box can sit off the top of the screen when the chat Theme is None](#2026-11-15--chats-edit-box-can-sit-off-the-top-of-the-screen-when-the-chat-theme-is-none)
+  - [2026-11-15 — getHealthPercentText's floor branch is never used](#2026-11-15--gethealthpercenttexts-floor-branch-is-never-used)
+  - [2026-11-15 — Two lines of the profile switch fix that no test pins](#2026-11-15--two-lines-of-the-profile-switch-fix-that-no-test-pins)
+  - [2026-11-15 — Unit frame defaults: string offsets left outside the castbars](#2026-11-15--unit-frame-defaults-string-offsets-left-outside-the-castbars)
+  - [2026-11-15 — Unit frames: a part switched off in the new profile keeps its old points](#2026-11-15--unit-frames-a-part-switched-off-in-the-new-profile-keeps-its-old-points)
+  - [2026-11-15 — Unit frames: a vehicle power type with no oUF color falls back to Mana](#2026-11-15--unit-frames-a-vehicle-power-type-with-no-ouf-color-falls-back-to-mana)
+  - [2026-11-15 — Unit frames: a color oUF lacks is set to the profile's own table](#2026-11-15--unit-frames-a-color-ouf-lacks-is-set-to-the-profiles-own-table)
   - [2026-11-15 — Two Misc readers break "a pass only colors"](#2026-11-15--two-misc-readers-break-a-pass-only-colors)
   - [2026-11-11 — UIParent's scale is set once, at login, so plates leave whole pixels after a UI scale or display change](#2026-11-11--uiparents-scale-is-set-once-at-login-so-plates-leave-whole-pixels-after-a-ui-scale-or-display-change)
   - [2026-11-15 — A reset on every font row](#2026-11-15--a-reset-on-every-font-row)
@@ -207,6 +212,34 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-15 — UI scale: the kit's buttons and labels are off whole pixels on every screen that is not 1440p
+
+**What:** The kit's buttons, text boxes, hairlines and labels (`W.Button`, `Box`, the dialogs' text) are sized in whole UIParent units, so on any screen where a unit is not a whole number of pixels (1080p at 0.75, the Mac at 1.55, any window) their edges and text fall between pixels. Only their borders are whole (Task 3's unsnapping). The Keep prompt is the visible case: it draws at the automatic size of every screen but 1440p, not only while previewing, so on 1080p its buttons are 19.5 pixels tall.
+
+**Why noticed:** The Task 6 review of the Keep prompt (`sc-task6`, `454d3fcf`): the prompt's own frame is whole pixels (placed and sized by `st:RoundToPixel`), its `W.Button`s are not. The plan names this as phases 2 to 4 ("the options kit's boxes, hairlines and dividers (the Keep prompt's buttons among them)").
+
+**Anchors:** `SaftUI-Core/Config/optionscontrols.lua` (`W.Button`, `Layout`), `optionslook.lua` (`Box`, `LINE`), `optionsdialog.lua`, `SaftUI-Core/Config/uiscaleprompt.lua` (`Fit`), `docs/superpowers/plans/2026-11-15-saftui-ui-scaling-phase-1.md` ("What an existing install sees at upgrade"), `docs/design-system/components/KeepPrompt/README.md`.
+
+**What's been considered:** building the prompt's two buttons with pixel-rounded sizes of its own: refused, because the owner asked for the kit's button as it is. The fix belongs to the kit (sizes in pixels through `st:RoundToPixel`, the 1 px `edgeSize` in `Box` as `st:GetLineSize`), which then fixes every dialog and window at once.
+
+**Shape of work:** the later scaling phase for the options kit: one pass over `optionscontrols.lua`, `optionslook.lua` and the dialogs, with `scaled_test` cases that run `P.off` over the open window at 0.75, 1.25 and 1.55.
+
+**Open questions:** whether text height is rounded to pixels too, or left to the game.
+
+### 2026-11-15 — UI scale: a kit confirm dialog or an open select list can cover the Keep prompt
+
+**What:** The kit's confirm dialog and open select lists are in `TOOLTIP` strata with a full-screen click catcher, so while one is open it covers the Keep prompt (level 9900, `FULLSCREEN_DIALOG`): the prompt can't be clicked and doesn't get Esc, though its countdown still goes back at 0.
+
+**Why noticed:** The Task 6 review (`sc-task6`, `454d3fcf`), concern 3: acceptable today, because both are modal answers the user opened and the prompt reverts on its own.
+
+**Anchors:** `SaftUI-Core/Config/optionswidgets.lua` (`LIST_STRATA = 'TOOLTIP'`), `optionsdialog.lua` (`BuildDialog`), `SaftUI-Core/Config/uiscaleprompt.lua` (`KP.LEVEL`), `docs/design-system/components/KeepPrompt/README.md`.
+
+**What's been considered:** moving the prompt to `TOOLTIP` strata above them: it would then sit over the game's tooltip and the lists' catchers, and edit mode's picker list. Closing an open list or confirm when the prompt shows (`W.CancelConfirm`, the list's close): simple, and what the answer to a change should do.
+
+**Shape of work:** small: `KP:Ask` closes the kit's open dialog and list first, with a test; or leave as is.
+
+**Open questions:** whether to close them at all, since a Task 7 row's own select list is what asked and closes on its pick.
 
 ### 2026-11-15 — An addon's direct RollOnLoot on a roll with no confirmation is not held
 
@@ -323,34 +356,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 **Shape of work:** an in-game read of the debug line first (Class and Text > Normal in a raid, Test mode with Raid 40), then a ticket only if one is slow.
 
 **Open questions:** the slowest pass the owner sees in game.
-
-### 2026-11-15 — Unit frames: a color oUF lacks is set to the profile's own table
-
-**What:** `CopyColor` (`SaftUI-Unitframes/unitframes.lua`) sets a color oUF has none of to the profile's own table, as `st.tablemerge` did. A later profile switch's merge then writes the new profile's values into the table of the old profile. It matters only if oUF lacks a SaftUI color key in game (the test world lacks every key); which keys, if any, is unchecked.
-
-**Why noticed:** Review of the live colors Task 3, `.superpowers/sdd/2026-11-15-saftui-live-colors/task-3-review.md`, n3. The behavior is older than the task; the commit kept it.
-
-**Anchors:** `UF:UpdateColors`, `CopyColor`, oUF's `Libraries/oUF/colors.lua` (read only), `st.config.profile.colors`.
-
-**What's been considered:** Copying into a new color object (`UF.oUF:CreateColor`) instead of aliasing would make it safe.
-
-**Shape of work:** list the keys SaftUI's Colors page has that oUF's table lacks, and make the fallback a copy.
-
-**Open questions:** whether any key is missing in game.
-
-### 2026-11-15 — Unit frames: a vehicle power type with no oUF color falls back to Mana
-
-**What:** Power reaches a frame by its unit's power token. A unit whose token oUF has no color for (a vehicle's power type) falls back to Mana's color in oUF's `power.lua`, so a Mana pick misses that frame. Rare; the edit's whole pass covers it.
-
-**Why noticed:** Review of the live colors Task 3, `.superpowers/sdd/2026-11-15-saftui-live-colors/task-3-review.md`, n4.
-
-**Anchors:** `UF.ColorReaches` (the `power` branch), oUF's `Libraries/oUF/elements/power.lua` (read only).
-
-**What's been considered:** Treat a token with no oUF color as `MANA`.
-
-**Shape of work:** one line in `UF.ColorReaches` and a test.
-
-**Open questions:** none.
 
 ### 2026-11-15 — A roll result line's All passed and winner color are baked in at push
 
@@ -473,50 +478,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **Open questions:** Should Blizzard's friendly plates key binding change SaftUI's Friendly plates, or be undone at the next login?
 
-### 2026-11-15 — Unit frames: a part switched off in the new profile keeps its old points
-
-**What:** A part switched off in the new profile keeps its old points on a unit frame and can still close an anchor loop (profile A: Power on, under Health; profile B: Power off, Health hung from Power: Health's `SetPoint` errors and it is left with no points). Pre-existing. Test mode's previews have the opposite edge: `StylePreviewFrame` clears every preview element and all its texts, but a preview places only the parts that are on, so a preview part hung from a switched-off part is left anchored to a region with no points and won't draw (inferred: the stubs don't model the rect), while the real boss frame keeps the old points and shows that part. Test mode only, and it needs a part hung from a switched-off one.
-
-**Why noticed:** The fu-p2 review (finding m1, and N1 of its re-review), after the fix that clears each frame's enabled parts before a profile switch places them. The comment at `grouppreview.lua:160` ("as for the real frames") doesn't hold for it.
-
-**Anchors:** `SaftUI-Unitframes/unitframes.lua` (`ClearPartPoints`, `ClearAllPartPoints`), `SaftUI-Unitframes/updaters.lua` (`UF:UpdateElement`, the `unitframe.isNamePlate` condition), `SaftUI-Unitframes/nameplates/nameplates.lua` (`ClearPlacedPoints`), `SaftUI-Unitframes/grouppreview.lua` (`StylePreviewFrame`), `tests/unitframes/profile_switch_test.lua`, `tests/unitframes/boss_preview_test.lua`.
-
-**What's been considered:** Place a disabled named part by its config on unit frames too (drop the `unitframe.isNamePlate` condition in `UF:UpdateElement`) and clear every element, as `ClearPlacedPoints` does for plates. For the previews, use the real frames' rule: clear an element only when `element:GetConfig().enable` is true, and its texts only when theirs is (export `ClearPartPoints` and call it on the preview frame, whose elements would need to be `previewElements`); or only note the case here.
-
-**Shape of work:** Small: one rule for which parts a clear touches, shared by frames and previews, and a test with a part hung from a switched-off one.
-
-**Open questions:** Whether a disabled part should be placed at all, or the clear should skip it as the real frames do.
-
-### 2026-11-15 — Two lines of the profile switch fix that no test pins
-
-**What:** Two lines of the fu-p2 fix round pass every test when removed. (1) `RestoreNameplateCVars` clearing `UF.appliedFriendly` (`SaftUI-Unitframes/nameplates/cvars.lua`): the case it guards is Nameplates turned off with the reload declined (the user's values go back), then a switch to a profile with Nameplates on and the same Friendly plates; SaftUI's settings should be set again, and without the line they stay the user's while SaftUI's plates are up. (2) `RefreshFrameConfig` before `UF.ClearPlacedPoints` in the plate loop of `UF:ApplyConfig` (`SaftUI-Unitframes/unitframes.lua`): without it the clear reads the old profile's cached Enable for a text or icon, which matters only for a loop through a text or icon (typed by frame name), so it is low value.
-
-**Why noticed:** The fu-p2 re-review of the fix round (its N2). The code is right in both cases; only the tests are missing.
-
-**Anchors:** `tests/unitframes/profile_switch_test.lua`, `tests/unitframes/nameplate_page_test.lua`, `tests/unitframes/friendly_plate_test.lua`, `tests/unitframes/friendly_plate_size_test.lua`.
-
-**Shape of work:** Small: the Nameplates off then on case in `profile_switch_test.lua`, and a case where a text is on in one profile and off in the other.
-
-### 2026-11-15 — getHealthPercentText's floor branch is never used
-
-**What:** `getHealthPercentText(perc, precision)` in `SaftUI-Unitframes/elements/health.lua` has a branch for no precision that floors the value, but its only caller passes precision 1 (Boss percent). Since Percent on a plain health now rounds with `'%.0f'` to agree with the secret path, nothing floors anywhere.
-
-**Why noticed:** The fu-p1 review (merge fu-p1).
-
-**Anchors:** `SaftUI-Unitframes/elements/health.lua`.
-
-**Shape of work:** A one-line cleanup: drop the branch, or make the function the one place both percent paths round through.
-
-### 2026-11-15 — Unit frame defaults: string offsets left outside the castbars
-
-**What:** The castbar defaults' text offsets are numbers now (merge fu-p3), but other defaults still have string offsets, which the game accepts and the strict stubbed `SetPoint` refuses: the portrait and the additional power position in `SaftUI-Unitframes/config/default.lua`, and buffs in `config/units/arena.lua` (boss's are numbers now: the resets task). A profile that saved the string form keeps it.
-
-**Why noticed:** The fu-p3 report, finishing item 2 of [Nameplates: small items left after the build](#2026-11-11--nameplates-small-items-left-after-the-build) for the castbars only (the brief named only those).
-
-**Anchors:** `SaftUI-Unitframes/config/default.lua`, `config/units/arena.lua`; `tests/unitframes/unit_defaults_test.lua` (checks every unit's castbar offsets are numbers).
-
-**Shape of work:** Small: make them numbers and extend the test over every position in the defaults.
-
 ### 2026-11-15 — Bag search box: the magnifier and the clear button
 
 **What:** The bag search box is now a plain single-line `InputBoxTemplate` box (merge fu-p5). The original call asked for `'SearchBoxTemplate'`, which has a magnifier and a clear button, but that never took effect: the argument was read as `lines`. Does the owner want the magnifier and clear button, or SaftUI's plain box?
@@ -559,27 +520,21 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 
 **Shape of work:** Small each. Could fold into the `st:Kill` entry's own fix, since `st:Kill` is Core's helper.
 
-### 2026-11-15 — Chat's Fade tabs: ChatFrameUtil.GetTabAlphas isn't in the retail source
+### 2026-11-15 — With IM chat style the tab row is always hidden
 
-**What:** Turning Fade tabs on hands a tab SaftUI was holding at alpha 1 Blizzard's own alpha back, read with `ChatFrameUtil.GetTabAlphas(tab)` (`CHT:HoldTabAlpha`, `SaftUI-Chat/chatframe.lua`). The function is in Forever's source (`Blizzard_ChatFrameBase/Shared/ChatFrameUtil.lua`, `origin/forever`) but a search of the local clone of Blizzard's `origin/live` (checked 2026-11-15) finds no `GetTabAlphas`; retail keeps the alphas in the tab's own `mouseOverAlpha` field instead. The code is guarded (`if ChatFrameUtil and ChatFrameUtil.GetTabAlphas`), so on retail the tab would stay at 1 until Blizzard's next fade rather than error.
+**What:** In `chatStyle` "im" Blizzard keeps the last active edit box shown at alpha 0.35 (`ChatFrameUtil.SetLastActiveWindow`: `editBox:Show()` then `Deactivate()`, both clients), so SaftUI's `OnShow` hook on the edit box, which hides `GeneralDockManager` (the tab row) while the box shows, keeps the tab row hidden all the time. The hook is there because SaftUI anchors the box right above the chat's backdrop, where the tab row sits, so the two overlap while a box shows; in the classic style the box shows only while typing, but in IM style it is always there. Predates the chat work.
 
-**Why noticed:** The fu-p11 review said the function exists on both clients; the implementer had not checked, and the merge's doc pass did.
+**Why noticed:** The fu-p11 review (its P3 point). The dock overflow button's fade, its other half, was fixed 2026-11-15 (`CHT:HoldOverflowAlpha`).
 
-**Anchors:** `SaftUI-Chat/chatframe.lua` (`CHT:HoldTabAlpha`), `tests/chat/theme_test.lua` (the profile and toggle cases); Blizzard's `FloatingChatFrame.lua` `FCFTab_UpdateAlpha`.
+**Anchors:** `SaftUI-Chat/chatframe.lua` (`CHT:SkinChatFrame`, the edit box's `HookScript('OnShow')` and `OnHide`); Blizzard's `ChatFrameUtil.lua` `SetLastActiveWindow` and `Deactivate`, `ChatFrameEditBox.lua` `OnShow`.
 
-**Shape of work:** Small: on a client without the function, read the tab's `mouseOverAlpha` and `noMouseAlpha` fields, or let Blizzard's next fade restore it (today's behavior).
+**What's been considered:** (a) hide the tab row only while the box is active (typing: `editbox:HasFocus()`), leaving the tab row shown with an inactive box over it, which overlaps in IM style; (b) in IM style anchor the box elsewhere (below the chat, or over the chat's bottom), so both show, a layout change; (c) leave it, as now: IM style users lose the tab row. Not chosen: needs the owner's call on whether IM style is supported at all and what it should look like.
 
-**Open questions:** Confirm in game on retail that turning Fade tabs on restores the alpha at once. The local `origin/live` clone may be older than the client.
+**Shape of work:** Small for (a) and (c), a layout pass for (b).
 
-### 2026-11-15 — With IM chat style the tab row is always hidden, and the dock's overflow button still fades
+**Review of fu-chat (2026-11-15):** option (c) costs more than a look: IM players then have no tab row at all (no clicking a tab, no whisper flash), and so does classic style while a voice transcription window is selected (`IsVoiceTranscription` in `SetLastActiveWindow`). Whether `chatStyle` can default to "im" for new accounts is not in the Lua source and is unverified (`/dump C_CVar.GetCVarDefault("chatStyle")` on both clients); if it does, every player on default settings hits this and it should not wait. Recommend (a) with `OnEditFocusGained` and `OnEditFocusLost` hooks instead of `OnShow` and `OnHide`: in classic, show and focus come together (`ShouldDeactivateChatOnEditFocusLost` hides the box), so classic is unchanged, and in IM the row hides only while typing. Check in game that the tabs stay clickable over the dimmed, inactive box.
 
-**What:** In `chatStyle` "im" the last active edit box stays shown at alpha 0.35, so SaftUI's `OnShow` hook keeps the dock manager (the tab row) hidden all the time. Separately, `GENERAL_CHAT_DOCK.overflowButton` fades with Fade tabs off. Both predate the chat work.
-
-**Why noticed:** The fu-p11 review (its P3 and P4 points).
-
-**Anchors:** `SaftUI-Chat/chatframe.lua` (the edit box hooks); Blizzard's `ChatFrameUtil.lua` `SetLastActiveWindow` and `Deactivate`, and `FCF_FadeInChatFrame` (the overflow button).
-
-**Shape of work:** Small each, and only matters if IM style is used or the overflow button shows. Decide whether to hook the dock toggle for the active box only.
+**Open questions:** Does the owner use IM style, and which of (a), (b) and (c) should it be?
 
 ### 2026-11-15 — Temporary chat windows (whispers, pet battle log) are never skinned
 
@@ -591,29 +546,35 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 
 **Shape of work:** A design pass: skin on a post-hook of `FCF_OpenTemporaryWindow`, or leave Blizzard's look on purpose.
 
+**Review of fu-chat (2026-11-15):** `FCF_OpenTemporaryWindow` reuses closed temporary windows (it picks one that is "not inUse and not isDocked"), so a post-hook skin must be idempotent (`SkinChatFrame` already guards its hooks with `hooked`). `FCF_CopyChatSettings` gives them ChatFrame1's Blizzard-saved size and the template's face, and docked, their edit boxes sit under the chat while ChatFrame1's sits above it.
+
 **Open questions:** Should a whisper window look like SaftUI's chat or like Blizzard's?
 
-### 2026-11-15 — Chat's edit box can sit off the top of the screen when the chat Theme is None
+### 2026-11-15 — Chat's scroll bar loses SaftUI's anchor at every dock or lock change
 
-**What:** At first skin under chat Theme None `backdrops[frame]` is nil, so the edit box is anchored `SetPoint('BOTTOMLEFT', nil, 'TOPLEFT', 0, 1)`. A nil relative frame means the box's parent, which Blizzard sets to UIParent (it reparents the box in `ChatFrameEditBoxMixin:OnLoad`), so the box sits above the top of the screen. A later switch to another theme makes the backdrop but never re-anchors the edit box or the scroll bar: only `SkinChatFrame` anchors them.
+**What:** SaftUI anchors each skinned chat window's scroll bar to the backdrop (or the window under None) in `CHT:UpdateChatFrameDisplay`. Blizzard's `FCF_UpdateScrollbarAnchors` puts the bar back on its own anchors at every dock, lock or uninteractable change (it is reached from `FCF_DockFrame` and `FCF_SetLocked`), possibly at login too. ChatFrame3 and up then stay on Blizzard's anchors until the next theme or profile change, and so does ChatFrame1 if `UPDATE_CHAT_WINDOWS` arrives after `OnEnable`.
 
-**Why noticed:** The fu-p11 review. The code before it behaved the same (`frame.backdrop` was nil), so it is older than the chat work.
+**Why noticed:** The review of the fu-chat package (2026-11-15). Older than that package: the anchor always came only from `SkinChatFrame`.
 
-**Anchors:** `SaftUI-Chat/chatframe.lua` (`CHT:SkinChatFrame`, `UpdateChatFrameDisplay`).
+**Anchors:** `SaftUI-Chat/chatframe.lua` (`CHT:UpdateChatFrameDisplay`, the `pieces` table); Blizzard's `FloatingChatFrame.lua` `FCF_UpdateScrollbarAnchors`, `FCF_DockFrame`, `FCF_SetLocked`; `tests/chat/fixtures/chat_window.lua`.
 
-**Shape of work:** Small: anchor the box and the scroll bar from `UpdateChatFrameDisplay` (to the backdrop, or to the chat frame under None) so every theme change places them.
+**Shape of work:** Small: a `hooksecurefunc('FCF_UpdateScrollbarAnchors', ...)` that re-anchors a skinned window (`pieces[frame]`), testable with the fixture.
 
-**Open questions:** Needs an in-game look first: chat Theme None, `/reload`, where is the box?
+**Open questions:** In game, after a `/reload`, scroll up in a docked window other than General: is the bar 5 outside SaftUI's border, or on the window's edge inside it?
 
-### 2026-11-15 — Chat: the dock hook adds a second anchor to docked tabs 2 to n, and the dock test can't see it
+### 2026-11-15 — Chat's dock hook leaves Blizzard's tab layout after a resize, an overflow-list pick or an undock
 
-**What:** `CHT:FCFDock_UpdateTabs` (`SaftUI-Chat/chatframe.lua`) calls `tab:SetPoint('BOTTOMLEFT', prev, 'BOTTOMRIGHT', 0, 0)` on tabs 2 to n without `ClearAllPoints`, after Blizzard's own `ClearAllPoints` and `SetPoint('LEFT', prev, 'RIGHT', 1, 0)` on a forced update, so those tabs carry two anchors. It predates the chat work.
+**What:** `CHT:FCFDock_UpdateTabs` returns when `not (dock.isDirty or forceUpdate)`, but it is a post-hook, so Blizzard has already cleared `isDirty`: it acts only on forced updates (`FCF_DockUpdate`: a tab click, docking). After a resize of ChatFrame1 (`/sui` Width or Height, a profile switch: `FCFDock_OnPrimarySizeChanged`), after a pick from the overflow list (`FCFDockOverflowListButton_OnClick`) or after an undock (`FCFDock_RemoveChatFrame`), the tab row stays on Blizzard's layout (about 7 lower and 2 left, because the dock hangs on ChatFrame1's `Background`, which `st:Kill` leaves anchored at -2, +3, and 1px gaps) until the next forced update.
 
-**Why noticed:** The fu-p11 review. `tests/chat/dock_test.lua` now runs a stand-in of Blizzard's `FCFDock_UpdateTabs` before the hook, but the stand-in sets no anchors, so the test cannot see the second one. The owner found the tabs right in game on 2026-11-13, so it looks harmless.
+**Why noticed:** The review of the fu-chat package (2026-11-15). Older than the package; `tests/chat/dock_test.lua`'s "a plain update leaves the tabs where Blizzard put them" pins today's behavior.
 
-**Anchors:** `chatframe.lua` `CHT:FCFDock_UpdateTabs`; Blizzard's `FloatingChatFrame.lua` `FCFDock_UpdateTabs` (Forever about 2342-2368); `tests/chat/dock_test.lua`.
+**Anchors:** `SaftUI-Chat/chatframe.lua` (`CHT:FCFDock_UpdateTabs`); Blizzard's `FloatingChatFrame.lua` `FCFDock_UpdateTabs`, `FCFDock_OnPrimarySizeChanged`, `FCFDock_OnUpdate`; `tests/chat/dock_test.lua`.
 
-**Shape of work:** Small: make the test's stand-in set Blizzard's anchors and assert `GetNumPoints()`; if two anchors matter, `tab:ClearAllPoints()` for every tab in the hook.
+**What's been considered:** Re-anchoring on every call is idempotent and cheap (a few `ClearAllPoints` and `SetPoint` on tabs), so the guard can go. The catch is the owner's: the test above would flip.
+
+**Shape of work:** Small: drop the guard, change the test, a case for each unforced path.
+
+**Open questions:** In game, change chat's Width in `/sui` or switch profiles: do the tabs drop about 7 and shift 2 left until a tab is clicked? Drop the guard if so.
 
 ### 2026-11-15 — A font Size drag restyles too much on the action bars, unit frames and tracker
 
@@ -831,6 +792,8 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 **What's been considered:** (a) post-hook `FCF_SetChatWindowFontSize` and `HookScript('OnEvent')` for `UPDATE_CHAT_WINDOWS` on the skinned frames to put chat's font back, so SaftUI's size always wins; (b) let Blizzard's per-window size win and drop Size from chat's dots; (c) leave it, as now. Not chosen yet: it needs the in-game check below first.
 
 **Shape of work:** small: a hook pair in `chatframe.lua` for (a), or removing `'font_size'` from chat's `fields` and the conversion for (b), plus a test either way.
+
+**Review of fu-chat (2026-11-15):** for (a), prefer SaftUI's own event frame for `UPDATE_CHAT_WINDOWS` (it registers after Blizzard's chat frames) over `HookScript('OnEvent')` on each window, which would run on every chat message. The source confirms the entry: the handler calls `SetFont` with the cached size and the frame's own face and flags, so under (b) SaftUI's face and outline survive Blizzard's size. Check both a `/reload` and a full relog: the handler's own comment says the event "can be received before settings have been downloaded", so it may fire more than once.
 
 **Open questions:** does `UPDATE_CHAT_WINDOWS` fire after `PLAYER_LOGIN`, and is chat at SaftUI's size or Blizzard's chat-cache size after login? Does a Fonts tab change that does not touch chat undo a size picked from the tab menu (it should not now)? Which of (a) and (b) does the owner want?
 
@@ -1226,6 +1189,8 @@ What's left needs evidence from the game. In the order they'd be checked:
 **Shape of work:** Small, if a path to it ever appears: a few lines and an in-combat case in `friendly_plate_size_test.lua`'s box test.
 
 **Open questions:** None until something can change a box in combat.
+
+**Checked 2026-11-15:** by design for now, and still latent: nothing can change a box in combat. `/sui` closes as combat starts and won't open in it, and a profile switch by an addon or a macro in combat waits for the end of combat like every unit frame switch (the cached configs point at the new profile at once and the full update follows). Revisit if a path to a box in combat appears.
 
 ### 2026-11-12 — Nameplates: friendly players and friendly NPCs configured apart
 
@@ -2490,6 +2455,130 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Does Forever's Show in list Combined bank alone, or Bank and Combined bank? What does Bank mean while the bank is combined?
 
 **Resolved 2026-11-15:** Show in (`INV:CategoryEditorOptions`) now lists Combined bank on every client, between Bank and (on retail) the warband bank, so on Forever, where the combined bank is the default bank, unticking it hides the category there; Bank stays for the separate-bank layout. Test: `tests/bags/categories_editor_test.lua`.
+||||||| base
+### 2026-11-15 — Chat's Fade tabs: ChatFrameUtil.GetTabAlphas isn't in the retail source
+
+**What:** Turning Fade tabs on hands a tab SaftUI was holding at alpha 1 Blizzard's own alpha back, read with `ChatFrameUtil.GetTabAlphas(tab)` (`CHT:HoldTabAlpha`, `SaftUI-Chat/chatframe.lua`). The function is in Forever's source (`Blizzard_ChatFrameBase/Shared/ChatFrameUtil.lua`, `origin/forever`) but a search of the local clone of Blizzard's `origin/live` (checked 2026-11-15) finds no `GetTabAlphas`; retail keeps the alphas in the tab's own `mouseOverAlpha` field instead. The code is guarded (`if ChatFrameUtil and ChatFrameUtil.GetTabAlphas`), so on retail the tab would stay at 1 until Blizzard's next fade rather than error.
+
+**Why noticed:** The fu-p11 review said the function exists on both clients; the implementer had not checked, and the merge's doc pass did.
+
+**Anchors:** `SaftUI-Chat/chatframe.lua` (`CHT:HoldTabAlpha`), `tests/chat/theme_test.lua` (the profile and toggle cases); Blizzard's `FloatingChatFrame.lua` `FCFTab_UpdateAlpha`.
+
+**Shape of work:** Small: on a client without the function, read the tab's `mouseOverAlpha` and `noMouseAlpha` fields, or let Blizzard's next fade restore it (today's behavior).
+
+**Open questions:** Confirm in game on retail that turning Fade tabs on restores the alpha at once. The local `origin/live` clone may be older than the client.
+
+**Resolved 2026-11-15:** not a gap: the retail source (12.1.5.70783) has `ChatFrameUtil.GetTabAlphas` and `SetTabAlphas` in `Blizzard_ChatFrameBase/Shared/ChatFrameUtil.lua`, the same file as Forever's (1.60.1.70938), and `FCFTab_UpdateAlpha` fills them on both; the earlier search was of an old clone, and retail has no `mouseOverAlpha` tab field. `.agents/clients.md` is corrected. The existence guard in `CHT:HoldTabAlpha` stays (harmless). The Fade tabs tooltip ('lets them fade from the next time you hover the chat') is accurate, not a reload warning: the toggle gives the tab Blizzard's alpha at once and `tests/chat/theme_test.lua` pins that it never says reload. Not yet seen in game on retail.
+
+### 2026-11-15 — Chat: the dock hook adds a second anchor to docked tabs 2 to n, and the dock test can't see it
+
+**What:** `CHT:FCFDock_UpdateTabs` (`SaftUI-Chat/chatframe.lua`) calls `tab:SetPoint('BOTTOMLEFT', prev, 'BOTTOMRIGHT', 0, 0)` on tabs 2 to n without `ClearAllPoints`, after Blizzard's own `ClearAllPoints` and `SetPoint('LEFT', prev, 'RIGHT', 1, 0)` on a forced update, so those tabs carry two anchors. It predates the chat work.
+
+**Why noticed:** The fu-p11 review. `tests/chat/dock_test.lua` now runs a stand-in of Blizzard's `FCFDock_UpdateTabs` before the hook, but the stand-in sets no anchors, so the test cannot see the second one. The owner found the tabs right in game on 2026-11-13, so it looks harmless.
+
+**Anchors:** `chatframe.lua` `CHT:FCFDock_UpdateTabs`; Blizzard's `FloatingChatFrame.lua` `FCFDock_UpdateTabs` (Forever about 2342-2368); `tests/chat/dock_test.lua`.
+
+**Shape of work:** Small: make the test's stand-in set Blizzard's anchors and assert `GetNumPoints()`; if two anchors matter, `tab:ClearAllPoints()` for every tab in the hook.
+
+**Resolved 2026-11-15:** `CHT:FCFDock_UpdateTabs` clears every tab's points before its own anchor, so a docked tab has the one anchor instead of Blizzard's `LEFT` one and SaftUI's `BOTTOMLEFT`; `tests/chat/dock_test.lua`'s stand-in now sets Blizzard's anchors and the cases assert `GetNumPoints() == 1`. Not yet seen in game: the gap between tabs is the hook's 0, where Blizzard's anchor had 1. A tab Blizzard anchors to the dock's scroll child (the first one past the static ones) keeps that anchor, so an overflowing row still scrolls.
+
+### 2026-11-15 — Chat's edit box can sit off the top of the screen when the chat Theme is None
+
+**What:** At first skin under chat Theme None `backdrops[frame]` is nil, so the edit box is anchored `SetPoint('BOTTOMLEFT', nil, 'TOPLEFT', 0, 1)`. A nil relative frame means the box's parent, which Blizzard sets to UIParent (it reparents the box in `ChatFrameEditBoxMixin:OnLoad`), so the box sits above the top of the screen. A later switch to another theme makes the backdrop but never re-anchors the edit box or the scroll bar: only `SkinChatFrame` anchors them.
+
+**Why noticed:** The fu-p11 review. The code before it behaved the same (`frame.backdrop` was nil), so it is older than the chat work.
+
+**Anchors:** `SaftUI-Chat/chatframe.lua` (`CHT:SkinChatFrame`, `UpdateChatFrameDisplay`).
+
+**Shape of work:** Small: anchor the box and the scroll bar from `UpdateChatFrameDisplay` (to the backdrop, or to the chat frame under None) so every theme change places them.
+
+**Open questions:** Needs an in-game look first: chat Theme None, `/reload`, where is the box?
+
+**Resolved 2026-11-15:** `CHT:UpdateChatFrameDisplay` now anchors the edit box and the scroll bar, to the backdrop when a look is drawn and to the chat window under None (`SkinChatFrame` no longer does, with a nil relative frame), so every theme change places them; `tests/chat/theme_test.lua`, whose fixture now parents the edit box to UIParent as Blizzard does. Not yet seen in game.
+
+### 2026-11-15 — getHealthPercentText's floor branch is never used
+
+**What:** `getHealthPercentText(perc, precision)` in `SaftUI-Unitframes/elements/health.lua` has a branch for no precision that floors the value, but its only caller passes precision 1 (Boss percent). Since Percent on a plain health now rounds with `'%.0f'` to agree with the secret path, nothing floors anywhere.
+
+**Why noticed:** The fu-p1 review (merge fu-p1).
+
+**Anchors:** `SaftUI-Unitframes/elements/health.lua`.
+
+**Shape of work:** A one-line cleanup: drop the branch, or make the function the one place both percent paths round through.
+
+**Resolved 2026-11-15:** the function is gone: its one caller (Boss percent) formats the value with one decimal in place; no behavior change.
+
+### 2026-11-15 — Two lines of the profile switch fix that no test pins
+
+**What:** Two lines of the fu-p2 fix round pass every test when removed. (1) `RestoreNameplateCVars` clearing `UF.appliedFriendly` (`SaftUI-Unitframes/nameplates/cvars.lua`): the case it guards is Nameplates turned off with the reload declined (the user's values go back), then a switch to a profile with Nameplates on and the same Friendly plates; SaftUI's settings should be set again, and without the line they stay the user's while SaftUI's plates are up. (2) `RefreshFrameConfig` before `UF.ClearPlacedPoints` in the plate loop of `UF:ApplyConfig` (`SaftUI-Unitframes/unitframes.lua`): without it the clear reads the old profile's cached Enable for a text or icon, which matters only for a loop through a text or icon (typed by frame name), so it is low value.
+
+**Why noticed:** The fu-p2 re-review of the fix round (its N2). The code is right in both cases; only the tests are missing.
+
+**Anchors:** `tests/unitframes/profile_switch_test.lua`, `tests/unitframes/nameplate_page_test.lua`, `tests/unitframes/friendly_plate_test.lua`, `tests/unitframes/friendly_plate_size_test.lua`.
+
+**Shape of work:** Small: the Nameplates off then on case in `profile_switch_test.lua`, and a case where a text is on in one profile and off in the other.
+
+**Resolved 2026-11-15:** `profile_switch_test.lua` pins both: the Nameplates off then on case (the restore forgetting `UF.appliedFriendly`) and a text switched on by a switch that replaces the bar's config table (the refresh before `UF.ClearPlacedPoints`); each fails with its line removed.
+
+### 2026-11-15 — Unit frame defaults: string offsets left outside the castbars
+
+**What:** The castbar defaults' text offsets are numbers now (merge fu-p3), but other defaults still have string offsets, which the game accepts and the strict stubbed `SetPoint` refuses: the portrait and the additional power position in `SaftUI-Unitframes/config/default.lua`, and buffs in `config/units/arena.lua` (boss's are numbers now: the resets task). A profile that saved the string form keeps it.
+
+**Why noticed:** The fu-p3 report, finishing item 2 of [Nameplates: small items left after the build](#2026-11-11--nameplates-small-items-left-after-the-build) for the castbars only (the brief named only those).
+
+**Anchors:** `SaftUI-Unitframes/config/default.lua`, `config/units/arena.lua`; `tests/unitframes/unit_defaults_test.lua` (checks every unit's castbar offsets are numbers).
+
+**Shape of work:** Small: make them numbers and extend the test over every position in the defaults.
+
+**Resolved 2026-11-15:** the portrait's and additional power's positions in `config/default.lua` and arena's buffs are numbers; `unit_defaults_test.lua` now checks every position offset in every unit's defaults.
+
+### 2026-11-15 — Unit frames: a part switched off in the new profile keeps its old points
+
+**What:** A part switched off in the new profile keeps its old points on a unit frame and can still close an anchor loop (profile A: Power on, under Health; profile B: Power off, Health hung from Power: Health's `SetPoint` errors and it is left with no points). Pre-existing. Test mode's previews have the opposite edge: `StylePreviewFrame` clears every preview element and all its texts, but a preview places only the parts that are on, so a preview part hung from a switched-off part is left anchored to a region with no points and won't draw (inferred: the stubs don't model the rect), while the real boss frame keeps the old points and shows that part. Test mode only, and it needs a part hung from a switched-off one.
+
+**Why noticed:** The fu-p2 review (finding m1, and N1 of its re-review), after the fix that clears each frame's enabled parts before a profile switch places them. The comment at `grouppreview.lua:160` ("as for the real frames") doesn't hold for it.
+
+**Anchors:** `SaftUI-Unitframes/unitframes.lua` (`ClearPartPoints`, `ClearAllPartPoints`), `SaftUI-Unitframes/updaters.lua` (`UF:UpdateElement`, the `unitframe.isNamePlate` condition), `SaftUI-Unitframes/nameplates/nameplates.lua` (`ClearPlacedPoints`), `SaftUI-Unitframes/grouppreview.lua` (`StylePreviewFrame`), `tests/unitframes/profile_switch_test.lua`, `tests/unitframes/boss_preview_test.lua`.
+
+**What's been considered:** Place a disabled named part by its config on unit frames too (drop the `unitframe.isNamePlate` condition in `UF:UpdateElement`) and clear every element, as `ClearPlacedPoints` does for plates. For the previews, use the real frames' rule: clear an element only when `element:GetConfig().enable` is true, and its texts only when theirs is (export `ClearPartPoints` and call it on the preview frame, whose elements would need to be `previewElements`); or only note the case here.
+
+**Shape of work:** Small: one rule for which parts a clear touches, shared by frames and previews, and a test with a part hung from a switched-off one.
+
+**Open questions:** Whether a disabled part should be placed at all, or the clear should skip it as the real frames do.
+
+**Resolved 2026-11-15:** `UF:UpdateElement` now sizes and places a switched-off named part by its config on unit frames and previews as on plates, and `ClearPartPoints` clears every element, so no part keeps the old profile's points; pinned in `profile_switch_test.lua` and `boss_preview_test.lua`. The owner's open question is answered as the entry recommended (place it).
+
+### 2026-11-15 — Unit frames: a vehicle power type with no oUF color falls back to Mana
+
+**What:** Power reaches a frame by its unit's power token. A unit whose token oUF has no color for (a vehicle's power type) falls back to Mana's color in oUF's `power.lua`, so a Mana pick misses that frame. Rare; the edit's whole pass covers it.
+
+**Why noticed:** Review of the live colors Task 3, `.superpowers/sdd/2026-11-15-saftui-live-colors/task-3-review.md`, n4.
+
+**Anchors:** `UF.ColorReaches` (the `power` branch), oUF's `Libraries/oUF/elements/power.lua` (read only).
+
+**What's been considered:** Treat a token with no oUF color as `MANA`.
+
+**Shape of work:** one line in `UF.ColorReaches` and a test.
+
+**Open questions:** none.
+
+**Resolved 2026-11-15:** `UF.ColorReaches`' power branch reads a token oUF has no color for (and no game color) as `MANA`; `tests/unitframes/color_cost_test.lua` pins it (its stand-in oUF now holds the colors and oUF's power-type aliases for the tokens it uses). Fix round 1: it follows oUF's whole order (the token's color, the game's own color, the power type's, Mana's) by comparing oUF's tables, guarded against secret values.
+
+### 2026-11-15 — Unit frames: a color oUF lacks is set to the profile's own table
+
+**What:** `CopyColor` (`SaftUI-Unitframes/unitframes.lua`) sets a color oUF has none of to the profile's own table, as `st.tablemerge` did. A later profile switch's merge then writes the new profile's values into the table of the old profile. It matters only if oUF lacks a SaftUI color key in game (the test world lacks every key); which keys, if any, is unchecked.
+
+**Why noticed:** Review of the live colors Task 3, `.superpowers/sdd/2026-11-15-saftui-live-colors/task-3-review.md`, n3. The behavior is older than the task; the commit kept it.
+
+**Anchors:** `UF:UpdateColors`, `CopyColor`, oUF's `Libraries/oUF/colors.lua` (read only), `st.config.profile.colors`.
+
+**What's been considered:** Copying into a new color object (`UF.oUF:CreateColor`) instead of aliasing would make it safe.
+
+**Shape of work:** list the keys SaftUI's Colors page has that oUF's table lacks, and make the fallback a copy.
+
+**Open questions:** whether any key is missing in game.
+
+**Resolved 2026-11-15:** `UF:UpdateColors` (the whole pass's merge and `CopyColor`) now copies a color oUF lacks instead of aliasing the profile's table; `tests/unitframes/colors_test.lua` pins both paths and the old profile staying untouched after a switch. The copy is made by `oUF:CreateColor` (it has oUF's methods, so a Gradient on a token oUF lacks, such as Steam, Pyrite or Alt power, doesn't error), and the whole pass is pinned to merge in place. Left: the by-key `CopyColor` assumes a color-shaped (r, g, b) profile table, which AceDB always fills and every default is; a list-shaped one would write nils.
 
 ### 2026-11-15 — Two Misc readers break "a pass only colors"
 

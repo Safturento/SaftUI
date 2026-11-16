@@ -96,6 +96,47 @@ test('a profile switch places a unit frame\'s parts against the new anchors, whi
 	end
 end)
 
+test('a part switched off in the new profile is placed by its config, so a part hung from it still places', function()
+	local st, UF, P, frame = player_world()
+	profile_a(P)
+	UF:UpdateConfig()
+	take_errors()
+	-- Profile B: Power off, the health bar hung from it.
+	profile_b(P)
+	P.player.power.enable = false
+	for round = 1, 2 do
+		UF:UpdateConfig()
+		local errors = take_errors()
+		eq(#errors, 0, 'round ' .. round .. ': no error ' .. tostring(errors[1]))
+		eq(frame.Health:GetNumPoints(), 1, 'round ' .. round .. ': the health bar keeps a point')
+		eq(anchored_to(frame.Health), frame.Power, 'round ' .. round .. ': hung from the switched-off bar')
+		eq(anchored_to(frame.Power), frame, 'round ' .. round .. ': which is placed by its config')
+		eq(frame.Power:IsShown(), false, 'and stays hidden')
+		profile_a(P)
+		P.player.power.enable = true
+		UF:UpdateConfig()
+		eq(#take_errors(), 0, 'round ' .. round .. ': back to A: no error')
+		profile_b(P)
+		P.player.power.enable = false
+	end
+end)
+
+test('a switched-off part whose config has no position is skipped, and the frame still updates', function()
+	local st, UF, P, frame = player_world()
+	profile_a(P)
+	UF:UpdateConfig()
+	take_errors()
+	-- A raw import of an older export: the part is off and has no position.
+	P.player.power.enable = false
+	P.player.power.position = nil
+	P.player.health.position = { point = 'BOTTOM', element = '', rel_point = 'BOTTOM', x_off = 0, y_off = 0 }
+	UF:UpdateConfig()
+	local errors = take_errors()
+	eq(#errors, 0, 'no error ' .. tostring(errors[1]))
+	eq(frame.Health:GetNumPoints(), 1, 'the health bar is placed')
+	eq(select(3, frame.Health:GetPoint(1)), 'BOTTOM', 'by the new profile')
+end)
+
 test('a profile switch in combat places no part', function()
 	local st, UF, P, frame = player_world()
 	profile_a(P)
@@ -249,5 +290,65 @@ test("only a change of Friendly plates sets the game's friendly plates: not a pl
 		eq(stub.cvars[PLAYERS] .. stub.cvars[NPCS], '11', client .. ': on again')
 		eq(#take_errors(), 0, client .. ': no error')
 		unwatch()
+	end
+end)
+
+------------------------------------------------------------------ two lines of the switch no other test pins
+
+-- Nameplates turned off with the reload declined puts the user's settings back
+-- (UF:RestoreNameplateCVars). A switch to a profile with Nameplates on and the
+-- same Friendly plates then sets SaftUI's again: the restore forgets what the
+-- plates were set to (UF.appliedFriendly), or the switch would see "no change"
+-- and leave the user's values under SaftUI's plates.
+test("a switch back to Nameplates on, with the same Friendly plates, sets SaftUI's settings again after a restore", function()
+	for _, client in ipairs({ 'forever', 'retail' }) do
+		local st, UF = world(client)
+		local P = UF:GetProfileConfig()
+		UF:RestoreNameplateCVars()
+		stub.cvars[PLAYERS], stub.cvars[NPCS] = '1', '0'
+		UF:ApplyNameplateCVars()
+		eq(stub.cvars[PLAYERS] .. stub.cvars[NPCS], '11', client .. ": SaftUI's")
+
+		-- The Nameplates box off: what its set does.
+		P.nameplate.enable = false
+		UF:RestoreNameplateCVars()
+		eq(stub.cvars[PLAYERS] .. stub.cvars[NPCS], '10', client .. ": the user's, back")
+
+		-- A switch to a profile with Nameplates on and Friendly plates as it was.
+		P.nameplate.enable = true
+		UF:UpdateConfig()
+		eq(stub.cvars[PLAYERS] .. stub.cvars[NPCS], '11', client .. ": SaftUI's again")
+		eq(#take_errors(), 0, client .. ': no error')
+	end
+end)
+
+-- A plate's cached configs are pointed at the new profile before its points
+-- are cleared, so the clear reads the new profile's Enable of a text, not the
+-- old one's: a text switched on by the switch is cleared before it is placed.
+test("a switch clears a plate's points by the new profile's Enable for each text", function()
+	for _, client in ipairs({ 'forever', 'retail' }) do
+		local st, UF = world(client)
+		local P = UF:GetProfileConfig()
+		NP.enemy('nameplate1')
+		local frame = NP.add('nameplate1')
+		local text = frame.Health.textElements.text
+		P.nameplate.health.text.enable = false
+		UF:UpdateConfig()
+		take_errors()
+		eq(text.config.enable, false, client .. ': off in profile A')
+
+		-- Profile B: another table for the bar, its text on.
+		local seen
+		local clear = UF.ClearPartPoints
+		UF.ClearPartPoints = function(plate)
+			if plate == frame then seen = text.config.enable end
+			return clear(plate)
+		end
+		P.nameplate.health = st.tablecopy(P.nameplate.health, true)
+		P.nameplate.health.text.enable = true
+		UF:UpdateConfig()
+		UF.ClearPartPoints = clear
+		eq(seen, true, client .. ": the clear read profile B's Enable")
+		eq(#take_errors(), 0, client .. ': no error')
 	end
 end)

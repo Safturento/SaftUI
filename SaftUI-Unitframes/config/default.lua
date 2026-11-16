@@ -68,9 +68,9 @@ local portrait = {
     position = {
         rel_point = "CENTER",
         point = "CENTER",
-        x_off = "0",
+        x_off = 0,
         element = "Health",
-        y_off = "0",
+        y_off = 0,
     },
 }
 
@@ -246,9 +246,9 @@ local additionalpower = {
     relative_width = true,
     position = {
         rel_point = "TOPRIGHT",
-        y_off = "0",
+        y_off = 0,
         point = "TOPRIGHT",
-        x_off = "0",
+        x_off = 0,
     },
     reverse_fill = false,
     vertical_fill = false,

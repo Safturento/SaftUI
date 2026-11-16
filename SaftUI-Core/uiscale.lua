@@ -462,6 +462,20 @@ function UIScale:Revert()
 	return true
 end
 
+-- /sui scale reset, the way out of any size: Automatic at 100% at once, with no
+-- question (Apply(nil)), and one line saying so. In combat the save is at once
+-- and the scale follows the fight. It lives here, not in the Keep prompt's
+-- file, so it works with that file missing.
+function UIScale:Reset()
+	UIScale:Apply(nil)
+	local text = ('Automatic at %d%%'):format(floor(UIScale.DEFAULT.size * 100 + 0.5))
+	if InCombatLockdown() then
+		st:Print(('UI scale goes back to %s when combat ends.'):format(text))
+	else
+		st:Print(('UI scale back to %s.'):format(text))
+	end
+end
+
 -- The plain line /sui shows for what a choice made of the screen.
 function UIScale:Describe(resolved)
 	if not resolved then return '' end

@@ -114,6 +114,19 @@ function Config:InitializeAceConfig()
 			st:Print('Debug prints ' .. (st.DEBUG and 'on' or 'off'))
 			return
 		end
+		-- /sui scale, and its forms: the Keep prompt (Config/uiscaleprompt.lua).
+		if command == 'scale' or command:find('^scale%s') then
+			local argument = strtrim(command:sub(6))
+			if st.UIScalePrompt then
+				st.UIScalePrompt:Command(argument)
+			elseif argument == 'reset' then
+				-- The way out of any size works without the prompt's file.
+				st.UIScale:Reset()
+			else
+				st:Print("The Keep prompt didn't load, so a size can't be tried. Type /sui scale reset to go back to Automatic at 100%.")
+			end
+			return
+		end
 		local entry = FindCommand(command)
 		if entry then
 			entry.func()
