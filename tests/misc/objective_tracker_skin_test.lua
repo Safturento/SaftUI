@@ -143,14 +143,20 @@ local function check_header(header, where)
 		eq(box:GetFrameLevel(), button:GetFrameLevel() - 1, where .. ': one level under it')
 	end
 	local icons = own_regions(button)
-	eq(#icons, 2, where .. ': a chevron and its hover')
+	eq(#icons, 1, where .. ': a chevron (its hover is the glyph tint of the states, no copy)')
 	for _, icon in ipairs(icons) do
 		eq(icon:GetTexture(), st.icons.chevronUp, where .. ': the chevron points up while the header is open')
 	end
 	local tints = {}
 	for _, icon in ipairs(icons) do tints[T.rgb(icon:GetVertexColor())] = true end
 	check(tints['0.20,0.40,0.60'], where .. ': the chevron at rest is Text > Muted')
-	check(tints['0.80,0.30,0.60'], where .. ': and its hover is Text > Strong')
+	eq(st:StateLook(button).shape, 'glyph', where .. ': a glyph record (in a weak table)')
+	stub.fire_script(button, 'OnEnter')
+	local r, g, b = icons[1]:GetVertexColor()
+	eq(T.rgb(r, g, b), T.rgb(st:StateColor('edgeHover')), where .. ': under the mouse the lighter tone, not Text > Strong')
+	stub.fire_script(button, 'OnLeave')
+	r, g, b = icons[1]:GetVertexColor()
+	eq(T.rgb(r, g, b), '0.20,0.40,0.60', where .. ': Muted again')
 end
 
 local function check_header_blizzard(header, where)
@@ -500,18 +506,24 @@ test('a pooled block handed out again is hooked once and stays styled', function
 	clean()
 end)
 
-test("a quest item button's hover is the accent, at an accent that is not the default, and follows a change of it", function()
+test("a quest item button's hover is the states' hover tint, BLEND, and follows the Accent", function()
 	world('forever')
 	profile.theme.accent:SetRGB(0.9, 0.2, 0.4)
+	st:ColorsChanged('accent')
 	local blocks = OT.layout(quest_module(), { { id = 1, objectives = { 'One' }, item = 3 } })
 	local item = blocks[1].rightEdgeFrame
 	local hover = own_regions(item)[1]
 	check(hover ~= nil, 'a hover of SaftUI\'s')
-	eq(T.rgb(hover:GetVertexColor()), '0.90,0.20,0.40', 'the accent when it is made')
+	local function want() return T.text(st:StateColor('hover')) end
+	eq(T.text(hover:GetVertexColor()), want(), 'the derived hover when it is made')
+	eq(hover:GetBlendMode(), 'BLEND', 'BLEND, not added')
+	eq(hover:GetDrawLayer(), 'HIGHLIGHT', 'its own HIGHLIGHT texture')
+	check(item:GetHighlightTexture() ~= hover, 'never handed to SetHighlightTexture')
 	profile.theme.accent:SetRGB(0.1, 0.8, 0.5)
 	st:ColorsChanged('accent')
-	eq(T.rgb(hover:GetVertexColor()), '0.10,0.80,0.50', "a change of the accent (not 'theme' or 'button') reaches it")
+	eq(T.text(hover:GetVertexColor()), want(), 'a change of the Accent reaches it')
 	profile.theme.accent:SetRGB(0, 0.68, 0.94)
+	st:ColorsChanged('accent')
 	clean()
 end)
 

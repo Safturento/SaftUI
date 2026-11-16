@@ -8,6 +8,8 @@ G1 to G9 are the spec's checks (`docs/superpowers/specs/2026-11-14-saftui-ui-sca
 
 ## A. Your own screen: nothing looks different
 
+**First, one thing from section F: E4 (F, step 1, the scale in combat) is the one experiment no test can stand in for. Read it now so it is not missed 40 steps in.**
+
 Do this before anything else, with `/sui` closed. Anything that moved here is a bug.
 
 1. **G1, the numbers.** `/run print(UIParent:GetScale(), 768/1440, SaftUI.pixel, SaftUI.lineWeight, SaftUI.line)` prints `0.53333336114883 0.53333333333333 1 1 1`: the first two are equal within the game's single precision (not "the same number twice"), and the last three are exactly 1.
@@ -31,7 +33,7 @@ Global settings > General, at full and half size, under Thick, Thin and Blizzard
 6. **G4, the largest size.** At 150% `/sui` still fits and its rows reach (it may drop to half size under the prompt and open at full again after Go back). `/sui scale reset` from there puts Automatic at 100% back.
 7. **Pixel for pixel.** Pick it (and Keep): the UI size row greys out and its tooltip says "Only Automatic has a size." On 1440p nothing looks different, as Pixel for pixel is the same size there. Pick Go back instead and the select returns to Automatic. Pick The game's UI scale: the size is the game's. Back to Automatic.
 8. **Reset arrows.** A rotate arrow shows beside Scale only while it isn't Automatic, and beside UI size only while it isn't 100%. Clicking one asks through the Keep prompt (it is a preview, never a straight change). Go back puts the row and its arrow back. Scale's reset leaves the UI size alone.
-9. **A refused change.** In combat each row says "The UI size can't change in combat." in chat and changes nothing.
+9. **No change in combat.** `/sui` closes when combat starts ("SaftUI options closed: entering combat.") and won't open until it ends, so the rows can't be tried in a fight. The refusal line for `/sui scale` is checked in F5.
 10. **The rows after a reload.** Keep 90%, `/reload`: the row says 90% and the screen is at 90%. Everything on the page (Icon zoom, Title bar height, Screen edge margin) still works.
 
 ## C. The Keep prompt
@@ -42,11 +44,11 @@ Use the UI size slider or `/sui scale 120` to bring it up.
 2. **Keep ignores a click for half a second.** Right after it appears, Keep looks dimmed and a click on it does nothing; click it twice quickly (as a double-click on the slider would) and nothing is kept. After that it keeps. Go back and Esc work at once.
 3. **The three ways back.** Go back; Esc; and leave it until 0: each returns to the size before the first try. Keep saves it: `/reload` and the size is still there.
 4. **Esc with `/sui` open (the order is inferred, so this is the one to watch).** With `/sui` open and the prompt up, press Esc once: the prompt goes back and `/sui` stays open. A second Esc closes `/sui`. If one Esc closes `/sui` and leaves the prompt up instead, say so (the prompt still goes back at 0, so nothing keeps by accident).
-5. **Enter and other keys.** Enter does nothing. A bar key and movement still work while it shows.
+5. **Enter and other keys.** Enter doesn't keep (it goes on to the game and opens chat as usual). A bar key and movement still work while it shows.
 6. **Not modal.** Clicking beside it reaches what is under it. Closing `/sui` leaves it up.
 7. **A second try.** `/sui scale 90`, then `/sui scale 120` while it shows: the countdown starts again, and Go back returns to the size saved before the 90.
 8. **At 150% on 1440p** the prompt's border looks heavier (two pixels, Thick six): the weight follows UIParent's scale, whole but jumping (known; say if it bothers you).
-9. **Through a fight.** Start a fight (a training dummy) while it is up: it stays, your bar keys and movement work, Esc does nothing. Click Keep: it closes and saves. Click Go back, or let the time run out: the line reads "Goes back when combat ends.", the buttons hide, and the size goes back after the fight.
+9. **Through a fight.** Start a fight (a training dummy) while it is up: it stays, your bar keys and movement work, and its keyboard is off, so Esc doesn't go back (it opens the game menu; close that again). The buttons still work with the mouse. Click Keep: it closes and saves. Click Go back, or let the time run out: the line reads "Goes back when combat ends.", the buttons hide, and the size goes back when combat ends (the revert waits for it).
 10. **Open lists and dialogs.** With a select list or a confirm dialog open when the prompt shows, they may cover it (known; its time still runs out).
 
 ## D. `/sui scale`
@@ -64,8 +66,8 @@ Use the UI size slider or `/sui scale 120` to bring it up.
 2. **The game's UI scale.** Choose it in `/sui` (and Keep): the game's slider sets the size, borders whole. Move the slider: the size follows it. Back to Automatic.
 3. **A resolution change (G5).** Switch to 1920 x 1080 and back, out of combat: no Lua error, SaftUI's size back on the next frame, nothing said in chat, borders whole. Check the line under the UI scale rows now reads for 1080p ("This screen is 1920 x 1080: SaftUI draws at 75% of its 1440p size, with 1 pixel lines.") and the whole UI is three quarters of its size, taking the same share of the screen.
 4. **A windowed change.** Resize the window a little under the screen (it reads about 2560 x 1377): the pixel stays 1 and SaftUI's scale comes back on the next frame. Move the window to another monitor if you have one.
-5. **Six quick changes.** Resize the window six times within a second: the line under the rows switches to "The game keeps setting its own UI scale, so SaftUI stopped setting it back...", and chat says it once. Changing Scale or UI size recovers it.
-6. **G7.** Nameplates after a UI size change and back (try 125%, then reset): whole borders while strafing past a pack, with no `/reload`.
+5. **Six quick changes.** Resize the window six times within a second (or drag its edge): each size is a new screen, so nothing trips. Expect SaftUI's scale back in force after each, and no "The game keeps setting its own UI scale..." line in chat or under the rows. That guard is for an engine that resets the scale again after every set-back on one unchanged screen (five in a second); a hand can't make that happen, so the tests cover it and there is nothing to play.
+6. **G8.** Nameplates after a UI size change and back (try 125%, then reset): whole borders while strafing past a pack, with no `/reload`.
 
 ## F. In combat
 
@@ -110,3 +112,7 @@ At a scale other than 1 (your own screen has none of these), each has a followup
 - Crispness of Homespun and the Lucide icons on a dense screen (phase 5, from E6).
 
 Open and not part of the checks: E0 may retune the default and range, E1 on the friends' screens may find an odd notch, and the font demo goes once E6 is in. All three have an entry.
+
+## I. Known behaviors that are safe
+
+- In edit mode, if the Keep countdown runs out while a frame is being dragged, the drag is dropped without saving (the saved position stands). Safe, if surprising; it has a phase 3 note.

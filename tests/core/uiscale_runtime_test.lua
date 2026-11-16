@@ -625,6 +625,26 @@ test('m1: an engine that sets its scale again after every set-back: the check gi
 	end
 end)
 
+test('I1 (final review): a window dragged through six sizes in a second trips nothing: each screen counts its own set-backs; five on one screen still give up', function()
+	for _, client in ipairs(CLIENTS) do
+		world(client, 2560, 1440)
+		stub.engine_resets_scale, stub.scale_fires_event = true, true
+		stub.default_scale = 0.64
+		start_uiscale()
+		local lines = chat(function()
+			for i = 1, 8 do
+				stub.change_display(1800 + i * 40, 1000 + i * 20) -- a new size every frame
+				frames()
+				stub.time = stub.time + 0.1
+			end
+		end)
+		eq(#lines, 0, client .. ': no give-up line')
+		check(not st.UIScale:GaveUp(), client .. ': it did not give up')
+		check(near(UIParent:GetScale(), 768 / 1440, 1e-9), client .. ": SaftUI's scale is in force at the end")
+		eq(#take_errors(), 0, client .. ': no error')
+	end
+end)
+
 test('n1: in The game\'s UI scale a burst split across two frames is one pass, at the final scale', function()
 	world('forever', 2560, 1440)
 	stub.timers_wait_a_frame = true

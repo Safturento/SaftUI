@@ -246,6 +246,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **What:** The second of the scaling work's five phases: the options kit (`SaftUI-Core/Config`) and SaftUI's own windows put on whole pixels at any scale, so a kit control on a 1080p or Mac screen is no longer a fraction of a pixel off. Phase 1 made every line the theme engine draws whole and put the scale under the game's; this makes the controls drawn on top of those lines whole too.
 
+**The one place a friend's screen is worse than before phase 1:** on a screen that is not 1440p, in Automatic, the options kit's own one-unit lines (the three literal `edgeSize = 1` in `optionslook.lua`, the color picker's two) are 0.75 px at 1080p, where before this phase they were a whole pixel at the old scale (every screen was pixel for pixel then). Under the game's snapping a box can lose a side. `/sui scale pixel` restores the old look until this phase lands, so do not put it off for long.
+
 **Why noticed:** The spec's Phasing section (`docs/superpowers/specs/2026-11-14-saftui-ui-scaling-design.md`) cuts it from phase 1, and the phase 1 reviews (Tasks 3, 5, 6 and 7) each found the same thing from the other side: the Keep prompt's buttons and the UI scale section's boxes are the first pages a friend sees, and they are off whole pixels on every screen but 1440p. The existing entry [the kit's buttons and labels](#2026-11-15--ui-scale-the-kits-buttons-and-labels-are-off-whole-pixels-on-every-screen-that-is-not-1440p) is this phase's first symptom.
 
 **Anchors:** `docs/superpowers/specs/2026-11-14-saftui-ui-scaling-design.md` ("Phasing", "The audit" A4, A5, A6, A9, A12), `docs/superpowers/plans/2026-11-15-saftui-ui-scaling-phase-1.md` (the notes on what phase 1 leaves), `SaftUI-Core/Config/optionslook.lua` (`Box`, `LINE`), `optionscontrols.lua` (`W.Button`, `Layout`), `optionsbody.lua` (hairlines, dividers), `optionscolorpicker.lua` (the rings), `optionswidgets.lua` (lists and menus, `LIST_STRATA`), `SaftUI-Core/EditMode/Bar/`, `tests/lib/pixels.lua` (`P.off`), `tests/core/general_tab_test.lua` (the section's whole-pixel case, the model for the others).
@@ -408,7 +410,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **Why noticed:** The phase 1 ledger (the Task 3 and Task 5 reviews).
 
-**Anchors:** `SaftUI-Core/theme.lua` (`st:GetLineSize`, `st:DrawingFrame`), `SaftUI-Unitframes/nameplates/pixels.lua` (`UF.PlateDriverSize`), `docs/design-system/05-decisions.md` (decisions 57 and 60), `docs/superpowers/plans/2026-11-15-saftui-ui-scaling-phase-1-in-game-checklist.md`.
+**Anchors:** `SaftUI-Core/theme.lua` (`st:GetLineSize`, `st:DrawingFrame`), `SaftUI-Unitframes/nameplates/nameplates.lua` (`UF.PlateDriverSize`), `docs/design-system/05-decisions.md` (decisions 58 and 61), `docs/superpowers/plans/2026-11-15-saftui-ui-scaling-phase-1-in-game-checklist.md`.
 
 **Shape of work:** None unless the owner changes a call. The checklist asks the owner to look at both once.
 

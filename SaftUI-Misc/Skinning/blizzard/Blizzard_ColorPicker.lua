@@ -41,8 +41,9 @@ local CP = SK:NewModule('Blizzard_ColorPicker')
 	    wheel and the hex box are 23 in from the sides; the buttons are 11.5 in
 	    at 331 wide and 40 at 388, and a box stays inside its button), placed
 	    again by post-hooks on the picker's OnShow and OnSizeChanged when Blizzard
-	    changes its width, whose edge turns the
-	    the accent under the mouse, as the kit's buttons do, and the text in
+	    changes its width, which tint under the mouse and darker while held (the
+	    interaction states' hover and pushed, a Layer inside the box, under the
+	    label, as the kit's buttons do; the edge is left as it is), and the text in
 	    the Skinning font (the button's three state fonts). The label stays
 	    Blizzard's, uncovered.
 	  - .Content.HexBox (InputBoxInstructionsTemplate): its Left, Middle and Right
@@ -51,7 +52,7 @@ local CP = SK:NewModule('Blizzard_ColorPicker')
 	    tall as the buttons' boxes and ends in line with them at 331 wide), the
 	    "#" anchored 5 in on that rounded backdrop (its anchor put back by a
 	    restore), with the
-	    white border while it has focus, as st:SkinEditBox draws a box, and its
+	    Accent border while it has focus (the focus state), and its
 	    text, its Instructions and the "#" (.Hash) in the Skinning font (the
 	    last two keeping the grey Blizzard's XML gives them).
 
@@ -67,7 +68,7 @@ local CP = SK:NewModule('Blizzard_ColorPicker')
 	textures SaftUI made), no script is set or replaced, and no function of
 	Blizzard's runs from here. The only hooks are HookScript post-hooks on the
 	hex box (OnEditFocusGained, OnEditFocusLost) and on Okay and Cancel
-	(OnEnter, OnLeave) that color SaftUI's own boxes, and two on the picker
+	(OnEnter, OnLeave) that set the interaction states of SaftUI's own boxes (st:SetState; records in weak tables), and two on the picker
 	(OnShow, run after Blizzard's own has set the width, and OnSizeChanged) that place them, writing nothing onto Blizzard's.
 	Blizzard's frames get widget calls only: alpha on regions whose
 	alpha Blizzard never sets (the NineSlice border, the header metal, the
@@ -329,15 +330,20 @@ local function StyleHeader(frame, active)
 	StyleTitle(frame, header, active)
 end
 
--- The kit's hover: the box's edge turns the the accent under the mouse.
-local function ColorHover(button)
+-- The kit's hover: the interaction states' hover on SaftUI's box, a Layer inside it
+-- (the Accent's derived hover, as every button's), drawn under Blizzard's label. The
+-- box takes no mouse, so it is not wired (wire = false): the post-hooks below say when
+-- the mouse is over the button.
+local function SetHover(button)
 	local entry = buttons[button]
-	if not entry or not Active() then return end
-	if hovered[button] then
-		st:SetBorderColor(entry.box, st:Color('accent'):GetRGB())
-	else
-		st:SetBorderColor(entry.box)
-	end
+	if not entry or st:GetState(entry.box, 'hover') == nil then return end
+	st:SetState(entry.box, 'hover', Active() and hovered[button] or false)
+end
+
+local function SetPushed(button, on)
+	local entry = buttons[button]
+	if not entry or st:GetState(entry.box, 'pushed') == nil then return end
+	st:SetState(entry.box, 'pushed', on and Active() or false)
 end
 
 local function HookButton(button)
@@ -345,9 +351,13 @@ local function HookButton(button)
 	hooked[button] = true
 	-- Post-hooks that only color SaftUI's own box. The game passes a second
 	-- argument (motion) to OnEnter and OnLeave, which they don't use.
-	button:HookScript('OnEnter', function(self) hovered[self] = true; ColorHover(self) end)
-	button:HookScript('OnLeave', function(self) hovered[self] = nil; ColorHover(self) end)
-	st:KeepOwnColors(button, ColorHover)
+	button:HookScript('OnEnter', function(self) hovered[self] = true; SetHover(self) end)
+	button:HookScript('OnLeave', function(self) hovered[self] = nil; SetHover(self) end)
+	-- the press, as the kit's buttons show it (the left button only, as the helper's)
+	button:HookScript('OnMouseDown', function(self, mouse)
+		if mouse == nil or mouse == 'LeftButton' then SetPushed(self, true) end
+	end)
+	button:HookScript('OnMouseUp', function(self) SetPushed(self, false) end)
 end
 
 -- How far in from its button's outer end a button's box starts, so the row of
@@ -397,6 +407,7 @@ local function StyleButton(frame, key, active)
 		if not issecretvalue(level) then box:SetFrameLevel(math.max(0, level - 1)) end
 		entry = { box = box, button = button }
 		buttons[button] = entry
+		st:AddStates(box, 'box', { edge = 'theme', wire = false })
 		PlaceBox(frame, key, entry)
 		-- The three state fonts Blizzard's template gave it, read once.
 		local fonts = {}
@@ -414,7 +425,10 @@ local function StyleButton(frame, key, active)
 		HookButton(button)
 	end
 	hovered[button] = hovered[button] and active or nil
-	if active then ColorHover(button) end
+	if not active then SetPushed(button, false) end
+	-- after the theme drew the box: the states read its look again
+	st:RestyleStates(entry.box)
+	SetHover(button)
 
 	FadeAll(button, BUTTON_ART, active)
 	local highlight = button.GetHighlightTexture and button:GetHighlightTexture()
@@ -429,23 +443,20 @@ local function StyleButton(frame, key, active)
 	end
 end
 
--- The white border a focused box shows, kept through a theme recolor.
-local function ColorFocus(box)
+-- A focused box's border is the Accent (the focus state of SaftUI's backdrop behind
+-- it), kept through a theme recolor by the states.
+local function SetFocus(box, on)
 	local backdrop = boxes[box]
-	if backdrop and Active() and box:HasFocus() then
-		st:SetBorderColor(backdrop, 1, 1, 1, 1)
+	if backdrop and st:GetState(backdrop, 'focus') ~= nil then
+		st:SetState(backdrop, 'focus', on and Active() or false)
 	end
 end
 
 local function HookBox(box)
 	if hooked[box] or not box.HookScript then return end
 	hooked[box] = true
-	box:HookScript('OnEditFocusGained', ColorFocus)
-	box:HookScript('OnEditFocusLost', function(self)
-		local backdrop = boxes[self]
-		if backdrop then st:SetBorderColor(backdrop) end
-	end)
-	st:KeepOwnColors(box, ColorFocus)
+	box:HookScript('OnEditFocusGained', function(self) SetFocus(self, true) end)
+	box:HookScript('OnEditFocusLost', function(self) SetFocus(self, false) end)
 end
 
 -- The "#" on the rounded backdrop, HEX_LEFT in, so it sits on whole pixels with
@@ -483,6 +494,9 @@ local function StyleHexBox(frame, active)
 			backdrop:ClearAllPoints()
 			backdrop:SetPoint('TOPLEFT', box, 'TOPLEFT', -HEX_LEFT, 0)
 			backdrop:SetPoint('BOTTOMRIGHT', box, 'BOTTOMRIGHT', 0, 0)
+			-- after the theme drew it (a second call merges and restyles), before
+			-- Round, which reaches the pieces it makes
+			st:AddStates(backdrop, 'box', { edge = 'theme', wire = false })
 			Round(backdrop)
 		end
 	end
@@ -492,7 +506,7 @@ local function StyleHexBox(frame, active)
 	PutFont(box.Instructions, 'instructions', active, true)
 	PutFont(box.Hash, 'hash', active, true)
 	PutHash(box, backdrop, active)
-	if active then ColorFocus(box) end
+	SetFocus(box, active and box:HasFocus())
 end
 
 ------------------------------------------------------------------ moving, and the width
@@ -591,13 +605,6 @@ end
 -- them; with the skin off nothing is touched (Blizzard's fonts stay).
 function CP:OnFontsChanged()
 	if installed then self:StyleAll() end
-end
-
--- A theme recolor or a color change: the buttons' hover edge takes the color
--- again (the theme engine redraws the rest).
-function CP:OnColorsChanged(group)
-	if group ~= 'accent' and group ~= 'theme' then return end
-	for button in pairs(buttons) do ColorHover(button) end
 end
 
 -- Off (Skinning -> Color picker), nothing is hooked or touched until it's turned on.

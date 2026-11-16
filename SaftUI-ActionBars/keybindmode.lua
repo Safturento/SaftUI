@@ -163,25 +163,33 @@ local function OnButtonEnter(button)
 	binder:ClearAllPoints()
 	binder:SetAllPoints(button)
 	binder:Show()
+	-- It marks the button being bound: selected (the accent edge and the fade).
+	st:SetState(binder, 'selected', true)
 	ShowTooltip()
 end
 
 local function CreateBinder()
-	binder = CreateFrame('Frame', nil, UIParent)
+	binder = st:CreateFrame('Frame', nil, UIParent)
 	binder:SetFrameStrata('DIALOG')
 	binder:EnableMouse(true)
 	binder:EnableMouseWheel(true)
 	binder:Hide()
 
-	binder.highlight = binder:CreateTexture(nil, 'OVERLAY')
-	binder.highlight:SetTexture(st.BLANK_TEX)
-	binder.highlight:SetAllPoints()
+	-- The binder is a state frame of SaftUI's, selected while it marks a button:
+	-- a box with the theme's edge, which the helper colors with the Accent, and
+	-- the Fill over the icon. It wears the Thin look in every theme, its body
+	-- clear (it marks a button, it doesn't cover it), and its look is its own
+	-- under Blizzard too. It has no mouse states (wire = false).
+	st:SetTemplate(binder, 'thin', 'transparent', 'action')
+	binder:SetBackdropColor(0, 0, 0, 0)
+	st:AddStates(binder, 'box', { edge = 'theme', wire = false, blizzard = function() return false end })
 
 	-- The button's OnLeave (LibActionButton's) hides the tooltip once the binder
 	-- takes the mouse, so the binder shows it again.
 	binder:SetScript('OnEnter', ShowTooltip)
 	binder:SetScript('OnLeave', function(self)
 		self.button = nil
+		st:SetState(self, 'selected', false)
 		self:ClearAllPoints()
 		self:Hide()
 		HideTooltip()
@@ -251,9 +259,8 @@ function AB:StartKeybindMode()
 
 	local panels = st.config.profile.panels
 	st:SetTemplate(mode, panels.theme, panels.background, 'panel')
-	local r, g, b = st:Color('accent'):GetRGB()
-	binder.highlight:SetVertexColor(r, g, b, 0.4)
-
+	-- a theme recolor while the mode was off gave the binder its body back
+	binder:SetBackdropColor(0, 0, 0, 0)
 	-- Bars shown only in combat, or faded, show so they can be hovered. Out of
 	-- combat, checked above.
 	self:SetForceShown(true)
@@ -283,6 +290,7 @@ function AB:StopKeybindMode(message)
 	mode:UnregisterEvent('PLAYER_REGEN_DISABLED')
 	mode:Hide()
 	binder.button = nil
+	st:SetState(binder, 'selected', false)
 	binder:ClearAllPoints()
 	binder:Hide()
 	HideTooltip()

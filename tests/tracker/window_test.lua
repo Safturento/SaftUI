@@ -219,7 +219,7 @@ test('the header: Objectives, the count 6 left of the chevron in Text > Muted, a
 	eq(T.rgb(header.collapse.icon:GetVertexColor()), T.rgb(grey:GetRGB()), 'Text > Muted at rest')
 	mouse_on(header.collapse)
 	stub.fire_script(header.collapse, 'OnEnter', true)
-	eq(T.rgb(header.collapse.icon:GetVertexColor()), T.rgb(st.config.profile.colors.text.strong:GetRGB()), 'Text > Strong under the mouse')
+	eq(T.rgb(header.collapse.icon:GetVertexColor()), T.rgb(st:StateColor('edgeHover')), 'the lighter tone (edgeHover) under the mouse, not Text > Strong')
 	eq(tip()[1], 'Collapse', "the button's tooltip")
 	stub.fire_script(header.collapse, 'OnLeave', true)
 	eq(T.rgb(header.collapse.icon:GetVertexColor()), T.rgb(grey:GetRGB()), 'grey again')
