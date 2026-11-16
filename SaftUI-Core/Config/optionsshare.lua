@@ -86,6 +86,15 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	them. An item is 'row'; it moves its own Show box under its mark
 	(optionsbody.lua's PlaceRow).
 
+	A part row (an item with a summary, optionsitem.lua) draws its line inline:
+	cell.lineInline, and OB.PlaceSummary (below) places it, with the summary, at
+	the end of the body's PlaceRow and of a drag's Refresh. The line takes the
+	summary's place: on the label's line, from cell.lineX (12 after the label's
+	text, or after its diff icon) to 6 before the reset icon or the dots, on the
+	row's middle, so frame.shareLifts is false for it (the label never moves
+	and the row never grows); showing it hides the summary, hiding it shows the
+	summary again.
+
 	The pieces live on the row frame as frame.share = { mark, diff, line,
 	ownText, reset, all, multiple, sep, pipe } (made the first time a row
 	draws one, hidden on every row they don't apply to), a title's on its
@@ -108,6 +117,7 @@ local LINE_LEVEL = 4 -- the line over its row frame, above every part of the con
 local MARK_WIDTH, MARK_INSET = OB.MARK_WIDTH, 6
 local DIFF_SIZE, DIFF_GAP = 16, 4
 local RESET_SIZE, RESET_GAP = 14, 6
+local DEFAULT_GAP = 6 -- a setting's own reset icon's right edge this far left of what the control draws
 local WORD_GAP = 4 -- between the line's words and links
 local TITLE_GAP = 8 -- a title's line after its text or icon
 
@@ -163,6 +173,7 @@ OB.ResetIcon = ResetIcon -- the Categories list's order icon draws the same one
 local function Possessive(name)
 	return name .. (name:find('[sS]$') and "'" or "'s")
 end
+OB.Possessive = Possessive -- a part row's dots say whose settings they are (optionsitem.lua)
 
 -- What the line's tooltips call the setting: the row's name, or an item's
 -- Show, which is what its line acts on.
@@ -320,6 +331,7 @@ local function MakeParts(host, withMark)
 	diff:SetScript('OnEnter', function(self)
 		DiffTip(host, self)
 		OB.ShareEnter(host) -- reached without crossing the row: its line too
+		OB.RowHover(host) -- and a part row's hover
 	end)
 	diff:SetScript('OnLeave', function(self) Untip(self) end)
 	parts.diff = diff
@@ -448,22 +460,40 @@ local function LiftTop(cell)
 	return floor((cell.rowHeight - OB.LABEL_HEIGHT - LINE_HEIGHT) / 2)
 end
 
--- Shows host's line (a row frame's lifts its label).
+-- A part row's summary and the frame over it, gone while its line shows and back
+-- after (cell.summaryOn: OB.PlaceSummary says it has room and text).
+local function HideSummary(cell)
+	local widget = cell.widget
+	widget.summary:Hide()
+	widget.summaryHit:Hide()
+	if GameTooltip:IsOwned(widget.summaryHit) then GameTooltip:Hide() end
+end
+
+local function ShowSummary(cell)
+	if not cell.summaryOn then return end
+	cell.widget.summary:Show()
+	cell.widget.summaryHit:Show()
+end
+
+-- Shows host's line (a row frame's lifts its label, a part row's takes its summary's place).
 function ShowLine(host)
 	local parts = host.share
 	if not (parts and host.shareOffers) then return end
 	parts.line:Show()
+	local cell = host.shareCell
+	if cell and cell.lineInline then HideSummary(cell) end
 	if host.shareLifts then
-		local cell = host.shareCell
 		cell.label:ClearAllPoints()
 		cell.label:SetPoint('TOPLEFT', host, 'TOPLEFT', (cell.labelX or 0) + host.shareShift, -LiftTop(cell))
 	end
 end
 
--- Hides host's line and puts a row's label back.
+-- Hides host's line and puts a row's label (or a part row's summary) back.
 function HideLine(host)
 	host.share.line:Hide()
 	if host.shareLifts then OB.PlaceLabel(host.shareCell, host.shareShift) end
+	local cell = host.shareCell
+	if cell and cell.lineInline then ShowSummary(cell) end
 end
 
 -- The row frame's OnEnter (and a position block's parts, and a control's):
@@ -561,13 +591,16 @@ function OB.PlaceShare(cell)
 		parts.diff:Show()
 	end
 	if offers then
-		frame.shareOffers, frame.shareLifts = true, true
-		-- Under the label, and cut at the cell's right edge (or its lineEnd):
-		-- never in the next cell, nor over an item's dots.
-		local left = (cell.labelX or 0) + shift
-		FillLine(parts, state, (cell.lineEnd or frame:GetWidth()) - left)
-		parts.line:ClearAllPoints()
-		parts.line:SetPoint('TOPLEFT', frame, 'TOPLEFT', left, -(LiftTop(cell) + OB.LABEL_HEIGHT))
+		frame.shareOffers, frame.shareLifts = true, not cell.lineInline
+		if not cell.lineInline then
+			-- Under the label, and cut at the cell's right edge (or its lineEnd):
+			-- never in the next cell, nor over an item's dots.
+			local left = (cell.labelX or 0) + shift
+			FillLine(parts, state, (cell.lineEnd or frame:GetWidth()) - left)
+			parts.line:ClearAllPoints()
+			parts.line:SetPoint('TOPLEFT', frame, 'TOPLEFT', left, -(LiftTop(cell) + OB.LABEL_HEIGHT))
+		end
+		-- (A part row's line is placed by OB.PlaceSummary, which knows where the label ends.)
 		HookControl(cell.widget.frame)
 	end
 end
@@ -581,8 +614,84 @@ function OB.FollowShare(cell)
 	local parts = frame.share
 	if not (parts and frame.shareCell == cell) then return end
 	if parts.diff:IsShown() then PlaceDiff(cell, parts) end
-	if frame.shareOffers then
+	-- A part row's line is cut by OB.PlaceSummary, which the body's Refresh runs next.
+	if frame.shareOffers and not cell.lineInline then
 		FillLine(parts, frame.shareState, (cell.lineEnd or frame:GetWidth()) - (cell.labelX or 0) - (frame.shareShift or 0))
+	end
+end
+
+------------------------------------------------------------------ a part row's summary
+
+local SUMMARY_GAP = 12 -- between the label (or its diff icon) and the summary or the hover line
+local SUMMARY_MIN = 24 -- under this much room the summary is left out
+local SUMMARY_END = 6 -- the summary ends this far before the reset icon, or the dots
+
+-- A part row's summary, the frame over it, and its inline hover line, placed from
+-- where the row's label, diff icon, reset icon and dots ended up: called last in
+-- the body's PlaceRow, and in a drag's Refresh after the reset icon and diff icon
+-- came or went. Anything that is no part row has its summary hidden.
+--   cell.lineX         where the line (and the summary's room) starts: 12 after
+--                      the label's text, or its diff icon
+--   cell.summaryOn     the summary has text and room (it shows unless the line is)
+-- The summary is right-aligned, ending SUMMARY_END before the reset icon (against
+-- the dots) or the dots, and as wide as its text or the room, whichever is less;
+-- the line ends where it does.
+function OB.PlaceSummary(cell)
+	local widget, frame = cell.widget, cell.frame
+	if not (widget and widget.summary) then return end
+	local summary, hit = widget.summary, widget.summaryHit
+	cell.summaryOn = nil
+	if not widget.isPart then
+		summary:Hide()
+		hit:Hide()
+		return
+	end
+	local width = frame:GetWidth()
+	local edge = widget.hasMenu and width - widget.dots:GetWidth() or width
+	local icon = frame.defaultReset
+	if icon and icon:IsShown() then
+		edge = (widget.hasMenu and edge or width - DEFAULT_GAP) - RESET_SIZE
+	end
+	local right = edge - SUMMARY_END
+
+	local label, state = cell.label, frame.shareState
+	local labelLeft = (cell.labelX or 0) + (state and state.marked and cell.body.metrics.markShift or 0)
+	local x = labelLeft + min(TextWidth(label), floor(label:GetWidth()))
+	local parts = frame.share
+	if parts and frame.shareCell == cell and parts.diff:IsShown() then x = x + DIFF_GAP + DIFF_SIZE end
+	local left = x + SUMMARY_GAP
+	cell.lineX = left
+
+	-- The inline line, on the row's middle from there to the summary's end.
+	if frame.shareOffers and cell.lineInline then
+		FillLine(parts, state, max(1, right - left))
+		parts.line:ClearAllPoints()
+		parts.line:SetPoint('LEFT', frame, 'LEFT', left, 0)
+	end
+
+	local room = right - left
+	local text = widget.summaryText
+	if text and room >= SUMMARY_MIN then
+		summary:SetText(text)
+		summary:SetTextColor(Muted())
+		local wide = min(room, TextWidth(summary))
+		summary:SetWidth(wide)
+		summary:ClearAllPoints()
+		summary:SetPoint('RIGHT', frame, 'LEFT', right, 0)
+		hit:SetWidth(wide)
+		hit:ClearAllPoints()
+		hit:SetPoint('RIGHT', frame, 'LEFT', right, 0)
+		cell.summaryOn = true
+		if frame.shareOffers and parts and parts.line:IsShown() then
+			summary:Hide()
+			hit:Hide()
+		else
+			summary:Show()
+			hit:Show()
+		end
+	else
+		summary:Hide()
+		hit:Hide()
 	end
 end
 
@@ -653,7 +762,6 @@ end
 
 ------------------------------------------------------------------ a setting's own reset
 
-local DEFAULT_GAP = 6 -- the icon's right edge this far left of what the control draws
 local LABEL_ROOM = 4 -- the label (and a hover line) end at least this far before the icon
 local TITLE_BAND = 16 -- a titled bare row's title line, 6 down its cell
 local BLOCK_LINE = 24 -- a position block's first line (its dropdowns), 6 down its cell
@@ -679,6 +787,35 @@ DrawnLeft = function(region, left)
 		left = DrawnLeftOf(left, region:GetChildren())
 	end
 	return left
+end
+
+--[[
+	A position in words, edit mode's (EM.CoordinatesText): "Top left of the
+	screen: 120, -330", "Right of Health: -7, -1", "Bottom of the unit frame: 0,
+	0". position is { point, rel_point, frame, element, x_off, y_off }; relative
+	says it is a unit frame part's: anchored to an element of its unit frame, to
+	a frame by name, or to the unit frame itself ("the unit frame" when it has
+	neither). nameOf(element) names an element for the words (its key as it is
+	without one). nil for a value that is no position, or without edit mode.
+]]
+function OB.PositionText(position, relative, nameOf)
+	local EM = st.EditModeFrames
+	if type(position) ~= 'table' or not (EM and EM.CoordinatesText) then return nil end
+	if relative then
+		local parent
+		if position.element then
+			parent = nameOf and nameOf(position.element) or tostring(position.element)
+		elseif not position.frame then
+			parent = 'the unit frame'
+		end
+		if parent then
+			local at = {}
+			for k, v in pairs(position) do at[k] = v end
+			at.frame = '\0anchor'
+			return EM.CoordinatesText(at, function() return parent end)
+		end
+	end
+	return EM.CoordinatesText(position, EM.MoverNameOf)
 end
 
 -- The default in words, for the icon's tooltip: the field's text, or its
@@ -723,25 +860,8 @@ local function DefaultText(body, row, state)
 		if first == nil or first == '' then return 'Not bound' end
 		return GetBindingText and GetBindingText(first) or tostring(first)
 	elseif row.type == 'position' and type(first) == 'table' then
-		local EM = st.EditModeFrames
-		if not (EM and EM.CoordinatesText) then return nil end
-		if row.option.target == 'select' then
-			-- A unit frame part is anchored to an element of its unit frame, to a
-			-- frame by name, or to the unit frame: say which.
-			local at = {}
-			for k, v in pairs(first) do at[k] = v end
-			local parent
-			if first.element then
-				parent = tostring(first.element)
-			elseif not first.frame then
-				parent = 'the unit frame'
-			end
-			if parent then
-				at.frame = '\0anchor'
-				return EM.CoordinatesText(at, function() return parent end)
-			end
-		end
-		return EM.CoordinatesText(first, EM.MoverNameOf)
+		-- A row with an element dropdown (target 'select') is a unit frame part's.
+		return OB.PositionText(first, row.option.target == 'select')
 	end
 	if type(first) == 'string' or type(first) == 'number' then return tostring(first) end
 end

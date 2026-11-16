@@ -296,6 +296,10 @@ end
 local info, infoSize = {}, 0
 local optionsOf = setmetatable({}, { __mode = 'k' }) -- root -> the options table info.options is
 
+-- Lets go of a root's options table (a root asked about no more: optionsOf is
+-- weak-keyed but its value holds its key, which Lua 5.1 never frees).
+function OM.ForgetRoot(root) optionsOf[root] = nil end
+
 local function OptionsFor(root)
 	local options = optionsOf[root]
 	if not options then
