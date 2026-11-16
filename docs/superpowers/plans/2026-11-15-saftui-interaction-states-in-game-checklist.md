@@ -144,8 +144,9 @@ underline keep their two-pixel thickness when you change the UI size.
    *Code: `StyleNavItem` and the tab registration in `Config/optionsnav.lua` (`'row'` with `bar = 'left'`, `'tab'`
    with `bar = 'bottom'`).*
 5. **Dropdown (G3).** Open a dropdown: rows tint under the mouse; the picked row has the bar and the fade with light
-   text. Hover a check list's row: its box takes the row's hover. Open a dropdown whose choice enables a control under the
-    open list, pick it and move the mouse out of the list away from that control: the control shows no hover.
+   text. Hover a check list's row: its box takes the row's hover. If you find a dropdown whose choice enables a control that sits
+    under its open list, pick that choice and move the mouse out of the list away from that control: the control shows no
+    hover (the tests cover this; skip it if none is at hand).
    *Code: the `'row'` records in `Config/optionslist.lua`.*
 6. **Slider and links.** Hover a slider's knob: it turns light blue and darker while dragged; the fill stays blue.
    Hover the position block's dots (the picked one is the big blue dot), a reset icon, a nudge arrow and an item's
@@ -209,7 +210,9 @@ underline keep their two-pixel thickness when you change the UI size.
     the fade and moves with Undo, Redo and a row click; a hovered undone (grey) row's label turns light. The Filter
     movers box tints and lights its edge when typed in; the length box and Grid size tint and light their edge; Esc clears the Filter movers box; at your UI size the bar and the movers' labels read as
     before; with
-    nothing selected and no changes, Reset, Undo and Redo are dimmed and do not tint under the mouse.
+    nothing selected and no changes, Reset, Undo and Redo are dimmed and do not tint under the mouse. Then select a
+    mover, rest the mouse on the dimmed Undo and press an arrow key: Undo comes back and tints at once, with the
+    mouse not moved.
     *Code: `EditMode/Bar/historylist.lua` (`SetState(row, 'selected', index == position)`).*
 19. **A mover while you recolor.** With a mover selected, drag Theme > Border color, then Background's opacity, which its picker has (Border has none): the movers' lines stay white (the
     selected one blue) and their bodies stay dim during and after. Switch Thick, Thin and Blizzard with one selected. With `/sui debug` on and bags and bank open, each Border-drag
@@ -278,8 +281,9 @@ underline keep their two-pixel thickness when you change the UI size.
     row tints and its chevron is grey, light blue under the mouse and while held. Quest item buttons tint faintly.
     Any scroll bar's thumb: lighter grey at rest, light blue under the mouse. Left click, Shift-click and the
     right-click menu on a row still work, and a popup's click still opens the offer or the turn-in; the combat dim
-    (40%) and the blue in-area edge on quest items are as before; a chevron's tooltip and collapse work. Drag the
-    Accent with a row hovered: the row's tint follows. Complete an objective while hovering a row: a row that
+    (40%) and the blue in-area edge on quest items are as before; a chevron's tooltip and collapse work. Open the
+    Accent's picker (Global settings > Theme > Accent), click its hex box, rest the mouse on a quest row, type a hex
+    (8a5cf5) and press Enter: the row's tint follows. Press Cancel to put the Accent back. Complete an objective while hovering a row: a row that
     goes or is reused for another quest keeps no tint.
     *Code: `SaftUI-Tracker/rows.lua`, `items.lua`, `window.lua` (`TR:HoverRow`, the `'icon'` records).*
 30. **Skins.** Blizzard's color picker (skin on): Okay and Cancel tint their body under the label, darker while held,
@@ -299,7 +303,7 @@ underline keep their two-pixel thickness when you change the UI size.
     *Code: `st:SkinEditBox` (`SaftUI-Core/skinning.lua`).*
 32. **Scale and recolor.** `/sui scale 90`, press Keep; then `/sui scale 100`, Keep. A selected tab's underline and a
     selected row's bar stay two pixels (the underline one pixel below its tab). With a selected button (the bags'
-    current view button) and a ticked check box on screen, open Global settings > Theme, open Border's picker and
+    current view button) and the bags' Currencies funnel ticked (a `/sui` toggle will not do: its edge is its own), open Global settings > Theme, open Border's picker and
     drag, then drag Background's opacity: their Accent edge stays.
     *Code: the scale callback in `Widgets/states.lua` (`UIScale:OnChanged`); `st:KeepOwnColors` keeps a selected
     edge through a recolor.*
