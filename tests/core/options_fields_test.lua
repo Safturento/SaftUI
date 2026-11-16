@@ -863,6 +863,43 @@ end)
 
 ------------------------------------------------------------------ keybinding
 
+test("keybinding: with Blizzard's binding helpers, META chords bind and its ignored keys are never tried", function()
+	-- BindingUtil.lua's, as Blizzard has them (the stubs have none).
+	local meta_down = false
+	local saved = { IsMetaKeyDown = IsMetaKeyDown, IsKeyPressIgnoredForBinding = IsKeyPressIgnoredForBinding,
+		CreateKeyChordStringUsingMetaKeyState = CreateKeyChordStringUsingMetaKeyState }
+	local META_KEYS = { LALT = 1, RALT = 1, LCTRL = 1, RCTRL = 1, LSHIFT = 1, RSHIFT = 1, LMETA = 1, RMETA = 1,
+		ALT = 1, CTRL = 1, SHIFT = 1, META = 1 }
+	IsMetaKeyDown = function() return meta_down end
+	IsKeyPressIgnoredForBinding = function(key) return META_KEYS[key] ~= nil or key == 'UNKNOWN' or key == 'BUTTON1' or key == 'BUTTON2' end
+	CreateKeyChordStringUsingMetaKeyState = function(key)
+		local chord = {}
+		if IsAltKeyDown() then chord[#chord + 1] = 'ALT' end
+		if IsControlKeyDown() then chord[#chord + 1] = 'CTRL' end
+		if IsShiftKeyDown() then chord[#chord + 1] = 'SHIFT' end
+		if IsMetaKeyDown() then chord[#chord + 1] = 'META' end
+		chord[#chord + 1] = key
+		return table.concat(chord, '-')
+	end
+	local sets = {}
+	local w = bind('keybinding', 'metakey', opt('keybinding', 'Key', {
+		get = function() return 'F5' end, set = function(_, v) sets[#sets + 1] = v end,
+	}))
+	click(w.frame)
+	stub.fire_script(w.frame, 'OnKeyDown', 'LMETA')
+	eq(#sets, 0, "a META key alone is Blizzard's ignored key")
+	meta_down, stub.shift_down = true, true
+	stub.fire_script(w.frame, 'OnKeyDown', 'G')
+	meta_down, stub.shift_down = false, false
+	eq(sets[1], 'SHIFT-META-G', "a META chord, in Blizzard's order")
+	click(w.frame)
+	stub.fire_script(w.frame, 'OnKeyDown', 'UNKNOWN')
+	eq(#sets, 1, 'UNKNOWN is ignored')
+	w:Release()
+	for name, fn in pairs(saved) do _G[name] = fn end
+	IsMetaKeyDown, IsKeyPressIgnoredForBinding, CreateKeyChordStringUsingMetaKeyState = saved.IsMetaKeyDown, saved.IsKeyPressIgnoredForBinding, saved.CreateKeyChordStringUsingMetaKeyState
+end)
+
 test('keybinding: a click waits, the next key (with modifiers) is set, Esc clears', function()
 	local value, sets = 'F5', {}
 	local w, told = bind('keybinding', 'key', opt('keybinding', 'Key', {

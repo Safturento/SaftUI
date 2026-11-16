@@ -99,10 +99,22 @@ builders.keybinding = function(w)
 	local function Press(key)
 		if not w.waiting then return end
 		if key ~= 'ESCAPE' then
-			if IGNORED_KEYS[key] then return end
-			if IsShiftKeyDown() then key = 'SHIFT-' .. key end
-			if IsControlKeyDown() then key = 'CTRL-' .. key end
-			if IsAltKeyDown() then key = 'ALT-' .. key end
+			-- Blizzard's own helpers (BindingUtil.lua, as /sui kb uses them) where
+			-- the client has them: its ignored keys (the META keys too) and its
+			-- chord, with META. The short list and the plain chord are the fallback.
+			if IsKeyPressIgnoredForBinding then
+				if IsKeyPressIgnoredForBinding(key) then return end
+			elseif IGNORED_KEYS[key] then
+				return
+			end
+			if CreateKeyChordStringUsingMetaKeyState then
+				key = CreateKeyChordStringUsingMetaKeyState(key)
+			else
+				if IsMetaKeyDown and IsMetaKeyDown() then key = 'META-' .. key end
+				if IsShiftKeyDown() then key = 'SHIFT-' .. key end
+				if IsControlKeyDown() then key = 'CTRL-' .. key end
+				if IsAltKeyDown() then key = 'ALT-' .. key end
+			end
 		else
 			key = ''
 		end

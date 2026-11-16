@@ -56,7 +56,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-15 — Chat's font size against Blizzard's per-window Font Size](#2026-11-15--chats-font-size-against-blizzards-per-window-font-size)
   - [2026-11-15 — A bag window's least width ignores a Window titles change](#2026-11-15--a-bag-windows-least-width-ignores-a-window-titles-change)
   - [2026-11-14 — Position rows of secure frames can anchor to a frame that is moved in combat](#2026-11-14--position-rows-of-secure-frames-can-anchor-to-a-frame-that-is-moved-in-combat)
-  - [2026-11-14 — The options kit's keybinding widget doesn't know META or Blizzard's ignored keys](#2026-11-14--the-options-kits-keybinding-widget-doesnt-know-meta-or-blizzards-ignored-keys)
   - [2026-11-14 — A first-run setup dialog: UI size, theme, unit frame layout](#2026-11-14--a-first-run-setup-dialog-ui-size-theme-unit-frame-layout)
   - [2026-11-14 — /sui at half with the sidebar collapsed: a validation error is cut or hidden in the footer](#2026-11-14--sui-at-half-with-the-sidebar-collapsed-a-validation-error-is-cut-or-hidden-in-the-footer)
   - [2026-11-13 — Design decisions waiting to be built](#2026-11-13--design-decisions-waiting-to-be-built)
@@ -129,6 +128,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-14 — The options kit's keybinding widget doesn't know META or Blizzard's ignored keys](#2026-11-14--the-options-kits-keybinding-widget-doesnt-know-meta-or-blizzards-ignored-keys)
   - [2026-11-15 — Reset walks: the feed's, Minimap's and Micro menu's movers are registered inline, so the tests pin a copy](#2026-11-15--reset-walks-the-feeds-minimaps-and-micro-menus-movers-are-registered-inline-so-the-tests-pin-a-copy)
   - [2026-11-15 — Blizzard's tracker: the Position reset is tested on Forever only](#2026-11-15--blizzards-tracker-the-position-reset-is-tested-on-forever-only)
   - [2026-11-15 — Buffs and debuffs: Size and Outline keep hand defaults a derived one would replace](#2026-11-15--buffs-and-debuffs-size-and-outline-keep-hand-defaults-a-derived-one-would-replace)
@@ -834,16 +834,6 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 **A case the tracker's row can't see:** the refusal runs when the nearest row is set and each time the holder is placed (a saved anchor that now reaches the window falls back to UIParent at the next placement, out of combat), not when another frame's anchor changes. A player can attach the nearest holder to frame X (accepted), then attach X to `SaftUITracker` through X's own Position row, which only refuses loops: the window is protected through the chain until the next placement. A backstop would be `TR:LayoutWindow` skipping `SetSize` while `not st:CanMoveNow(window)` and queuing it.
 
 **Open questions:** whether to refuse by a registry of "moves in combat" frames or by asking each row's owner.
-
-### 2026-11-14 — The options kit's keybinding widget doesn't know META or Blizzard's ignored keys
-
-**What:** The `keybinding` widget (`SaftUI-Core/Config/optionskeybinding.lua`) builds a key from `Is*KeyDown` in ALT-CTRL-SHIFT order and a short ignore list; unlike `/sui kb` (`GetConvertedKeyOrButton`, `IsKeyPressIgnoredForBinding`, `CreateKeyChordStringUsingMetaKeyState`) it has no META and doesn't use Blizzard's ignore list, so a Mac player can't bind META chords there and a key Blizzard refuses to bind is tried anyway (the game then refuses it, and the nearest button's Key row says "Can't bind ...").
-
-**Why noticed:** Review of Task 10 of the objective tracker, which uses the widget for its Key row. Pre-existing Core behaviour, out of that task's scope.
-
-**Anchors:** `SaftUI-Core/Config/optionskeybinding.lua` (`Press`, `IGNORED_KEYS`), `SaftUI-ActionBars/keybindmode.lua`, `SaftUI-Tracker/options.lua` (the `key` row).
-
-**Shape of work:** Small: build the key through Blizzard's own functions where they exist, guarded by presence; extend `tests/core/options_fields_test.lua`.
 
 ### 2026-11-14 — A first-run setup dialog: UI size, theme, unit frame layout
 
@@ -2385,6 +2375,18 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-14 — The options kit's keybinding widget doesn't know META or Blizzard's ignored keys
+
+**What:** The `keybinding` widget (`SaftUI-Core/Config/optionskeybinding.lua`) builds a key from `Is*KeyDown` in ALT-CTRL-SHIFT order and a short ignore list; unlike `/sui kb` (`GetConvertedKeyOrButton`, `IsKeyPressIgnoredForBinding`, `CreateKeyChordStringUsingMetaKeyState`) it has no META and doesn't use Blizzard's ignore list, so a Mac player can't bind META chords there and a key Blizzard refuses to bind is tried anyway (the game then refuses it, and the nearest button's Key row says "Can't bind ...").
+
+**Why noticed:** Review of Task 10 of the objective tracker, which uses the widget for its Key row. Pre-existing Core behaviour, out of that task's scope.
+
+**Anchors:** `SaftUI-Core/Config/optionskeybinding.lua` (`Press`, `IGNORED_KEYS`), `SaftUI-ActionBars/keybindmode.lua`, `SaftUI-Tracker/options.lua` (the `key` row).
+
+**Shape of work:** Small: build the key through Blizzard's own functions where they exist, guarded by presence; extend `tests/core/options_fields_test.lua`.
+
+**Resolved 2026-11-15:** the widget's `Press` asks `IsKeyPressIgnoredForBinding` and builds the chord with `CreateKeyChordStringUsingMetaKeyState` where the client has them (META included), keeping the short ignore list and the plain chord (plus META when `IsMetaKeyDown` exists) as the fallback. Test in `tests/core/options_fields_test.lua`; in-game check on a Mac client not possible here.
 
 ### 2026-11-15 — Reset walks: the feed's, Minimap's and Micro menu's movers are registered inline, so the tests pin a copy
 
