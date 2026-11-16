@@ -178,7 +178,7 @@ end)
 
 local RESOLVED = {
 	both = {
-		['Grays/Auto Vendor'] = 'and(or(quality 0, and(oldgear 10/9/0.9, !slot INVTYPE_TABARD,INVTYPE_BODY), and(binding soulbound, tt"cffff2020Classes:")), '
+		['Grays/Auto Vendor'] = 'and(or(quality 0, and(oldgear 10/9/0.9, !slot INVTYPE_BODY,INVTYPE_TABARD), and(binding soulbound, tt"cffff2020Classes:")), '
 			.. '!protected, !sub 4/5, !tt"Fishing", !tt"Blizzard Account Bound", price yes)',
 		['Container'] = 'and(or(tt"Right Click to Open", tt"Open the container", tt"Open the sack", tt"Use: collect", '
 			.. 'tt"Use: Open", tt"Flightstones"), !class 4, !class 2)',
