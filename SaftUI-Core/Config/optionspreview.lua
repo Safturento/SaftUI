@@ -299,6 +299,14 @@ end
 -- The theme the tiles and pieces are drawn in: the one in use, else Thick under Blizzard.
 local function ButtonLook() return W.BlizzardLook() and 'thick' or 'theme' end
 
+-- The second button shows held under the mouse, the third pressed: the helpers' states
+-- (st:SetState), not game textures. Hiding a button (the picker closing) clears them, so
+-- they are held again whenever the kind is laid out.
+local function HoldStates(pieces)
+	st:SetState(pieces.buttons[2], 'hover', true)
+	st:SetState(pieces.buttons[3], 'pushed', true)
+end
+
 function button.Build(area)
 	local look = ButtonLook()
 	local pieces = { area = area, look = look, tiles = {}, captions = {}, buttons = {}, thumbs = {} }
@@ -317,8 +325,7 @@ function button.Build(area)
 		thumb:EnableMouse(false)
 		pieces.thumbs[i] = thumb
 	end
-	pieces.buttons[2]:LockHighlight()
-	pieces.buttons[3]:SetButtonState('PUSHED', true)
+	HoldStates(pieces)
 
 	local check = st:CreateFrame('CheckButton', nil, pieces.tiles[4])
 	st:SkinCheckButton(check, 'bare') -- no box of its own: drawn below, Thick under Blizzard
@@ -346,6 +353,7 @@ end
 
 function button.Layout(pieces, width)
 	local look = ButtonLook()
+	HoldStates(pieces)
 	if pieces.look ~= look then
 		pieces.look = look
 		for _, tile in ipairs(pieces.tiles) do st:SetTemplate(tile, look, 'solid', 'panel') end
@@ -385,8 +393,10 @@ function button.Paint(pieces, r, g, b, a, spec)
 	thumbs[1].backdrop:SetBackdropColor(Shade('button', 'normal', 1, key, r, g, b, a))
 	thumbs[2].backdrop:SetBackdropColor(Shade('button', 'hover', 1, key, r, g, b, a))
 	thumbs[3].backdrop:SetBackdropColor(Shade('button', 'pushed', 1, key, r, g, b, a))
-	buttons[2].hover:SetVertexColor(Shade('button', 'hover', st.HOVER_TINT, key, r, g, b, a))
-	buttons[3].pushed:SetVertexColor(Shade('button', 'pushed', 1, key, r, g, b, a))
+	-- st:SkinButton keeps no highlight or pushed texture any more: the buttons' states are
+	-- drawn by the helpers (Task 9 replaces this kind), so these two follow only an old one
+	if buttons[2].hover then buttons[2].hover:SetVertexColor(Shade('button', 'hover', st.HOVER_TINT, key, r, g, b, a)) end
+	if buttons[3].pushed then buttons[3].pushed:SetVertexColor(Shade('button', 'pushed', 1, key, r, g, b, a)) end
 	pieces.checked:SetVertexColor(Shade('button', 'checked', 1, key, r, g, b, a))
 	pieces.flash:SetColorTexture(Shade('button', 'danger', FLASH_ALPHA, key, r, g, b, a))
 	pieces.locked:SetColorTexture(Shade('button', 'danger', LOCKED_ALPHA, key, r, g, b, a))

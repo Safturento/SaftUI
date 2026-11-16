@@ -3,26 +3,30 @@ local st = SaftUI
 --[[
 	st:CreateCheckButton(name, parent, style) makes a check button from
 	UICheckButtonTemplate and skins it, st:SkinCheckButton(button, style), in
-	one of three styles:
+	one of three styles. Its states are the helpers' (Widgets/states.lua):
 	  - nil, a check box: SaftUI's 12px box (panels' Theme and Background,
-	    drawn as a control) with a flat check, or under the Blizzard theme the
-	    Settings panel's box (st.ThemeArt.Control('checkbox'), ruling 3), drawn
-	    1px outside the button so the art's box is the 12px;
+	    drawn as a control), a 'check' whose checked texture is its Mark (an
+	    Accent square, floor(12 / 6) = 2 in) and whose border and fade show
+	    while it's checked; or under the Blizzard theme the Settings panel's
+	    box (st.ThemeArt.Control('checkbox'), ruling 3), drawn 1px outside the
+	    button so the art's box is the 12px;
 	  - 'button', a check button used as a button (the bags' Edit toggle, the
-	    currencies' funnel): SaftUI's box, or under Blizzard Blizzard's panel
-	    button (st:ShowPanelButton), pressed while checked;
-	  - 'bare', no box: no backdrop, and SaftUI's flat check and highlight in
-	    every theme, which its caller restyles (a currency's hidden overlay,
-	    the combined bank's eye).
+	    currencies' funnel): a 'box' selected while checked (the border and the
+	    fade, no mark), or under Blizzard Blizzard's panel button
+	    (st:ShowPanelButton), pressed while checked;
+	  - 'bare', no box: no backdrop, and in every theme a 'box' with no edge
+	    (the hover's Layer only); its checked texture is its caller's, which no
+	    pass repaints (a currency's hidden overlay, the combined bank's eye).
 	The look follows a theme switch (st:KeepOwnColors). Blizzard's art is on
 	SaftUI's own check button: its check and highlight textures, and a box
 	texture of its own kept here.
 ]]
 
--- check button -> { button, style, theme, background, checked, hover,
--- hoverBlend, box, blizzard }: its flat check and highlight textures (and the
--- highlight's blend as made), the Settings box's texture once made, and the
--- look it wears now.
+-- check button -> { button, style, theme, background, checked, hover, box,
+-- blizzard }: its checked texture (the Mark of a check box) and highlight
+-- texture (a check box's, which draws Blizzard's art under Blizzard and
+-- nothing else), the Settings box's texture once made, and the look it wears
+-- now.
 local skins = setmetatable({}, { __mode = 'k' })
 
 -- How far outside the button a check box's art is drawn: the art's box is 26
@@ -39,70 +43,55 @@ local function Outside(texture, button)
 	texture:SetPoint('BOTTOMRIGHT', button, 'BOTTOMRIGHT', BOX_OUT, -BOX_OUT)
 end
 
--- SaftUI's flat look on one of the textures: blank, filling the button, in the
--- Buttons color key at its opacity (times strength, when given).
-local function Flat(texture, button, key, strength, blend)
-	texture:SetTexture(st.BLANK_TEX)
-	texture:SetTexCoord(0, 1, 0, 1)
-	texture:ClearAllPoints()
-	texture:SetAllPoints(button)
-	texture:SetVertexColor(st:ColorRGBA('button', key, strength))
-	if blend then texture:SetBlendMode(blend) end
-end
-
--- A check box follows Buttons > Checked (its checked fill) and Hover (its
--- highlight, at st.HOVER_TINT) at once (st:FollowColor), where it draws SaftUI's flat look;
--- under Blizzard its art is white and a pass leaves it. A bare one wears the
--- flat look in every theme: its highlight follows, its checked texture is its caller's.
-local function PaintChecked(skin)
-	if not skin.blizzard then skin.checked:SetVertexColor(st:ColorRGBA('button', 'checked')) end
-end
-local function PaintHighlight(skin)
-	if not skin.blizzard then skin.hover:SetVertexColor(st:ColorRGBA('button', 'hover', st.HOVER_TINT)) end
-end
-local function PaintFlatHighlight(texture) texture:SetVertexColor(st:ColorRGBA('button', 'hover', st.HOVER_TINT)) end
-
 -- Puts a check button's look on, when its Theme and Background
--- (st:IsBlizzardLook) changed between Blizzard and the rest.
+-- (st:IsBlizzardLook) changed between Blizzard and the rest, then its states
+-- drawn again (st:RestyleStates, last: the Mark is placed or left to the art,
+-- and the mouse hooked again where a module's own SetScript dropped them).
+-- Runs after every recolor and redraw (st:KeepOwnColors).
 local function Draw(skin)
 	local button = skin.button
 	local blizzard = st:IsBlizzardLook(skin.theme, skin.background)
-	if blizzard == skin.blizzard then return end
-	skin.blizzard = blizzard
+	if blizzard ~= skin.blizzard then
+		skin.blizzard = blizzard
 
-	if skin.style == 'button' then
-		skin.checked:SetAlpha(blizzard and 0 or 1)
-		skin.hover:SetAlpha(blizzard and 0 or 1)
-		st:ShowPanelButton(button, blizzard, Checked)
-		return
+		if skin.style == 'button' then
+			st:ShowPanelButton(button, blizzard, Checked)
+		elseif blizzard then
+			local look = st.ThemeArt.Control('checkbox')
+			skin.box = skin.box or button:CreateTexture(nil, 'ARTWORK')
+			skin.box:SetAtlas(look.normal)
+			Outside(skin.box, button)
+			skin.box:Show()
+			skin.checked:SetAtlas(look.checked)
+			skin.checked:SetVertexColor(1, 1, 1, 1)
+			Outside(skin.checked, button)
+			skin.hover:SetAlpha(1)
+			skin.hover:SetAtlas(look.highlight)
+			skin.hover:SetVertexColor(1, 1, 1, 1)
+			skin.hover:SetBlendMode(look.highlightBlend)
+			Outside(skin.hover, button)
+		else
+			if skin.box then skin.box:Hide() end
+			-- the Mark again: flat, the helper places and colors it
+			skin.checked:SetTexture(st.BLANK_TEX)
+			skin.checked:SetTexCoord(0, 1, 0, 1)
+			skin.checked:SetVertexColor(1, 1, 1, 1)
+			-- the highlight is Blizzard's art alone: the Layer is SaftUI's hover
+			skin.hover:SetAlpha(0)
+		end
 	end
-
-	if blizzard then
-		local look = st.ThemeArt.Control('checkbox')
-		skin.box = skin.box or button:CreateTexture(nil, 'ARTWORK')
-		skin.box:SetAtlas(look.normal)
-		Outside(skin.box, button)
-		skin.box:Show()
-		skin.checked:SetAtlas(look.checked)
-		skin.checked:SetVertexColor(1, 1, 1, 1)
-		Outside(skin.checked, button)
-		skin.hover:SetAtlas(look.highlight)
-		skin.hover:SetVertexColor(1, 1, 1, 1)
-		skin.hover:SetBlendMode(look.highlightBlend)
-		Outside(skin.hover, button)
-	else
-		if skin.box then skin.box:Hide() end
-		Flat(skin.checked, button, 'checked')
-		Flat(skin.hover, button, 'hover', st.HOVER_TINT, skin.hoverBlend)
-	end
+	st:RestyleStates(button)
 end
 
 -- The panel button's pressed look follows the check: set by code, or by a
 -- click (which the game checks in its own code, before OnClick; callers set
--- their own OnClick, so it's heard after, in PostClick).
+-- their own OnClick, so it's heard after, in PostClick). Selected follows it
+-- too, whatever the look.
 local function Repaint(button)
 	local skin = skins[button]
-	if skin and skin.blizzard then st:ShowPanelButton(button, true, Checked) end
+	if not skin then return end
+	if skin.blizzard and skin.style == 'button' then st:ShowPanelButton(button, true, Checked) end
+	st:SetState(button, 'selected', button:GetChecked() and true or false)
 end
 
 -- The profile's panels font (`panels.font`: it has no row on the Fonts tab, since no
@@ -120,18 +109,6 @@ function st:SkinCheckButton(button, style)
 
 	button:SetFrameLevel(button:GetFrameLevel()+1)
 
-	local checked = button:CreateTexture(nil, 'OVERLAY')
-	checked:SetTexture(self.BLANK_TEX)
-	checked:SetVertexColor(st:ColorRGBA('button', 'checked'))
-	checked:SetAllPoints(button)
-	button:SetCheckedTexture(checked)
-
-	local hover = button:CreateTexture(nil, 'OVERLAY')
-	hover:SetTexture(self.BLANK_TEX)
-	hover:SetVertexColor(st:ColorRGBA('button', 'hover', st.HOVER_TINT))
-	hover:SetAllPoints(button)
-	button:SetHighlightTexture(hover, 'BLEND') -- handed no blend mode, a highlight is additive
-
 	local name = button:GetName()
 	local text = button.Text or button.Label or name and _G[name..'Text']
 	if text then
@@ -148,25 +125,56 @@ function st:SkinCheckButton(button, style)
 	end
 
 	if style == 'bare' then
-		-- Only its highlight follows: its caller restyles the checked texture (the
-		-- bags' currency veil and bank eye), which no pass may repaint.
-		st:FollowColor(hover, 'button', 'hover', PaintFlatHighlight)
+		-- A checked texture for its caller to restyle (the bags' currency veil and
+		-- bank eye): flat, nothing of SaftUI's follows it.
+		local checked = button:CreateTexture(nil, 'OVERLAY')
+		checked:SetTexture(self.BLANK_TEX)
+		checked:SetAllPoints(button)
+		button:SetCheckedTexture(checked)
+		-- A hover Layer only, in every theme.
+		local skin = { button = button, style = style, theme = 'none', background = 'solid', blizzard = false }
+		skins[button] = skin
+		st:AddStates(button, 'box', { edge = false, blizzard = function() return false end })
+		st:KeepOwnColors(skin, Draw)
 		return
 	end
+
+	-- The checked texture: a check box's Mark; a 'button' style box shows its
+	-- checked state as the box's own (Edge and Fill), so none is drawn.
+	local checked, hover
+	if style == 'button' then
+		button:SetCheckedTexture('')
+	else
+		checked = button:CreateTexture(nil, 'OVERLAY')
+		checked:SetTexture(self.BLANK_TEX)
+		checked:SetAllPoints(button)
+		button:SetCheckedTexture(checked)
+		-- A highlight for Blizzard's art alone (it shows under Blizzard, held at
+		-- alpha 0 otherwise): under SaftUI's look the hover is the Layer.
+		hover = button:CreateTexture(nil, 'OVERLAY')
+		hover:SetTexture(self.BLANK_TEX)
+		hover:SetAllPoints(button)
+		hover:SetAlpha(0)
+		button:SetHighlightTexture(hover, 'BLEND') -- handed no blend mode, a highlight is additive
+	end
+
 	-- It wears SaftUI's flat look, just made.
 	local skin = {
 		button = button, style = style, theme = panels.theme, background = panels.background,
-		checked = checked, hover = hover, hoverBlend = hover:GetBlendMode(), blizzard = false,
+		checked = checked, hover = hover, blizzard = false,
 	}
 	skins[button] = skin
-	if style == 'button' then
-		hooksecurefunc(button, 'SetChecked', Repaint)
-		button:HookScript('PostClick', Repaint)
-	end
+	st:AddStates(button, style == 'button' and 'box' or 'check', {
+		edge = 'theme',
+		mark = checked,
+		blizzard = function() return st:IsBlizzardLook(skin.theme, skin.background) end,
+	})
+	hooksecurefunc(button, 'SetChecked', Repaint)
+	button:HookScript('PostClick', Repaint)
 	st:KeepOwnColors(skin, Draw)
-	st:FollowColor(skin, 'button', 'checked', PaintChecked)
-	st:FollowColor(skin, 'button', 'hover', PaintHighlight)
+	skin.blizzard = nil
 	Draw(skin)
+	if button:GetChecked() then st:SetState(button, 'selected', true) end
 end
 
 function st:CreateCheckButton(name, parent, style)

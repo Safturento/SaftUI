@@ -1,8 +1,10 @@
 -- Core's widgets follow a color at once (live colors, Task 2): a SaftUI
--- button's highlight and pressed fill, a check box's checked fill and
--- highlight, a scroll bar thumb, a radio group's picked button, an action
--- button's hover, the resize corner, a close button, and the edit mode grid's
--- centre lines. Each case draws the widget, then changes the color as an edit
+-- button's states, a check box's mark and edge, a scroll bar thumb, a radio
+-- group's picked button, an action button's hover and the resize corner (each
+-- the Accent's, through the helpers: Widgets/states.lua), a close button, and
+-- the edit mode grid's centre lines. What each state draws is in
+-- widget_states_test.lua; here each follows a change of the Accent (and ignores
+-- the Buttons colors Normal, Hover, Pushed and Checked, which they no longer read). Each case draws the widget, then changes the color as an edit
 -- does outside an edit (set the color, say st:ColorChanged: only that color's
 -- pass runs, so a follower under the wrong key fails) and reads it back; the cost cases
 -- measure st:ColorChanged outside an edit (tests/lib/color_cost.lua).
@@ -15,6 +17,7 @@
 local T = load_test_file('lib/theme_helpers.lua')
 local C = load_test_file('lib/color_cost.lua')
 local text = T.text
+local function SL_rgb(t) return text(t.r, t.g, t.b) end
 
 local st
 -- A fresh world: Core's helpers, the widgets and edit mode's real files.
@@ -83,99 +86,112 @@ end
 
 ------------------------------------------------------------------ one case a reader
 
-test("a SaftUI button's highlight and pressed fill follow Buttons > Hover (at 0.4) and Pushed at their opacity; Normal changes neither", function()
+-- What a state's color is now (the cache), as the helpers draw it.
+local function state(name) return text(st:StateColor(name)) end
+local function layer_of(frame) return text(st:StateLook(frame).layer.r, st:StateLook(frame).layer.g, st:StateLook(frame).layer.b, st:StateLook(frame).layer.a) end
+
+test("a SaftUI button's hover and pushed tint follow the Accent; the Buttons colors change neither", function()
 	reset_colors()
 	local button = CreateFrame('Button', nil, UIParent)
 	st:SkinButton(button)
-	pick('button', 'hover', 0.2, 0.4, 0.6, 0.5)
-	eq(text(button.hover:GetVertexColor()), text(0.2, 0.4, 0.6, 0.5 * 0.4), 'the highlight follows Hover, 0.4 times its 50%')
-	pick('button', 'pushed', 0.6, 0.4, 0.2, 0.5)
-	eq(text(button.pushed:GetVertexColor()), text(0.6, 0.4, 0.2, 0.5), 'the pressed fill follows Pushed')
-	local hover, pushed = text(button.hover:GetVertexColor()), text(button.pushed:GetVertexColor())
+	stub.fire_script(button, 'OnEnter', true)
+	accent(0.2, 0.4, 0.6)
+	eq(layer_of(button), state('hover'), 'the hover follows the Accent')
+	check(st:StateLook(button).layer.b > st:StateLook(button).layer.r, 'and it is the new one: ' .. layer_of(button))
+	stub.fire_script(button, 'OnMouseDown', 'LeftButton')
+	eq(layer_of(button), state('pushed'), 'pushed follows it too')
+	local before = layer_of(button)
+	pick('button', 'hover', 0.9, 0.9, 0.1)
+	pick('button', 'pushed', 0.9, 0.9, 0.1)
 	pick('button', 'normal', 0.9, 0.9, 0.1)
-	eq(text(button.hover:GetVertexColor()), hover, 'Normal leaves the highlight')
-	eq(text(button.pushed:GetVertexColor()), pushed, 'and the pressed fill')
 	pick('button', 'checked', 0.9, 0.9, 0.1)
-	eq(text(button.hover:GetVertexColor()), hover, 'Checked leaves the highlight')
+	eq(layer_of(button), before, 'Buttons > Hover, Pushed, Normal and Checked are not read')
+	restore_accent()
 end)
 
-test("a check box's checked fill and highlight follow Checked and Hover (at 0.4); a bare one too; none under Blizzard", function()
+test("a check box's mark and edge follow the Accent; a bare one's checked texture follows nothing; none under Blizzard", function()
 	reset_colors()
 	local box = CreateFrame('CheckButton', nil, UIParent)
 	st:SkinCheckButton(box)
 	local bare = CreateFrame('CheckButton', nil, UIParent)
 	st:SkinCheckButton(bare, 'bare')
-	pick('button', 'checked', 0.9, 0.2, 0.6, 0.5)
-	eq(text(box:GetCheckedTexture():GetVertexColor()), text(0.9, 0.2, 0.6, 0.5), 'the checked fill follows Checked')
-	pick('button', 'hover', 0.9, 0.9, 0.9)
-	eq(text(box:GetCheckedTexture():GetVertexColor()), text(0.9, 0.2, 0.6, 0.5), 'Hover leaves the checked fill')
+	box:SetChecked(true)
+	accent(0.9, 0.2, 0.6)
+	local look = st:StateLook(box)
+	eq(text(look.mark.r, look.mark.g, look.mark.b), text(0.9, 0.2, 0.6), 'the mark is the Accent')
+	eq(T.edge(box.backdrop), text(0.9, 0.2, 0.6, 1), 'and the edge')
 	-- A bare one is restyled by its caller (the bags' veil and eye): its checked texture follows nothing.
 	bare:GetCheckedTexture():SetVertexColor(0, 0, 0, 0.6)
-	pick('button', 'hover', 0.1, 0.8, 0.3, 0.5)
-	eq(text(box:GetHighlightTexture():GetVertexColor()), text(0.1, 0.8, 0.3, 0.2), 'the highlight follows Hover at 0.4')
-	eq(text(bare:GetHighlightTexture():GetVertexColor()), text(0.1, 0.8, 0.3, 0.2), 'a bare one: its highlight follows Hover')
+	accent(0.1, 0.8, 0.3)
 	eq(text(bare:GetCheckedTexture():GetVertexColor()), text(0, 0, 0, 0.6), "a bare one: its caller's checked color stays")
-	st:ColorsChanged('button')
-	eq(text(bare:GetCheckedTexture():GetVertexColor()), text(0, 0, 0, 0.6), 'through a whole Buttons pass too')
-	local before = text(box:GetCheckedTexture():GetVertexColor())
-	pick('button', 'pushed', 0.3, 0.3, 0.3)
-	eq(text(box:GetCheckedTexture():GetVertexColor()), before, 'Pushed is not read')
+	st:ColorsChanged('button'); st:ColorsChanged('accent')
+	eq(text(bare:GetCheckedTexture():GetVertexColor()), text(0, 0, 0, 0.6), 'through a whole pass too')
+	pick('button', 'checked', 0.3, 0.3, 0.3)
+	eq(text(box:GetCheckedTexture():GetVertexColor()), text(0.1, 0.8, 0.3, 1), 'Buttons > Checked is not read')
 
 	T.theme('blizzard')
 	eq(text(box:GetCheckedTexture():GetVertexColor()), text(1, 1, 1, 1), 'Blizzard: the art is white')
-	pick('button', 'hover', 0.5, 0.5, 0.9)
-	pick('button', 'checked', 0.5, 0.5, 0.9)
+	accent(0.5, 0.5, 0.9)
 	eq(text(box:GetCheckedTexture():GetVertexColor()), text(1, 1, 1, 1), 'and a pass does not tint it')
 	eq(text(box:GetHighlightTexture():GetVertexColor()), text(1, 1, 1, 1), 'nor its highlight')
 	T.theme('thick')
-	eq(text(box:GetCheckedTexture():GetVertexColor()), text(0.5, 0.5, 0.9, 1), 'back under Thick it draws the color as it is now')
+	local back = st:StateLook(box).mark
+	eq(text(back.r, back.g, back.b), text(0.5, 0.5, 0.9), 'back under Thick it draws the Accent as it is now')
+	restore_accent()
 end)
 
-test("a 'button'-style check box (the currency funnel) follows Checked and Hover the same way; none under Blizzard", function()
+test("a 'button'-style check box (the currency funnel) follows the Accent while checked; none under Blizzard", function()
 	reset_colors()
 	local box = CreateFrame('CheckButton', nil, UIParent)
 	st:SkinCheckButton(box, 'button')
-	pick('button', 'checked', 0.9, 0.2, 0.6, 0.5)
-	eq(text(box:GetCheckedTexture():GetVertexColor()), text(0.9, 0.2, 0.6, 0.5), 'the checked fill: Checked')
-	pick('button', 'hover', 0.1, 0.8, 0.3, 0.5)
-	eq(text(box:GetHighlightTexture():GetVertexColor()), text(0.1, 0.8, 0.3, 0.2), 'the highlight: Hover at 0.4')
+	box:SetChecked(true)
+	accent(0.9, 0.2, 0.6)
+	eq(T.edge(box.backdrop), text(0.9, 0.2, 0.6, 1), 'the checked edge: the Accent')
+	local fill = st:StateLook(box).fill
+	eq(text(fill.r, fill.g, fill.b), text(0.9, 0.2, 0.6), 'and the fade')
 	T.theme('blizzard')
-	local fill = text(box:GetCheckedTexture():GetVertexColor())
-	pick('button', 'checked', 0.5, 0.5, 0.9)
-	eq(text(box:GetCheckedTexture():GetVertexColor()), fill, 'Blizzard: not painted')
+	eq(st:StateLook(box).fill.alpha, 0, 'Blizzard: held')
+	local edge = T.edge(box.backdrop)
+	accent(0.5, 0.5, 0.9)
+	eq(T.edge(box.backdrop), edge, 'Blizzard: its border is not painted')
+	restore_accent()
 end)
 
-test('a scroll bar thumb follows the key of its state: Normal at rest, Hover under the mouse, Pushed held', function()
+test('a scroll bar thumb rests at kit-edge, and follows the Accent under the mouse and held; Buttons > Normal is not read', function()
 	reset_colors()
 	local bar = scrollBar()
 	st:SkinNewScrollBar(bar)
 	local thumb = bar:GetThumb()
 	local function fill() return text(thumb.backdrop:GetBackdropColor()) end
+	local rest = text(unpack(st.States.THUMB_REST))
 	pick('button', 'normal', 0.2, 0.3, 0.4)
-	eq(fill(), text(0.2, 0.3, 0.4, 1), 'at rest: Normal')
-	stub.fire_script(thumb, 'OnEnter')
-	pick('button', 'normal', 0.3, 0.3, 0.4)
-	eq(fill(), text(0.3, 0.5, 0.7, 1), 'under the mouse: Normal changes nothing (it shows Hover, the default here)')
-	pick('button', 'hover', 0.5, 0.6, 0.7)
-	eq(fill(), text(0.5, 0.6, 0.7, 1), 'under the mouse: Hover')
-	stub.fire_script(thumb, 'OnMouseDown')
-	pick('button', 'pushed', 0.8, 0.1, 0.1, 0.5)
-	eq(fill(), text(0.8, 0.1, 0.1, 0.5), 'held: Pushed')
-	stub.fire_script(thumb, 'OnMouseUp')
-	stub.fire_script(thumb, 'OnLeave')
-	eq(fill(), text(0.3, 0.3, 0.4, 1), 'at rest again: Normal as it is now')
+	eq(fill(), rest, 'at rest: kit-edge, whatever Normal is')
+	stub.fire_script(thumb, 'OnEnter', true)
+	accent(0.5, 0.6, 0.7)
+	local over = st:StateLook(thumb).solid
+	check(over.r ~= st.States.THUMB_REST[1] and fill() ~= rest, 'under the mouse: lighter, the Accent: ' .. fill())
+	eq(text(over.r, over.g, over.b), text(thumb.backdrop:GetBackdropColor()):sub(1, 14), 'and it is the one drawn')
+	stub.fire_script(thumb, 'OnMouseDown', 'LeftButton')
+	local held = fill()
+	check(held ~= text(over.r, over.g, over.b, 1), 'held: the pushed tone ' .. held)
+	stub.fire_script(thumb, 'OnMouseUp', 'LeftButton')
+	stub.fire_script(thumb, 'OnLeave', true)
+	eq(fill(), rest, 'at rest again')
 	T.theme('blizzard')
 	local before = fill()
-	pick('button', 'normal', 0.9, 0.9, 0.9)
+	accent(0.9, 0.9, 0.9)
 	eq(fill(), before, 'under Blizzard the thumb is not painted')
+	restore_accent()
 end)
 
-test("st:SkinActionButton's hover follows the Accent; under Blizzard's art it is not painted", function()
+test("st:SkinActionButton's hover and pushed follow the Accent; under Blizzard's art they are not painted", function()
 	reset_colors()
 	local button = CreateFrame('CheckButton', nil, UIParent)
 	st:SkinActionButton(button)
 	accent(0.9, 0.5, 0.1)
-	eq(text(button.hover:GetVertexColor()), text(0.9, 0.5, 0.1, 1), 'the hover is the Accent')
+	local hover = st:StateLook(button).hover_piece
+	eq(text(hover.r, hover.g, hover.b, hover.a), state('hover'), 'the hover is the tone of the Accent')
+	check(hover.r > hover.b, 'and it is the new Accent: ' .. SL_rgb(hover))
 	restore_accent()
 
 	T.theme('blizzard')
@@ -186,13 +202,19 @@ test("st:SkinActionButton's hover follows the Accent; under Blizzard's art it is
 	restore_accent()
 end)
 
-test("the resize corner's pushed and highlight textures follow Hover", function()
+test("the resize corner's states follow the Accent", function()
 	reset_colors()
 	local frame = resizable()
 	st:EnableResizing(frame)
-	pick('button', 'hover', 0.9, 0.2, 0.6, 0.5)
-	eq(text(frame.ResizeButton:GetPushedTexture():GetVertexColor()), text(0.9, 0.2, 0.6, 0.5), 'pushed')
-	eq(text(frame.ResizeButton:GetHighlightTexture():GetVertexColor()), text(0.9, 0.2, 0.6, 0.5), 'highlight')
+	stub.fire_script(frame.ResizeButton, 'OnEnter', true)
+	accent(0.9, 0.2, 0.6)
+	local r, g, b = frame.ResizeButton:GetNormalTexture():GetVertexColor()
+	check(r > b and r > g, 'under the mouse: the lighter tone of the new Accent: ' .. text(r, g, b))
+	local pr, pg, pb = frame.ResizeButton:GetHighlightTexture():GetVertexColor()
+	eq(text(pr, pg, pb), text(r, g, b), 'highlight')
+	pick('button', 'hover', 0.1, 0.1, 0.9)
+	eq(T.rgb(frame.ResizeButton:GetNormalTexture():GetVertexColor()), T.rgb(r, g, b), 'Buttons > Hover is not read')
+	restore_accent()
 end)
 
 test("a radio group's picked button follows the Accent; the others keep the theme's border", function()
@@ -296,10 +318,12 @@ test('a whole pass paints every reader as the per-key passes do', function()
 	local button = CreateFrame('Button', nil, UIParent); st:SkinButton(button)
 	local frame = CreateFrame('Frame', nil, UIParent)
 	local close = st:CreateCloseButton(frame)
-	color('button', 'hover'):SetRGB(0.3, 0.2, 0.1)
+	stub.fire_script(button, 'OnEnter', true)
+	st.config.profile.theme.accent:SetRGB(0.3, 0.2, 0.1)
 	color('text', 'muted'):SetRGB(0.6, 0.5, 0.4)
-	st:ColorsChanged('button'); st:ColorsChanged('text')
-	eq(text(button.hover:GetVertexColor()), text(0.3, 0.2, 0.1, 0.4), 'a button highlight, Hover at 0.4')
+	st:ColorsChanged('accent'); st:ColorsChanged('text')
+	eq(layer_of(button), state('hover'), 'a button hover tint, the tone of the Accent')
+	restore_accent()
 	eq(text(close.icon:GetVertexColor()), text(0.6, 0.5, 0.4, 1), 'a close cross')
 end)
 
@@ -318,16 +342,21 @@ for _, theme in ipairs({ 'thick', 'thin', 'blizzard' }) do
 			local action = CreateFrame('CheckButton', nil, UIParent); st:SkinActionButton(action)
 			list[#list + 1] = { button, box, bar, action }
 		end
+		-- A few in each state, so a pass has something to color (the rest cost one call).
+		for i = 1, 10 do
+			stub.fire_script(list[i][1], 'OnEnter', true)
+			list[i][2]:SetChecked(true)
+			stub.fire_script(list[i][3]:GetThumb(), 'OnEnter', true)
+		end
 		-- Each widget colored once: a cold stub widget makes its table at its first color call.
-		st:ColorChanged('button', 'normal'); st:ColorChanged('button', 'hover'); st:ColorChanged('button', 'pushed')
-		st:ColorChanged('button', 'checked')
 		st:ColorChanged('accent')
 		local flip = 0
 		local m = C.measure(function()
 			flip = 1 - flip
-			color('button', 'hover'):SetRGB(0.2 + flip * 0.1, 0.3, 0.4)
-			st:ColorChanged('button', 'hover')
+			st.config.profile.theme.accent:SetRGB(0.2 + flip * 0.1, 0.5, 0.8)
+			st:ColorChanged('accent')
 		end, 100)
+		restore_accent()
 		eq(m.made, 0, 'nothing made')
 		eq(m.forbidden.total, 0, 'nothing forbidden: ' .. (function()
 			local out = {}
@@ -335,7 +364,7 @@ for _, theme in ipairs({ 'thick', 'thin', 'blizzard' }) do
 			return table.concat(out, ',')
 		end)())
 		check(m.kb < 4, 'garbage over 100 passes: ' .. m.kb .. ' KB')
-		if theme ~= 'blizzard' then check(m.calls.total >= 100 * 100, 'it does color: ' .. m.calls.total) end
+		if theme ~= 'blizzard' then check(m.calls.total >= 100 * 30, 'it does color: ' .. m.calls.total) end
 		C.print('core widgets (' .. theme .. ', 200 widgets)', m)
 		local a = C.measure(function() st:ColorChanged('accent') end, 100)
 		eq(a.forbidden.total, 0, 'an Accent pass: nothing forbidden')

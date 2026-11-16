@@ -126,11 +126,6 @@ end
 -- Core's Button text setting, read when a text follows it.
 local function ButtonsFont() return st.config.profile.buttons.font end
 
--- hover -> the blend button:SetHighlightTexture gave the flat hover
--- st:SkinActionButton made, so it goes back on after Blizzard's state art
--- (which sets its own). Kept here, not on the texture.
-local hoverBlends = setmetatable({}, { __mode = 'k' })
-
 -- Puts a font setting on every text of button (its font strings, kept as the
 -- Button text setting where follow is true) and on its normal, highlight and
 -- disabled font objects, and nothing else: what st:SkinActionButton does with
@@ -161,14 +156,11 @@ end
 
 -- Skins button with config (the profile's buttons by default): its backdrop in
 -- config.theme and config.background, drawn as kind ('action' by default; a
--- bag slot is a 'slot'), and config.font and config.trueSize.
--- hover -> whether it is SaftUI's flat tint (the Accent), not Blizzard's art,
--- as the last skinning left it: only the flat one follows the Accent.
-local flatHovers = setmetatable({}, { __mode = 'k' })
-local function PaintHover(hover)
-	if flatHovers[hover] then hover:SetVertexColor(st:Color('accent'):GetRGB()) end
-end
-
+-- bag slot is a 'slot'), and config.font and config.trueSize. Its hover and
+-- pushed textures are an 'icon' state frame's game pieces (st:AddStates,
+-- game = true): SaftUI's look is a tint over the icon, T+ and T- of the Accent,
+-- both BLEND; under Blizzard they are Blizzard's state art, which the helper
+-- leaves alone.
 function st:SkinActionButton(button, config, kind)
 	-- With no config the button wears Core's own button settings, and its texts
 	-- follow their font (Button text, Global settings > Fonts). A config of a
@@ -260,10 +252,10 @@ function st:SkinActionButton(button, config, kind)
 	end
 
 	-- These are made once; skinning again (e.g. on a profile change) only
-	-- re-applies their color and inset, which follow the theme. Under Blizzard
-	-- the pushed and highlight textures are Blizzard's state art for the kind
-	-- (st.ThemeArt.State), over the ring's footprint, the whole button, with no
-	-- tint; otherwise SaftUI's flat textures over the icon.
+	-- re-applies their place, layer and look, which follow the theme. Under
+	-- Blizzard the pushed and highlight textures are Blizzard's state art for the
+	-- kind (st.ThemeArt.State), over the ring's footprint, with no tint;
+	-- otherwise SaftUI's flat textures over the icon, which the helper colors.
 	kind = kind or 'action'
 	local look = st:ResolveTheme(config.theme, config.background, kind)
 	local state = look and look.name == 'blizzard' and st.ThemeArt.State(kind) or nil
@@ -273,33 +265,21 @@ function st:SkinActionButton(button, config, kind)
 		local hover = button:CreateTexture(nil, 'OVERLAY')
 		hover:SetTexture(st.BLANK_TEX)
 		button.hover = hover
-		button:SetHighlightTexture(hover)
-		hoverBlends[hover] = hover:GetBlendMode()
+		button:SetHighlightTexture(hover, 'BLEND')
 	end
 	if button.hover then
-		st:FollowColor(button.hover, 'accent', nil, PaintHover)
 		if hoverArt then
 			local blend = state.highlightBlend or 'ADD'
 			-- The setter first, then the art, kept in the hover's layer, where
 			-- the client shows it only under the mouse (HOVER_LAYER).
 			button:SetHighlightTexture(button.hover, blend)
 			st.ThemeArt.StyleState(button.hover, hoverArt, button, blend, st.ThemeArt.HOVER_LAYER)
-			flatHovers[button.hover] = false
 		else
 			button.hover:SetTexture(st.BLANK_TEX)
 			button.hover:SetTexCoord(0, 1, 0, 1)
 			-- Shown only under the mouse in this layer; moved out, all the time.
 			button.hover:SetDrawLayer(st.ThemeArt.HOVER_LAYER, 0)
-			-- The blend the hover was made with (most likely the client's
-			-- additive default), which Blizzard's art changed: a tint over the
-			-- icon, as before the Blizzard theme. BLEND would make it opaque.
-			if hoverBlends[button.hover] then
-				button.hover:SetBlendMode(hoverBlends[button.hover])
-			end
 			button.hover:ClearAllPoints()
-			-- button.hover:SetVertexColor(1, 1, 1, .1)
-			button.hover:SetVertexColor(st:Color('accent'):GetRGB())
-			flatHovers[button.hover] = true
 			st:SetInside(button.hover, inset)
 		end
 	end
@@ -307,7 +287,6 @@ function st:SkinActionButton(button, config, kind)
 	if button.SetPushedTexture and not button.pushed then
 		local pushed = button:CreateTexture(nil, 'OVERLAY')
 		pushed:SetTexture(st.BLANK_TEX)
-		pushed:SetVertexColor(0, 0, 0, .1)
 		button.pushed = pushed
 		button:SetPushedTexture(pushed)
 	end
@@ -322,7 +301,6 @@ function st:SkinActionButton(button, config, kind)
 			button.pushed:SetTexture(st.BLANK_TEX)
 			button.pushed:SetTexCoord(0, 1, 0, 1)
 			button.pushed:SetDrawLayer('OVERLAY', 0)
-			button.pushed:SetVertexColor(0, 0, 0, .1)
 			button.pushed:ClearAllPoints()
 			st:SetInside(button.pushed, inset)
 		end
@@ -337,6 +315,15 @@ function st:SkinActionButton(button, config, kind)
 	end
 	if button.disabled then
 		st:SetInside(button.disabled, inset)
+	end
+
+	-- Last: the states, over the two textures above (adopted, never made twice).
+	-- The Blizzard look is the one the textures wear now.
+	if button.hover or button.pushed then
+		st:AddStates(button, 'icon', {
+			game = true,
+			blizzard = function() return st:IsBlizzardLook(config.theme, config.background) and st.ThemeArt.State(kind) ~= nil end,
+		})
 	end
 end
 
@@ -355,13 +342,14 @@ local editBoxBorders = setmetatable({}, { __mode = 'k' })
 local BORDER_KEYS = { 'Left', 'Right', 'Middle', 'Mid', 'focusLeft', 'focusRight', 'focusMid' }
 local NO_BORDERS = {}
 
--- A focused box's white border, kept through a theme recolor. A box drawn
--- with None has no backdrop to color, and a control's border under the
--- Blizzard theme is left alone (st:SetBorderColor), so none there.
+-- A focused box's border in the Accent, kept through a theme recolor: the
+-- 'focus' state of its backdrop of SaftUI's (a 'box', edge 'theme', no mouse
+-- hooks: a box is not hovered). A box drawn with None has no backdrop to color,
+-- and a control's border under the Blizzard theme is left alone, so none there.
 local function ColorFocused(editbox)
 	local backdrop = editBoxBackdrops[editbox]
-	if editbox:HasFocus() and backdrop then
-		st:SetBorderColor(backdrop, 1, 1, 1, 1)
+	if backdrop and st:GetState(backdrop, 'focus') ~= nil then
+		st:SetState(backdrop, 'focus', editbox:HasFocus() and true or false)
 	end
 end
 
@@ -379,7 +367,11 @@ local function ShowBorders(editbox)
 end
 
 local function DrawEditBox(editbox, look)
-	st:SetBackdropIn(editBoxBackdrops, editbox, look[1], look[2], 'control')
+	local backdrop = st:SetBackdropIn(editBoxBackdrops, editbox, look[1], look[2], 'control')
+	if backdrop then
+		-- registered once, restyled by each draw (the look and its inset may have changed)
+		st:AddStates(backdrop, 'box', { edge = 'theme', wire = false })
+	end
 	ShowBorders(editbox)
 end
 
@@ -392,7 +384,7 @@ end
 
 -- Skins an edit box: its own border textures concealed, SaftUI's backdrop in
 -- theme and background (Use SaftUI's theme and Solid by default), drawn as a
--- control, font for its text, and a white border while it has focus. Under
+-- control, font for its text, and an Accent border while it has focus. Under
 -- the Blizzard theme the box's own border textures show instead, and there's
 -- no backdrop of SaftUI's.
 function st:SkinEditBox(editbox, theme, background, font)
@@ -427,6 +419,7 @@ function st:SkinEditBox(editbox, theme, background, font)
 	-- since), not the one it was skinned with.
 	editbox:HookScript('OnEditFocusLost', function(self)
 		DrawEditBox(self, editBoxLooks[self])
+		ColorFocused(self)
 	end)
 end
 
@@ -452,9 +445,6 @@ function st:ApplyEditBoxFont(editbox, font)
 	st:ApplyFont(text, font)
 end
 
--- The corner's pushed and highlight textures are Buttons > Hover at its opacity.
-local function PaintCorner(texture) texture:SetVertexColor(st:ColorRGBA('button', 'hover')) end
-
 function st:EnableResizing(frame, resizeButton, callback)
 	if resizeButton then
 		frame.ResizeButton = resizeButton
@@ -477,16 +467,19 @@ function st:EnableResizing(frame, resizeButton, callback)
 	st:SetSize(frame.ResizeButton, 16, 16)
 	frame.ResizeButton:SetPoint('BOTTOMRIGHT', frame, 'BOTTOMRIGHT', 0, 0)
 
-	frame.ResizeButton:SetNormalTexture(st.textures.cornerbr)
-
-	frame.ResizeButton:SetPushedTexture(st.textures.cornerbr)
-	frame.ResizeButton:GetPushedTexture():SetVertexColor(st:ColorRGBA('button', 'hover'))
-	st:FollowColor(frame.ResizeButton:GetPushedTexture(), 'button', 'hover', PaintCorner)
-
-	frame.ResizeButton:SetHighlightTexture(st.textures.cornerbr)
-	frame.ResizeButton:GetHighlightTexture():SetVertexColor(st:ColorRGBA('button', 'hover'))
-	st:FollowColor(frame.ResizeButton:GetHighlightTexture(), 'button', 'hover', PaintCorner)
-	frame.ResizeButton:GetHighlightTexture():SetBlendMode('BLEND')
+	-- The corner is a 'glyph': its normal, pushed and highlight textures are one
+	-- picture in three states, white at rest, the lighter tone under the mouse
+	-- and held (the helper's, from the mouse hooks).
+	local corner = frame.ResizeButton
+	corner:SetNormalTexture(st.textures.cornerbr)
+	corner:SetPushedTexture(st.textures.cornerbr)
+	corner:SetHighlightTexture(st.textures.cornerbr)
+	corner:GetHighlightTexture():SetBlendMode('BLEND')
+	st:AddStates(corner, 'glyph', {
+		glyph = { corner:GetNormalTexture(), corner:GetPushedTexture(), corner:GetHighlightTexture() },
+		glyphRest = function() return 1, 1, 1 end,
+	})
+	st:PaintStates(corner)
 
 	frame.ResizeButton:SetFrameLevel(4)
 end
