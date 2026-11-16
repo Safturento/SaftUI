@@ -299,9 +299,12 @@ function INV:CategoryEditorOptions(id, tab, items)
 		return items
 	end
 
-	local windows, sorting = { bag = WINDOW_NAMES.bag, bank = WINDOW_NAMES.bank }, { 'bag', 'bank' }
+	-- The combined bank is the default bank on both clients, so it is always
+	-- listed; the warband bank only where there is one.
+	local windows = { bag = WINDOW_NAMES.bag, bank = WINDOW_NAMES.bank, combinedbank = WINDOW_NAMES.combinedbank }
+	local sorting = { 'bag', 'bank', 'combinedbank' }
 	if self:HasWarbandBank() then
-		windows.warband, windows.combinedbank = WINDOW_NAMES.warband, WINDOW_NAMES.combinedbank
+		windows.warband = WINDOW_NAMES.warband
 		sorting = { 'bag', 'bank', 'warband', 'combinedbank' }
 	end
 
