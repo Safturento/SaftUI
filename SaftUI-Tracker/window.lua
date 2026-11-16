@@ -737,7 +737,14 @@ function TR:DrawWindow()
 	-- draws it in the global one).
 	local bar = self.scroll.ScrollBar
 	local thumb = bar and bar.GetThumb and bar:GetThumb()
-	if thumb then st:SetBackdrop(thumb, config.theme, 'solid', 'control') end
+	if thumb then
+		st:SetBackdrop(thumb, config.theme, 'solid', 'control')
+		-- the redraw reset the thumb's fill: its states and rest color put back
+		if st:GetState(thumb, 'hover') ~= nil then
+			st:RestyleStates(thumb)
+			st:PaintStates(thumb)
+		end
+	end
 	self:DrawHeader()
 	self:LayoutWindow()
 	self:UpdateWatcher()

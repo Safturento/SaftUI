@@ -108,6 +108,15 @@ local filterButton, jumpButton = feed.filterButton, feed.reset_button
 
 ------------------------------------------------------------------ the buttons
 
+test('a feed button made by CreateFeedIconButton alone hovers (its own SetScript keeps the hover)', function()
+	reset()
+	local lone = LT:CreateFeedIconButton('SaftUITestLoneFeedButton', st.icons.funnel)
+	stub.fire_script(lone, 'OnEnter', true)
+	eq(st:GetState(lone, 'hover'), true)
+	stub.fire_script(lone, 'OnLeave', true)
+	eq(st:GetState(lone, 'hover'), false)
+end)
+
 test('the filter button is the funnel and the jump button the arrow, 16 px icons on 20 px buttons, no letters', function()
 	reset()
 	eq(filterButton.icon:GetTexture(), st.icons.funnel, "Lucide's funnel")
@@ -120,17 +129,18 @@ test('the filter button is the funnel and the jump button the arrow, 16 px icons
 	end
 end)
 
-test('an icon is tinted as the theme text is, lit blue under the mouse, and follows a Colors -> Text change', function()
+test('an icon is tinted as the theme text is, the lighter tone under the mouse, and follows a Colors -> Text change', function()
 	reset()
 	local colors = profile.colors.text
+	local lighter = rgb(st:StateColor('edgeHover'))
 	eq(tint(filterButton), rgb(colors.normal:GetRGB()), 'filter: the text color at rest')
 	stub.fire_script(filterButton, 'OnEnter', true)
-	eq(tint(filterButton), rgb(profile.theme.accent:GetRGB()), 'filter: lit in the accent under the mouse')
+	eq(tint(filterButton), lighter, 'filter: the lighter tone under the mouse')
 	stub.fire_script(filterButton, 'OnLeave', true)
 	eq(tint(filterButton), rgb(colors.normal:GetRGB()), 'filter: back at rest')
 
 	stub.fire_script(jumpButton, 'OnEnter', true)
-	eq(tint(jumpButton), rgb(profile.theme.accent:GetRGB()), 'jump: lit in the accent under the mouse')
+	eq(tint(jumpButton), lighter, 'jump: the lighter tone under the mouse')
 	stub.fire_script(jumpButton, 'OnLeave', true)
 	eq(tint(jumpButton), rgb(colors.normal:GetRGB()), 'jump: back at rest')
 
@@ -143,17 +153,19 @@ test('an icon is tinted as the theme text is, lit blue under the mouse, and foll
 	LT:ColorFeed('text')
 end)
 
-test('a lit feed button follows an accent change at once (Review Focus 4)', function()
+test('a hovered feed button follows an accent change at once (the states\' own pass)', function()
 	reset()
 	stub.fire_script(filterButton, 'OnEnter', true)
-	eq(tint(filterButton), rgb(profile.theme.accent:GetRGB()), 'lit in the accent')
+	eq(tint(filterButton), rgb(st:StateColor('edgeHover')), 'the lighter tone')
 	local accent = profile.theme.accent
 	accent:SetRGB(0.9, 0.1, 0.2)
 	st:ColorsChanged('accent')
-	eq(tint(filterButton), '0.90,0.10,0.20', 'the new accent, at once, through ColorsChanged')
+	eq(tint(filterButton), rgb(st:StateColor('edgeHover')), 'the new accent\'s lighter tone, at once, through ColorsChanged')
+	check(tint(filterButton) ~= '0.36,0.78,1.00', 'and not the old one')
 	stub.fire_script(filterButton, 'OnLeave', true)
 	eq(tint(filterButton), rgb(profile.colors.text.normal:GetRGB()), 'and back to the text color at rest')
 	accent:SetRGB(0, 0.68, 0.94)
+	st:ColorsChanged('accent')
 end)
 
 test('each button has a tooltip, above it, put away on leaving', function()

@@ -572,7 +572,7 @@ test("your choice is lit and the others dimmed, a label names it, and its button
 	eq(T.edge_rgb(lit.Icon.backdrop), blue(), 'in the accent')
 	for _, choice in ipairs({ 'Need', 'Pass' }) do
 		local button = button_of(bar, choice)
-		eq(T.text(button:GetAlpha()), '0.35', choice .. ' is dimmed')
+		eq(T.text(button:GetAlpha()), T.text(SaftUI:StateAlpha()), choice .. ' is dimmed (the states\' Disabled alpha)')
 		check(not has_border(button), choice .. ' has no border, as on its Blizzard bar')
 	end
 	check(not button_of(bar, 'Transmog'):IsShown(), 'Greed shows, not Transmog, as on its Blizzard bar')
@@ -1397,7 +1397,7 @@ test('Test mode shows one of its preview bars locked', function()
 	eq(T.edge_rgb(lit.Icon.backdrop), blue(), 'in the accent')
 	for _, button in ipairs(bar.buttons) do
 		if button ~= lit and button:IsShown() then
-			eq(T.text(button:GetAlpha()), '0.35', 'the others dimmed')
+			eq(T.text(button:GetAlpha()), T.text(SaftUI:StateAlpha()), 'the others dimmed (the states\' Disabled alpha)')
 			check(not has_border(button), 'with no border')
 		end
 	end

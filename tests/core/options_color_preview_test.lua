@@ -761,7 +761,7 @@ test('the button kind with no opacity (370 wide): five narrower tiles, whole, in
 	reset()
 end)
 
-test("the button kind: the held states are the button's own: LockHighlight on Hover, SetButtonState('PUSHED', true) on Pressed", function()
+test("the button kind: the held states are the helpers': hover on the Hover tile's button, pushed on Pressed's (st:SetState)", function()
 	T.theme('thick')
 	reset()
 	local _, F = open({ preview = { kind = 'button', key = 'normal' }, name = 'Normal', hasAlpha = true, a = 0.8 })
@@ -772,12 +772,12 @@ test("the button kind: the held states are the button's own: LockHighlight on Ho
 		eq(drawn(b[i]), 'theme,solid,control', 'drawn as a control, tile ' .. i)
 		eq(stub.state(b[i]).mouse_enabled, false, 'it takes no mouse (turned off, not left at the stub default), tile ' .. i)
 	end
-	eq(stub.state(b[1]).highlight_locked or false, false, 'Rest holds nothing')
-	eq(b[1]:GetButtonState(), 'NORMAL', 'Rest is at rest')
-	eq(stub.state(b[2]).highlight_locked, true, 'Hover holds its highlight')
-	eq(b[2]:GetButtonState(), 'NORMAL', 'and is not pushed')
-	eq(b[3]:GetButtonState(), 'PUSHED', 'Pressed is pushed')
-	eq(stub.state(b[3]).button_state_locked, true, 'and held')
+	eq(st:GetState(b[1], 'hover') or st:GetState(b[1], 'pushed'), false, 'Rest holds nothing')
+	eq(st:GetState(b[2], 'hover'), true, 'Hover holds the hover state')
+	eq(st:GetState(b[2], 'pushed'), false, 'and is not pushed')
+	eq(st:GetState(b[3], 'pushed'), true, 'Pressed is pushed')
+	eq(st:StateLook(b[2]).layer.shown, true, "and the Hover button's tint shows")
+	eq(st:StateLook(b[3]).layer.shown, true, "and the Pressed button's")
 	eq(stub.state(F.previewPieces.button.check).mouse_enabled, false, 'the check box takes no mouse')
 	for _, thumb in ipairs(F.previewPieces.button.thumbs) do eq(stub.state(thumb).mouse_enabled, false, 'a thumb takes no mouse') end
 	_, F = open({ preview = 'accent' })
@@ -785,7 +785,7 @@ test("the button kind: the held states are the button's own: LockHighlight on Ho
 	reset()
 end)
 
-test("Buttons > Hover at 0.7: the Hover tile's thumb and the held button's highlight (at 0.4) draw it; the rest are the profile's; Hover alone is captioned in Text", function()
+test("Buttons > Hover at 0.7: the Hover tile's thumb draws it (the buttons' states are the Accent's); the rest are the profile's; Hover alone is captioned in Text", function()
 	T.theme('thick')
 	with_buttons(function()
 		reset()
@@ -793,11 +793,9 @@ test("Buttons > Hover at 0.7: the Hover tile's thumb and the held button's highl
 		local p = F.previewPieces.button
 		local picked = rgba(0.4, 0.5, 0.6, 0.7)
 		eq(thumb_color(p.thumbs[2]), picked, 'the thumb under the mouse')
-		eq(vertex_color(p.buttons[2].hover), rgba(0.4, 0.5, 0.6, 0.7 * 0.4), "the held button's highlight: Hover at 0.4 times its opacity")
 		eq(vertex_color(p.check:GetCheckedTexture()), strength('checked'), "the checked box's fill is Checked as it is")
 		eq(thumb_color(p.thumbs[1]), strength('normal'), 'the thumb at rest is Normal as it is')
 		eq(thumb_color(p.thumbs[3]), strength('pushed'), 'the pressed thumb is Pushed as it is')
-		eq(vertex_color(p.buttons[3].pushed), strength('pushed'), "the pressed fill is Pushed as it is")
 		eq(texture_color(p.flash), strength('danger', 0.4), 'the flash is Danger as it is, at 0.4')
 		local text, muted = rgb3(st:Color('text', 'normal'):GetRGB()), rgb3(st:Color('text', 'muted'):GetRGB())
 		for i, expect in ipairs({ muted, text, muted, muted, muted }) do
@@ -815,7 +813,6 @@ test('Buttons > Normal reaches the Rest thumb alone; > Pushed the Pressed tile; 
 		local p = F.previewPieces.button
 		local picked = rgba(0.9, 0.9, 0.1, 0.5)
 		eq(thumb_color(p.thumbs[1]), picked, 'the thumb at rest')
-		eq(vertex_color(p.buttons[2].hover), strength('hover', 0.4), "the held button's highlight is Hover's, not Normal")
 		eq(thumb_color(p.thumbs[2]), strength('hover'), 'the other thumb is not')
 		local text = rgb3(st:Color('text', 'normal'):GetRGB())
 		local lit = {}
@@ -825,14 +822,12 @@ test('Buttons > Normal reaches the Rest thumb alone; > Pushed the Pressed tile; 
 		p = F.previewPieces.button
 		picked = rgba(0.2, 0.9, 0.1, 0.5)
 		eq(thumb_color(p.thumbs[3]), picked, 'the pressed thumb')
-		eq(vertex_color(p.buttons[3].pushed), picked, "and the pressed button's fill")
 		for i = 1, 5 do lit[i] = rgb3(p.captions[i]:GetTextColor()) == text end
 		eq(tostring(lit[3]) .. tostring(lit[1]) .. tostring(lit[2]), 'truefalsefalse', 'Pressed alone is captioned in Text')
 		_, F = open({ preview = { kind = 'button', key = 'checked' }, hasAlpha = true, r = 0.2, g = 0.4, b = 0.9, a = 0.5 })
 		p = F.previewPieces.button
 		eq(vertex_color(p.check:GetCheckedTexture()), rgba(0.2, 0.4, 0.9, 0.5), "the checked box's fill")
 		eq(thumb_color(p.thumbs[2]), strength('hover'), 'the Hover thumb is not')
-		eq(vertex_color(p.buttons[2].hover), strength('hover', 0.4), 'nor the held highlight')
 		for i = 1, 5 do lit[i] = rgb3(p.captions[i]:GetTextColor()) == text end
 		eq(table.concat({ tostring(lit[1]), tostring(lit[2]), tostring(lit[3]), tostring(lit[4]), tostring(lit[5]) }, ','), 'false,false,false,true,false', 'Checked alone is captioned in Text')
 		reset()
@@ -919,7 +914,6 @@ test("the button kind: a real button's own follower and the picker's paint agree
 		buttons_color('hover'):SetRGBA(0.4, 0.5, 0.6, 0.7)
 		st:ColorChanged('button', 'hover')
 		C.step(st)
-		eq(vertex_color(p.buttons[2].hover), rgba(0.4, 0.5, 0.6, 0.7 * 0.4), "the held button's highlight, repainted by its own follower")
 		eq(thumb_color(p.thumbs[2]), rgba(0.4, 0.5, 0.6, 0.7), 'the thumb, painted by the picker')
 		reset()
 	end)

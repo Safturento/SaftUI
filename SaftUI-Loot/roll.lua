@@ -611,8 +611,8 @@ end
 -- a whole group. Only colors are set, and only on SaftUI's own pieces or as a
 -- color on a region of Blizzard's roll frame (.agents/taint.md rule 1: nothing
 -- is written onto them).
---   'accent': a locked bar's lit border and label, and the held bars' timers. A
---     theme recolor or redraw keeps the lit border through st:KeepOwnColors.
+--   'accent': a locked bar's label and dim, and the held bars' timers (the lit
+--     border and fade are the states' own pass).
 --   'loot': each skinned frame's letter of that choice, and the shown counts
 --     (LT:ColorRollCounts).
 --   'item_quality': the name of each shown roll, held bar and preview of that

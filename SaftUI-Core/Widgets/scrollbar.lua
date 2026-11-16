@@ -1,23 +1,24 @@
 local st = SaftUI
 
--- The thumb's fill: the pushed color while it's pressed, the hover color under
--- the mouse, else the button color. None under the Blizzard theme, where the
--- thumb is a control with no backdrop of SaftUI's, and MinimalScrollBar's own
--- art shows.
-local function ColorThumb(thumb)
-    if st:DrawnTheme(thumb) == 'blizzard' then return end
-    local key = thumb.pressed and 'pushed' or thumb.entered and 'hover' or 'normal'
-    thumb.backdrop:SetBackdropColor(st:ColorRGBA('button', key))
-end
+-- A thumb is a 'thumb' state frame (Widgets/states.lua): its fill rests in
+-- ST.THUMB_REST (kit-edge, #4d4d4d), is lighter under the mouse and darker held,
+-- all the helpers' (st:SetState from the mouse hooks; nothing is written onto
+-- the thumb, which is Blizzard's). Its rest color comes only from an explicit
+-- st:PaintStates, so it is called where the thumb is skinned and after every
+-- redraw. None under the Blizzard theme, where the thumb is a control with no
+-- backdrop of SaftUI's, and MinimalScrollBar's own art shows.
 
 -- thumb -> the layers of its scroll bar that hold MinimalScrollBar's own art,
 -- { frame, layer } each: the thumb's, the track's and the steppers'.
 local barLayers = setmetatable({}, { __mode = 'k' })
+-- thumb -> whether it was drawn Blizzard's last time (a restyle is only for a flip).
+local lastLook = setmetatable({}, { __mode = 'k' })
 
 -- Turns MinimalScrollBar's own art on under the Blizzard theme
 -- (EnableDrawLayer) and off under the others, as the thumb is drawn, then
--- colors the thumb. Runs again after every recolor and redraw
--- (st:KeepOwnColors). Widget methods only: chat's scroll bar is Blizzard's.
+-- draws its states for the look and puts its rest color back. Runs again after
+-- every recolor and redraw (st:KeepOwnColors). Widget methods only: chat's
+-- scroll bar is Blizzard's.
 local function DrawScrollBar(thumb)
     local blizzard = st:DrawnTheme(thumb) == 'blizzard'
     for _, entry in ipairs(barLayers[thumb]) do
@@ -27,27 +28,12 @@ local function DrawScrollBar(thumb)
             entry[1]:DisableDrawLayer(entry[2])
         end
     end
-    ColorThumb(thumb)
-end
-
-local function thumbOnEnter(self)
-    self.entered = true
-    ColorThumb(self)
-end
-
-local function thumbOnLeave(self)
-    self.entered = false
-    ColorThumb(self)
-end
-
-local function thumbOnMouseDown(self)
-    self.pressed = true
-    ColorThumb(self)
-end
-
-local function thumbOnMouseUp(self)
-    self.pressed = false
-    ColorThumb(self)
+    -- laid out again only when the look flipped; the recolor reset the backdrop's color, so that is painted every time
+    if lastLook[thumb] ~= blizzard then
+        lastLook[thumb] = blizzard
+        st:RestyleStates(thumb)
+    end
+    st:PaintStates(thumb)
 end
 
 function st:SkinNewScrollBar(scrollBar)
@@ -60,19 +46,12 @@ function st:SkinNewScrollBar(scrollBar)
         { scrollBar:GetForwardStepper(), 'BACKGROUND' }, { scrollBar:GetBackStepper(), 'BACKGROUND' },
     }
     st:SetBackdrop(thumb, 'theme', 'solid', 'control')
+    st:AddStates(thumb, 'thumb', {
+        solidRest = function() return unpack(st.States.THUMB_REST) end,
+        blizzard = function() return st:DrawnTheme(thumb) == 'blizzard' end,
+    })
     DrawScrollBar(thumb)
     st:KeepOwnColors(thumb, DrawScrollBar)
-
-    -- The fill is the key of its state: the three Buttons colors it reads (a whole
-    -- pass paints it three times; each paint is a few calls).
-    for _, key in ipairs({ 'normal', 'hover', 'pushed' }) do
-        st:FollowColor(thumb, 'button', key, ColorThumb)
-    end
-
-    thumb:HookScript('OnEnter', thumbOnEnter)
-    thumb:HookScript('OnLeave', thumbOnLeave)
-    thumb:HookScript('OnMouseDown', thumbOnMouseDown)
-    thumb:HookScript('OnMouseUp', thumbOnMouseUp)
 
     scrollBar:SetAlpha(1)
     track:ClearAllPoints()

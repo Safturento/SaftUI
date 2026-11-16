@@ -380,19 +380,16 @@ test("under Blizzard a bag slot's pushed and highlight are Blizzard's files", fu
 	end
 	local PUSHED, HIGHLIGHT = [[Interface\Buttons\UI-Quickslot-Depress]], [[Interface\Buttons\ButtonHilight-Square]]
 
-	-- The blend SetHighlightTexture gives a texture handed with none, which
-	-- st:SkinActionButton's flat hover keeps: an accent tint, not an opaque square.
-	local probe = CreateFrame('Button')
-	local probeTexture = probe:CreateTexture()
-	probe:SetHighlightTexture(probeTexture)
-	local made = probeTexture:GetBlendMode()
+	-- Under SaftUI's look the hover is the helper's game piece (st:SkinActionButton, 'icon'): T+ of the
+	-- Accent at the Hover strength, BLEND (never the setter's additive default).
+	local hoverTint = T.text(st:StateColor('hover'))
 
-	-- Under Thick: the pushed art is cleared and the hover a flat accent over the icon, as before.
+	-- Under Thick: the pushed art is cleared (the module's) and the hover a flat tint over the icon.
 	local slot = slots[1]
 	eq(slot:GetPushedTexture():GetTexture(), '', 'Thick: the pushed art is cleared')
 	eq(slot.hover:GetTexture(), st.BLANK_TEX, 'Thick: the hover is the flat texture')
-	eq(T.text(slot.hover:GetVertexColor()), T.text(st.config.profile.theme.accent:GetRGB()) .. ',1.00', 'Thick: the accent')
-	eq(slot.hover:GetBlendMode(), made, 'Thick: the blend the setter gave it when the slot was made')
+	eq(T.text(slot.hover:GetVertexColor()), hoverTint, 'Thick: T+ of the Accent at 0.16')
+	eq(slot.hover:GetBlendMode(), 'BLEND', 'Thick: BLEND')
 	-- The client shows a button's highlight only in the HIGHLIGHT layer, under
 	-- the mouse; moved out of it, it shows all the time.
 	eq(select(1, slot.hover:GetDrawLayer()), 'HIGHLIGHT', 'Thick: the hover shows only under the mouse')
@@ -424,8 +421,8 @@ test("under Blizzard a bag slot's pushed and highlight are Blizzard's files", fu
 	eq(slot:GetPushedTexture():GetTexture(), '', 'Thick again: the pushed art is cleared')
 	eq(slot:GetHighlightTexture():GetTexture(), st.BLANK_TEX, 'Thick again: the flat hover')
 	eq(T.around(slot:GetHighlightTexture(), slot.icon), '0,0,0,0', 'Thick again: over the icon')
-	eq(T.text(slot:GetHighlightTexture():GetVertexColor()), T.text(st.config.profile.theme.accent:GetRGB()) .. ',1.00', 'Thick again: the accent')
-	eq(slot:GetHighlightTexture():GetBlendMode(), made, 'Thick again: the blend the setter gave it when the slot was made')
+	eq(T.text(slot:GetHighlightTexture():GetVertexColor()), hoverTint, 'Thick again: T+ of the Accent')
+	eq(slot:GetHighlightTexture():GetBlendMode(), 'BLEND', 'Thick again: BLEND')
 	eq(select(1, slot:GetHighlightTexture():GetDrawLayer()), 'HIGHLIGHT', 'Thick again: the hover shows only under the mouse')
 	eq(#take_errors(), 0, 'no errors')
 end)
@@ -713,12 +710,16 @@ test('the Edit toggle is a panel button, pressed while checked', function()
 	check(not edit:IsShown(), 'hidden until something shows it')
 
 	eq(panel(edit), '', 'Thick: no panel button')
-	eq(edit:GetCheckedTexture():GetAlpha(), 1, "Thick: SaftUI's flat check")
+	local flatCheck = edit:GetCheckedTexture()
+	check(flatCheck == nil or not flatCheck:GetTexture() or flatCheck:GetTexture() == '', "Thick: no flat check (the box's Edge and Fill are its checked look)")
+	edit:SetChecked(true)
+	eq(st:GetState(edit, 'selected'), true, 'Thick: checked is selected')
+	check(st:StateLook(edit).fill.shown, "Thick: the box's Fill")
+	edit:SetChecked(false)
 	st.config.profile.theme.name = 'blizzard'
 	st:ThemeChanged()
 	stub.fire_script(edit, 'OnSizeChanged', 40, 20)
 	eq(panel(edit), 'Left=Up,Middle=Up,Right=Up', "Blizzard: Blizzard's panel button")
-	eq(edit:GetCheckedTexture():GetAlpha(), 0, 'its flat check hidden')
 	edit:SetChecked(true)
 	eq(panel(edit), 'Left=Down,Middle=Down,Right=Down', 'checked: pressed')
 	edit:SetChecked(false)
@@ -726,7 +727,7 @@ test('the Edit toggle is a panel button, pressed while checked', function()
 	st.config.profile.theme.name = 'thick'
 	st:ThemeChanged()
 	eq(panel(edit), '', 'Thick again: no panel button')
-	eq(edit:GetCheckedTexture():GetAlpha(), 1, 'its flat check again')
+	eq(st:StateLook(edit).layer.alpha, 1, "Thick again: the box's pieces at full")
 	eq(#take_errors(), 0, 'no errors')
 end)
 

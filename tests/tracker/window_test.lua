@@ -481,6 +481,27 @@ test("the watcher runs only while a bar can show: not while the list fits, is co
 	eq(running(), false, 'back to fitting')
 end)
 
+test("the bar's thumb rests at kit-edge (#4d4d4d) and follows the tracker's own Theme", function()
+	local st, TR = world()
+	local thumb = TR.scroll.ScrollBar:GetThumb()
+	-- the stand-in bar is not skinned by st:SkinNewScrollBar: register the thumb as the skin does
+	st:AddStates(thumb, 'thumb', { solidRest = function() return unpack(st.States.THUMB_REST) end })
+	st:PaintStates(thumb)
+	local function fill() return T.text(thumb.backdrop:GetBackdropColor()) end
+	local rest = T.text(unpack(st.States.THUMB_REST))
+	eq(fill(), rest, 'at kit-edge')
+	TR.config.theme = 'thin'
+	TR:UpdateConfig()
+	eq(drawn(thumb), 'thin,solid,control', "in the tracker's Theme")
+	eq(fill(), rest, 'still #4d4d4d after the tracker redrew it')
+	stub.fire_script(thumb, 'OnEnter', true)
+	TR.config.theme = 'theme'
+	TR:UpdateConfig()
+	check(fill() ~= rest, 'under the mouse after a redraw: the hover tone, not the rest color')
+	stub.fire_script(thumb, 'OnLeave', true)
+	eq(fill(), rest, 'rest again')
+end)
+
 test("the bar's thumb wears the tracker's Theme, and Max height stays on screen", function()
 	local st, TR = world()
 	local thumb = TR.scroll.ScrollBar:GetThumb()

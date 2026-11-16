@@ -149,21 +149,22 @@ test("a SaftUI button: Blizzard's panel button, swapped by its states, and its o
 	button:Enable()
 	eq(select(2, panel(button)), 'Left=Up,Middle=Up,Right=Up', 'enabled: -Up again')
 
-	for _, key in ipairs({ 'hover', 'pushed', 'disabled' }) do
-		eq(button[key]:GetAlpha(), 0, 'its flat ' .. key .. ' texture is hidden')
-	end
+	-- its states are the helpers': held at alpha 0 under Blizzard, whose art draws them
+	local look = st:StateLook(button)
+	eq(look.blizzard, true); eq(look.layer.alpha, 0, "SaftUI's hover tint is held"); eq(look.fill.alpha, 0, 'and its fill')
+	eq(button:GetHighlightTexture(), nil, 'no game highlight of SaftUI\'s'); eq(button.hover, nil)
 	eq(button.backdrop.backdropInfo, nil, 'the backdrop draws nothing')
 
 	T.theme('thick')
 	eq(select(2, panel(button)), '', 'under Thick the three are hidden')
 	check(not (pieces.Highlight and pieces.Highlight:IsShown()), "and Blizzard's highlight")
-	for _, key in ipairs({ 'hover', 'pushed', 'disabled' }) do
-		eq(button[key]:GetAlpha(), 1, 'its flat ' .. key .. ' texture shown again')
-	end
+	look = st:StateLook(button)
+	eq(look.blizzard, false); eq(look.layer.alpha, 1, "SaftUI's tint is at full again"); eq(look.fill.alpha, 1)
 	eq(T.inset(button.backdrop), 2, "Thick's border")
 	eq(T.edge(button.backdrop), THICK_EDGE, "in Thick's color")
 	button:Disable()
 	eq(select(2, panel(button)), '', 'a disable under Thick shows no panel')
+	eq(button:GetAlpha(), 0.4, 'and dims the button')
 	eq(#take_errors(), 0, 'no errors')
 end)
 
@@ -219,18 +220,18 @@ test("a Blizzard panel button given to st:SkinButton shows its own Left, Middle 
 	for _, key in ipairs({ 'Left', 'Middle', 'Right' }) do
 		eq(button[key]:GetAlpha(), 1, 'under Blizzard its own ' .. key .. ' shows again')
 	end
-	for _, key in ipairs({ 'hover', 'pushed', 'disabled' }) do
-		eq(button[key]:GetAlpha(), 0, "SaftUI's flat " .. key .. ' texture is hidden')
-	end
+	local look = st:StateLook(button)
+	eq(look.layer.alpha, 0, "SaftUI's hover tint is held"); eq(look.fill.alpha, 0, 'and its fill')
 	eq(select('#', button:GetRegions()), regions, 'no texture of SaftUI\'s is made on it')
+	button:Disable()
+	eq(button:GetAlpha(), 1, "the game's own disabled art and alpha stay (call 24)")
+	button:Enable()
 
 	T.theme('thick')
 	for _, key in ipairs({ 'Left', 'Middle', 'Right' }) do
 		eq(button[key]:GetAlpha(), 0, 'under Thick its ' .. key .. ' is faded again')
 	end
-	for _, key in ipairs({ 'hover', 'pushed', 'disabled' }) do
-		eq(button[key]:GetAlpha(), 1, "SaftUI's flat " .. key .. ' texture shown again')
-	end
+	eq(st:StateLook(button).layer.alpha, 1, "SaftUI's hover tint at full again")
 	eq(#take_errors(), 0, 'nothing written onto it on either switch')
 end)
 
@@ -263,12 +264,15 @@ test("a check box takes checkbox-minimal, checked checkmark-minimal, and SaftUI'
 
 	T.theme('thick')
 	check(not art:IsShown(), "under Thick Blizzard's box is hidden")
-	eq(checked:GetAtlas(), nil, "the check is SaftUI's flat square")
+	eq(checked:GetAtlas(), nil, "the check is SaftUI's flat square: the Mark")
 	eq(checked:GetTexture(), st.BLANK_TEX, 'blank')
-	eq(T.around(checked, box), '0,0,0,0', 'filling the box')
-	eq(text(checked:GetVertexColor()), text(st.config.profile.colors.button.checked:GetRGB()) .. ',1.00', 'in the Checked color')
-	eq(hover:GetTexture(), st.BLANK_TEX, 'the highlight is flat')
-	eq(text(hover:GetVertexColor()), text(st.config.profile.colors.button.hover:GetRGB()) .. ',0.40', 'in the Hover color, at 0.4')
+	eq(T.around(checked, box), '2,-2,-2,2', 'the Mark, floor(12 / 6) = 2 in from each side')
+	check(not checked:IsShown() or not box:GetChecked(), 'only while checked')
+	box:SetChecked(true)
+	check(checked:IsShown(), 'checked: shown')
+	local accent = st:Color('accent')
+	eq(text(checked:GetVertexColor()), text(accent.r, accent.g, accent.b, 1), 'in the Accent')
+	eq(hover:GetAlpha(), 0, "the highlight is Blizzard's art alone: held at alpha 0 (the hover is the helper's Layer)")
 	eq(T.inset(box.backdrop), 2, "SaftUI's box: Thick's border")
 	eq(#take_errors(), 0, 'no errors')
 end)
@@ -282,8 +286,10 @@ test("a check button styled 'button' is a panel button, pressed while checked", 
 	stub.fire_script(toggle, 'OnSizeChanged', 40, 20)
 	eq(drawn(toggle), 'theme,theme,control', 'drawn as a control')
 	eq(select(2, panel(toggle)), 'Left=Up,Middle=Up,Right=Up', 'unchecked: the panel button, up')
-	eq(toggle:GetCheckedTexture():GetAlpha(), 0, 'its flat check is hidden')
-	eq(toggle:GetHighlightTexture():GetAlpha(), 0, 'and its flat highlight')
+	local drawnCheck = toggle:GetCheckedTexture()
+	check(drawnCheck == nil or drawnCheck:GetTexture() == '', "no check drawn over the panel button: it is a box's Edge and Fill")
+	local drawnHover = toggle:GetHighlightTexture()
+	check(drawnHover == nil or not drawnHover:GetTexture() or drawnHover:GetTexture() == '', 'and no highlight of its own')
 
 	toggle:SetChecked(true)
 	eq(select(2, panel(toggle)), 'Left=Down,Middle=Down,Right=Down', 'checked: pressed')
@@ -301,8 +307,9 @@ test("a check button styled 'button' is a panel button, pressed while checked", 
 
 	T.theme('thick')
 	eq(select(2, panel(toggle)), '', 'under Thick no panel button')
-	eq(toggle:GetCheckedTexture():GetAlpha(), 1, 'its flat check again')
-	eq(toggle:GetHighlightTexture():GetAlpha(), 1, 'and its flat highlight')
+	eq(st:StateLook(toggle).shape, 'box')
+	eq(st:GetState(toggle, 'selected'), true, 'checked: selected')
+	eq(T.edge(toggle.backdrop), text(st.config.profile.theme.accent:GetRGB()) .. ',1.00', "its Edge in the Accent under Thick")
 	eq(T.inset(toggle.backdrop), 2, "Thick's border")
 	eq(#take_errors(), 0, 'no errors')
 end)
@@ -369,7 +376,8 @@ test("a radio group shows Blizzard's tabs, the picked one active", function()
 	eq(tabs(second), '', 'on either')
 	eq(T.edge(first.backdrop), text(st.config.profile.theme.accent:GetRGB()) .. ',1.00', "SaftUI's blue border on the picked one")
 	eq(T.edge(second.backdrop), THICK_EDGE, "the theme's on the other")
-	eq(first.hover:GetAlpha(), 1, "SaftUI's flat highlight again")
+	eq(st:StateLook(first).fill.shown, true, "the picked one's fade again")
+	eq(st:StateLook(first).layer.alpha, 1, "SaftUI's tint at full again")
 	eq(#take_errors(), 0, 'no errors')
 end)
 
@@ -427,7 +435,7 @@ test("a scroll bar's layers come back on under Blizzard and go off under Thick",
 	end
 	eq(T.inset(thumb.backdrop), 2, "SaftUI's thumb back, in Thick's border")
 	local r, g, b = thumb.backdrop:GetBackdropColor()
-	eq(text(r, g, b), text(st.config.profile.colors.button.normal:GetRGB()), 'in the button color')
+	eq(text(r, g, b), text(unpack(st.States.THUMB_REST, 1, 3)), 'at kit-edge, the rest color')
 	eq(#take_errors(), 0, 'no errors')
 end)
 
@@ -471,7 +479,7 @@ test("an edit box's border textures show under Blizzard and hide under Thick", f
 	check(backdrop ~= nil and backdrop ~= box, 'a backdrop of SaftUI\'s behind it')
 	eq(backdrop and T.inset(backdrop), 2, "in Thick's border")
 	box:SetFocus()
-	eq(backdrop and T.edge(backdrop), '1.00,1.00,1.00,1.00', 'white while focused')
+	eq(backdrop and T.edge(backdrop), text(st.config.profile.theme.accent:GetRGB()) .. ',1.00', 'the Accent while focused')
 	box:ClearFocus()
 
 	T.theme('blizzard')
@@ -480,7 +488,7 @@ test("an edit box's border textures show under Blizzard and hide under Thick", f
 	end
 	eq(backdrop.backdropInfo, nil, 'no backdrop of SaftUI\'s')
 	box:SetFocus()
-	eq(backdrop.backdropInfo, nil, 'and no white focus border')
+	eq(backdrop.backdropInfo, nil, 'and no focus border')
 	box:ClearFocus()
 	eq(backdrop.backdropInfo, nil, 'nor after losing focus')
 
