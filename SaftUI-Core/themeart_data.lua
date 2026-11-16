@@ -277,10 +277,20 @@ ThemeArt.ART = {
 	-- The action button (ActionButtonTemplate): the art behind the icon, which
 	-- fills the button, by its piece's key (BEHIND); the ring over the icon's
 	-- edge; the equipped border, shown in a frame's own border color; and the
-	-- state art, where SaftUI makes the state textures, over the ring's
-	-- footprint. The checked art is additive on Forever and plain on retail, the
-	-- one line the two templates differ by.
+	-- state art, where SaftUI makes the state textures. Every piece over the
+	-- icon (the ring, the border, hover, pushed, checked, the flash) is, in
+	-- the template (Blizzard_ActionBar/Mainline/ActionButtonTemplate.xml),
+	-- artWidth x artHeight (46 x 45) anchored TOPLEFT on a templateButton
+	-- (45 x 45) button, so its last column hangs past the button's right edge.
+	-- SaftUI draws it filling the button and cut to the button's part by
+	-- texture coordinates, the left templateButton/artWidth of it and
+	-- templateButton/artHeight of its height (ThemeArt.CutOver), as the slot's
+	-- ring is cut by ringSize; so it keeps Blizzard's scale at any size and no
+	-- size is read from a frame. The pieces behind the icon are setAllPoints,
+	-- the button exactly. The checked art is additive on Forever and plain on
+	-- retail, the one line the two templates differ by.
 	action = {
+		artWidth = 46, artHeight = 45, templateButton = 45,
 		behind = {
 			SlotBackground = Atlas('UI-HUD-ActionBar-IconFrame-Background'),
 			SlotArt = Atlas('UI-HUD-ActionBar-IconFrame-Slot'),

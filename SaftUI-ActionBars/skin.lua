@@ -435,7 +435,7 @@ function AB:StyleButton(button, config, theme, background)
 	end
 
 	-- Hover, pushed, checked and the flash: under Blizzard its own art over the
-	-- ring's footprint, the whole button, with no tint; otherwise SaftUI's flat
+	-- button, cut to the button's part (ThemeArt.CutOver), with no tint; otherwise SaftUI's flat
 	-- textures over the icon, drawn and colored by the state helper (RestyleStates,
 	-- below). Under Blizzard the helper leaves the three textures wholly alone.
 	local state = self:BlizzardState(theme, background)
@@ -444,11 +444,11 @@ function AB:StyleButton(button, config, theme, background)
 		local ThemeArt = st.ThemeArt
 		-- The hover stays in its layer, where the client shows it only under
 		-- the mouse (HOVER_LAYER).
-		ThemeArt.StyleState(skin.hover, state.hover, button, nil, ThemeArt.HOVER_LAYER)
-		ThemeArt.StyleState(skin.pushed, state.pushed, button)
-		ThemeArt.StyleState(skin.checked, state.checked, button, state.checkedBlend)
+		ThemeArt.StyleState(skin.hover, state.hover, button, nil, ThemeArt.HOVER_LAYER, 'action')
+		ThemeArt.StyleState(skin.pushed, state.pushed, button, nil, nil, 'action')
+		ThemeArt.StyleState(skin.checked, state.checked, button, state.checkedBlend, nil, 'action')
 		-- The flash keeps the template's layer, over the state art.
-		ThemeArt.StyleState(button.Flash, state.flash, button, nil, false)
+		ThemeArt.StyleState(button.Flash, state.flash, button, nil, false, 'action')
 	else
 		for _, region in ipairs({ skin.hover, skin.pushed, skin.checked }) do
 			region:SetDrawLayer('OVERLAY', 0)

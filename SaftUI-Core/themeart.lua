@@ -168,20 +168,42 @@ function ThemeArt.State(kind)
 	return art and art.states and ForClient(art.states) or nil
 end
 
+-- Cuts an over-the-icon texture of an art (the ART table: a ring, an own-color
+-- piece or a state texture) to the button's part of it, by coordinates, when
+-- the art says it hangs past the button (the action button's, artWidth x
+-- artHeight from TOPLEFT on a templateButton button): the left
+-- templateButton/artWidth and templateButton/artHeight of its height. An art
+-- with none (a slot's, an aura's, no art) is left as it is. The texture fills
+-- its frame (SetAllPoints) and is never sized, so this reads no size and holds
+-- in combat. Call it after the atlas is set, which keeps the coordinates a
+-- texture had unless told to reset them.
+function ThemeArt.CutOver(texture, art)
+	if art and art.artWidth then
+		texture:SetTexCoord(0, art.templateButton / art.artWidth, 0, art.templateButton / art.artHeight)
+	end
+end
+
 -- Puts Blizzard's state art (name, an atlas or a file from State) on texture,
 -- one of a button's state textures of SaftUI's (the hover, pushed or checked
--- texture; the flash too): over the button's whole footprint, white, with no
--- tint, blending as blend says (the button's own call sets the highlight's),
--- and drawn in layer: the state layer above the ring when it's nil, the layer
--- it has when it's false (the flash), or the layer named (the hover:
--- HOVER_LAYER). A flat state texture is put back by its own code (StyleButton
--- in the action bars' skin, st:SkinActionButton, the totem skin), not here.
-function ThemeArt.StyleState(texture, name, button, blend, layer)
+-- texture; the flash too): over the whole button, cut to the button's part
+-- when kind's art hangs past it (the action button's: CutOver), white, with no tint, blending as blend says (the button's own
+-- call sets the highlight's), and drawn in layer: the state layer above the
+-- ring when it's nil, the layer it has when it's false (the flash), or the
+-- layer named (the hover: HOVER_LAYER). kind is the kind the button is drawn
+-- as ('action' for an action button; nil is the whole button). A flat state
+-- texture is put back by its own code (StyleButton in the action bars' skin,
+-- st:SkinActionButton, the totem skin), not here.
+function ThemeArt.StyleState(texture, name, button, blend, layer, kind)
 	if name:find([[Interface\]], 1, true) == 1 then
 		texture:SetTexture(name)
 		texture:SetTexCoord(0, 1, 0, 1)
 	else
-		texture:SetAtlas(name)
+		-- The flat look's Selected fade left coordinates on the checked
+		-- texture (StyleGame, Widgets/states.lua), and SetAtlas keeps the
+		-- coordinates a texture has unless told to reset them: reset them, and
+		-- set the whole atlas after, so it holds whichever the client honours.
+		texture:SetAtlas(name, false, nil, true)
+		texture:SetTexCoord(0, 1, 0, 1)
 	end
 	if layer == nil then
 		texture:SetDrawLayer(ThemeArt.STATE_LAYER, ThemeArt.STATE_SUBLEVEL)
@@ -192,6 +214,8 @@ function ThemeArt.StyleState(texture, name, button, blend, layer)
 	if blend then texture:SetBlendMode(blend) end
 	texture:ClearAllPoints()
 	texture:SetAllPoints(button)
+	local blizzard = kind and ThemeArt.KINDS[kind]
+	ThemeArt.CutOver(texture, blizzard and blizzard.art and ThemeArt.ART[blizzard.art])
 end
 
 -- A control's art on this client (CONTROLS; the fields are ART[name]'s).
@@ -451,8 +475,8 @@ local OWN_SUBLEVEL = -1
 
 -- Where a button's state art draws (pushed, checked: StyleState; the hover
 -- has its own, HOVER_LAYER): the same layer as the ring and just over it,
--- level with the own-color piece, so it covers the ring's whole footprint,
--- over the icon and under the texts,
+-- level with the own-color piece, so it covers the ring's footprint, the
+-- whole button, over the icon and under the texts,
 -- which Blizzard's action and item button templates put in OVERLAY (the item
 -- button's count, its name) or in a frame over the button (the action
 -- button's hotkey and count, at level 500). Blizzard's own ring is its normal
@@ -468,7 +492,9 @@ ThemeArt.STATE_LAYER, ThemeArt.STATE_SUBLEVEL = 'ARTWORK', -1
 ThemeArt.HOVER_LAYER = 'HIGHLIGHT'
 
 -- A button's art on frame (the action or item button's): the art behind its
--- icon, filling frame, and the ring over the icon's edge, covering frame. The
+-- icon, filling frame, and the ring over the icon's edge, covering frame (an
+-- action button's ring cut to the button's part of Blizzard's 46 x 45 art:
+-- CutOver). The
 -- ring is a texture of host's, the button of SaftUI's frame sits behind, or
 -- with no host on frame's holder. A ring Blizzard draws ringSize on a
 -- buttonSize button, centred ringY low, is cut to the button's part, so it fits
@@ -490,6 +516,7 @@ local function LayButton(art, frame, button, host)
 	end
 	ring:ClearAllPoints()
 	ring:SetAllPoints(frame)
+	ThemeArt.CutOver(ring, button)
 	if button.ringSize then
 		local size, half, y = button.ringSize, button.buttonSize / 2, button.ringY
 		ring:SetTexCoord((size / 2 - half) / size, (size / 2 + half) / size,
@@ -604,6 +631,7 @@ function ThemeArt.SetBorder(frame, look, kind, host, r, g, b, a)
 		st:SnapRegion(own)
 		own:ClearAllPoints()
 		own:SetAllPoints(frame)
+		ThemeArt.CutOver(own, style)
 		own:SetVertexColor(r, g, b, a)
 	end
 end

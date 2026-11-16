@@ -38,6 +38,8 @@ The bar's effective config (`AB:GetBarConfig(id)`): size, spacing, and each text
 
 The action ring and Blizzard's state art; an own colour (equipped) shows as `UI-HUD-ActionBar-IconFrame-Border` over the icon's edge in that colour.
 
+Blizzard's template draws every piece over the icon (the ring, the equipped border, hover, pushed, checked and the flash) 46 x 45 from the top left of its 45 x 45 button. SaftUI draws each of them filling the button, cut by texture coordinates to the button's part (the left 45/46 and the whole height), so the metal reaches the button's right edge at any button size; the pieces behind the icon fill the button uncut.
+
 ## Known gaps
 
 The states are one set of helpers' (`st:AddStates`, decision 63: action, totem, micro and slot buttons all draw them the same); the countdown size rule is still written three times. The texts copy Pixel's face at load, so a Fonts tab change doesn't reach them (Discrepancies).
