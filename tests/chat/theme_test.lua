@@ -301,3 +301,32 @@ test("edit mode's outline sits on the chat's border, or on the chat under None",
 	check(point == 'TOPLEFT' and x == 0 and y == 0, 'on the chat itself under None')
 	profile.chat.theme = 'theme'
 end)
+
+-- The edit box and the scroll bar sit against the backdrop, or against the chat window itself
+-- under None (a nil relative frame would mean the box's parent, UIParent: the top of the screen).
+-- Every theme change places them again, as the backdrop's own appearance does.
+test("under None the edit box and scroll bar anchor to the chat window, and a theme change re-anchors them", function()
+	local frame, editbox = CW.build(17)
+	profile.chat.theme = 'none'
+	CHT:SkinChatFrame(frame)
+	local _, relative, relPoint = editbox:GetPoint(1)
+	eq(relative, frame, 'the box is anchored to the window, not to UIParent')
+	eq(relPoint, 'TOPLEFT', 'by its top')
+	_, relative = frame.ScrollBar:GetPoint(1)
+	eq(relative, frame, 'the scroll bar too')
+
+	profile.chat.theme = 'theme'
+	CHT:ApplyChatFrameConfig(frame)
+	local backdrop = st:DrawnFrame(frame)
+	check(backdrop ~= nil, 'a theme draws the backdrop')
+	for i = 1, editbox:GetNumPoints() do
+		eq(select(2, editbox:GetPoint(i)), backdrop, 'the box follows the backdrop, anchor ' .. i)
+	end
+	eq(editbox:GetNumPoints(), 2, 'two anchors, no leftover')
+	eq(select(2, frame.ScrollBar:GetPoint(1)), backdrop, 'and so does the scroll bar')
+
+	profile.chat.theme = 'none'
+	CHT:ApplyChatFrameConfig(frame)
+	eq(select(2, editbox:GetPoint(1)), frame, 'back under None, the window again')
+	profile.chat.theme = 'theme'
+end)

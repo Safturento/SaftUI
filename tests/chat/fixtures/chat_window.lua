@@ -60,7 +60,9 @@ function CW.build(id)
 	_G[name .. 'RightTexture'] = frame:CreateTexture(name .. 'RightTexture')
 	_G[name .. 'ButtonFrame'] = CreateFrame('Frame', name .. 'ButtonFrame', frame)
 
-	local editbox = CreateFrame('EditBox', name .. 'EditBox', frame)
+	-- Blizzard reparents the box to UIParent (ChatFrameEditBoxMixin:OnLoad), so an anchor
+	-- with no relative frame means UIParent, not the window.
+	local editbox = CreateFrame('EditBox', name .. 'EditBox', UIParent)
 	editbox:SetSize(400, 32)
 	editbox:CreateFontString(name .. 'EditBoxHeader')
 	editbox:CreateFontString(name .. 'EditBoxHeaderSuffix')

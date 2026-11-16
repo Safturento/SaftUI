@@ -181,15 +181,11 @@ function CHT:SkinChatFrame(frame)
 	local name = frame:GetName()
 	st:StripTextures(frame)
 	st:SetBackdropIn(backdrops, frame, self.config.theme, self.config.background, 'panel')
-	local backdrop = backdrops[frame]
 
 	st:Kill(_G[frame:GetName()..'Background'])
 	st:Kill(_G[frame:GetName()..'RightTexture'])
 
 	st:SkinScrollBar(frame.ScrollBar)
-	frame.ScrollBar:ClearAllPoints()
-	frame.ScrollBar:SetPoint('TOPLEFT', backdrop, 'TOPRIGHT', 5, 0)
-	frame.ScrollBar:SetPoint('BOTTOMLEFT', backdrop, 'BOTTOMRIGHT', 5, 0)
 
 	frame:SetScript('OnMouseWheel', onMouseScroll)
 	
@@ -215,9 +211,6 @@ function CHT:SkinChatFrame(frame)
 	editbox:SetFrameLevel(frame:GetFrameLevel()+2)
 	editbox:SetAltArrowKeyMode(false)
 	st:SkinEditBox(editbox, self.config.theme, self.config.background, self.config.font)
-	editbox:ClearAllPoints()
-	editbox:SetPoint('BOTTOMLEFT', backdrop, 'TOPLEFT', 0, 1)
-	editbox:SetPoint('BOTTOMRIGHT', backdrop, 'TOPRIGHT', 0, 1)
 	-- Added to Blizzard's own OnShow and OnHide (ChatFrameEditBoxMixin), which run first and
 	-- stay: they reset the chat type, deactivate the box and pick the last active window.
 	if not hooked[editbox] then
@@ -240,7 +233,8 @@ function CHT:SkinChatFrame(frame)
 end
 
 function CHT:UpdateChatFrameDisplay(frame)
-	st:SetBackdropIn(backdrops, frame, self.config.theme, self.config.background, 'panel')
+	-- The backdrop when a look is drawn; nil under None, even after a theme was drawn once.
+	local drawnBackdrop = st:SetBackdropIn(backdrops, frame, self.config.theme, self.config.background, 'panel')
 
 	local offset = 0
 	if frame.CombatLogQuickButtonFrame then
@@ -252,6 +246,23 @@ function CHT:UpdateChatFrameDisplay(frame)
 		backdrop:ClearAllPoints()
 		backdrop:SetPoint('TOPLEFT', -self.config.padding, self.config.padding + offset)
 		backdrop:SetPoint('BOTTOMRIGHT', self.config.padding, -self.config.padding)
+	end
+
+	-- The edit box and the scroll bar sit against the backdrop, or against the window itself
+	-- while the theme is None: a nil relative frame would mean the box's parent, which
+	-- Blizzard sets to UIParent, and put it off the top of the screen. Only for a window
+	-- SkinChatFrame skinned (a temporary one comes through here from Blizzard's hook too).
+	local own = pieces[frame]
+	if own then
+		local against = drawnBackdrop or frame
+		local editbox = own.editbox
+		editbox:ClearAllPoints()
+		editbox:SetPoint('BOTTOMLEFT', against, 'TOPLEFT', 0, 1)
+		editbox:SetPoint('BOTTOMRIGHT', against, 'TOPRIGHT', 0, 1)
+		local scrollbar = frame.ScrollBar
+		scrollbar:ClearAllPoints()
+		scrollbar:SetPoint('TOPLEFT', against, 'TOPRIGHT', 5, 0)
+		scrollbar:SetPoint('BOTTOMLEFT', against, 'BOTTOMRIGHT', 5, 0)
 	end
 
 	if frame == ChatFrame1 then

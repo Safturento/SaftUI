@@ -42,7 +42,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-15 — Chat's Fade tabs: ChatFrameUtil.GetTabAlphas isn't in the retail source](#2026-11-15--chats-fade-tabs-chatframeutilgettabalphas-isnt-in-the-retail-source)
   - [2026-11-15 — With IM chat style the tab row is always hidden, and the dock's overflow button still fades](#2026-11-15--with-im-chat-style-the-tab-row-is-always-hidden-and-the-docks-overflow-button-still-fades)
   - [2026-11-15 — Temporary chat windows (whispers, pet battle log) are never skinned](#2026-11-15--temporary-chat-windows-whispers-pet-battle-log-are-never-skinned)
-  - [2026-11-15 — Chat's edit box can sit off the top of the screen when the chat Theme is None](#2026-11-15--chats-edit-box-can-sit-off-the-top-of-the-screen-when-the-chat-theme-is-none)
   - [2026-11-15 — Chat: the dock hook adds a second anchor to docked tabs 2 to n, and the dock test can't see it](#2026-11-15--chat-the-dock-hook-adds-a-second-anchor-to-docked-tabs-2-to-n-and-the-dock-test-cant-see-it)
   - [2026-11-15 — A font Size drag restyles too much on the action bars, unit frames and tracker](#2026-11-15--a-font-size-drag-restyles-too-much-on-the-action-bars-unit-frames-and-tracker)
   - [2026-11-15 — Hide full with a secret health: lift the limit with a Step curve into the text's alpha](#2026-11-15--hide-full-with-a-secret-health-lift-the-limit-with-a-step-curve-into-the-texts-alpha)
@@ -136,6 +135,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-15 — Chat's edit box can sit off the top of the screen when the chat Theme is None](#2026-11-15--chats-edit-box-can-sit-off-the-top-of-the-screen-when-the-chat-theme-is-none)
   - [2026-11-15 — Two Misc readers break "a pass only colors"](#2026-11-15--two-misc-readers-break-a-pass-only-colors)
   - [2026-11-11 — UIParent's scale is set once, at login, so plates leave whole pixels after a UI scale or display change](#2026-11-11--uiparents-scale-is-set-once-at-login-so-plates-leave-whole-pixels-after-a-ui-scale-or-display-change)
   - [2026-11-15 — A reset on every font row](#2026-11-15--a-reset-on-every-font-row)
@@ -630,18 +630,6 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 **Shape of work:** A design pass: skin on a post-hook of `FCF_OpenTemporaryWindow`, or leave Blizzard's look on purpose.
 
 **Open questions:** Should a whisper window look like SaftUI's chat or like Blizzard's?
-
-### 2026-11-15 — Chat's edit box can sit off the top of the screen when the chat Theme is None
-
-**What:** At first skin under chat Theme None `backdrops[frame]` is nil, so the edit box is anchored `SetPoint('BOTTOMLEFT', nil, 'TOPLEFT', 0, 1)`. A nil relative frame means the box's parent, which Blizzard sets to UIParent (it reparents the box in `ChatFrameEditBoxMixin:OnLoad`), so the box sits above the top of the screen. A later switch to another theme makes the backdrop but never re-anchors the edit box or the scroll bar: only `SkinChatFrame` anchors them.
-
-**Why noticed:** The fu-p11 review. The code before it behaved the same (`frame.backdrop` was nil), so it is older than the chat work.
-
-**Anchors:** `SaftUI-Chat/chatframe.lua` (`CHT:SkinChatFrame`, `UpdateChatFrameDisplay`).
-
-**Shape of work:** Small: anchor the box and the scroll bar from `UpdateChatFrameDisplay` (to the backdrop, or to the chat frame under None) so every theme change places them.
-
-**Open questions:** Needs an in-game look first: chat Theme None, `/reload`, where is the box?
 
 ### 2026-11-15 — Chat: the dock hook adds a second anchor to docked tabs 2 to n, and the dock test can't see it
 
@@ -2478,6 +2466,20 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-15 — Chat's edit box can sit off the top of the screen when the chat Theme is None
+
+**What:** At first skin under chat Theme None `backdrops[frame]` is nil, so the edit box is anchored `SetPoint('BOTTOMLEFT', nil, 'TOPLEFT', 0, 1)`. A nil relative frame means the box's parent, which Blizzard sets to UIParent (it reparents the box in `ChatFrameEditBoxMixin:OnLoad`), so the box sits above the top of the screen. A later switch to another theme makes the backdrop but never re-anchors the edit box or the scroll bar: only `SkinChatFrame` anchors them.
+
+**Why noticed:** The fu-p11 review. The code before it behaved the same (`frame.backdrop` was nil), so it is older than the chat work.
+
+**Anchors:** `SaftUI-Chat/chatframe.lua` (`CHT:SkinChatFrame`, `UpdateChatFrameDisplay`).
+
+**Shape of work:** Small: anchor the box and the scroll bar from `UpdateChatFrameDisplay` (to the backdrop, or to the chat frame under None) so every theme change places them.
+
+**Open questions:** Needs an in-game look first: chat Theme None, `/reload`, where is the box?
+
+**Resolved 2026-11-15:** `CHT:UpdateChatFrameDisplay` now anchors the edit box and the scroll bar, to the backdrop when a look is drawn and to the chat window under None (`SkinChatFrame` no longer does, with a nil relative frame), so every theme change places them; `tests/chat/theme_test.lua`, whose fixture now parents the edit box to UIParent as Blizzard does. Not yet seen in game.
 
 ### 2026-11-15 — Two Misc readers break "a pass only colors"
 
