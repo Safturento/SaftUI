@@ -718,3 +718,68 @@ test('W24 and W21: a restore updates the frames, and turning sharing on again re
 	eq(UF:RestoreShared(profile), true)
 	eq(profile.target.name.maxLength, 44, 'the new backup is of the moment sharing was turned on again')
 end)
+
+
+------------------------------------------------------------------ the second fix round
+
+test('N4: the chat lines are worded truly', function()
+	local db = converted_world()
+	local profile = profile_of(db)
+	local plain = UF.SharedStateText('plain', profile)
+	check(plain:find('imported', 1, true) and not plain:find('copied', 1, true) and plain:find('next login', 1, true), plain)
+	rawset(profile, 'pet', setmetatable({}, { __index = function() error('boom', 0) end }))
+	local lines = printed_by(function() UF:UpdateConfig() end)
+	take_errors()
+	check(lines[1] and lines[1]:find('paused', 1, true) and lines[1]:find('this session', 1, true), tostring(lines[1]))
+	check(not lines[1]:find('could not be set up', 1, true), 'it was set up')
+end)
+
+test('N6: a /reload in combat builds the frames from the stored values and converts at the end of combat', function()
+	world()
+	local db = SW.acedb({})
+	SW.customize(profile_of(db))
+	db = SW.relog(db)
+	local profile = profile_of(db)
+	local snap = SW.snapshot(profile)
+	stub.in_combat = true
+	local record = SW.enable()
+	eq(spawned_ready(record), 0, 'the frames were built from the stored values')
+	eq(UF:SharedReady(profile), false, 'nothing converted in combat')
+	eq(rawget(profile, 'all'), nil, 'nothing written')
+	shows_the_same(snap, profile, 'and they show what they showed')
+	stub.in_combat = false
+	stub.fire_event('PLAYER_REGEN_ENABLED')
+	eq(UF:SharedReady(profile), true, 'converted at the end of combat')
+	shows_the_same(snap, profile, 'showing the same')
+	eq(#take_errors(), 0)
+end)
+
+test('N7: the backup leaves no empty table in the saved file', function()
+	world()
+	local db = SW.acedb({})
+	SW.customize(profile_of(db))
+	db = SW.relog(db)
+	SW.enable()
+	local file = SW.logout(db)
+	local backup = file.profiles.SaftUI.unitframes.profiles.SaftUI.backup
+	check(type(backup) == 'table' and type(backup.units) == 'table', 'there is a backup')
+	local function hollow(t, path)
+		for k, v in pairs(t) do
+			if type(v) == 'table' then
+				check(next(v) ~= nil, 'an empty table at backup.' .. path .. tostring(k))
+				hollow(v, path .. tostring(k) .. '.')
+			end
+		end
+	end
+	hollow(backup, '')
+	-- A fresh profile, where most units keep nothing, restores to what it was.
+	world()
+	db = SW.acedb({})
+	db = SW.relog(db)
+	local profile = profile_of(db)
+	local snap = SW.snapshot(profile)
+	SW.enable()
+	hollow(rawget(profile, 'backup'), '')
+	eq(UF:RestoreShared(profile), true)
+	shows_the_same(snap, profile, 'a fresh profile restores to what it was')
+end)

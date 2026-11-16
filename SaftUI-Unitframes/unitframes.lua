@@ -1040,7 +1040,11 @@ function UF:OnEnable()
 	-- Shared settings first: every element file has registered by now, and nothing is spawned, so
 	-- the profile is converted (once per profile) and synced before any frame reads it. A profile it
 	-- can't convert is left as it is and the frames build from its stored values.
-	self:PrepareShared()
+	-- A /reload in combat: the frames build from the stored values (what the units show, by construction) and
+	-- the conversion runs when combat ends, as a profile switch's does.
+	if not st:QueueAfterCombat('UnitframesLogin', function() UF:UpdateConfig() end) then
+		self:PrepareShared()
+	end
 
 	-- Before anything is spawned, so every frame gets it. Here rather than when
 	-- the file loads, where the tests' stand-in oUF has only its colors table.

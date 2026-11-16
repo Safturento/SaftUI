@@ -414,7 +414,12 @@ end
 
 local function mutate(root, row)
 	local type_ = row.type
-	if type_ == 'color' then return OM.Set(root, row, 0.1, 0.2, 0.3, 1) end
+	if type_ == 'color' then
+		-- A Custom color's colour is no difference while its box is unticked: tick it first.
+		if type(row.option.toggle) == 'table' then row.option.toggle.set(nil, true) end
+		local r = OM.Get(root, row)
+		return OM.Set(root, row, ((tonumber(r) or 0) + 0.37) % 1, 0.2, 0.3, 1)
+	end
 	if type_ == 'position' then return OM.Set(root, row, 'x_off', (tonumber(OM.Get(root, row, 'x_off')) or 0) + 3) end
 	if type_ == 'item' then return OM.Set(root, row, not OM.Get(root, row)) end
 	local value = other(root, row)
@@ -657,6 +662,54 @@ test('G13: a search for a shared setting lists All units first, then the units, 
 	check(#results >= 12, 'a result per page: ' .. #results)
 	eq(results[1].path[2], 'all', 'All units first')
 	eq(results[2].path[2], 'player', 'then Player')
+end)
+
+------------------------------------------------------------------ the second fix round
+
+test('N3: setting a row to the value it already has is no change: a unit that follows All units keeps following', function()
+	convert(false)
+	local root = tree()
+	local mroot, row = menu_row(root, 'target', 'name', 'maxLength')
+	local now = OM.Get(mroot, row)
+	check(not UF:IsOwn('target', 'name.maxLength'))
+	check(OM.Set(mroot, row, now))
+	eq(UF:IsOwn('target', 'name.maxLength'), false, 'the same value: still following')
+	check(OM.Set(mroot, row, now + 5))
+	eq(UF:IsOwn('target', 'name.maxLength'), true, 'a different value: own')
+	check(OM.Set(mroot, row, now + 5))
+	eq(UF:IsOwn('target', 'name.maxLength'), true, 'and it stays own')
+end)
+
+test('N1: while a part of the unit frames has not loaded, no page draws a sharing control and All units says why', function()
+	convert(true)
+	local castbar = UF.elements.Castbar
+	UF.elements.Castbar = nil
+	local tree_ = UF:GetConfigTable()
+	local shares = 0
+	each_option({ args = { Unitframes = tree_ } }, function(option)
+		if type(option) == 'table' and option.share ~= nil then shares = shares + 1 end
+	end)
+	eq(shares, 0, 'no share anywhere')
+	local notice = tree_.args.all.args.general.args.notice.name
+	check(notice:find('paused', 1, true) and notice:find('Castbar', 1, true), notice)
+	eq(tree_.args.all.args.general.args.parts, nil, 'All units has no settings')
+	UF.elements.Castbar = castbar
+end)
+
+test('N2: a Reset while sharing is paused follows All units when sharing resumes; it does not make the default the unit\'s own', function()
+	convert(true)
+	rawset(rawget(UF:GetProfileConfig(), 'all'), 'version', UF.SHARED_VERSION + 1) -- paused: a newer version's marker
+	local root = tree()
+	local mroot, row = menu_row(root, 'target', 'name', 'maxLength')
+	local all = rawget(UF:GetProfileConfig(), 'all').name.maxLength
+	check(OM.Set(mroot, row, all + 9))
+	eq(UF:IsOwn('target', 'name.maxLength'), true, 'the edit is marked')
+	eq(OM.DefaultSource(mroot, row), 'default')
+	eq(OM.DefaultDiffers(mroot, row), true, 'the row offers its Reset')
+	check(OM.DefaultReset(mroot, row))
+	eq(UF:IsOwn('target', 'name.maxLength'), false, 'follows All units again')
+	eq(UF:GetProfileConfig().target.name.maxLength, all, 'with All units\' value')
+	eq(OM.DefaultDiffers(mroot, row), false)
 end)
 
 ------------------------------------------------------------------ cost

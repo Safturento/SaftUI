@@ -195,12 +195,42 @@ local VALUE = {
 -- Option tables already decorated: a leaf one tree holds in two places (Health text) is wrapped once.
 local decorated = setmetatable({}, { __mode = 'k' })
 
--- The member owns the key first, then the row's own set runs.
-local function OwnThenSet(unit, key, set)
+-- The member owns the key first, then the row's own set runs. Setting a row to the value it already has (a unit
+-- that follows All units, left showing All units' value) is no change: it keeps following.
+local function OwnThenSet(unit, entry, set)
+	local key = entry.key
 	return function(info, ...)
+		local was = UF:IsOwn(unit, key)
 		UF:OwnShared(unit, key)
-		return set(info, ...)
+		local a, b, c = set(info, ...)
+		if not was then
+			local profile = UF:GetProfileConfig()
+			local all, config = rawget(profile, 'all'), profile[unit]
+			local own = type(config) == 'table' and rawget(config, 'own')
+			if all and own and UF.SameShared(entry, config, all) then own[key] = false end
+		end
+		return a, b, c
 	end
+end
+
+-- While sharing is paused the rows have no share, but a Reset still means what it does in normal sharing: the unit
+-- follows All units again (its value becomes All units' and its flag false). A hand default says so.
+local function PausedReset(unit, entry, option)
+	if type(option.default) == 'table' then return end
+	option.default = {
+		differs = function() return UF:IsOwn(unit, entry.key) end,
+		reset = function()
+			local profile = UF:GetProfileConfig()
+			local all, config = rawget(profile, 'all'), profile[unit]
+			if all and type(config) == 'table' then
+				UF.CopyShared(entry, all, config)
+				local own = rawget(config, 'own')
+				if own then own[entry.key] = false end
+				UF:UpdateConfig(unit, entry.element)
+			end
+		end,
+		text = "All units' value",
+	}
 end
 
 -- The saved path of the row below the unit ('name.font'), from the node that gives it its get, or nil.
@@ -271,12 +301,13 @@ local function Decorate(unit, option, root, path, getNode, setNode, ownOnly)
 	end
 	local set = option.set ~= nil and option.set or setNode and setNode.set
 	if type(set) == 'function' then
-		option.set = OwnThenSet(unit, entry.key, set)
+		option.set = OwnThenSet(unit, entry, set)
 	end
 	-- A color with a check box (a Custom color): the box's own set.
 	if type(option.toggle) == 'table' and type(option.toggle.set) == 'function' then
-		option.toggle.set = OwnThenSet(unit, entry.key, option.toggle.set)
+		option.toggle.set = OwnThenSet(unit, entry, option.toggle.set)
 	end
+	if ownOnly then PausedReset(unit, entry, option) end
 end
 
 local function Walk(unit, root, group, path, getNode, setNode, ownOnly)
