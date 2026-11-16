@@ -41,7 +41,7 @@ mode's Done, check boxes, scroll bars, edit boxes, resize corners).**
 - A SaftUI button tints its body under the label (it was an additive flat highlight over the label); disabled is
   40% on the whole button (it was a black texture).
 - A radio group's picked button has the Accent edge and the fade (it was an edge only). A ticked `'button'`-style
-  check box (the Edit toggle, the currency funnel) is the same.
+  check box (the Currencies funnel; the Edit toggle is hidden in the code today) is the same.
 - A scroll bar thumb rests at #4d4d4d (it was #1a1a1a, almost invisible), T+ under the mouse, T- while dragged.
 - The bag search box and the chat edit box: the focus edge is the Accent (it was white).
 - Bag, bank and bank tab slots: a faint 16% tint under the mouse (it was the full Accent, additive) and a darker
@@ -74,7 +74,9 @@ mode's Done, check boxes, scroll bars, edit boxes, resize corners).**
   the body tint. An off category that is hovered or selected is drawn in Text > Normal, with its strike line.
 - `+ New category`, `+ Block`, `+ Group` turn Text > Strong under the mouse (they dimmed to 70%).
 - Rule editor: NOT on shows the edge and the fade with a light label; its check boxes have a 10 px square on the
-  14 box with the edge and the fade.
+  14 box with the edge and the fade. The AND / OR badge now tints its body under the mouse like the other boxes
+  and keeps its label at full strength (it dimmed the label to 70%): a hand-rolled hover the spec had dropped,
+  drawn through the helpers in the final fix round.
 
 **Action bars, totems, micro menu, minimap.**
 
@@ -96,8 +98,8 @@ mode's Done, check boxes, scroll bars, edit boxes, resize corners).**
 
 **SaftUI's tracker, Blizzard's tracker skin, the picker's skin, RestedXP.**
 
-- Tracker rows tint at 16% under the mouse and darker when held (a left press), 2 past the row on every side (they
-  were Accent at 25% and 0 at the sides); popup rows and zone header rows tint (new); a press on a row's slot or
+- Tracker rows tint at 16% under the mouse and darker when held (a left press), 2 above and below the row (the list
+  clips the sides; they were Accent at 25%); popup rows and zone header rows tint (new); a press on a row's slot or
   quest icon pushes the row (new). Quest item buttons: 16% (they were 40% added). Chevrons: T+ under the mouse.
 - Blizzard's color picker (with the skin on): Okay and Cancel tint under the mouse and darker while held, their edge
   unchanged; the hex box's focus is the Accent (it was white). Blizzard's tracker's quest item hover is T+ at 16%
@@ -105,8 +107,8 @@ mode's Done, check boxes, scroll bars, edit boxes, resize corners).**
 
 **Under Blizzard.** Wherever Blizzard's art draws a state (the kit's controls, `/sui`, bags, action, pet, stance,
 totem and micro buttons, the movers' kits), SaftUI draws nothing over it. SaftUI's own tracker rows and item buttons,
-the micro menu's bar items, the minimap's buttons and the keybind marker keep SaftUI's look in every theme (calls 1
-and 2 below).
+the micro menu's bar items, the minimap's buttons and the keybind marker keep SaftUI's look in every theme, and so do the bag bar's slots (call 1 below). The close button
+keeps its own red Danger hover on purpose (call 10).
 
 **Behaviors the engine now has.** A control enabled again while the mouse is over it shows hover at once. A label
 you recolor while a state is on it comes back in your color, not a default. A selected row's bar and a tab's
@@ -118,38 +120,41 @@ underline keep their two-pixel thickness when you change the UI size.
 
 1. **A profile that changed Buttons > Hover.** Your profile has already run the update, and Colors has no Hover row
    to change, so this can only be played by editing the saved variables. Skip it if you would rather not. Close the
-   game, add `button = { hover = { r = 1, g = 0, b = 0 } }` to a spare profile's `colors` table in the SaftUI
-   saved variables file (`SaftUI_DB`) and set that table's `version = 7`, start the game and switch to that profile.
-   Colors shows Buttons with Danger only, BugGrabber shows nothing, and the saved file no longer lists `hover`
-   after you log out. Switching to it and copying from it do the same.
+   game and, in the SaftUI saved variables file, give a spare profile (`SaftUI_DB.profiles.<name>`) the whole entry
+   `colors = { version = 7, button = { hover = { r = 1, g = 0, b = 0 } } }` (a spare profile may have no `colors`
+   table at all). Start the game and switch to that profile: Colors shows Buttons with Danger only, BugGrabber
+   shows nothing, and after you log out the saved file no longer lists `hover` for it. The switch is what migrates
+   it: to try Copy from, close the game and make the same edit again first.
    *Code: `CO.MIGRATION_STEPS[8]` in `SaftUI-Core/Media/colors.lua`, run by `st:MigrateColors` at login and by
    `Config:UpdateConfig` on a switch, copy and reset; the Buttons section is `Danger` alone (`CO.SECTIONS`).*
 
 ### `/sui`
 
 2. **Boxes and buttons (G1).** In `/sui`, put the mouse over Reload UI, a field, a select, a color field and a check
-   box. Each tints its body light blue and keeps its grey edge. Hold Reload UI: it tints darker and the label drops
-   one line; let go and it works.
+   box. Each tints its body light blue and keeps its grey edge. Hold the left button on Reload UI: it tints darker and
+   the label drops one line; move off it before you let go, or it reloads.
    *Code: `W.HoverStates` (`Config/optionslook.lua`); the label offset is `PlaceLabel` (`Config/optionscontrols.lua`).*
 3. **A check box.** Tick one. It shows a blue edge, a small blue square and a fade from the left; hover it while
    ticked and the edge and square turn lighter. Disable something (an option whose toggle greys it out): it dims to
    40% and shows no tint under the mouse.
-   *Code: the `'check'` shape in `Widgets/states.lua`, `Kit.SetCheck`; `Base:SetDisabled` in `Config/optionstypes.lua`.*
+   *Code: the `'check'` shape in `Widgets/states.lua`, `Kit.SetCheck`; `Base:SetDisabled` in `Config/optionswidgets.lua`.*
 4. **Sidebar and tabs (G2).** Hover a sidebar page: a blue tint, not grey. The open page has a two-line bar on its
    left and a fill fading across; hover it and both go lighter. On the tabs: a tint under the mouse and the text turns
    light; the open tab's underline is two lines with the fade above it.
    *Code: `StyleNavItem` and the tab registration in `Config/optionsnav.lua` (`'row'` with `bar = 'left'`, `'tab'`
    with `bar = 'bottom'`).*
 5. **Dropdown (G3).** Open a dropdown: rows tint under the mouse; the picked row has the bar and the fade with light
-   text. Hover a check list's row: its box takes the row's hover.
+   text. Hover a check list's row: its box takes the row's hover. Open a dropdown whose choice enables a control under the
+    open list, pick it and move the mouse out of the list away from that control: the control shows no hover.
    *Code: the `'row'` records in `Config/optionslist.lua`.*
 6. **Slider and links.** Hover a slider's knob: it turns light blue and darker while dragged; the fill stays blue.
    Hover the position block's dots (the picked one is the big blue dot), a reset icon, a nudge arrow and an item's
-   dots: each turns the lighter tone.
+   dots: each turns the lighter tone. A share line's "All" link turns Text > Strong under the mouse.
    *Code: the `'knob'` in `Config/optionsrange.lua`; the `'glyph'` records in `optionsposition.lua`, `optionscontrols.lua`
    and `optionsitem.lua`.*
 7. **The resize grip.** Drag `/sui`'s bottom right grip. Under Thick and Thin the corner stays visible, in the
-   lighter blue, while you hold it.
+   lighter blue, while you hold it. The world map's resize corner does the same: white, T+ under the mouse and
+   while you drag.
    *Code: `Config/optionsresize.lua` (the glyph is the normal and the pushed texture).*
 8. **A keybinding.** Click a keybinding button: it waits with a blue edge and the fade and "Press a key" in blue.
    Press a key or Esc: the edge goes. Hover it while waiting and read the prompt (call 5).
@@ -174,8 +179,9 @@ underline keep their two-pixel thickness when you change the UI size.
     `STATE_NAMES` in `Config/optionspreview.lua`.*
 13. **By mode (G6).** Layers dims Tones and Hue shift; Tones dims Hue shift; a dimmed row keeps its value and comes
     back unchanged. Change Hover, close the menu: the dots rest lighter and their tooltip says "1 setting here
-    differs from its default." The strip's fifth caption reads "+ hover" and is not cut off. Search `/sui` for
-    "hover", "pushed" and "tones": the Accent's rows come up and a click opens the menu.
+    differs from its default." The strip's fifth caption reads "+ hover" and is not cut off. Under Blizzard the dots turn white under the mouse and the strip is drawn Thick with the note "Shown as Thick:
+    Blizzard's art draws its own." (not cut off). Search `/sui` for "hover", "pushed" and "tones": the Accent's rows
+    come up and a click opens the menu.
     *Code: `disabled` and `disabledDesc` on the settings in `ST.MenuGroup()`; `Kit.DotsTip` (`Config/optionsitem.lua`).*
 14. **Presets (G5).** Pick #8a5cf5, then #e6c84a: every state follows, and text on a fill stays readable. With
     #e6c84a, set Hover to 60%: the strip's Hover "Okay" and a hovered button on the page turn dark. Set Hover back
@@ -185,8 +191,10 @@ underline keep their two-pixel thickness when you change the UI size.
     hover a paler yellow (#f7e579). With the default blue: hover turns cyan (#1ecfef) and pushed toward violet
     (#3888e9). Say if it reads wrong (call 6).
     *Code: `ST.Tone` (`Media/states.lua`).*
-16. **Picker and menu together.** Open the Accent's color picker, click the dots, press Cancel on the picker, then
-    drag Hover in the menu: it stays smooth, and closing the menu ends the edit (one debug line with `/sui debug`).
+16. **Picker and menu together.** Turn `/sui debug` on first. Open the Accent's color picker, click the dots, press Cancel on the picker, then
+    drag Hover in the menu: it stays smooth, and closing the menu ends the edit (one `<DEBUG:Colors>` line). If the
+    picker covers the Accent row's dots, drag the picker by its title strip first. In the picker, Cancel puts every
+    state back; the strip's buttons take no mouse; Danger's two slots sit centred in their tiles.
     *Code: `st:HoldColorEdit()` and `st:ReleaseColorEdit()` (`Media/colors.lua`).*
 
 ### Edit mode
@@ -199,33 +207,40 @@ underline keep their two-pixel thickness when you change the UI size.
     *Code: the `'mover'` records in `EditMode/mover.lua` (`st:AddStates(overlay, 'mover', ...)` after the overlay's scripts: the helper's press hook sets `pushed`, which a mover draws as hover).*
 18. **The bar and the History list.** A History row tints under the mouse; the current step has the two-line bar and
     the fade and moves with Undo, Redo and a row click; a hovered undone (grey) row's label turns light. The Filter
-    movers box tints and lights its edge when typed in; the length box and Grid size tint and light their edge; with
+    movers box tints and lights its edge when typed in; the length box and Grid size tint and light their edge; Esc clears the Filter movers box; at your UI size the bar and the movers' labels read as
+    before; with
     nothing selected and no changes, Reset, Undo and Redo are dimmed and do not tint under the mouse.
     *Code: `EditMode/Bar/historylist.lua` (`SetState(row, 'selected', index == position)`).*
-19. **A mover while you recolor.** With a mover selected, drag Theme > Border color: the movers' lines stay white (the
-    selected one blue) and their bodies stay dim during and after. Switch Thick, Thin and Blizzard with one selected.
+19. **A mover while you recolor.** With a mover selected, drag Theme > Border color, then Background's opacity, which its picker has (Border has none): the movers' lines stay white (the
+    selected one blue) and their bodies stay dim during and after. Switch Thick, Thin and Blizzard with one selected. With `/sui debug` on and bags and bank open, each Border-drag
+    line naming `theme` is under 2 ms.
     *Code: the overlay's `SetBorderColor` in `EditMode/mover.lua` restyles only when the look or the inset changed.*
 
 ### Bags
 
 20. **Windows (G7).** Right after a `/reload`, hover each view button that is not the current one, and the Currencies
     funnel: each tints at once. The current view button has the blue edge and the fade; its icon is Text > Normal.
-    Hover Bag Slots and Warband Bank: the label stays the same white after you leave. Press and hold an item slot, a
+    Hover Bag Slots, and Warband Bank (both are in the bank window at a banker, and Warband Bank only where the game
+    has the warband bank): the label stays the same white after you leave. The bag bar's slots keep the tint after a
+    bag swap. Switch to Blizzard with the mouse on a view button and move away: no icon stays light blue. Press and hold an item slot, a
     bag bar slot and a bank tab: a darker tint while held, nothing after release.
     *Code: `Widgets/button.lua` and `header.lua`; `containers/bag.lua` (the bag bar's slots are `'icon'` records).*
 21. **Categories.** Hover a row (a tint) and select one (the two-line bar and the fade); drag a handle and drop, or
     drop outside to cancel: no row stays tinted. An off category, hovered or selected, reads in normal text with its
     strike line (call 3). `+ New category`, `+ Block` and `+ Group` are blue at rest and white under the mouse.
     *Code: `categoriestab.lua` (`'row'`, `'glyph'`).*
-22. **Rule editor.** NOT on shows the edge and the fade with a light label; its check boxes ("Whole word"...) show the
+22. **Rule editor.** NOT on shows the edge and the fade with a light label; its check boxes ("whole word", on a name or text block) show the
     10 px square, the edge and the fade (call 4). Its dropdown fields and check boxes look enabled and tint under the
-    mouse. "Caught now" is still a faint orange.
+    mouse. "Caught now" is still a faint orange. With Theme on Blizzard and back, a rule editor check box's mark is a small square inside the box, not over it. The
+    AND / OR badge of a group tints its body under the mouse and its label
+    stays at full strength (no 70% dim); a click still flips the group.
     *Code: `ruleeditor.lua` (`W.HoverStates(check, { shape = 'check', mark = check.mark })`).*
-23. **A filter check box and the retail bank.** The category filter box (Edit on): a 6 square, the edge and the fade
-    when ticked; the currency veil and the combined bank's eye keep their look through a theme and a profile switch.
-    Retail: the combined bank's Bank / Warband tabs (edge and fade on the picked one) and the deposit button. Forever:
-    with the bank's Bag Slots open and too little gold for the next tab, the Buy label is red; hover it and move
-    away: still red.
+23. **Check boxes of the bags and the bank.** The currency veil and the combined bank's eye (bare check boxes) keep
+    their look through a theme and a profile switch. (The category filter box and the Edit toggle that shows it are
+    hidden in the code today, so there is nothing to play there.) Retail: the combined bank's Bank / Warband tabs
+    (edge and fade on the picked one) and the deposit button, which reads as disabled under Thick when a bank tab
+    has nothing to deposit; after a hover the bank's Buy label keeps its red price color. Forever: with the bank's
+    Bag Slots open and too little gold for the next tab, the Buy label is red; hover it and move away: still red.
     *Code: `st:SkinCheckButton` styles in `Widgets/checkbutton.lua`; `containers/combinedbank.lua`.*
 
 ### Action bars, micro menu, minimap
@@ -233,7 +248,7 @@ underline keep their two-pixel thickness when you change the UI size.
 24. **Action bars (G8).** Hover a button (a faint tint over the icon), press and hold (darker), let go. Turn auto attack
     on: the Accent edge and the fade from the left. An equipped trinket on a bar: the Accent edge, no fade. Both on one
     button: one edge, with the fade. A pet action toggled (assist, passive) and a stance change: the active one has
-    the edge and fade. A totem button: hover T+ at 16%.
+    the edge and fade. A totem button (a shaman with the totem bar, on Forever): hover T+ at 16%.
     *Code: `AB:PaintEdge` and `AB.OnChecked` (`SaftUI-ActionBars/skin.lua`); the totem buttons are `totemskin.lua`.*
 25. **Keybind mode.** `/sui kb`: the button under the mouse shows a thin Accent edge and the fade (call 2).
     *Code: `keybindmode.lua` (the binder is a `'box'`, selected while it marks a button).*
@@ -248,24 +263,31 @@ underline keep their two-pixel thickness when you change the UI size.
 ### Loot, tracker, skins
 
 27. **A real group roll (G14).** Choose Need or Greed. The chosen button has the Accent border all round and a faint
-    fade around the art's edges; the others are at 40%; "Choice" and the timer are in the Accent; the chat lines
+    fade around the art's edges; the others are at 40%; "Choice" and the timer are in the Accent; the roll bar is held as before, and the chat lines
     with `/sui debug` on are `choice pending:`, `bar hid:`, `held roll`. Loot > Test mode's previews look the same;
     change the Accent and the border and "Choice" follow at once (call 8).
     *Code: `rollbar.lua`'s `ApplyBarConfig` (`SetState(backdrop, 'selected', true)`) and `DimOthers` (`st:StateAlpha()`).*
 28. **The loot window and the feed.** Hover a row: its body tints, its border does not change; loot by clicking, in
     combat and out. Open and close many loot windows: no card stays tinted. On the feed, the two buttons show under
-    the mouse, tint, and their icon turns T+ and goes back to Text > Normal when you leave.
+    the mouse, tint, and their icon turns T+ and goes back to Text > Normal when you leave; the filter menu behaves as a `/sui`
+    list. Under Blizzard nothing of SaftUI's shows on the loot window.
     *Code: `popup.lua` (`HoverCard`), `Feed/feed.lua` (`CreateFeedIconButton`).*
 29. **SaftUI's tracker (G15).** A quest row tints faint light blue under the mouse (softer than before) and darker
     while the left button is held; a right press does not darken it. Move from the row onto its item slot, quest icon
     and item button: the row stays tinted. A popup ("Quest discovered", "Quest complete") tints too; a zone header
     row tints and its chevron is grey, light blue under the mouse and while held. Quest item buttons tint faintly.
-    Any scroll bar's thumb: lighter grey at rest, light blue under the mouse.
+    Any scroll bar's thumb: lighter grey at rest, light blue under the mouse. Left click, Shift-click and the
+    right-click menu on a row still work, and a popup's click still opens the offer or the turn-in; the combat dim
+    (40%) and the blue in-area edge on quest items are as before; a chevron's tooltip and collapse work. Drag the
+    Accent with a row hovered: the row's tint follows. Complete an objective while hovering a row: a row that
+    goes or is reused for another quest keeps no tint.
     *Code: `SaftUI-Tracker/rows.lua`, `items.lua`, `window.lua` (`TR:HoverRow`, the `'icon'` records).*
 30. **Skins.** Blizzard's color picker (skin on): Okay and Cancel tint their body under the label, darker while held,
     the edge stays grey; click into the hex box: the edge turns blue, grey again when you click out. With SaftUI's
-    tracker off, Blizzard's tracker's quest item shows a faint tint under the mouse and its chevron is grey, light
-    blue under the mouse. A RestedXP step tints under the mouse.
+    tracker off (turn "SaftUI's tracker" off on its `/sui` page and `/reload`: it is read once at login), Blizzard's tracker's quest item shows a faint tint under the mouse and its chevron is grey, light
+    blue under the mouse. A RestedXP step tints under the mouse, the tint clears when you leave, and it follows RestedXP's right-click.
+    With the Skinning Theme set to Blizzard, Blizzard's picker shows Blizzard's own look and no tint, and
+    Blizzard's tracker's quest item shows Blizzard's highlight.
     *Code: `SaftUI-Misc/Skinning/blizzard/Blizzard_ColorPicker.lua`, `Blizzard_ObjectiveTracker.lua`,
     `addons/restedxp.lua`.*
 
@@ -275,21 +297,26 @@ underline keep their two-pixel thickness when you change the UI size.
     `/cast` line: the edge goes back each time, nothing blocked. A bag search box the same: click in, blue edge;
     Esc or click away, the theme's edge.
     *Code: `st:SkinEditBox` (`SaftUI-Core/skinning.lua`).*
-32. **Scale.** `/sui scale`: try 90% and keep, then back to 100%. A selected tab's underline and a selected row's bar
-    stay two pixels (the underline one pixel below its tab). Drag Theme > Border opacity with a pressed button and a
-    checked box on screen: their Accent edge stays.
-    *Code: the scale callback in `Widgets/states.lua` (`UIScale:OnChanged`).*
+32. **Scale and recolor.** `/sui scale 90`, press Keep; then `/sui scale 100`, Keep. A selected tab's underline and a
+    selected row's bar stay two pixels (the underline one pixel below its tab). With a selected button (the bags'
+    current view button) and a ticked check box on screen, open Global settings > Theme, open Border's picker and
+    drag, then drag Background's opacity: their Accent edge stays.
+    *Code: the scale callback in `Widgets/states.lua` (`UIScale:OnChanged`); `st:KeepOwnColors` keeps a selected
+    edge through a recolor.*
+
 33. **Blizzard theme (G16).** Set Theme to Blizzard (Global settings > Theme). `/sui`, the bags, the action, pet,
-    stance, totem and micro buttons and edit mode's movers wear Blizzard's states and no SaftUI tint shows over them;
+    stance, totem and micro buttons and edit mode's movers wear Blizzard's states and no SaftUI tint shows over them
+    (the bag bar's slots are the exception: they keep SaftUI's tint, call 1);
     switch Thick, Thin, Blizzard and back with a hovered button, a checked box and a scroll bar on screen: nothing
     stays drawn under Blizzard and everything is back under Thick. A chosen roll still has an Accent line around its
-    icon. In `/sui`, a picked dropdown entry keeps its text in the Accent (the Settings art has no picked mark).
+    icon. In `/sui`, a picked dropdown entry keeps its text in the Accent (the Settings art has no picked mark), and an
+    item's dots are white under the mouse. The tab label goes back to Muted and a button's to white after a hover.
     *Code: each record's `blizzard` option; `W.WearsBlizzard` for the kit.*
 
 ### Combat and the taint log
 
 34. **In combat (G12).** With the taint log on: cast from bars 1 to 8; toggle auto attack; open and use a spell
-    flyout; use pet abilities and change a stance or form; use a totem and its flyout; ride a vehicle or a taxi and
+    flyout; use pet abilities (summon or revive a pet too) and change a stance or form; use a totem and its flyout; ride a vehicle or a taxi and
     press the leave button; open and close the character window and the spellbook from the micro menu; use a quest
     item by click and by the nearest item's key. Expected: every action works, no `ADDON_ACTION_BLOCKED`, and nothing
     in `Logs/taint.log` or BugGrabber naming SaftUI, `OnChecked`, `Widgets/states.lua` or `microbuttons.lua`. Press and
@@ -311,7 +338,7 @@ Each is a one-line change after you have seen it. Say which way you want it.
 
 1. **Bar items, minimap buttons and the keybind marker under Blizzard.** The micro menu's bar items (zone text,
    clock, compartment), the minimap's tracking, queue and expansion buttons, and keybind mode's marker keep SaftUI's
-   tint under the Blizzard theme (the marker wears the Thin look in every theme), where the spec's table said
+   tint under the Blizzard theme (the marker wears the Thin look in every theme), and so do the bag bar's slots, where the spec's table said
    "Blizzard's highlight and pushed art". Keep, or wear Blizzard's art there?
 2. **The keybind marker under Blizzard.** Same question for the marker alone: follow the theme?
 3. **An off category hovered or selected.** It is drawn in Text > Normal over the fade, with its strike line, instead
@@ -328,6 +355,16 @@ Each is a one-line change after you have seen it. Say which way you want it.
 9. **Under Blizzard, small ones.** The History list's current step has an Accent label (Blizzard's art draws no
    mark; the old 2 px mark showed under Blizzard too). The loot feed's two icons are white under Blizzard. A disabled
    Bag Slots Buy button under Blizzard shows only Blizzard's -Disabled art: too faint?
+10. **The close button.** Its Danger hover is unchanged on purpose: under the mouse its border and X turn red and its
+    body is the close fill (a meaning, not a state), while every other button tints in the Accent. Keep it red, or
+    make it wear the Accent's states too? (Step 2 and any window's close.)
+11. **One Accent edge for two things.** A checked action button (an active ability, an auto attack) and an equipped
+    item both wear the Accent edge; only the fade tells them apart. Right, or should the equipped item look
+    different? (Step 24.) One condition in `AB:PaintEdge`.
+12. **The scroll thumb at rest.** It rests at #4d4d4d (it was #1a1a1a, almost invisible). Too light or too dark?
+    (Step 29, any scroll bar.) One constant, `ST.THUMB_REST`.
+13. **Buttons holds Danger alone.** The Colors page's Buttons section has one row now. Keep Danger there, or move it
+    to Text? (Step 11.)
 
 Not in this list: a unit frame's hidden state against a dimmed one, which is the unit frames plan's.
 
@@ -336,7 +373,8 @@ Not in this list: a unit frame's hidden state against a dimmed one, which is the
 - `/sui debug`: prints each color edit's slowest pass (`<DEBUG:Colors> N passes, slowest X ms ...`), and the roll
   lines of step 27. Run it again to turn it off.
 - `/console taintLog 1`, then `/reload`: the taint log. `Logs/taint.log` and BugGrabber's list are where to look.
-- `/sui kb`: keybind mode. `/sui edit`: edit mode. `/sui scale`: the UI size and its Keep prompt.
+- `/sui kb`: keybind mode. `/sui edit`: edit mode. `/sui scale` prints the current mode; `/sui scale 90` (a size), `auto`, `pixel` or `game` tries one
+  with the Keep prompt, and `reset` goes back.
 - Does the game keep label colors as bytes? On each client:
   `/run local f=UIParent:CreateFontString(nil,'OVERLAY','GameFontNormal') f:SetTextColor(0.9,0.9,0.8) print(f:GetTextColor())`
   Printing `0.89803...` or `0.90195...` means bytes, `0.89999997...` single precision only. The states are right

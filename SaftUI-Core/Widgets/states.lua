@@ -255,8 +255,8 @@ local function NoteFollow(rec, i, label, r, g, b)
 	local fr, fg, fb = PlainColor(object)
 	if not (fr and fg and fb and Close(r, g, b, fr, fg, fb)) then return end
 	if not follows then
-		follows, rec.follows, rec.fpaint = {}, {}, {}
-		follows = rec.follows
+		follows = {}
+		rec.follows, rec.fpaint = follows, {}
 	end
 	followers[rec] = true -- the few records st:RepaintKeptText walks
 	follows[i] = object

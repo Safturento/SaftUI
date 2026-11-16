@@ -1218,3 +1218,20 @@ test('a parked level pick does not follow a switch to another category', functio
 	INV.categoryEditor = had
 	eq(#take_errors(), 0, 'no errors')
 end)
+
+test("the AND / OR badge is a state frame: its body tints under the mouse, its label keeps its color and alpha", function()
+	local ed = editor(grp('or', { blk('tooltip', { text = '' }), blk('class', {}) }))
+	local w = ed.w
+	local badge = add_row(w, {}).badge
+	check(st:GetState(badge, 'hover') == false, 'a state frame (no hand-rolled hover)')
+	local r, g, b = badge.text:GetTextColor()
+	stub.fire_script(badge, 'OnEnter', true)
+	check(st:GetState(badge, 'hover'), 'hover holds under the mouse')
+	check(st:StateLook(badge).layer.shown, 'the body tints')
+	eq(badge.text:GetAlpha(), 1, 'the label is not dimmed to 0.7')
+	local r2, g2, b2 = badge.text:GetTextColor()
+	check(math.abs(r - r2) + math.abs(g - g2) + math.abs(b - b2) < 0.02, 'its AND color stays')
+	stub.fire_script(badge, 'OnLeave', true)
+	check(not st:StateLook(badge).layer.shown, 'and the tint goes')
+	w:Release()
+end)

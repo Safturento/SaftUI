@@ -554,3 +554,29 @@ test('N4: RepaintKeptText walks the records that follow a font object, not every
 	st:RemoveStates(f)
 	check(st:StateLook(f) == nil, 'removed')
 end)
+
+test('N4: RepaintKeptText visits the followers only: no table of every record is walked', function()
+	world()
+	for _ = 1, 300 do labelled(1) end
+	local fo = CreateFont('N4WalkFont')
+	fo:SetTextColor(0.9, 0.9, 0.9)
+	local f, labels = labelled(1, { textKeep = true, textRest = false })
+	labels[1]:SetFontObject(fo)
+	labels[1]:SetTextColor(0.9, 0.9, 0.9)
+	st.config.profile.theme.accent = CreateColor(0.9, 0.78, 0.29)
+	st.config.profile.theme.states.hover = 0.6
+	ST.Changed()
+	st:SetState(f, 'hover', true)
+	check(st:StateLook(f).followsFont, 'one record follows a font object')
+	local biggest, real = 0, pairs
+	_G.pairs = function(t)
+		local n = 0
+		for _ in real(t) do n = n + 1 end
+		if n > biggest then biggest = n end
+		return real(t)
+	end
+	local ok, err = pcall(st.RepaintKeptText, st)
+	_G.pairs = real
+	check(ok, tostring(err))
+	check(biggest < 50, 'the largest table walked has ' .. biggest .. ' entries (every record is 300 or more)')
+end)

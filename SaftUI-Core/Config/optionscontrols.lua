@@ -364,8 +364,8 @@ end
 ------------------------------------------------------------------ the select face
 
 -- A FIELD_HEIGHT tall dropdown face of width: Box, button.text 8 in from the
--- left and 22 from the right, and Kit.Caret at the right; its edge lights
--- under the mouse. onClick(face) opens whatever it opens. Hiding it closes a
+-- left and 22 from the right, and Kit.Caret at the right; its body tints
+-- under the mouse (a state frame). onClick(face) opens whatever it opens. Hiding it closes a
 -- list it owns. Under Blizzard W.LookSelectFace puts the Settings dropdown on.
 function W.SelectFace(parent, width, onClick)
 	local face = Box(st:CreateFrame('Button', nil, parent))

@@ -946,12 +946,12 @@ local function GroupParts(w, g)
 	badge:SetSize(BADGE_WIDTH, BADGE_HEIGHT)
 	badge.text = Text(badge, OB.Font('caption'))
 	badge.text:SetPoint('CENTER', badge, 'CENTER', 0, 0)
-	badge:SetScript('OnEnter', function(self) self.text:SetAlpha(0.7) end)
-	badge:SetScript('OnLeave', function(self) self.text:SetAlpha(1) end)
 	badge:SetScript('OnClick', function(self)
 		local path = self.path
 		if path then Edit(w, function(rule) return R.Flip(rule, path) end) end
 	end)
+	-- a box of the helpers, after its scripts: the body tints under the mouse; its label keeps its own color
+	W.HoverStates(badge)
 	parts.badge = badge
 	w.groupParts[g] = parts
 	return parts

@@ -151,6 +151,7 @@ define('font', {
 		self.frame:SetWidth(self.width)
 		W.LookSelectFace(self.face, blizzard)
 		self.dots.blizzard = blizzard
+		st:RestyleStates(self.dots) -- the record's Blizzard rule reads dots.blizzard
 		PaintSlot(self.dots, false)
 		return Base.Bind(self, ...)
 	end,

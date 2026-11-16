@@ -7,6 +7,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-16 — The states scan misses hand-rolled states it should catch](#2026-11-16--the-states-scan-misses-hand-rolled-states-it-should-catch)
+  - [2026-11-16 — A Buttons color saved by an older build after a downgrade stays as an orphan key](#2026-11-16--a-buttons-color-saved-by-an-older-build-after-a-downgrade-stays-as-an-orphan-key)
   - [2026-11-16 — The tracker's whole pixels at other scales](#2026-11-16--the-trackers-whole-pixels-at-other-scales)
   - [2026-11-16 — `optionsOf` keeps every page root alive: the reset walk's options table holds its own key](#2026-11-16--optionsof-keeps-every-page-root-alive-the-reset-walks-options-table-holds-its-own-key)
   - [2026-11-16 — The full-UI Accent pass is about 2,500 setters, and the bag slots are 1,400 of them](#2026-11-16--the-full-ui-accent-pass-is-about-2500-setters-and-the-bag-slots-are-1400-of-them)
@@ -234,6 +236,34 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-16 — The states scan misses hand-rolled states it should catch
+
+**What:** `tests/core/states_scan_test.lua` is the brief's S1 to S5, which is narrow. The final review planted seven hand-rolled states in scratch copies of real files and the scan caught one: a `SetBackdropBorderColor(st:ColorRGBA('accent'))` in an `OnEnter` hook (`SaftUI-Loot/popup.lua`), a `HIGHLIGHT` texture colored from `st:Color('accent')` (`SaftUI-Bags/containers/bag.lua`), a hardcoded grey `SetColorTexture(0.2, 0.2, 0.2, 1)` on `OnEnter` (`SaftUI-Minimap/micromenu.lua`), a `button:SetAlpha(enabled and 1 or 0.35)` disabled dim (`SaftUI-Loot/rollbar.lua`), an ADD blend in a file that does not use the helpers and a `ColorRGBA('accent')` then `SetVertexColor(r, g, b, 0.4)` (both `SaftUI-Misc/durability.lua`) were all missed; only the ADD blend in a helper file (`SaftUI-Tracker/rows.lua`) failed S3. The spec's anti-goal, that a module that colors a state any other way fails the source scan, holds only for the forms the brief names.
+
+**Why noticed:** the final review of the interaction states plan (Task 11), `.superpowers/sdd/2026-11-15-saftui-interaction-states/final-review.md`, A3.
+
+**Anchors:** `tests/core/states_scan_test.lua` (`Scan`, `ALLOWED`, `UsesHelpers`), `tests/lib/source_lex.lua`.
+
+**What's been considered:** widen S3 to every file but `themeart_data.lua` and `skinning.lua`'s Blizzard branch (ADD appears nowhere else today, so no false positive); pin `CreateTexture(nil, 'HIGHLIGHT')` (six sites) the way S2 pins the setters; flag a color setter (`SetBackdropBorderColor`, `SetColorTexture`, `SetVertexColor`, `SetTextColor`) inside an `OnEnter` or `OnLeave` handler body that does not go through `st:SetState` (a heuristic run found only Danger meanings, Blizzard-branch text and the AND / OR badge, now fixed); flag a `SetAlpha` with a literal under 1 beside `Enable` or `disabled`; list S2's allowed calls by line text, kind and reason, not by a count per file, since removing one call and adding another in the same file passes today and one kind per file mislabels `skinning.lua` (three kinds).
+
+**Shape of work:** one test-only task, small to medium: the widenings above with a fixture line for each and a run over the tree to settle what is real.
+
+**Open questions:** how much the hover-handler heuristic may flag before it needs an allow list.
+
+### 2026-11-16 — A Buttons color saved by an older build after a downgrade stays as an orphan key
+
+**What:** migration step 8 retires Buttons > Normal, Hover, Pushed and Checked, and a profile's `colors.version` only rises. If the owner runs an older build (version 7) after this one, that build can save a Buttons color again into a profile already at version 8; the newer build then never runs step 8 on it, and the key stays in the saved variables as an orphan. It is harmless: nothing iterates `colors.button`, and `st:Color('button', 'hover')` errors only if something calls it, which nothing does.
+
+**Why noticed:** the final review of the interaction states plan (Task 11), A1, probing downgrade then upgrade.
+
+**Anchors:** `SaftUI-Core/Media/colors.lua` (`CO.MIGRATION_STEPS[8]`, `st:MigrateColors`), `tests/core/color_migration_test.lua` (the step 8 cases).
+
+**What's been considered:** leave it (a downgrade is not a supported path); or a later step 9 that retires the four again, which runs once for a profile at 8 and drops what an older build saved, at the cost of one more entry in the list.
+
+**Shape of work:** none unless a downgrade is ever expected; then one step and its case. Small.
+
+**Open questions:** whether downgrades are supported at all.
 
 ### 2026-11-16 — The tracker's whole pixels at other scales
 

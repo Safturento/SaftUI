@@ -14,7 +14,7 @@ Where the setting is saved, or a hand default, or why it has none. A group says 
 
 | Part | Value | Tokens |
 | --- | --- | --- |
-| Icon | `rotate-ccw` drawn 14, `text-muted` at rest; `accent` under the mouse | `icon-reset`, `text-muted`, `accent` |
+| Icon | `rotate-ccw` drawn 14, `text-muted` at rest; the lighter tone of the Accent under the mouse | `icon-reset`, `text-muted`, `accent-light` |
 | Beside a control | 6 before the control; on a `MenuItem`, right against its dots (their button has room round the glyph), so the name gives up only the icon and 4 | `reset-gap` |
 | In the hover line | after "Own", 6 either side | `reset-gap` |
 | Tooltip | title "Reset" in `text-strong`, the line under it | `text-strong` |

@@ -335,7 +335,15 @@ test('Blizzard: the box is the Settings check box at the row size, the dots whit
 		eq(vertex(c.widget.dots.icon), color('text', 'muted'), 'the dots grey')
 		stub.fire_script(c.widget.dots, 'OnEnter', true)
 		eq(vertex(c.widget.dots.icon), '1.00,1.00,1.00', 'white under the mouse')
+		-- an Accent pass (the record's own follow) leaves the dots to the Blizzard rule: white, not the lighter tone
+		st.config.profile.theme.accent:SetRGB(0.9, 0.2, 0.6)
+		st:ColorChanged('accent')
+		eq(vertex(c.widget.dots.icon), '1.00,1.00,1.00', 'white through an Accent pass')
+		check(st:StateLook(c.widget.dots).blizzard, "the slot's record wears the Blizzard rule")
 		stub.fire_script(c.widget.dots, 'OnLeave', true)
+		st:ColorChanged('accent')
+		eq(vertex(c.widget.dots.icon), color('text', 'muted'), 'grey again after leaving and a pass')
+		st.config.profile.theme.accent:SetRGB(0, 0.68, 0.94)
 		body:Release()
 
 		-- Marked: the box moves the shift with its label.

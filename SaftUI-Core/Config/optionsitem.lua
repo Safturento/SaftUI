@@ -209,6 +209,7 @@ define('item', {
 		local blizzard = BlizzardLook()
 		self.blizzard = blizzard
 		self.dots.blizzard = blizzard
+		st:RestyleStates(self.dots) -- the record's Blizzard rule reads dots.blizzard
 		LookCheckBox(self.box, blizzard, BOX_ROW, 'LEFT')
 		if blizzard then
 			local width, height = W.CheckArtSize(BOX_ROW)
