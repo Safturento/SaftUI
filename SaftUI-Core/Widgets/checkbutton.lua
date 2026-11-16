@@ -188,6 +188,8 @@ function st:SkinCheckButton(button, style)
 		edge = 'theme',
 		mark = checked,
 		text = style == 'button' and button.text or nil,
+		-- a button's label is white at rest (the Edit toggle: not Text > Normal after a hover)
+		textRest = style == 'button' and function() return 1, 1, 1 end or nil,
 		blizzard = function() return st:IsBlizzardLook(skin.theme, skin.background) end,
 	})
 	hooksecurefunc(button, 'SetChecked', Repaint)

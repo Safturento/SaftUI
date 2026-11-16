@@ -236,13 +236,16 @@ test("the Accent: the bag bar's slots, the loading bars, the selected bank windo
 	local bar = CreateFrame('Button', nil, UIParent)
 	bar.icon = bar:CreateTexture(nil, 'BORDER')
 	bar:SetNormalTexture(st.BLANK_TEX); bar:SetHighlightTexture(st.BLANK_TEX); bar:SetPushedTexture(st.BLANK_TEX)
+	st:AddStates(bar, 'icon', {
+		pieces = { hover = bar:GetHighlightTexture(), pushed = bar:GetPushedTexture() },
+		blizzard = function() return false end,
+	})
 	up(INV.InitializePlayerBagSlots, 'RestyleBagSlot')(bar)
-	st:FollowColor(bar, 'accent', nil, up(INV.InitializePlayerBagSlots, 'PaintBagSlotHover'))
 	local accent = st.config.profile.theme.accent
 	accent:SetRGB(0.9, 0.2, 0.4)
 	local m = pass('accent', nil)
 	local want = T.text(0.9, 0.2, 0.4)
-	eq(T.text(bar:GetHighlightTexture():GetVertexColor()), want .. ',1.00', "a bag bar slot's hover")
+	eq(T.text(bar:GetHighlightTexture():GetVertexColor()), T.text(st:StateColor('hover')), "a bag bar slot's hover: T+ of the accent")
 	eq(T.text(bag.loadingOverlay.loadingBar:GetStatusBarColor()), want .. ',1.00', "the bag window's loading bar")
 	eq(T.text(bank.loadingOverlay.loadingBar:GetStatusBarColor()), want .. ',1.00', "the bank's loading bar")
 	eq(T.edge_rgb(bank.backdrop), want, 'the selected bank window')
@@ -413,9 +416,10 @@ test("Text > Normal: the view buttons' glyphs and the currencies' funnel", funct
 	st.config.profile.colors.text.normal:SetRGB(0.2, 0.6, 0.4)
 	local m = pass('text', 'normal')
 	eq(T.text(funnel.icon:GetVertexColor()), T.text(0.2, 0.6, 0.4) .. ',1.00', 'the funnel')
-	for _, piece in ipairs(bag.viewButtons.compact.glyph) do
-		local rgba = stub.state(piece).color_texture
-		eq(T.text(rgba[1], rgba[2], rgba[3]), T.text(0.2, 0.6, 0.4), 'a glyph')
+	-- (Compact is the lit one, its glyph the accent's: another button shows Text > Normal)
+	for _, piece in ipairs(bag.viewButtons.onebag.glyph) do
+		local r, g, b = piece:GetVertexColor()
+		eq(T.text(r, g, b), T.text(0.2, 0.6, 0.4), 'a glyph')
 	end
 	quiet()
 	eq(m.forbidden.total, 0, 'nothing forbidden')

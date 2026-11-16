@@ -83,7 +83,8 @@ end
 -- Skins an item or currency slot (st:SkinActionButton) with the Slot theme and
 -- background, as a slot, and the icon font. Its backdrop fills the slot and its
 -- icon sits inside the border (trueSize); None has no backdrop, so the icon
--- fills the slot. Under Blizzard its pushed and highlight art are Blizzard's.
+-- fills the slot. Under Blizzard its pushed and highlight art are Blizzard's;
+-- under Thick and Thin they are the states helper's tints.
 -- Safe to run again.
 function INV:SkinSlot(slot)
 	local theme, background = self.config.buttontheme, self.config.buttonbackground
@@ -93,12 +94,9 @@ function INV:SkinSlot(slot)
 		font = self.config.fonts.icons,
 		trueSize = theme ~= 'none',
 	}, 'slot')
+	-- The hover and pushed art stay: the states helper tints them (T+ and T-
+	-- under SaftUI's looks, Blizzard's art under Blizzard).
 	slot:SetNormalTexture("")
-	-- Under Thick and Thin the pushed art is cleared; under Blizzard
-	-- st:SkinActionButton gave it Blizzard's (Quickslot-Depress).
-	if not st:IsBlizzardLook(theme, background) then
-		slot:SetPushedTexture("")
-	end
 end
 
 -- The borders of the filled slots (and the shown currencies) that wear the

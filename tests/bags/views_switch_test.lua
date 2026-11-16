@@ -428,9 +428,11 @@ test('the icons take Colors -> Text -> Normal at once, in every window', functio
 	local function glyphs(c)
 		local colors = {}
 		for _, view in ipairs(VIEWS) do
-			for _, piece in ipairs(c.viewButtons[view].glyph) do
-				local rgba = stub.state(piece).color_texture
-				colors[T.text(rgba[1], rgba[2], rgba[3])] = true
+			-- the current view's glyph is the accent's (the helper's selected look), the others rest in Text -> Normal
+			for _, piece in ipairs(c.viewButtons[view].viewLit and {} or c.viewButtons[view].glyph) do
+				-- white colour textures, the states helper's vertex colour is the glyph's colour
+				local r, g, b = piece:GetVertexColor()
+				colors[T.text(r, g, b)] = true
 			end
 		end
 		local out = {}

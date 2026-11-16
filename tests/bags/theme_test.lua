@@ -384,9 +384,10 @@ test("under Blizzard a bag slot's pushed and highlight are Blizzard's files", fu
 	-- Accent at the Hover strength, BLEND (never the setter's additive default).
 	local hoverTint = T.text(st:StateColor('hover'))
 
-	-- Under Thick: the pushed art is cleared (the module's) and the hover a flat tint over the icon.
+	-- Under Thick: the pushed art stays (the helper's T- at 0.32) and the hover a flat tint over the icon.
 	local slot = slots[1]
-	eq(slot:GetPushedTexture():GetTexture(), '', 'Thick: the pushed art is cleared')
+	eq(slot:GetPushedTexture():GetTexture(), st.BLANK_TEX, 'Thick: the pushed art is the flat texture')
+	eq(T.text(slot:GetPushedTexture():GetVertexColor()), T.text(st:StateColor('pushed')), 'Thick: T- of the Accent at 0.32')
 	eq(slot.hover:GetTexture(), st.BLANK_TEX, 'Thick: the hover is the flat texture')
 	eq(T.text(slot.hover:GetVertexColor()), hoverTint, 'Thick: T+ of the Accent at 0.16')
 	eq(slot.hover:GetBlendMode(), 'BLEND', 'Thick: BLEND')
@@ -415,10 +416,10 @@ test("under Blizzard a bag slot's pushed and highlight are Blizzard's files", fu
 		eq(select(1, highlight:GetDrawLayer()), 'HIGHLIGHT', name .. ': the highlight shows only under the mouse')
 	end
 
-	-- Back to Thick: the flat hover again, over the icon inside the border, and the pushed art cleared.
+	-- Back to Thick: the flat hover again, over the icon inside the border, and the pushed art kept.
 	st.config.profile.theme.name = 'thick'
 	st:ThemeChanged()
-	eq(slot:GetPushedTexture():GetTexture(), '', 'Thick again: the pushed art is cleared')
+	eq(slot:GetPushedTexture():GetTexture(), st.BLANK_TEX, 'Thick again: the pushed art is the flat texture')
 	eq(slot:GetHighlightTexture():GetTexture(), st.BLANK_TEX, 'Thick again: the flat hover')
 	eq(T.around(slot:GetHighlightTexture(), slot.icon), '0,0,0,0', 'Thick again: over the icon')
 	eq(T.text(slot:GetHighlightTexture():GetVertexColor()), hoverTint, 'Thick again: T+ of the Accent')

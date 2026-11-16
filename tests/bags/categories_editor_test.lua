@@ -214,7 +214,7 @@ test('Delete asks first; the selection moves to the next category', function()
 	eq(INV:GetCategoryList().byId.Toys, nil, 'Yes deletes it')
 	eq(INV.categoryEditor.selected, after, 'the selection moves to the category now in its place')
 	local w = tab()
-	check(row_of(w, after).tint:IsShown(), 'in the list')
+	check(SaftUI:GetState(row_of(w, after).frame, 'selected') == true, 'in the list')
 	eq(w:EditorCell('name').widget.frame:GetText(), INV:CategoryName(after), 'and the editor')
 
 	-- One of yours, last above Miscellaneous: its pins go back to the rules.
