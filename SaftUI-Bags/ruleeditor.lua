@@ -464,8 +464,9 @@ function Lay:Box(name, width, shown, commit)
 end
 
 -- A box for a number param of the block; percent shows and takes a share as a percent.
--- both: a number typed sets the max with the min (a mode between, picked
--- before any number: the number is both bounds, as a mode switch makes it).
+-- both: a number typed in either box is both bounds (a mode between, picked
+-- before any number, as a mode switch makes it): typed in the second box first
+-- it would otherwise save "at most", which catches more than the finished rule.
 function Lay:NumberBox(name, width, percent, both)
 	local w, path = self.w, self.path
 	local value = self.node[name]
@@ -477,7 +478,7 @@ function Lay:NumberBox(name, width, percent, both)
 		EditNode(w, path, function(node)
 			if node[name] == number then return false end
 			node[name] = number
-			if both then node.max = number end
+			if both then node.min, node.max = number, number end
 		end)
 	end)
 end
@@ -634,7 +635,19 @@ end
 -- number can't be read, rules.lua, where "at least 0" would catch everything):
 -- the pick is kept in the editor alone (w.levelPick: the block's path and
 -- type and the mode), so the row shows it and its boxes, until the number is
--- typed, which the mode then places; any other edit forgets it.
+-- typed, which the mode then places. A redraw of the window releases the editor
+-- and builds it again over the same row in the same frame, so a pick waits
+-- through that (ParkPick); an edit of the editor forgets it, and so does the
+-- editor closing.
+local parked -- a pick between a release and the redraw that builds the editor again: { key, pick }
+
+local function RowKey(w)
+	local row, key = w.row, {}
+	if not (row and row.path) then return nil end
+	for i, part in ipairs(row.path) do key[i] = tostring(part) end
+	return tconcat(key, '\31')
+end
+
 local function LevelFields(lay, node)
 	local w, path = lay.w, lay.path
 	local mode = LevelMode(node)
@@ -650,9 +663,7 @@ local function LevelFields(lay, node)
 				local picked = w.levelPick
 				if (picked and picked.path == pathKey and picked.mode or 'atleast') == key then return end
 				w.levelPick = key ~= 'atleast' and { path = pathKey, block = node.block, mode = key } or nil
-				w.keepPick = true
 				w:Refresh()
-				w.keepPick = nil
 				return
 			end
 			EditNode(w, path, function(n)
@@ -673,7 +684,7 @@ local function LevelFields(lay, node)
 	end)
 	if mode ~= 'atmost' then lay:NumberBox('min', NUMBER_BOX, nil, blank and mode == 'between') end
 	if mode == 'between' then lay:Caption('and') end
-	if mode ~= 'atleast' then lay:NumberBox('max', NUMBER_BOX) end
+	if mode ~= 'atleast' then lay:NumberBox('max', NUMBER_BOX, nil, blank and mode == 'between') end
 end
 
 FIELDS.ilvl = LevelFields
@@ -1072,7 +1083,9 @@ W.Define('bagrule', {
 	end,
 	methods = {
 		Refresh = function(w)
-			if not w.keepPick then w.levelPick = nil end
+			if not w.levelPick and parked and parked.key == RowKey(w) then
+				w.levelPick, parked = parked.pick, nil
+			end
 			Layout(w)
 		end,
 
@@ -1101,6 +1114,11 @@ W.Define('bagrule', {
 				parts.badge.path = nil
 			end
 			wipe(w.rows)
+			-- A level mode picked with no number yet waits for the redraw that
+			-- builds this row again, and is gone after the frame if none does.
+			local mine = w.levelPick and { key = RowKey(w), pick = w.levelPick } or nil
+			parked = mine and mine.key and mine or nil
+			if parked then C_Timer.After(0, function() if parked == mine then parked = nil end end) end
 			w.outline, w.highlight, w.levelPick = nil, nil, nil
 		end,
 	},
