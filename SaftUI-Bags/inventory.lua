@@ -272,12 +272,31 @@ function INV:StyleContainerContents(container)
 	end
 end
 
--- A font change can change the window title's width (Window titles, Text), and
--- so the window's least width (INV:HeaderMinWidth). It asks for a layout (an
--- update, at most one a frame whatever the number of steps a Size drag takes):
--- no sort of the items and no skin, as UpdateConfig would do, and the layout
--- is held in combat as any other is.
+-- A window title's look: Window titles and the bags' Title font (the two fonts
+-- a bag window's title can follow), as the numbers a font draws by.
+local function TitleLook(self)
+	local parts = {}
+	for _, value in ipairs({ st.config.profile.headers.font, self.config.fonts.titles }) do
+		local name, size, outline, x, y, spacing = st:FontParts(value)
+		parts[#parts + 1] = table.concat({ tostring(name), tostring(size), tostring(outline), tostring(x),
+			tostring(y), tostring(spacing) }, ',')
+	end
+	return table.concat(parts, '|')
+end
+
+-- A font change can change the window title's width, and so the window's least
+-- width (INV:HeaderMinWidth), but only when the title's own look changed: a
+-- Size drag on any other font (Large numbers, Small text) costs the bags
+-- nothing. It then asks for a layout: an update, which the next frame's tick
+-- runs once however many steps a drag takes. That update reads, files and sorts
+-- every item as any bag event's does, but it skips what UpdateConfig adds: no
+-- CategoriesChanged (the rules compiled and the category frames ensured again)
+-- and no skin of every slot. It is held in combat as any layout is.
 function INV:OnFontsChanged()
+	if not (self.config and self.config.fonts) then return end
+	local look = TitleLook(self)
+	if look == self.titleLook then return end
+	self.titleLook = look
 	self:QueueUpdate(true)
 end
 

@@ -576,27 +576,92 @@ test('combat: two frames on different lines, the narrower holding more items tha
 	eq(#take_errors(), 0, 'no errors')
 end)
 
-test('a font change that widens the window title widens the window, with no sort of the items', function()
+-- A font change lays the windows out again only when a window title's look
+-- changed (Window titles, or the bags' Title font), and the layout is an update
+-- that skips the category rebuild and the skin, once a frame.
+local function title_world(view)
+	local c = world(view, SPARSE)
+	INV.UpdateGold = function() end
+	H.search(c)
+	SaftUI:FontsChanged() -- the first change seeds the look the bags compare with
+	INV:UpdateHandler(nil, 1)
+	return c
+end
+
+local function counted(name)
+	local box = { n = 0 }
+	local fn = INV[name]
+	INV[name] = function(...) box.n = box.n + 1; return fn(...) end
+	box.restore = function() INV[name] = fn end
+	return box
+end
+
+test('a Window titles change that widens the window title widens the window, with no category rebuild', function()
 	for _, view in ipairs({ 'compact', 'rows' }) do
-		local c = world(view, SPARSE)
+		local c = title_world(view)
 		local width = c:GetWidth()
-		INV.UpdateGold = function() end
-		H.search(c)
 		-- A wider font for Window titles: the title is 200 wider than the window had room for.
 		local titleWidth = c.title:GetStringWidth() + (width - INV:HeaderMinWidth(c)) + 200
 		c.title.GetStringWidth = function() return titleWidth end
-		local sorts = 0
-		local sort = INV.GetSortedInventory
-		INV.GetSortedInventory = function(...) sorts = sorts + 1; return sort(...) end
+		SaftUI.config.profile.headers.font = { font_size = 30 }
+		local sorts, rebuilds = counted('GetSortedInventory'), counted('CategoriesChanged')
 		SaftUI:FontsChanged()
 		INV:UpdateHandler(nil, 1)
-		INV.GetSortedInventory = sort
+		sorts.restore()
+		rebuilds.restore()
 		check(c:GetWidth() > width, view .. ': the window is wider than it was')
 		check(c:GetWidth() >= INV:HeaderMinWidth(c), view .. ': and holds the title')
 		check(INV:HeaderMinWidth(c) >= width + 200, view .. ': the least width counts the new title')
-		check(sorts <= 1, view .. ': the items were read once, not re-sorted by a category rebuild')
+		check(sorts.n <= 1, view .. ': the items were read and sorted once, as a bag event does')
+		eq(rebuilds.n, 0, view .. ': with no category rebuild (no CategoriesChanged)')
 		local errors = take_errors()
 		eq(#errors, 0, view .. ': no errors ' .. tostring(errors[1]))
 	end
 end)
 
+test("a font change that leaves a window title's look alone costs the bags nothing; the bags' Title font counts", function()
+	for _, view in ipairs({ 'compact', 'rows' }) do
+		local c = title_world(view)
+		local queued, updates = counted('QueueUpdate'), counted('UpdateContainer')
+		-- Large numbers and Small text: not what a window title draws in.
+		SaftUI.config.profile.fonts.pixel_med.font_size = 31
+		SaftUI:FontsChanged()
+		SaftUI.config.profile.fonts.pixel.font_size = 11
+		SaftUI:FontsChanged()
+		INV:UpdateHandler(nil, 1)
+		eq(queued.n, 0, view .. ': no layout asked for')
+		eq(updates.n, 0, view .. ': and no update run')
+		-- The bags' own Title font, with a change that reaches FontsChanged (a shared font it names).
+		INV.config.fonts.titles = { font_size = 22 }
+		SaftUI:FontsChanged()
+		eq(queued.n, 1, view .. ": the bags' Title font changed: a layout asked for")
+		-- Window titles naming a shared font: that font's change counts.
+		SaftUI.config.profile.headers.font = 'pixel_med'
+		SaftUI:FontsChanged()
+		queued.n = 0
+		SaftUI.config.profile.fonts.pixel_med.font_size = 40
+		SaftUI:FontsChanged()
+		eq(queued.n, 1, view .. ': the shared font Window titles names changed: a layout asked for')
+		queued.restore()
+		updates.restore()
+		eq(#take_errors(), 0, view .. ': no errors')
+	end
+end)
+
+test('many font steps in one frame lay the windows out once', function()
+	for _, view in ipairs({ 'compact', 'rows' }) do
+		local c = title_world(view)
+		local updates = counted('UpdateContainer')
+		for size = 20, 29 do -- a Size drag on Window titles: ten steps
+			SaftUI.config.profile.headers.font = { font_size = size }
+			SaftUI:FontsChanged()
+		end
+		eq(updates.n, 0, view .. ': nothing laid out at once, on any step')
+		INV:UpdateHandler(nil, 1)
+		eq(updates.n, 1, view .. ': one update for the ten steps')
+		INV:UpdateHandler(nil, 1)
+		eq(updates.n, 1, view .. ': and none after it')
+		updates.restore()
+		eq(#take_errors(), 0, view .. ': no errors')
+	end
+end)
