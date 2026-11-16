@@ -21,11 +21,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-15 — A Position reset runs a unit frame's update once for every part it writes](#2026-11-15--a-position-reset-runs-a-unit-frames-update-once-for-every-part-it-writes)
   - [2026-11-15 — After a UI scale change, a reset half-pixel Position can show its icon again](#2026-11-15--after-a-ui-scale-change-a-reset-half-pixel-position-can-show-its-icon-again)
   - [2026-11-15 — Shipped category names shown numbered: no test pins that they show no reset icon](#2026-11-15--shipped-category-names-shown-numbered-no-test-pins-that-they-show-no-reset-icon)
-  - [2026-11-15 — Buffs and debuffs: Size and Outline keep hand defaults a derived one would replace](#2026-11-15--buffs-and-debuffs-size-and-outline-keep-hand-defaults-a-derived-one-would-replace)
   - [2026-11-15 — Reset walks: the feed's, Minimap's and Micro menu's movers are registered inline, so the tests pin a copy](#2026-11-15--reset-walks-the-feeds-minimaps-and-micro-menus-movers-are-registered-inline-so-the-tests-pin-a-copy)
   - [2026-11-15 — Reset walk: the profile compare is most of a unit page's cost](#2026-11-15--reset-walk-the-profile-compare-is-most-of-a-unit-pages-cost)
-  - [2026-11-15 — Buffs and debuffs: one helper for the wrap the layout keeps, so the layout and Wrap's default cannot drift](#2026-11-15--buffs-and-debuffs-one-helper-for-the-wrap-the-layout-keeps-so-the-layout-and-wraps-default-cannot-drift)
-  - [2026-11-15 — Buffs and debuffs: Wrap's hand reset copies the General group's set](#2026-11-15--buffs-and-debuffs-wraps-hand-reset-copies-the-general-groups-set)
   - [2026-11-15 — Blizzard's tracker: the Position reset is tested on Forever only](#2026-11-15--blizzards-tracker-the-position-reset-is-tested-on-forever-only)
   - [2026-11-15 — Forever: Show in > Bank does nothing for the default bank (the combined bank)](#2026-11-15--forever-show-in--bank-does-nothing-for-the-default-bank-the-combined-bank)
   - [2026-11-15 — Auto Vendor counts a fresh purchase in a just-sold slot as a refused sale](#2026-11-15--auto-vendor-counts-a-fresh-purchase-in-a-just-sold-slot-as-a-refused-sale)
@@ -134,6 +131,9 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-15 — Buffs and debuffs: Size and Outline keep hand defaults a derived one would replace](#2026-11-15--buffs-and-debuffs-size-and-outline-keep-hand-defaults-a-derived-one-would-replace)
+  - [2026-11-15 — Buffs and debuffs: Wrap's hand reset copies the General group's set](#2026-11-15--buffs-and-debuffs-wraps-hand-reset-copies-the-general-groups-set)
+  - [2026-11-15 — Buffs and debuffs: one helper for the wrap the layout keeps, so the layout and Wrap's default cannot drift](#2026-11-15--buffs-and-debuffs-one-helper-for-the-wrap-the-layout-keeps-so-the-layout-and-wraps-default-cannot-drift)
   - [2026-11-15 — A roll result line's All passed and winner color are baked in at push](#2026-11-15--a-roll-result-lines-all-passed-and-winner-color-are-baked-in-at-push)
   - [2026-11-13 — Loot rolls: the roll bar doesn't hold after a choice](#2026-11-13--loot-rolls-the-roll-bar-doesnt-hold-after-a-choice)
   - [2026-11-15 — Two Misc readers break "a pass only colors"](#2026-11-15--two-misc-readers-break-a-pass-only-colors)
@@ -386,16 +386,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **Shape of work:** One case: a user category called like a shipped one, the list numbers the shipped one, and its Name icon is absent until the name is edited. Small.
 
-### 2026-11-15 — Buffs and debuffs: Size and Outline keep hand defaults a derived one would replace
-
-**What:** The Duration and Stack count Font rows take their default from where they are saved; their Size and Outline rows still have hand `default` tables over `st.defaults`.
-
-**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
-
-**Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua` (`AP:GetTextOptions`, the `for _, field in ipairs({ 'size', 'outline' })` loop), `tests/misc/buff_text_font_default_test.lua` (the Size and Outline resets case).
-
-**Shape of work:** Delete the loop; the group's `saved` (`SavedIn('auras', key, kind)`) derives both, and a derived reset runs the group's `set` (`Apply`), as the hand one does. The case in `buff_text_font_default_test.lua` moves to the kit's calls.
-
 ### 2026-11-15 — Reset walks: the feed's, Minimap's and Micro menu's movers are registered inline, so the tests pin a copy
 
 **What:** The loot feed, the minimap and the micro menu register their movers inside their setup functions, so the walks register copies and a source check pins the key, `configPath` and `defaults` text.
@@ -415,26 +405,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 **Anchors:** `tests/lib/reset_walk.lua` (`Changes`, `RoundTrip`, `ctx.base`), `tests/unitframes/config_test.lua`.
 
 **Shape of work:** A cheaper way to see a write outside a row's saved path: a write log on the profile table, or comparing only the saved path's top-level key plus one whole-profile compare at the end of a page.
-
-### 2026-11-15 — Buffs and debuffs: one helper for the wrap the layout keeps, so the layout and Wrap's default cannot drift
-
-**What:** `GetGeometry`, `WrapForGrow`'s last line and `DefaultWrap` each repeat the fallback (`horizontal and 'DOWN' or 'LEFT'`).
-
-**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
-
-**Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua` (lines about 129, 163-170 and 203-209), `tests/misc/options_pages_test.lua` (the Wrap cases).
-
-**Shape of work:** One local `WrapInUse(grow, wrap)` used in all three; the existing Wrap and Grow cases pin it.
-
-### 2026-11-15 — Buffs and debuffs: Wrap's hand reset copies the General group's set
-
-**What:** Wrap's hand `reset` repeats the body of the General group's `set` instead of calling it.
-
-**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
-
-**Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua` (`default` on `args.wrap`), `tests/misc/options_pages_test.lua`.
-
-**Shape of work:** A shared local function for the write and the refresh, called by `set` and by the reset.
 
 ### 2026-11-15 — Blizzard's tracker: the Position reset is tested on Forever only
 
@@ -2435,6 +2405,42 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-15 — Buffs and debuffs: Size and Outline keep hand defaults a derived one would replace
+
+**What:** The Duration and Stack count Font rows take their default from where they are saved; their Size and Outline rows still have hand `default` tables over `st.defaults`.
+
+**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
+
+**Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua` (`AP:GetTextOptions`, the `for _, field in ipairs({ 'size', 'outline' })` loop), `tests/misc/buff_text_font_default_test.lua` (the Size and Outline resets case).
+
+**Shape of work:** Delete the loop; the group's `saved` (`SavedIn('auras', key, kind)`) derives both, and a derived reset runs the group's `set` (`Apply`), as the hand one does. The case in `buff_text_font_default_test.lua` moves to the kit's calls.
+
+**Resolved 2026-11-15:** the hand `default` tables are gone; both rows reset from the group's `saved` (derived), through the group's `set`. `tests/misc/buff_text_font_default_test.lua`'s Size and Outline case now reads the kit's `OM.DefaultSource`, `DefaultDiffers`, `SourceState` and `DefaultReset`.
+
+### 2026-11-15 — Buffs and debuffs: Wrap's hand reset copies the General group's set
+
+**What:** Wrap's hand `reset` repeats the body of the General group's `set` instead of calling it.
+
+**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
+
+**Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua` (`default` on `args.wrap`), `tests/misc/options_pages_test.lua`.
+
+**Shape of work:** A shared local function for the write and the refresh, called by `set` and by the reset.
+
+**Resolved 2026-11-15:** the General group's `set` and Wrap's reset both call one local `SetGeneral(option, value)` (the write and the refresh).
+
+### 2026-11-15 — Buffs and debuffs: one helper for the wrap the layout keeps, so the layout and Wrap's default cannot drift
+
+**What:** `GetGeometry`, `WrapForGrow`'s last line and `DefaultWrap` each repeat the fallback (`horizontal and 'DOWN' or 'LEFT'`).
+
+**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
+
+**Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua` (lines about 129, 163-170 and 203-209), `tests/misc/options_pages_test.lua` (the Wrap cases).
+
+**Shape of work:** One local `WrapInUse(grow, wrap)` used in all three; the existing Wrap and Grow cases pin it.
+
+**Resolved 2026-11-15:** `WrapInUse(grow, wrap)` in `Blizzard_BuffFramePosition.lua` is the one fallback; `GetGeometry`, `WrapForGrow` and `AP:DefaultWrap` all call it. The Wrap and Grow cases in `tests/misc/options_pages_test.lua` pin it.
 
 ### 2026-11-15 — A roll result line's All passed and winner color are baked in at push
 
