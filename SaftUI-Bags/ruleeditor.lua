@@ -645,6 +645,9 @@ local function RowKey(w)
 	local row, key = w.row, {}
 	if not (row and row.path) then return nil end
 	for i, part in ipairs(row.path) do key[i] = tostring(part) end
+	-- The row's path is the same for every category: the selected one tells them apart.
+	local editor = INV.categoryEditor
+	key[#key + 1] = tostring(editor and editor.selected)
 	return tconcat(key, '\31')
 end
 

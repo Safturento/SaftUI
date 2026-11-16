@@ -1151,3 +1151,46 @@ test('a level mode picked before a number survives a redraw, and goes when its r
 	stub.run_timers()
 	eq(#take_errors(), 0, 'no errors')
 end)
+
+-- The slot list writes in R.SLOTS order and R.Equal compares arrays in order, so
+-- the shipped Grays/Auto Vendor rule lists its two slots in that order: turning
+-- a slot on and off leaves the rule the shipped one, with no edit to reset.
+test("turning an Equip slot on and off in the shipped Grays/Auto Vendor rule leaves the shipped rule", function()
+	load_saftui('SaftUI-Bags/categorydefaults.lua')
+	local shipped
+	for _, def in ipairs(INV.CategoryDefaults.Build()) do
+		if def.id == 'Grays/Auto Vendor' then shipped = def.rule end
+	end
+	local ed = editor(R.Copy(shipped))
+	local row = row_at(ed.w, { 1, 2, 2 })
+	check(row and row.fields.slots, 'the shipped rule has its Equip slot block at {1,2,2}')
+	click(row.fields.slots)
+	pick(R.SLOTS[1][2]) -- Head on
+	check(not R.Equal(ed.stored, shipped), 'a slot on is an edit')
+	pick(R.SLOTS[1][2]) -- and off again
+	check(R.Equal(ed.stored, shipped), 'on and off again is the shipped rule, so no edit and no reset icon')
+	W.CloseList()
+	ed.w:Release()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+-- The options row's path is the same for every category (the editor's root is
+-- rebuilt per category), so the parked pick is keyed by the selected category
+-- too: it does not follow a switch to a category with a blank level block.
+test('a parked level pick does not follow a switch to another category', function()
+	local had = INV.categoryEditor
+	INV.categoryEditor = { selected = 'Toys' }
+	local ed = editor(grp('or', { R.NewBlock('ilvl') }))
+	click(ed.w.rows[1].fields.mode)
+	pick('at most')
+	local stored = ed.stored
+	W.CloseList()
+	ed.w:Release()
+	INV.categoryEditor.selected = 'Trade Goods'
+	ed = editor(stored)
+	eq(ed.w.rows[1].fields.mode.text:GetText(), 'at least', "another category's blank block does not show the pick")
+	ed.w:Release()
+	stub.run_timers()
+	INV.categoryEditor = had
+	eq(#take_errors(), 0, 'no errors')
+end)
