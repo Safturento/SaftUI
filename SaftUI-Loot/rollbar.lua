@@ -154,7 +154,9 @@ local function ApplyBarConfig(bar, config)
 			st:SetBackdrop(button.Icon, config.theme, config.background, 'small')
 			local backdrop = button.Icon.backdrop
 			if backdrop then
-				st:AddStates(backdrop, 'box', { edge = 'theme', wire = false })
+				-- blizzard = false: under the Blizzard theme this border is still SaftUI's
+				-- own line (kind 'small'), not Blizzard's art, so it keeps the states.
+				st:AddStates(backdrop, 'box', { edge = 'theme', wire = false, blizzard = function() return false end })
 				st:SetState(backdrop, 'selected', true)
 			end
 		elseif button.Icon.backdrop then

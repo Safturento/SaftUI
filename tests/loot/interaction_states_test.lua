@@ -18,6 +18,8 @@ local SL = load_test_file('lib/states_look.lua')
 local st, LT, profile, drawn
 local LF
 
+local EXPECT_BARS, EXPECT_WINDOW = 32, 1 -- setter calls a pass makes (measured)
+
 local function same(a, b) return ('%.3f,%.3f,%.3f,%.3f'):format(unpack(a)) == ('%.3f,%.3f,%.3f,%.3f'):format(unpack(b)) end
 
 ------------------------------------------------------------------ the roll bars and the feed
@@ -103,6 +105,21 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		eq(T.rgb(bar.Choice:GetTextColor()), '0.90,0.10,0.20', 'and "Choice"')
 		accent:SetRGB(unpack(keep))
 		st:ColorChanged('accent')
+		-- The Disabled setting itself: the dimmed buttons follow it (Colors > States).
+		local settings = profile.theme.states
+		check(settings ~= nil, 'the profile holds the states settings')
+		local before = st:StateAlpha()
+		settings.disabled = 0.7
+		st.States.Changed()
+		LT.rollbar.ColorLocked(bar) -- roll.lua's ColorRollBars, on the accent group
+		eq(T.text(st:StateAlpha()), '0.70', 'the setting took')
+		for _, choice in ipairs({ 'Need', 'Pass' }) do
+			eq(T.text(button_of(bar, choice):GetAlpha()), '0.70', choice .. ': follows the Disabled setting')
+		end
+		eq(button_of(bar, 'Greed'):GetAlpha(), 1, 'the chosen one stays bright')
+		settings.disabled = nil
+		st.States.Changed()
+		check(before ~= nil, 'was set')
 	end)
 
 	case('a bar reused for another choice moves the selection; unlocked, nothing is selected', function()
@@ -124,17 +141,38 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		end
 	end)
 
-	case('under Blizzard: Blizzard\'s (no fade, no edge of the states\')', function()
+	case('under Blizzard: a chosen roll keeps the Accent edge and a visible fade (the line is SaftUI\'s own)', function()
 		bars_world(client)
-		local config = { theme = 'blizzard', background = LT.config.roll.background, font = LT.config.roll.font,
-			width = LT.config.roll.width, height = LT.config.roll.height, spacing = LT.config.roll.spacing }
-		local bar = make_bar('Greed', setmetatable(config, { __index = LT.config.roll }))
+		local config = setmetatable({ theme = 'blizzard' }, { __index = LT.config.roll })
+		local bar = make_bar('Greed', config)
 		local backdrop = button_of(bar, 'Greed').Icon.backdrop
-		if backdrop then
-			local look = st:StateLook(backdrop)
-			check(look.blizzard, 'the Blizzard look')
-			eq(look.fill.alpha, 0, 'no fade over Blizzard\'s art (at alpha 0)')
-		end
+		check(backdrop ~= nil, 'the chosen icon has a backdrop')
+		local look = st:StateLook(backdrop)
+		check(not look.blizzard, 'not treated as Blizzard\'s art')
+		check(look.fill.shown and look.fill.alpha > 0, 'the fade shows')
+		local accent = profile.theme.accent
+		eq(T.edge_rgb(backdrop), T.text(accent.r, accent.g, accent.b), 'the edge is the Accent')
+	end)
+
+	case('under Blizzard the feed icons rest in Text > Normal and follow a change', function()
+		bars_world(client)
+		local feed = CreateFrame('Frame', 'SaftUILootFeed', UIParent)
+		feed:SetSize(400, 20)
+		LT.feed = feed
+		feed.items = {}
+		feed.filterButton = LT:CreateFeedIconButton('SaftUITestFeedBliz', st.icons.funnel, 'Filter')
+		feed.reset_button = LT:CreateFeedIconButton('SaftUITestFeedBliz2', st.icons.arrowDownToLine, 'Jump')
+		T.theme('blizzard')
+		LT:ColorFeed('theme')
+		local normal = profile.colors.text.normal
+		eq(T.rgb(feed.filterButton.icon:GetVertexColor()), T.rgb(normal:GetRGB()), 'at rest in Text > Normal')
+		local saved = normal
+		profile.colors.text.normal = CreateColor(0.25, 0.5, 0.75, 1)
+		LT:ColorFeed('text')
+		eq(T.rgb(feed.filterButton.icon:GetVertexColor()), '0.25,0.50,0.75', 'a new Text > Normal reaches the filter icon')
+		eq(T.rgb(feed.reset_button.icon:GetVertexColor()), '0.25,0.50,0.75', 'and the jump icon')
+		profile.colors.text.normal = saved
+		T.theme('thick')
 	end)
 
 	case('the feed\'s buttons: the Layer for hover, the icon the lighter tone, the accent kept out', function()
@@ -176,9 +214,20 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		end, 1)
 		eq(m.forbidden.total, 0, 'nothing forbidden')
 		eq(m.made, 0, 'nothing made')
+		eq(m.calls.total, EXPECT_BARS, 'the exact setter calls')
 		check(m.calls.total < 60, 'under 60 setter calls: ' .. m.calls.total)
 		local m100 = C.measure(function() st:ColorChanged('accent') end, 100)
 		check(m100.kb < 4, 'under 4 KB over 100 passes: ' .. ('%.2f'):format(m100.kb))
+		-- The same pass in combat: colors on SaftUI's own frames, nothing blocked.
+		stub.in_combat, stub.blocked = true, {}
+		local mc = C.measure(function()
+			st:ColorChanged('accent')
+			for _, bar in ipairs(bars) do LT.rollbar.ColorLocked(bar) end
+		end, 1)
+		stub.in_combat = false
+		eq(mc.calls.total, EXPECT_BARS, 'in combat: the same calls')
+		eq(mc.forbidden.total, 0, 'in combat: nothing forbidden')
+		eq(#stub.blocked, 0, 'in combat: nothing blocked')
 	end)
 end
 
@@ -257,8 +306,15 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		local m = C.measure(function() st:ColorChanged('accent') end, 1)
 		eq(m.forbidden.total, 0, 'nothing forbidden')
 		eq(m.made, 0, 'nothing made')
+		eq(m.calls.total, EXPECT_WINDOW, 'the exact setter calls')
 		check(m.calls.total < 60, 'under 60 setter calls: ' .. m.calls.total)
 		local m100 = C.measure(function() st:ColorChanged('accent') end, 100)
 		check(m100.kb < 4, 'under 4 KB over 100 passes: ' .. ('%.2f'):format(m100.kb))
+		stub.in_combat, stub.blocked = true, {}
+		local mc = C.measure(function() st:ColorChanged('accent') end, 1)
+		stub.in_combat = false
+		eq(mc.calls.total, EXPECT_WINDOW, 'in combat: the same calls')
+		eq(mc.forbidden.total, 0, 'in combat: nothing forbidden')
+		eq(#stub.blocked, 0, 'in combat: nothing blocked')
 	end)
 end

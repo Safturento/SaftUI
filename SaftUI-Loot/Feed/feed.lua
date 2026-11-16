@@ -38,6 +38,17 @@ local function IconRest()
 	return st:Color('text', 'normal'):GetRGB()
 end
 
+-- The icon's rest color put on: the states' paint (a glyph's rest color needs an
+-- explicit one), and under the Blizzard look, where the helper leaves a glyph alone,
+-- Text > Normal directly (a rest color is not a state).
+function LT.RestIcon(button)
+	if not button then return end
+	if st:GetState(button, 'hover') ~= nil then st:PaintStates(button) end
+	if st:DrawnTheme(button) == 'blizzard' and not st:GetState(button, 'hover') then
+		button.icon:SetVertexColor(IconRest())
+	end
+end
+
 -- A feed button with its icon and its tooltip: a title and, for the filter, a line
 -- under it. Hovering lights the button and its icon (the states'); a button that
 -- hides under the cursor (UpdateFeedButtons) gets no OnLeave, so hiding puts the
@@ -51,7 +62,7 @@ function LT:CreateFeedIconButton(name, icon, title, line)
 	button.icon:SetPoint('CENTER')
 	-- Merged into the skinner's states: no `text`, the label stays the skinner's.
 	st:AddStates(button, 'box', { edge = 'theme', glyph = button.icon, glyphRest = IconRest })
-	st:PaintStates(button) -- the icon's rest color: only an explicit paint puts it on
+	LT.RestIcon(button) -- the icon's rest color: only an explicit paint puts it on
 
 	button:SetScript('OnEnter', function(self)
 		if GameTooltip:IsForbidden() then return end
@@ -189,7 +200,7 @@ end
 
 -- A color change (st:ColorChanged, through LT:OnColorsChanged, init.lua); `key`
 -- is nil on a whole group. Only colors are set, on the lines shown:
---   'text': the buttons' icons at rest (the accent is the states' own pass);
+--   'text' and 'theme': the buttons' icons at rest (the accent is the states' own pass);
 --   'theme' (st:RecolorThemed gave every line the theme's colors) and Loot >
 --     Mount: the mount entries take their Loot > Mount color back;
 --   'item_quality': the lines of that quality set their name again (SetText on
@@ -201,11 +212,10 @@ function LT:ColorFeed(group, key)
 	if not self.feed then return end
 	-- The buttons' icons rest in Colors -> Text -> Normal; the accent group is the
 	-- states' own pass (the hover tone follows it).
-	if group == 'text' then
-		for _, button in ipairs({ self.feed.filterButton, self.feed.reset_button }) do
-			if button and st:GetState(button, 'hover') ~= nil then st:PaintStates(button) end
-		end
-		return
+	if group == 'text' or group == 'theme' then
+		LT.RestIcon(self.feed.filterButton)
+		LT.RestIcon(self.feed.reset_button)
+		if group == 'text' then return end
 	end
 	if group == 'accent' then return end
 	local mounts = group == 'theme' or (group == 'loot' and (key == nil or key == 'mount'))
