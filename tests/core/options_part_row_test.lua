@@ -956,3 +956,56 @@ test("the menu opens on mouse-up only while the mouse is still on the row", func
 		body:Release()
 	end)
 end)
+
+------------------------------------------------------------------ the hover's guards (Task 3 carries them from Task 1's review)
+
+test("a disabled part row lights nothing: OB.RowHover's guard", function()
+	in_look('thick', function()
+		fresh()
+		local item = Part('Name', 1)
+		item.disabled = true
+		local body, by = draw(Page({ name = item }))
+		local c = by.name
+		check(c.widget.disabled, 'the case: the widget is disabled')
+		OB.RowHover(c.frame)
+		eq(st:GetState(c.frame, 'hover'), false, 'RowHover lights a disabled row not')
+		eq(c.frame:GetScript('OnUpdate'), nil, 'and starts no watch')
+		hover(c.label, 5)
+		stub.fire_script(c.frame, 'OnEnter', true)
+		eq(st:GetState(c.frame, 'hover'), false, 'nor does entering it')
+		body:Release()
+	end)
+end)
+
+test("the diff icon's enter lights the row: it calls OB.RowHover", function()
+	in_look('thick', function()
+		fresh()
+		differs.name = { { name = 'Party', value = 'Show' } }
+		local body, by = draw(Page({ name = Part('Name', 1, { kind = 'source' }) }))
+		local c = by.name
+		local diff = c.frame.share.diff
+		check(diff:IsShown(), 'the case: the diff icon shows')
+		eq(st:GetState(c.frame, 'hover'), false, 'at rest')
+		hover(diff)
+		stub.fire_script(diff, 'OnEnter', true)
+		eq(st:GetState(c.frame, 'hover'), true, 'the row is lit from the diff icon')
+		stub.cursor_x, stub.cursor_y = 0, 0
+		stub.fire_script(c.frame.share.line, 'OnUpdate', 0.01)
+		stub.fire_script(c.frame, 'OnUpdate', 0.01)
+		eq(st:GetState(c.frame, 'hover'), false, 'and clears once the mouse is away')
+		body:Release()
+	end)
+end)
+
+test('a share whose own is not a function offers nothing, and raises no error', function()
+	fresh()
+	local item = Part('Name', 1, { kind = 'member' })
+	item.menu.args.size.share.own = 'yes' -- against the contract
+	local errors, handler = {}, geterrorhandler()
+	seterrorhandler(function(message) errors[#errors + 1] = tostring(message) end)
+	local ok, count = pcall(OM.MenuOffers, {}, { option = item, path = { 'page', 'name' }, type = 'item' })
+	seterrorhandler(handler)
+	check(ok, 'no error thrown')
+	eq(#errors, 0, 'no error reported: ' .. (errors[1] or ''))
+	eq(count, 0, 'the member row, with no function to ask, counts nothing')
+end)

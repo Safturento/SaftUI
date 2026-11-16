@@ -89,6 +89,8 @@ function generators.uf_element_position(order, get, set, target, desc, name, sav
 	end
 
 	option.target = 'select'
+	-- 4 narrower than the kit's TO dropdown, so the whole block (351 less 4) fits a part menu's cell (347).
+	option.selectWidth = 136
 	option.nameKey = GLOBAL_FRAME
 	-- The dropdown's choice for the unit frame itself: the options kit's reset puts
 	-- an anchor back through the row's own set of 'relative_to' with it, an element's

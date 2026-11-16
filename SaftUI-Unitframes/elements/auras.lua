@@ -455,6 +455,17 @@ local function GetConfigTable(unit, aura_type)
 		end,
 		args = {
 			enable = generators.toggle(0, 'Enable', ("Shows the unit's %s."):format(noun), 'small'),
+			-- The tab's second section, after Enable.
+			position = generators.uf_element_position(0.5,
+				function(index) return Config().position[index] end,
+				function(index, value)
+					Config().position[index] = value
+					Update()
+				end,
+				UF:ConfigTarget(unit, aura_type),
+				"Where the aura area sits: which of its points goes to which point of what it's attached to, then moved by X and Y.",
+				nil, UF.SavedAt(unit, key, 'position')
+			),
 			layout = {
 				order = 1,
 				name = 'Layout',
@@ -467,17 +478,6 @@ local function GetConfigTable(unit, aura_type)
 					per_row = generators.range(4, 'Per row', 1, 40, 1, 'How many buttons fill a row before the next row starts.'),
 					spacing = generators.range(5, 'Spacing', 0, 30, 1, 'The gap between one button and the next, and between rows.'),
 					framelevel = generators.framelevel(6, FRAME_LEVEL),
-					-- Last in Layout.
-					position = generators.uf_element_position(1000,
-						function(index) return Config().position[index] end,
-						function(index, value)
-							Config().position[index] = value
-							Update()
-						end,
-						UF:ConfigTarget(unit, aura_type),
-						"Where the aura area sits: which of its points goes to which point of what it's attached to, then moved by X and Y.",
-						nil, UF.SavedAt(unit, key, 'position')
-					),
 				},
 			},
 			buttons = {

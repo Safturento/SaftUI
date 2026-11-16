@@ -83,7 +83,8 @@ function SW.rows(UF, unit)
 	local page = tree.args[unit]
 	local root = { Unitframes = { type = 'group', name = 'Unit frames', childGroups = 'select', args = { [unit] = page } } }
 	local out = {}
-	local function SavedPath(path)
+	-- The saved path of the row at path in root (below the unit), as the model finds it.
+	local function SavedPath(root, path)
 		-- The node that gives the row its get, as the model finds it.
 		local group, node = { args = root }, nil
 		for _, key in ipairs(path) do
@@ -96,17 +97,54 @@ function SW.rows(UF, unit)
 		if parts[1] ~= 'unitframes' or parts[4] ~= unit then return nil end
 		return table.concat(parts, '.', 5)
 	end
+	local function Hand(option)
+		return type(option.default) == 'table' and type(option.default.differs) == 'function' or nil
+	end
+	-- The row's place as the old pages had it: the elements' own tab, whatever tab or part holds them now
+	-- ('Unitframes/<unit>/Health/colors/custom/customColor', '.../Buffs/buttons/border'), which page_keys reads.
+	local function Legacy(keys)
+		local out = { 'Unitframes', unit }
+		for i, key in ipairs(keys) do
+			if not ((i == 1 and key == 'Auras') or (i == 2 and key == 'bar' and keys[1] == 'Power')) then out[#out + 1] = key end
+		end
+		return table.concat(out, '/')
+	end
+	-- each_option visits an item's menu under the item's path and 'menu'; a menu's rows are saved and
+	-- read through OM.MenuRoot, and sit where the old page had them (the part's element and sub group).
 	each_option({ args = root }, function(option, path)
 		if type(option) ~= 'table' or not VALUE[option.type] then return end
-		local rowPath = {}
-		for i, key in ipairs(path) do
-			if key == 'menu' and i > 1 then break end
-			rowPath[i] = key
+		local at, itemAt
+		for i = 2, #path do
+			if path[i] == 'menu' and i > 2 then at = i break end
 		end
-		if #rowPath ~= #path then return end -- inside an item's menu: Task 3's pages walk those through OM.MenuRoot
-		local row = { type = option.type, key = path[#path], name = option.name, at = table.concat(path, '/') }
-		row.path = SavedPath(path)
-		row.hand = type(option.default) == 'table' and type(option.default.differs) == 'function' or nil
+		local walkRoot, full, keys = root, path, nil
+		if at then
+			local item = { args = root }
+			for i = 1, at - 1 do item = OM.SubOption(item, path[i]) end
+			walkRoot, full = OM.MenuRoot(item), {}
+			for i = at, #path do full[#full + 1] = path[i] end
+			local part
+			for _, candidate in ipairs(UF.PARTS) do
+				if candidate.key == path[at - 1] then part = candidate end
+			end
+			keys = { part and part.element or tostring(path[at - 1]) }
+			if part and part.sub then keys[#keys + 1] = part.sub end
+			for i = at + 1, #path do keys[#keys + 1] = path[i] end
+		else
+			-- Inside a mirror group: the part's own rows are counted at the part.
+			local node = { args = root }
+			for i, key in ipairs(path) do
+				node = OM.SubOption(node, key)
+				if node and node.mirrorOf and i < #path then return end
+			end
+			keys = {}
+			for i = 3, #path do keys[#keys + 1] = path[i] end
+		end
+		-- A part row's box is its Enable, the toggle it was (L10): an entry's type is toggle.
+		local row = { type = option.type == 'item' and 'toggle' or option.type, key = path[#path], name = option.name }
+		row.path = SavedPath(walkRoot, full)
+		row.hand = Hand(option)
+		row.at = Legacy(keys)
 		out[#out + 1] = row
 	end)
 	return out

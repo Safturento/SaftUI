@@ -394,16 +394,23 @@ end)
 
 ------------------------------------------------------------------ the page and the defaults
 
-test('the Subtext tab on both plate pages, its options in order, and the box that disables it', function()
+test('the Subtext part on both plate pages: a row of General\'s Parts with no box, its options in order in its menu', function()
+	local OM = SaftUI.OptionsModel
 	for _, client in ipairs({ 'forever', 'retail' }) do
 		local st, UF, P = world(client)
 		for _, unit in ipairs({ 'nameplate', 'friendlynameplate' }) do
 			local root = { Unitframes = UF:GetConfigTable() }
-			local group = root.Unitframes.args[unit].args.Subtext
-			check(group ~= nil, client .. ': ' .. unit .. ' has a Subtext group')
-			eq(group.name, 'Subtext', client .. ': ' .. unit .. ': named')
-			local view = SaftUI.OptionsModel.BuildView(root, 'Unitframes', { pick = unit, tab = 'Subtext' })
-			eq(view.tab, 'Subtext', client .. ': ' .. unit .. ': opens')
+			local page = root.Unitframes.args[unit]
+			eq(page.args.Subtext, nil, client .. ': ' .. unit .. ': no tab of its own now')
+			local item = page.args.general.args.parts.args.subtext
+			check(item ~= nil, client .. ': ' .. unit .. ' has a Subtext row')
+			eq(item.type, 'item', client .. ': ' .. unit .. ': a part row')
+			eq(item.name, 'Subtext', client .. ': ' .. unit .. ': named')
+			eq(item.get, false, client .. ': ' .. unit .. ': no box, as it has no Enable (its room is kept)')
+			eq(item.reserveBox, true, client .. ': ' .. unit .. ': the box room')
+			local group = item.menu
+			local menuRoot = OM.MenuRoot(item)
+			local view = OM.BuildView(menuRoot, OM.MENU_KEY)
 			local keys = {}
 			for _, section in ipairs(view.sections) do
 				for _, row in ipairs(section.rows) do keys[#keys + 1] = row.key end
@@ -414,8 +421,8 @@ test('the Subtext tab on both plate pages, its options in order, and the box tha
 			eq(group.args.player.name, 'Player guilds', client .. ': the player box named')
 			eq(group.args.player.desc, "Shows a player's guild under their name.", client .. ': its desc')
 			eq(group.args.enable, nil, client .. ': ' .. unit .. ': no Enable option')
-			eq(group.order, root.Unitframes.args[unit].args.Name.order + 0.5, client .. ': right after Name')
-			check(group.order < root.Unitframes.args[unit].args.Castbar.order, client .. ': before Castbar')
+			check(item.order > page.args.general.args.parts.args.name.order, client .. ': after Name')
+			check(item.order < page.args.general.args.parts.args.healthtext.order, client .. ': before Health text')
 		end
 
 		-- The Friendly page: setting npc off clears a shown title.
@@ -424,33 +431,35 @@ test('the Subtext tab on both plate pages, its options in order, and the box tha
 		local frame = NP.add('nameplate1')
 		eq(line(UF, frame), '<General Goods Vendor>', client .. ': shown')
 		local updates = frame.__updates
-		local root = { Unitframes = UF:GetConfigTable() }
-		local view = SaftUI.OptionsModel.BuildView(root, 'Unitframes', { pick = 'friendlynameplate', tab = 'Subtext' })
+		local item = UF:GetConfigTable().args.friendlynameplate.args.general.args.parts.args.subtext
+		local menuRoot = OM.MenuRoot(item)
+		local view = OM.BuildView(menuRoot, OM.MENU_KEY)
 		local row
 		for _, section in ipairs(view.sections) do
 			for _, r in ipairs(section.rows) do if r.key == 'npc' then row = r end end
 		end
-		SaftUI.OptionsModel.Set(root, row, false)
+		OM.Set(menuRoot, row, false)
 		eq(P.friendlynameplate.subtext.npc, false, client .. ': the Friendly config written')
 		eq(P.nameplate.subtext.npc, false, client .. ': the enemy config untouched')
 		check(frame.__updates > updates, client .. ': the plate updated, which runs the tag again')
 		eq(line(UF, frame), '', client .. ': the title cleared')
 
-		-- The box disables the tab with the rest of the page's, in its place.
-		local function subtext_tab(view)
-			for _, tab in ipairs(view.tabs) do
-				if tab.key == 'Subtext' then return tab end
+		-- The box sets the Subtext row aside with the rest of the page's (hidden: not drawn, not searched).
+		local function subtext_found(unit)
+			local tree = { Unitframes = UF:GetConfigTable() }
+			local view = OM.BuildView(tree, 'Unitframes', { pick = unit, tab = 'general' })
+			for _, section in ipairs(view.sections) do
+				for _, r in ipairs(section.rows) do if r.key == 'subtext' then return true end end
 			end
+			return false
 		end
+		eq(subtext_found('friendlynameplate'), true, client .. ': drawn while the box is unchecked')
 		P.friendlynameplate.use_enemy = true
-		root = { Unitframes = UF:GetConfigTable() }
-		view = SaftUI.OptionsModel.BuildView(root, 'Unitframes', { pick = 'friendlynameplate', tab = 'general' })
-		eq(subtext_tab(view) and subtext_tab(view).disabled, true, client .. ': disabled while the Friendly box is checked')
+		eq(subtext_found('friendlynameplate'), false, client .. ': set aside while the Friendly box is checked')
 		P.friendlynameplate.use_enemy = false
 		P.nameplate.use_friendly = true
-		root = { Unitframes = UF:GetConfigTable() }
-		view = SaftUI.OptionsModel.BuildView(root, 'Unitframes', { pick = 'nameplate', tab = 'general' })
-		eq(subtext_tab(view) and subtext_tab(view).disabled, true, client .. ': and while the Enemy box is checked')
+		eq(subtext_found('nameplate'), false, client .. ': and while the Enemy box is checked')
+		P.nameplate.use_friendly = false
 		eq(#take_errors(), 0, client .. ': no error')
 	end
 end)

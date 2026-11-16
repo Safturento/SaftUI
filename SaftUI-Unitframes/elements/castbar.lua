@@ -179,7 +179,9 @@ local function GetConfigTable(unit)
 	return {
 		order = 6,
 		type = 'group',
-		name = 'Castbar',
+		name = 'Cast bar',
+		-- The word the tab had: a search for Castbar still finds it.
+		searchText = 'Castbar',
 		saved = UF.SavedIn(unit, 'castbar'),
 		get = function(info) return Config()[info[#info]] end,
 		set = function(info, value)
@@ -188,6 +190,8 @@ local function GetConfigTable(unit)
 		end,
 		args = {
 			enable = generators.toggle(0, 'Enable', enableDesc, 'small'),
+			-- The tab's second section, after Enable.
+			position = Position(0.5, nil, nil, 'castbar'),
 			bar = {
 				order = 1,
 				name = 'Bar',
@@ -201,8 +205,6 @@ local function GetConfigTable(unit)
 					normal = Color(4, 'Color', 'normal', "The bar's color while the cast can be interrupted. Shown from the next cast."),
 					nointerrupt = Color(5, "Can't interrupt", 'nointerrupt', "The bar's color while the cast can't be interrupted. Shown from the next cast."),
 					size = UF.GenerateRelativeSizeConfigGroup(6),
-					-- Last in Bar.
-					position = Position(1000, nil, nil, 'castbar'),
 				},
 			},
 			text = Section(2, 'Spell name', 'text', TextArgs('Text', 'text', 'spell name', 'Spell name position')),
