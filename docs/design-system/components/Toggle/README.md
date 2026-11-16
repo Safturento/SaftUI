@@ -30,7 +30,7 @@ The Settings check box (30 x 29 art), in every place the kit draws a check box (
 
 ## Other check boxes in the code (not the standard)
 
-- Core's `st:SkinCheckButton`: 12 x 12, the whole box filled in `button-hover` (at its opacity, 100% by default) when checked.
+- Core's `st:SkinCheckButton`: 12 x 12, the whole box filled in `button-checked` (at its opacity, 100% by default) when checked, and `button-hover` at 40% under the mouse.
 - The bags' rule editor: 14 x 14.
 - A bag category's filter box: 8 x 8 (hidden today).
 

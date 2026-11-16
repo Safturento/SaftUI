@@ -280,6 +280,7 @@ Format: `file:line` and a few words. Sites that go through the wrappers are expa
 - `button.normal` is the **hover highlight** on SaftUI buttons: `SaftUI-Core/Widgets/button.lua:253`, `checkbutton.lua:115`, `micromenuitems.lua:37`. It is also the **scroll bar thumb at rest** (`scrollbar.lua:6`). It is never the resting fill of a button.
 - `button.hover` is a **checked check box fill** (`checkbutton.lua:109`), a **hovered scroll thumb** (`scrollbar.lua:6`), and the hover on minimap buttons (`micromenuitems.lua:97`, `expansionbutton.lua:51`, `queuebutton.lua:44`, `microbuttons.lua:181`). It also colours **resize handles** (`SaftUI-Core/skinning.lua:443,446`, `optionsresize.lua:174`).
 - `button.pushed` is a pressed button, scroll thumb, or micro button (`button.lua:263`, `micromenuitems.lua:43`, `microbuttons.lua:123`, `scrollbar.lua:6`).
+- **Since 2026-11-15 (decision 54):** the two names are made true. `button.hover` is everything under the mouse (the highlights of a button, a check box and a bar item at 0.4 times its opacity, the rest at 1), `button.normal` is the scroll thumb at rest alone, and a checked check box's fill is a new `button.checked` (default Hover's; migration step 6 copies a changed Hover into it). The paragraphs above describe the audit as it was.
 
 ### `button.red`. 3 sites.
 - Locked bank slot tint `containers/bank.lua:56`.

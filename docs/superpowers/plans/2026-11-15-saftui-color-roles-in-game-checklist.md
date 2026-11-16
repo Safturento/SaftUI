@@ -75,15 +75,15 @@ State colors (Task 4):
 
 ## 6. Buttons at their opacity (Task 5)
 
-At the defaults (100%), all of these look exactly as they did:
-1. A SaftUI button's highlight and pressed fill (a bag header button, keybind mode's Done, the loot feed's F and V), the filter box of a bag category or of the currency list (a SaftUI check box: its checked fill and its highlight), and the scroll bar thumb of a bag window or of chat, at rest, under the mouse and pressed. (`/sui`'s own scroll bar and check boxes are the options kit's and don't read Buttons colors.)
+At the defaults (100%), all of these look as they did, except that every highlight under the mouse is now Buttons > Hover at 40% (a blue tint over the fill, where it was Normal's near-black) since the hover change ("Hover is everything under the mouse", decision 54):
+1. A SaftUI button's highlight (Hover at 40% now) and pressed fill (a bag header button, keybind mode's Done, the loot feed's F and V), the filter box of a bag category or of the currency list (a SaftUI check box: its checked fill, now Buttons > Checked, and its highlight, Hover at 40%), and the scroll bar thumb of a bag window or of chat, at rest, under the mouse and pressed. (`/sui`'s own scroll bar and check boxes are the options kit's and don't read Buttons colors.)
 2. The resize corners: the grip at the `/sui` window's bottom right and the world map's corner (`st:EnableResizing`, under Thick or Thin).
 3. The micro menu: each micro button's highlight (40%) and pushed fill (60%), a bar item's highlight and pressed fill, the tracking button, the queue eye and the expansion button under the mouse.
 4. The bank's unbought tabs tinted red (30% on the slot), and the flash on an action button and a totem button (40%).
 5. The action button's hover is a white tint at 15%, not a Buttons color: it never changes with Buttons.
 
 Then lower Buttons > Hover to 50% (picker's opacity), reload:
-6. A checked bag category or currency filter box, a hovered bag or chat scroll bar thumb, the world map's resize corner and the `/sui` grip, the tracking, queue and expansion buttons' highlight and each micro button's highlight (now 20%) are fainter. Normal, Pushed and Danger are untouched. Do the same for Normal (a bag header button's highlight, an unchecked filter box's highlight, a bag scroll bar thumb at rest, a zone text or addon compartment item's highlight), Pushed (a held bag header button, a micro button's pushed fill, now 30%) and Danger (the flash, now 20%, and an unbought bank tab, now 15%: 50% on the tint times its own 30%).
+6. A bag header button's, an unchecked filter box's and a zone text or addon compartment item's highlight (now 20%), a hovered bag or chat scroll bar thumb, the world map's resize corner and the `/sui` grip, the tracking, queue and expansion buttons' highlight and each micro button's highlight (now 20%) are fainter. Normal, Checked, Pushed and Danger are untouched. Do the same for Normal (a bag scroll bar thumb at rest, nothing else), Checked (a checked bag category or currency filter box), Pushed (a held bag header button, a micro button's pushed fill, now 30%) and Danger (the flash, now 20%, and an unbought bank tab, now 15%: 50% on the tint times its own 30%).
 7. Hover's reset arrow puts 100% back (and its color).
 8. Set an opacity of 0%: the highlight is not drawn, and nothing errors.
 9. Nothing changes in combat: no `ADDON_ACTION_BLOCKED` while the action bars, totem bar and micro menu are in use.
