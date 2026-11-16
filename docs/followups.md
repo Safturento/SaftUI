@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-15 — The options kit's keybinding widget commits mouse buttons 6 to 31 raw](#2026-11-15--the-options-kits-keybinding-widget-commits-mouse-buttons-6-to-31-raw)
   - [2026-11-13 — Loot rolls: the roll bar doesn't hold after a choice](#2026-11-13--loot-rolls-the-roll-bar-doesnt-hold-after-a-choice)
   - [2026-11-15 — UI scale: the kit's buttons and labels are off whole pixels on every screen that is not 1440p](#2026-11-15--ui-scale-the-kits-buttons-and-labels-are-off-whole-pixels-on-every-screen-that-is-not-1440p)
   - [2026-11-15 — UI scale: a kit confirm dialog or an open select list can cover the Keep prompt](#2026-11-15--ui-scale-a-kit-confirm-dialog-or-an-open-select-list-can-cover-the-keep-prompt)
@@ -211,6 +212,16 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-15 — The options kit's keybinding widget commits mouse buttons 6 to 31 raw
+
+**What:** The `keybinding` widget (`SaftUI-Core/Config/optionskeybinding.lua`) converts only `MiddleButton`, `Button4` and `Button5` (its `MOUSE_BUTTONS` table). Mouse buttons 6 to 31 reach `Press` as `Button6` and so on and are committed raw, where the game's binding names are `BUTTON6`. `/sui kb` converts every button with `GetConvertedKeyOrButton` (`SaftUI-ActionBars/keybindmode.lua`).
+
+**Why noticed:** Review of the small-followups package (2026-11-15), reading the widget's new use of Blizzard's binding helpers. The gap is older than that change; it is rare (a mouse with more than five buttons).
+
+**Anchors:** `SaftUI-Core/Config/optionskeybinding.lua` (`MOUSE_BUTTONS`, the `OnMouseDown` script), `SaftUI-ActionBars/keybindmode.lua` (`BindingKey`), `Blizzard_SharedXML/BindingUtil.lua` (`GetConvertedKeyOrButton`, the same on both clients), `tests/core/options_fields_test.lua`.
+
+**Shape of work:** small: in `OnMouseDown`, convert through `GetConvertedKeyOrButton` where the client has it, keeping `MOUSE_BUTTONS` as the fallback; a test that `Button6` commits `BUTTON6`.
 
 ### 2026-11-13 — Loot rolls: the roll bar doesn't hold after a choice
 
@@ -862,7 +873,7 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 
 **Open questions:** Where should the message show when the footer has no room: the field's tooltip, a line over the footer, or both? An in-game check at W4 with Keybind mode only (54 wide) decides how often it matters.
 
-**Recommendation 2026-11-15 (left for the owner, a look):** the field's tooltip, set from `Base:Commit`'s failed validation and cleared on the next commit or Release, shown by hovering the field and by `OnEnter` right after the failure (the mouse is on the field when Enter was pressed); the status line stays as it is when it has room. It adds no line, so nothing can overlap.
+**Recommendation 2026-11-15 (left for the owner, a look):** show the message without the mouse on the field: a tooltip anchored to the field, opened by the failed commit itself (the value is committed from the keyboard, so the mouse can be anywhere), only while the status line has no room for the message. It closes on the next edit of the field, on focus lost, or after a few seconds. It adds no line, so nothing can overlap; the status line stays as it is when it has room.
 
 ### 2026-11-13 — Design decisions waiting to be built
 
@@ -2172,7 +2183,7 @@ The one route left is to work out the button order without reading the buttons. 
 
 **Shape of work:** Measure first: check `SaftUI_DB.lua`'s size after a raid night. Shrink the saved roll format only if it's large.
 
-**Measured 2026-11-15:** the owner's whole saved file (`SaftUI-Core.lua`, which holds `SaftUI_DB`) is 173 KB; the busiest character's `feed` is 500 entries and 125 KB (about 250 bytes an entry), and only one saved entry holds a roll list so far, so a raid night's cost is still unmeasured. The estimate above (about 3 KB for a 20-player roll result, so 1.5 MB a character at 500) stands untested. Left open on purpose: shrinking changes the saved format (a compact Pass string, a cap on roll lists), which wants a number from a real raid night first. Measure again after one: if the file passes about 1 MB, shrink; the cheapest first step is one compact string for Pass names.
+**Measured 2026-11-15:** the owner's whole saved file (`SaftUI-Core.lua`, which holds `SaftUI_DB`) is 173 KB; the busiest character's `feed` is 500 entries and 125 KB (about 250 bytes an entry), and only one saved entry holds a roll list so far, so a raid night's cost is still unmeasured. Computed 2026-11-15 by serializing a roll result as SavedVariables writes it (tab-indented, five fields a player, 20-character names): 5 players about 1.0 KB an entry (0.5 MB a character at 500), 20 players about 2.9 KB (1.5 MB), 40 players about 5.5 KB (2.7 MB). This replaces the untested estimate. Left open on purpose: shrinking changes the saved format (a compact Pass string, a cap on roll lists), which wants a number from a real raid night first. Measure again after one: if the file passes about 1 MB, shrink; the cheapest first step is one compact string for Pass names.
 
 ### 2026-11-08 — Confirm the totem bar's protection and secret-value claims in game, then document the duration-object pattern
 
