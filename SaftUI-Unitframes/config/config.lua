@@ -546,9 +546,10 @@ function UF:CopySettings(unit, from, keys)
 	end
 	-- Shared settings (sharedoptions.lua): what was copied is the unit's own where it differs from what
 	-- All units holds, else the sync would put All units' value back at the next profile load, unmarked.
-	-- A setting that came out the same as All units' keeps following it. Table writes only.
+	-- A setting that came out the same as All units' keeps following it. Table writes only, and the flag is written
+	-- while sharing is paused too (CanMarkOwn, as a page edit): it only protects the copy from the next sync.
 	local ownChange
-	if next(copied) and self:SharedReady() and UF.IsShareMember(unit) then
+	if next(copied) and self:CanMarkOwn() and UF.IsShareMember(unit) then
 		local all = rawget(config, 'all')
 		local own = rawget(config[unit], 'own')
 		local keys, old, new = {}, {}, {}

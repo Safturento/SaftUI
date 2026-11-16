@@ -460,7 +460,7 @@ local ALLOWED = {
 		ConfirmDeleteProfile = { 'SharedReady', 'SharedState' },
 	},
 	['SaftUI-Unitframes/config/config.lua'] = {
-		['UF:CopySettings'] = { 'SharedReady', 'HasShared', 'SameShared', 'OwnShared' },
+		['UF:CopySettings'] = { 'CanMarkOwn', 'HasShared', 'SameShared', 'OwnShared' },
 		['UF:GetConfigTable'] = { 'SharedReady' },
 	},
 	['SaftUI-Unitframes/config/sharedoptions.lua'] = {
@@ -475,10 +475,12 @@ local ALLOWED = {
 		CheckFollowers = { 'HasShared', 'IsOwn' },
 		Decorate = { 'HasShared' },
 		['UF.DecorateShares'] = { 'SharedReady', 'CanMarkOwn' },
-		['UF.SharedNoticePage'] = { 'SharedState', 'SharedStateText', 'EnableShared' },
+		['UF.SharedNoticePage'] = { 'SharedState', 'SharedStateText', 'RequestShare' },
 		['UF:RestoreSharedNow'] = { 'RestoreShared' },
 		['UF:RestoreSharedCommand'] = { 'HasSharedBackup', 'SharedState', 'SharedStateText' },
-		['UF:ShareCommand'] = { 'EnableShared', 'SharedState' },
+		['UF:ShareNow'] = { 'EnableShared' },
+		['UF:RequestShare'] = { 'ShareNow' },
+		['UF:ShareCommand'] = { 'RequestShare', 'SharedState' },
 		WhenText = {},
 	},
 }

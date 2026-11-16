@@ -171,6 +171,9 @@ local function PromptImportProfile()
 		-- next login converts the profile from what each unit shows, edits included.
 		rawset(data, 'all', nil)
 		rawset(data, 'backup', nil)
+		-- Nor the marks of a restore: the import is not a restored profile, and converts at the next login.
+		rawset(data, 'restored', nil)
+		rawset(data, 'restoredTold', nil)
 		for _, unit in pairs(data) do
 			if type(unit) == 'table' then rawset(unit, 'own', nil) end
 		end

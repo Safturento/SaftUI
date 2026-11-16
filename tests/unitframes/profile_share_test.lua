@@ -234,3 +234,47 @@ test('W16: a unit frame profile switch builds the open /sui window\'s tree again
 	type_and_enter('Fresh2')
 	eq(rooted, 'ROOT', 'New too')
 end)
+
+-- A restored profile (/sui uf restore) holds restored and restoredTold: they belong to that profile. An export, an
+-- import or a Copy of it carries neither, so the new profile converts like any other.
+local function restored_world()
+	world(true)
+	lines_of(function() UF:RunShareCommand('restore confirm') end)
+	db = SW.relog(db)
+	SW.enable() -- the login that tells once sets restoredTold
+	eq(UF:SharedState(profile('SaftUI')), 'restored')
+	check(rawget(profile('SaftUI'), 'restoredTold'), 'told')
+end
+
+test('Export of a restored profile carries neither restored nor restoredTold, and the import of it converts at the next login', function()
+	restored_world()
+	press('export')
+	eq(rawget(exported, 'restored'), nil, 'no restored in the export')
+	eq(rawget(exported, 'restoredTold'), nil, 'no restoredTold in the export')
+	-- An export made by an older SaftUI may hold them: the import drops them too.
+	local text = SW.saved_copy(exported)
+	rawset(text, 'restored', 1700000000)
+	rawset(text, 'restoredTold', true)
+	function st.Config:Import() return true, text end
+	lines_of(function()
+		press('import')
+		type_and_enter('GOOD')
+	end)
+	local imported = profile('Imported')
+	eq(rawget(imported, 'restored'), nil, 'the import drops restored')
+	eq(rawget(imported, 'restoredTold'), nil, 'and restoredTold')
+	db = SW.relog(db)
+	SW.enable()
+	eq(UF:SharedReady(profile('Imported')), true, 'converted at the next login')
+end)
+
+test('Copy of a restored profile is not restored: it converts like any other', function()
+	restored_world()
+	press('copy')
+	type_and_enter('Copied')
+	local copy = profile('Copied')
+	eq(rawget(copy, 'restored'), nil)
+	eq(rawget(copy, 'restoredTold'), nil)
+	eq(UF:SharedState(copy), 'ready', 'converted from its own values at once')
+	eq(UF.HasSharedBackup(copy), true, 'with a backup of its own')
+end)

@@ -7,6 +7,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-16 — All units' Position offers anchors some units lack (pre-flight ruling L7 was never built)](#2026-11-16--all-units-position-offers-anchors-some-units-lack-pre-flight-ruling-l7-was-never-built)
+  - [2026-11-16 — Unit frames shared settings: dead code, stale comments, names with two meanings, and shared.lua at 1293 lines](#2026-11-16--unit-frames-shared-settings-dead-code-stale-comments-names-with-two-meanings-and-sharedlua-at-1293-lines)
   - [2026-11-16 — Search stops at 100 results, so a part's name cuts the last pages](#2026-11-16--search-stops-at-100-results-so-a-parts-name-cuts-the-last-pages)
   - [2026-11-16 — All units: small rules left open](#2026-11-16--all-units-small-rules-left-open)
   - [2026-11-16 — Nameplates and All units](#2026-11-16--nameplates-and-all-units)
@@ -242,6 +244,31 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 ## Active
 
+### 2026-11-16 — All units' Position offers anchors some units lack (pre-flight ruling L7 was never built)
+
+**What:** Ruling L7, adopted in the pre-flight, says that on All units a Position's TO list is the elements every member having the part has, and that validate refuses another element. It was never built: no brief carried it and no test pins it. On All units the TO list is every registered element, and `CheckFollowers` only checks for loops.
+
+**Why noticed:** The final review of the plan "unit frames: parts and sharing" (`.superpowers/sdd/2026-11-15-saftui-unitframes-parts-and-sharing/final-review.md`, Minor 1). What the player would see: All units > Name's Position offers Threat, Subtext, ClassPower, AdditionalPower and ReadyCheckIndicator. Picking Cast bar places TargetTarget's, FocusTarget's and PetTarget's names against their unit frame instead, silently (`UF:GetFrame` falls back), and their summaries say "Unit frame".
+
+**Anchors:** `SaftUI-Unitframes/config/position.lua:79-114` (with no unit frame for `'all'` the TO list is every registered element); `SaftUI-Unitframes/config/sharedoptions.lua:261-285` (`CheckFollowers`, loops only); `preflight.md` L7 in the plan's folder under `.superpowers/sdd/2026-11-15-saftui-unitframes-parts-and-sharing/`; `UF.SHARE_MEMBERS`.
+
+**Shape of work:** small. On `'all'`, build the TO list from `UF.SHARE_MEMBERS` that have the part (the intersection of their elements), and in `validate` refuse another element with "TargetTarget, FocusTarget and PetTarget have no Cast bar." A test for each.
+
+### 2026-11-16 — Unit frames shared settings: dead code, stale comments, names with two meanings, and shared.lua at 1293 lines
+
+**What:** A cleanup of the shared settings code that the final review found and left: stale comments, code no source path calls, a duplicate, names that mean two things, and one file holding six concerns.
+
+**Why noticed:** The final review of the plan "unit frames: parts and sharing" (`.superpowers/sdd/2026-11-15-saftui-unitframes-parts-and-sharing/final-review.md`, Minor 4).
+
+**Anchors:**
+- Stale comments: `SaftUI-Unitframes/config/shared.lua:8` ("Nothing calls the conversion or the sync at login yet"); `SaftUI-Unitframes/config/config.lua:821` ("Elements (General, Health, Name, Power, ...) as tabs"); `SaftUI-Unitframes/config/profiles.lua:8-11` (the pick line reads "Unit, Copy from, Profile, Manage" with only the nameplates lacking Copy from: All units lacks it too).
+- Code no source path calls: `UF.PartShare` (`SaftUI-Unitframes/config/sharedoptions.lua:181-186`: the decorator shares a part row through its `saved` path); `UF.PartFor` and `UF.UnitParts` (`SaftUI-Unitframes/config/parts.lua:78, 97`, used by tests only).
+- Duplication: `config.lua:351`'s local `UnitName` duplicates `UF.UnitPageName`.
+- Names that mean two things: in `shared.lua` the local `PARTS` (`:498`, a position's fields) beside `UF.PARTS` (unit frame parts); `part` is a position field or `'toggle'`/`'color'` in `SetShared` and `WriteValue`, but a unit frame part in `entry.part`.
+- Size: `shared.lua` is 1293 lines holding six concerns (the entries, compare and copy, the API, the ticker, the conversion, backup, restore and state).
+
+**Shape of work:** remove or rename the above; move `shared.lua:918-1293` (backup, restore, states, `PrepareShared`, `EnableShared`) to `SaftUI-Unitframes/config/sharedsetup.lua`, and let the file allowlist in `tests/unitframes/shared_guard_test.lua` follow (and `config/load.xml`, and `.agents/architecture.md`).
+
 ### 2026-11-16 — Search stops at 100 results, so a part's name cuts the last pages
 
 **What:** `/sui`'s search lists at most 100 results (`MAX_RESULTS` in `OM.Search`, `SaftUI-Core/Config/optionsmodel.lua`). A part's name matches its whole menu on every page, so searching a part by name over all fourteen picks (`Health text`, `Cast bar`) fills the 100 with the first pages (All units and the first eleven units) and never lists Raid 40's menu or the nameplates'.
@@ -258,12 +285,12 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 ### 2026-11-16 — All units: small rules left open
 
-**What:** Five small rules of the All units wiring that the owner has not decided or that no test pins:
+**What:** Four small rules of the All units wiring that the owner has not decided or that no test pins:
 - A slider dragged away from the value a unit follows and back to it ends the drag as the unit's own setting, because the first step away made it own. A single set to the value it already shows keeps it following.
 - A Custom color picked while its box is unticked keeps the unit following, and the unit's hidden color is replaced if All units later ticks its box (0.9 became 0.3 in the review). Ticking the unit's own box first keeps it.
 - The rule that an owner stays an owner when it sets All units' value (the spec says an owner counts as differing even when equal) has no test: a mutant that makes it follow survives.
 - From the second login AceDB's wildcard leaves empty tables under the saved `backup` (`debuffs`, `grouproleindicator`, `questindicator`, `raidroleindicator`, `raidtargetindicator`, `range_alpha`). No value, harmless; storing the backup out of the wildcard's reach would avoid it.
-- The paused notice's wording, "a Reset there follows All units when sharing resumes": the paused Reset writes All units' value at once.
+- ~~The paused notice's wording, "a Reset there follows All units when sharing resumes": the paused Reset writes All units' value at once.~~ *Said truly now (the in-game checklist, section H).*
 
 **Why noticed:** The reviews of Task 6 (`.superpowers/sdd/2026-11-15-saftui-unitframes-parts-and-sharing/task-6-review.md`, the last two rounds): all Minor or Nit, left open when the owner said go to merge on 2026-11-16.
 

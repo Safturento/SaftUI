@@ -351,6 +351,32 @@ test('M2: when the second closes, the first is drawn again once and stays open',
 	close_all()
 end)
 
+test('N3: with the window shown, the first is drawn again when the window is no longer busy, not at the close', function()
+	open_both()
+	local first = M(1)
+	local before = {}
+	for i, c in ipairs(first.body.cells) do before[i] = c end
+	local function drawn()
+		for i, c in ipairs(first.body.cells) do
+			if before[i] ~= c then return true end
+		end
+		return false
+	end
+	-- Busy: a confirm text is up over the window (W.ConfirmText), so the window's renders wait.
+	local real = W.ConfirmText
+	W.ConfirmText = function() return 'Sure?' end
+	stub.fire_script(M(2).catcher, 'OnMouseDown', 'LeftButton')
+	check(first.frame:IsShown() and not M(2).frame:IsShown(), 'the second closed, the first stays')
+	check(not drawn(), 'not drawn again at the close: it is scheduled')
+	tick()
+	check(not drawn(), 'nor while the window is busy')
+	W.ConfirmText = real
+	tick()
+	check(drawn(), 'drawn again once the window is not busy')
+	check(first.frame:IsShown(), 'and still open')
+	close_all()
+end)
+
 test('M1: a tree rebuilt while both are open (a profile change) closes both', function()
 	open_both()
 	OW:SetRoot(st.Config:RegisterOptions())
