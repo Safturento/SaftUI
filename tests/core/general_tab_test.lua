@@ -420,6 +420,42 @@ test("a Go back or a Keep that makes the same scale draws nothing again, so the 
 	UIScale:Apply(nil)
 end)
 
+test('UI size shows the size drawn, not the saved number: a saved 150% on a screen whose top is 130% shows 130%', function()
+	screen(1920, 1080)
+	eq(UIScale:Apply({ mode = 'auto', size = 1.5 }), true)
+	eq(Get('size'), 1.5, 'the top on 1080p holds it')
+	stub.screen_width, stub.screen_height = 1366, 768
+	eq(UIScale:Current().size, 1.5, 'the choice is still 150%')
+	eq(Get('size'), 1.3, 'the row shows what this screen draws')
+	screen(1920, 1080)
+end)
+
+test('a size this screen does not hold prints its line and asks nothing; a mode the select cannot send says so in its own words', function()
+	screen(1366, 768)
+	local lines = chat(function() Set('size', 1.4) end)
+	eq(#lines, 1, 'one line')
+	check(lines[1]:find("That UI size doesn't fit this screen.", 1, true), lines[1])
+	check(not KP:IsShown() and not UIScale:IsPreviewing(), 'no prompt, no preview')
+	eq(Get('size'), 1)
+
+	lines = chat(function() Set('scale', 'sideways') end)
+	eq(#lines, 1, 'one line')
+	check(lines[1]:find('UI scale', 1, true) and not lines[1]:find("doesn't fit", 1, true), lines[1])
+	check(not KP:IsShown() and not UIScale:IsPreviewing(), 'no prompt, no preview')
+	eq(#take_errors(), 0)
+end)
+
+test("Scale's reset leaves the UI size alone", function()
+	screen(1920, 1080)
+	UIScale:Apply({ mode = 'pixel', size = 0.8 })
+	eq(Reset('scale'), true)
+	eq(UIScale:Current().mode, 'auto'); eq(UIScale:Current().size, 0.8, 'the size is the saved 80%, not 100%')
+	goback()
+	eq(UIScale:Current().mode, 'pixel'); eq(UIScale:Current().size, 0.8)
+	UIScale:Apply(nil)
+	eq(#take_errors(), 0)
+end)
+
 test('refusals: in combat the row says so and asks nothing; a size the screen no longer holds says so', function()
 	screen(1920, 1080)
 	stub.in_combat = true
