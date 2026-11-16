@@ -30,7 +30,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-15 — Auto Vendor counts a fresh purchase in a just-sold slot as a refused sale](#2026-11-15--auto-vendor-counts-a-fresh-purchase-in-a-just-sold-slot-as-a-refused-sale)
   - [2026-11-15 — Auto Vendor's second question overstates the earlier stacks that leave](#2026-11-15--auto-vendors-second-question-overstates-the-earlier-stacks-that-leave)
   - [2026-11-15 — Nameplates: Blizzard's friendly plates key binding and the next login](#2026-11-15--nameplates-blizzards-friendly-plates-key-binding-and-the-next-login)
-  - [2026-11-15 — Two lines of the profile switch fix that no test pins](#2026-11-15--two-lines-of-the-profile-switch-fix-that-no-test-pins)
   - [2026-11-15 — getHealthPercentText's floor branch is never used](#2026-11-15--gethealthpercenttexts-floor-branch-is-never-used)
   - [2026-11-15 — Bag search box: the magnifier and the clear button](#2026-11-15--bag-search-box-the-magnifier-and-the-clear-button)
   - [2026-11-15 — Tracker: an Edit Mode anchor to a frame other than UIParent gives the default spot](#2026-11-15--tracker-an-edit-mode-anchor-to-a-frame-other-than-uiparent-gives-the-default-spot)
@@ -132,6 +131,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-15 — Two lines of the profile switch fix that no test pins](#2026-11-15--two-lines-of-the-profile-switch-fix-that-no-test-pins)
   - [2026-11-15 — Unit frame defaults: string offsets left outside the castbars](#2026-11-15--unit-frame-defaults-string-offsets-left-outside-the-castbars)
   - [2026-11-15 — Unit frames: a part switched off in the new profile keeps its old points](#2026-11-15--unit-frames-a-part-switched-off-in-the-new-profile-keeps-its-old-points)
   - [2026-11-15 — Unit frames: a vehicle power type with no oUF color falls back to Mana](#2026-11-15--unit-frames-a-vehicle-power-type-with-no-ouf-color-falls-back-to-mana)
@@ -482,16 +482,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 **Shape of work:** Small if left; a listener and a test if Friendly plates follows the game.
 
 **Open questions:** Should Blizzard's friendly plates key binding change SaftUI's Friendly plates, or be undone at the next login?
-
-### 2026-11-15 — Two lines of the profile switch fix that no test pins
-
-**What:** Two lines of the fu-p2 fix round pass every test when removed. (1) `RestoreNameplateCVars` clearing `UF.appliedFriendly` (`SaftUI-Unitframes/nameplates/cvars.lua`): the case it guards is Nameplates turned off with the reload declined (the user's values go back), then a switch to a profile with Nameplates on and the same Friendly plates; SaftUI's settings should be set again, and without the line they stay the user's while SaftUI's plates are up. (2) `RefreshFrameConfig` before `UF.ClearPlacedPoints` in the plate loop of `UF:ApplyConfig` (`SaftUI-Unitframes/unitframes.lua`): without it the clear reads the old profile's cached Enable for a text or icon, which matters only for a loop through a text or icon (typed by frame name), so it is low value.
-
-**Why noticed:** The fu-p2 re-review of the fix round (its N2). The code is right in both cases; only the tests are missing.
-
-**Anchors:** `tests/unitframes/profile_switch_test.lua`, `tests/unitframes/nameplate_page_test.lua`, `tests/unitframes/friendly_plate_test.lua`, `tests/unitframes/friendly_plate_size_test.lua`.
-
-**Shape of work:** Small: the Nameplates off then on case in `profile_switch_test.lua`, and a case where a text is on in one profile and off in the other.
 
 ### 2026-11-15 — getHealthPercentText's floor branch is never used
 
@@ -2426,6 +2416,18 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-15 — Two lines of the profile switch fix that no test pins
+
+**What:** Two lines of the fu-p2 fix round pass every test when removed. (1) `RestoreNameplateCVars` clearing `UF.appliedFriendly` (`SaftUI-Unitframes/nameplates/cvars.lua`): the case it guards is Nameplates turned off with the reload declined (the user's values go back), then a switch to a profile with Nameplates on and the same Friendly plates; SaftUI's settings should be set again, and without the line they stay the user's while SaftUI's plates are up. (2) `RefreshFrameConfig` before `UF.ClearPlacedPoints` in the plate loop of `UF:ApplyConfig` (`SaftUI-Unitframes/unitframes.lua`): without it the clear reads the old profile's cached Enable for a text or icon, which matters only for a loop through a text or icon (typed by frame name), so it is low value.
+
+**Why noticed:** The fu-p2 re-review of the fix round (its N2). The code is right in both cases; only the tests are missing.
+
+**Anchors:** `tests/unitframes/profile_switch_test.lua`, `tests/unitframes/nameplate_page_test.lua`, `tests/unitframes/friendly_plate_test.lua`, `tests/unitframes/friendly_plate_size_test.lua`.
+
+**Shape of work:** Small: the Nameplates off then on case in `profile_switch_test.lua`, and a case where a text is on in one profile and off in the other.
+
+**Resolved 2026-11-15:** `profile_switch_test.lua` pins both: the Nameplates off then on case (the restore forgetting `UF.appliedFriendly`) and a text switched on by a switch that replaces the bar's config table (the refresh before `UF.ClearPlacedPoints`); each fails with its line removed.
 
 ### 2026-11-15 — Unit frame defaults: string offsets left outside the castbars
 

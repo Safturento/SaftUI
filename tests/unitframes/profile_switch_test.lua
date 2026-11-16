@@ -276,3 +276,63 @@ test("only a change of Friendly plates sets the game's friendly plates: not a pl
 		unwatch()
 	end
 end)
+
+------------------------------------------------------------------ two lines of the switch no other test pins
+
+-- Nameplates turned off with the reload declined puts the user's settings back
+-- (UF:RestoreNameplateCVars). A switch to a profile with Nameplates on and the
+-- same Friendly plates then sets SaftUI's again: the restore forgets what the
+-- plates were set to (UF.appliedFriendly), or the switch would see "no change"
+-- and leave the user's values under SaftUI's plates.
+test("a switch back to Nameplates on, with the same Friendly plates, sets SaftUI's settings again after a restore", function()
+	for _, client in ipairs({ 'forever', 'retail' }) do
+		local st, UF = world(client)
+		local P = UF:GetProfileConfig()
+		UF:RestoreNameplateCVars()
+		stub.cvars[PLAYERS], stub.cvars[NPCS] = '1', '0'
+		UF:ApplyNameplateCVars()
+		eq(stub.cvars[PLAYERS] .. stub.cvars[NPCS], '11', client .. ": SaftUI's")
+
+		-- The Nameplates box off: what its set does.
+		P.nameplate.enable = false
+		UF:RestoreNameplateCVars()
+		eq(stub.cvars[PLAYERS] .. stub.cvars[NPCS], '10', client .. ": the user's, back")
+
+		-- A switch to a profile with Nameplates on and Friendly plates as it was.
+		P.nameplate.enable = true
+		UF:UpdateConfig()
+		eq(stub.cvars[PLAYERS] .. stub.cvars[NPCS], '11', client .. ": SaftUI's again")
+		eq(#take_errors(), 0, client .. ': no error')
+	end
+end)
+
+-- A plate's cached configs are pointed at the new profile before its points
+-- are cleared, so the clear reads the new profile's Enable of a text, not the
+-- old one's: a text switched on by the switch is cleared before it is placed.
+test("a switch clears a plate's points by the new profile's Enable for each text", function()
+	for _, client in ipairs({ 'forever', 'retail' }) do
+		local st, UF = world(client)
+		local P = UF:GetProfileConfig()
+		NP.enemy('nameplate1')
+		local frame = NP.add('nameplate1')
+		local text = frame.Health.textElements.text
+		P.nameplate.health.text.enable = false
+		UF:UpdateConfig()
+		take_errors()
+		eq(text.config.enable, false, client .. ': off in profile A')
+
+		-- Profile B: another table for the bar, its text on.
+		local seen
+		local clear = UF.ClearPlacedPoints
+		UF.ClearPlacedPoints = function(plate)
+			if plate == frame then seen = text.config.enable end
+			return clear(plate)
+		end
+		P.nameplate.health = st.tablecopy(P.nameplate.health, true)
+		P.nameplate.health.text.enable = true
+		UF:UpdateConfig()
+		UF.ClearPlacedPoints = clear
+		eq(seen, true, client .. ": the clear read profile B's Enable")
+		eq(#take_errors(), 0, client .. ': no error')
+	end
+end)
