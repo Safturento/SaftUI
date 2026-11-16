@@ -18,7 +18,7 @@ A choice, `{ mode, size }`. The prompt tries it at once (`UIScale:Preview`), cou
 | Scale | its own: the automatic size of this screen at 100%, whatever is tried (it ignores its parent's scale) | |
 | Text | the question, then the line under it in `text-muted`: "Going back in 15 s." counting down, or "Goes back when combat ends." | `field` |
 | Buttons | Keep and Go back, the kit's Button, 12 apart, 14 from the bottom | `button-gap` |
-| Padding | 16 above the question and 16 between the line and the buttons | `confirm-top` |
+| Padding | 16 above the question, 6 between it and the line, and 16 between the line and the buttons | `confirm-top` |
 | Layer | `FULLSCREEN_DIALOG`, level 9900: over the window, edit mode and its History list | `level-keep-prompt` |
 
 ## States
@@ -29,6 +29,13 @@ A choice, `{ mode, size }`. The prompt tries it at once (`UIScale:Preview`), cou
 - In combat it takes no key. If combat starts while it shows, it stays and its buttons work. If the time ends in combat, the line reads "Goes back when combat ends.", the buttons hide, and it hides once the size has gone back.
 - A second change while it shows starts the 15 seconds again for the new choice.
 - Under the mouse and pressed: as the kit's Button.
+
+## Known gaps
+
+- Its frame and its border are whole pixels at any screen; the kit's buttons and texts are not (their sizes are in units), so away from 1440p they sit a fraction of a pixel off. The prompt is drawn at the automatic size of every screen but 1440p, not only while previewing: on 1080p its buttons are 19.5 pixels tall. Phase 2 of the scaling work (the options kit) fixes it.
+- A line is `line-width` pixels of UIParent's scale: a 150% preview on a 1440p screen makes the prompt's lines 2 pixels (Thick 6), whole but heavier. The owner's call keeps one-pixel lines on frames the game scales, so the prompt follows.
+- The kit's confirm dialog and an open select list are in `TOOLTIP` strata with a click catcher, so one open at the time covers the prompt. Its time still runs out.
+- The countdown keeps running through a loading screen; the first tick after it can go back, the safe direction.
 
 ## Blizzard theme
 
