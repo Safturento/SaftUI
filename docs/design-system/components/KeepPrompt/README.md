@@ -23,6 +23,7 @@ A choice, `{ mode, size }`. The prompt tries it at once (`UIScale:Preview`), cou
 
 ## States
 
+- Keep looks disabled and takes no click for the first half second after the prompt shows, so the second click of a double-click on what asked cannot keep. Go back and Esc work at once.
 - Not modal: no catcher. A click beside it reaches what is under it, and it stays when `/sui` closes.
 - Out of combat it takes Esc (go back) and lets every other key on to the game. Enter does nothing: only Keep keeps.
 - In combat it takes no key. If combat starts while it shows, it stays and its buttons work. If the time ends in combat, the line reads "Goes back when combat ends.", the buttons hide, and it hides once the size has gone back.

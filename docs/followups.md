@@ -7,6 +7,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-15 — UI scale: the kit's buttons and labels are off whole pixels on every screen that is not 1440p](#2026-11-15--ui-scale-the-kits-buttons-and-labels-are-off-whole-pixels-on-every-screen-that-is-not-1440p)
+  - [2026-11-15 — UI scale: a kit confirm dialog or an open select list can cover the Keep prompt](#2026-11-15--ui-scale-a-kit-confirm-dialog-or-an-open-select-list-can-cover-the-keep-prompt)
   - [2026-11-15 — An addon's direct RollOnLoot on a roll with no confirmation is not held](#2026-11-15--an-addons-direct-rollonloot-on-a-roll-with-no-confirmation-is-not-held)
   - [2026-11-15 — The color picker's preview copies other widgets' geometry](#2026-11-15--the-color-pickers-preview-copies-other-widgets-geometry)
   - [2026-11-15 — UI scale: a frame drawn parentless and parented later into a frame with a scale of its own keeps UIParent's line](#2026-11-15--ui-scale-a-frame-drawn-parentless-and-parented-later-into-a-frame-with-a-scale-of-its-own-keeps-uiparents-line)
@@ -207,6 +209,34 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-15 — UI scale: the kit's buttons and labels are off whole pixels on every screen that is not 1440p
+
+**What:** The kit's buttons, text boxes, hairlines and labels (`W.Button`, `Box`, the dialogs' text) are sized in whole UIParent units, so on any screen where a unit is not a whole number of pixels (1080p at 0.75, the Mac at 1.55, any window) their edges and text fall between pixels. Only their borders are whole (Task 3's unsnapping). The Keep prompt is the visible case: it draws at the automatic size of every screen but 1440p, not only while previewing, so on 1080p its buttons are 19.5 pixels tall.
+
+**Why noticed:** The Task 6 review of the Keep prompt (`sc-task6`, `454d3fcf`): the prompt's own frame is whole pixels (placed and sized by `st:RoundToPixel`), its `W.Button`s are not. The plan names this as phases 2 to 4 ("the options kit's boxes, hairlines and dividers (the Keep prompt's buttons among them)").
+
+**Anchors:** `SaftUI-Core/Config/optionscontrols.lua` (`W.Button`, `Layout`), `optionslook.lua` (`Box`, `LINE`), `optionsdialog.lua`, `SaftUI-Core/Config/uiscaleprompt.lua` (`Fit`), `docs/superpowers/plans/2026-11-15-saftui-ui-scaling-phase-1.md` ("What an existing install sees at upgrade"), `docs/design-system/components/KeepPrompt/README.md`.
+
+**What's been considered:** building the prompt's two buttons with pixel-rounded sizes of its own: refused, because the owner asked for the kit's button as it is. The fix belongs to the kit (sizes in pixels through `st:RoundToPixel`, the 1 px `edgeSize` in `Box` as `st:GetLineSize`), which then fixes every dialog and window at once.
+
+**Shape of work:** the later scaling phase for the options kit: one pass over `optionscontrols.lua`, `optionslook.lua` and the dialogs, with `scaled_test` cases that run `P.off` over the open window at 0.75, 1.25 and 1.55.
+
+**Open questions:** whether text height is rounded to pixels too, or left to the game.
+
+### 2026-11-15 — UI scale: a kit confirm dialog or an open select list can cover the Keep prompt
+
+**What:** The kit's confirm dialog and open select lists are in `TOOLTIP` strata with a full-screen click catcher, so while one is open it covers the Keep prompt (level 9900, `FULLSCREEN_DIALOG`): the prompt can't be clicked and doesn't get Esc, though its countdown still goes back at 0.
+
+**Why noticed:** The Task 6 review (`sc-task6`, `454d3fcf`), concern 3: acceptable today, because both are modal answers the user opened and the prompt reverts on its own.
+
+**Anchors:** `SaftUI-Core/Config/optionswidgets.lua` (`LIST_STRATA = 'TOOLTIP'`), `optionsdialog.lua` (`BuildDialog`), `SaftUI-Core/Config/uiscaleprompt.lua` (`KP.LEVEL`), `docs/design-system/components/KeepPrompt/README.md`.
+
+**What's been considered:** moving the prompt to `TOOLTIP` strata above them: it would then sit over the game's tooltip and the lists' catchers, and edit mode's picker list. Closing an open list or confirm when the prompt shows (`W.CancelConfirm`, the list's close): simple, and what the answer to a change should do.
+
+**Shape of work:** small: `KP:Ask` closes the kit's open dialog and list first, with a test; or leave as is.
+
+**Open questions:** whether to close them at all, since a Task 7 row's own select list is what asked and closes on its pick.
 
 ### 2026-11-15 — An addon's direct RollOnLoot on a roll with no confirmation is not held
 

@@ -17,6 +17,7 @@ load_editmode_bar()
 if not _G.GameTooltip then CreateFrame('GameTooltip', 'GameTooltip', UIParent, 'GameTooltipTemplate') end
 load_saftui('SaftUI-Core/Config/uiscaleprompt.lua')
 local KP, UIScale, EM = st.UIScalePrompt, st.UIScale, st.EditModeFrames
+local W = st.OptionsWidgets
 
 local function near(a, b, tolerance) return a ~= nil and b ~= nil and math.abs(a - b) < (tolerance or 1e-9) end
 
@@ -47,6 +48,12 @@ local function second(n)
 		stub.time = stub.time + 1
 		for _ = 1, 20 do if stub.run_timers() == 0 then break end end
 	end
+end
+
+-- Past the half second Keep takes no click for.
+local function ready()
+	stub.time = stub.time + 0.6
+	for _ = 1, 20 do if stub.run_timers() == 0 then break end end
 end
 
 local function frames()
@@ -129,7 +136,7 @@ end)
 test('Keep saves the previewed choice; Go back restores the saved one', function()
 	world()
 	KP:Ask(auto(0.9))
-	stub.click(ui().keep)
+	ready(); stub.click(ui().keep)
 	eq(KP:IsShown(), false, 'Keep hides it')
 	eq(st.config.global.uiScale.mode, 'auto', 'saved: the mode')
 	eq(st.config.global.uiScale.size, 0.9, 'and the size')
@@ -147,7 +154,7 @@ test('Keep saves the previewed choice; Go back restores the saved one', function
 
 	-- Keep through the pixel and game modes too.
 	KP:Ask({ mode = 'pixel', size = 0.9 })
-	stub.click(ui().keep)
+	ready(); stub.click(ui().keep)
 	eq(st.config.global.uiScale.mode, 'pixel', 'Pixel for pixel kept')
 	eq(#take_errors(), 0, 'no errors')
 end)
@@ -293,7 +300,7 @@ test('combat starts while it shows, and Go back or Keep are clicked in combat', 
 	KP:Ask(auto(0.9))
 	stub.in_combat = true
 	stub.fire_event('PLAYER_REGEN_DISABLED')
-	stub.click(ui().keep)
+	ready(); stub.click(ui().keep)
 	eq(KP:IsShown(), false, 'Keep in combat closes it')
 	eq(st.config.global.uiScale.size, 0.9, 'and saves')
 	stub.in_combat = false
@@ -542,7 +549,7 @@ end)
 
 test('/sui scale with anything else gives the forms; in combat it says it can\'t change', function()
 	world()
-	local forms = 'Type /sui scale, then reset, auto, pixel, game or a size from 70 to 150.'
+	local forms = 'Type /sui scale, then reset, auto, pixel, game or a size from 70 to 150 (a number under 5, like 1.25, is a factor: 125%).'
 	for _, bad in ipairs({ 'scale big', 'scale -5', 'scale 90 100', 'scale 9x', 'scale %', 'scale 1e2', 'scale pixels' }) do
 		local lines = chat(function() SlashCmdList.SAFTUI(bad) end)
 		check(said(lines, forms), bad .. ' gives the forms: ' .. table.concat(lines, ' | '))
@@ -573,6 +580,7 @@ test('Keep with a choice the screen no longer holds goes back and says so', func
 	stub.screen_width, stub.screen_height = 1366, 768
 	stub.fire_event('DISPLAY_SIZE_CHANGED')
 	frames()
+	ready()
 	local lines = chat(function() stub.click(ui().keep) end)
 	eq(KP:IsShown(), false, 'closed')
 	check(said(lines, "doesn't fit this screen"), 'says so: ' .. table.concat(lines, ' | '))
@@ -588,4 +596,111 @@ test('/sui scale is parsed before the commands, as edit and debug are', function
 	local xml = read_saftui_source('SaftUI-Core/Config/load.xml')
 	local general, prompt = xml:find('general.lua', 1, true), xml:find('uiscaleprompt.lua', 1, true)
 	check(general and prompt and general < prompt, 'load.xml loads uiscaleprompt.lua after general.lua')
+end)
+
+------------------------------------------------------------------ the review's round
+
+test('Keep takes no click for half a second and looks disabled; Go back and Esc work at once', function()
+	world()
+	KP:Ask(auto(0.9))
+	local f = ui()
+	eq(f.keep.disabled, true, 'Keep looks disabled (the kit\'s disabled button)')
+	eq(f.keep:GetAlpha(), 0.4, 'at the kit\'s disabled alpha')
+	stub.click(f.keep) -- the same frame as the ask
+	check(KP:IsShown() and st.config.global.uiScale == nil, 'a click in the same frame keeps nothing')
+	stub.time = stub.time + 0.2
+	frames()
+	stub.click(f.keep)
+	check(KP:IsShown() and st.config.global.uiScale == nil, 'a click at 0.2 s keeps nothing')
+	stub.time = stub.time + 0.4
+	frames()
+	eq(f.keep.disabled, false, 'at 0.6 s Keep is enabled')
+	eq(f.keep:GetAlpha(), 1, 'and drawn so')
+	stub.click(f.keep)
+	eq(st.config.global.uiScale and st.config.global.uiScale.size, 0.9, 'a click at 0.6 s keeps')
+
+	-- Go back and Esc at once.
+	KP:Ask(auto(1.2))
+	stub.click(ui().back)
+	eq(KP:IsShown(), false, 'Go back works at once')
+	KP:Ask(auto(1.2))
+	stub.fire_script(ui().frame, 'OnKeyDown', 'ESCAPE')
+	eq(KP:IsShown(), false, 'Esc works at once')
+
+	-- A second ask starts the delay again; the first ask's timer does not end it.
+	KP:Ask(auto(1.1))
+	stub.time = stub.time + 0.4
+	KP:Ask(auto(1.2))
+	stub.time = stub.time + 0.2
+	frames()
+	eq(ui().keep.disabled, true, 'the first ask\'s timer (0.5 s) did not enable the new ask\'s Keep at 0.2 s')
+	stub.time = stub.time + 0.4
+	frames()
+	eq(ui().keep.disabled, false, 'and its own does, at 0.6 s')
+	KP:Dismiss()
+	UIScale:Revert()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a preview ended by something else hides the prompt on its next tick', function()
+	world()
+	KP:Ask(auto(0.9))
+	UIScale:Apply(auto(0.9)) -- a save from elsewhere (a row in /sui, the setup dialog)
+	check(KP:IsShown(), 'not before the tick')
+	second()
+	eq(KP:IsShown(), false, 'gone on the tick')
+	eq(st.config.global.uiScale.size, 0.9, 'the save stands')
+	second(20)
+	check(near(UIParent:GetScale(), 768 / 1440 * 0.9, 1e-9), 'and the old countdown goes back to nothing')
+	-- Reverted elsewhere too.
+	KP:Ask(auto(1.2))
+	UIScale:Revert()
+	second()
+	eq(KP:IsShown(), false, 'a revert from elsewhere hides it too')
+end)
+
+test('a waiting prompt hides from the scale change itself, with no frame after the end of combat', function()
+	world()
+	KP:Ask(auto(0.9))
+	stub.in_combat = true
+	stub.fire_event('PLAYER_REGEN_DISABLED')
+	second(15)
+	eq(ui().line:GetText(), 'Goes back when combat ends.', 'waiting')
+	stub.in_combat = false
+	stub.fire_event('PLAYER_REGEN_ENABLED') -- no timer has run
+	check(near(UIParent:GetScale(), 768 / 1440, 1e-9), 'the revert applied')
+	eq(KP:IsShown(), false, 'and OnChanged hid it, before any timer')
+end)
+
+test('the muted line and the buttons take the colors and look of now, each time it shows', function()
+	world()
+	KP:Ask(auto(0.9))
+	local color = st.Color
+	local looks = 0
+	local look = W.LookControl
+	W.LookControl = function(...) looks = looks + 1; return look(...) end
+	st.Color = function(self, group, key, ...)
+		if group == 'text' and key == 'muted' then return { GetRGB = function() return 0.1, 0.2, 0.3 end } end
+		return color(self, group, key, ...)
+	end
+	KP:Ask(auto(1.1))
+	st.Color = color
+	W.LookControl = look
+	local r, g, b = ui().line:GetTextColor()
+	check(near(r, 0.1, 1e-6) and near(g, 0.2, 1e-6) and near(b, 0.3, 1e-6), 'the line has the color now: ' .. tostring(r) .. ',' .. tostring(g) .. ',' .. tostring(b))
+	check(looks >= 2, 'both buttons wear the look now')
+	KP:Dismiss()
+	UIScale:Revert()
+end)
+
+test('/sui scale 1.25 is 125%: a number under 5 is a factor', function()
+	world()
+	for _, case in ipairs({ { '1.25', 1.25 }, { '1.25%', 1.25 }, { '1', 1 }, { '0.9', 0.9 }, { '4', 1.5 }, { '5', 0.7 } }) do
+		KP:Dismiss()
+		UIScale:Revert()
+		SlashCmdList.SAFTUI('scale ' .. case[1])
+		check(near(UIScale:Current().size, case[2], 1e-9), case[1] .. ' is ' .. case[2] .. ', got ' .. UIScale:Current().size)
+	end
+	KP:Dismiss()
+	UIScale:Revert()
 end)

@@ -37,6 +37,7 @@ st.UIScalePrompt = KP
 KP.SECONDS = 15
 KP.LEVEL = 9900 -- FULLSCREEN_DIALOG: over /sui, the edit mode bar (9500), the label (9600) and the History list (9700)
 
+KP.KEEP_DELAY = 0.5 -- seconds after it shows that Keep takes no click (the second click of a double-click)
 KP.TITLE = 'Keep this UI size?'
 KP.COMBAT_LINE = 'Goes back when combat ends.'
 KP.MODE_NAMES = { auto = 'Automatic', pixel = 'Pixel for pixel', game = "The game's UI scale" }
@@ -49,6 +50,7 @@ local TOP, GAP, BOTTOM, BUTTON_GAP = 16, 6, 14, 12
 local ui -- { frame, title, line, keep, back }, built on the first ask
 local ticker, deadline
 local waiting -- going back after combat: the buttons are hidden
+local shows = 0 -- counts the asks, so an old Keep delay never enables a newer ask's button
 
 local function CountdownText(seconds)
 	return ('Going back in %d s.'):format(seconds)
@@ -80,6 +82,10 @@ local function Fit()
 	st:SetTemplate(frame, 'theme', 'options', 'panel')
 	frame:ClearAllPoints()
 	frame:SetPoint('TOPLEFT', UIParent, 'CENTER', -st:RoundToPixel(width / 2, frame), st:RoundToPixel(height / 2, frame))
+	-- Each time it shows (and after a change while it is up) the muted line takes
+	-- the color now, and the buttons the look now: a later color or theme change
+	-- reaches the next prompt.
+	ui.line:SetTextColor(st:Color('text', 'muted'):GetRGB())
 	local blizzard = W.BlizzardLook()
 	W.LookControl(ui.keep, blizzard)
 	W.LookControl(ui.back, blizzard)
@@ -205,6 +211,15 @@ function KP:Ask(choice)
 	ui.line:SetText(CountdownText(KP.SECONDS))
 	ui.keep:Show()
 	ui.back:Show()
+	-- Keep looks disabled (the kit's) and takes no click for KEEP_DELAY, so the
+	-- second click of a double-click on what asked cannot keep. Go back and Esc
+	-- work at once.
+	shows = shows + 1
+	local mine = shows
+	W.SetEnabled(ui.keep, false)
+	C_Timer.After(KP.KEEP_DELAY, function()
+		if mine == shows and ui then W.SetEnabled(ui.keep, true) end
+	end)
 	Fit()
 	ui.frame:Show()
 	SetKeys()
@@ -247,7 +262,7 @@ end
 
 ------------------------------------------------------------------ /sui scale
 
-local FORMS = 'Type /sui scale, then reset, auto, pixel, game or a size from 70 to 150.'
+local FORMS = 'Type /sui scale, then reset, auto, pixel, game or a size from 70 to 150 (a number under 5, like 1.25, is a factor: 125%).'
 
 local function ModeLine(choice)
 	local name = KP.MODE_NAMES[choice.mode]
@@ -274,7 +289,6 @@ local REFUSED = {
 function KP:Command(argument)
 	argument = strtrim(argument or ''):lower()
 	local UIScale = st.UIScale
-	local reset = UIScale.DEFAULT
 
 	if argument == '' then
 		st:Print(ModeLine(UIScale:Current()))
@@ -284,14 +298,8 @@ function KP:Command(argument)
 	end
 
 	if argument == 'reset' then
-		UIScale:Apply(nil)
 		KP:Dismiss()
-		local text = ('%s at %d%%'):format(KP.MODE_NAMES[reset.mode], Percent(reset.size))
-		if InCombatLockdown() then
-			st:Print(('UI scale goes back to %s when combat ends.'):format(text))
-		else
-			st:Print(('UI scale back to %s.'):format(text))
-		end
+		UIScale:Reset()
 		return
 	end
 
@@ -304,7 +312,9 @@ function KP:Command(argument)
 			st:Print(FORMS)
 			return
 		end
-		choice = { mode = 'auto', size = TypedSize(tonumber(number)) }
+		local percent = tonumber(number)
+		if percent < 5 then percent = percent * 100 end -- 1.25 means 125%
+		choice = { mode = 'auto', size = TypedSize(percent) }
 	end
 
 	local ok, why = KP:Ask(choice)
