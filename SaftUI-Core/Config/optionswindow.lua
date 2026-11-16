@@ -146,7 +146,7 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 local OW = st.OptionsWindow
 local S = OW.S
 
-local floor, max, ceil = math.floor, math.max, math.ceil
+local floor, max, ceil, abs = math.floor, math.max, math.ceil, math.abs
 local format = string.format
 
 -- From optionslayout.lua.
@@ -195,6 +195,8 @@ local rendering, pending, dragging = false, false, false
 S.sizing = nil -- the resize under way (StartResize), or nil
 local searchDue -- seconds until the search runs
 local focusPath -- a search result's path, brought into view by the next render
+local focusCell -- the row that render brought into view, its label marked in the Accent (OW:PaintAccent)
+local focusMarked = { 0, 0, 0 } -- the Accent that mark was last painted in, made once
 local focusMenu -- that result is in the item's menu: open it once drawn
 local menuFor -- the item widget whose menu the render opens at its end (focusMenu)
 local contentHeight = 0
@@ -810,6 +812,7 @@ end
 
 -- The page's rows, and its footer control and a pick's control with them.
 local function ReleaseBody()
+	focusCell = nil
 	pageBody:Release()
 	F.placeholder:Hide()
 	ReleaseFooterControl()
@@ -851,6 +854,8 @@ local function BringIntoView()
 			if cell.sectionY and cell.sectionY - SECTION_REVEAL_GAP < top then top = cell.sectionY - SECTION_REVEAL_GAP end
 			S.scrollOffset = max(0, top)
 			cell.label:SetTextColor(st:Color('accent'):GetRGB())
+			focusCell = cell
+			focusMarked[1], focusMarked[2], focusMarked[3] = st:Color('accent'):GetRGB()
 			if menu then menuFor = cell.widget end
 			return
 		end
@@ -1341,6 +1346,31 @@ function OW:PaintSidebar()
 	if not F.sideFill then return end
 	local r, g, b, a = unpack(SIDEBAR_BG)
 	F.sideFill:SetColorTexture(r, g, b, a * st:ResolveTheme('theme', 'options', 'window').alpha)
+end
+
+-- What /sui colors in the Accent itself, at a pick (Config:OnColorsChanged
+-- runs it in the pass of 'accent', so while the color picker is open): the
+-- brand's "UI" on the sidebar and on the bar (its text is built only when the
+-- accent's bytes changed, OW.BrandKey), and the label of the row a search
+-- result landed on (only while it still has the color it was marked in: a
+-- redraw drops the mark, and a label something else colored is left alone).
+-- Only colors: the brand's text is the one SetText, the font strings' widths
+-- do not count a color code. A slider's fill follows by itself (optionsrange.lua).
+function OW:PaintAccent()
+	if OW.BrandKey() ~= OW.brandKey then
+		local text = OW.BrandText()
+		if F.brandName then F.brandName:SetText(text) end
+		if F.miniBrand then F.miniBrand:SetText(text) end
+	end
+	local cell = focusCell
+	if cell and cell.label then
+		local r, g, b = cell.label:GetTextColor()
+		local m = focusMarked
+		if abs(r - m[1]) < 0.01 and abs(g - m[2]) < 0.01 and abs(b - m[3]) < 0.01 then
+			m[1], m[2], m[3] = st:Color('accent'):GetRGB()
+			cell.label:SetTextColor(m[1], m[2], m[3])
+		end
+	end
 end
 
 -- The parts whose place or size the layout gives are placed by Relayout.
