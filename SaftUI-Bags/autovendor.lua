@@ -107,12 +107,12 @@ local function GuidAt(bagID, slotID)
 end
 
 -- Counts the stacks asked of the game: one that is gone from its slot (or has
--- changed there) was sold, and leaves the question's named list (a stack
--- bought back or bought into its slot is a new stack: another GUID). One still
--- there and locked is a
--- sale in flight: it stays in v.attempted, counted in the budget and the tail
--- until it lands. One still there and not locked was refused. Every one still
--- there is returned.
+-- changed there: another item or count, another GUID, or no GUID to compare)
+-- was sold, and leaves the question's named list (a stack bought or bought
+-- back into its slot is a new stack). One still there and locked is a sale in
+-- flight: it stays in v.attempted, counted in the budget and the tail until it
+-- lands. One still there and not locked was refused. Every one still there is
+-- returned.
 local function Account(v)
 	local left, pending = {}, {}
 	for _, entry in ipairs(v.attempted) do
@@ -120,7 +120,10 @@ local function Account(v)
 		local gone = not now or now.itemID ~= entry.itemID or now.stackCount ~= entry.count
 		if not gone and entry.guid ~= nil then
 			local guid = GuidAt(entry.bagID, entry.slotID)
-			gone = guid ~= nil and guid ~= entry.guid
+			-- No GUID now counts as changed: not counting a sale that landed would
+			-- let the buyback list push out a stack sold unasked, while counting
+			-- one that did not only asks sooner.
+			gone = guid ~= entry.guid
 		end
 		if gone then
 			v.sold = v.sold + 1

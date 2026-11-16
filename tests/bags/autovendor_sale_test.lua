@@ -97,7 +97,7 @@ local function world(grays, others)
 	local guids = 0
 	C_Item.GetItemGUID = function(location)
 		local item = W.bags[location.bagID].items[location.slot]
-		if not item then return nil end
+		if not item or item.noguid then return nil end -- noguid: an item the game gives no GUID for
 		if not item.guid then guids = guids + 1; item.guid = 'Item-1-' .. guids end
 		return item.guid
 	end
@@ -902,4 +902,15 @@ test("N-2: past 12 the question says how many of the earlier stacks leave, not a
 	check(prompt ~= nil, 'asked')
 	-- 13 sold, 12 still in the buyback: one more pushes out one of them.
 	check(prompt.text:find('(and 1 stack sold earlier this visit will leave the buyback)', 1, true), prompt.text)
+end)
+
+test("a slot that answers no GUID where a GUID was recorded is a changed stack: the safe side, so it is counted and asks", function()
+	world({}, 12)
+	open_merchant()
+	step()
+	eq(#used, 12, 'twelve sold unasked')
+	W.put(0, 1, W.item(701, 'Thing 701', 'Miscellaneous', 1, { quality = 1, vendorPrice = 40, noguid = true }))
+	step()
+	eq(#used, 12, 'the purchase, with no GUID to compare, counts the twelfth as sold: no 13th unasked')
+	check(prompt ~= nil, 'it asks first')
 end)
