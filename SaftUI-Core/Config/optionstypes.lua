@@ -424,7 +424,8 @@ define('color', {
 		if self.disabled or not self.row then return end
 		local OW = st.OptionsWindow
 		if OW and OW.IsMenuShown and OW:IsMenuShown(self) then
-			OW:CloseMenu()
+			-- Its own menu: the second level alone when that is what it opened (optionsmenu.lua).
+			OW:CloseMenuOf(self)
 		else
 			self:OpenMenu()
 		end

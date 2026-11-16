@@ -215,7 +215,7 @@ local CAPTION_SIZE = 13
 local CHIP, CHIP_GAP = 18, 4
 local RECENT_CAPTION_Y, RECENT_Y = 248, 266 -- Last used; 94 further down (W.PREVIEW.ROOM) with a preview
 local HEIGHT = 342
-local LEVEL = 500 -- over the window (100), the small dialog (300) and an item's menu (410)
+local LEVEL = 500 -- over the window (100), the small dialog (300) and an item's menu (410, and its second level 430)
 local THUMB, BAR_WIDTH, BAR_HEIGHT = 10, 22, 6 -- the square's thumb; a strip's
 local CHECKER, CHECKER_DARK, CHECKER_LIGHT = Kit.CHECKER, Kit.CHECKER_DARK, Kit.CHECKER_LIGHT -- the color field's own (optionstypes.lua)
 

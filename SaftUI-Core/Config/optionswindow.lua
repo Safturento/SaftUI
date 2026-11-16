@@ -25,7 +25,7 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	                        a small dialog over the window for an option table
 	                        of its own (UF's Copy from and its unit frame
 	                        profiles; optionssmalldialog.lua)
-	  OW:OpenMenu(widget), OW:CloseMenu(body), OW:IsMenuShown(widget)
+	  OW:OpenMenu(widget), OW:CloseMenu(body), OW:CloseMenuOf(widget), OW:IsMenuShown(widget)
 	                        an item's menu (optionsmenu.lua)
 
 	The window (drawn as a window in SaftUI's theme with a solid background,

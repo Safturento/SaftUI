@@ -37,7 +37,8 @@ The owner's rule: a part with three or more settings, or with settings that only
 - **Click.** A left click on the row opens the menu, except on the box, the dots, the reset arrow, the diff icon and the hover line's links, which do what they do. Not in combat.
 - **The dots' light (part row).** The dots rest in `text` (not `text-muted`) while any setting in the menu differs from its default (or is the member's own), with a tooltip saying how many ("2 settings here differ from their defaults."). The dots are the Accent while the menu is open.
 - **The row's reset** is its Show box's: the arrow shows while the box differs from its default, and puts the box back. Each setting in the menu has its own reset; there is no whole-part reset (decision 50).
-- One menu at a time; it closes on Esc, a click outside, a page change and the window closing; it stays on screen near the window's right and bottom edges; a dropdown or TO list opened inside draws above it.
+- Two levels at most: a row in a menu that has its own dots (a typeface Font row in a part's menu) opens a second menu over the first, which stays open and still; a click on the first menu or outside closes the second, then Esc or a click closes the first. A row of the second opens nothing.
+- One first-level menu at a time; it closes on Esc, a click outside, a page change and the window closing; it stays on screen near the window's right and bottom edges; a dropdown or TO list opened inside draws above it.
 
 ## Status
 
