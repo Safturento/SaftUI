@@ -577,7 +577,7 @@ test('combat: two frames on different lines, the narrower holding more items tha
 end)
 
 -- A font change lays the windows out again only when a window title's look
--- changed (Window titles, or the bags' Title font), and the layout is an update
+-- changed (the Window titles font, the one a window title is in), and the layout is an update
 -- that skips the category rebuild and the skin, once a frame.
 local function title_world(view)
 	local c = world(view, SPARSE)
@@ -619,7 +619,7 @@ test('a Window titles change that widens the window title widens the window, wit
 	end
 end)
 
-test("a font change that leaves a window title's look alone costs the bags nothing; the bags' Title font counts", function()
+test("a font change that leaves the Window titles font's look alone costs the bags nothing, the bags' Title font included", function()
 	for _, view in ipairs({ 'compact', 'rows' }) do
 		local c = title_world(view)
 		local queued, updates = counted('QueueUpdate'), counted('UpdateContainer')
@@ -631,10 +631,10 @@ test("a font change that leaves a window title's look alone costs the bags nothi
 		INV:UpdateHandler(nil, 1)
 		eq(queued.n, 0, view .. ': no layout asked for')
 		eq(updates.n, 0, view .. ': and no update run')
-		-- The bags' own Title font, with a change that reaches FontsChanged (a shared font it names).
+		-- The bags' own Title font is the category titles': no window title follows it.
 		INV.config.fonts.titles = { font_size = 22 }
 		SaftUI:FontsChanged()
-		eq(queued.n, 1, view .. ": the bags' Title font changed: a layout asked for")
+		eq(queued.n, 0, view .. ": the bags' Title font changed: the least width does not read it")
 		-- Window titles naming a shared font: that font's change counts.
 		SaftUI.config.profile.headers.font = 'pixel_med'
 		SaftUI:FontsChanged()
