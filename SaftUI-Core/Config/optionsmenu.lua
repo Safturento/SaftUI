@@ -121,7 +121,9 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	place (body:Refresh), never drawing its rows again (that would release the pooled
 	font widget the second hangs from, and its dots). When the second closes the first is
 	drawn again once, as the next frame renders. A tree rebuilt while both are open (a
-	profile change) closes both. A set in the second saves, the font row's own
+	profile change) closes both: a menu that can hold a second level must be given the same table (an item's
+	option.menu) on every render, as the tree keeps it, for a table made new on each render would close both at
+	every render. A set in the second saves, the font row's own
 	Refresh shows it in the first's row, and the window renders so the page behind
 	follows (the part row's summary); the first's rows stay the same widgets. The second
 	follows its item (the font row, in the first's body) as the first does and closes
@@ -305,7 +307,7 @@ end
 -- second level's item is in the first menu, so it is the first's owner that says.
 local function SetStatus(m, text)
 	local dialog = OW.GetDialogFrames and OW.GetDialogFrames()
-	local owner = (m.level == 2 and M.owner) or m.owner
+	local owner = (m.parent and m.parent.owner) or m.owner
 	if owner and dialog and owner.body == dialog.body and S.SetDialogStatus then
 		S.SetDialogStatus(text)
 	else

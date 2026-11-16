@@ -121,3 +121,39 @@ test('every Font row in a part menu, on every unit, opens its typeface menu over
 	end
 	check(seen >= 10, 'font rows checked: ' .. seen)
 end)
+
+-- N2: with the window closed (a body drawn on its own, as here) the first menu is drawn again at once when the
+-- second closes, by the second's catcher, Esc or its toggle: a new row, the first still shown on the part's dots.
+test('the second closing with the window closed draws the first again at once, and it stays open', function()
+	check(not OW:IsShown(), 'the window is closed')
+	local function second_open(body, by)
+		local part = by.healthtext
+		check(part.widget:OpenMenu(), 'the part menu opens')
+		local first = OW.GetMenuFrames(1)
+		local font
+		for _, c in ipairs(font_cells(first)) do font = c end
+		font.widget:Pick('face:Arial Narrow')
+		font = typeface_font_cell(first)
+		font.widget:ToggleMenu()
+		check(OW.GetMenuFrames(2).frame:IsShown(), 'the second is shown')
+		return first, font, part
+	end
+	local closers = {
+		catcher = function(second) stub.fire_script(second.catcher, 'OnMouseDown', 'LeftButton') end,
+		esc = function(second) stub.fire_script(second.keys, 'OnKeyDown', 'ESCAPE') end,
+		toggle = function(_, font) font.widget:ToggleMenu() end,
+	}
+	for _, name in ipairs({ 'catcher', 'esc', 'toggle' }) do
+		local body, by = draw_general(tree(), 'player')
+		local first, font, part = second_open(body, by)
+		local before = first.body.cells[1]
+		closers[name](OW.GetMenuFrames(2), font)
+		local second = OW.GetMenuFrames(2)
+		check(not second.frame:IsShown(), name .. ': the second closed')
+		check(first.frame:IsShown(), name .. ': the first stays')
+		check(first.body.cells[1] ~= before, name .. ': its rows were drawn again at once')
+		check(OW:IsMenuShown(part.widget), name .. ': still the part row\'s menu')
+		OW:CloseMenu()
+		body:Release()
+	end
+end)
