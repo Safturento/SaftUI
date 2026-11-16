@@ -328,6 +328,7 @@ test('a preview part hung from a switched-off part is anchored to a placed part'
 	local toggle = general().args.layout.args.test_mode
 	toggle.set({ 'boss', 'general', 'layout', 'test_mode' }, true)
 	if not check(previews_shown(), 'the previews show') then return end
+	local saved = { boss.health.enable, boss.name.enable, boss.health.position, boss.name.position }
 	boss.health.enable, boss.name.enable = true, false
 	boss.name.position = { point = 'CENTER', element = '', rel_point = 'CENTER', x_off = 0, y_off = 0 }
 	boss.health.position = { point = 'TOP', element = 'Name', rel_point = 'BOTTOM', x_off = 0, y_off = -2 }
@@ -337,6 +338,8 @@ test('a preview part hung from a switched-off part is anchored to a placed part'
 	local preview = previews()[1]
 	eq(select(2, preview.Health:GetPoint(1)), preview.Name, 'the bar hangs from the switched-off name')
 	check(preview.Name:GetNumPoints() == 1, 'which has its point')
-	boss.name.enable = true
+	boss.health.enable, boss.name.enable, boss.health.position, boss.name.position = unpack(saved, 1, 4)
+	UF:UpdateConfig()
+	take_errors()
 	toggle.set({ 'boss', 'general', 'layout', 'test_mode' }, false)
 end)

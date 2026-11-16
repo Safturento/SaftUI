@@ -1,5 +1,6 @@
 -- Leftovers in the unit frames' defaults (config/default.lua, config/units/*):
--- every position in every unit's defaults places its parts by numbers, not text ("0", "-3"); the
+-- every position in every unit's defaults, both plate configs too, places its
+-- parts by numbers, not text ("0", "-3"); the
 -- player's class power has no show_empty (oUF shows every point up to the max,
 -- and nothing reads the key); the raid target marker names no Portrait element
 -- (none is registered) and sits on the unit frame, as it always did.
@@ -21,9 +22,12 @@ end
 
 for _, client in ipairs({ 'forever', 'retail' }) do
 	test(client .. ": every position's offsets in every unit's defaults are numbers", function()
-		local st, UF, P = UW.world({ client = client, elements = {} })
+		local units = { 'nameplate', 'friendlynameplate' }
+		for _, unit in ipairs(UW.UNITS) do units[#units + 1] = unit end
+		local st, UF, P = UW.world({ client = client, elements = {}, units = units })
 		local seen = 0
-		for _, unit in ipairs(UW.UNITS) do
+		for _, unit in ipairs(units) do
+			check(type(P[unit]) == 'table', unit .. ' has defaults')
 			if type(P[unit]) == 'table' then
 				for _, pair in ipairs(offsets(P[unit], unit, {})) do
 					seen = seen + 1

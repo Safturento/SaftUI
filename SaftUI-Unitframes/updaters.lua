@@ -127,9 +127,12 @@ function UF:UpdateElement(element, configOverride)
         -- unitframes.lua), and a part left with none would leave a part hung
         -- from it unplaceable (or, left with its old ones, closing an anchor
         -- loop). Placed by its own config, the hidden bar holds them where
-        -- they'd sit if it were shown.
+        -- they'd sit if it were shown (an aura area that's off is sized to one
+        -- button: its own sizing runs only while it's on).
         local unitframe = element.unitframe
-        if unitframe and element.name and unitframe[element.name] == element then
+        -- (A config with no position, a raw import of an older export, is
+        -- skipped: there is nothing to place it by.)
+        if unitframe and element.name and unitframe[element.name] == element and config.position then
             self:UpdateElementSize(element, configOverride)
             self:UpdateElementPosition(element, configOverride)
         end
@@ -186,7 +189,8 @@ end
 -- Shows or hides an element (UF:ElementWanted), and returns its config's
 -- Enable, which UF:UpdateElement goes on to place and size it by: a part a
 -- friendly plate hides is still laid out, ready for the plate's next enemy
--- (and on a plate a part its config turns off is placed and sized too).
+-- (and a part its config turns off is placed and sized too, on a unit frame
+-- as on a plate).
 -- It only shows or hides: oUF enables every element a frame has when it
 -- builds the frame, before the frame's first update (UF.InitUnit,
 -- UF:ApplyConfig). DisableElement is used only on plates, by their config

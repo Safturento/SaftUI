@@ -121,6 +121,22 @@ test('a part switched off in the new profile is placed by its config, so a part 
 	end
 end)
 
+test('a switched-off part whose config has no position is skipped, and the frame still updates', function()
+	local st, UF, P, frame = player_world()
+	profile_a(P)
+	UF:UpdateConfig()
+	take_errors()
+	-- A raw import of an older export: the part is off and has no position.
+	P.player.power.enable = false
+	P.player.power.position = nil
+	P.player.health.position = { point = 'BOTTOM', element = '', rel_point = 'BOTTOM', x_off = 0, y_off = 0 }
+	UF:UpdateConfig()
+	local errors = take_errors()
+	eq(#errors, 0, 'no error ' .. tostring(errors[1]))
+	eq(frame.Health:GetNumPoints(), 1, 'the health bar is placed')
+	eq(select(3, frame.Health:GetPoint(1)), 'BOTTOM', 'by the new profile')
+end)
+
 test('a profile switch in combat places no part', function()
 	local st, UF, P, frame = player_world()
 	profile_a(P)

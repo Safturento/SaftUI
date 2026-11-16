@@ -1205,7 +1205,7 @@ What's left needs evidence from the game. In the order they'd be checked:
 
 **Open questions:** None until something can change a box in combat.
 
-**Checked 2026-11-15:** by design for now, and still latent. `/sui` closes as combat starts and won't open in it. The one other path, a profile switch by an addon or a macro in combat (`OnProfileChanged` runs `UpdateConfig`), is the same wait as every unit frame's switch: the cached configs point at the new profile at once and the full update, plate size included, follows combat. Applying only the plates' config in combat would leave a mixed state (new look, old size) for the rest of the fight, so it stays until a visible case appears.
+**Checked 2026-11-15:** by design for now, and still latent: nothing can change a box in combat. `/sui` closes as combat starts and won't open in it, and a profile switch by an addon or a macro in combat waits for the end of combat like every unit frame switch (the cached configs point at the new profile at once and the full update follows). Revisit if a path to a box in combat appears.
 
 ### 2026-11-12 — Nameplates: friendly players and friendly NPCs configured apart
 
@@ -2475,7 +2475,7 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 
 **Open questions:** none.
 
-**Resolved 2026-11-15:** `UF.ColorReaches`' power branch reads a token oUF has no color for (and no game color) as `MANA`; `tests/unitframes/color_cost_test.lua` pins it (its stand-in oUF now holds the colors for the tokens it uses).
+**Resolved 2026-11-15:** `UF.ColorReaches`' power branch reads a token oUF has no color for (and no game color) as `MANA`; `tests/unitframes/color_cost_test.lua` pins it (its stand-in oUF now holds the colors and oUF's power-type aliases for the tokens it uses). Fix round 1: it follows oUF's whole order (the token's color, the game's own color, the power type's, Mana's) by comparing oUF's tables, guarded against secret values.
 
 ### 2026-11-15 — Unit frames: a color oUF lacks is set to the profile's own table
 
@@ -2491,7 +2491,7 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 
 **Open questions:** whether any key is missing in game.
 
-**Resolved 2026-11-15:** `UF:UpdateColors` (the whole pass's merge and `CopyColor`) now copies a color oUF lacks instead of aliasing the profile's table; `tests/unitframes/colors_test.lua` pins both paths and the old profile staying untouched after a switch.
+**Resolved 2026-11-15:** `UF:UpdateColors` (the whole pass's merge and `CopyColor`) now copies a color oUF lacks instead of aliasing the profile's table; `tests/unitframes/colors_test.lua` pins both paths and the old profile staying untouched after a switch. The copy is made by `oUF:CreateColor` (it has oUF's methods, so a Gradient on a token oUF lacks, such as Steam, Pyrite or Alt power, doesn't error), and the whole pass is pinned to merge in place. Left: the by-key `CopyColor` assumes a color-shaped (r, g, b) profile table, which AceDB always fills and every default is; a list-shaped one would write nils.
 
 ### 2026-11-15 — Two Misc readers break "a pass only colors"
 
