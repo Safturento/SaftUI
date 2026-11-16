@@ -241,7 +241,9 @@ end
 -- GroupLootFrame_Remove; a main spec Need after its dice animation). Keeping it
 -- would mean replacing Blizzard's code (.agents/taint.md rule 2), so SaftUI
 -- shows a bar of its own in its place instead, locked on your choice, until
--- the roll ends. rollinfo.lua says when (LT:HoldRoll), matches it to its loot
+-- the roll ends. rollinfo.lua says when (LT:HoldRoll: at the bar's hide, with
+-- the choice read at the click's PreClick, since a plain click's roll is
+-- cancelled inside RollOnLoot, before any post-hook), matches it to its loot
 -- history drop and keeps its counts and tooltip up to date, and finishes it
 -- when the drop resolves; it's finished here when its time runs out.
 --
@@ -353,7 +355,9 @@ local stack = {}
 -- there's nothing to hold: the frame didn't show that roll, or it has under a
 -- second left. (A choice is noted at the click, before a bind on pickup
 -- confirmation, so declining it and letting the roll time out would otherwise
--- hold it for an instant.)
+-- hold it for an instant.) It runs inside the bar's OnHide, so `skin.shown` and
+-- the stack still have the roll, though Blizzard may show a waiting roll on the
+-- same frame right after.
 function LT:HoldRoll(frame, roll)
 	local skin = skins[frame]
 	local shown = skin and skin.shown
