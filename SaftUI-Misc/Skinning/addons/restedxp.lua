@@ -39,7 +39,6 @@ local dividers = {}                                 -- divider textures
 local fontState = setmetatable({}, { __mode = 'k' }) -- [fontString] = { kind = , size = }
 local backdropCleared = setmetatable({}, { __mode = 'k' })
 local applyingFont = false                          -- our own SetFont isn't re-handled
-local highlights = {}                               -- hover highlight textures of the step frames
 local skinnedSteps = setmetatable({}, { __mode = 'k' })   -- [list step frame] = true once skinned
 local stepLines = setmetatable({}, { __mode = 'k' })      -- [list step frame] = the line above it (none on step 1)
 local skinnedCurrent = setmetatable({}, { __mode = 'k' }) -- [pooled current step frame] = the line above it; set once skinned
@@ -176,11 +175,6 @@ local function ColorMuted(fs)
 	fs:SetTextColor(MutedRGB())
 end
 
--- SaftUI's header strip fill.
-local function ColorHighlight(tex)
-	tex:SetColorTexture(st:ThemeHeaderColor())
-end
-
 -- The thumb is RestedXP's, re-textured by it on every UpdateScrollBar.
 local function ColorThumb(bar)
 	local thumb = bar:GetThumbTexture()
@@ -228,15 +222,14 @@ local function SkinStep(frame, isFirst)
 	NoBackdrop(frame)
 
 	-- RestedXP's OnEnter/OnLeave (set anew on every guide load) call
-	-- SetBackdropColor, which is what we follow.
+	-- SetBackdropColor, which is what we follow. The hover is the interaction
+	-- states' row Layer (a texture of SaftUI's, tinted at the derived hover),
+	-- not wired to the step's scripts, which are RestedXP's: this hook says when
+	-- the mouse is over it.
 	if frame.SetBackdropColor then
-		local highlight = frame:CreateTexture(nil, 'BACKGROUND')
-		highlight:SetAllPoints(frame)
-		ColorHighlight(highlight)
-		highlight:Hide()
-		tinsert(highlights, highlight)
+		st:AddStates(frame, 'row', { wire = false })
 		hooksecurefunc(frame, 'SetBackdropColor', function(self)
-			highlight:SetShown(IsHovered(self))
+			st:SetState(self, 'hover', IsHovered(self))
 		end)
 	end
 
@@ -633,13 +626,11 @@ function RX:ADDON_LOADED(_, name)
 	self:Setup()
 end
 
--- The dividers and hover highlights, in the theme's border color.
+-- The dividers, in the theme's border color (the steps' hover follows the Accent
+-- through its states).
 local function ColorLines()
 	for _, tex in ipairs(dividers) do
 		ColorDivider(tex)
-	end
-	for _, tex in ipairs(highlights) do
-		ColorHighlight(tex)
 	end
 end
 
@@ -669,7 +660,7 @@ function RX:OnFontsChanged()
 end
 
 -- After a theme recolor (st:RecolorThemed recolored the panels and timer boxes): the
--- dividers and hover highlights follow it. Skinning passes it on.
+-- dividers follow it. Skinning passes it on.
 function RX:OnColorsChanged(group, key)
 	if group == 'theme' then
 		ColorLines()

@@ -524,7 +524,12 @@ local function NewButton(parent, name)
 	button.icon = button:CreateTexture(nil, 'ARTWORK')
 	button.hover = button:CreateTexture(nil, 'HIGHLIGHT')
 	button.hover:SetAllPoints(button.icon)
-	TR:NewAccent(button.hover, 0.4)
+	-- The hover is a state: this HIGHLIGHT texture (the game shows it under the mouse;
+	-- never handed to SetHighlightTexture, so it is BLEND) tinted at the derived
+	-- hover, color only. A record in a weak table, nothing written onto the secure
+	-- button; made here, out of combat. The tracker draws its own look in every
+	-- theme, so the Blizzard look never holds it (.agents/taint.md rules 15, 16, 17).
+	st:AddStates(button, 'icon', { pieces = { hover = button.hover }, blizzard = function() return false end })
 
 	-- The levels are ordered on purpose: the cooldown at the button's own level,
 	-- the Blizzard theme's ring (a holder frame one over the backdrop's and the

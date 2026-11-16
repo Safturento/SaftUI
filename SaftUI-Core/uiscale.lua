@@ -182,9 +182,11 @@ local TOLERANCE = UIScale.TOLERANCE
 
 -- A guard against an engine that sets its own scale again after every set-back
 -- (E3 saw it set once, at the event): after SETBACKS set-backs within WINDOW
--- seconds the check leaves the engine's scale and says so once.
+-- seconds on one screen the check leaves the engine's scale and says so once.
+-- Set-backs are counted per screen, so a window dragged through sizes trips nothing.
 local SETBACKS, WINDOW = 5, 1
-local setbacks = {} -- the times of the latest set-backs
+local setbacks = {} -- the times of the latest set-backs, all on one screen
+local setbackKey -- the screen those set-backs were on
 local gaveUp -- the screen the check gave up on ('width x height'), or nil
 local warned
 local settling -- The game's UI scale: the scale a changed reading is waiting to repeat
@@ -352,7 +354,9 @@ end
 -- why, once. Returns whether it set it.
 local function SetBack(resolved)
 	local key = resolved.width .. ' x ' .. resolved.height
-	if gaveUp and gaveUp ~= key then gaveUp, setbacks = nil, {} end -- another screen is a new start
+	-- Another screen is a new start: a window dragged through many sizes is not
+	-- an engine fighting SaftUI on one. Only repeats on one screen count.
+	if setbackKey ~= key then gaveUp, setbacks, setbackKey = nil, {}, key end
 	if gaveUp then return false end
 	local now, recent = GetTime(), {}
 	for _, time in ipairs(setbacks) do
@@ -464,7 +468,7 @@ function UIScale:Preview(choice)
 	if why then return false, why end
 	if not preview then previous = UIScale:Current() end
 	preview = UIScale.Normalize(choice)
-	gaveUp, setbacks = nil, {}
+	gaveUp, setbacks, setbackKey = nil, {}, nil
 	UIScale:Check()
 	return true
 end
@@ -487,7 +491,7 @@ function UIScale:Apply(choice)
 		end
 	end
 	preview, previous = nil, nil
-	gaveUp, setbacks = nil, {}
+	gaveUp, setbacks, setbackKey = nil, {}, nil
 	UIScale:Check()
 	if InCombatLockdown() then return true, 'combat' end
 	return true
@@ -496,7 +500,7 @@ end
 -- Ends a preview: back to the saved choice, else the default.
 function UIScale:Revert()
 	preview, previous = nil, nil
-	gaveUp, setbacks = nil, {}
+	gaveUp, setbacks, setbackKey = nil, {}, nil
 	UIScale:Check()
 	return true
 end

@@ -16,7 +16,11 @@ local function setup(before)
 	return R, RX, ok, err
 end
 local function divider(f) return colored(f, 0.3, 0.3, 0.3, 0.5)[1] end
-local function highlightOf(f) return colored(f, 0.3, 0.3, 0.3, 0.4)[1] end
+-- the step's hover is the states' row Layer, a texture of SaftUI's
+local function highlightOf(f)
+	local look = SaftUI:StateLook(f)
+	return look and look.pieces.layer
+end
 -- The SaftUI panel parented to RXPFrame.
 local function guidePanel(R)
 	for _, c in ipairs({ R:GetChildren() }) do

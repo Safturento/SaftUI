@@ -46,8 +46,6 @@ local ICON_TOP = math.ceil((ICON_HEIGHT - BUTTON_HEIGHT) / 2)
 -- The guild emblem sits on the tabard glyph at 12x14; scaled with the icon.
 local EMBLEM_WIDTH, EMBLEM_HEIGHT = 8, 10
 
-local HOVER_ALPHA = 0.4
-local PUSHED_ALPHA = 0.6
 local ALERT_ALPHA = 0.5
 
 local buttons = {} -- Blizzard's micro buttons, in Blizzard's order
@@ -112,7 +110,7 @@ local function StyleArt(button)
 
     -- Blizzard shows this while the button's frame is open. The template
     -- centers it at the atlas's size (MainMenuBarMicroButtons.xml); flat, it's
-    -- a fill over the button.
+    -- the fade of the state helper over the button (the checked piece).
     local pushed = button.PushedBackground
     if pushed then
         pushed:ClearAllPoints()
@@ -120,7 +118,8 @@ local function StyleArt(button)
             pushed:SetAtlas(micro.pushedBackground, false)
             PlaceArt(pushed, button)
         else
-            pushed:SetColorTexture(st:ColorRGBA('button', 'pushed', PUSHED_ALPHA))
+            -- the Fill: its texture and color are the state helper's (RestyleStates,
+            -- the end of StyleTextures)
             pushed:SetAllPoints(button)
         end
     end
@@ -149,6 +148,12 @@ local function StyleArt(button)
     -- Thick or Thin is still on it, and the character button has none of its
     -- own. The call ends in the SetHighlightAtlas hook, which finds the look
     -- already set.
+    if blizzard then
+        -- the state helper's colors were on these two (a vertex color outlives an atlas)
+        local highlight = button:GetHighlightTexture()
+        if highlight then highlight:SetVertexColor(1, 1, 1, 1) end
+        if pushed then pushed:SetVertexColor(1, 1, 1, 1) end
+    end
     if blizzard and button.textureName then
         button:SetHighlightAtlas(micro.highlight:format(button.textureName), micro.highlightBlend)
     end
@@ -177,10 +182,6 @@ local function StyleTextures(button)
     end
     local highlight = not blizzard and button:GetHighlightTexture()
     if highlight then
-        highlight:SetColorTexture(st:ColorRGBA('button', 'hover', HOVER_ALPHA))
-        -- LoadMicroButtonTextures tints it for a guild tabard
-        highlight:SetVertexColor(1, 1, 1)
-        highlight:SetBlendMode('BLEND')
         highlight:ClearAllPoints()
         highlight:SetAllPoints(button)
     end
@@ -195,38 +196,44 @@ local function StyleTextures(button)
         portrait:SetPoint('BOTTOMRIGHT', button, 'BOTTOMRIGHT', -inset, inset)
         portrait:SetTexCoord(GetPortraitCoords(width - inset * 2, BUTTON_HEIGHT - inset * 2))
     end
+
+    -- Last in the look: Blizzard's atlas swaps put its own art back on the
+    -- highlight (the game's color, atlas and blend, and a guild tabard's tint),
+    -- so the state helper puts the white texture, BLEND and the derived colors
+    -- on again (under Blizzard it leaves Blizzard's art alone); then the state
+    -- the swap says.
+    st:RestyleStates(button)
+    MicroMenu.OnButtonState(button)
 end
 
--- A color changed (MicroMenu:OnColorsChanged): the highlight (Buttons > Hover at
--- HOVER_ALPHA), the pushed fill (Buttons > Pushed at PUSHED_ALPHA) and the alert
--- flash (Text > Caution at ALERT_ALPHA) take it, on the buttons drawn flat
--- (Thick and Thin), where SaftUI colored those regions. key is 'hover',
--- 'pushed' or 'caution', nil for all three. Only the regions' colors: nothing
--- is laid out, so it runs in combat too.
+-- A color changed (MicroMenu:OnColorsChanged): the alert flash (Text > Caution at
+-- ALERT_ALPHA) takes it, on the buttons drawn flat (Thick and Thin), where SaftUI
+-- colored that region. The highlight and the pushed fill follow the Accent
+-- through the state helper (st:AddStates in SkinButton: a pass of its own, which
+-- sets a vertex color on a white texture). Only the region's color: nothing is
+-- laid out, so it runs in combat too.
 function MicroMenu:ColorMicroButtons(key)
+    if not (key == nil or key == 'caution') then return end
     for _, button in ipairs(buttons) do
         if arts[button] == false then
-            if key == nil or key == 'hover' then
-                local highlight = button:GetHighlightTexture()
-                if highlight then
-                    highlight:SetColorTexture(st:ColorRGBA('button', 'hover', HOVER_ALPHA))
-                end
-            end
-            if key == nil or key == 'pushed' then
-                local pushed = button.PushedBackground
-                if pushed then
-                    pushed:SetColorTexture(st:ColorRGBA('button', 'pushed', PUSHED_ALPHA))
-                end
-            end
-            if key == nil or key == 'caution' then
-                local flash = button.FlashBorder
-                if flash then
-                    local r, g, b = st:Color('text', 'caution'):GetRGB()
-                    flash:SetColorTexture(r, g, b, ALERT_ALPHA)
-                end
+            local flash = button.FlashBorder
+            if flash then
+                local r, g, b = st:Color('text', 'caution'):GetRGB()
+                flash:SetColorTexture(r, g, b, ALERT_ALPHA)
             end
         end
     end
+end
+
+-- A micro button whose window is open is selected (the Fill, which Blizzard
+-- shows, and the panel's Accent edge). Blizzard's SetPushed sets the button's
+-- state before it swaps the highlight, which SaftUI's post-hooks follow
+-- (StyleTextures), so this reads the state there: no hook of its own on
+-- SetButtonState. Only colors a frame of SaftUI's, so it runs in combat.
+function MicroMenu.OnButtonState(button)
+    local pushed = button:GetButtonState() == 'PUSHED'
+    if st:GetState(button, 'selected') == pushed then return end
+    st:SetState(button, 'selected', pushed)
 end
 
 -- Keeps the backdrop (a child of the button) drawing under the button's own art
@@ -271,6 +278,10 @@ local function CreateHolder(button)
     return holder
 end
 
+local function IsBlizzardLook()
+    return st:IsBlizzardLook(THEME, BACKGROUND)
+end
+
 local function SkinButton(button)
     CreateHolder(button)
 
@@ -310,6 +321,16 @@ local function SkinButton(button)
         hooksecurefunc(button, 'SetNormal', StyleTextures)
         hooksecurefunc(button, 'SetPushed', StyleTextures)
     end
+
+    -- The highlight is the hover piece and the pushed background (shown by
+    -- Blizzard while the button's frame is open) the Fill: Blizzard's two regions,
+    -- colored only, never handed or shown. The panel is the edge, the Accent
+    -- while the window is open. Under Blizzard the helper leaves both alone.
+    st:AddStates(button, 'icon', {
+        pieces = { hover = button:GetHighlightTexture(), checked = button.PushedBackground },
+        edge = 'theme',
+        blizzard = IsBlizzardLook,
+    })
 
     -- Every Blizzard atlas swap (LoadMicroButtonTextures, SetNormal/SetPushed,
     -- the game menu button's once-a-second streaming update) ends here.

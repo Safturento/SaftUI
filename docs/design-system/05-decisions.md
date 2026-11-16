@@ -62,7 +62,7 @@ Answers the owner has given to the questions and discrepancies. Each stands as a
 
 ## 2026-11-14, from the in-game pass
 
-41. **The pixel font stays for now.** The candidates load, but "when playing with the scaling while on 1080p homespun actually looks great at .75 so I think we'll stick with it for now." This sets aside decision 12's direction until the scaling work; the font demo (`/suifonts`) stays until the Mac friend has run the check at the Mac's scale (decision 59).
+41. **The pixel font stays for now.** The candidates load, but "when playing with the scaling while on 1080p homespun actually looks great at .75 so I think we'll stick with it for now." This sets aside decision 12's direction until the scaling work; the font demo (`/suifonts`) stays until the Mac friend has run the check at the Mac's scale (decision 60).
 42. **Edit mode's defaults are confirmed:** Show hidden on, Show disabled off. ("show hidden and disabled defaults are good")
 43. **The bags' category list:** beside the editor at full, a menu on a button at half. ("bags categorie config looks good in both sizes")
 44. **SaftUI's config windows are see-through like the rest of the UI:** the `/sui` window, edit mode's bar and window, the History list. ("can we get transparency on the saftui config windows? (settings, edit mode, history, etc.)")

@@ -39,12 +39,7 @@ function MicroMenu:SkinQueueButton()
     st:InsetTexture(icon, 0.2)
     button:SetNormalTexture(icon)
 
-    local hover = button:CreateTexture(nil, 'OVERLAY')
-    hover:SetTexture(st.BLANK_TEX)
-    hover:SetVertexColor(st:ColorRGBA('button', 'hover'))
-    hover:SetAllPoints(button)
-    button:SetHighlightTexture(hover)
-    st:FollowColor(hover, 'button', 'hover', MicroMenu.PaintHover)
+    MicroMenu.SkinHighlight(button)
 
     KeepInBar(button)
 

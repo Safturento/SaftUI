@@ -96,15 +96,17 @@ end
 -- Every chevron NewChevron made, so a color change paints them again.
 local chevrons = setmetatable({}, { __mode = 'k' })
 
--- Text > Muted at rest, Text > Strong under the mouse (the skin's chevrons).
+-- Text > Muted at rest, the lighter tone of the Accent (edgeHover) under the mouse: a
+-- bare glyph's states (st:AddStates, shape 'glyph'). A painted-again chevron puts
+-- its rest color back from the Colors page (a Muted change) or its hover from the
+-- Accent's.
 local function PaintChevron(button)
-	if button.hovered then
-		local r, g, b = st:Color('text', 'strong'):GetRGB()
-		button.icon:SetVertexColor(r, g, b, 1)
-	else
-		local r, g, b = st:Color('text', 'muted'):GetRGB()
-		button.icon:SetVertexColor(r, g, b, 1)
-	end
+	st:PaintStates(button)
+end
+
+local function MutedRest()
+	local c = st:Color('text', 'muted')
+	return c.r, c.g, c.b
 end
 
 -- A collapse chevron: a 16 square button with Lucide's chevron-up (button:
@@ -123,7 +125,6 @@ function TR:NewChevron(parent, getTip)
 	icon:SetPoint('CENTER')
 	icon:SetTexture(st.icons.chevronUp)
 	button.icon = icon
-	button.hovered = false
 
 	function button:SetDown(down)
 		self.icon:SetTexture(down and st.icons.chevronDown or st.icons.chevronUp)
@@ -132,16 +133,10 @@ function TR:NewChevron(parent, getTip)
 		ShowTip(self, getTip())
 	end
 
-	button:SetScript('OnEnter', function(self)
-		self.hovered = true
-		PaintChevron(self)
-		self:ShowTip()
-	end)
-	button:SetScript('OnLeave', function(self)
-		self.hovered = false
-		PaintChevron(self)
-		HideTip(self)
-	end)
+	button:SetScript('OnEnter', function(self) self:ShowTip() end)
+	button:SetScript('OnLeave', function(self) HideTip(self) end)
+	-- after the SetScripts: the helper hooks the scripts as they are now
+	st:AddStates(button, 'glyph', { glyph = icon, glyphRest = MutedRest })
 	chevrons[button] = true
 	PaintChevron(button)
 	return button
