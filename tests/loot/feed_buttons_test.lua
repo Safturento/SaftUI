@@ -108,6 +108,15 @@ local filterButton, jumpButton = feed.filterButton, feed.reset_button
 
 ------------------------------------------------------------------ the buttons
 
+test('a feed button made by CreateFeedIconButton alone hovers (its own SetScript keeps the hover)', function()
+	reset()
+	local lone = LT:CreateFeedIconButton('SaftUITestLoneFeedButton', st.icons.funnel)
+	stub.fire_script(lone, 'OnEnter', true)
+	eq(st:GetState(lone, 'hover'), true)
+	stub.fire_script(lone, 'OnLeave', true)
+	eq(st:GetState(lone, 'hover'), false)
+end)
+
 test('the filter button is the funnel and the jump button the arrow, 16 px icons on 20 px buttons, no letters', function()
 	reset()
 	eq(filterButton.icon:GetTexture(), st.icons.funnel, "Lucide's funnel")

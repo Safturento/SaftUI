@@ -437,30 +437,27 @@ end)
 -- Blizzard's state art blends its own way, and the switch back puts the made
 -- blend back. The module re-skins its buttons after a theme switch, as its
 -- UpdateConfig does.
-test("st:SkinActionButton's flat hover keeps the blend its highlight setter gave it, through Thick, Blizzard and Thick", function()
+test("st:SkinActionButton's flat hover is BLEND under SaftUI's look (the helper's), Blizzard's art keeps its own blend, through Thick, Blizzard and Thick", function()
 	local st = fresh()
-	local probe = CreateFrame('Button')
-	local probeTexture = probe:CreateTexture()
-	probe:SetHighlightTexture(probeTexture)
-	local made = probeTexture:GetBlendMode() -- what the setter gives a texture handed with no blend
+	local made = 'BLEND' -- the helper hands the highlight with BLEND: never the setter's additive default
 
 	local slot = frame(st, 'Button', 'ThemeTestHover')
 	slot:SetSize(36, 36)
 	local config = { theme = 'theme', background = 'theme' }
 	st:SkinActionButton(slot, config, 'slot')
 	eq(slot:GetHighlightTexture(), slot.hover, 'the flat hover is the highlight')
-	eq(slot.hover:GetBlendMode(), made, 'Thick: the blend the setter gave it')
+	eq(slot.hover:GetBlendMode(), made, 'Thick: BLEND')
 
 	T.theme('blizzard')
 	st:SkinActionButton(slot, config, 'slot')
 	eq(slot.hover:GetBlendMode(), st.ThemeArt.State('slot').highlightBlend, "Blizzard: its state art's blend")
 	-- Someone else's code may set it too (Blizzard's UpdateTextures does on the
-	-- bags bar's slots).
+	-- bags bar's slots); skinning again puts it back.
 	slot.hover:SetBlendMode('MOD')
 
 	T.theme('thick')
 	st:SkinActionButton(slot, config, 'slot')
-	eq(slot.hover:GetBlendMode(), made, 'Thick again: the blend the setter gave it')
+	eq(slot.hover:GetBlendMode(), made, 'Thick again: BLEND')
 	eq(#take_errors(), 0, 'no errors')
 end)
 
@@ -471,7 +468,9 @@ test('st:SkinEditBox and st:StyleEditBox take a Theme, a Background and a font',
 	eq(drawn(e), 'thin,solid,control', 'Theme and Background')
 	eq(edge(st:DrawnFrame(e)), THIN_EDGE, "Thin's border")
 	e:SetFocus()
-	eq(edge(st:DrawnFrame(e)), '1.00,1.00,1.00,1.00', 'white while it has focus')
+	local accent = st:Color('accent')
+	local focus = ('%.2f,%.2f,%.2f,1.00'):format(accent.r, accent.g, accent.b)
+	eq(edge(st:DrawnFrame(e)), focus, 'the Accent while it has focus (was white)')
 	e:ClearFocus()
 	eq(edge(st:DrawnFrame(e)), THIN_EDGE, "Thin's border again when it loses focus")
 	eq(drawn(e), 'thin,solid,control', 'drawn again with the same Theme and Background')
@@ -583,14 +582,12 @@ local function scrollBar()
 	return bar
 end
 
-test("Core widgets keep their own colors through a recolor: a scroll bar thumb's fill, a radio group's picked button, a focused edit box", function()
+test("Core widgets keep their own colors through a recolor: a scroll bar thumb's fill, a radio group's picked button, a focused edit box (all the helpers' states)", function()
 	local st = fresh()
-	local colors = st.config.profile.colors.button
 	local function rgb(f)
 		local r, g, b = f:GetBackdropColor()
 		return text(r, g, b)
 	end
-	local function color(c) return text(c:GetRGB()) end
 	local thick = st.config.profile.templates.thick
 	local shade = 0
 	-- A new background and border for Thick, then a recolor, as the Theme tab's pickers do.
@@ -601,26 +598,31 @@ test("Core widgets keep their own colors through a recolor: a scroll bar thumb's
 		st:RecolorThemed()
 	end
 
-	-- The scroll bar thumb: normal, hover under the mouse, pushed while pressed.
+	-- The scroll bar thumb: kit-edge at rest, T+ of the Accent under the mouse, T- while pressed.
 	local bar = scrollBar()
 	st:SkinNewScrollBar(bar)
 	local thumb = bar:GetThumb()
 	eq(drawn(thumb), 'theme,solid,control', "the thumb: SaftUI's theme, Solid")
-	eq(rgb(thumb.backdrop), color(colors.normal), 'the thumb in the button color')
+	local rest = st.States.THUMB_REST
+	local function solid(name)
+		local r, g, b = st:StateSolid(name, rest[1], rest[2], rest[3])
+		return text(r, g, b)
+	end
+	eq(rgb(thumb.backdrop), text(rest[1], rest[2], rest[3]), 'the thumb at rest: kit-edge')
 	recolor()
-	eq(rgb(thumb.backdrop), color(colors.normal), 'after a recolor, still the button color')
-	stub.fire_script(thumb, 'OnEnter')
+	eq(rgb(thumb.backdrop), text(rest[1], rest[2], rest[3]), 'after a recolor, still kit-edge')
+	stub.fire_script(thumb, 'OnEnter', true)
 	recolor()
-	eq(rgb(thumb.backdrop), color(colors.hover), 'under the mouse, after a recolor: the hover color')
-	stub.fire_script(thumb, 'OnMouseDown')
+	eq(rgb(thumb.backdrop), solid('hover'), 'under the mouse, after a recolor: the hover tone')
+	stub.fire_script(thumb, 'OnMouseDown', 'LeftButton')
 	recolor()
-	eq(rgb(thumb.backdrop), color(colors.pushed), 'pressed, after a recolor: the pushed color')
-	stub.fire_script(thumb, 'OnMouseUp')
-	stub.fire_script(thumb, 'OnLeave')
+	eq(rgb(thumb.backdrop), solid('pushed'), 'pressed, after a recolor: the pushed tone')
+	stub.fire_script(thumb, 'OnMouseUp', 'LeftButton')
+	stub.fire_script(thumb, 'OnLeave', true)
 	recolor()
-	eq(rgb(thumb.backdrop), color(colors.normal), 'let go and left, after a recolor: the button color')
+	eq(rgb(thumb.backdrop), text(rest[1], rest[2], rest[3]), 'let go and left, after a recolor: kit-edge')
 
-	-- A radio group's picked button keeps its blue border; the others take the theme's.
+	-- A radio group's picked button keeps its Accent border; the others take the theme's.
 	local blue = text(st.config.profile.theme.accent:GetRGB()) .. ',1.00'
 	local g = st:CreateRadioGroup('ThemeTestRadioColors', UIParent, {
 		buttonHeight = 20, buttonWidth = 50, buttonSpacing = 2, theme = 'theme', background = 'theme',
@@ -635,25 +637,25 @@ test("Core widgets keep their own colors through a recolor: a scroll bar thumb's
 	eq(edge(g.buttons[1].backdrop), blue, 'a new pick: blue through a recolor')
 	eq(edge(g.buttons[2].backdrop), text(unpack(thick.bordercolor)), "the old pick takes the theme's border")
 
-	-- A focused edit box keeps its white border, and takes the theme's once it loses focus.
+	-- A focused edit box keeps its Accent border, and takes the theme's once it loses focus.
 	local e = frame(st, 'EditBox', 'ThemeTestEditColors')
 	st:SkinEditBox(e, 'theme', 'theme')
 	e:SetFocus()
 	recolor()
-	eq(edge(st:DrawnFrame(e)), '1.00,1.00,1.00,1.00', 'focused: white through a recolor')
+	eq(edge(st:DrawnFrame(e)), blue, 'focused: the Accent through a recolor')
 	e:ClearFocus()
 	recolor()
 	eq(edge(st:DrawnFrame(e)), text(unpack(thick.bordercolor)), "unfocused: the theme's new border")
 
 	-- A theme switch (st:ThemeChanged: a redraw, then OnColorsChanged('theme')) keeps them too.
-	stub.fire_script(thumb, 'OnEnter')
+	stub.fire_script(thumb, 'OnEnter', true)
 	e:SetFocus()
 	st.config.profile.theme.name = 'thin'
 	st:RedrawThemed()
 	st:ColorsChanged('theme')
-	eq(rgb(thumb.backdrop), color(colors.hover), 'a switch to Thin: the thumb keeps its hover color')
-	eq(edge(g.buttons[1].backdrop), blue, 'the picked button stays blue')
-	eq(edge(st:DrawnFrame(e)), '1.00,1.00,1.00,1.00', 'the focused edit box stays white')
+	eq(rgb(thumb.backdrop), solid('hover'), 'a switch to Thin: the thumb keeps its hover tone')
+	eq(edge(g.buttons[1].backdrop), blue, 'the picked button stays in the Accent')
+	eq(edge(st:DrawnFrame(e)), blue, 'the focused edit box stays in the Accent')
 	e:ClearFocus()
 end)
 

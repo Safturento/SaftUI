@@ -214,43 +214,133 @@ local function Pressed()
 	return true
 end
 
--- A skinned button's flat highlight and pressed fill follow Buttons > Hover (at
--- st.HOVER_TINT: a tint over the fill) and Pushed at their opacity
--- (st:FollowColor). Painted under Blizzard too,
--- where their alpha is 0: they come back right when the look switches.
-local function PaintHighlight(texture) texture:SetVertexColor(st:ColorRGBA('button', 'hover', st.HOVER_TINT)) end
-local function PaintPushed(texture) texture:SetVertexColor(st:ColorRGBA('button', 'pushed')) end
-
--- button -> how st:SkinButton keeps it: { button, theme, background, flat,
--- own, tab, pressed, blizzard }. flat is SaftUI's flat state textures, own
--- the Left, Middle and Right of a button of Blizzard's panel button template,
--- tab nil or whether it's the picked tab (st:SetButtonTab), pressed whether
--- its panel button shows pressed (st:SetButtonPressed), blizzard the look it
--- wears now.
+-- button -> how st:SkinButton keeps it: { button, theme, background, own,
+-- tab, pressed, blizzard, hooked }. own is the Left, Middle and Right of a
+-- button of Blizzard's panel button template, tab nil or whether it's the
+-- picked tab (st:SetButtonTab), pressed whether its panel button shows pressed
+-- (st:SetButtonPressed), blizzard the look it wears now. The button's states
+-- (hover, pushed, selected, disabled) are the helpers' (Widgets/states.lua),
+-- registered in st:SkinButton.
 local skins = setmetatable({}, { __mode = 'k' })
 
+-- Whether a skinned button shows disabled (Alpha d): it is disabled, and not on
+-- Blizzard's art, whose -Disabled art is the whole look (a panel button of
+-- Blizzard's, skin.own, keeps its game alpha under Blizzard and is dimmed under
+-- SaftUI's looks, where its art is faded).
+local function SyncDisabled(skin)
+	local button = skin.button
+	local want = not button:IsEnabled() and not st:IsBlizzardLook(skin.theme, skin.background)
+	if st:GetState(button, 'disabled') ~= want then st:SetState(button, 'disabled', want) end
+end
+
 -- Puts a skinned button's look on for its Theme and Background: under
--- Blizzard (st:IsBlizzardLook) its flat textures hidden and Blizzard's art
--- shown, and under any other the reverse. Runs again after every recolor
--- and redraw (st:KeepOwnColors). It's kept under the skin, not the button: a
--- module keeps its own colors under the button (the bags' lit view button, a
--- radio group's pick), and st:KeepOwnColors holds one per key.
+-- Blizzard (st:IsBlizzardLook) Blizzard's art shown, and under any other
+-- SaftUI's; and when the look flipped, its states drawn again for it
+-- (st:RestyleStates, last, and the disabled state, which Blizzard's art draws
+-- itself). Runs again after every recolor and redraw (st:KeepOwnColors), which
+-- lay nothing out unless the look flipped (a theme inset change is the
+-- helper's own, theme-edge, restyle). It's kept under the skin, not the button:
+-- a module keeps its own colors under the button (the bags' lit view button),
+-- and st:KeepOwnColors holds one per key.
 local function Draw(skin)
+	local button = skin.button
 	local blizzard = st:IsBlizzardLook(skin.theme, skin.background)
-	if blizzard ~= skin.blizzard then
+	local flipped = blizzard ~= skin.blizzard
+	if flipped then
 		skin.blizzard = blizzard
-		for _, texture in ipairs(skin.flat) do texture:SetAlpha(blizzard and 0 or 1) end
 		for _, texture in ipairs(skin.own or {}) do texture:SetAlpha(blizzard and 1 or 0) end
 	end
 	if not skin.own then
 		local mode = blizzard and (skin.tab == nil and 'button' or 'tab') or nil
-		ShowArt(skin.button, mode, skin.tab, skin.pressed and Pressed or nil)
+		ShowArt(button, mode, skin.tab, skin.pressed and Pressed or nil)
+	end
+	if flipped then
+		st:RestyleStates(button)
+		if skin.hooked then SyncDisabled(skin) end
 	end
 end
 
+-- The font strings that are a button's label: the button's own, and the label
+-- SaftUI's buttons keep in .text (st:CreateButton).
+local function Labels(button)
+	local list = {}
+	local own = button.GetFontString and button:GetFontString()
+	if own then list[#list + 1] = own end
+	local text = button.text
+	if type(text) == 'table' and text ~= own and text.GetObjectType and text:GetObjectType() == 'FontString' then
+		list[#list + 1] = text
+	end
+	if #list == 0 then
+		for _, region in pairs({ button:GetRegions() }) do
+			if region:GetObjectType() == 'FontString' then list[#list + 1] = region end
+		end
+	end
+	return list
+end
+
+-- A button of Blizzard's own templates has its own highlight, pushed and
+-- disabled textures, which SaftUI's states replace: cleared, none made.
+local function ClearStateTextures(button)
+	for _, state in ipairs({ 'Highlight', 'Pushed', 'Disabled' }) do
+		local get, set = button['Get' .. state .. 'Texture'], button['Set' .. state .. 'Texture']
+		if get and set and get(button) then set(button, '') end
+	end
+end
+
+-- Enable, Disable and SetEnabled set the disabled state, as post-hooks: the
+-- button's own methods stay as they are.
+local function SetDisabledState(button)
+	local skin = skins[button]
+	if skin then SyncDisabled(skin) end
+end
+
+-- A module's SetScript on a state script drops the helpers' mouse hooks (as in the
+-- game): a post-hook on SaftUI's own button hooks them again, so hover shows
+-- whatever order the module did it in.
+local WIRED = { OnEnter = true, OnLeave = true, OnMouseDown = true, OnMouseUp = true, OnHide = true }
+local function Rehook(button, script)
+	if WIRED[script] then st:RestyleStates(button) end
+end
+
+-- button -> { r, g, b, painted }: the color its label has at rest, which the helper puts back after a state.
+local rests = setmetatable({}, { __mode = 'k' })
+
+-- The labels as the helper paints them, each behind a stand-in that notes the label's color at
+-- rest. A label's rest color is the one it has just before a state first draws on it: the font
+-- object's white to begin with, and whatever its module set since (the bank's Buy in
+-- Text > Danger). The helper paints it under a state and puts that back (textRest). No hook on
+-- any label (a hooked SetTextColor would cost every pass's paint).
+local function RestLabels(button, labels)
+	local rest = rests[button]
+	if not rest then
+		rest = { 1, 1, 1, false }
+		rests[button] = rest
+	end
+	local list = {}
+	for i, label in ipairs(labels) do
+		list[i] = {
+			GetTextColor = function() return label:GetTextColor() end,
+			SetTextColor = function(_, r, g, b)
+				local lit = st:GetState(button, 'hover') or st:GetState(button, 'pushed') or st:GetState(button, 'selected')
+				if lit then
+					if not rest[4] then
+						rest[4] = true
+						local rr, rg, rb = labels[1]:GetTextColor()
+						if type(rr) == 'number' then rest[1], rest[2], rest[3] = rr, rg, rb end
+					end
+				else
+					rest[4] = false
+				end
+				label:SetTextColor(r, g, b)
+			end,
+		}
+	end
+	return list
+end
+
 -- Draws button's backdrop in theme and background (Use SaftUI's theme and
--- Solid by default) as a control, and gives it font and SaftUI's hover,
--- pushed and disabled looks. font is a shared font's key or a typeface; with
+-- Solid by default) as a control, and gives it font and SaftUI's states
+-- (st:AddStates 'box': hover, pushed, selected, disabled). font is a shared font's key or a typeface; with
 -- none the button's label is Button text and follows it (its normal,
 -- highlight and disabled font objects, or its font strings on a frame with no
 -- states). Under the Blizzard theme it's Blizzard's panel
@@ -298,48 +388,38 @@ function st:SkinButton(button, theme, background, font)
 		st:KeepOwnColors(skin, Draw)
 	end
 
-    if button.SetNormalTexture then
+	if button.SetNormalTexture then
 		button:SetNormalTexture('')
 	end
+	ClearStateTextures(button)
 
-	if button.SetHighlightTexture and not button.hover then
-		local hover = button:CreateTexture(nil, 'OVERLAY')
-        hover:SetTexture(self.BLANK_TEX)
-        hover:SetVertexColor(st:ColorRGBA('button', 'hover', st.HOVER_TINT))
-        hover:SetAllPoints(button)
-
-        button:SetHighlightTexture(hover, 'BLEND') -- handed no blend mode, a highlight is additive
-        button.hover = hover
-		st:FollowColor(hover, 'button', 'hover', PaintHighlight)
+	-- Hover and pushed tint the body under the label, selected is the theme's edge
+	-- in the Accent with the fade, disabled dims it. The disabled hooks go on once,
+	-- but not on a Blizzard panel button, whose game art and alpha stay.
+	local labels = Labels(button)
+	st:AddStates(button, 'box', {
+		edge = 'theme',
+		text = RestLabels(button, labels),
+		textRest = function() local r = rests[button] return r[1], r[2], r[3] end,
+		blizzard = function() return st:IsBlizzardLook(skin.theme, skin.background) end,
+	})
+	if not skin.hooked and button.IsEnabled then
+		skin.hooked = true
+		if skin.own then
+			-- Blizzard's button: script hooks only (nothing written onto it, no method hooked)
+			button:HookScript('OnEnable', SetDisabledState)
+			button:HookScript('OnDisable', SetDisabledState)
+		else
+			for _, method in ipairs({ 'Enable', 'Disable', 'SetEnabled' }) do
+				if button[method] then hooksecurefunc(button, method, SetDisabledState) end
+			end
+			hooksecurefunc(button, 'SetScript', Rehook)
+		end
 	end
 
-	if button.SetPushedTexture and not button.pushed then
-		local pushed = button:CreateTexture(nil, 'OVERLAY')
-        pushed:SetTexture(self.BLANK_TEX)
-        pushed:SetVertexColor(st:ColorRGBA('button', 'pushed'))
-        pushed:SetAllPoints(button)
-
-        button:SetPushedTexture(pushed)
-		button.pushed = pushed
-		st:FollowColor(pushed, 'button', 'pushed', PaintPushed)
-	end
-
-	if button.SetDisabledTexture and not button.disabled then
-		local disabled = button:CreateTexture(nil, 'OVERLAY')
-		disabled:SetTexture(st.BLANK_TEX)
-		disabled:SetVertexColor(0, 0, 0, .4)
-		disabled:SetAllPoints(button)
-
-		button:SetDisabledTexture(disabled)
-        button.disabled = disabled
-	end
-
-	skin.flat = {}
-	for _, key in ipairs({ 'hover', 'pushed', 'disabled' }) do
-		if button[key] then table.insert(skin.flat, button[key]) end
-	end
 	skin.theme, skin.background, skin.blizzard = theme, background, nil
 	Draw(skin)
+	if skin.hooked then SyncDisabled(skin) end
 end
 
 -- Draws a button st:SkinButton skinned as one of Blizzard's top tabs under
@@ -364,4 +444,5 @@ function st:SetButtonPressed(button, pressed)
 	if not skin then return end
 	skin.pressed = pressed and true or false
 	Draw(skin)
+	st:SetState(button, 'selected', skin.pressed)
 end
