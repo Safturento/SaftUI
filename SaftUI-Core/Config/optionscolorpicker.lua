@@ -82,6 +82,7 @@ local floor, max, min = math.floor, math.max, math.min
 local format = string.format
 
 local Box, Edge, BlizzardLook = W.Box, W.Edge, W.BlizzardLook
+local HoverStates = W.HoverStates
 local NewText, SetFieldFont, LookInput = Kit.NewText, Kit.SetFieldFont, Kit.LookInput
 
 ------------------------------------------------------------------ the maths
@@ -307,7 +308,7 @@ end
 local function NewSwatch(parent, width, height)
 	local swatch = Box(st:CreateFrame('Button', nil, parent), { 0, 0, 0, 1 })
 	swatch:SetSize(width, height)
-	swatch.color = swatch:CreateTexture(nil, 'ARTWORK', nil, 3)
+	swatch.color = swatch:CreateTexture(nil, 'ARTWORK', nil, 3) -- over the hover Layer (-8): a swatch shows its color exactly, never tinted
 	Place(swatch.color, swatch, 1, 1, width - 2, height - 2)
 	function swatch:Paint(r, g, b, a)
 		self.color:SetColorTexture(r, g, b, a)
@@ -601,7 +602,6 @@ local function NewBox(parent, entry)
 	edit.show, edit.take, edit.alpha = entry.show, entry.take, entry.alpha
 	edit.label = NewText(parent, 'LEFT')
 	edit.label:SetText(entry.label)
-	W.HoverEdge(edit, function() return edit:HasFocus() end)
 	edit:SetScript('OnEnterPressed', function(self)
 		Commit(self)
 		self:SetText(self.show())
@@ -631,6 +631,7 @@ local function NewBox(parent, entry)
 			end
 		end
 	end)
+	HoverStates(edit) -- after the scripts: hover tints, focus lights the edge (Edge above)
 	return edit
 end
 
@@ -641,17 +642,14 @@ local function Chip(row, i)
 	if not chip then
 		chip = NewSwatch(frame, CHIP, CHIP)
 		chip:SetScript('OnEnter', function(self)
-			Edge(self, true)
 			tipOwner = self
 			if self.tip then W.ShowTip(self, self.tip(self), nil, 'ANCHOR_TOP') end
 		end)
-		chip:SetScript('OnLeave', function(self)
-			Edge(self, false)
-			W.HideTip(self)
-		end)
+		chip:SetScript('OnLeave', function(self) W.HideTip(self) end)
 		chip:SetScript('OnClick', function(self)
 			if self.pick then self.pick(self) end
 		end)
+		HoverStates(chip) -- a box: the hover tints its color (once in the chip's life)
 		row.chips[i] = chip
 	end
 	Place(chip, frame, PAD + (i - 1) * (CHIP + CHIP_GAP), row.y, CHIP, CHIP)
@@ -765,14 +763,11 @@ end
 local function BuildBlocks()
 	local function Tip(block, title, line)
 		block:SetScript('OnEnter', function(self)
-			Edge(self, true)
 			tipOwner = self
 			W.ShowTip(self, title, { line }, 'ANCHOR_TOP')
 		end)
-		block:SetScript('OnLeave', function(self)
-			Edge(self, false)
-			W.HideTip(self)
-		end)
+		block:SetScript('OnLeave', function(self) W.HideTip(self) end)
+		HoverStates(block) -- after the scripts above
 	end
 	F.was = NewSwatch(frame, BLOCK_WIDTH, BLOCK_HEIGHT)
 	F.new = NewSwatch(frame, BLOCK_WIDTH, BLOCK_HEIGHT)

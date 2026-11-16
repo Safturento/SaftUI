@@ -88,23 +88,23 @@ local function Box(frame, fill)
 	return frame
 end
 
--- The border color (the hover and focus look is the accent).
+-- The border color for focus (the accent edge, drawn by the states helper):
+-- a state frame (W.HoverStates) takes it as its 'focus' state; a frame with no
+-- record (the options window's search box, the edit mode bar's filter box, the
+-- rule editor's fields, the accent preview's field) is painted directly, as it
+-- always was.
 local function Edge(frame, lit)
-	if lit then
-		frame:SetBackdropBorderColor(st:Color('accent'):GetRGB())
+	if st:GetState(frame, 'focus') ~= nil then
+		st:SetState(frame, 'focus', lit and true or false)
+	elseif lit then
+		frame:SetBackdropBorderColor(st:StateColor('edge'))
 	else
 		frame:SetBackdropBorderColor(unpack(EDGE))
 	end
 end
 
--- A box that is accent-bordered under the mouse.
-local function HoverEdge(frame, isDisabled)
-	frame:SetScript('OnEnter', function(self) if not isDisabled() then Edge(self, true) end end)
-	frame:SetScript('OnLeave', function(self) Edge(self, false) end)
-end
-
 -- For the options window's own boxes and buttons (the search box, Reload UI).
-W.Box, W.Edge, W.HoverEdge = Box, Edge, HoverEdge
+W.Box, W.Edge = Box, Edge
 
 ------------------------------------------------------------------ Blizzard's art
 
@@ -164,6 +164,47 @@ local function Art(frame)
 	end
 	return art
 end
+
+-- Whether frame wears Blizzard's art now: the look put on last (Art, or a check
+-- box's own flag). The states helper holds its pieces off while it does.
+local function WearsBlizzard(frame)
+	local art = arts[frame]
+	if art and art.blizzard then return true end
+	return frame.blizzard == true
+end
+W.WearsBlizzard = WearsBlizzard
+
+-- The fill under a box's text, for the text pick: its backdrop's color, else
+-- the field's (a box under Blizzard has no backdrop).
+local function BodyOf(frame)
+	local r, g, b = frame:GetBackdropColor()
+	if type(r) ~= 'number' then r, g, b = FIELD[1], FIELD[2], FIELD[3] end
+	return r, g, b
+end
+
+--[[
+	A kit box (a field, a button, a face, a check box) as a state frame: hover
+	and pushed tint its body, selected and focus light its edge, disabled dims
+	it (Widgets/states.lua). isDisabled is unused (a caller's answer is
+	nil while its widget is built, and asking it once at registration dimmed the rule
+	editor's fields for good); disabled is st:SetState(frame, 'disabled', ...), after which
+	the box shows neither hover nor pushed. Task 11 removes the parameter with W.HoverEdge. extra, optional,
+	adds to the helper's options (shape, text, glyph, mark, solid...). The
+	Layer, Fill and Bar sit inside the box's own 1 unit edge. Call it after the
+	widget's own SetScript of OnEnter, OnLeave, OnMouseDown, OnMouseUp and OnHide
+	(a SetScript drops the helper's hooks until its next call).
+]]
+function W.HoverStates(frame, isDisabled, extra)
+	local opts = { edge = 'backdrop', inset = 1, body = BodyOf, blizzard = WearsBlizzard }
+	local shape = 'box'
+	for key, value in pairs(extra or {}) do
+		if key == 'shape' then shape = value else opts[key] = value end
+	end
+	st:AddStates(frame, shape, opts)
+	return frame
+end
+-- Task 11 removes this alias (the rule editor's two calls).
+W.HoverEdge = W.HoverStates
 
 -- Records the look frame's art is for; false when it wears it already.
 local function Changes(art, blizzard)
@@ -244,6 +285,8 @@ local function ShowBox(frame, shown, fill)
 		frame:SetBackdrop(nil)
 		frame.outline:Hide()
 	end
+	-- its fill (what a label sits on) and whether it wears art changed: the states read them again
+	st:RestyleStates(frame)
 end
 
 -- texture inset in from frame's edges on every side, on whole pixels.
@@ -478,15 +521,16 @@ W.LookDropdown = LookDropdown
 
 ------------------------------------------------------------------ a check box (toggle, multiselect)
 
--- A box of size with an accent square inside when checked: box.mark.
+-- A check box of size, a state frame of shape 'check' (W.HoverStates): hover
+-- tints its body, checked lights its edge, a square (box.mark, floor(size / 6)
+-- in from each side) and a fade, all drawn by the states helper.
 local function CheckBox(parent, size)
 	local box = Box(st:CreateFrame('CheckButton', nil, parent))
 	box:SetSize(size, size)
 	box.mark = box:CreateTexture(nil, 'OVERLAY')
-	box.mark:SetPoint('TOPLEFT', box, 'TOPLEFT', 3, -3)
-	box.mark:SetPoint('BOTTOMRIGHT', box, 'BOTTOMRIGHT', -3, 3)
-	box.mark:SetColorTexture(st:Color('accent'):GetRGB())
+	box.mark:SetTexture(st.BLANK_TEX)
 	box.mark:Hide()
+	W.HoverStates(box, nil, { shape = 'check', mark = box.mark })
 	return box
 end
 
@@ -554,13 +598,19 @@ local function LookCheckBox(box, blizzard, rowHeight, align)
 		box.outline:Show()
 		for _, texture in pairs(box.art) do texture:Hide() end
 	end
+	-- Blizzard's art draws the states under it, SaftUI's own again otherwise
+	st:RestyleStates(box)
 end
 
 local function SetCheck(box, checked, disabled)
 	checked = checked and true or false
 	box:SetChecked(checked)
-	if checked and not box.blizzard then box.mark:SetColorTexture(st:Color('accent'):GetRGB()) end
-	box.mark:SetShown(checked and not box.blizzard)
+	-- Selected: the edge, the mark and the fade (the helper's). Under Blizzard the helper
+	-- leaves the mark alone and the art's own check shows instead.
+	-- Always set, not only on a change: the mark is placed in pixels of the box's scale as it is
+	-- shown, and a pooled box may be in another window now.
+	st:SetState(box, 'selected', checked)
+	if box.blizzard then box.mark:Hide() end
 	if box.art then
 		box.art.check:SetShown(checked and box.blizzard or false)
 		if box.blizzard then

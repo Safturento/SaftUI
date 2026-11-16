@@ -38,51 +38,62 @@ end
 
 ------------------------------------------------------------------ /sui grows taller
 
-test("the grip's corner is Buttons > Hover at its opacity, at an odd color: 100% is its own strength, 50% half", function()
-	local hover = st.config.profile.colors.button.hover
-	for _, a in ipairs({ 1, 0.5 }) do
-		close_all()
-		theme('thick')
-		hover:SetRGB(0.9, 0.2, 0.6); hover.a = a
-		st.config.global.optionsWindow = nil
-		st.Config:Open('Loot')
-		local F = frames()
-		for _, state in ipairs({ 'Highlight', 'Pushed' }) do
-			local texture = F.grip['Get' .. state .. 'Texture'](F.grip)
-			eq(rgba(texture:GetVertexColor()), rgba(0.9, 0.2, 0.6, a), state .. ' at ' .. a * 100 .. '%')
-		end
-	end
-	close_all()
-	hover:SetRGB(0.3, 0.5, 0.7); hover.a = 1
-end)
-
-test("the grip follows Buttons > Hover as it is picked (live colors), and under Blizzard's art is left alone", function()
-	local C = load_test_file('lib/color_cost.lua')
-	local hover = st.config.profile.colors.button.hover
+test("the grip's corner is a glyph: white at rest, the lighter tone of the accent under the mouse and held (the pushed texture shows the corner too: the game swaps it for the normal one while held), its highlight clear", function()
 	close_all()
 	theme('thick')
 	st.config.global.optionsWindow = nil
 	st.Config:Open('Loot')
 	local F = frames()
-	local function pick(r, g, b, a)
+	local normal = F.grip:GetNormalTexture()
+	eq(rgba(normal:GetVertexColor()), rgba(1, 1, 1, 1), 'white at rest')
+	eq(F.grip:GetHighlightTexture():GetAlpha(), 0, 'Highlight: clear (the corner itself changes color)')
+	local pushed = F.grip:GetPushedTexture()
+	eq(pushed:GetAlpha(), 1, 'Pushed: visible, it replaces the normal corner while held')
+	eq(rgba(pushed:GetVertexColor()), rgba(1, 1, 1, 1), 'white at rest too')
+	stub.fire_script(F.grip, 'OnEnter', true)
+	local r, g, b = st:StateColor('edgeHover')
+	eq(rgba(normal:GetVertexColor()), rgba(r, g, b, 1), 'under the mouse: the lighter tone')
+	stub.fire_script(F.grip, 'OnLeave', true)
+	eq(rgba(normal:GetVertexColor()), rgba(1, 1, 1, 1), 'white again')
+	stub.fire_script(F.grip, 'OnMouseDown', 'LeftButton')
+	eq(rgba(normal:GetVertexColor()), rgba(r, g, b, 1), 'held: the same')
+	eq(rgba(pushed:GetVertexColor()), rgba(r, g, b, 1), 'and the texture the game shows while held is the lighter tone too')
+	stub.fire_script(F.grip, 'OnMouseUp', 'LeftButton')
+	close_all()
+end)
+
+test("the grip's tone follows the accent as it is picked (live colors), and Blizzard's art is left alone", function()
+	local C = load_test_file('lib/color_cost.lua')
+	local accent = st.config.profile.theme.accent
+	local keep = { accent:GetRGB() }
+	close_all()
+	theme('thick')
+	st.config.global.optionsWindow = nil
+	st.Config:Open('Loot')
+	local F = frames()
+	stub.fire_script(F.grip, 'OnEnter', true)
+	local function pick(r, g, b)
 		C.edit(st, function()
-			hover:SetRGB(r, g, b); hover.a = a
-			st:ColorChanged('button', 'hover')
+			accent:SetRGB(r, g, b)
+			st:ColorChanged('accent')
 			C.step(st)
 		end)
 	end
-	pick(0.2, 0.8, 0.4, 0.5)
-	for _, state in ipairs({ 'Highlight', 'Pushed' }) do
-		local texture = F.grip['Get' .. state .. 'Texture'](F.grip)
-		eq(rgba(texture:GetVertexColor()), rgba(0.2, 0.8, 0.4, 0.5), state .. ' follows the pick')
-	end
+	pick(0.2, 0.8, 0.4)
+	local r, g, b = st:StateColor('edgeHover')
+	eq(rgba(F.grip:GetNormalTexture():GetVertexColor()), rgba(r, g, b, 1), 'the corner follows the pick')
+	stub.fire_script(F.grip, 'OnLeave', true)
 	theme('blizzard')
 	local before = rgba(F.grip:GetHighlightTexture():GetVertexColor())
-	pick(0.9, 0.1, 0.1, 1)
+	stub.fire_script(F.grip, 'OnEnter', true)
+	pick(0.9, 0.1, 0.1)
 	eq(rgba(F.grip:GetHighlightTexture():GetVertexColor()), before, "Blizzard's art is not tinted")
+	eq(rgba(F.grip:GetNormalTexture():GetVertexColor()), rgba(1, 1, 1, 1), 'nor its corner')
+	stub.fire_script(F.grip, 'OnLeave', true)
 	close_all()
 	theme('thick')
-	hover:SetRGB(0.3, 0.5, 0.7); hover.a = 1
+	accent:SetRGB(unpack(keep))
+	st:ColorChanged('accent')
 end)
 
 test('/sui grows taller by its bottom edge or its grip: its width and top stay, the body takes the height, and it remembers it', function()
@@ -92,12 +103,10 @@ test('/sui grows taller by its bottom edge or its grip: its width and top stay, 
 	local F = frames(); local w = F.window; local top = w:GetTop()
 	eq(at(F.grip), '1024,684 16x16', 'the grip in the bottom right corner')
 	eq(F.grip:GetNormalTexture():GetTexture(), st.textures.cornerbr, "st:EnableResizing's corner")
-	local r, g, b = st.config.profile.colors.button.hover:GetRGB()
-	local hover = rgba(r, g, b, 1)
 	for _, state in ipairs({ 'Highlight', 'Pushed' }) do
 		local texture = F.grip['Get' .. state .. 'Texture'](F.grip)
 		eq(texture:GetTexture(), st.textures.cornerbr, state .. ': the corner')
-		eq(rgba(texture:GetVertexColor()), hover, state .. ": tinted the buttons' hover color")
+		eq(texture:GetAlpha(), state == 'Pushed' and 1 or 0, state .. (state == 'Pushed' and ': the corner while held (a glyph)' or ': clear'))
 	end
 	eq(F.grip:GetHighlightTexture():GetBlendMode(), 'BLEND', 'the highlight blends, as st:EnableResizing has it')
 	eq(F.grip:GetHighlightTexture():GetDrawLayer(), st.ThemeArt.HOVER_LAYER, 'in the highlight layer')

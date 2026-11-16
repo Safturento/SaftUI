@@ -11,7 +11,7 @@ local Kit = W.Kit
 local floor, max, min = math.floor, math.max, math.min
 local format = string.format
 
-local Box, Edge, BlizzardLook, AtlasSize = W.Box, W.Edge, W.BlizzardLook, W.AtlasSize
+local Box, Edge, HoverStates, BlizzardLook, AtlasSize = W.Box, W.Edge, W.HoverStates, W.BlizzardLook, W.AtlasSize
 local FIELD_HEIGHT, Base, builders, define = Kit.FIELD_HEIGHT, Kit.Base, Kit.builders, Kit.define
 local ALT, EDGE, FIELD, Art, Changes = Kit.ALT, Kit.EDGE, Kit.FIELD, Kit.Art, Kit.Changes
 local HidePieces, LayThree, LookInput = Kit.HidePieces, Kit.LayThree, Kit.LookInput
@@ -68,8 +68,11 @@ local function LookRange(w, blizzard)
 			knob:SetTexture(st.BLANK_TEX)
 			knob:SetTexCoord(0, 1, 0, 1)
 			knob:SetSize(KNOB_WIDTH, KNOB_HEIGHT)
-			knob:SetVertexColor(st:Color('text', 'normal'):GetRGB())
 		end
+		-- the slider's own atlas under Blizzard, else the knob's rest color (Text > Normal), the helper's
+		w.slider.blizzard = blizzard
+		st:RestyleStates(w.slider)
+		st:PaintStates(w.slider)
 	end
 	-- The slider between the arrows (Blizzard), else across the whole 116.
 	local look = blizzard and st.ThemeArt.Control('slider')
@@ -144,7 +147,6 @@ builders.range = function(w)
 	knob:SetDrawLayer('OVERLAY')
 	knob:SetSize(KNOB_WIDTH, KNOB_HEIGHT)
 	knob:SetVertexColor(st:Color('text', 'normal'):GetRGB())
-
 	-- The end arrows, hidden until Blizzard's look (LookRange): each a button
 	-- of the frame's with its art as a texture, in colour while it can step
 	-- and desaturated while it can't (RangeArrows).
@@ -188,6 +190,14 @@ builders.range = function(w)
 		end
 	end)
 
+	-- A knob: the rest color is Text > Normal, the helper's Solid under the mouse and while
+	-- dragged (the slider's own scripts are set just above: the helper hooks after them).
+	st:AddStates(slider, 'knob', {
+		solid = slider:GetThumbTexture(), solidRest = function() return st:Color('text', 'normal'):GetRGB() end,
+		blizzard = function(self) return self.blizzard == true end,
+	})
+	Kit.Track(w, slider)
+
 	edit:SetScript('OnEnterPressed', function(self)
 		if not w.row then return end
 		local text = self:GetText():gsub('%%', ''):gsub('^%s+', ''):gsub('%s+$', '')
@@ -207,6 +217,8 @@ builders.range = function(w)
 		Edge(self, false)
 		w:Refresh()
 	end)
+	HoverStates(edit, function() return w.disabled end)
+	Kit.Track(w, edit)
 end
 
 -- Enables the end arrows: each while there's room to step that way from the

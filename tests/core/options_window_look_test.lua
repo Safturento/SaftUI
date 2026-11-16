@@ -18,6 +18,8 @@ st.config.profile.colors.text.muted:SetRGB(0.2, 0.4, 0.6) -- not the default, so
 local OW = st.OptionsWindow
 local frames, theme, close_all, size_of, click = H.frames, H.theme, H.close_all, H.size_of, H.click
 local rgba = H.rgba
+-- A piece of the states helper shows: shown, and not held at alpha 0 (the Blizzard look)
+local function drawn(piece) return piece.shown and piece.alpha > 0 end
 
 -- The textures shown on a frame (shown and not see-through).
 local function shown_textures(frame)
@@ -141,7 +143,7 @@ test("the tabs are Blizzard's Settings tabs, the active one picked, with no unde
 		check(#tabs > 1, 'a row of ' .. slot .. 's')
 		for i, tab in ipairs(tabs) do
 			eq(atlases_of(tab), '', 'Thick: ' .. slot .. ' ' .. i .. ' has no Blizzard art')
-			eq(tab.underline:IsShown(), tab.active, 'Thick: only the active ' .. slot .. ' is underlined')
+			eq(drawn(st:StateLook(tab).bar), tab.active, 'Thick: only the active ' .. slot .. ' is underlined (the bar)')
 			sizes[slot .. i] = size_of(tab)
 		end
 	end
@@ -152,7 +154,7 @@ test("the tabs are Blizzard's Settings tabs, the active one picked, with no unde
 		local picked = 0
 		for i, tab in ipairs(tabs) do
 			local name = slot .. ' ' .. i
-			check(not tab.underline:IsShown(), name .. ': no underline')
+			check(not drawn(st:StateLook(tab).bar), name .. ': no underline')
 			if tab.active then
 				picked = picked + 1
 				eq(atlases_of(tab), 'Options_Tab_Active_Left,Options_Tab_Active_Middle,Options_Tab_Active_Right', name .. ': picked')
@@ -174,7 +176,7 @@ test("the tabs are Blizzard's Settings tabs, the active one picked, with no unde
 	for slot, tabs in pairs({ tab = frames().tabs, subtab = frames().subtabs }) do
 		for i, tab in ipairs(tabs) do
 			eq(atlases_of(tab), '', 'Thick again: ' .. slot .. ' ' .. i .. ' has no Blizzard art')
-			eq(tab.underline:IsShown(), tab.active, 'Thick again: the active ' .. slot .. ' underlined')
+			eq(drawn(st:StateLook(tab).bar), tab.active, 'Thick again: the active ' .. slot .. ' underlined')
 		end
 	end
 	close_all()
@@ -192,22 +194,22 @@ test("the sidebar's open page sits on Options_List_Active", function()
 		return active, other
 	end
 	local active, other = items()
-	check(active.bar:IsShown() and active.bg:IsShown(), "Thick: the open page's blue bar and fill")
+	check(drawn(st:StateLook(active).bar) and drawn(st:StateLook(active).fill), "Thick: the open page's bar and fade")
 	eq(atlases_of(active), '', 'Thick: no Blizzard art')
 	stub.fire_script(other, 'OnEnter')
-	check(other.bg:IsShown(), 'Thick: the hover fill')
+	check(drawn(st:StateLook(other).layer), 'Thick: the hover tint')
 	eq(atlases_of(other), '', 'Thick: no hover art')
 	stub.fire_script(other, 'OnLeave')
 
 	theme('blizzard')
 	active, other = items()
 	eq(atlases_of(active), 'Options_List_Active', 'the open page on Options_List_Active')
-	check(not active.bar:IsShown() and not active.bg:IsShown(), 'no blue bar or fill')
+	check(not drawn(st:StateLook(active).bar) and not drawn(st:StateLook(active).fill), 'no bar or fade of SaftUI\'s')
 	art_fills(active, 'the open page')
 	eq(atlases_of(other), '', 'another page: no art')
 	stub.fire_script(other, 'OnEnter')
 	eq(atlases_of(other), 'Options_List_Hover', 'under the mouse: Options_List_Hover')
-	check(not other.bg:IsShown(), 'and no flat hover')
+	check(not drawn(st:StateLook(other).layer), 'and no tint of SaftUI\'s')
 	art_fills(other, 'the page under the mouse')
 	stub.fire_script(other, 'OnLeave')
 	eq(atlases_of(other), '', 'the mouse gone')
@@ -215,7 +217,7 @@ test("the sidebar's open page sits on Options_List_Active", function()
 
 	theme('thick')
 	active, other = items()
-	check(active.bar:IsShown() and active.bg:IsShown(), "Thick again: the open page's blue bar and fill")
+	check(drawn(st:StateLook(active).bar) and drawn(st:StateLook(active).fill), "Thick again: the open page's bar and fade")
 	eq(atlases_of(active), '', 'Thick again: no Blizzard art')
 	close_all()
 	eq(#take_errors(), 0, 'no errors')

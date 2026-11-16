@@ -7,7 +7,7 @@ local Kit = W.Kit
 	optionswidgets.lua): a button that takes the next key pressed.
 ]]
 
-local Box, Edge, HoverEdge, BlizzardLook = W.Box, W.Edge, W.HoverEdge, W.BlizzardLook
+local Box, HoverStates, BlizzardLook = W.Box, W.HoverStates, W.BlizzardLook
 local FIELD_HEIGHT, Base, builders, define = Kit.FIELD_HEIGHT, Kit.Base, Kit.builders, Kit.define
 local NewText, arts, Art, Changes = Kit.NewText, Kit.arts, Kit.Art, Kit.Changes
 local Piece, HidePieces, ShowBox = Kit.Piece, Kit.HidePieces, Kit.ShowBox
@@ -93,7 +93,6 @@ builders.keybinding = function(w)
 	w.frame = button
 	w.text = NewText(button, 'CENTER')
 	w.text:SetAllPoints()
-	HoverEdge(button, function() return w.disabled or w.waiting end)
 
 	-- A press while waiting is the new key. Esc clears the binding.
 	local function Press(key)
@@ -149,6 +148,8 @@ builders.keybinding = function(w)
 		PaintBinding(w)
 	end)
 	button:HookScript('OnHide', function() art.down = false end)
+	-- after the scripts above. The label's color is its own (Refresh), so the helper is not told it.
+	HoverStates(button, function() return w.disabled end)
 end
 
 define('keybinding', {
@@ -177,7 +178,7 @@ define('keybinding', {
 		self.waiting = true
 		self.frame:EnableKeyboard(true)
 		self.frame:EnableMouseWheel(true)
-		Edge(self.frame, true)
+		st:SetState(self.frame, 'selected', true) -- waiting: the selected look
 		PaintBinding(self)
 		self:Refresh()
 	end,
@@ -187,7 +188,7 @@ define('keybinding', {
 		self.waiting = nil
 		self.frame:EnableKeyboard(false)
 		self.frame:EnableMouseWheel(false)
-		Edge(self.frame, false)
+		st:SetState(self.frame, 'selected', false)
 		PaintBinding(self)
 		if self.row then self:Refresh() end
 	end,

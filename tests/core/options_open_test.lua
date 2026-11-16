@@ -312,7 +312,7 @@ test('under Thick and Thin /sui is unchanged', function()
 		end
 		for i, tab in ipairs(f.tabs) do
 			rect('tab ' .. i, tab)
-			if not sizesOnly then add('tab ' .. i .. ' underline ' .. tostring(tab.underline:IsShown())) end
+			if not sizesOnly then local bar = st:StateLook(tab).bar; add('tab ' .. i .. ' underline ' .. tostring(bar.shown and bar.alpha > 0)) end
 		end
 		check(#OW.GetDrawnRows() >= 12, 'a row of every type')
 		return table.concat(out, '\n')

@@ -811,13 +811,14 @@ test("an execute button shows its row's tooltip while the mouse is on it, under 
 		check(tip.owner == nil, look .. ': gone when the mouse leaves')
 		tip.lines = {}
 
-		-- The button's edge still lights under Thick.
+		-- Under Thick the button's body tints under the mouse (the states helper's Layer), its edge stays.
 		if look == 'thick' then
-			local blue = { st.config.profile.theme.accent:GetRGB() }
+			local edge = st.BOX_COLORS.edge[1]
 			stub.fire_script(button, 'OnEnter')
-			eq((button:GetBackdropBorderColor()), blue[1], 'the edge lights')
+			eq((button:GetBackdropBorderColor()), edge, 'the edge stays')
+			check(st:StateLook(button).layer.shown, 'the body tints')
 			stub.fire_script(button, 'OnLeave')
-			check((button:GetBackdropBorderColor()) ~= blue[1], 'and goes out')
+			check(not st:StateLook(button).layer.shown, 'and goes out')
 		end
 
 		-- No desc and no why: no tooltip.

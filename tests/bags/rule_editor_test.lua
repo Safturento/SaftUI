@@ -381,6 +381,26 @@ end)
 
 ------------------------------------------------------------------ the fields
 
+test("the rule editor's dropdown fields and check boxes are enabled (full alpha) and tint under the mouse (W.HoverEdge's isDisabled is asked live, never at build)", function()
+	local ed = editor(grp('or', { blk('tooltip', { text = '' }), blk('class', {}) }))
+	local seen = 0
+	for _, row in ipairs(ed.w.rows) do
+		for key, f in pairs(row.fields or {}) do
+			if type(f) == 'table' and (f.caret or f.caption) and f.GetAlpha then
+				seen = seen + 1
+				eq(f:GetAlpha(), 1, key .. ': full alpha')
+				check(st:GetState(f, 'disabled') == false, key .. ': not disabled')
+				stub.fire_script(f, 'OnEnter', true)
+				check(st:GetState(f, 'hover'), key .. ': hover holds under the mouse')
+				check(st:StateLook(f).layer.shown, key .. ': the body tints')
+				stub.fire_script(f, 'OnLeave', true)
+			end
+		end
+	end
+	check(seen >= 2, 'a field and a check box were found: ' .. seen)
+	ed.w:Release()
+end)
+
 test("each block type's fields set its params", function()
 	local refreshes = 0
 	local realRefresh = st.Config.Refresh

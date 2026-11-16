@@ -107,7 +107,18 @@ test('edit mode off: a pass of any group costs nothing (no call, no Hide, no Set
 	for _, case in ipairs({ { 'text', 'muted' }, { 'button', 'hover' }, { 'accent' }, { 'class', 'MAGE' }, { 'text', 'danger' } }) do
 		local m = cost(case[1], case[2])
 		local label = case[1] .. ' ' .. tostring(case[2])
-		eq(m.calls.total, 0, label .. ': no setter')
+		if case[1] == 'accent' then
+			-- The bar's kit controls are state frames (Widgets/states.lua): a selected one is colored by every
+			-- pass of the Accent and a disabled one's alpha is set, hidden or not: one set of setters each, no more.
+			local setters = 0
+			for name, n in pairs(m.calls.by or {}) do
+				if name == 'SetAlpha' or name == 'SetBackdropBorderColor' or name == 'SetTexCoord' or name == 'SetVertexColor' then setters = setters + n end
+			end
+			eq(setters, m.calls.total, label .. ': only the states helper\'s setters: ' .. by(m.calls.by or {}))
+			eq(m.calls.total, 20 * 100, label .. ': exactly the measured 20 setters a pass (the bar\'s 4 selected and 4 disabled controls)')
+		else
+			eq(m.calls.total, 0, label .. ': no setter')
+		end
 		eq(m.forbidden.total, 0, label .. ': nothing forbidden: ' .. by(m.forbidden.by))
 		eq(m.made, 0, label .. ': nothing made')
 		check(m.kb < 4, label .. ': garbage ' .. m.kb .. ' KB')
@@ -338,7 +349,9 @@ end)
 
 test("a click on a number box's arrow keeps the arrow's hover color while the mouse is on it (the Grid size box, and the History list's)", function()
 	setup(false)
-	local normal = rgb3(st:Color('text', 'normal'):GetRGB()) .. ',1.00'
+	-- the arrow is a glyph: the lighter tone of the accent under the mouse (the states helper's)
+	local tr, tg, tb = st:StateColor('edgeHover')
+	local normal = rgb3(tr, tg, tb) .. ',1.00'
 	local box = EM:BarControl('gridSize').frame
 	local arrow = box.pair.up
 	stub.fire_script(arrow, 'OnEnter', true)

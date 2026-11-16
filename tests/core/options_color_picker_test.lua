@@ -827,14 +827,15 @@ test('a drag takes a box\'s typed text first, so it cannot override the drag lat
 	reset()
 end)
 
-test('a number box lights its edge under the mouse, as the kit\'s input does', function()
+test('a number box tints its body under the mouse, as the kit\'s input does (its edge stays)', function()
 	reset()
 	local _, F = open()
 	stub.fire_script(F.red, 'OnEnter', true)
-	local blue = st.config.profile.theme.accent
 	local r = F.red:GetBackdropBorderColor()
-	eq(r, blue.r, 'blue edge')
+	eq(r, st.BOX_COLORS.edge[1], 'the edge stays')
+	check(st:StateLook(F.red).layer.shown, 'the body tints')
 	stub.fire_script(F.red, 'OnLeave', true)
+	check(not st:StateLook(F.red).layer.shown, 'and goes out')
 	reset()
 end)
 
@@ -1001,4 +1002,25 @@ test("its captions, box labels and chevron follow Text > Muted and Normal while 
 	normal:SetRGB(unpack(keep_normal))
 	reset()
 	muted:SetRGB(0.2, 0.4, 0.6)
+end)
+
+test('a hovered swatch shows its color exactly: the color and checker are over the hover Layer; the chips and blocks are state frames', function()
+	reset()
+	st.config.global.colorPicker.recent = { { r = 1, g = 0, b = 0, a = 1 } }
+	local _, F = open()
+	for name, block in pairs({ was = F.was, new = F.new, chip = chips_shown(F.recent)[1] }) do
+		check(st:GetState(block, 'hover') == false, name .. ' is a state frame')
+		local r, g, b = stub.state(block.color).color_texture[1], stub.state(block.color).color_texture[2], stub.state(block.color).color_texture[3]
+		stub.fire_script(block, 'OnEnter', true)
+		check(st:GetState(block, 'hover'), name .. ': hover holds')
+		local cr, cg, cb = stub.state(block.color).color_texture[1], stub.state(block.color).color_texture[2], stub.state(block.color).color_texture[3]
+		eq(cr .. cg .. cb, r .. g .. b, name .. ': the color reads exactly the color')
+		local vr, vg, vb, va = block.color:GetVertexColor()
+		eq(vr .. vg .. vb .. va, '1111', name .. ': and is not tinted')
+		local layer, sub = block.color:GetDrawLayer()
+		eq(layer, 'ARTWORK', name .. ': the color is on ARTWORK')
+		check(sub > -8, name .. ': above the hover Layer (-8): the tint never lies over it')
+		stub.fire_script(block, 'OnLeave', true)
+	end
+	reset()
 end)

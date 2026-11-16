@@ -21,7 +21,7 @@ local Text, Acquire, ReleaseAll = OB.Text, OB.Acquire, OB.ReleaseAll
 
 -- From optionswindow.lua.
 local F, state, pools = S.F, S.state, S.pools
-local Normal, Muted, Accent, Button = S.Normal, S.Muted, S.Accent, S.Button
+local Normal, Muted, Button = S.Normal, S.Muted, S.Button
 local SetNavScroll, Select = S.SetNavScroll, S.Select
 local PAD, FIELD_HEIGHT, TAB_HEIGHT = S.PAD, S.FIELD_HEIGHT, S.TAB_HEIGHT
 local ACTION_PAD, ACTION_HEIGHT, NAV_ITEM = S.ACTION_PAD, S.ACTION_HEIGHT, S.NAV_ITEM
@@ -39,8 +39,6 @@ local ACTION_WIDTH = floor((OW.LAYOUT.own.navWidth - 24 - ACTION_GAP) / 2)
 -- sidebar less its padding, as the mockup draws it), and 8 above them.
 local SEARCH_WIDTH, SEARCH_GAP = 2 * ACTION_WIDTH + ACTION_GAP, 8
 local NAV_GROUP, NAV_TOP = 29, 6
-
-local HOVER = { 0.133, 0.133, 0.133, 1 } -- #222
 
 ------------------------------------------------------------------ the sidebar
 
@@ -96,11 +94,12 @@ local function PickedText()
 	return unpack(st.ThemeArt.Control('optionslist').text.picked)
 end
 
--- A sidebar entry's look: the open page's accent fill and bar, or under
--- Blizzard (item.blizzard) the Settings panel's category list, the open page
--- on its picked art (item.listPicked) with its name white and the others
--- gold; the one under the mouse is lit by OnEnter (item.listHover). Under
--- Thick and Thin the name keeps the profile's text color.
+-- A sidebar entry's look: a row (Widgets/states.lua), the open page selected (a two-line
+-- bar and the fade) and the one under the mouse tinted, all the helper's. Under Blizzard
+-- (item.blizzard) the Settings panel's category list, the open page on its picked art
+-- (item.listPicked) with its name white and the others gold; the one under the mouse is
+-- lit by OnEnter (item.listHover). Under Thick and Thin the name keeps the profile's text
+-- color until a state is on it.
 local function StyleNavItem(item)
 	item.listHover:Hide()
 	if item.blizzard then
@@ -110,28 +109,18 @@ local function StyleNavItem(item)
 		item.text:SetTextColor(Normal())
 	end
 	item.listPicked:SetShown(item.blizzard and item.active or false)
-	if item.active and not item.blizzard then
-		item.bg:SetColorTexture(st:ColorRGBA('accent', nil, st.TINT_ROW))
-		item.bg:Show()
-		item.bar:SetColorTexture(Accent()) -- read at each look, so a new accent shows on a pooled entry
-		item.bar:Show()
-	else
-		item.bg:Hide()
-		item.bar:Hide()
+	-- the look changed (Blizzard or not): the helper reads it again
+	if item.lookBlizzard ~= item.blizzard then
+		item.lookBlizzard = item.blizzard
+		st:RestyleStates(item)
 	end
-	item:SetAlpha(item.disabled and 0.4 or 1)
+	st:SetState(item, 'selected', item.active and true or false)
+	st:SetState(item, 'disabled', item.disabled and true or false)
 end
 
 local function MakeNavItem()
 	local item = CreateFrame('Button', nil, F.navContent)
 	item:SetHeight(NAV_ITEM) -- as wide as the layout's rows (DrawSidebar)
-	item.bg = item:CreateTexture(nil, 'BACKGROUND')
-	item.bg:SetAllPoints(item)
-	item.bar = item:CreateTexture(nil, 'ARTWORK')
-	item.bar:SetColorTexture(Accent())
-	item.bar:SetPoint('TOPLEFT', item, 'TOPLEFT', 0, 0)
-	item.bar:SetPoint('BOTTOMLEFT', item, 'BOTTOMLEFT', 0, 0)
-	item.bar:SetWidth(2)
 	-- Under Blizzard, the Settings panel's category list: the open page's
 	-- art, and the art under the mouse (their atlases set as it's drawn).
 	item.listPicked = item:CreateTexture(nil, 'BACKGROUND')
@@ -141,20 +130,21 @@ local function MakeNavItem()
 	item.listHover:SetAllPoints(item)
 	item.listHover:Hide()
 	item.text = Text(item, 'label')
+	-- Under Thick and Thin the hover is the helper's (hooked below); Blizzard's art is its own.
 	item:SetScript('OnEnter', function(self)
-		if self.active then return end
-		if self.blizzard then
-			self.listHover:Show()
-			if not self.disabled then self.text:SetTextColor(PickedText()) end
-			return
-		end
-		self.bg:SetColorTexture(unpack(HOVER))
-		self.bg:Show()
+		if self.active or not self.blizzard then return end
+		self.listHover:Show()
+		if not self.disabled then self.text:SetTextColor(PickedText()) end
 	end)
 	item:SetScript('OnLeave', function(self) StyleNavItem(self) end)
 	item:SetScript('OnClick', function(self)
 		if not self.disabled then OW:Navigate(self.key) end
 	end)
+	-- A row on the sidebar's fill. After the scripts above (a SetScript drops the helper's hooks).
+	st:AddStates(item, 'row', {
+		text = item.text, textRest = Normal, body = S.SIDEBAR_BG, inset = 0,
+		blizzard = function(self) return self.blizzard == true end,
+	})
 	return item
 end
 
@@ -204,6 +194,9 @@ local function DrawSidebar(entries)
 			end
 		else
 			frame = Acquire(pools.nav)
+			-- a pooled row starts at rest (it is wired once in its life)
+			if st:GetState(frame, 'hover') then st:SetState(frame, 'hover', false) end
+			if st:GetState(frame, 'pushed') then st:SetState(frame, 'pushed', false) end
 			frame.key, frame.name, frame.disabled = entry.key, entry.name, entry.disabled
 			frame.active = state.search == '' and entry.key == state.page
 			frame.text:ClearAllPoints()
@@ -239,20 +232,24 @@ local function MakeTab()
 	local tab = CreateFrame('Button', nil, F.main)
 	tab.text = Text(tab, 'tab')
 	tab.text:SetPoint('BOTTOMLEFT', tab, 'BOTTOMLEFT', 2, 7)
-	tab.underline = tab:CreateTexture(nil, 'OVERLAY')
-	tab.underline:SetColorTexture(Accent())
-	tab.underline:SetPoint('BOTTOMLEFT', tab, 'BOTTOMLEFT', 0, -1)
-	tab.underline:SetPoint('BOTTOMRIGHT', tab, 'BOTTOMRIGHT', 0, -1)
-	tab.underline:SetHeight(2)
+	-- Under Thick and Thin a tab is the helper's: the tint and the text under the mouse, the
+	-- underline as the bar one line below the tab; under Blizzard the Settings tab's art (LookTab)
+	-- and the name's color set here.
 	tab:SetScript('OnEnter', function(self)
-		if not (self.active or self.disabled) then self.text:SetTextColor(Normal()) end
+		if S.blizzard and not (self.active or self.disabled) then self.text:SetTextColor(Normal()) end
 	end)
 	tab:SetScript('OnLeave', function(self)
-		if not self.active then self.text:SetTextColor(Muted()) end
+		if S.blizzard and not self.active then self.text:SetTextColor(Muted()) end
 	end)
 	tab:SetScript('OnClick', function(self)
 		if not self.disabled then Select(self.slot, self.key) end
 	end)
+	-- after the scripts above
+	st:AddStates(tab, 'tab', {
+		text = tab.text, inset = 0, barOffset = st:GetLineSize(tab),
+		textRest = function(self) return (self.active and Normal or Muted)() end,
+		blizzard = function() return S.blizzard == true end,
+	})
 	return tab
 end
 
@@ -288,10 +285,16 @@ local function DrawTabRow(pool, list, active, top, slot)
 		tab:SetSize(width, TAB_HEIGHT)
 		tab:SetPoint('TOPLEFT', F.main, 'TOPLEFT', PAD + x, -y)
 		if tab.active then tab.text:SetTextColor(Normal()) else tab.text:SetTextColor(Muted()) end
-		if tab.active and not S.blizzard then tab.underline:SetColorTexture(Accent()) end
-		tab.underline:SetShown(tab.active and not S.blizzard)
 		LookTab(tab, look)
-		tab:SetAlpha(entry.disabled and 0.4 or 1)
+		-- a pooled tab starts at rest; the active one is selected (the bar and the fade)
+		if st:GetState(tab, 'hover') then st:SetState(tab, 'hover', false) end
+		if st:GetState(tab, 'pushed') then st:SetState(tab, 'pushed', false) end
+		if tab.lookBlizzard ~= S.blizzard then
+			tab.lookBlizzard = S.blizzard
+			st:RestyleStates(tab)
+		end
+		st:SetState(tab, 'selected', tab.active and true or false)
+		st:SetState(tab, 'disabled', entry.disabled and true or false)
 		x = x + width + TAB_GAP
 	end
 	return y + TAB_HEIGHT
@@ -746,15 +749,14 @@ function S.BuildCollapsed()
 	arrow:SetTexture(st.icons.chevronDown)
 	arrow:SetSize(TITLE_ARROW, TITLE_ARROW)
 	arrow:SetVertexColor(Muted())
-	button:SetScript('OnEnter', function(self)
-		arrow:SetVertexColor(Accent())
-		W.ShowTip(self, 'Choose a page')
-	end)
-	button:SetScript('OnLeave', function(self)
+	-- a glyph: Muted, the lighter tone of the accent under the mouse (the helper's)
+	button:SetScript('OnEnter', function(self) W.ShowTip(self, 'Choose a page') end)
+	button:SetScript('OnLeave', function(self) W.HideTip(self) end)
+	button:SetScript('OnHide', function(self)
+		st:SetState(self, 'hover', false)
 		arrow:SetVertexColor(Muted())
-		W.HideTip(self)
 	end)
-	button:SetScript('OnHide', function() arrow:SetVertexColor(Muted()) end)
+
 	S.Draggable(button) -- a drag on the title moves the window, a click opens the list
 	-- A drag is no click (the game can send a click at the end of a drag), as
 	-- the bar's names and a mover.
@@ -765,6 +767,8 @@ function S.BuildCollapsed()
 		if self.dragged then return end
 		S.OpenPageList()
 	end)
+	-- after the scripts above: a SetScript drops the helper's hooks
+	st:AddStates(button, 'glyph', { glyph = arrow, glyphRest = Muted })
 	F.titleButton, F.titleArrow = button, arrow
 end
 
