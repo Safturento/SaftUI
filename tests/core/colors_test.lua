@@ -63,7 +63,7 @@ test('the sections and their colors, in order, as small color swatches with tool
 
 	local expected = {
 		text = 'Text,Muted,Strong,Danger,Warning,Caution,Success,Shared',
-		button = 'Normal,Hover,Pushed,Checked,Danger',
+		button = 'Danger',
 		class = 'Death Knight,Demon Hunter,Druid,Evoker,Hunter,Mage,Monk,Paladin,Priest,Rogue,Shaman,Warlock,Warrior',
 		roles = 'Tank,Healer,Damage',
 		factions = 'Alliance,Horde,Neutral',
@@ -96,7 +96,7 @@ test("no section's note says to reload; Buttons' says what opacity does; the oth
 	for _, section in ipairs(st:GetModule('Colors').SECTIONS) do
 		check(not (section.note or ''):lower():find('reload', 1, true), section.key .. ': no reload in its note')
 	end
-	eq(Section('button').desc, "Opacity sets how strongly each is drawn: 100% is SaftUI's own.", "Buttons say what their opacity does")
+	eq(Section('button').desc, "Opacity sets how strongly it is drawn: 100% is SaftUI's own.", "Buttons say what their opacity does")
 	for _, key in ipairs({ 'text', 'roles', 'factions', 'loot', 'class', 'reaction', 'power', 'item_quality', 'status', 'threat', 'objectives' }) do
 		eq(Section(key).desc, nil, key)
 	end
@@ -150,11 +150,11 @@ test('a set writes onto the profile color itself and says which group changed', 
 	eq(a, 1, 'class has no alpha: unchanged')
 	eq(got[#got], 'class')
 
-	Section('button').args.hover.set({}, 0.1, 0.1, 0.1, 0.5)
-	eq(st.config.profile.colors.button.hover.a, 0.5, 'Buttons write alpha, and every Buttons reader draws it (button_opacity_test.lua)')
-	eq(select(4, st:ColorRGBA('button', 'hover', 0.4)), 0.2, 'a reader at 0.4 draws half of it')
-	Section('button').args.hover.default.reset()
-	eq(st.config.profile.colors.button.hover.a, 1, "and its reset is SaftUI's own: 100%")
+	Section('button').args.danger.set({}, 0.1, 0.1, 0.1, 0.5)
+	eq(st.config.profile.colors.button.danger.a, 0.5, 'Buttons write alpha, and every Buttons reader draws it (button_opacity_test.lua)')
+	eq(select(4, st:ColorRGBA('button', 'danger', 0.4)), 0.2, 'a reader at 0.4 draws half of it')
+	Section('button').args.danger.default.reset()
+	eq(st.config.profile.colors.button.danger.a, 1, "and its reset is SaftUI's own: 100%")
 
 	local before = st.config.profile.colors.text.danger.a
 	Section('text').args.danger.set({}, 0.5, 0.5, 0.5, 0.5)
@@ -233,12 +233,12 @@ test("a color's own reset: it differs once changed, puts back its own color (alp
 	eq(st.config.profile.colors.renown.r, st.defaults.colors.renown.r, 'renown is reset')
 	eq(got[#got], 'renown', 'and says renown changed')
 
-	local hover = Section('button').args.hover
-	local b = st.config.profile.colors.button.hover
-	hover.set({}, b.r, b.g, b.b, 0.25)
-	check(hover.default.differs(), 'Buttons: a new opacity alone differs')
-	hover.default.reset()
-	eq(st.config.profile.colors.button.hover.a, st.defaults.colors.button.hover.a, 'and its reset puts the opacity back')
+	local danger = Section('button').args.danger
+	local b = st.config.profile.colors.button.danger
+	danger.set({}, b.r, b.g, b.b, 0.25)
+	check(danger.default.differs(), 'Buttons: a new opacity alone differs')
+	danger.default.reset()
+	eq(st.config.profile.colors.button.danger.a, st.defaults.colors.button.danger.a, 'and its reset puts the opacity back')
 
 	Section('text').args.danger.default.reset() -- an earlier case set it
 	local red = st.config.profile.colors.text.danger
@@ -274,15 +274,9 @@ test('the roll timer bars are not Item quality, Blue is on Theme > Accent, and t
 	eq(Section('button').args.blue, nil, 'Buttons has no Blue: it is the accent now')
 	eq(Section('text').args.blue, nil, 'nor Text')
 	eq(Section('button').args.green, nil, 'Buttons > Green went with it')
-	-- Each Buttons row says which highlight it is (opacity works now: the owner lowers one and watches what fades).
-	local normal, hover, checked = Section('button').args.normal.desc, Section('button').args.hover.desc, Section('button').args.checked.desc
-	check(normal:find('scroll bar thumb at rest', 1, true), 'Normal names the thumb at rest: ' .. normal)
-	check(not normal:find('highlight', 1, true) and not normal:find('zone text', 1, true), 'and no highlight: Hover is everything under the mouse')
-	check(hover:find("micro buttons' highlight", 1, true) and hover:find('tracking, queue and expansion', 1, true), 'Hover names the micro buttons and the three minimap buttons: ' .. hover)
-	check(hover:find('zone text', 1, true) and hover:find('addon compartment', 1, true) and hover:find("micro menu bar's own items", 1, true), "and the bar's own items: " .. hover)
-	check(hover:find('check box', 1, true) and hover:find('under the mouse', 1, true), "and a button's or check box's highlight: " .. hover)
-	check(not hover:find('Everything', 1, true) and hover:find('Accent', 1, true) and hover:find('close button', 1, true), 'Hover claims no more than it colors: slots and the close button are named elsewhere: ' .. hover)
-	check(checked:find('checked check box', 1, true), 'Checked names the checked check box: ' .. checked)
+	-- Buttons holds Danger alone: the states are made from the Accent (Theme > Accent's dots).
+	for _, key in ipairs({ 'normal', 'hover', 'pushed', 'checked' }) do eq(Section('button').args[key], nil, 'Buttons > ' .. key .. ' is gone') end
+	check(Section('button').args.danger.desc:find('Locked bank slots', 1, true), 'Danger names the locked slot')
 	check(quality['1'].desc:find('normal instances', 1, true), 'the badge is shown in raids too')
 	check(Section('text').args.normal.desc:find('summon button', 1, true), "Text names the totem bar summon button's arrow")
 	for _, word in ipairs({ 'Alliance', 'Horde', 'Neutral' }) do
