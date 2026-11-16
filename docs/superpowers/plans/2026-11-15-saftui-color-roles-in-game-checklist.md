@@ -75,7 +75,7 @@ State colors (Task 4):
 
 ## 6. Buttons at their opacity (Task 5)
 
-At the defaults (100%), all of these look as they did, except that every highlight under the mouse is now Buttons > Hover at 40% (a blue tint over the fill, where it was Normal's near-black) since the hover change ("Hover is everything under the mouse", decision 54):
+At the defaults (100%), all of these look as they did, except that every button, check box and bar item highlight under the mouse is now Buttons > Hover at 40%, mixed over the fill (a blue tint, where it was Normal's near-black) since decision 54 (under Blizzard: bare check boxes and the bar items change, buttons and plain check boxes do not):
 1. A SaftUI button's highlight (Hover at 40% now) and pressed fill (a bag header button, keybind mode's Done, the loot feed's F and V), the filter box of a bag category or of the currency list (a SaftUI check box: its checked fill, now Buttons > Checked, and its highlight, Hover at 40%), and the scroll bar thumb of a bag window or of chat, at rest, under the mouse and pressed. (`/sui`'s own scroll bar and check boxes are the options kit's and don't read Buttons colors.)
 2. The resize corners: the grip at the `/sui` window's bottom right and the world map's corner (`st:EnableResizing`, under Thick or Thin).
 3. The micro menu: each micro button's highlight (40%) and pushed fill (60%), a bar item's highlight and pressed fill, the tracking button, the queue eye and the expansion button under the mouse.

@@ -669,6 +669,13 @@ test("step 6: a Hover at its default (to the byte) seeds nothing; an untouched p
 	eq(SaftUI_DB.profiles.Old.colors.button, nil, 'nothing saved for it')
 end)
 
+test('step 6: a saved Checked is never overwritten by the seed', function()
+	local raw = { colors = { version = 5, button = { hover = { r = 0.9, g = 0.2, b = 0.6 }, checked = { r = 0.1, g = 0.1, b = 0.1, a = 0.5 } } } }
+	st:MigrateColors(raw)
+	eq(rgb(raw.colors.button.checked), RGB(0.1, 0.1, 0.1), 'its color stays'); eq(raw.colors.button.checked.a, 0.5, 'and its opacity')
+	eq(raw.colors.version, LAST())
+end)
+
 test('step 6: data it does not expect is left alone, and nothing raises', function()
 	for _, bad in ipairs({ 'x', 5, true }) do
 		local raw = { colors = { version = 5, button = bad } }

@@ -340,6 +340,7 @@ test("a bar item's highlight is Hover at 0.4 and its pushed fill Pushed at 1, ea
 		MicroMenu:SkinBarButton(item)
 		eq(T.text(item:GetHighlightTexture():GetVertexColor()), want('hover', 0.4, a), 'the highlight at ' .. a * 100 .. '%')
 		eq(T.text(item:GetPushedTexture():GetVertexColor()), want('pushed', 1, a), 'the pushed fill at ' .. a * 100 .. '%')
+		eq(item:GetHighlightTexture():GetBlendMode(), 'BLEND', 'the highlight mixes over the fill, as the micro buttons do')
 	end
 	paint_buttons(1)
 end)

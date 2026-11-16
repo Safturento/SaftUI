@@ -308,7 +308,7 @@ function st:SkinButton(button, theme, background, font)
         hover:SetVertexColor(st:ColorRGBA('button', 'hover', st.HOVER_TINT))
         hover:SetAllPoints(button)
 
-        button:SetHighlightTexture(hover)
+        button:SetHighlightTexture(hover, 'BLEND') -- handed no blend mode, a highlight is additive
         button.hover = hover
 		st:FollowColor(hover, 'button', 'hover', PaintHighlight)
 	end

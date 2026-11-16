@@ -38,8 +38,10 @@ st.BOX_COLORS = {
 st.TINT_ROW = 0.25
 st.TINT_OBJECT = 0.15
 -- The strength a hover highlight draws Buttons > Hover at (times its opacity):
--- a flat tint over the button's fill, in alpha blend, not a solid block. The
--- micro buttons' highlight has always drawn it. Readers that draw Hover as a
+-- a tint, never a solid block. Every highlight that draws it is set to the
+-- 'BLEND' blend mode (a highlight texture handed none is additive in the game),
+-- as the micro buttons' always were, so it is the picked color mixed over what
+-- is under it, the same on every widget. Readers that draw Hover as a
 -- fill of its own (a hovered scroll bar thumb, a resize corner, the minimap's
 -- buttons) keep their own strengths.
 st.HOVER_TINT = 0.4

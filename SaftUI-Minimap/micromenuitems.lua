@@ -43,7 +43,7 @@ function MicroMenu:SkinBarButton(button)
     hover:SetTexture(st.BLANK_TEX)
     hover:SetVertexColor(st:ColorRGBA('button', 'hover', st.HOVER_TINT))
     hover:SetAllPoints(button)
-    button:SetHighlightTexture(hover)
+    button:SetHighlightTexture(hover, 'BLEND') -- handed no blend mode, a highlight is additive
     st:FollowColor(hover, 'button', 'hover', PaintBarHover)
 
     local pushed = button:CreateTexture(nil, 'OVERLAY')

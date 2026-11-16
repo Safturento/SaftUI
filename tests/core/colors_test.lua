@@ -281,6 +281,7 @@ test('the roll timer bars are not Item quality, Blue is on Theme > Accent, and t
 	check(hover:find("micro buttons' highlight", 1, true) and hover:find('tracking, queue and expansion', 1, true), 'Hover names the micro buttons and the three minimap buttons: ' .. hover)
 	check(hover:find('zone text', 1, true) and hover:find('addon compartment', 1, true) and hover:find("micro menu bar's own items", 1, true), "and the bar's own items: " .. hover)
 	check(hover:find('check box', 1, true) and hover:find('under the mouse', 1, true), "and a button's or check box's highlight: " .. hover)
+	check(not hover:find('Everything', 1, true) and hover:find('Accent', 1, true) and hover:find('close button', 1, true), 'Hover claims no more than it colors: slots and the close button are named elsewhere: ' .. hover)
 	check(checked:find('checked check box', 1, true), 'Checked names the checked check box: ' .. checked)
 	check(quality['1'].desc:find('normal instances', 1, true), 'the badge is shown in raids too')
 	check(Section('text').args.normal.desc:find('summon button', 1, true), "Text names the totem bar summon button's arrow")

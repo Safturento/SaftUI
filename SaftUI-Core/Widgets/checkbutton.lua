@@ -130,7 +130,7 @@ function st:SkinCheckButton(button, style)
 	hover:SetTexture(self.BLANK_TEX)
 	hover:SetVertexColor(st:ColorRGBA('button', 'hover', st.HOVER_TINT))
 	hover:SetAllPoints(button)
-	button:SetHighlightTexture(hover)
+	button:SetHighlightTexture(hover, 'BLEND') -- handed no blend mode, a highlight is additive
 
 	local name = button:GetName()
 	local text = button.Text or button.Label or name and _G[name..'Text']

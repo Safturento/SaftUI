@@ -510,7 +510,7 @@ CO.MIGRATION_STEPS = {
 		opacity = { 'button.normal', 'button.hover', 'button.pushed', 'button.danger' },
 	},
 	{
-		-- Hover is everything under the mouse and a checked check box has a
+		-- Hover is the highlight under the mouse (buttons, check boxes, bar items) and a checked check box has a
 		-- color of its own, Buttons > Checked. A checked box read Hover, so a
 		-- Hover the owner changed is Checked's too, and the box looks as it
 		-- did; Hover keeps its value, and a button's highlight reads it from
@@ -579,21 +579,27 @@ end
 -- too) is written whole into the destination, in place when there is a table
 -- (the live profile has one: AceDB gives it its defaults). A channel that is no
 -- number takes the default's. A source that is no table, or no default, seeds
--- nothing.
-local function SeedColor(profile, source, destination)
-	local group, key = SplitPath(source)
+-- nothing, and neither does a destination that is already customized.
+local function Customized(profile, path)
+	local group, key = SplitPath(path)
 	local holder = group and profile.colors[group]
 	local saved = type(holder) == 'table' and holder[key]
 	local defaults = st.defaults and st.defaults.colors and group and st.defaults.colors[group]
 	local default = type(defaults) == 'table' and defaults[key]
-	if type(saved) ~= 'table' or type(default) ~= 'table' then return end
+	if type(saved) ~= 'table' or type(default) ~= 'table' then return nil end
 	local c, differs = {}, false
 	for _, channel in ipairs({ 'r', 'g', 'b', 'a' }) do
 		local fallback = default[channel] or 1
 		c[channel] = type(saved[channel]) == 'number' and saved[channel] or fallback
 		if Byte(c[channel]) ~= Byte(fallback) then differs = true end
 	end
-	if not differs then return end
+	return differs and c or nil
+end
+
+local function SeedColor(profile, source, destination)
+	local c = Customized(profile, source)
+	-- A destination already saved differently from its default is the owner's: left alone.
+	if not c or Customized(profile, destination) then return end
 	WriteColor(profile, destination, c)
 	local dgroup, dkey = SplitPath(destination)
 	profile.colors[dgroup][dkey].a = c.a
@@ -681,7 +687,7 @@ CO.SECTIONS = {
 		key = 'button', name = 'Buttons', note = "Opacity sets how strongly each is drawn: 100% is SaftUI's own.", hasAlpha = true,
 		colors = Colors('button', {
 			{ 'normal', 'Normal', 'A scroll bar thumb at rest.' },
-			{ 'hover', 'Hover', "Everything under the mouse: a SaftUI button's or check box's highlight, the highlight of the micro menu bar's own items (the zone text and the addon compartment), a hovered scroll bar thumb, the micro buttons' highlight, the minimap's tracking, queue and expansion buttons, and resize corners. Highlights draw it light, over the fill." },
+			{ 'hover', 'Hover', "A SaftUI button's, check box's highlight and the highlight of the micro menu bar's own items (the zone text and the addon compartment) under the mouse, a hovered scroll bar thumb, the micro buttons' highlight, the minimap's tracking, queue and expansion buttons, and resize corners. Highlights draw it light, over the fill. Slots and action buttons under the mouse use the Accent, and a close button Text > Danger." },
 			{ 'pushed', 'Pushed', 'A pressed SaftUI button, scroll bar thumb or micro menu button.' },
 			{ 'checked', 'Checked', "A checked check box's fill." },
 			{ 'danger', 'Danger', "Locked bank slots, and the flash on an action bar or totem button." },
