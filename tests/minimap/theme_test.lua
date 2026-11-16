@@ -47,26 +47,8 @@ test('every value row of the Minimap and Micro menu pages has a reset', function
 	local update, updateMicro = MM.UpdateConfig, MicroMenu.UpdateConfig
 	function MM:UpdateConfig() end -- the rows' own sets still run; what they apply is not under test
 	function MicroMenu:UpdateConfig() end
-	st:RegisterConfigMover(Minimap, {
-		key = 'minimap', blizzardFrame = true, label = 'Minimap', config = function() return MM.config end,
-		apply = function() end, configPath = { 'Minimap', 'general' }, module = 'Minimap',
-		defaults = function() return st.defaults.minimap end,
-	})
-	st:RegisterConfigMover(MicroMenu.Container, {
-		key = 'micromenu', label = 'Micro Menu', config = function() return MicroMenu.config end,
-		apply = function() end, configPath = { 'MicroMenu', 'general' }, module = 'Minimap',
-		defaults = function() return st.defaults.micromenu end,
-	})
-	-- The two movers are registered inline in the modules' setup, so these copies are pinned against the source:
-	-- a Position row's reset is its mover's only while the key, configPath and defaults are the real ones.
-	local function PinnedTo(path, lines)
-		local source = read_saftui_source(path)
-		for _, line in ipairs(lines) do
-			check(source:find(line, 1, true) ~= nil, path .. ' registers its mover with ' .. line)
-		end
-	end
-	PinnedTo('SaftUI-Minimap/minimap.lua', { "key = 'minimap',", "blizzardFrame = true,", "configPath = { 'Minimap', 'general' },", 'defaults = function() return st.defaults.minimap end,' })
-	PinnedTo('SaftUI-Minimap/micromenu.lua', { "key = 'micromenu',", "configPath = { 'MicroMenu', 'general' },", 'defaults = function() return st.defaults.micromenu end,' })
+	MM:RegisterMinimapMover()
+	MicroMenu:RegisterMicroMenuMover()
 	local R = load_test_file('lib/reset_walk.lua')
 	local ok, err = pcall(function()
 		R.check_page({ Minimap = MM:GetConfigTable() }, 'Minimap')

@@ -21,7 +21,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-15 — A Position reset runs a unit frame's update once for every part it writes](#2026-11-15--a-position-reset-runs-a-unit-frames-update-once-for-every-part-it-writes)
   - [2026-11-15 — After a UI scale change, a reset half-pixel Position can show its icon again](#2026-11-15--after-a-ui-scale-change-a-reset-half-pixel-position-can-show-its-icon-again)
   - [2026-11-15 — Shipped category names shown numbered: no test pins that they show no reset icon](#2026-11-15--shipped-category-names-shown-numbered-no-test-pins-that-they-show-no-reset-icon)
-  - [2026-11-15 — Reset walks: the feed's, Minimap's and Micro menu's movers are registered inline, so the tests pin a copy](#2026-11-15--reset-walks-the-feeds-minimaps-and-micro-menus-movers-are-registered-inline-so-the-tests-pin-a-copy)
   - [2026-11-15 — Reset walk: the profile compare is most of a unit page's cost](#2026-11-15--reset-walk-the-profile-compare-is-most-of-a-unit-pages-cost)
   - [2026-11-15 — Forever: Show in > Bank does nothing for the default bank (the combined bank)](#2026-11-15--forever-show-in--bank-does-nothing-for-the-default-bank-the-combined-bank)
   - [2026-11-15 — Auto Vendor counts a fresh purchase in a just-sold slot as a refused sale](#2026-11-15--auto-vendor-counts-a-fresh-purchase-in-a-just-sold-slot-as-a-refused-sale)
@@ -130,6 +129,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-15 — Reset walks: the feed's, Minimap's and Micro menu's movers are registered inline, so the tests pin a copy](#2026-11-15--reset-walks-the-feeds-minimaps-and-micro-menus-movers-are-registered-inline-so-the-tests-pin-a-copy)
   - [2026-11-15 — Blizzard's tracker: the Position reset is tested on Forever only](#2026-11-15--blizzards-tracker-the-position-reset-is-tested-on-forever-only)
   - [2026-11-15 — Buffs and debuffs: Size and Outline keep hand defaults a derived one would replace](#2026-11-15--buffs-and-debuffs-size-and-outline-keep-hand-defaults-a-derived-one-would-replace)
   - [2026-11-15 — Buffs and debuffs: Wrap's hand reset copies the General group's set](#2026-11-15--buffs-and-debuffs-wraps-hand-reset-copies-the-general-groups-set)
@@ -385,16 +385,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 **Anchors:** `SaftUI-Bags/categories.lua` (`UniqueName`, the numbering in `GetCategoryList`), `SaftUI-Bags/categoriestab.lua` (`args.name.default.differs`, which reads only a saved edit), `tests/bags/categories_editor_test.lua`.
 
 **Shape of work:** One case: a user category called like a shipped one, the list numbers the shipped one, and its Name icon is absent until the name is edited. Small.
-
-### 2026-11-15 — Reset walks: the feed's, Minimap's and Micro menu's movers are registered inline, so the tests pin a copy
-
-**What:** The loot feed, the minimap and the micro menu register their movers inside their setup functions, so the walks register copies and a source check pins the key, `configPath` and `defaults` text.
-
-**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
-
-**Anchors:** `SaftUI-Loot/Feed/feed.lua` (`st:RegisterConfigMover(feed, ...)`), `SaftUI-Minimap/minimap.lua`, `SaftUI-Minimap/micromenu.lua`; `tests/loot/theme_test.lua` and `tests/minimap/theme_test.lua` (the `feedSource` and `PinnedTo` checks).
-
-**Shape of work:** Move each registration into a method (`LT:RegisterFeedMover()`, as `LT:RegisterRollMover()` and `CHT:RegisterChatMover()` are) that the world calls. Three small changes and the source checks go.
 
 ### 2026-11-15 — Reset walk: the profile compare is most of a unit page's cost
 
@@ -2395,6 +2385,18 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-15 — Reset walks: the feed's, Minimap's and Micro menu's movers are registered inline, so the tests pin a copy
+
+**What:** The loot feed, the minimap and the micro menu register their movers inside their setup functions, so the walks register copies and a source check pins the key, `configPath` and `defaults` text.
+
+**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
+
+**Anchors:** `SaftUI-Loot/Feed/feed.lua` (`st:RegisterConfigMover(feed, ...)`), `SaftUI-Minimap/minimap.lua`, `SaftUI-Minimap/micromenu.lua`; `tests/loot/theme_test.lua` and `tests/minimap/theme_test.lua` (the `feedSource` and `PinnedTo` checks).
+
+**Shape of work:** Move each registration into a method (`LT:RegisterFeedMover()`, as `LT:RegisterRollMover()` and `CHT:RegisterChatMover()` are) that the world calls. Three small changes and the source checks go.
+
+**Resolved 2026-11-15:** the registrations are methods now (`LT:RegisterFeedMover`, `MM:RegisterMinimapMover`, `MicroMenu:RegisterMicroMenuMover`), called by the setup and by the walks in `tests/loot/theme_test.lua` and `tests/minimap/theme_test.lua`; the source checks are gone.
 
 ### 2026-11-15 — Blizzard's tracker: the Position reset is tested on Forever only
 

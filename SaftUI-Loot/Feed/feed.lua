@@ -782,6 +782,20 @@ function LT:UpdateFeedVisibility(feed, elapsed)
 	self:UpdateFeedButtons()
 end
 
+-- The feed's edit mode mover. A method of its own so the tests' reset walk
+-- registers the real one.
+function LT:RegisterFeedMover()
+	st:RegisterConfigMover(self.feed, {
+		key = 'lootfeed',
+		label = 'Loot Feed',
+		config = function() return self.config.feed end,
+		apply = function() self:UpdateLootFeedConfig(); self:UpdateFeed() end,
+		configPath = { 'Loot', 'feed', 'general' },
+		module = 'Loot',
+		defaults = function() return st.defaults.loot.feed end,
+	})
+end
+
 function LT:InitializeLootFeed()
 	local config = self.config.feed
 	local feed = CreateFrame('frame', st.name ..'LootFeed', UIParent)
@@ -826,15 +840,7 @@ function LT:InitializeLootFeed()
 
 	self:UpdateLootFeedConfig()
 
-	st:RegisterConfigMover(feed, {
-		key = 'lootfeed',
-		label = 'Loot Feed',
-		config = function() return self.config.feed end,
-		apply = function() self:UpdateLootFeedConfig(); self:UpdateFeed() end,
-		configPath = { 'Loot', 'feed', 'general' },
-		module = 'Loot',
-		defaults = function() return st.defaults.loot.feed end,
-	})
+	self:RegisterFeedMover()
 
 	self:RegisterEvent('CHAT_MSG_LOOT', 'LootFeedHandler')
 	self:RegisterEvent('CHAT_MSG_MONEY', 'LootFeedHandler')
