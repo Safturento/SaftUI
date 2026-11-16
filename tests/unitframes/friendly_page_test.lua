@@ -593,3 +593,56 @@ test("General's toggles keep their panel while the box is checked: only the cent
 	end
 	st.config.profile.theme.name = theme
 end)
+
+------------------------------------------------------------------ the Parts section (Ruling 31)
+
+test("with Use enemy nameplates' settings checked the Parts section hides, and comes back whole", function()
+	for _, client in ipairs({ 'forever', 'retail' }) do
+		local _, UF = world(client)
+		local root, view = page(UF, 'friendlynameplate')
+		local parts = root.Unitframes.args.friendlynameplate.args.general.args.parts
+		eq(type(parts.hidden), 'function', client .. ': the section has a hidden rule, none of its rows kept')
+		eq(keys(view), 'friendly,use_enemy,theme,background,width,height' .. FRIENDLY_PARTS, client .. ': drawn unchecked')
+
+		check(set(UF, 'friendlynameplate', 'use_enemy', true), client .. ': checked')
+		_, view = page(UF, 'friendlynameplate')
+		eq(keys(view), 'friendly,use_enemy,sourced', client .. ': the switches, the box and the line')
+		for _, key in ipairs({ 'name', 'subtext', 'healthtext', 'raidtarget', 'quest' }) do
+			eq(row_for(view, key), nil, client .. ': ' .. key .. ' is hidden')
+		end
+		eq(row_for(view, 'sourced').name, 'Sourced from enemy nameplates', client .. ': the line is last')
+		local list = rows(view)
+		eq(list[#list].key, 'sourced', client .. ': nothing under the line')
+
+		check(set(UF, 'friendlynameplate', 'use_enemy', false), client .. ': unchecked')
+		_, view = page(UF, 'friendlynameplate')
+		eq(keys(view), 'friendly,use_enemy,theme,background,width,height' .. FRIENDLY_PARTS, client .. ': every row back')
+	end
+end)
+
+test('another nameplate addon: every part row is disabled, the stand-down line reads at full strength', function()
+	for _, client in ipairs({ 'forever', 'retail' }) do
+		local _, UF = world(client)
+		stub.loaded_addons.Plater = true
+		for _, pick in ipairs({ 'nameplate', 'friendlynameplate' }) do
+			local _, view = page(UF, pick)
+			local list = rows(view)
+			eq(list[1].name, DRAWN_BY_PLATER, client .. ' ' .. pick .. ': the line first')
+			eq(list[1].disabled, false, client .. ' ' .. pick .. ': at full strength')
+			local seen = 0
+			for _, key in ipairs({ 'name', 'subtext', 'healthtext', 'threat', 'raidtarget', 'quest' }) do
+				local row = row_for(view, key)
+				if row then
+					seen = seen + 1
+					eq(row.disabled, true, client .. ' ' .. pick .. ': ' .. key .. ' is disabled')
+				end
+			end
+			eq(seen, pick == 'nameplate' and 6 or 5, client .. ' ' .. pick .. ': the part rows are shown, dimmed')
+		end
+		-- The box checked too: the rows kept stay disabled by the stand-down.
+		UF:GetProfileConfig().nameplate.use_friendly = true
+		local _, view = page(UF, 'nameplate')
+		eq(row_for(view, 'threat').disabled, true, client .. ': Threat disabled while the plates are another addon\'s')
+		eq(#take_errors(), 0, client .. ': no error')
+	end
+end)

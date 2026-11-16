@@ -702,6 +702,27 @@ test("the Position block of a part's menu fits the cell under Thick, Thin and Bl
 	end
 end)
 
+test("the Position block's TO dropdown is sized to its column: the name box under it is as wide, and the gap after it is 12", function()
+	in_look('thick', function()
+		local root = tree()
+		local body, by = draw_general(root, 'player')
+		check(by.name.widget:OpenMenu(), 'opens')
+		local menuBody = OW.GetMenuFrames().body
+		local block
+		for _, cell in ipairs(menuBody.cells) do
+			if cell.row.type == 'position' then block = cell end
+		end
+		if check(block ~= nil, 'the Position block is drawn') then
+			local w = block.widget
+			eq(w.select:GetWidth(), 136, 'the dropdown is selectWidth wide, not 140')
+			eq(w.name:GetWidth(), w.select:GetWidth(), 'the name box under it as wide')
+			eq(w.atSquare:GetLeft() - w.select:GetRight(), 12, 'the gap after the dropdown')
+		end
+		OW:CloseMenu()
+		body:Release()
+	end)
+end)
+
 ------------------------------------------------------------------ the standing checks
 
 -- A deep copy that reads only what is there (next, no __index: AceDB's wildcard makes a table
