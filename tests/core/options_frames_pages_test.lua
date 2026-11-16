@@ -3,7 +3,7 @@
 -- is built with stand-ins for those frames (SaftUI's own: the bag windows' anchors, the
 -- chat holder, the loot roll anchor and feed, the action bars and extra buttons; the module methods that need them are
 -- counters, with a comment where Blizzard is what they would reach). Checked for each
--- page: every option has a desc and no Ace width, Position is the last option of its
+-- page: every option has a desc and no Ace width, Position is the frame's second section (the reset walk checks it) in its
 -- General group, and the new options read and write their profile keys and apply them
 -- the way the module reads them.
 --
@@ -39,11 +39,8 @@ local function check_page(name, tree)
 		for key, option in pairs(group.args) do
 			if option.type == 'position' then
 				positions = positions + 1
-				for other, sibling in pairs(group.args) do
-					if other ~= key then
-						check((sibling.order or 100) < option.order, where .. ': Position is after ' .. other)
-					end
-				end
+				-- (Where a Position sits among its siblings is the page's second-section rule,
+				-- checked by the reset walk through tests/lib/position_second.lua.)
 			end
 		end
 	end
@@ -252,7 +249,7 @@ test('Loot: Test mode is small, every option has a desc, Position is last', func
 	eq(got:match('^test_mode:small 1/1'), 'test_mode:small 1/1', 'Test mode takes a quarter')
 end)
 
-test("Action bars: tooltips, Position last on each bar and extra, Theme and Background on All bars, and the texts' Position blocks over the stored keys", function()
+test("Action bars: tooltips, Position second on each bar and extra, Theme and Background on All bars, and the texts' Position blocks over the stored keys", function()
 	local AB = st:GetModule('ActionBars')
 	st:BindModuleConfig(AB, 'actionbars')
 	AB.EXTRA_IDS = { 'extra', 'zone', 'vehicleleave' }
@@ -362,9 +359,9 @@ test("Action bars: tooltips, Position last on each bar and extra, Theme and Back
 		end
 	end
 
-	-- Position last on each bar and each extra button.
+	-- Position second on each bar and each extra button.
 	for _, id in ipairs({ 'bar1', 'pet', 'extra', 'zone', 'vehicleleave' }) do
 		local view = OM.BuildView({ ActionBars = tree }, 'ActionBars', { pick = id })
-		eq(view.sections[#view.sections].title, 'Position', id .. ' ends with the Position section')
+		eq(view.sections[2].title, 'Position', id .. ' has the Position section second')
 	end
 end)

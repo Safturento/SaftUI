@@ -735,8 +735,8 @@ function UF:GetConfigTable()
 						-- Passing the mover's frame makes a typed frame go through
 						-- st:ValidateAnchor, which rejects the frame itself and
 						-- anything anchored back to it (e.g. Pet for Player).
-						-- Last in General, after a group's Layout too.
-						position = st.Config.generators.position(1000, true, frame_position_get, frame_position_set,
+						-- The second section of General: after these rows, before a group's Layout (order 6) and Range (500).
+						position = st.Config.generators.position(4, true, frame_position_get, frame_position_set,
 							self:GetMoverFrame(unit), nil, nil, UF.SavedAt(unit, 'position')),
 					}
 				}

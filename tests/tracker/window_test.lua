@@ -741,7 +741,7 @@ test("General's rows: each saves and the tracker follows at once, and each reset
 	eq(args.grow.sorting[1], 'down', 'Down first')
 	eq(args.header_font.name, 'Header font', 'the second font row')
 	eq(args.text.type, 'header', 'a Text section')
-	eq(args.position.order, 1000, 'Position last')
+	eq(args.position.order, 8.5, 'Position second: after the rows, before Text')
 
 	set('width', 300)
 	eq(TR.holder:GetWidth() .. ',' .. TR.window:GetWidth(), '300,300', 'Width reaches the holder and the window')
