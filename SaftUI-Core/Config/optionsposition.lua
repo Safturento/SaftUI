@@ -231,6 +231,7 @@ define('position', {
 			self.select.text:SetText(label)
 			showName = key ~= nil and key == OM.Member(root, row, 'nameKey')
 		end
+		self.select:SetSize(toWidth > 0 and toWidth or POS_SELECT_WIDTH, POS_BOX)
 		self.select:SetShown(target == 'select')
 		if showName then self.name:SetText(tostring(self:Value('frame') or '')) end
 		self.name:SetShown(showName)

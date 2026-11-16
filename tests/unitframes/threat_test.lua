@@ -21,7 +21,7 @@
 --     only the plates showing a unit);
 --   - the threat text: the percent, coloured as the tint and in the normal
 --     text colour while good, shown only where the tint would be and the
---     player is on the threat list; its Threat tab.
+--     player is on the threat list; its Threat part (a row of the Enemy page's Parts).
 --
 -- The world is nameplate_world.lua's (see its top): real unit frame files over
 -- oUF's stand-in (fixtures/ouf.lua), whose elements don't update from the

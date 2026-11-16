@@ -14,8 +14,8 @@ local UF = st:GetModule('Unitframes')
 	with one centred line in their place saying where the plates' settings
 	come from ("Sourced from enemy nameplates"). What stays: General, with the
 	on/off switches (Nameplates, Friendly plates) and the box, the stand-down
-	line, and on the Enemy page threat (Threat when solo and the Threat tab),
-	since threat is always the Enemy page's (threat.lua reads
+	line, and on the Enemy page threat (Threat when solo and the Threat row of its
+	Parts), since threat is always the Enemy page's (threat.lua reads
 	nameplate.threat). A disabled tab the window's selection names (one tab
 	is kept across the Unitframes picks) opens General instead, and Search
 	skips the disabled tabs (st.OptionsModel). The settings set aside stay in
@@ -26,7 +26,10 @@ local UF = st:GetModule('Unitframes')
 
 	Per page: box, the box's key in the page's config; other, the other page;
 	kept, the page's options (its tabs) that stay usable while the box is
-	checked, and keptGeneral, General's that stay shown; sourced, the centred
+	checked, keptGeneral, General's that stay shown, and keptParts, the Parts
+	rows of General that stay (the rest are hidden while it's checked, so not
+	drawn and not searched; a page with none loses the Parts section whole);
+	sourced, the centred
 	line while it's checked; otherChecked, the box's tooltip while it's
 	disabled because the other page's is checked.
 ]]
@@ -34,8 +37,9 @@ local PLATE_PAGES = {
 	nameplate = {
 		box = 'use_friendly',
 		other = 'friendlynameplate',
-		kept = { general = true, drawn_by = true, Threat = true },
-		keptGeneral = { enable = true, threat_solo = true, use_friendly = true, sourced = true },
+		kept = { general = true, drawn_by = true },
+		keptGeneral = { enable = true, threat_solo = true, use_friendly = true, sourced = true, parts = true },
+		keptParts = { threat = true },
 		sourced = 'Sourced from friendly nameplates',
 		otherChecked = "Friendly nameplates use this page's settings. To check this box, uncheck Use enemy nameplates' settings on the Friendly nameplates page.",
 	},
@@ -44,6 +48,7 @@ local PLATE_PAGES = {
 		other = 'nameplate',
 		kept = { general = true, drawn_by = true },
 		keptGeneral = { friendly = true, use_enemy = true, sourced = true },
+		keptParts = {},
 		sourced = 'Sourced from enemy nameplates',
 		otherChecked = "Enemy nameplates use this page's settings, all but threat. To check this box, uncheck Use friendly nameplates' settings on the Enemy nameplates page.",
 	},
@@ -134,11 +139,12 @@ local function PlateBox(unit, order, name, desc)
 		UF:GetProfileConfig()[unit][plate.box] = value
 		UF:UpdateConfig('nameplate')
 	end
-	-- After General's other settings, which are hidden while it shows: in the
+	-- After General's other settings and its Parts (order 2000; the kept Threat row sits
+	-- directly under the box's section, then this line), which are hidden while it shows: in the
 	-- middle of what the switches leave of the page, across and down (a fill
 	-- row, as the window draws a description with fill).
 	local sourced = {
-		order = 100,
+		order = 2001,
 		type = 'description',
 		name = plate.sourced,
 		justifyH = 'CENTER',
@@ -177,7 +183,7 @@ local function NameplateGeneral()
 	end
 
 	local box, sourced = PlateBox('nameplate', 3, "Use friendly nameplates' settings",
-		"Draws enemy and neutral nameplates with the Friendly nameplates page's settings. This page's own are set aside, kept for when it's unchecked: its other tabs are disabled and General's other settings hidden. Threat when solo and the Threat tab stay, and still apply.")
+		"Draws enemy and neutral nameplates with the Friendly nameplates page's settings. This page's own are set aside, kept for when it's unchecked: its Health, Cast bar and Auras tabs are disabled, and General's other settings and parts are hidden. Threat when solo and the Threat part stay, and still apply.")
 
 	local args = {
 		enable = enable,
@@ -230,7 +236,7 @@ local function FriendlyNameplateGeneral()
 	end
 
 	local box, sourced = PlateBox('friendlynameplate', 2, "Use enemy nameplates' settings",
-		"Draws friendly nameplates with the Enemy nameplates page's settings. This page's own are set aside, kept for when it's unchecked: its other tabs are disabled and General's other settings hidden. Friendly nameplates never show threat.")
+		"Draws friendly nameplates with the Enemy nameplates page's settings. This page's own are set aside, kept for when it's unchecked: its Health, Cast bar and Auras tabs are disabled, and General's other settings and parts are hidden. Friendly nameplates never show threat.")
 
 	local args = {
 		friendly = friendly,
@@ -280,11 +286,22 @@ function UF.SetUpPlatePage(unit, config_table)
 end
 
 -- A nameplate page's tabs are disabled while its box is checked, but those it
--- keeps: UF:GetConfigTable calls it once the element tabs are on. Any other
--- unit's page is left as it is.
+-- keeps, and General's Parts rows are hidden but those it keeps (the whole
+-- section on a page that keeps none): UF:GetConfigTable calls it once the
+-- element tabs and the Parts are on. Any other unit's page is left as it is.
 function UF.DisablePlatePageTabs(unit, config_table)
 	local plate = PLATE_PAGES[unit]
 	if plate then
 		DisableWhileChecked(unit, config_table.args, plate.kept)
+		local general = config_table.args.general
+		local parts = general and general.args.parts
+		if parts then
+			local function Checked() return PlateBoxChecked(unit) end
+			local any = false
+			for key, row in pairs(parts.args) do
+				if plate.keptParts[key] then any = true else row.hidden = Checked end
+			end
+			if not any then parts.hidden = Checked end
+		end
 	end
 end

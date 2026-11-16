@@ -687,3 +687,122 @@ test('the plate pages have a reset on each setting: Friendly plates is saved on 
 	check(applied > before, "the reset went through the row's own set: the game's settings followed")
 	check(not OM.DefaultDiffers(root, friendly) and not OM.DefaultDiffers(root, width), 'neither differs now')
 end)
+
+------------------------------------------------------------------ the Parts section (Ruling 31)
+
+local ENEMY_PART_KEYS = 'name,subtext,healthtext,threat,raidtarget,quest'
+
+test("the Enemy page's Parts: Name, Subtext, Health text, Threat, Raid target, Quest", function()
+	for _, client in ipairs({ 'forever', 'retail' }) do
+		local _, UF = world(client)
+		local root = { Unitframes = UF:GetConfigTable() }
+		local parts = root.Unitframes.args.nameplate.args.general.args.parts
+		local list = {}
+		for key, item in pairs(parts.args) do list[#list + 1] = { key = key, order = item.order, name = item.name } end
+		table.sort(list, function(a, b) return a.order < b.order end)
+		local keys, names = {}, {}
+		for i, item in ipairs(list) do keys[i], names[i] = item.key, item.name end
+		eq(table.concat(keys, ','), ENEMY_PART_KEYS, client .. ': the parts in order')
+		eq(table.concat(names, ','), 'Name,Subtext,Health text,Threat,Raid target,Quest', client .. ': their names')
+		eq(root.Unitframes.args.nameplate.args.general.args.parts.hidden, nil, client .. ': the section itself is not hidden (Threat stays)')
+	end
+end)
+
+test("with Use friendly nameplates' settings checked only Threat stays in Parts; unchecked, every row is back", function()
+	for _, client in ipairs({ 'forever', 'retail' }) do
+		local _, UF = world(client)
+		local OM = SaftUI.OptionsModel
+		local _, view = page(UF)
+		local before = {}
+		for _, row in ipairs(rows(view)) do before[#before + 1] = row.key end
+		before = table.concat(before, ',')
+
+		check(set(UF, 'use_friendly', true), client .. ': checked')
+		local root
+		root, view = page(UF)
+		local keys = {}
+		for _, row in ipairs(rows(view)) do keys[#keys + 1] = row.key end
+		eq(table.concat(keys, ','), 'enable,threat_solo,use_friendly,threat,sourced', client .. ': Threat alone, then the line')
+		eq(row_for(view, 'threat').disabled, false, client .. ': Threat is enabled')
+		local tabs = {}
+		for _, tab in ipairs(view.tabs) do tabs[tab.key] = tab.disabled and true or false end
+		eq(tabs.general, false, client .. ': General is open')
+		eq(tabs.Health and tabs.Castbar and tabs.Auras, true, client .. ': the other tabs are disabled')
+		-- Not searched either: the hidden rows.
+		for _, result in ipairs(OM.Search(root, 'Raid target')) do
+			check(not (result.path[2] == 'nameplate' and result.path[3] == 'general'), client .. ': Raid target not found on the Enemy page')
+		end
+
+		check(set(UF, 'use_friendly', false), client .. ': unchecked')
+		_, view = page(UF)
+		local after = {}
+		for _, row in ipairs(rows(view)) do after[#after + 1] = row.key end
+		eq(table.concat(after, ','), before, client .. ': every row back, as it was')
+	end
+end)
+
+test('the plate part rows have no share and their reset reads where each box is saved', function()
+	local _, UF = world('forever')
+	local OM = SaftUI.OptionsModel
+	local root = { Unitframes = UF:GetConfigTable() }
+	for _, unit in ipairs({ 'nameplate', 'friendlynameplate' }) do
+		local parts = root.Unitframes.args[unit].args.general.args.parts.args
+		for key, item in pairs(parts) do
+			local row = { option = item, path = { 'Unitframes', unit, 'general', 'parts', key }, type = item.type, key = key }
+			eq(OM.ShareState(root, row), nil, unit .. ' ' .. key .. ': no share')
+			-- The box's reset reads where it is saved; Subtext has no box.
+			if key ~= 'subtext' then
+				eq(OM.DefaultSource(root, row), 'derived', unit .. ' ' .. key .. ': its reset reads where it is saved')
+			end
+		end
+	end
+end)
+
+test('building and drawing both plate pages, with either box checked or a plate addon on, writes nothing to the saved data', function()
+	local function raw_copy(value)
+		if type(value) ~= 'table' then return value end
+		local copy = {}
+		local key, each = next(value)
+		while key ~= nil do
+			copy[key] = raw_copy(each)
+			key, each = next(value, key)
+		end
+		return copy
+	end
+	local where
+	local function same(a, b, path)
+		path = path or ''
+		if type(a) ~= 'table' or type(b) ~= 'table' then
+			if a ~= b then where = where or path end
+			return a == b
+		end
+		local ok = true
+		for k, v in pairs(a) do if not same(v, b[k], path .. '.' .. tostring(k)) then ok = false end end
+		for k in pairs(b) do if a[k] == nil then ok = false; where = where or path .. '.' .. tostring(k) end end
+		return ok
+	end
+	for _, client in ipairs({ 'forever', 'retail' }) do
+		for _, state in ipairs({ 'fresh', 'enemybox', 'friendlybox', 'plater' }) do
+			local _, UF = world(client)
+			local P = UF:GetProfileConfig()
+			if state == 'enemybox' then P.nameplate.use_friendly = true end
+			if state == 'friendlybox' then P.friendlynameplate.use_enemy = true end
+			if state == 'plater' then stub.loaded_addons.Plater = true end
+			-- Customized: a few of the plates' own values changed.
+			P.nameplate.width, P.friendlynameplate.height = 123, 17
+			local before = raw_copy(UF.db and UF.db.profile or SaftUI.config.profile)
+			for _, pick in ipairs({ 'nameplate', 'friendlynameplate' }) do
+				for _, tab in ipairs({ 'general', 'Health', 'Castbar', 'Auras' }) do
+					local root, view = page(UF, { pick = pick, tab = tab })
+					-- Rows are read on General only: the Auras tab's border rows read through AceDB, which
+					-- makes the empty friend and enemy tables on a read (as before this task).
+					for _, row in ipairs(tab == 'general' and rows(view) or {}) do
+						if row.type ~= 'description' then SaftUI.OptionsModel.Get(root, row) end
+						if row.type == 'item' then SaftUI.OptionsModel.MenuOffers(root, row) end
+					end
+				end
+			end
+			check(same(before, raw_copy(UF.db and UF.db.profile or SaftUI.config.profile)), client .. ' ' .. state .. ': the saved data is as it was (first difference ' .. tostring(where) .. ')')
+		end
+	end
+end)
