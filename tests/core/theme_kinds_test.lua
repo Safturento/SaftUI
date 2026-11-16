@@ -368,7 +368,7 @@ end)
 local EDGE_ALLOW = {
 	['SaftUI-Core/Config/optionslook.lua'] = 3, -- phase 2
 	['SaftUI-Core/Config/optionscolorpicker.lua'] = 2, -- phase 2
-	['SaftUI-Core/Dev/fontdemo.lua'] = 1, -- Task 8 deletes it
+	['SaftUI-Core/Dev/fontdemo.lua'] = 1, -- kept until the Mac friend has run E6, then deleted
 }
 
 -- How many 'edgeSize = 1' source holds, in code (comments and strings left out).
