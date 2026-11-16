@@ -65,10 +65,14 @@ local function IsTexture(object) return type(object.SetTextColor) ~= 'function' 
 -- pushed wins over hover; selected + hover is the lighter tone unless pushed;
 -- focus is the Accent edge while not selected. nil: not shown.
 local function View(rec)
-	local layer = rec.pushed and 'pushed' or rec.hover and 'hover' or nil
+	-- A mover's 'pushed' is its drag, which draws as hover (the spec's call 9).
+	local drag = rec.shape == 'mover'
+	local pushed = rec.pushed and not drag
+	local hover = rec.hover or (drag and rec.pushed)
+	local layer = pushed and 'pushed' or hover and 'hover' or nil
 	local fill, edge
 	if rec.selected then
-		local lit = rec.hover and not rec.pushed
+		local lit = hover and not pushed
 		fill, edge = lit and 'fillHover' or 'fill', lit and 'edgeHover' or 'edge'
 	elseif rec.focus then
 		edge = 'edge'
@@ -99,8 +103,14 @@ local function PutText(rec, r, g, b)
 end
 
 -- A color the glyph or solid takes, by the kind of object it is.
+-- A texture keeps its own vertex alpha.
 local function Tint(object, r, g, b)
-	if IsTexture(object) then object:SetVertexColor(r, g, b, 1) else object:SetTextColor(r, g, b) end
+	if IsTexture(object) then
+		local _, _, _, a = object:GetVertexColor()
+		object:SetVertexColor(r, g, b, a)
+	else
+		object:SetTextColor(r, g, b)
+	end
 end
 
 local function TintGlyphs(rec, r, g, b)
@@ -139,8 +149,7 @@ local function PutSolid(rec, r, g, b)
 	if type(target) == 'function' then
 		target(rec.frame, r, g, b)
 	elseif target or rec.glyphs[1] or opts.mark then
-		local t = target or rec.glyphs[1] or opts.mark
-		t:SetVertexColor(r, g, b, 1)
+		Tint(target or rec.glyphs[1] or opts.mark, r, g, b)
 	else
 		local drawn = rec.drawn or st:DrawnFrame(rec.frame) or rec.frame
 		if drawn.SetBackdropColor then drawn:SetBackdropColor(r, g, b, 1) end
@@ -209,8 +218,12 @@ local function Colors(rec, d, explicit)
 	end
 	if #rec.texts > 0 and (layer or fill) then PutText(rec, PickText(rec, d, layer, fill)) end
 	if rec.glyphObject and (layer or rec.selected) then
-		c = d[(rec.hover or rec.pushed) and 'edgeHover' or 'edge']
-		TintGlyphs(rec, c[1], c[2], c[3])
+		if (rec.hover or rec.pushed) and rec.opts.glyphHover then
+			TintGlyphs(rec, rec.opts.glyphHover(rec.frame))
+		else
+			c = d[(rec.hover or rec.pushed) and 'edgeHover' or 'edge']
+			TintGlyphs(rec, c[1], c[2], c[3])
+		end
 	end
 	if rec.solid and (rec.hover or rec.pushed) then
 		local sr, sg, sb = SolidRest(rec)
@@ -232,24 +245,30 @@ end
 local function PlaceBar(rec)
 	local bar, host, inset = rec.bar, rec.host, rec.inset
 	local thick = 2 * (st:GetLineSize(host) or 1)
+	local off = rec.opts.barOffset or 0 -- units, down for a bottom bar, left for a left one
 	bar:ClearAllPoints()
 	if rec.barSide == 'bottom' then
-		bar:SetPoint('BOTTOMLEFT', host, 'BOTTOMLEFT', inset, inset)
-		bar:SetPoint('BOTTOMRIGHT', host, 'BOTTOMRIGHT', -inset, inset)
+		bar:SetPoint('BOTTOMLEFT', host, 'BOTTOMLEFT', inset, inset - off)
+		bar:SetPoint('BOTTOMRIGHT', host, 'BOTTOMRIGHT', -inset, inset - off)
 		bar:SetHeight(thick)
 	else
-		bar:SetPoint('TOPLEFT', host, 'TOPLEFT', inset, -inset)
-		bar:SetPoint('BOTTOMLEFT', host, 'BOTTOMLEFT', inset, inset)
+		bar:SetPoint('TOPLEFT', host, 'TOPLEFT', inset - off, -inset)
+		bar:SetPoint('BOTTOMLEFT', host, 'BOTTOMLEFT', inset - off, inset)
 		bar:SetWidth(thick)
 	end
 end
+
+-- A mark the caller gave is Blizzard's or its own art under the Blizzard look: left wholly alone.
+local function MarkAlone(rec) return rec.blizzard and rec.opts.mark ~= nil end
 
 -- The check's square: floor(size / 6) units in from each side (Ruling 14).
 local function PlaceMark(rec)
 	local host = rec.host
 	local w, h = host:GetWidth(), host:GetHeight()
 	if type(w) ~= 'number' or type(h) ~= 'number' then return end
-	local m = st:RoundToPixel(math.floor(math.min(w, h) / 6), host)
+	-- a size read back is rounded first (the game's single precision is a hair off), never floored raw
+	local size = st:RoundToPixel(math.min(w, h), host)
+	local m = st:RoundToPixel(math.floor(size / 6), host)
 	rec.mark:ClearAllPoints()
 	rec.mark:SetPoint('TOPLEFT', host, 'TOPLEFT', m, -m)
 	rec.mark:SetPoint('BOTTOMRIGHT', host, 'BOTTOMRIGHT', -m, m)
@@ -266,7 +285,7 @@ local function Refresh(rec)
 		if selected then PlaceBar(rec) end
 		rec.bar:SetShown(selected)
 	end
-	if rec.mark then
+	if rec.mark and not MarkAlone(rec) then
 		if selected then PlaceMark(rec) end
 		rec.mark:SetShown(selected)
 	end
@@ -445,6 +464,29 @@ local function OnHide(self)
 	if rec.pushed then st:SetState(self, 'pushed', false) end
 end
 
+-- A SetScript on a script drops its hooks (in the game and in the stubs), so the
+-- handler each hooked script had right after hooking is recorded, and a script whose
+-- handler is another now is hooked again: from Restyle (AddStates, RestyleStates) and
+-- SetState. Never the same handler twice.
+local HANDLERS = { OnEnter = OnEnter, OnLeave = OnLeave, OnMouseDown = OnMouseDown, OnMouseUp = OnMouseUp, OnHide = OnHide }
+local SCRIPTS = { 'OnEnter', 'OnLeave', 'OnMouseDown', 'OnMouseUp', 'OnHide' }
+
+local function Rewire(rec)
+	local frame = rec.frame
+	local seen = hooked[frame]
+	if not seen then
+		seen = {}
+		hooked[frame] = seen
+	end
+	for i = 1, #SCRIPTS do
+		local script = SCRIPTS[i]
+		if seen[script] == nil or seen[script] ~= (frame:GetScript(script) or false) then
+			frame:HookScript(script, HANDLERS[script])
+			seen[script] = frame:GetScript(script) or false
+		end
+	end
+end
+
 -- After a theme recolor or redraw (st:KeepOwnColors): the look may have changed
 -- (Blizzard or not, the edge's inset, the body), so what changed is read again,
 -- and the edge the theme just reset is put back. No point is moved unless the
@@ -486,7 +528,7 @@ function StyleGame(rec)
 	end
 	if checked then
 		checked:SetTexture(st.textures.stateFade, 'CLAMP', 'CLAMP')
-		checked:SetTexCoord(0, 1 / st:StateFade(), 0, 1)
+		checked:SetTexCoord(0, st:StateFade(), 0, 1)
 		checked:SetBlendMode('BLEND')
 	end
 end
@@ -526,20 +568,13 @@ function Restyle(rec)
 	if rec.layer then Place(rec.layer, rec.host, rec.inset) end
 	if rec.fill then Place(rec.fill, rec.host, rec.inset) end
 	if rec.bar then PlaceBar(rec) end
-	if rec.mark then PlaceMark(rec) end
+	if rec.mark and not MarkAlone(rec) then PlaceMark(rec) end
 	for _, kind in ipairs({ 'hover', 'pushed', 'checked' }) do
 		if mine[kind] then Place(mine[kind], rec.host, rec.inset) end
 	end
 	if rec.game and not rec.blizzard then StyleGame(rec) end
 	rec.noWire = opts.wire == false or (opts.wire == nil and rec.shape == 'icon')
-	if not rec.noWire and not hooked[frame] then
-		hooked[frame] = true
-		frame:HookScript('OnEnter', OnEnter)
-		frame:HookScript('OnLeave', OnLeave)
-		frame:HookScript('OnMouseDown', OnMouseDown)
-		frame:HookScript('OnMouseUp', OnMouseUp)
-		frame:HookScript('OnHide', OnHide)
-	end
+	if not rec.noWire then Rewire(rec) end
 	st:KeepOwnColors(rec, rec.edgeKind == 'theme' and Kept or nil)
 	Refresh(rec)
 end
@@ -556,6 +591,8 @@ end
 --   text       a font string or a list of them; textRest = function(frame) -> r, g, b (Text > Normal if nil)
 --   body       { r, g, b } or function(frame) -> r, g, b: what the text sits on, for the pick
 --   mark       the check's square (a texture; one is made when the shape is a check)
+--   glyphHover function(frame) -> r, g, b: a glyph's color under hover and pushed instead of edgeHover (a link's Text > Strong)
+--   barOffset  units the Bar moves down (bottom) or left (left) from the host: a tab's underline one line below the tab
 --   glyph      a texture, a font string or a list of them, colored by the states on every shape; glyphRest = function(frame) -> r, g, b
 --   solid      a thumb's or knob's fill: a texture, or function(frame, r, g, b); else the knob's glyph or the thumb's backdrop
 --   solidRest  function(frame) -> r, g, b: a thumb's or knob's rest color (ST.THUMB_REST if nil)
@@ -595,10 +632,19 @@ function st:SetState(frame, key, on)
 	if not rec then error('SaftUI: SetState: not a state frame (st:AddStates first)', 2) end
 	if not KEYS[key] then error('SaftUI: SetState: no state ' .. tostring(key), 2) end
 	on = on and true or false
+	if not rec.noWire then Rewire(rec) end
 	if key == 'disabled' then
+		-- the alpha the frame had is kept while disabled and put back after; a frame that
+		-- was never disabled is left as it is
+		if on and not rec.disabled then rec.restAlpha = rec.host:GetAlpha() end
+		local was = rec.disabled
 		rec.disabled = on
-		if on then rec.hover, rec.pushed = false, false end
-		rec.host:SetAlpha(on and st:StateAlpha() or 1)
+		if on then
+			rec.hover, rec.pushed = false, false
+			rec.host:SetAlpha(st:StateAlpha())
+		elseif was then
+			rec.host:SetAlpha(rec.restAlpha or 1)
+		end
 	elseif rec.disabled and (key == 'hover' or key == 'pushed') then
 		rec[key] = false
 	else
@@ -634,7 +680,7 @@ function st:RemoveStates(frame)
 	if not rec then return end
 	rec.hover, rec.pushed, rec.selected, rec.focus = false, false, false, false
 	Refresh(rec)
-	if rec.disabled then rec.host:SetAlpha(1) end
+	if rec.disabled then rec.host:SetAlpha(rec.restAlpha or 1) end
 	st:FollowColor(rec, 'accent', nil, nil)
 	st:KeepOwnColors(rec, nil)
 	records[frame] = nil

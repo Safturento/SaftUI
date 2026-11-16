@@ -236,7 +236,7 @@ scaled_test('a check: edge, mark and fill when selected; the mark floor(size / 6
 		eq(T.edge(f), edge_accent(), size .. ': the edge')
 		near_hex(size .. ' mark', SL.bytes(look.mark), ACCENT)
 		local _, _, _, x, y = look.pieces.mark:GetPoint(1)
-		eq(x, st:RoundToPixel(math.floor(size / 6), f), size .. ': the mark is floor(size / 6) in')
+		eq(x, st:RoundToPixel(math.floor(st:RoundToPixel(size, f) / 6), f), size .. ': the mark is floor(size / 6) of the size in whole pixels, in')
 		eq(y, -x)
 		if test_scale() == 1 then eq(x, ({ [18] = 3, [12] = 2, [8] = 1 })[size]) end
 		st:SetState(f, 'hover', true)
@@ -696,4 +696,210 @@ scaled_test('every piece starts and ends on a whole pixel: layer, fill, bar and 
 		end)
 		stub.size_noise = 0
 	end
+end)
+
+------------------------------------------------------------------ fix round 1
+
+-- Counts the calls of st:SetState while fn runs.
+local function count_sets(fn)
+	local sets, real = 0, st.SetState
+	st.SetState = function(...) sets = sets + 1 return real(...) end
+	local ok, err = pcall(fn)
+	st.SetState = real
+	if not ok then error(err, 0) end
+	return sets
+end
+
+test('H1: a SetScript after registration drops the hooks; RestyleStates and a merge AddStates hook again, once', function()
+	world()
+	local f = box()
+	st:AddStates(f, 'box')
+	f:SetScript('OnEnter', function() end)
+	fire(f, 'OnEnter', true)
+	eq(st:GetState(f, 'hover'), false, 'the SetScript dropped the hook (as in game)')
+	st:RestyleStates(f)
+	fire(f, 'OnEnter', true)
+	eq(st:GetState(f, 'hover'), true, 'RestyleStates hooked it again')
+	-- a merge AddStates, on another frame
+	local g = box()
+	st:AddStates(g, 'box')
+	g:SetScript('OnEnter', function() end); g:SetScript('OnMouseDown', function() end)
+	st:AddStates(g, 'box', { text = false })
+	eq(count_sets(function() fire(g, 'OnEnter', true) end), 1, 'one hover set after a merge')
+	fire(g, 'OnMouseDown', 'LeftButton')
+	eq(st:GetState(g, 'pushed'), true, 'the other script too')
+	-- 100 cycles add one hook per changed handler, not more; unchanged handlers are not hooked again
+	local h = box()
+	st:AddStates(h, 'box')
+	for i = 1, 100 do
+		h:SetScript('OnEnter', function() end)
+		st:AddStates(h, 'box', {})
+		st:RestyleStates(h)
+		st:RestyleStates(h)
+	end
+	eq(count_sets(function() fire(h, 'OnEnter', true) end), 1, 'one set of hooks after 100 cycles')
+	for _ = 1, 100 do st:RestyleStates(h) end
+	st:SetState(h, 'hover', false)
+	eq(count_sets(function() fire(h, 'OnEnter', true) end), 1, 'and still one after 100 restyles with no change')
+	-- a SetScript in between a state change: SetState hooks again too
+	local k = box()
+	st:AddStates(k, 'box')
+	k:SetScript('OnLeave', function() end)
+	st:SetState(k, 'selected', true)
+	fire(k, 'OnEnter', true); fire(k, 'OnLeave', true)
+	eq(st:GetState(k, 'hover'), false, 'OnLeave works again after SetState')
+end)
+
+test('M1: a mark the caller gives is left wholly alone under Blizzard', function()
+	world()
+	local blizzard = true
+	local f = st:CreateFrame('CheckButton', nil, UIParent)
+	f:SetSize(18, 18)
+	local mark = f:CreateTexture(nil, 'OVERLAY')
+	mark:Hide()
+	local points = mark:GetNumPoints()
+	st:AddStates(f, 'check', { mark = mark, blizzard = function() return blizzard end })
+	st:SetState(f, 'selected', true)
+	eq(mark:IsShown(), false, 'not shown by the helper under Blizzard')
+	eq(mark:GetNumPoints(), points, 'not placed')
+	mark:Show(); st:SetState(f, 'selected', false)
+	eq(mark:IsShown(), true, 'not hidden either')
+	st:SetState(f, 'selected', true)
+	blizzard = false
+	st:RestyleStates(f)
+	check(mark:IsShown() and mark:GetNumPoints() == 2, 'back on SaftUI\'s look it is placed and shown')
+end)
+
+test('M2: a mover held (the drag, state pushed) draws as hover', function()
+	world()
+	local f = box()
+	st:AddStates(f, 'mover')
+	st:SetState(f, 'pushed', true)
+	local look = st:StateLook(f)
+	near_hex('the layer is the hover tone', SL.bytes(look.layer), PLUS); eq(look.layer.a, 0.16)
+	st:SetState(f, 'selected', true)
+	near_hex('selected and held is the lit look: the fill', SL.bytes(st:StateLook(f).fill), PLUS)
+	near_hex('and the edge', SL.bytes(st:StateLook(f).edge), PLUS)
+	local g = box()
+	st:AddStates(g, 'box')
+	st:SetState(g, 'pushed', true)
+	near_hex('a box still draws pushed', SL.bytes(st:StateLook(g).layer), MINUS)
+end)
+
+-- The game reads a size back in single precision: a hair off what was given.
+scaled_test('M3: the check mark is floor(size / 6) of a rounded size: an 18 box keeps its 3 under every read-back noise', function()
+	for _, noise in ipairs({ 2 ^ -14, -2 ^ -14, 0 }) do
+		world()
+		stub.size_noise = noise
+		local f = st:CreateFrame('CheckButton', nil, UIParent)
+		f:SetSize(st:RoundToPixel(18, UIParent), st:RoundToPixel(18, UIParent))
+		st:AddStates(f, 'check', {})
+		st:SetState(f, 'selected', true)
+		local _, _, _, x = st:StateLook(f).pieces.mark:GetPoint(1)
+		local want = st:RoundToPixel(math.floor(st:RoundToPixel(18, UIParent) / 6), f)
+		eq(x, want, 'noise ' .. tostring(noise))
+		if test_scale() == 1 then eq(x, 3) end
+		stub.size_noise = 0
+	end
+end)
+
+test('M4: disabled puts back the alpha the frame had, and does nothing to a frame never disabled', function()
+	world()
+	local f = box()
+	f:SetAlpha(0.5)
+	st:AddStates(f, 'box')
+	st:SetState(f, 'disabled', false)
+	eq(f:GetAlpha(), 0.5, 'never disabled: untouched')
+	st:SetState(f, 'disabled', true)
+	eq(f:GetAlpha(), 0.4)
+	st:SetState(f, 'disabled', true)
+	st:SetState(f, 'disabled', false)
+	eq(f:GetAlpha(), 0.5, 'the alpha it had before')
+	st:SetState(f, 'disabled', true)
+	st:RemoveStates(f)
+	eq(f:GetAlpha(), 0.5, 'RemoveStates puts it back')
+	local g = box()
+	g:SetAlpha(0.3)
+	st:AddStates(g, 'box')
+	st:RemoveStates(g)
+	eq(g:GetAlpha(), 0.3, 'RemoveStates on a frame never disabled does nothing')
+end)
+
+test('M5: glyphHover colors a glyph under hover and pushed; barOffset moves the bar', function()
+	world()
+	local f = CreateFrame('Button', nil, UIParent)
+	local label = f:CreateFontString(nil, 'OVERLAY')
+	label:SetTextColor(0.4, 0.5, 0.6)
+	st:AddStates(f, 'glyph', { glyph = label, glyphRest = function() return 0.4, 0.5, 0.6 end, glyphHover = function() return 1, 1, 1 end })
+	st:SetState(f, 'hover', true)
+	eq(T.rgb(label:GetTextColor()), '1.00,1.00,1.00', 'a link under the mouse')
+	st:SetState(f, 'hover', false); st:SetState(f, 'pushed', true)
+	eq(T.rgb(label:GetTextColor()), '1.00,1.00,1.00', 'and held')
+	st:SetState(f, 'pushed', false)
+	eq(T.rgb(label:GetTextColor()), '0.40,0.50,0.60', 'rest')
+	st:SetState(f, 'selected', true)
+	near_hex('selected without hover is still the accent', bytes_of(label:GetTextColor()), ACCENT)
+	-- the tab's underline one line below
+	local tab = st:CreateFrame('Button', nil, UIParent)
+	tab:SetSize(80, 24)
+	local line = st:GetLineSize(tab) or 1
+	st:AddStates(tab, 'tab', { barOffset = line })
+	st:SetState(tab, 'selected', true)
+	local _, _, _, x, y = st:StateLook(tab).pieces.bar:GetPoint(1)
+	eq(y, -line, 'a bottom bar moves down by the offset'); eq(x, 0)
+	local row = st:CreateFrame('Button', nil, UIParent)
+	row:SetSize(80, 20)
+	st:AddStates(row, 'row', { barOffset = line })
+	st:SetState(row, 'selected', true)
+	_, _, _, x, y = st:StateLook(row).pieces.bar:GetPoint(1)
+	eq(x, -line, 'a left bar moves left'); eq(y, 0)
+end)
+
+test('L1: StyleGame sets the checked piece\'s right coordinate to 1 / f, never f', function()
+	world()
+	local f = CreateFrame('CheckButton', nil, UIParent)
+	f:SetSize(36, 36)
+	local checked = f:CreateTexture(nil, 'ARTWORK')
+	f:SetCheckedTexture(checked)
+	local seen = {}
+	local real = getmetatable(checked).__index.SetTexCoord
+	getmetatable(checked).__index.SetTexCoord = function(self, ...)
+		if self == checked then seen[#seen + 1] = select(2, ...) end
+		return real(self, ...)
+	end
+	st:AddStates(f, 'icon', { game = true, checked = true })
+	st:RestyleStates(f)
+	getmetatable(checked).__index.SetTexCoord = real
+	check(#seen > 0, 'coordinates were set')
+	for _, right in ipairs(seen) do
+		if right ~= 1 then check(near(right, 1 / 0.7), 'a right coordinate of ' .. tostring(right)) end
+	end
+end)
+
+test('L2: a pieces hover is BLEND after a restyle', function()
+	world()
+	local h = CreateFrame('Button', nil, UIParent)
+	local hover = h:CreateTexture(nil, 'HIGHLIGHT')
+	hover:SetBlendMode('ADD')
+	st:AddStates(h, 'icon', { pieces = { hover = hover } })
+	eq(hover:GetBlendMode(), 'BLEND')
+	hover:SetBlendMode('ADD')
+	st:RestyleStates(h)
+	eq(hover:GetBlendMode(), 'BLEND', 'after a restyle too')
+end)
+
+test('L5: a glyph and a solid keep their vertex alpha under the mouse', function()
+	world()
+	local f = CreateFrame('Button', nil, UIParent)
+	local icon = f:CreateTexture(nil, 'OVERLAY')
+	icon:SetVertexColor(0.5, 0.5, 0.5, 0.5)
+	st:AddStates(f, 'glyph', { glyph = icon })
+	st:SetState(f, 'hover', true)
+	eq(select(4, icon:GetVertexColor()), 0.5, 'the glyph keeps its alpha')
+	local slider = CreateFrame('Frame', nil, UIParent)
+	local knob = slider:CreateTexture(nil, 'OVERLAY')
+	knob:SetVertexColor(0.9, 0.9, 0.8, 0.7)
+	st:AddStates(slider, 'knob', { glyph = knob, solidRest = function() return 0.9, 0.9, 0.8 end })
+	st:SetState(slider, 'hover', true)
+	eq(select(4, knob:GetVertexColor()), 0.7, 'and the knob')
 end)

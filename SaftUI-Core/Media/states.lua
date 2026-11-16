@@ -232,11 +232,16 @@ function ST.Current()
 	local cache = ST.cache
 	local from = cache.from
 	local accent = st:Color('accent')
+	-- a channel that is NaN (never equal to itself, so the stamp would never hold) reads as 0
+	local r, g, b = accent.r, accent.g, accent.b
+	if r ~= r then r = 0 end
+	if g ~= g then g = 0 end
+	if b ~= b then b = 0 end
 	local profile = st.config and st.config.profile
 	local states = profile and profile.theme and profile.theme.states
-	if from.r ~= accent.r or from.g ~= accent.g or from.b ~= accent.b or from.states ~= states or from.serial ~= ST.serial then
-		ST.Derive(accent.r, accent.g, accent.b, ST.Settings(), cache)
-		from.r, from.g, from.b, from.states, from.serial = accent.r, accent.g, accent.b, states, ST.serial
+	if from.r ~= r or from.g ~= g or from.b ~= b or from.states ~= states or from.serial ~= ST.serial then
+		ST.Derive(r, g, b, ST.Settings(), cache)
+		from.r, from.g, from.b, from.states, from.serial = r, g, b, states, ST.serial
 	end
 	return cache
 end

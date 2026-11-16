@@ -364,3 +364,30 @@ test('the fade texture', function()
 	end
 	check(true, 'every pixel is white with its column alpha')
 end)
+
+test('L3: StateText fillHover composites the hover layer too', function()
+	-- gold, Layers, Hover 60%: the hover layer makes the body pale (dark text); the fill alone leaves it dark (light text)
+	local s = settings('layers', { hover = 0.6 })
+	local d = derive(GOLD, s)
+	local dark = ST.DARK_TEXT
+	local r, g, b = st:StateText('fillHover', BODY, BODY, BODY, d)
+	check(r == dark[1] and g == dark[2] and b == dark[3], 'fillHover goes dark over the hover layer')
+	local n = st:Color('text', 'normal')
+	r, g, b = st:StateText('fill', BODY, BODY, BODY, d)
+	check(r == n.r and g == n.g and b == n.b, 'the fill alone stays light')
+end)
+
+test('L7: a NaN Accent channel reads as 0 and does not recompute on every read', function()
+	local accent = st.config.profile.theme.accent
+	local keep = accent.r
+	accent.r = 0 / 0
+	local calls, real = 0, ST.Derive
+	ST.Derive = function(...) calls = calls + 1 return real(...) end
+	for _ = 1, 100 do st:StateColor('hover') end
+	ST.Derive = real
+	check(calls <= 1, 'derived ' .. calls .. ' times')
+	local r, g, b = st:StateColor('hover')
+	check(r == r and g == g and b == b, 'no NaN')
+	accent.r = keep
+	st:StateColor('hover')
+end)
