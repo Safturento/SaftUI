@@ -139,7 +139,7 @@ end)
 test("Icon zoom's box shows the profile's fraction as a percent, and a typed percent stores the fraction", function()
 	st.Config:Open('Fonts', 'general')
 	eq(OW:GetState().tab, 'general', 'the General tab')
-	eq(drawn(), 'icon_trim,icon_preview,header_height,clamp_inset', "the tab's rows, Icon zoom's preview after it")
+	eq(drawn(), 'scale,size,describe,icon_trim,icon_preview,header_height,clamp_inset', "the tab's rows: the UI scale section first, then Icon zoom with its preview after it")
 	local w = cell('icon_trim').widget
 	eq(w.edit:GetText(), '6.5%', 'the default 0.065 shows as 6.5%')
 	w.edit:SetText('10')

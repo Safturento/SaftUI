@@ -15,7 +15,7 @@
 --                          align, disabledDesc, justifyH, fill, footer,
 --                          share, menu, menuTitle, default, pickerControl,
 --                          reserveBox, toggle, faceOnly, fontFields, saved,
---                          noReset, preview) are left off
+--                          noReset, preview, applyOnRelease) are left off
 --                          every option, and the options of SaftUI's own types
 --                          (SAFTUI_TYPES) are left out. AceConfig knows neither, so
 --                          its validator rejects them; everything else in the
@@ -32,7 +32,7 @@ local SAFTUI_FIELDS = {
 	category = true, size = true, target = true, nameKey = true, pickerLabel = true, align = true,
 	disabledDesc = true, justifyH = true, fill = true, footer = true, share = true, menu = true, menuTitle = true,
 	default = true, pickerControl = true, reserveBox = true, searchText = true, toggle = true,
-	faceOnly = true, fontFields = true, saved = true, noReset = true, preview = true,
+	faceOnly = true, fontFields = true, saved = true, noReset = true, preview = true, applyOnRelease = true,
 }
 
 SAFTUI_TYPES = { position = true, item = true, font = true, bagcategories = true, bagrule = true, bagitems = true }
