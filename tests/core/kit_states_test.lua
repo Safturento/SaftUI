@@ -642,7 +642,7 @@ test('a pass over the open window: under 300 calls, nothing made or forbidden, u
 	accent_c:SetRGB(unpack(keep))
 	st:ColorChanged('accent')
 	local per = m.calls.total / 100
-	eq(per, 32, 'calls per pass (measured; the brief budget was under 300)')
+	eq(per, 34, 'calls per pass (measured; the brief budget was under 300): the accent flips each pass, so the brand is built again (two SetText: the sidebar and the bar)')
 	eq(m.forbidden.total, 0, 'nothing forbidden')
 	eq(m.made, 0, 'nothing made')
 	check(m.kb < 4, 'garbage over 100 passes: ' .. m.kb .. ' KB')

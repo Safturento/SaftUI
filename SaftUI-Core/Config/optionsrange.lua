@@ -41,6 +41,15 @@ end
 
 ------------------------------------------------------------------ range
 
+-- A shown slider's fill follows the Accent through the pass of a pick
+-- (st:FollowColor in the builder), not only at its bind: a pooled one is left
+-- as it is, it takes the Accent when it is bound again (LookRange). Only a
+-- color is set; the shared function makes nothing.
+local function PaintFill(w)
+	if w.released or not w.fill then return end
+	w.fill:SetColorTexture(st:Color('accent'):GetRGB())
+end
+
 local KNOB_WIDTH, KNOB_HEIGHT = 6, 14
 Kit.KNOB_WIDTH, Kit.KNOB_HEIGHT = KNOB_WIDTH, KNOB_HEIGHT -- read by the color picker's preview (optionspreview.lua)
 
@@ -138,6 +147,7 @@ builders.range = function(w)
 	fill:SetPoint('BOTTOMLEFT', track, 'BOTTOMLEFT', 1, 1)
 	fill:SetWidth(1)
 	w.fill = fill
+	st:FollowColor(w, 'accent', nil, PaintFill)
 
 	-- The flat track, hidden under Blizzard (LookRange).
 	w.flat = { outline, track, inside, fill }

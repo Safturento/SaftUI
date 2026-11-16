@@ -284,9 +284,17 @@ end
 -- colors itself, which the theme engine doesn't draw, takes the window's
 -- Background again (its sidebar's fill). And a change of Text > Normal (key nil
 -- is any of Text's) gives the kit's font objects the new color at once; the
--- rest of /sui takes a color when it draws again, as the picker closes.
+-- rest of /sui takes a color when it draws again, as the picker closes. The
+-- Accent (group 'accent', which also fires after every theme change) is
+-- followed live by what /sui colors in it itself: the brand and the marked row
+-- here (OW:PaintAccent), a slider's fill by its own follower (optionsrange.lua).
+-- Left to the redraw as the picker closes: the Own marks and titles of a shared
+-- row (optionsshare.lua), a key binding's waiting text and the link's rest color
+-- (the states follow it), none of which can be on the page that holds the
+-- Accent's row while its picker is open.
 function Config:OnColorsChanged(group, key)
 	local OW = st.OptionsWindow
+	if group == 'accent' and OW then OW:PaintAccent() end
 	if group == 'theme' and OW then OW:PaintSidebar() end
 	if group == 'text' and (key == nil or key == 'normal') then
 		local OB = st.OptionsBody

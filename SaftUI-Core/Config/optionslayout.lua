@@ -362,10 +362,23 @@ function OW.MiniShift(L)
 end
 
 -- The name on the sidebar and the bar: "Saft" in the text colour, "UI" in the
--- accent (Theme > Accent), read at each draw so a change of colour shows.
-function OW.BrandText()
+-- accent (Theme > Accent), read at each draw so a change of colour shows, and
+-- at a pick (OW:PaintAccent). OW.brandKey is the accent's bytes the text last
+-- built holds, so a pass that finds the same bytes builds nothing.
+local function AccentBytes()
 	local r, g, b = OB.Accent()
-	return ('Saft|cff%02x%02x%02xUI|r'):format(floor(r * 255 + 0.5), floor(g * 255 + 0.5), floor(b * 255 + 0.5))
+	return floor(r * 255 + 0.5), floor(g * 255 + 0.5), floor(b * 255 + 0.5)
+end
+
+function OW.BrandKey()
+	local r, g, b = AccentBytes()
+	return (r * 256 + g) * 256 + b
+end
+
+function OW.BrandText()
+	local r, g, b = AccentBytes()
+	OW.brandKey = (r * 256 + g) * 256 + b
+	return ('Saft|cff%02x%02x%02xUI|r'):format(r, g, b)
 end
 
 -- Where the main column starts, from the window's left: after the sidebar, or
