@@ -95,7 +95,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Loot feed: retail item quality text and profession overlay sit under the Blizzard ring](#2026-11-11--loot-feed-retail-item-quality-text-and-profession-overlay-sit-under-the-blizzard-ring)
   - [2026-11-11 — Blizzard theme: the bags' rule editor and Categories list keep the options window's own look](#2026-11-11--blizzard-theme-the-bags-rule-editor-and-categories-list-keep-the-options-windows-own-look)
   - [2026-11-11 — Bag categories: in-game checks](#2026-11-11--bag-categories-in-game-checks)
-  - [2026-11-11 — Bag categories: a Set checkbox is dead while the Equipment sets entry hides the window](#2026-11-11--bag-categories-a-set-checkbox-is-dead-while-the-equipment-sets-entry-hides-the-window)
   - [2026-11-11 — Old gear's tabard and shirt exclusion never matched](#2026-11-11--old-gears-tabard-and-shirt-exclusion-never-matched)
   - [2026-11-11 — Auto Vendor pins now beat Grays' exclusions and equipment sets](#2026-11-11--auto-vendor-pins-now-beat-grays-exclusions-and-equipment-sets)
   - [2026-11-10 — Zone level and faction line: in-game checks](#2026-11-10--zone-level-and-faction-line-in-game-checks)
@@ -132,6 +131,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-11 — Bag categories: a Set checkbox is dead while the Equipment sets entry hides the window](#2026-11-11--bag-categories-a-set-checkbox-is-dead-while-the-equipment-sets-entry-hides-the-window)
   - [2026-11-11 — Rule editor: a level mode picked before a number is typed does nothing](#2026-11-11--rule-editor-a-level-mode-picked-before-a-number-is-typed-does-nothing)
   - [2026-11-15 — Auto Vendor's second question overstates the earlier stacks that leave](#2026-11-15--auto-vendors-second-question-overstates-the-earlier-stacks-that-leave)
   - [2026-11-15 — Auto Vendor counts a fresh purchase in a just-sold slot as a refused sale](#2026-11-15--auto-vendor-counts-a-fresh-purchase-in-a-just-sold-slot-as-a-refused-sale)
@@ -1691,18 +1691,6 @@ What the plan's list doesn't cover:
 
 **Open questions:** None until the answers come in.
 
-### 2026-11-11 — Bag categories: a Set checkbox is dead while the Equipment sets entry hides the window
-
-**What:** In the Edit view's Show in checkboxes, a `Set: <name>` checkbox unchecked while the Equipment sets entry already hides that window changes nothing. `INV:IsCategoryHidden` returns true for a `Set: ...` key as soon as the sets entry's `hide[windowId]` is set, before it looks at the set's own flag (`filters.categories[windowId]`), so the box is a dead control.
-
-**Why noticed:** The bag categories project's review of Show in (2026-11-11).
-
-**Anchors:** `SaftUI-Bags/categories.lua` (`INV:IsCategoryHidden` and `INV:SetCategoryHidden`, the "Show in" section, `IsSetKey`); the Edit view's checkbox in `SaftUI-Bags/category.lua` (~422-425).
-
-**What's been considered:** Disable or hide the set's checkbox while the entry hides the window, or let a set's own flag win. The first changes less.
-
-**Shape of work:** Small, with a test in `tests/bags/category_migration_test.lua` next to the Equipment sets entry's Show in cases.
-
 ### 2026-11-11 — Old gear's tabard and shirt exclusion never matched
 
 **What:** The old Old gear filter meant to leave tabards and shirts out. It compared the localized slot name with an `INVTYPE_` token, so the test never matched and every tabard and shirt that met the other tests was caught. The category blocks leave the test out, so nothing changes for the user.
@@ -2423,6 +2411,20 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-11 — Bag categories: a Set checkbox is dead while the Equipment sets entry hides the window
+
+**What:** In the Edit view's Show in checkboxes, a `Set: <name>` checkbox unchecked while the Equipment sets entry already hides that window changes nothing. `INV:IsCategoryHidden` returns true for a `Set: ...` key as soon as the sets entry's `hide[windowId]` is set, before it looks at the set's own flag (`filters.categories[windowId]`), so the box is a dead control.
+
+**Why noticed:** The bag categories project's review of Show in (2026-11-11).
+
+**Anchors:** `SaftUI-Bags/categories.lua` (`INV:IsCategoryHidden` and `INV:SetCategoryHidden`, the "Show in" section, `IsSetKey`); the Edit view's checkbox in `SaftUI-Bags/category.lua` (~422-425).
+
+**What's been considered:** Disable or hide the set's checkbox while the entry hides the window, or let a set's own flag win. The first changes less.
+
+**Shape of work:** Small, with a test in `tests/bags/category_migration_test.lua` next to the Equipment sets entry's Show in cases.
+
+**Resolved 2026-11-15:** The Edit view's checkbox of a `Set: ...` category is disabled (still checked, with a tooltip saying why) while the Equipment sets entry hides that window (`INV:IsSetHiddenBySetsEntry`, `INV:UpdateFilterCheckbox`), the first of the entry's two options. Test: `tests/bags/category_migration_test.lua`.
 
 ### 2026-11-11 — Rule editor: a level mode picked before a number is typed does nothing
 

@@ -382,6 +382,24 @@ test("Equipment sets' Show in hides every Set: category; an old Set: flag still 
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+test("a set's Edit checkbox is off while the Equipment sets entry hides the window, and works again after", function()
+	local c = world('compact', function()
+		W.put(0, 7, W.item(701, 'Tank Helm', 'Armor', 50, { quality = 3, set = 'Tank' }))
+	end)
+	local box = c.categories['Set: Tank'].filterCheckbox
+	INV:ShowFilterCheckboxes(c, true)
+	check(box:IsEnabled(), "a set's checkbox works while the sets entry shows the window")
+	INV:SetCategoryHidden('bag', 'Equipment sets', true)
+	INV:ShowFilterCheckboxes(c, true)
+	check(not box:IsEnabled(), 'it is off while the sets entry hides Bags')
+	eq(box:GetChecked() and true or false, true, 'and checked, as the set is hidden')
+	check(c.categories.Weapons.filterCheckbox:IsEnabled(), 'another category keeps its checkbox')
+	INV:SetCategoryHidden('bag', 'Equipment sets', false)
+	INV:ShowFilterCheckboxes(c, true)
+	check(box:IsEnabled(), 'it works again once the sets entry shows Bags')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
 ------------------------------------------------------------ profile changes
 
 -- A real AceDB world over the bags: Core's real config.lua on AceDB-3.0 (as

@@ -385,6 +385,14 @@ function INV:GetSortedInventory(id)
 	return inventory, numItems, numLoading
 end
 
+-- The Edit view's checkbox of a category as the profile says: checked when
+-- hidden, and off (a click would change nothing) for a set that the Equipment
+-- sets entry hides in this window.
+function INV:UpdateFilterCheckbox(checkbox, windowId, categoryName)
+	checkbox:SetChecked(self:IsCategoryHidden(windowId, categoryName))
+	checkbox:SetEnabled(not self:IsSetHiddenBySetsEntry(windowId, categoryName))
+end
+
 function INV:CreateCategory(id, categoryName, slotPoolFunc)
 	local container = self.containers[id]
 
@@ -422,8 +430,15 @@ function INV:CreateCategory(id, categoryName, slotPoolFunc)
         INV:SetCategoryHidden(id, categoryName, self:GetChecked())
 		INV:UpdateContainerLayout(id)
     end)
-	filterCheckbox:SetChecked(INV:IsCategoryHidden(id, categoryName))
 	categoryFrame.filterCheckbox = filterCheckbox
+	filterCheckbox:HookScript('OnEnter', function(self)
+		if self:IsEnabled() then return end
+		GameTooltip:SetOwner(self, 'ANCHOR_RIGHT')
+		GameTooltip:SetText("Hidden in this window by the Equipment sets category's Show in.", nil, nil, nil, nil, true)
+		GameTooltip:Show()
+	end)
+	filterCheckbox:HookScript('OnLeave', function() GameTooltip:Hide() end)
+	INV:UpdateFilterCheckbox(filterCheckbox, id, categoryName)
 
 	container.categories[categoryName] = categoryFrame
 

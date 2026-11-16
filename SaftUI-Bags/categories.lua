@@ -818,6 +818,15 @@ function INV:IsCategoryHidden(windowId, key)
 	return flags ~= nil and flags[key] and true or false
 end
 
+-- Whether a 'Set: ...' category is hidden in a window by the Equipment sets
+-- entry's Show in, which a set's own flag can't undo: the Edit view's checkbox
+-- of such a set is off (disabled) while it holds.
+function INV:IsSetHiddenBySetsEntry(windowId, key)
+	if not IsSetKey(key) then return false end
+	local sets = self:GetCategoryList().byId[self.SETS_ENTRY]
+	return sets ~= nil and sets.hide[windowId] and true or false
+end
+
 --[[
 	Turns a category's Show in off (hidden) or on for a window. A list id is an
 	edit like any other (a default's hide equal to the shipped one, none, is no
