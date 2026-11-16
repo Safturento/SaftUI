@@ -275,8 +275,8 @@ local function StyleButton(button, skin, theme, background)
 	st:SetInside(icon, st:ThemeInset(theme, background, 'action'))
 	CropIcon(icon)
 
-	-- Hover, pushed, checked and the flash: under Blizzard its own art over the
-	-- ring's footprint, the whole button, with no tint; otherwise SaftUI's flat
+	-- Hover, pushed, checked and the flash: under Blizzard its own art, drawn
+	-- as the template does (46/45 of the button's width from TOPLEFT), with no tint; otherwise SaftUI's flat
 	-- textures over the icon. Only textures of SaftUI's and the button's flash
 	-- change, so this holds in combat too (the first set of the state textures,
 	-- in SkinButton, is out of combat).
@@ -287,14 +287,14 @@ local function StyleButton(button, skin, theme, background)
 	if state then
 		-- The hover stays in its layer, where the client shows it only under
 		-- the mouse (HOVER_LAYER).
-		st.ThemeArt.StyleState(skin.hover, state.hover, button, nil, st.ThemeArt.HOVER_LAYER)
-		st.ThemeArt.StyleState(skin.pushed, state.pushed, button)
+		st.ThemeArt.StyleState(skin.hover, state.hover, button, nil, st.ThemeArt.HOVER_LAYER, 'action')
+		st.ThemeArt.StyleState(skin.pushed, state.pushed, button, nil, nil, 'action')
 		if skin.checked then
-			st.ThemeArt.StyleState(skin.checked, state.checked, button, state.checkedBlend)
+			st.ThemeArt.StyleState(skin.checked, state.checked, button, state.checkedBlend, nil, 'action')
 		end
 		if button.Flash then
 			-- The flash keeps the template's layer, over the state art.
-			st.ThemeArt.StyleState(button.Flash, state.flash, button, nil, false)
+			st.ThemeArt.StyleState(button.Flash, state.flash, button, nil, false, 'action')
 		end
 	else
 		-- over the icon; the helper draws and colors them (RestyleStates, below)

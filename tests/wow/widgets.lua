@@ -748,6 +748,9 @@ end
 function Texture.SetAtlas(self, s, atlas, useAtlasSize, filterMode, resetTexCoords)
 	if atlas ~= nil and type(atlas) ~= 'string' then usage(s, 'SetAtlas(): atlas must be a name') end
 	s.atlas, s.texture, s.color_texture = atlas, nil, nil
+	-- As the client does: the coordinates a texture has stay, applied relative
+	-- to the atlas, unless resetTexCoords is true: then they are the whole atlas.
+	if resetTexCoords then s.tex_coord = nil end
 	if atlas and useAtlasSize and C_Texture and C_Texture.GetAtlasInfo then
 		local info = C_Texture.GetAtlasInfo(atlas)
 		if info then s.width, s.height = info.width, info.height end

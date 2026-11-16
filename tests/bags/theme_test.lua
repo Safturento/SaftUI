@@ -407,6 +407,7 @@ test("under Blizzard a bag slot's pushed and highlight are Blizzard's files", fu
 			eq(T.text(region:GetVertexColor()), '1.00,1.00,1.00,1.00', name .. ' ' .. what .. ' has no tint')
 			eq(T.around(region, button), '0,0,0,0', name .. ' ' .. what .. ' covers the button, the ring\'s footprint')
 			local ring = st.ThemeArt.Get(button.backdrop).over.Ring
+			eq(ring:GetNumPoints(), 2, name .. "'s ring still fills its frame (SetAllPoints, not the action button's 46/45)")
 			check(depth(region) > depth(ring), name .. ' ' .. what .. ' draws over the ring')
 			check(depth(region) > depth(button.icon), name .. ' ' .. what .. ' draws over the icon')
 		end

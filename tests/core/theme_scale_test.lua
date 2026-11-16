@@ -715,8 +715,9 @@ test("m1: a recolor costs what it did before the scale work, and a redraw a litt
 	-- Base (8a4ad66f), 26 frames (13 kinds drawn on themselves and with a backdrop):
 	-- recolor 140 / 52 / 118 and redraw 361 / 273 / 1201 widget calls under Thick / Thin / Blizzard.
 	local base = { thick = { 140, 361 }, thin = { 52, 273 }, blizzard = { 118, 1201 } }
-	-- What a redraw may make now: the chain and scale read once a draw, each texture unsnapped once.
-	local most = { thick = 500, thin = 410, blizzard = 1370 }
+	-- What a redraw may make now: the chain and scale read once a draw, each texture unsnapped once,
+	-- and an action button's over-the-icon art sized from its frame (ThemeArt.PlaceOver).
+	local most = { thick = 500, thin = 410, blizzard = 1400 }
 	for _, theme in ipairs({ 'thick', 'thin', 'blizzard' }) do
 		local st = world('forever', theme)
 		for _, kind in ipairs(COST_KINDS) do

@@ -286,7 +286,7 @@ test("under Blizzard an action button's hover, pushed, checked and flash are Bli
 
 		-- Over the ring's footprint, the whole button, not the icon inside it.
 		for name, region in pairs({ hover = hover, pushed = pushed, checked = checked, flash = b.Flash }) do
-			eq(T.around(region, b), '0,0,0,0', where .. name .. ' covers the button')
+			eq(T.around(region, b), '0,0,1,0', where .. name .. ' covers the button, 46/45 wide from TOPLEFT')
 		end
 
 		-- The hover is the button's highlight, which the client shows only in
@@ -337,9 +337,68 @@ test("under Blizzard an action button's hover, pushed, checked and flash are Bli
 		eq(select(1, hover:GetDrawLayer()), 'HIGHLIGHT', where .. 'back under Blizzard: hover only under the mouse')
 		eq(checked:GetBlendMode(), checkedBlend, where .. 'checked blend again')
 		eq(b.Flash:GetAtlas(), 'UI-HUD-ActionBar-IconFrame-Flash', where .. 'the flash again')
-		eq(T.around(pushed, b), '0,0,0,0', where .. 'pushed covers the button again')
+		eq(T.around(pushed, b), '0,0,1,0', where .. 'pushed is 46/45 of the button from TOPLEFT again')
 		eq(#take_errors(), 0, where .. 'no errors')
 	end
+end)
+
+-- The flat look's Selected fade puts coordinates on the checked texture
+-- (StyleGame); SetAtlas keeps a texture's coordinates unless it resets them, so
+-- Blizzard's art took 70% of its width.
+test("under Blizzard the checked, hover and pushed art is the whole atlas, though the flat look set coordinates on it first", function()
+	fresh()
+	local b = bar(button('ThemeTestCoords'))
+	local function whole(where)
+		for name, region in pairs({ hover = b:GetHighlightTexture(), pushed = b:GetPushedTexture(), checked = b:GetCheckedTexture(), flash = b.Flash }) do
+			eq(T.text(region:GetTexCoord()), T.text(0, 0, 0, 1, 1, 0, 1, 1), where .. name .. ' is the whole atlas')
+		end
+	end
+	eq(select(5, b:GetCheckedTexture():GetTexCoord()) > 1, true, 'the flat look is drawn first: its fade is on the checked texture')
+	for _, round in ipairs({ 1, 2 }) do
+		switch('blizzard')
+		whole('round ' .. round .. ' Blizzard: ')
+		switch('thick')
+	end
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+-- Blizzard's template is 45 x 45 and draws every piece of art over the icon
+-- 46 x 45 from TOPLEFT, so it hangs 1/45 of the width past the right edge.
+test("under Blizzard an action button's ring, own-color piece and state art are 46/45 wide from TOPLEFT, at any size and after a resize", function()
+	fresh()
+	st.config.profile.theme.name = 'blizzard'
+	local b = bar(button('ThemeTestOverArt', true))
+	local function pieces()
+		local art = st.ThemeArt.Get(b.backdrop)
+		return {
+			ring = art.over.Ring, own = art.own, hover = b:GetHighlightTexture(), pushed = b:GetPushedTexture(),
+			checked = b:GetCheckedTexture(), flash = b.Flash,
+		}
+	end
+	local function pinned(size, where)
+		for name, region in pairs(pieces()) do
+			local w = where .. name
+			eq(region:GetNumPoints(), 1, w .. ' has one anchor')
+			eq(region:GetPoint(1), 'TOPLEFT', w .. ' is anchored TOPLEFT')
+			eq(T.offset(region, 'TOPLEFT'), '0.00,0.00', w .. ' from the button\'s corner')
+			eq(T.text(region:GetWidth(), region:GetHeight()), T.text(math.floor(size * 46 / 45 + 0.5), size), w .. ' is 46/45 wide (whole pixels) and as tall')
+		end
+		local art = st.ThemeArt.Get(b.backdrop)
+		for key, piece in pairs(art.pieces) do
+			eq(T.around(piece, b), '0,0,0,0', where .. key .. ' (behind the icon) fills the button')
+		end
+	end
+	pinned(45, '45: ')
+	for _, size in ipairs({ 40, 30 }) do
+		b:SetSize(size, size)
+		AB:StyleBar('bar1')
+		pinned(size, size .. ': ')
+	end
+	-- A UI scale change restyles without a size change: the same.
+	st:RedrawThemed()
+	AB:StyleBar('bar1')
+	pinned(30, 'after a redraw: ')
+	eq(#take_errors(), 0, 'no errors')
 end)
 
 test('a skinned button\'s hotkey is shortened as LibActionButton writes it (Core\'s st:ShortBindingKey)', function()

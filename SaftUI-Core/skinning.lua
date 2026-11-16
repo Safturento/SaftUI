@@ -181,6 +181,7 @@ function st:SkinActionButton(button, config, kind)
     if config.trueSize then
         button.backdrop:ClearAllPoints()
         button.backdrop:SetAllPoints()
+        st.ThemeArt.Refit(button.backdrop)
     end
 
 	local name = button:GetName() or ''
@@ -257,7 +258,8 @@ function st:SkinActionButton(button, config, kind)
 	-- These are made once; skinning again (e.g. on a profile change) only
 	-- re-applies their place, layer and look, which follow the theme. Under
 	-- Blizzard the pushed and highlight textures are Blizzard's state art for the
-	-- kind (st.ThemeArt.State), over the ring's footprint, with no tint;
+	-- kind (st.ThemeArt.State), over the button as the kind's art covers it
+	-- (ThemeArt.StyleState), with no tint;
 	-- otherwise SaftUI's flat textures over the icon, which the helper colors.
 	kind = kind or 'action'
 	local look = st:ResolveTheme(config.theme, config.background, kind)
@@ -276,7 +278,7 @@ function st:SkinActionButton(button, config, kind)
 			-- The setter first, then the art, kept in the hover's layer, where
 			-- the client shows it only under the mouse (HOVER_LAYER).
 			button:SetHighlightTexture(button.hover, blend)
-			st.ThemeArt.StyleState(button.hover, hoverArt, button, blend, st.ThemeArt.HOVER_LAYER)
+			st.ThemeArt.StyleState(button.hover, hoverArt, button, blend, st.ThemeArt.HOVER_LAYER, kind)
 		else
 			button.hover:SetTexture(st.BLANK_TEX)
 			button.hover:SetTexCoord(0, 1, 0, 1)
@@ -299,7 +301,7 @@ function st:SkinActionButton(button, config, kind)
 			-- (the bags' slots do): it's Blizzard's art again. The setter first,
 			-- then the layer (see the hover's).
 			button:SetPushedTexture(button.pushed)
-			st.ThemeArt.StyleState(button.pushed, state.pushed, button)
+			st.ThemeArt.StyleState(button.pushed, state.pushed, button, nil, nil, kind)
 		else
 			button.pushed:SetTexture(st.BLANK_TEX)
 			button.pushed:SetTexCoord(0, 1, 0, 1)
