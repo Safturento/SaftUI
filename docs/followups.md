@@ -620,13 +620,13 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 
 ### 2026-11-15 — Option descriptions that say "red" or "yellow" for what Danger and Caution color
 
-**What:** A few player-facing descriptions name a hue for a color that is now a role the player can change, so they can stop being true: the totem bar's timers ("It turns red in the last 10 seconds", `SaftUI-Misc/totemoptions.lua`), the tracker's "Out of range in red" (`SaftUI-Tracker/options.lua`), and the unit frames' "Color hostile" and Color by reaction descriptions ("names of hostile units red, and ... yellow", `SaftUI-Unitframes/elements/name.lua`, `config/config.lua`). They could say "in the danger color" or point at Global settings > Colors > Text.
+**What:** Two unit frame descriptions still name a hue for a color that is now a role the player can change, so they can stop being true: "Color hostile" ("names of hostile units red, and of unfriendly and neutral ones yellow", `SaftUI-Unitframes/elements/name.lua:71`) and the Color by reaction description ("red when hostile, yellow when neutral, green when friendly", `SaftUI-Unitframes/config/config.lua:125`). They could say "in the Danger color" and "in the Caution color" (Global settings > Colors > Text). The totem bar's two timer descriptions, the tracker's out of range row (now named "Tint out of range") and the README's totem line were reworded 2026-11-15 and are done.
 
 **Why noticed:** Color roles Task 4 moved those readers to Text > Danger and Text > Caution (the hue-named keys went), and its rule for the Colors page's own descriptions is that they name what a color colors, never its hue. These option descriptions sit outside that page, so the task left them.
 
-**Anchors:** `SaftUI-Misc/totemoptions.lua:21,24`; `SaftUI-Tracker/options.lua:143-144`; `SaftUI-Unitframes/elements/name.lua:71`; `README.md:43` (both turn red in the last 10 seconds); `docs/design-system/25-colour-roles.md`.
+**Anchors:** `SaftUI-Unitframes/elements/name.lua:71`; `SaftUI-Unitframes/config/config.lua:125` (the Color by reaction description names the Reputation colors for neutral and friendly, which are not roles, so only the hostile part is a role: check which of the three the reader uses before rewording); `docs/design-system/25-colour-roles.md`.
 
-**Shape of work:** a wording pass over six strings; the tests that pin a description's text change with them. The reaction color's own description ("red when hostile") is about the Reputation colors, which are not roles, so it stays.
+**Shape of work:** a wording pass over two strings in Unitframes (left because another package was editing that addon); the tests that pin a description's text change with them. The power color's "blue for mana, red for rage" and the health gradient's "red through yellow to green" describe resource and health colors, not roles: they stay.
 
 ### 2026-11-15 — Check box labels: no font setting until a SaftUI check box has a visible label
 

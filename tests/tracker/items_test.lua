@@ -600,7 +600,7 @@ test('the look: icon crop, kind action in the tracker\'s pair, cooldown, count, 
 	TR:UpdateConfig()
 	stub.quests.log[3].item.range = 0
 	stub.fire_script(watcher, 'OnUpdate', 0.3)
-	check(icon_color(two) ~= red, 'Out of range in red off: never Danger')
+	check(icon_color(two) ~= red, 'Tint out of range off: never Danger')
 	TR.config.items.range = true
 	-- The accent border inside the quest's area.
 	local accent = ('%.2f,%.2f,%.2f'):format(st.config.profile.theme.accent:GetRGB())
