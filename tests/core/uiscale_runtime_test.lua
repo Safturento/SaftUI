@@ -305,13 +305,13 @@ test("the engine resets the scale, and SaftUI's own SetScale fires the event: no
 		eq(#stub.timers, 0, client .. ': nothing left asking')
 		eq(#take_errors(), 0, client .. ': no error')
 
-		-- The slider while nothing else changed: put back, and nothing redrawn.
+		-- The slider while nothing else changed: put back, and redrawn once (I1).
 		stub.engine_set_scale(0.9)
 		mark = #sets
 		frames()
 		eq(#sets - mark, 1, client .. ': the slider moved: set back on the next frame')
 		check(near(UIParent:GetScale(), 768 / 1440, 1e-9), client .. ': at SaftUI\'s')
-		eq(log.passes, 1, client .. ': it was never drawn at the slider\'s: no pass')
+		eq(log.passes, 2, client .. ': a set-back is a change: the pass runs once after it (I1)')
 	end
 end)
 
@@ -328,7 +328,7 @@ test("Blizzard's slider in Automatic and Pixel for pixel: set back on the next f
 			frames()
 			eq(#sets - mark, 1, client .. ' ' .. mode .. ': one SetScale on the next frame')
 			check(near(UIParent:GetScale(), 768 / 1440, 1e-9), client .. ' ' .. mode .. ': back at SaftUI\'s')
-			eq(log.passes, 0, client .. ' ' .. mode .. ': never drawn at the slider\'s: no pass')
+			eq(log.passes, 1, client .. ' ' .. mode .. ': a set-back is a change: one pass after it (I1)')
 			check(rawequal(st.pixel, 1), client .. ' ' .. mode .. ': the pixel is 1')
 		end
 
@@ -506,6 +506,227 @@ test('a preview is never saved: the next login comes back at the saved choice (R
 	st.UIScale:Start()
 	check(near(UIParent:GetScale(), 768 / 1440 * 1.25, 1e-12), 'the next login is at the saved choice')
 	eq(st.UIScale:IsPreviewing(), false, 'not previewing')
+end)
+
+local T = load_test_file('lib/theme_helpers.lua')
+
+-- A panel drawn in Thick, and what its edge is now: in UIParent's units.
+local function panel()
+	local f = st:CreateFrame('Frame', nil, UIParent)
+	f:SetSize(36, 36)
+	f:SetPoint('CENTER')
+	st:SetTemplate(f, 'theme', 'theme', 'panel')
+	return f
+end
+
+test('I1: the engine moves the scale in combat; frames drawn in the fight and plates added then are redrawn and re-pinned after it', function()
+	for _, client in ipairs(CLIENTS) do
+		st = T.client(client)
+		stub.screen_width, stub.screen_height = 2560, 1440
+		st.config.profile.theme.name = 'thick'
+		UIParent:SetScale(0.64)
+		local log = watch()
+		st.Config.UpdateConfig = function() log.passes = log.passes + 1; st:RedrawThemed() end
+		local plate = CreateFrame('Frame', nil, UIParent)
+		st.UIScale:OnChanged(function() plate:SetIgnoreParentScale(true); plate:SetScale(UIParent:GetEffectiveScale()) end)
+		start_uiscale()
+		stub.in_combat = true
+		stub.engine_set_scale(0.9)
+		frames()
+		local f = panel() -- drawn in the fight, at the engine's scale
+		plate:SetIgnoreParentScale(true); plate:SetScale(UIParent:GetEffectiveScale()) -- a plate added in the fight
+		check(f.backdropInfo.edgeSize < 0.7, client .. ': at the engine\'s scale its edge is under a pixel: ' .. f.backdropInfo.edgeSize)
+		eq(log.passes, 0, client .. ': no pass in combat')
+		stub.in_combat = false
+		stub.fire_event('PLAYER_REGEN_ENABLED')
+		eq(log.passes, 1, client .. ': one pass after combat')
+		check(near(UIParent:GetScale(), 768 / 1440, 1e-9), client .. ': SaftUI\'s scale is back')
+		check(near(f.backdropInfo.edgeSize, st:GetLineSize(f), 1e-9) and near(f.backdropInfo.edgeSize, 1, 1e-6), client .. ': the edge is one whole pixel again: ' .. f.backdropInfo.edgeSize)
+		eq(plate:GetEffectiveScale(), UIParent:GetEffectiveScale(), client .. ': the plate is pinned to it')
+	end
+end)
+
+test('I1: the flicker frame out of combat: a frame drawn between the engine\'s set and the check is redrawn; the pass costs what a profile update costs', function()
+	st = T.client('forever')
+	stub.screen_width, stub.screen_height = 2560, 1440
+	st.config.profile.theme.name = 'thick'
+	UIParent:SetScale(0.64)
+	local log = watch()
+	st.Config.UpdateConfig = function() log.passes = log.passes + 1; st:RedrawThemed() end
+	start_uiscale()
+	stub.engine_set_scale(0.9)
+	local f = panel() -- drawn in the one frame between
+	check(f.backdropInfo.edgeSize < 0.7, 'an edge under a pixel at 0.9: ' .. f.backdropInfo.edgeSize)
+	frames()
+	eq(log.passes, 1, 'one pass after the set-back')
+	check(near(f.backdropInfo.edgeSize, 1, 1e-6), 'whole again')
+	-- With nothing drawn in between it is the same pass: a flicker is a profile
+	-- update's cost (about 900 widget calls on 26 drawn frames), once per slider move or display change.
+	stub.engine_set_scale(0.9)
+	frames()
+	eq(log.passes, 2, 'a second flicker, a second pass')
+end)
+
+test('m1: an engine that sets its scale again after every set-back: the check gives up after five in a second, says so once, and recovers', function()
+	for _, client in ipairs(CLIENTS) do
+		world(client, 2560, 1440)
+		stub.timers_wait_a_frame = true
+		local log, sets = watch(), count_sets()
+		start_uiscale()
+		local backs = 0
+		local lines = chat(function()
+			for _ = 1, 30 do
+				stub.engine_set_scale(0.9) -- the engine, over SaftUI's, every frame
+				local mark = #sets
+				stub.run_timers()
+				for i = mark + 1, #sets do
+					if near(sets[i], 768 / 1440, 1e-9) then backs = backs + 1 end
+				end
+			end
+		end)
+		eq(backs, 5, client .. ': five set-backs, then it stops')
+		eq(#lines, 1, client .. ': one chat line')
+		check(lines[1] and lines[1]:find('Use UI Scale', 1, true) and lines[1]:find("The game's UI scale", 1, true), client .. ': it says why and what to do: ' .. tostring(lines[1]))
+		eq(UIParent:GetScale(), 0.9, client .. ": the engine's scale is left")
+		check(near(st.pixel, 1 / (0.9 * 1440 / 768), 1e-9), client .. ': the tokens follow what is on screen')
+
+		-- A change of screen is a new start.
+		stub.change_display(1920, 1080)
+		stub.run_timers()
+		check(near(UIParent:GetScale(), 768 / 1440, 1e-9), client .. ': a new screen: set back again')
+
+		-- The next real change recovers.
+		stub.timers_wait_a_frame = false
+		stub.engine_set_scale(0.9)
+		for _ = 1, 8 do stub.engine_set_scale(0.9); stub.run_timers() end
+		lines = chat(function() st.UIScale:Apply(AUTO_125) end)
+		check(near(UIParent:GetScale(), 768 / 1440 * 1.25, 1e-12), client .. ': Apply sets it again')
+		eq(#lines, 0, client .. ': and says nothing more')
+		stub.engine_set_scale(0.9)
+		local mark = #sets
+		frames()
+		check(#sets > mark and near(UIParent:GetScale(), 768 / 1440 * 1.25, 1e-12), client .. ': set-backs work again')
+
+		-- A move every two seconds never trips it.
+		world(client, 2560, 1440)
+		stub.timers_wait_a_frame = true
+		log, sets = watch(), count_sets()
+		start_uiscale()
+		lines = chat(function()
+			for _ = 1, 12 do
+				stub.time = stub.time + 2
+				stub.engine_set_scale(0.9)
+				stub.run_timers()
+			end
+		end)
+		eq(#lines, 0, client .. ': slow moves: no line')
+		check(near(UIParent:GetScale(), 768 / 1440, 1e-9), client .. ': each put back')
+		stub.timers_wait_a_frame = false
+	end
+end)
+
+test('n1: in The game\'s UI scale a burst split across two frames is one pass, at the final scale', function()
+	world('forever', 2560, 1440)
+	stub.timers_wait_a_frame = true
+	local log = watch()
+	UIParent:SetScale(0.64)
+	start_uiscale({ mode = 'game', size = 1 })
+	UIParent:SetScale(1) -- the first pair, at 1
+	stub.fire_event('UI_SCALE_CHANGED')
+	stub.run_timers()
+	UIParent:SetScale(0.8) -- the second, a frame later
+	stub.fire_event('UI_SCALE_CHANGED')
+	for _ = 1, 4 do stub.run_timers() end
+	eq(log.passes, 1, 'one pass')
+	eq(log.calls[1].mode, 'game', 'in The game\'s UI scale')
+	check(near(log.calls[1].k, 0.8 * 1440 / 768, 1e-6), 'at the final scale')
+	stub.timers_wait_a_frame = false
+end)
+
+test('m2 (U4): a 5% size step moves UIParent by 0.027, far over the tolerance (1e-5) and far over single precision\'s noise (3e-8)', function()
+	for _, client in ipairs(CLIENTS) do
+		world(client, 2560, 1440)
+		local sets = count_sets()
+		read_back_in_single()
+		start_uiscale()
+		local mark = #sets
+		check(st.UIScale:Preview({ mode = 'auto', size = 1.05 }), client .. ': Preview 105%')
+		eq(#sets - mark, 1, client .. ': the step is set')
+		check(near(UIParent:GetScale(), 768 / 1440 * 1.05, 1e-6), client .. ': UIParent follows it')
+		check(math.abs(768 / 1440 * 1.05 - 768 / 1440) > 100 * st.UIScale.TOLERANCE, client .. ': the tolerance is far below a step')
+		check(st.UIScale.TOLERANCE > 100 * math.abs(single(768 / 1440) - 768 / 1440), client .. ': and far above the read-back noise')
+	end
+end)
+
+test('m2 (U5): the window at 2560 x 1377 keeps the pixel at 1 but changes UIParent\'s units: the scale is set and the pass runs, by the spec\'s step 4', function()
+	for _, client in ipairs(CLIENTS) do
+		world(client, 2560, 1440)
+		local log, sets = watch(), count_sets()
+		start_uiscale()
+		local mark = #sets
+		stub.change_display(2560, 1377)
+		frames()
+		eq(#sets - mark, 1, client .. ': UIParent set to 768 / 1377')
+		check(near(UIParent:GetScale(), 768 / 1377, 1e-9), client .. ': at that')
+		check(rawequal(st.pixel, 1), client .. ': the pixel is still 1')
+		eq(log.passes, 1, client .. ': the scale differs from the last check\'s: the pass runs (the margin and the layout follow the screen\'s height)')
+	end
+end)
+
+test('Revert in combat: the preview ends at once, the scale waits for the end of the fight, and OnChanged says when it applied', function()
+	for _, client in ipairs(CLIENTS) do
+		world(client, 2560, 1440)
+		local log = watch()
+		start_uiscale()
+		local U = st.UIScale
+		U:Preview(AUTO_125)
+		eq(log.passes, 1, client .. ': the preview passed')
+		stub.in_combat = true
+		eq(U:Revert(), true, client .. ': Revert in combat is ok')
+		eq(U:IsPreviewing(), false, client .. ': the preview is over')
+		check(near(UIParent:GetScale(), 768 / 1440 * 1.25, 1e-12), client .. ': UIParent waits')
+		eq(#stub.blocked, 0, client .. ': nothing blocked')
+		eq(log.passes, 1, client .. ': no pass in combat')
+		stub.in_combat = false
+		stub.fire_event('PLAYER_REGEN_ENABLED')
+		check(rawequal(UIParent:GetScale(), 768 / 1440), client .. ': back after combat')
+		eq(log.passes, 2, client .. ': one pass')
+		eq(#log.calls, 2, client .. ': and OnChanged: the signal that it applied')
+	end
+end)
+
+test('m4: Previous is the choice in effect before the first preview, a copy, nil when not previewing', function()
+	world('forever', 2560, 1440)
+	start_uiscale({ mode = 'auto', size = 1.25 })
+	local U = st.UIScale
+	eq(U:Previous(), nil, 'not previewing: nil')
+	U:Preview({ mode = 'pixel', size = 1 })
+	U:Preview({ mode = 'auto', size = 1.5 })
+	local previous = U:Previous()
+	check(previous and previous.mode == 'auto' and previous.size == 1.25, 'the first preview\'s: the saved choice')
+	previous.size = 9
+	eq(U:Previous().size, 1.25, 'a copy')
+	U:Revert()
+	eq(U:Previous(), nil, 'nil after Revert')
+	U:Preview({ mode = 'pixel', size = 1 })
+	U:Apply({ mode = 'pixel', size = 1 })
+	eq(U:Previous(), nil, 'and after Apply')
+end)
+
+test('n3: Pixel for pixel and The game\'s UI scale take any valid size; only Automatic holds it to the screen\'s top', function()
+	world('forever', 1366, 768) -- the top is 130% on this screen
+	local U = st.UIScale
+	local over = U:Default().sizeMax + 0.05
+	local ok, why = U:Preview({ mode = 'auto', size = over })
+	check(ok == false and why == 'size', 'Automatic refuses ' .. over)
+	ok, why = U:Preview({ mode = 'pixel', size = over })
+	check(ok == true and why == nil, 'Pixel for pixel does not look at it')
+	U:Revert()
+	ok, why = U:Preview({ mode = 'game', size = over })
+	check(ok == true and why == nil, 'nor The game\'s UI scale')
+	U:Revert()
+	ok, why = U:Preview({ mode = 'pixel', size = 3 })
+	check(ok == false and why == 'size', 'a size over 150% is still refused')
 end)
 
 test('Describe, by mode', function()

@@ -518,6 +518,8 @@ test('a scale change re-pins every plate and re-applies the size, after the pass
 		stub.in_combat = true
 		stub.engine_set_scale(0.5)
 		stub.run_timers()
+		local added = enemy('nameplate4') -- a plate added in the fight is pinned to the engine's scale
+		eq(added:GetEffectiveScale(), 0.5, client .. ": a plate added in combat is pinned to the engine's scale")
 		eq(one:GetEffectiveScale(), pinned, client .. ': not pinned in combat')
 		eq(size(), inCombat, client .. ': the size waits')
 		eq(#stub.blocked, 0, client .. ': nothing tried in combat')
@@ -525,6 +527,7 @@ test('a scale change re-pins every plate and re-applies the size, after the pass
 		stub.fire_event('PLAYER_REGEN_ENABLED')
 		check(near(UIParent:GetEffectiveScale(), 768 / 1440 * 1.25, 1e-9), client .. ': SaftUI\'s scale after combat')
 		eq(one:GetEffectiveScale(), UIParent:GetEffectiveScale(), client .. ': pinned once combat ends')
+		eq(added:GetEffectiveScale(), UIParent:GetEffectiveScale(), client .. ': and so is the plate added in the fight (the set-back is a change)')
 		eq(size(), driver(UF, 200, 20), client .. ': the size set once combat ends')
 		eq(#take_errors(), 0, client .. ': no error')
 	end

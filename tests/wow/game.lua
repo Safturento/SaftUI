@@ -40,6 +40,7 @@ stub = {
 	-- C_Timer.After's pending callbacks, { due, fn } in the order made.
 	-- stub.run_timers() runs the ones due by stub.time.
 	timers = {},
+	timers_wait_a_frame = false, -- a timer made by a timer's callback waits for the next run_timers
 	-- The game's frame (tick) number. stub.run_timers() starts a new frame
 	-- before it runs the timers due, as C_Timer.After(0) callbacks run on the
 	-- next frame. Only what the game allows once per tick reads it (a
@@ -192,17 +193,24 @@ C_Timer = {
 }
 -- Starts the game's next frame (stub.tick), then runs, in the order they were
 -- made, the timers due by stub.time (callbacks they make that are due run
--- too). Returns how many ran.
+-- too, unless stub.timers_wait_a_frame). Returns how many ran.
 function stub.run_timers()
 	stub.tick = stub.tick + 1
 	local ran = 0
 	local i = 1
-	while i <= #stub.timers do
+	-- With stub.timers_wait_a_frame, only the timers there are now run: one a
+	-- callback makes waits for the next run (the game's next frame), so a test can
+	-- show what loops once a frame. Off by default: tests of retry chains count
+	-- on a due callback made by a callback running in the same call.
+	local waiting = stub.timers_wait_a_frame and #stub.timers or math.huge
+	while i <= waiting and i <= #stub.timers do
 		local timer = stub.timers[i]
 		if timer.cancelled then
+			waiting = waiting - 1
 			table.remove(stub.timers, i)
 		elseif timer.due <= stub.time then
 			table.remove(stub.timers, i)
+			waiting = waiting - 1
 			ran = ran + 1
 			if timer.interval then
 				-- A ticker goes on from now (once per call, however late), unless it

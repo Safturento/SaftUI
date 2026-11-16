@@ -170,7 +170,22 @@ UIScale.EVENTS = { 'UI_SCALE_CHANGED', 'DISPLAY_SIZE_CHANGED', 'NOTCHED_DISPLAY_
 -- after them at the latest, and stays: one check on the next frame is enough.
 UIScale.RECHECK = nil
 
-local TOLERANCE = 1e-5 -- a scale read back in single precision differs by about 3e-8
+-- How far UIParent's scale may be from the wanted one and count as it. A scale
+-- read back in single precision is off by about 3e-8 (relative 6e-8), and the
+-- smallest step the player can ask for, 5% of the size, moves it by 0.02 or
+-- more: 1e-5 is a few hundred times over the one and two thousand times under
+-- the other.
+UIScale.TOLERANCE = 1e-5
+local TOLERANCE = UIScale.TOLERANCE
+
+-- A guard against an engine that sets its own scale again after every set-back
+-- (E3 saw it set once, at the event): after SETBACKS set-backs within WINDOW
+-- seconds the check leaves the engine's scale and says so once.
+local SETBACKS, WINDOW = 5, 1
+local setbacks = {} -- the times of the latest set-backs
+local gaveUp -- the screen the check gave up on ('width x height'), or nil
+local warned
+local settling -- The game's UI scale: the scale a changed reading is waiting to repeat
 
 local preview -- the choice being tried, or nil
 local previous -- the choice in effect before the first preview, for the Keep prompt's Go back
@@ -204,6 +219,13 @@ end
 -- What the last finished check applied (nil before one), and whether a choice
 -- is being tried without being saved.
 function UIScale:Applied() return applied end
+
+-- The choice in effect before the first preview (a copy), nil when not
+-- previewing: what the Keep prompt's Go back means.
+function UIScale:Previous()
+	if previous then return Copy(previous) end
+	return nil
+end
 function UIScale:IsPreviewing() return preview ~= nil end
 
 -- The game's own UI scale: Blizzard's slider while Use UI Scale is on, else the
@@ -294,13 +316,42 @@ function UIScale:ScheduleCheck()
 	end
 end
 
+-- Sets UIParent back to the wanted scale, unless the engine has taken it away
+-- SETBACKS times within WINDOW seconds: then it stays as it is and chat says
+-- why, once. Returns whether it set it.
+local function SetBack(resolved)
+	local key = resolved.width .. ' x ' .. resolved.height
+	if gaveUp and gaveUp ~= key then gaveUp, setbacks = nil, {} end -- another screen is a new start
+	if gaveUp then return false end
+	local now, recent = GetTime(), {}
+	for _, time in ipairs(setbacks) do
+		if now - time < WINDOW then recent[#recent + 1] = time end
+	end
+	setbacks = recent
+	if #setbacks >= SETBACKS then
+		gaveUp = key
+		if not warned then
+			warned = true
+			st:Print("The game keeps setting its own UI scale, so SaftUI stopped setting it back. Untick Use UI Scale in the game's graphics options, or choose The game's UI scale in SaftUI.")
+		end
+		return false
+	end
+	setbacks[#setbacks + 1] = now
+	UIParent:SetScale(resolved.uiScale)
+	return true
+end
+
 -- The check: is UIParent where the choice says, and did anything the UI is
--- drawn in change? Never in combat: it waits whole for the end of it.
+-- drawn in change? Never in combat: it waits whole for the end of it. Setting
+-- UIParent back counts as a change: whatever was drawn while the engine's
+-- scale was in force (in a fight, or in the frame before this check) is drawn
+-- again by the pass, and the plates pinned again.
 function UIScale:Check()
 	local resolved = ResolveNow(UIScale:Current())
 	if not resolved then return end
 	if st:QueueAfterCombat('UIScale', function() UIScale:Check() end) then return end
 
+	local movedBack, own = false, false
 	if resolved.mode == 'game' then
 		-- Just switched to it: take the game's own scale once. After that SaftUI
 		-- only reads it.
@@ -308,20 +359,36 @@ function UIScale:Check()
 			local game = UIScale.GameScale()
 			if game then
 				UIParent:SetScale(game)
+				own = true
 				resolved = ResolveNow(UIScale:Current()) or resolved
 			else
 				st:Print("SaftUI can't read the game's UI scale here. It shows after /reload.")
 			end
 		end
 	elseif abs(UIParent:GetScale() - resolved.uiScale) > TOLERANCE then
-		UIParent:SetScale(resolved.uiScale)
+		movedBack = SetBack(resolved)
+	else
+		gaveUp = nil
 	end
 
 	UIScale:SetTokens()
-	local changed = lastScale == nil or abs(UIParent:GetScale() - lastScale) > TOLERANCE
+	local scale = UIParent:GetScale()
+	local changed = movedBack or lastScale == nil or abs(scale - lastScale) > TOLERANCE
 		or st.pixel ~= lastPixel or st.lineWeight ~= lastWeight
+	if resolved.mode == 'game' and changed and not own then
+		-- The engine's events come in pairs, the first able to read a scale the
+		-- second then changes, and E3 saw both at one timestamp; a pair split across
+		-- two frames would pass twice. A changed reading has to repeat on the next
+		-- frame to count.
+		if not settling or abs(settling - scale) > TOLERANCE then
+			settling = scale
+			C_Timer.After(0, function() Safely(UIScale.Check, UIScale) end)
+			return
+		end
+	end
+	settling = nil
 	applied = resolved
-	lastScale, lastPixel, lastWeight = UIParent:GetScale(), st.pixel, st.lineWeight
+	lastScale, lastPixel, lastWeight = scale, st.pixel, st.lineWeight
 	if changed then
 		Pass(resolved)
 	else
@@ -340,8 +407,11 @@ local function Refused(choice)
 	local screen = UIScale.ReadScreen()
 	if not screen then return 'screen' end
 	if size ~= nil then
-		local resolved = UIScale.Resolve({ mode = 'auto', size = size }, screen)
-		if size < UIScale.SIZE.min - 1e-9 or size > resolved.sizeMax + 1e-9 then return 'size' end
+		-- Only Automatic's size is held to what the screen holds (sizeMax); the
+		-- other modes ignore it, and take any size in 70% to 150%.
+		local top = UIScale.SIZE.max
+		if choice.mode == 'auto' then top = UIScale.Resolve({ mode = 'auto', size = size }, screen).sizeMax end
+		if size < UIScale.SIZE.min - 1e-9 or size > top + 1e-9 then return 'size' end
 	end
 	return nil
 end
@@ -355,6 +425,7 @@ function UIScale:Preview(choice)
 	if why then return false, why end
 	if not preview then previous = UIScale:Current() end
 	preview = UIScale.Normalize(choice)
+	gaveUp, setbacks = nil, {}
 	UIScale:Check()
 	return true
 end
@@ -377,6 +448,7 @@ function UIScale:Apply(choice)
 		end
 	end
 	preview, previous = nil, nil
+	gaveUp, setbacks = nil, {}
 	UIScale:Check()
 	if InCombatLockdown() then return true, 'combat' end
 	return true
@@ -385,6 +457,7 @@ end
 -- Ends a preview: back to the saved choice, else the default.
 function UIScale:Revert()
 	preview, previous = nil, nil
+	gaveUp, setbacks = nil, {}
 	UIScale:Check()
 	return true
 end
