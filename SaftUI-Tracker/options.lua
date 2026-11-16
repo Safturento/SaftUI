@@ -340,7 +340,7 @@ function TR:GetConfigTable()
 	-- hangs from the holder, so the holder anchored to the tracker, or to a
 	-- frame inside it, would chase itself: refused here by name (the frames
 	-- don't exist while the switch is off) and by parent.
-	local position = generators.position(1000, true,
+	local position = generators.position(8.5, true, -- the second section: after the rows, before Text
 		function(key) return TR:GetPosition()[key] end,
 		function(key, value)
 			local current = TR:GetPosition()

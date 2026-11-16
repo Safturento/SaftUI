@@ -604,8 +604,8 @@ function AB:GetBarOptions(id, order)
 	}
 
 	-- Every SetPoint parameter is editable, the relative frame included. Passing
-	-- the bar makes a typed frame go through st:ValidateAnchor. Last.
-	local position = generators.position(1000, true,
+	-- the bar makes a typed frame go through st:ValidateAnchor. Second section.
+	local position = generators.position(1.5, true,
 		function(key) return self.config[id].position[key] end,
 		function(key, value)
 			self.config[id].position[key] = value

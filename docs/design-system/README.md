@@ -108,6 +108,6 @@ Every page whose frames SaftUI draws offers Theme and Background, with "Use Saft
 6. **Buttons float.** A line that holds only buttons has no panel behind it. A section's or dialog's closing buttons float under the panel with `float-gap` (24) above and below.
 7. **The color field** (`ColorBar`) is as wide as a dropdown (`control-width`): a swatch at its left (a see-through color over a checker), its hex code beside it in `text`, with `· NN%` when its opacity is under 100%.
 8. **Carets and close.** The dropdown arrow is `chevron-down`; the close button is `x` (`CloseButton`).
-9. **Position goes last** on a page (`PositionBlock`), in a section of its own.
+9. **A frame's Position is the second section** of its page or tab (`PositionBlock`), right after the first section, in a section of its own (decision 55). A part's Position in an item's menu stays last in the menu.
 10. **Whole pixels** everywhere. **Corners are square** (`radius` 0).
 11. **Three themes**: Thick, Thin, Blizzard. Build for Thick and Thin with tokens, and say what keeps Blizzard's art.

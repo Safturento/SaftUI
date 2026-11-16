@@ -55,7 +55,7 @@ The profile line at the sidebar's foot reads "Profile: Default", the label in `t
 
 ## Do and don't
 
-- Do put Position last on a page, in its own section.
+- Do put a frame's Position second on its page or tab, in its own section, right after the first section.
 - Do give every option a `desc`; the label's tooltip shows it.
 - Don't add tabs to a page that fits on one; fold small parts into `MenuItem`s first.
 - Don't draw your own controls on a page: the Bags' Categories tab does, and it is listed under Discrepancies.

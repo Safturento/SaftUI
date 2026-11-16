@@ -128,9 +128,10 @@ function TB:GetConfigTable()
 		return general
 	end
 
-	-- The holder's position (TB:ApplyHolder), last in General. A change saves the table
+	-- The holder's position (TB:ApplyHolder), the second section of General, after the
+	-- rows and before Element colors. A change saves the table
 	-- GetPosition hands out, so a first change from the waiting spot saves a position too.
-	local position = st.Config.generators.position(1000, true,
+	local position = st.Config.generators.position(9.5, true,
 		function(key) return self:GetPosition()[key] end,
 		function(key, value)
 			local pos = self:GetPosition()
