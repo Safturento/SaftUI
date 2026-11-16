@@ -807,20 +807,16 @@ end
 	    filters.categories[windowId].
 ]]
 function INV:IsCategoryHidden(windowId, key)
-	local byId = self:GetCategoryList().byId
-	local entry = byId[key]
+	local entry = self:GetCategoryList().byId[key]
 	if entry then return entry.hide[windowId] and true or false end
-	if IsSetKey(key) then
-		local sets = byId[self.SETS_ENTRY]
-		if sets and sets.hide[windowId] then return true end
-	end
+	if self:IsSetHiddenBySetsEntry(windowId, key) then return true end
 	local flags = Flags(self, windowId)
 	return flags ~= nil and flags[key] and true or false
 end
 
 -- Whether a 'Set: ...' category is hidden in a window by the Equipment sets
 -- entry's Show in, which a set's own flag can't undo: the Edit view's checkbox
--- of such a set is off (disabled) while it holds.
+-- of such a set does nothing while it holds.
 function INV:IsSetHiddenBySetsEntry(windowId, key)
 	if not IsSetKey(key) then return false end
 	local sets = self:GetCategoryList().byId[self.SETS_ENTRY]
@@ -855,8 +851,8 @@ function INV:SetCategoryHidden(windowId, key, hidden)
 end
 
 -- Shows a list category in every window, any a flag was set for (Show in lists
--- the windows of this client, but the Edit view's checkbox and a migrated
--- profile can hide it in one it doesn't), in one write.
+-- the windows of this client, but a profile carried over from retail can hold a
+-- warband flag on Forever, and nothing else clears it), in one write.
 function INV:ShowCategoryEverywhere(key)
 	local entry = Entry(self, key)
 	if not entry then return false end

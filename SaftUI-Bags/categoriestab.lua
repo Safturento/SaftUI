@@ -411,7 +411,8 @@ function INV:CategoryEditorOptions(id, tab, items)
 		}
 		args.show.default = {
 			-- Any window it is hidden in, even one Show in doesn't list on this
-			-- client (Forever's combined bank): nothing else clears that flag.
+			-- client (a warband flag in a profile carried over from retail to
+			-- Forever): nothing else clears that flag.
 			differs = function()
 				local e = Entry()
 				return e ~= nil and next(e.hide) ~= nil
