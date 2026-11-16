@@ -507,3 +507,27 @@ test('defaults: every window is compact with empty slots off', function()
 		eq(INV.config[id].emptySlots, 'off', id .. ' empty slots')
 	end
 end)
+
+test("Compact and Rows: Grouped's slot for the normal bags points at a normal bag's free slot, not a herb bag's", function()
+	world('forever')
+	INV.config.bag.emptySlots = 'grouped'
+	-- The backpack is full and bag 1 is a herb bag with free slots in front of
+	-- the normal bag 3: the first free slot in bag order is in a herb bag.
+	for slot = 6, 20 do W.put(0, slot, W.item(100 + slot, 'Filler ' .. slot, 'Miscellaneous', 1)) end
+	W.bags[1].family = 32
+	W.bag(3, 4, 'Bag')
+	for _, view in ipairs({ 'rows' }) do
+		local empties = section(INV:GetViewSections('bag', view), 'Empty Slots')
+		check(empties ~= nil, view .. ': an Empty Slots section')
+		local first = empties.items[1]
+		eq(first.bagID, 3, view .. ': the grouped slot is in the normal bag')
+		eq(first.slotID, 1, view .. ': its first free slot')
+		eq(first.count, 8 + 10 + 4, view .. ': and it still counts every free slot')
+	end
+	-- With no free slot in a normal bag, it points at the first free one there is.
+	for slot = 1, 4 do W.put(3, slot, W.item(200 + slot, 'More ' .. slot, 'Miscellaneous', 1)) end
+	local empties = section(INV:GetViewSections('bag', 'rows'), 'Empty Slots')
+	eq(empties.items[1].bagID, 1, 'with only herb bags free: the first free slot')
+	eq(#take_errors(), 0, 'no errors')
+end)
+

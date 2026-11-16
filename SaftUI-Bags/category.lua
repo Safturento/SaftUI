@@ -288,23 +288,28 @@ end
 -- The empty slot infos for a list of bag records (see ReadBags), by mode:
 -- 'all' is one per free slot, in order; 'grouped' is one pointing at the first
 -- free slot, with `count` the number of free slots, or none if there are none.
+-- The grouped slot prefers a free slot in a bag that takes any item over one in
+-- a special bag (a herb bag's takes only herbs), so an item dropped on it lands.
 function INV:GetEmptySlots(id, bags, mode)
 	local empties = {}
 	if mode ~= 'all' and mode ~= 'grouped' then return empties end
-	local first, count = nil, 0
+	local first, plain, count = nil, nil, 0
 	for _, bag in ipairs(bags) do
 		for _, slotID in ipairs(bag.free) do
 			count = count + 1
 			if mode == 'all' then
 				tinsert(empties, GetEmptySlotInfo(bag.id, slotID, id))
-			elseif not first then
-				first = GetEmptySlotInfo(bag.id, slotID, id)
+			else
+				first = first or { bag.id, slotID }
+				if not plain and not self:IsSpecialBag(bag.id) then plain = { bag.id, slotID } end
 			end
 		end
 	end
-	if first then
-		first.count = count
-		empties[1] = first
+	local point = plain or first
+	if point then
+		local info = GetEmptySlotInfo(point[1], point[2], id)
+		info.count = count
+		empties[1] = info
 	end
 	return empties
 end

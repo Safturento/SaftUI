@@ -2214,7 +2214,7 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 
 ### 2026-11-08 — Specialty bags (herb, mining, etc.) count as normal bags in the bag window
 
-**What:** The bag window marks the reagent bag's items and empty slots (a green corner wedge), and the Empty Slots category's Grouped mode has one slot for the normal bags and one for the reagent bag. A specialty bag (herb, mining, enchanting, etc.) is treated as a normal bag: its items get no marker, and its free slots are counted in the normal group even though they only take that profession's items. Grouped's normal slot points at the first free normal-kind slot, which can be in a specialty bag, so dropping a non-matching item on it fails with the game's "That item doesn't go in that container" error.
+**What:** The bag window marks the reagent bag's items and empty slots (a green corner wedge), and the Empty Slots category's Grouped mode has one slot for the normal bags and one for the reagent bag. A specialty bag (herb, mining, enchanting, etc.) is treated as a normal bag: its items get no marker, and its free slots are counted in the normal group even though they only take that profession's items. (Part-closed 2026-11-15: Grouped's normal slot used to point at the first free normal-kind slot, which could be in a specialty bag, so dropping a non-matching item on it failed with the game's "That item doesn't go in that container" error. It now prefers a free slot in a bag that takes any item, `INV:GetEmptySlots` in `SaftUI-Bags/category.lua`, with a test in `tests/bags/views_data_test.lua`; the count still includes the specialty bags' free slots.)
 
 **Why noticed:** Brainstorming the reagent marker and Empty Slots category (2026-11-08). The user's problem was telling reagent bag items apart when moving reagents into a new reagent bag and swapping which items stay there. Specialty bags have the same "only some items fit" shape, but the user only raised the reagent bag, so they were left out to keep the change small.
 
@@ -2222,7 +2222,7 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 
 **What's been considered:** Grouping empty slots by bag family instead of normal/reagent would handle specialty bags with no special cases, and the first free slot of a normal-family bag would then always take any item. The marker would need a colour or shape per family, or one shared "special bag" marker.
 
-**Shape of work:** Small: group by bag family in the empty slot code, pick the Grouped normal slot from family-0 bags only, and decide the marker for specialty bags.
+**Shape of work:** Small: group by bag family in the empty slot code (so the count says what a normal item can use), and decide the marker for specialty bags.
 
 **Open questions:** Does the user (or anyone on Forever) use specialty bags enough to want them marked? One marker for all of them, or per profession?
 
