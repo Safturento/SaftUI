@@ -751,3 +751,208 @@ test('OB.PositionText: the words of a position, relative to its unit frame or in
 		'Top left of the screen: 120, -330', 'not relative: a screen position')
 	eq(OB.PositionText('nothing', true), nil, 'not a position: nil')
 end)
+
+------------------------------------------------------------------ fix round 1
+
+test("the row's hover lights wherever the mouse enters it: the summary, the box, the dots, and with the hover line", function()
+	in_look('thick', function()
+		fresh()
+		own.name = true -- a member page: entering also shows the line
+		local body, by = draw(Page({ name = Part('Name', 1, { kind = 'member' }) }))
+		local c, w = by.name, by.name.widget
+		local parts = c.frame.share
+		for _, entry in ipairs({ { 'the summary', w.summaryHit }, { 'the box', w.box }, { 'the dots', w.dots } }) do
+			stub.cursor_x, stub.cursor_y = 0, 0
+			stub.fire_script(parts.line, 'OnUpdate', 0.01)
+			stub.fire_script(c.frame, 'OnUpdate', 0.01)
+			eq(st:GetState(c.frame, 'hover'), false, entry[1] .. ': at rest first')
+			hover(entry[2])
+			stub.fire_script(entry[2], 'OnEnter', true)
+			eq(st:GetState(c.frame, 'hover'), true, entry[1] .. ': the row is lit')
+			check(parts.line:IsShown(), entry[1] .. ': and the hover line shows')
+		end
+		stub.cursor_x, stub.cursor_y = 0, 0
+		stub.fire_script(parts.line, 'OnUpdate', 0.01)
+		body:Release()
+
+		-- A page with no sharing: the same, with no line.
+		fresh()
+		body, by = draw(Page({ name = Part('Name', 1) }))
+		hover(by.name.widget.summaryHit)
+		stub.fire_script(by.name.widget.summaryHit, 'OnEnter', true)
+		eq(st:GetState(by.name.frame, 'hover'), true, 'the summary: lit with no sharing too')
+		body:Release()
+
+		-- A row of no summary is not lit from its dots.
+		body, by = draw(Page({ plain = Part('Plain', 1, { plain = true }) }))
+		hover(by.plain.widget.dots)
+		stub.fire_script(by.plain.widget.dots, 'OnEnter', true)
+		eq(st:GetState(by.plain.frame, 'hover'), false, 'no summary: no hover look')
+		stub.fire_script(by.plain.widget.dots, 'OnLeave', true)
+		body:Release()
+	end)
+end)
+
+test("the row's hover watch ends once the mouse is out of the view, as the line's does", function()
+	in_look('thick', function()
+		fresh()
+		local view = CreateFrame('Frame', nil, UIParent)
+		view:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 100, -100)
+		view:SetSize(774, 20) -- shows only the top of the row
+		local content = CreateFrame('Frame', nil, view)
+		content:SetPoint('TOPLEFT', view, 'TOPLEFT', 0, 0)
+		content:SetSize(774, 700)
+		local root = Page({ name = Part('Name', 1) })
+		local body = OB.New(content, root, nil, 774)
+		body:Draw(OM.BuildView(root, 'page').sections)
+		local c = body.cells[1]
+		hover(c.label, 5)
+		stub.fire_script(c.frame, 'OnEnter', true)
+		eq(st:GetState(c.frame, 'hover'), true, 'lit')
+		-- Over the row's lower part, below the view.
+		local scale = c.frame:GetEffectiveScale()
+		stub.cursor_x = (c.frame:GetLeft() + 5) * scale
+		stub.cursor_y = (c.frame:GetBottom() + 3) * scale
+		check(c.frame:IsMouseOver() and not view:IsMouseOver(), 'the case: on the row, off the view')
+		stub.fire_script(c.frame, 'OnUpdate', 0.01)
+		eq(st:GetState(c.frame, 'hover'), false, 'cleared')
+		body:Release()
+	end)
+end)
+
+test('OM.MenuOffers keeps no menu alive: throwaway menus are collected', function()
+	local weak = setmetatable({}, { __mode = 'k' })
+	local function ask(n)
+		local menu = { type = 'group', name = 'M' .. n, args = { a = { type = 'toggle', name = 'A', default = Default('caps', false),
+			get = function() return false end, set = function() end } } }
+		weak[menu] = true
+		OM.MenuOffers({}, { option = { type = 'item', menu = menu }, path = { 'x' } })
+	end
+	for n = 1, 2000 do ask(n) end
+	collectgarbage(); collectgarbage()
+	local alive = 0
+	for _ in pairs(weak) do alive = alive + 1 end
+	check(alive <= 128, 'at most the bounded cache is kept (' .. alive .. ' of 2000 alive)')
+end)
+
+test('OM.MenuOffers leaves out a hidden group, a hidden or disabled owned row, and a hidden or disabled menu', function()
+	fresh()
+	own.size, own.caps, own.extra = true, true, true
+	local function offers(edit)
+		local item = Part('Name', 1, { kind = 'member' })
+		edit(item.menu)
+		return (OM.MenuOffers({}, { option = item, path = { 'page', 'name' }, type = 'item' }))
+	end
+	local function group(extra)
+		local g = { type = 'group', name = 'G', inline = true, order = 9, args = { extra = { type = 'toggle', name = 'Extra',
+			share = MemberShare('extra'), get = function() return true end, set = function() end } } }
+		for k, val in pairs(extra) do g[k] = val end
+		return g
+	end
+	eq(offers(function() end), 2, 'the case: two own rows')
+	eq(offers(function(m) m.args.size.hidden = true end), 1, 'a hidden owned row')
+	eq(offers(function(m) m.args.size.disabled = true end), 1, 'a disabled owned row')
+	eq(offers(function(m) m.args.g = group({}) end), 3, 'a nested group counts')
+	eq(offers(function(m) m.args.g = group({ hidden = true }) end), 2, 'a hidden group above an owned row')
+	eq(offers(function(m) m.args.g = group({ guiHidden = true }) end), 2, 'a guiHidden one')
+	eq(offers(function(m) m.args.g = group({ disabled = true }) end), 2, 'a disabled one')
+	eq(offers(function(m) m.hidden = true end), 0, 'a hidden menu')
+	eq(offers(function(m) m.guiHidden = true end), 0, 'a guiHidden menu')
+	eq(offers(function(m) m.disabled = true end), 0, 'a disabled menu')
+	eq(offers(function(m) m.guiDisabled = true end), 0, 'a guiDisabled menu')
+end)
+
+test('the summary has 24 of room or it is left out: the boundary, to the unit', function()
+	in_look('thick', function()
+		fresh()
+		-- A 4-character label (32): the room is the cell less 92.
+		local function shown(width)
+			local body, by = draw(Page({ name = Part('Name', 1) }), width)
+			local out = { on = by.name.widget.summary:IsShown(), cell = by.name.frame:GetWidth(),
+				room = by.name.frame:GetWidth() - 92 }
+			body:Release()
+			return out
+		end
+		local at, under = shown(288), shown(286)
+		eq(at.room, 24, 'the case: 24 of room')
+		check(at.on, '24: shown')
+		eq(under.room, 23, 'the case: 23 of room')
+		check(not under.on, '23: left out')
+	end)
+end)
+
+test('a stale tip does not stay: a later summary with text and no tip has none', function()
+	in_look('thick', function(tip)
+		fresh()
+		local root = Page({ name = Part('Name', 1) })
+		local body, by = draw(root)
+		eq(by.name.widget.summaryTip, 'Right of Health: -7, -1')
+		v.tip = nil
+		v.sum = 'Screen'
+		body:Release()
+		body:Draw(OM.BuildView(root, 'page').sections)
+		by = {}
+		for _, cell in ipairs(body.cells) do by[cell.row.key] = cell end
+		eq(by.name.widget.summaryTip, nil, 'no tip kept')
+		eq(by.name.widget.summary:GetText(), 'Screen')
+		stub.fire_script(by.name.widget.summaryHit, 'OnEnter', true)
+		eq(tip.owner, nil, 'no tooltip')
+		body:Release()
+	end)
+end)
+
+test('a drag: the body\'s Refresh puts the summary by the reset icon that came, and back', function()
+	in_look('thick', function()
+		fresh()
+		local root = Page({ name = Part('Name', 1) })
+		local body, by = draw(root)
+		local c, w = by.name, by.name.widget
+		local before = w.summary:GetRight()
+		v.name = false
+		body:Refresh()
+		local icon = c.frame.defaultReset
+		check(icon and icon:IsShown(), 'the reset icon came')
+		eq(w.summary:GetRight(), icon:GetLeft() - 6, 'the summary ends 6 before it')
+		v.name = true
+		body:Refresh()
+		eq(w.summary:GetRight(), before, 'and back where it was')
+		body:Release()
+	end)
+end)
+
+test('a pooled frame of a part row is clean for a row that is no item', function()
+	in_look('thick', function()
+		fresh()
+		local body, by = draw(Page({ name = Part('Name', 1) }))
+		local frame = by.name.frame
+		hover(by.name.label, 5)
+		stub.fire_script(frame, 'OnEnter', true)
+		local again = redraw(body, Page({ name = { type = 'toggle', name = 'Plain', desc = 'Plain.', order = 1,
+			get = function() return true end, set = function() end } }))
+		eq(again.name.frame, frame, 'the same pooled frame')
+		eq(frame.partRow, nil, 'no part row')
+		eq(st:GetState(frame, 'hover'), false, 'not lit')
+		eq(frame:GetScript('OnUpdate'), nil, 'no watch')
+		stub.fire_script(frame, 'OnMouseUp', 'LeftButton')
+		check(not OW:IsMenuShown(), 'a click opens nothing')
+		stub.fire_script(frame, 'OnEnter', true)
+		eq(st:GetState(frame, 'hover'), false, 'and entering it lights nothing')
+		body:Release()
+	end)
+end)
+
+test("the menu opens on mouse-up only while the mouse is still on the row", function()
+	in_look('thick', function()
+		fresh()
+		local body, by = draw(Page({ name = Part('Name', 1) }))
+		local c = by.name
+		stub.cursor_x, stub.cursor_y = 0, 0
+		stub.fire_script(c.frame, 'OnMouseUp', 'LeftButton')
+		check(not OW:IsMenuShown(), 'pressed on the row, let go off it: no menu')
+		hover(c.label, 5)
+		stub.fire_script(c.frame, 'OnMouseUp', 'LeftButton')
+		check(OW:IsMenuShown(c.widget), 'on it: the menu')
+		OW:CloseMenu()
+		body:Release()
+	end)
+end)

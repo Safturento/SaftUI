@@ -886,11 +886,24 @@ end
 ------------------------------------------------------------------ the body
 
 -- A part row's hover look ends once the mouse is off the whole row (its own
--- controls count as on it), and the watch with it.
+-- controls count as on it) or out of the body's view (a row cut off by the scroll
+-- view, as the hover line's watch says), and the watch with it.
 local function RowWatch(frame)
-	if frame:IsMouseOver() then return end
+	local parent = frame:GetParent()
+	local view = parent and parent:GetParent()
+	if frame:IsMouseOver() and not (view and not view:IsMouseOver()) then return end
 	frame:SetScript('OnUpdate', nil)
 	st:SetState(frame, 'hover', false)
+end
+
+-- The Row hover of a part row, from wherever the mouse enters it (the row frame, or
+-- its box, dots, summary or diff icon, which take the mouse). Nothing on any other row.
+function OB.RowHover(frame)
+	local part = frame.partRow
+	if part and not part.disabled then
+		st:SetState(frame, 'hover', true)
+		frame:SetScript('OnUpdate', RowWatch)
+	end
 end
 
 local Body = {}
@@ -916,11 +929,7 @@ function OB.New(content, root, onChanged, width, opts)
 			frame:SetScript('OnEnter', function(self)
 				ShowTip(self)
 				if OB.ShareEnter then OB.ShareEnter(self) end
-				local part = self.partRow
-				if part and not part.disabled then
-					st:SetState(self, 'hover', true)
-					self:SetScript('OnUpdate', RowWatch)
-				end
+				OB.RowHover(self)
 			end)
 			frame:SetScript('OnLeave', function(self) HideTip(self) end)
 			-- A part row's click (anywhere but on its own controls) opens its menu.

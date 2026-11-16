@@ -331,6 +331,7 @@ local function MakeParts(host, withMark)
 	diff:SetScript('OnEnter', function(self)
 		DiffTip(host, self)
 		OB.ShareEnter(host) -- reached without crossing the row: its line too
+		OB.RowHover(host) -- and a part row's hover
 	end)
 	diff:SetScript('OnLeave', function(self) Untip(self) end)
 	parts.diff = diff

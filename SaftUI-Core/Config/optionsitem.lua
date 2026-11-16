@@ -175,6 +175,15 @@ builders.item = function(w)
 	hit:SetScript('OnLeave', function(self) W.HideTip(self) end)
 	hit:SetScript('OnMouseUp', function(_, button) w:RowClick(button) end)
 	w.summaryHit = hit
+
+	-- A part row is lit from wherever the mouse enters it: its box, dots and summary
+	-- take the mouse, so the row frame's own OnEnter doesn't fire.
+	for _, part in ipairs({ box, dots, hit }) do
+		part:HookScript('OnEnter', function()
+			local row = frame:GetParent()
+			if row and row.partRow == w then OB.RowHover(row) end
+		end)
+	end
 end
 
 -- The sentence a part row's dots say: how many settings in its menu offer a reset.
@@ -263,12 +272,12 @@ define('item', {
 		local function Over(frame) return frame ~= nil and frame:IsVisible() and frame:IsMouseOver() end
 		if Over(self.box) or Over(self.dots) then return end
 		local row = self.frame:GetParent()
-		if row then
-			if Over(row.defaultReset) then return end
-			local parts = row.share
-			if parts and (Over(parts.diff) or Over(parts.ownText) or Over(parts.reset) or Over(parts.all) or Over(parts.multiple)) then
-				return
-			end
+		-- Pressed on the row, let go elsewhere: nothing.
+		if not (row and row:IsMouseOver()) then return end
+		if Over(row.defaultReset) then return end
+		local parts = row.share
+		if parts and (Over(parts.diff) or Over(parts.ownText) or Over(parts.reset) or Over(parts.all) or Over(parts.multiple)) then
+			return
 		end
 		self:OpenMenu()
 	end,

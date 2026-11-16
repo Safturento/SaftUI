@@ -1228,18 +1228,23 @@ end
 
 ------------------------------------------------------------------ what an item's menu offers
 
--- Per menu (weak, by its group): the menu's own tree and options, and its rows in
--- a flat list, { option, path, type, key, up }, up the groups above a row inside
--- the menu ({ child, path, up } each, nil for none). Built once, so asking whether
--- a menu offers a reset makes no table.
-local menuRows = setmetatable({}, { __mode = 'k' })
+-- Per menu, by its group: the menu's own tree and options, and its rows in a flat
+-- list, { option, path, type, key, up, info }, up the groups above a row inside the
+-- menu ({ child, path, up } each, nil for none), info the row's info table (made
+-- on its first member-page ask). Built once, so asking whether a menu offers a
+-- reset makes no table. Not weak: Lua 5.1 has no ephemerons and the cached tree
+-- holds its menu, so a weak key would never go. The cache keeps the last
+-- MENU_CACHE menus (the oldest goes, with its root's entry in optionsdefault.lua),
+-- more than a page's part rows; a menu that is not asked about again is freed.
+local MENU_CACHE = 128
+local menuRows, menuOrder = {}, {}
 
 local function MenuRows(item)
 	local menu = item.menu
 	local cached = menuRows[menu]
 	if cached then return cached end
 	local root = OM.MenuRoot(item)
-	cached = { root = root, options = Options(root), rows = {} }
+	cached = { root = root, options = Options(root), rows = {}, menuPath = { OM.MENU_KEY } }
 	local function Collect(group, path, up)
 		if type(group.args) ~= 'table' then return end
 		for key, child in pairs(group.args) do
@@ -1255,6 +1260,13 @@ local function MenuRows(item)
 	end
 	Collect(menu, { OM.MENU_KEY })
 	menuRows[menu] = cached
+	menuOrder[#menuOrder + 1] = menu
+	if #menuOrder > MENU_CACHE then
+		local old = table.remove(menuOrder, 1)
+		local gone = menuRows[old]
+		menuRows[old] = nil
+		if gone and OM.ForgetRoot then OM.ForgetRoot(gone.root) end
+	end
 	return cached
 end
 
@@ -1277,8 +1289,10 @@ end
 	the page's own, or it has no such share and OM.DefaultDiffers. owned is how
 	many of the count are a share's, and page the page as a sentence reads it
 	(share.pageText, else share.page) of the first of them, nil with none.
-	Nested groups count as part of the menu. Makes no table but the info of a
-	member page's own answer: the rows are listed once per menu.
+	Nested groups count as part of the menu; a hidden or disabled group, or menu,
+	counts nothing. The rows and each member row's info are made once per menu (a
+	menu's args must be complete before it is first asked about); a function in
+	hidden, disabled or own may make tables of its own.
 ]]
 function OM.MenuOffers(root, row)
 	local item = row.option
@@ -1286,13 +1300,20 @@ function OM.MenuOffers(root, row)
 	local cached = MenuRows(item)
 	local options, rows = cached.options, cached.rows
 	local count, owned, page = 0, 0, nil
+	-- The menu's own group may be hidden or disabled (a guiHidden one no row inherits).
+	local menuPath = cached.menuPath
+	if IsHidden(item.menu, options, menuPath) or IsDisabled(item.menu, options, menuPath) then return 0, 0, nil end
 	for i = 1, #rows do
 		local each = rows[i]
 		local share = each.option.share
 		if type(share) == 'table' and share.own ~= nil then
-			if not MenuRowOff(options, each) and ShareAsk(share, 'own', (BuildInfo(each.option, options, each.path))) then
-				count, owned = count + 1, owned + 1
-				if not page then page = Title(share.pageText) or Title(share.page) end
+			if not MenuRowOff(options, each) then
+				each.info = each.info or BuildInfo(each.option, options, each.path)
+				local ok, answer = xpcall(share.own, geterrorhandler(), each.info)
+				if ok and answer then
+					count, owned = count + 1, owned + 1
+					if not page then page = Title(share.pageText) or Title(share.page) end
+				end
 			end
 		elseif not MenuRowOff(options, each) and OM.DefaultDiffers(cached.root, each) then
 			count = count + 1

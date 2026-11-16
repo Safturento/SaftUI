@@ -980,3 +980,21 @@ test('search lists a mirrored setting once, at its part, opening the menu', func
 	eq(OM.MirrorOf(root, { 'Mirror', 'general', 'parts', 'healthtext' }), nil, 'none for the part itself')
 	eq(OM.MirrorOf(root, { 'Mirror', 'nowhere', 'x' }), nil, 'none for a path that is not there')
 end)
+
+test('OM.MirrorOf reads the mirror from the nearest ancestor that holds it, not a farther one', function()
+	local function item(name) return { type = 'item', name = name, menu = { type = 'group', name = name, args = {} } } end
+	local function tree()
+		return { Page = { type = 'group', name = 'Page', args = {
+			general = { type = 'group', name = 'General', args = { parts = { type = 'group', name = 'Parts', args = { part = item('Far') } } } },
+			unit = { type = 'group', name = 'Unit', args = {
+				general = { type = 'group', name = 'General', args = { parts = { type = 'group', name = 'Parts', args = { part = item('Near') } } } },
+				health = { type = 'group', name = 'Health', args = {
+					text = { type = 'group', name = 'Text', mirrorOf = { 'general', 'parts', 'part' }, args = { x = { type = 'toggle', name = 'X' } } } } },
+			} },
+		} } }
+	end
+	eq(table.concat(OM.MirrorOf(tree(), { 'Page', 'unit', 'health', 'text', 'x' }), '.'), 'Page.unit.general.parts.part', 'the unit\'s, not the page\'s')
+	local root = tree()
+	root.Page.args.unit.args.general = nil
+	eq(table.concat(OM.MirrorOf(root, { 'Page', 'unit', 'health', 'text', 'x' }), '.'), 'Page.general.parts.part', 'a farther one when the nearer has none')
+end)
