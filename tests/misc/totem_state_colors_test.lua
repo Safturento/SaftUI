@@ -148,7 +148,7 @@ end)
 
 ------------------------------------------------------------------ live colors
 -- A pick on the Colors tab reaches the bar at once (TB:OnColorsChanged): Buttons
--- > Danger the buttons' flash, the Accent their hover, Text > Normal the
+-- > Danger the buttons' flash, Text > Normal the
 -- flyout's arrows, Text > Normal and Danger the timers (TB:ColorTimers). Only
 -- colors: nothing is laid out, nothing shown or hidden, in combat too.
 local C = load_test_file('lib/color_cost.lua')
@@ -224,7 +224,7 @@ local function alone(st, TB, fn)
 	if not ok then error(err, 0) end
 end
 
-test('Buttons > Danger: the flash of every button under the flat look; the Accent: their hover; nothing else', function()
+test('Buttons > Danger: the flash of every button under the flat look; the Accent: the derived hover', function()
 	local st, TB, buttons = live_world()
 	local profile = st.config.profile
 	profile.colors.button.danger:SetRGB(unpack(DANGER))
@@ -237,11 +237,12 @@ test('Buttons > Danger: the flash of every button under the flat look; the Accen
 	for _, b in ipairs({ buttons[1], buttons[7], buttons[13] }) do
 		eq(flash(b), T.rgb(unpack(DANGER)) .. ' 0.40', 'Danger at 0.4')
 	end
+	-- The Accent reaches the buttons' states through the state helper (its own pass, not TB:OnColorsChanged):
+	-- tests/misc/totem_interaction_states_test.lua.
 	alone(st, TB, function() m = C.measure(function() st:ColorChanged('accent') end) end)
-	eq(m.calls.by.SetVertexColor, #buttons, 'one hover a button')
 	eq(m.forbidden.total, 0, 'nothing forbidden')
 	local hover = stub.state(buttons[1]:GetHighlightTexture()).vertex_color
-	eq(T.rgb(hover[1], hover[2], hover[3]), T.rgb(0.3, 0.9, 0.6), "the hover is the Accent")
+	eq(T.rgb(hover[1], hover[2], hover[3]), T.rgb(st:StateColor('hover')), 'the hover is the derived hover, not the Accent itself')
 
 	-- Under Blizzard the flash and the hover are Blizzard's art: nothing is colored.
 	profile.theme.name = 'blizzard'

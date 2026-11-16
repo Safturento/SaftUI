@@ -46,10 +46,9 @@ end)
 ------------------------------------------------------------------ live colors
 -- A pick on the Colors tab reaches the micro menu at once
 -- (MicroMenu:OnColorsChanged, and the items' own followers): Blizzard's micro
--- buttons' highlight (Buttons > Hover at 0.4) and pushed fill (Buttons > Pushed
--- at 0.6) and their alert flash (Text > Caution at 0.5), under Thick and Thin
--- only; the instance difficulty badge (Item quality 1, 3 and 4); and the bar
--- items' hover and pushed textures (Normal, Pushed, Hover). Only colors, in
+-- buttons' highlight and pushed Fill (the derived states: the Accent) and their
+-- alert flash (Text > Caution at 0.5), under Thick and Thin only; the instance difficulty badge (Item quality 1, 3 and 4); and the bar
+-- items' and the tracking, queue and expansion buttons' hover. Only colors, in
 -- combat too.
 --
 -- Real: micromenu.lua, micromenuart.lua, micromenuitems.lua,
@@ -125,26 +124,31 @@ local function micro_world(theme, count)
 	return buttons
 end
 
-test("Buttons > Hover and Pushed: the micro buttons' highlight at 0.4 and pushed fill at 0.6, under Thick and Thin only", function()
+test("the Accent: the micro buttons' highlight (T+) and pushed Fill, vertex colors on white textures, under Thick and Thin only", function()
 	for _, theme in ipairs({ 'thick', 'thin' }) do
 		local buttons = micro_world(theme)
-		local m
-		st.config.profile.colors.button.hover:SetRGB(0.2, 0.9, 0.3)
-		m = C.measure(function() st:ColorChanged('button', 'hover') end)
-		eq(m.calls.by.SetColorTexture, 12, theme .. ': the highlight of each')
+		st.config.profile.theme.accent:SetRGB(0.2, 0.9, 0.3)
+		local m = C.measure(function() st:ColorChanged('accent') end)
+		eq(m.calls.by.SetColorTexture, nil, theme .. ': no color texture is set again')
+		eq(m.calls.by.SetVertexColor, 24, theme .. ': the highlight and the Fill of each')
+		eq(m.calls.by.SetTexCoord, 12, theme .. ": the Fill's coordinates")
+		eq(m.calls.total, 36, theme .. ': 3 calls a button')
 		eq(m.forbidden.total, 0, theme .. ': nothing forbidden')
 		eq(m.made, 0)
-		eq(color_of(buttons[5]:GetHighlightTexture()), T.rgb(0.2, 0.9, 0.3) .. ' 0.40', theme .. ': Hover at 0.4')
-		st.config.profile.colors.button.pushed:SetRGB(0.9, 0.1, 0.1)
-		m = C.measure(function() st:ColorChanged('button', 'pushed') end)
-		eq(m.calls.by.SetColorTexture, 12, theme .. ': the pushed fill of each')
-		eq(color_of(buttons[5].PushedBackground), T.rgb(0.9, 0.1, 0.1) .. ' 0.60', theme .. ': Pushed at 0.6')
-		m = C.measure(function() st:ColorChanged('button', 'normal') end)
-		eq(m.calls.by.SetColorTexture, nil, theme .. ': another key of the group reaches no micro button')
+		local h = stub.state(buttons[5]:GetHighlightTexture()).vertex_color
+		eq(T.rgb(h[1], h[2], h[3]) .. ' ' .. string.format('%.2f', h[4]), T.rgb(st:StateColor('hover')) .. ' ' .. string.format('%.2f', select(4, st:StateColor('hover'))), theme .. ': T+ at 0.16')
+		local f = stub.state(buttons[5].PushedBackground).vertex_color
+		eq(T.rgb(f[1], f[2], f[3]), T.rgb(0.2, 0.9, 0.3), theme .. ': the Fill is the Accent')
+		eq(stub.state(buttons[5]:GetHighlightTexture()).texture, st.BLANK_TEX, theme .. ': a white texture, set once')
+		-- the Buttons colors reach nothing here any more
+		m = C.measure(function() st:ColorChanged('button', 'hover'); st:ColorChanged('button', 'pushed') end)
+		eq(m.calls.total, 0, theme .. ': Buttons > Hover and Pushed reach no micro button')
+		st.config.profile.theme.accent:SetRGB(0, 0.68, 0.94)
 	end
 	local buttons = micro_world('blizzard')
-	local m = C.measure(function() st:ColorChanged('button', 'hover'); st:ColorChanged('button', 'pushed'); st:ColorChanged('text', 'caution') end)
+	local m = C.measure(function() st:ColorChanged('accent'); st:ColorChanged('text', 'caution') end)
 	eq(m.calls.by.SetColorTexture, nil, "Blizzard: its own art, nothing colored")
+	eq(m.calls.by.SetVertexColor, nil)
 	eq(m.forbidden.total, 0)
 	eq(color_of(buttons[1].PushedBackground), 'none')
 end)
@@ -195,13 +199,12 @@ test('Item quality 1, 3 and 4 by key: the difficulty badge (retail, which has on
 	eq(#take_errors(), 0)
 end)
 
-test('the bar items and the tracking, queue and expansion buttons follow Hover and Pushed', function()
+test('the bar items and the tracking, queue and expansion buttons follow the Accent', function()
 	world('forever')
-	local colors = st.config.profile.colors.button
-	colors.hover:SetRGB(0.3, 0.3, 0.9)
 	local bar = CreateFrame('Button', nil, UIParent)
+	bar:SetSize(60, 20)
 	MM:SkinBarButton(bar)
-	local hover, pushed = bar:GetHighlightTexture(), bar:GetPushedTexture()
+	check(bar:GetHighlightTexture() == nil, "a bar item has no texture of the game's highlight: the Layer is the helper's")
 
 	MinimapCluster = CreateFrame('Frame', 'MinimapCluster', UIParent)
 	local tracking = CreateFrame('Frame', nil, MinimapCluster)
@@ -233,37 +236,62 @@ test('the bar items and the tracking, queue and expansion buttons follow Hover a
 		local c = stub.state(region).vertex_color
 		return T.rgb(c[1], c[2], c[3]) .. ' ' .. string.format('%.2f', c[4])
 	end
-	colors.normal:SetRGB(0.1, 0.2, 0.3); colors.pushed:SetRGB(0.4, 0.5, 0.6); colors.hover:SetRGB(0.7, 0.8, 0.9)
-	st:ColorChanged('button', 'normal')
-	check(vertex(hover) ~= T.rgb(0.1, 0.2, 0.3) .. ' 0.40', 'Normal does not reach the bar items')
-	st:ColorChanged('button', 'pushed')
-	eq(vertex(pushed), T.rgb(0.4, 0.5, 0.6) .. ' 1.00', 'Pushed')
-	local m = C.measure(function() st:ColorChanged('button', 'hover') end)
-	eq(vertex(hover), T.rgb(0.7, 0.8, 0.9) .. ' 0.40', "the bar items' hover is Buttons > Hover at 0.4")
-	eq(vertex(trackingHover), T.rgb(0.7, 0.8, 0.9) .. ' 1.00', 'Hover: the tracking button')
-	eq(vertex(queueHover), T.rgb(0.7, 0.8, 0.9) .. ' 1.00', 'the queue eye')
-	eq(vertex(expansionHover), T.rgb(0.7, 0.8, 0.9) .. ' 1.00', 'the expansion button')
+	st.config.profile.theme.accent:SetRGB(0.9, 0.3, 0.1)
+	local m = C.measure(function() st:ColorChanged('accent') end)
+	local want = T.rgb(st:StateColor('hover')) .. ' ' .. string.format('%.2f', select(4, st:StateColor('hover')))
+	eq(vertex(trackingHover), want, 'the tracking button: the derived hover')
+	eq(vertex(queueHover), want, 'the queue eye')
+	eq(vertex(expansionHover), want, 'the expansion button')
+	for name, region in pairs({ tracking = trackingHover, queue = queueHover, expansion = expansionHover }) do
+		eq(stub.state(region).blend_mode, 'BLEND', name .. ': BLEND, as the game would not have it by default')
+	end
+	eq(m.calls.by.SetVertexColor, 3, 'one color a button')
 	eq(m.forbidden.total, 0); eq(m.made, 0)
+	-- Blizzard's pushed art on the expansion button is left as it is
+	eq(ExpansionLandingPageMinimapButton:GetPushedTexture() ~= nil, true)
+	check(stub.state(ExpansionLandingPageMinimapButton:GetPushedTexture()).vertex_color == nil
+		or vertex(ExpansionLandingPageMinimapButton:GetPushedTexture()) == '1.00,1.00,1.00 1.00', "its pushed art is Blizzard's")
+	-- Blizzard's UpdateIcon puts an atlas on the highlight: it is flat white again after
+	expansionHover:SetAtlas('some-atlas')
+	MM:UpdateExpansionLandingPageButton()
+	eq(expansionHover:GetAtlas(), nil, 'the flat texture is back')
+	eq(stub.state(expansionHover).texture, st.BLANK_TEX)
+	eq(vertex(expansionHover), want)
+	-- the bar item: the Layer
+	stub.fire_script(bar, 'OnEnter')
+	local look = st:StateLook(bar)
+	eq(look.layer.shown, true, 'a bar item shows the hover Layer under the mouse')
+	eq(look.layer.blend, 'BLEND')
+	eq(string.format('%.2f', look.layer.a), '0.16')
+	stub.fire_script(bar, 'OnMouseDown', 'LeftButton')
+	eq(string.format('%.2f', st:StateLook(bar).layer.a), '0.32', 'pushed: T-')
+	stub.fire_script(bar, 'OnMouseUp', 'LeftButton')
+	stub.fire_script(bar, 'OnLeave')
+	eq(st:StateLook(bar).layer.shown, false)
+	bar:Disable()
+	eq(st:GetState(bar, 'disabled'), true, 'disabled when the game disables it')
+	eq(st:StateLook(bar).alpha, st:StateAlpha(), 'at 40%')
+	bar:Enable()
+	eq(st:GetState(bar, 'disabled'), false)
+	eq(st:StateLook(bar).alpha, 1)
+	st.config.profile.theme.accent:SetRGB(0, 0.68, 0.94)
 	eq(#take_errors(), 0)
 end)
 
 test('in combat a pick reaches the micro buttons with no forbidden call and almost no garbage (Review Focus 4)', function()
 	local buttons = micro_world('thick')
 	for _, button in ipairs(buttons) do
-		button:GetHighlightTexture():SetColorTexture(1, 1, 1, 1)
-		button.PushedBackground:SetColorTexture(1, 1, 1, 1)
 		button.FlashBorder:SetColorTexture(1, 1, 1, 1)
 	end
 	stub.in_combat = true
 	local m = C.measure(function()
-		st:ColorChanged('button', 'hover')
-		st:ColorChanged('button', 'pushed')
+		st:ColorChanged('accent')
 		st:ColorChanged('text', 'caution')
 	end, 100)
 	eq(m.forbidden.total, 0, 'nothing forbidden in combat')
 	eq(m.made, 0)
 	check(m.kb < 4, 'garbage over 100 passes: ' .. m.kb .. ' KB')
-	C.print('micro buttons, hover + pushed + caution', m)
+	C.print('micro buttons, accent + caution', m)
 	stub.in_combat = false
 	eq(#stub.blocked, 0)
 end)

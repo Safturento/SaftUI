@@ -43,16 +43,17 @@ function MicroMenu:UpdateExpansionLandingPageButton()
     button:SetHitRectInsets(0, 0, 0, 0)
 
     -- SetLandingPageIconFromAtlases puts an atlas on the highlight, which is
-    -- this texture once it's set, so the flat color goes back every time
+    -- this texture once it's set, so the state helper puts the flat white one
+    -- back every time (RestyleStates: texture, BLEND, the color). Blizzard's own
+    -- pushed art stays.
     if not hover then
-        hover = button:CreateTexture(nil, 'OVERLAY')
-        st:FollowColor(hover, 'button', 'hover', MicroMenu.PaintHover)
+        hover = MicroMenu.SkinHighlight(button)
+    else
+        hover:ClearAllPoints()
+        hover:SetAllPoints(button)
+        button:SetHighlightTexture(hover, 'BLEND')
+        st:RestyleStates(button)
     end
-    hover:SetTexture(st.BLANK_TEX)
-    hover:SetVertexColor(st:ColorRGBA('button', 'hover'))
-    hover:ClearAllPoints()
-    hover:SetAllPoints(button)
-    button:SetHighlightTexture(hover)
 
     local pushed = button:GetPushedTexture()
     st:InsetTexture(pushed, 0.2)

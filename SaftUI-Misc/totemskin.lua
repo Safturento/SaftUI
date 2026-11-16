@@ -297,14 +297,11 @@ local function StyleButton(button, skin, theme, background)
 			st.ThemeArt.StyleState(button.Flash, state.flash, button, nil, false)
 		end
 	else
+		-- over the icon; the helper draws and colors them (RestyleStates, below)
 		FlatStateTexture(skin.hover, icon, st.ThemeArt.HOVER_LAYER)
 		FlatStateTexture(skin.pushed, icon)
-		skin.hover:SetVertexColor(st:Color('accent'):GetRGB())
-		skin.pushed:SetVertexColor(0, 0, 0, 0.1)
 		if skin.checked then
 			FlatStateTexture(skin.checked, icon)
-			skin.checked:SetVertexColor(1, 1, 1, 0.3)
-			skin.checked:SetBlendMode('ADD')
 		end
 		if button.Flash then
 			button.Flash:SetColorTexture(st:ColorRGBA('button', 'danger', FLASH_ALPHA))
@@ -312,6 +309,11 @@ local function StyleButton(button, skin, theme, background)
 			button.Flash:SetAllPoints(icon)
 		end
 	end
+
+	-- Last in the look: the three textures' texture, coordinates, BLEND and colors
+	-- from the Accent (the state helper), or Blizzard's art left alone. Colors
+	-- and texture settings only, which holds in combat too.
+	st:RestyleStates(button)
 
 	-- The texts follow Button text (Global settings > Fonts), shadow and all: the
 	-- font's own shadow is what they draw. A font change reaches them in combat too:
@@ -396,6 +398,12 @@ end
 --- Skins ---------------------------
 ------------------------------------
 
+-- Whether a skinned button wears Blizzard's state art (StyleButton sets skin.flat).
+local function IsBlizzardLook(button)
+	local skin = skins[button]
+	return skin ~= nil and skin.flat == false
+end
+
 -- Skins one of Blizzard's buttons with an icon, once: fades Blizzard's art, takes the
 -- action button template's round mask off the icon, puts the template's regions over
 -- the icon, and gives it SaftUI's hover and pushed textures, a backdrop of its own if
@@ -435,7 +443,7 @@ local function SkinButton(button, withBackdrop, withChecked)
 	end
 
 	skin.hover = CreateStateTexture(button)
-	button:SetHighlightTexture(skin.hover, 'ADD')
+	button:SetHighlightTexture(skin.hover, 'BLEND')
 
 	skin.pushed = CreateStateTexture(button)
 	button:SetPushedTexture(skin.pushed)
@@ -443,8 +451,14 @@ local function SkinButton(button, withBackdrop, withChecked)
 	if withChecked then
 		skin.checked = CreateStateTexture(button)
 		button:SetCheckedTexture(skin.checked)
-		skin.checked:SetBlendMode('ADD')
 	end
+
+	-- The three are the button's own highlight, pushed and checked textures: the
+	-- state helper adopts them (game = true) and only colors them (hover and
+	-- pushed from the Accent, the checked one the Fill, no edge: no hook on a
+	-- Blizzard secure button's SetChecked). Under Blizzard it leaves them to
+	-- ThemeArt.StyleState (StyleButton).
+	st:AddStates(button, 'icon', { game = true, checked = withChecked, blizzard = IsBlizzardLook })
 
 	return skin
 end
@@ -656,7 +670,8 @@ end
 
 -- A color changed. 'theme' (st:RecolorThemed gave every backdrop the theme's border):
 -- the slot buttons and the open flyout's "none" choice take their element colour
--- back. 'button' Danger: the buttons' flash. 'accent': the buttons' hover. 'text'
+-- back. 'button' Danger: the buttons' flash. (The Accent: the buttons' states are
+-- the state helper's, which follows it itself.) 'text'
 -- Normal: the arrows the text colour colors (the summon button's flyout's), and
 -- 'text' Normal or Danger the timers (TB:ColorTimers). Only SaftUI's pieces and
 -- the colors of Blizzard's regions are touched, so it runs in combat too.
@@ -671,12 +686,6 @@ function TB:OnColorsChanged(group, key)
 		for frame, skin in pairs(skins) do
 			if skin.style == StyleButton and skin.flat and frame.Flash then
 				frame.Flash:SetColorTexture(st:ColorRGBA('button', 'danger', FLASH_ALPHA))
-			end
-		end
-	elseif group == 'accent' then
-		for _, skin in pairs(skins) do
-			if skin.style == StyleButton and skin.flat then
-				skin.hover:SetVertexColor(st:Color('accent'):GetRGB())
 			end
 		end
 	elseif group == 'text' then
