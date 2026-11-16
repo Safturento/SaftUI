@@ -515,6 +515,72 @@ test("a roll result's right text follows a new roll summary (a late result) and 
 	check(line.rightText:GetText() ~= before, 'a Mage change reaches a Mage winner')
 end)
 
+test('a roll result with no, an unknown or a non-string class shows the plain name; with no winner it shows nothing', function()
+	local function w(class) return { list = { { name = 'Nobody', class = class, state = LT.ROLL_STATE.Greed, roll = 3 } }, winner = 1 } end
+	eq(LT.RollResultText(w(nil)), 'Nobody', 'no class')
+	eq(LT.RollResultText(w('NOTACLASS')), 'Nobody', 'an unknown class')
+	eq(LT.RollResultText(w(7)), 'Nobody', 'a number for a class (a hand-edited save)')
+	eq(LT.RollResultText({}), '', 'no winner')
+	eq(LT.RollResultText({ list = {}, winner = 4 }), '', 'a winner index past the list')
+	eq(LT.RollResultUses(w('WARRIOR'), 'class', 'MAGE'), false, 'a Mage pass does not reach a Warrior winner')
+	eq(LT.RollResultUses({ allPassed = true }, 'class', nil), false, 'All passed is not Class')
+	eq(LT.RollResultUses({ allPassed = true }, 'loot', 'greed'), false, 'and not Greed')
+end)
+
+test('an older save with both a baked rightText and rolls draws from the rolls; a Loot entry draws its rightText', function()
+	wipe(LT:GetAllItems())
+	wipe(LT:GetHistoryStore().feed)
+	local link = loot_match('Old Blade', 4).link
+	tinsert(LT:GetHistoryStore().feed, { name = 'Old Blade', plain = 'Old Blade', quality = 4, type = 'Rolls', link = link, when = 5,
+		rightText = '|cff000000Baked|r', rolls = winner_rolls() })
+	tinsert(LT:GetHistoryStore().feed, { name = 'Looted Blade', plain = 'Looted Blade', quality = 4, type = 'Loot', link = link, when = 4,
+		rightText = 'Someone' })
+	LT.feedRestored = false
+	LT:RestoreFeed()
+	for _, e in ipairs(LT:GetAllItems()) do e.time = GetTime() end
+	LT:GetFilteredItems(true); LT:UpdateFeed()
+	local got = {}
+	for _, l in ipairs(shown_lines()) do got[l.info.plain or l.info.name or '?'] = l.rightText:GetText() end
+	eq(got['Old Blade'], LT.RollResultText(winner_rolls()), 'the old baked text is not what draws')
+	eq(got['Looted Blade'], 'Someone', "a Loot entry's looter name")
+	wipe(LT:GetHistoryStore().feed)
+end)
+
+test('two roll results of the same item never merge, with the same winner or another', function()
+	wipe(LT:GetAllItems())
+	local link = loot_match('Twin Blade', 4).link
+	local other = winner_rolls(); other.list[1].name = 'Other'
+	for _, rolls in ipairs({ winner_rolls(), winner_rolls(), other }) do
+		LT:LootFeedPush(LT:BuildRollEntry(link, rolls, false))
+	end
+	eq(#LT:GetAllItems(), 3, 'three entries')
+end)
+
+test("a drop that changes after its result was recorded draws its new winner on the line (RefreshResult)", function()
+	wipe(LT:GetAllItems()); wipe(LT:GetHistoryStore().feed)
+	local S = LT.ROLL_STATE
+	local match = loot_match('Late Blade', 4)
+	local drop = { lootListKey = 3, itemHyperlink = match.link, startTime = 0, duration = 600000, winner = { playerName = 'Aa' },
+		rollInfos = { { playerName = 'Aa', playerClass = 'WARRIOR', state = S.Greed, roll = 50 },
+			{ playerName = 'Bb', playerClass = 'MAGE', state = S.Greed, roll = 40 } } }
+	local real = C_LootHistory
+	C_LootHistory = { GetSortedInfoForDrop = function() return drop end, GetAllEncounterInfos = function() return {} end,
+		GetLootHistoryTime = function() return 0 end }
+	local ok, err = pcall(function()
+		LT:OnLootHistoryUpdateDrop('LOOT_HISTORY_UPDATE_DROP', 9, 3)
+		local entry = LT:GetAllItems()[1]
+		check(entry, 'the result is in the feed')
+		local line = line_of(entry)
+		check(line.rightText:GetText():find('Aa', 1, true), 'Aa wins')
+		drop.winner = { playerName = 'Bb' }
+		LT:OnLootHistoryUpdateDrop('LOOT_HISTORY_UPDATE_DROP', 9, 3)
+		check(line.rightText:GetText():find('Bb', 1, true), 'the line now names Bb')
+		eq(#LT:GetAllItems(), 1, 'still one entry')
+	end)
+	C_LootHistory = real
+	if not ok then error(err, 0) end
+end)
+
 test('a save and restore round trip: the restored lines follow Item quality and Reputation; an older save shows its name', function()
 	wipe(LT:GetAllItems())
 	wipe(LT:GetHistoryStore().feed)
