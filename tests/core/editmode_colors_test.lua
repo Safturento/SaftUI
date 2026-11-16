@@ -151,7 +151,10 @@ for _, floating in ipairs({ false, true }) do
 			check(m.kb < 4, 'garbage over 100 passes: ' .. m.kb .. ' KB')
 			eq(refreshed + laid + placed, 0, 'no list refresh, no layout, no placing')
 			check(m.calls.total > 0, 'it does color: ' .. m.calls.total)
-			check(m.calls.total / 100 <= 150, 'per pass: ' .. m.calls.total / 100 .. ' setter calls')
+			-- (the 150 was set before SetAlpha and SetTexCoord counted as setters, which the states'
+			-- passes may call: the bound is still on the colors it pinned)
+			local colored = m.calls.total - (m.calls.by.SetAlpha or 0) - (m.calls.by.SetTexCoord or 0)
+			check(colored / 100 <= 150, 'per pass: ' .. colored / 100 .. ' setter calls')
 			C.print(('edit mode on, %s, %s %s'):format(where, group, tostring(key)), m)
 			restore()
 			off()

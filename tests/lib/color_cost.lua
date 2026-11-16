@@ -34,6 +34,11 @@
 --       A reader's cost case measures st:ColorChanged(group, key) outside an
 --       edit, which passes at once: around C.edit and C.step the stub's
 --       fire_script adds garbage of its own.
+-- SetTexCoord and SetAlpha are counted setters, not forbidden: a pass of the
+-- interaction states (Widgets/states.lua; the states plan's Ruling 9) sets a
+-- selected Fill's texture coordinates (the Selected fade) and a frame's or a
+-- piece's alpha (Disabled, and 0 under Blizzard). Both are a region's look, not
+-- protected, and run no script.
 --   C.step(st)       one frame: fires CO.ticker's OnUpdate while it is shown.
 --   C.edit(st, fn)   st:BeginColorEdit(); fn(); st:EndColorEdit(); the edit is
 --                    ended when fn errors too (the error is raised again).
@@ -46,7 +51,8 @@ C.FORBIDDEN = { 'Show', 'Hide', 'SetShown', 'SetParent', 'SetPoint', 'ClearAllPo
 	'SetTexture', 'SetAtlas', 'SetBackdrop', 'SetFont', 'SetTextInsets' } -- re-skinning, on anything
 C.MAKERS = { 'CreateFrame', 'CreateTexture', 'CreateFontString' }
 C.SETTERS = { 'SetVertexColor', 'SetTextColor', 'SetColorTexture', 'SetStatusBarColor', 'SetGradient',
-	'SetBackdropColor', 'SetBackdropBorderColor', 'SetText', 'SetFormattedText' }
+	'SetBackdropColor', 'SetBackdropBorderColor', 'SetText', 'SetFormattedText',
+	'SetTexCoord', 'SetAlpha' }
 
 C.isSetter, C.isForbidden, C.isMaker = {}, {}, {}
 for _, name in ipairs(C.SETTERS) do C.isSetter[name] = true end

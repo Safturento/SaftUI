@@ -6,11 +6,29 @@ local st
 local T = load_test_file('lib/theme_helpers.lua')
 
 -- A fresh world logged in with saved (SaftUI_DB as the game loads it from the
--- SavedVariables file before login, or nil for a new install).
-local function fresh(saved)
+-- SavedVariables file before login, or nil for a new install). The tests of
+-- steps 1 to 6 pin what those steps did to the Buttons colors (step 5's
+-- opacities, step 6's seed of Buttons > Checked), which step 7 now drops
+-- (the states are the Accent's): so by default the world has step 7 taken
+-- out of the Colors module's list as colors.lua loads, before login's
+-- migration runs, and those tests are as they shipped. fresh(saved, true)
+-- keeps every step (the step 7 tests).
+local function fresh(saved, all_steps)
 	reset_world()
 	SaftUI_DB = saved
-	load_test_file('core/config_helpers.lua')
+	local real_load = load_saftui
+	load_saftui = function(path, ...)
+		local result = real_load(path, ...)
+		if path == 'SaftUI-Core/Media/colors.lua' and not all_steps then
+			local steps = SaftUI:GetModule('Colors').MIGRATION_STEPS
+			check(#steps == 7, 'step 7 is the last step (the older tests run without it)')
+			steps[7] = nil
+		end
+		return result
+	end
+	local ok, err = pcall(load_test_file, 'core/config_helpers.lua')
+	load_saftui = real_load
+	if not ok then error(err, 0) end
 	st = SaftUI
 	return st
 end
@@ -631,8 +649,7 @@ test('step 6 is the last step: it seeds Buttons > Checked from a customized Hove
 	local step = Colors.MIGRATION_STEPS[6]
 	eq(step.copy, nil); eq(step.retire, nil); eq(step.opacity, nil)
 	eq(table.concat(step.seed[1], ','), 'button.hover,button.checked')
-	eq(Colors.OLD_COLORS['button.hover'], nil, 'OLD_COLORS stays frozen: Hover is no retired key')
-	eq(Colors.OLD_COLORS['button.checked'], nil)
+	-- (Step 6 retired nothing; step 7 now does, so OLD_COLORS holds the four since: step 7's test.)
 end)
 
 test('step 6: a Hover customized in color is copied into Checked, opacity and all; Hover keeps its own', function()
@@ -725,4 +742,38 @@ test('step 6 in combat: a switch migrates at once', function()
 	fresh(on({})); SaftUI_DB.profiles.Two = { colors = { version = 5, button = { hover = { r = 0.9, g = 0.2, b = 0.6 } } } }
 	stub.in_combat = true; st.config:SetProfile('Two')
 	eq(rgb(st.config.profile.colors.button.checked), RGB(0.9, 0.2, 0.6)); eq(#stub.blocked, 0); stub.in_combat = false
+end)
+
+test('step 7 drops the four Buttons state colors and keeps Danger (the states are the Accent\'s now)', function()
+	fresh(on({}), true)
+	local raw = { colors = { version = 6, button = {
+		hover = { r = 1, g = 0, b = 0 }, normal = { r = 0, g = 1, b = 0 }, pushed = { r = 0, g = 0, b = 1 },
+		checked = { r = 1, g = 1, b = 0 }, danger = { r = 0.9, g = 0.2, b = 0.2 } } } }
+	st:MigrateColors(raw)
+	local button = raw.colors.button
+	for _, key in ipairs({ 'hover', 'normal', 'pushed', 'checked' }) do eq(button[key], nil, key .. ' dropped') end
+	eq(rgb(button.danger), RGB(0.9, 0.2, 0.2), 'Danger kept')
+	eq(raw.colors.version, 7)
+	local once = Dump(raw)
+	st:MigrateColors(raw); eq(Dump(raw), once, 'run twice: no change')
+	-- a profile before step 6 seeds Checked from Hover, then step 7 drops both: neither survives
+	local old = { colors = { version = 5, button = { hover = { r = 1, g = 0, b = 0 } } } }
+	st:MigrateColors(old)
+	eq(old.colors.button.hover, nil); eq(old.colors.button.checked, nil); eq(old.colors.version, 7)
+	local frozen = st:GetModule('Colors').OLD_COLORS
+	eq(rgb(frozen['button.normal']), RGB(0.1, 0.1, 0.1)); eq(rgb(frozen['button.hover']), RGB(0.3, 0.5, 0.7))
+	eq(rgb(frozen['button.pushed']), RGB(0.3, 0.4, 0.5)); eq(rgb(frozen['button.checked']), RGB(0.3, 0.5, 0.7))
+	for _, key in ipairs({ 'normal', 'hover', 'pushed', 'checked' }) do eq(frozen['button.' .. key].a, 1, key .. ' opaque') end
+	eq(st:GetModule('Colors').MIGRATION_STEPS[7].retire[1], 'button.normal')
+end)
+
+test('step 7 on a live profile: the saved Buttons colors go at login, the defaults read as before', function()
+	fresh(on({ colors = { version = 6, button = { hover = { r = 1 }, normal = { g = 1 }, danger = { r = 0.9 } } } }), true)
+	eq(st.config.profile.colors.version, 7)
+	eq(rgb(st:Color('button', 'hover')), RGB(0.3, 0.5, 0.7), 'Hover reads its default until its readers are converted')
+	eq(rgb(st:Color('button', 'normal')), RGB(0.1, 0.1, 0.1))
+	eq(st:Color('button', 'danger').r, 0.9, 'Danger kept')
+	st.config:SetProfile('Two')
+	local saved = SaftUI_DB.profiles.Old.colors.button
+	eq(saved.hover, nil); eq(saved.normal, nil); eq(saved.danger.r, 0.9)
 end)

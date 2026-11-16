@@ -442,6 +442,12 @@ CO.OLD_COLORS = {
 	['button.blue'] = { r = 0, g = 0.68, b = 0.94, a = 0.8 },
 	['button.yellow'] = { r = 0.6, g = 0.6, b = 0.1, a = 0.8 },
 	['button.grey'] = { r = 150/255, g = 150/255, b = 150/255 },
+	-- The four state colors, retired at step 7 (the states are the Accent's now,
+	-- derived by Media/states.lua): the defaults they shipped with.
+	['button.normal'] = { r = 0.1, g = 0.1, b = 0.1, a = 1 },
+	['button.hover'] = { r = 0.3, g = 0.5, b = 0.7, a = 1 },
+	['button.pushed'] = { r = 0.3, g = 0.4, b = 0.5, a = 1 },
+	['button.checked'] = { r = 0.3, g = 0.5, b = 0.7, a = 1 },
 }
 
 -- One step per change of the colors' keys, run in order on a profile saved
@@ -516,6 +522,17 @@ CO.MIGRATION_STEPS = {
 		-- did; Hover keeps its value, and a button's highlight reads it from
 		-- here on. An untouched Hover leaves Checked at its default (the same).
 		seed = { { 'button.hover', 'button.checked' } },
+	},
+	{
+		-- Every interaction state (hover, pushed, selected, focus, disabled) is
+		-- derived from the Accent now (Media/states.lua; spec
+		-- 2026-11-15-saftui-interaction-states-design.md): Buttons > Normal,
+		-- Hover, Pushed and Checked are dropped, a change made to one with
+		-- them. Buttons > Danger stays (a meaning, not a state). Their
+		-- defaults stay in st.defaults until the last readers are converted, so
+		-- a live profile reads them at the default (RunStep puts it back in
+		-- place); a raw profile loses the key.
+		retire = { 'button.normal', 'button.hover', 'button.pushed', 'button.checked' },
 	},
 }
 
@@ -615,7 +632,20 @@ local function RunStep(profile, step)
 	for _, path in ipairs(step.retire or {}) do
 		local group, key = SplitPath(path)
 		local holder = group and profile.colors[group]
-		if type(holder) == 'table' then holder[key] = nil end
+		if type(holder) == 'table' then
+			-- A key that still has a default (its readers and its Colors row not
+			-- converted yet: step 7's) is put back to that default in place on the
+			-- live profile's table (AceDB gave it its methods), never nil: the rows
+			-- that index it keep working. Anywhere else the key is dropped.
+			local default = st.defaults and st.defaults.colors and st.defaults.colors[group]
+			default = type(default) == 'table' and default[key]
+			local color = holder[key]
+			if type(default) == 'table' and type(color) == 'table' and color.GetRGB then
+				color.r, color.g, color.b, color.a = default.r, default.g, default.b, default.a
+			else
+				holder[key] = nil
+			end
+		end
 	end
 	for _, pair in ipairs(step.seed or {}) do SeedColor(profile, pair[1], pair[2]) end
 	for _, path in ipairs(step.opacity or {}) do
