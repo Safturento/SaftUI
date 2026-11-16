@@ -370,7 +370,7 @@ test('with /sui debug on an edit ends with one line; with no pass, none', functi
 				st:EndColorEdit()
 			end)
 			eq(#lines, 1, 'one line')
-			check(lines[1]:find('<DEBUG:Colors> 3 passes, slowest [%d.]+ ms %(class MAGE%), mean [%d.]+ ms, 0 frames waited%.'),
+			check(lines[1]:find('<DEBUG:Colors> 3 passes, slowest [%d.]+ ms %(class MAGE, slowest reader followers 3%.0 ms%), mean [%d.]+ ms, 0 frames waited%.'),
 				lines[1])
 			eq(lines[1]:match('slowest ([%d.]+) ms'), '3.0'); eq(lines[1]:match('mean ([%d.]+) ms'), '1.0')
 			lines = printed_by(function()
@@ -390,6 +390,59 @@ test('with /sui debug on an edit ends with one line; with no pass, none', functi
 		end)
 	end)
 	st.DEBUG = false
+	if not ok then error(err, 0) end
+end)
+
+test("the debug line names the slowest pass's slowest reader: a module's handler or the followers as one; nothing is measured with debug off", function()
+	reset()
+	load_string_format()
+	local original = M.OnColorsChanged
+	local ok, err = pcall(function()
+		with_clock(function(move)
+			local o = Obj()
+			st:FollowColor(o, 'text', 'danger', function() move(2) end)
+			function M:OnColorsChanged(group, key) if group == 'text' then move(5) end end
+			st.DEBUG = true
+			local lines = printed_by(function()
+				st:BeginColorEdit()
+				st:ColorChanged('text', 'danger'); C.step(st)
+				st:EndColorEdit()
+			end)
+			eq(#lines, 1, 'one line')
+			check(lines[1]:find('slowest 7%.0 ms %(text danger, slowest reader LiveProbe 5%.0 ms%)'), lines[1])
+			eq(CO.EditStats().slowestReader, 'LiveProbe', 'the stats name it')
+			-- The followers can be the slowest.
+			function M:OnColorsChanged() move(1) end
+			lines = printed_by(function()
+				st:BeginColorEdit()
+				st:ColorChanged('text', 'danger'); C.step(st)
+				st:EndColorEdit()
+			end)
+			check(lines[1]:find('slowest reader followers 2%.0 ms'), lines[1])
+			-- With debug off no reader is timed: the clock is read four times a pass, as before.
+			st.DEBUG = false
+			local reads, clock = 0, _G.debugprofilestop
+			_G.debugprofilestop = function() reads = reads + 1; return clock() end
+			st:BeginColorEdit()
+			st:ColorChanged('text', 'danger'); C.step(st)
+			_G.debugprofilestop = clock
+			eq(reads, 4, 'with debug off the clock is read for the pass alone')
+			eq(CO.EditStats().slowestReader, nil, 'and no reader is named')
+			st:EndColorEdit()
+			-- With debug on it is read more (each reader, the followers).
+			st.DEBUG = true
+			reads = 0
+			_G.debugprofilestop = function() reads = reads + 1; return clock() end
+			st:BeginColorEdit()
+			st:ColorChanged('text', 'danger'); C.step(st)
+			_G.debugprofilestop = clock
+			check(reads > 4, 'with debug on the readers are timed too: ' .. reads)
+			st:EndColorEdit()
+			st:UnfollowColor(o)
+		end)
+	end)
+	st.DEBUG = false
+	M.OnColorsChanged = original
 	if not ok then error(err, 0) end
 end)
 

@@ -1224,14 +1224,554 @@ test('the Buttons rows and the Accent row carry their previews, and each opens',
 	reset()
 end)
 
-test("a row whose kind is still to come opens the picker cleanly with no preview", function()
+------------------------------------------------------------------ the bar and border kinds
+
+local PICKED = '0.20,0.40,0.60' -- what open() picks unless told otherwise
+
+local function bar_color(b) return rgb3(b:GetStatusBarColor()) end
+local function border_color(f) return rgb3(f:GetBackdropBorderColor()) end
+local function class_color()
+	local key = st.my_class
+	if not (key and st.config.profile.colors.class[key]) then key = 'MAGE' end
+	return rgb3(st:Color('class', key):GetRGB())
+end
+local function muted() return rgb3(st:Color('text', 'muted'):GetRGB()) end
+local function normal() return rgb3(st:Color('text', 'normal'):GetRGB()) end
+
+local function open_bar(fields)
+	fields.kind = 'bar'
 	reset()
-	for _, preview in ipairs({ { kind = 'bar', style = 'unit', label = 'Mage' }, { kind = 'border', style = 'slot' } }) do
-		if not W.PreviewKinds()[preview.kind] then
-			local told, F = open({ preview = preview, name = 'Mage' })
-			check(told.opened, preview.kind .. ': opens')
-			eq(F.frame:GetHeight(), 342, preview.kind .. ': today\'s picker')
+	local told, F = open({ preview = fields, name = fields.name or fields.label })
+	return F, F.previewPieces.bar, told
+end
+
+local function open_border(style, extra)
+	local fields = { kind = 'border', style = style }
+	for k, v in pairs(extra or {}) do fields[k] = v end
+	reset()
+	local told, F = open({ preview = fields, name = 'Epic' })
+	return F, F.previewPieces.border, told
+end
+
+local function size(f) return f:GetWidth() .. ',' .. f:GetHeight() end
+local function nomouse(f, what)
+	eq(stub.state(f).mouse_enabled, false, what .. ' takes no mouse')
+end
+
+test('bar unit: a 200 by 28 health bar 70% filled in the color with the label and 70%, an 80 by 40 raid frame, a tooltip; drawn as bars', function()
+	for _, look in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		T.theme(look)
+		local F, p = open_bar({ style = 'unit', label = 'Mage' })
+		local where = look .. ': '
+		check(F.preview:IsShown() and F.frame:GetHeight() == 436, where .. 'opens with a preview')
+		local u, r, t = p.unitBar, p.unitRaid, p.unitTip
+		eq(size(u.bar), '200,28', where .. 'the unit frame bar')
+		eq(size(r.bar), '80,40', where .. 'the raid frame')
+		eq(size(t.tip), '74,44', where .. 'the tooltip')
+		eq(drawn(u.bar), 'theme,solid,bar', where .. 'the bar is a bar')
+		eq(drawn(r.bar), 'theme,solid,bar', where .. 'so is the raid frame')
+		eq(drawn(t.tip), 'theme,solid,tooltip', where .. 'the tooltip is a tooltip panel')
+		local x, y = at(F, u.bar)
+		eq(x .. ',' .. y, '20,274', where .. 'the bar at the left, 8 down')
+		x, y = at(F, r.bar)
+		eq(x .. ',' .. y, '228,268', where .. 'the raid frame 8 on')
+		x, y = at(F, t.tip)
+		eq(x .. ',' .. y, '316,266', where .. 'the tooltip')
+		local lo, hi = u.bar:GetMinMaxValues()
+		eq(lo .. ',' .. hi .. ',' .. u.bar:GetValue(), '0,100,70', where .. 'filled 70%')
+		eq(r.bar:GetValue(), 70, where .. 'the raid frame too')
+		eq(bar_color(u.bar), PICKED, where .. 'the bar in the picked color')
+		eq(bar_color(r.bar), PICKED, where .. 'the raid frame in it')
+		eq(u.label:GetText() .. '|' .. u.percent:GetText(), 'Mage|70%', where .. 'the label and 70%')
+		eq(r.label:GetText(), 'Mage', where .. 'the raid frame names it')
+		eq(t.label:GetText() .. '|' .. t.level:GetText(), 'Mage|Level 70', where .. 'the tooltip lines')
+		eq(rgb3(t.label:GetTextColor()), PICKED, where .. "the tooltip's name in the color")
+		eq(rgb3(t.level:GetTextColor()), normal(), where .. 'its other line in Text')
+		if look ~= 'blizzard' then eq(border_color(t.tip), PICKED, where .. 'its border in the color') end
+		eq(rgb3(u.label:GetTextColor()), normal(), where .. 'the bar texts in Text')
+		for i, key in ipairs({ 'unitBar', 'unitRaid', 'unitTip' }) do
+			local cell = p.cells[key]
+			check(cell.holder:IsShown() and cell.caption:IsShown(), where .. key .. ' shows')
+			eq(cell.caption:GetText(), ({ 'Unit frame', 'Raid frame', 'Tooltip' })[i], where .. 'caption ' .. i)
+			eq(rgb3(cell.caption:GetTextColor()), muted(), where .. 'caption ' .. i .. ' in Muted')
+			eq(cell.caption:CanWordWrap(), false, where .. 'caption ' .. i .. ' does not wrap')
+			nomouse(cell.holder, where .. key .. ' holder')
+		end
+		nomouse(u.bar, where .. 'the bar'); nomouse(r.bar, where .. 'the raid frame'); nomouse(t.tip, where .. 'the tooltip')
+		for _, key in ipairs({ 'roleRaid', 'repXp', 'repNpc', 'powerBars', 'pointsRow', 'plate' }) do
+			check(not p.cells[key].holder:IsShown() and not p.cells[key].caption:IsShown(), where .. key .. ' is hidden')
 		end
 	end
+	T.theme('thick')
+	reset()
+end)
+
+test("bar unit under Thick: the tooltip's border is the picked color exactly", function()
+	T.theme('thick')
+	local F, p = open_bar({ style = 'unit', label = 'Mage' })
+	eq(border_color(p.unitTip.tip), PICKED, 'the tooltip border')
+	reset()
+end)
+
+test('bar unit with tooltip = false (Status): no tooltip, the bar and the raid frame centered', function()
+	T.theme('thick')
+	local F, p = open_bar({ style = 'unit', label = 'Offline', tooltip = false })
+	check(not p.cells.unitTip.holder:IsShown() and not p.cells.unitTip.caption:IsShown(), 'the tooltip is hidden')
+	eq(p.unitBar.label:GetText(), 'Offline', 'the label')
+	-- 200 + 8 + 80 = 288 in 370: 41 in.
+	local x = at(F, p.unitBar.bar)
+	eq(x, 20 + 41, 'centered: the bar 41 in')
+	x = at(F, p.unitRaid.bar)
+	eq(x, 20 + 41 + 208, 'and the raid frame 208 on')
+	reset()
+end)
+
+test('bar role: a raid frame 80 by 40 with st.textures.cornerbr, 16, at its bottom right corner, in the color', function()
+	T.theme('thick')
+	local F, p = open_bar({ style = 'role', name = 'Healer' })
+	local r = p.cells.roleRaid
+	check(r.holder:IsShown(), 'shown')
+	eq(size(p.roleRaid.bar), '80,40', 'the raid frame')
+	eq(drawn(p.roleRaid.bar), 'theme,solid,bar', 'a bar')
+	eq(stub.state(p.roleRaid.corner).texture, st.textures.cornerbr, 'the corner texture')
+	eq(size(p.roleRaid.corner), '16,16', 'the corner 16 by 16')
+	eq(rgb3(p.roleRaid.corner:GetVertexColor()), PICKED, 'in the picked color')
+	eq(bar_color(p.roleRaid.bar), class_color(), "the raid frame's bar is a class color")
+	eq(p.roleRaid.label:GetText(), 'Healer', 'the row\'s name')
+	eq(p.roleRaid.corner:GetRight() - p.roleRaid.bar:GetRight(), 2, 'out of the bar by 2 on the right')
+	eq(p.roleRaid.bar:GetBottom() - p.roleRaid.corner:GetBottom(), 2, 'and 2 down')
+	-- centered: 80 in 370 is 145 in
+	local x = at(F, p.roleRaid.bar)
+	eq(x, 20 + 145, 'centered in the strip')
+	check(not p.cells.unitBar.holder:IsShown(), 'no unit frame')
+	reset()
+end)
+
+test('bar reputation: the reputation bar 150 by 13, an NPC health bar 100 by 28 and an NPC tooltip, in the color with the label', function()
+	T.theme('thick')
+	local F, p = open_bar({ style = 'reputation', label = 'Friendly' })
+	eq(size(p.repXp.bar), '150,13', 'the experience bar')
+	eq(size(p.repNpc.bar), '100,28', 'the NPC bar')
+	eq(size(p.repTip.tip), '74,44', 'the NPC tooltip')
+	eq(drawn(p.repTip.tip), 'theme,solid,tooltip', 'a tooltip panel')
+	eq(border_color(p.repTip.tip), PICKED, "its border in the standing's color")
+	eq(rgb3(p.repTip.label:GetTextColor()) .. ' ' .. p.repTip.label:GetText(), PICKED .. ' Friendly', 'its name')
+	for _, key in ipairs({ 'repXp', 'repNpc', 'repTip' }) do check(p.cells[key].holder:IsShown(), key .. ' shows') end
+	-- 150 + 100 + 74 and two gaps of 8 is 340: 15 in.
+	eq(at(F, p.repXp.bar), 20 + 15, 'centered')
+	eq(drawn(p.repXp.bar) .. ' ' .. drawn(p.repNpc.bar), 'theme,solid,bar theme,solid,bar', 'both bars')
+	eq(bar_color(p.repXp.bar) .. ' ' .. bar_color(p.repNpc.bar), PICKED .. ' ' .. PICKED, 'both in the color')
+	eq(p.repXp.bar:GetValue() .. ',' .. p.repNpc.bar:GetValue(), '70,70', '70%')
+	eq(p.repXp.label:GetText() .. ',' .. p.repNpc.label:GetText(), 'Friendly,Friendly', 'the label on both')
+	eq(p.cells.repXp.caption:GetText() .. ',' .. p.cells.repNpc.caption:GetText() .. ',' .. p.cells.repTip.caption:GetText(), 'Reputation bar,NPC health,Tooltip', 'captions')
+	reset()
+end)
+
+test('bar reputation for Renown (npc = false, tooltip = false): the experience bar alone, centered; no NPC bar or tooltip takes Renown', function()
+	T.theme('thick')
+	local F, p = open_bar({ style = 'reputation', label = 'Renown', npc = false, tooltip = false })
+	check(p.cells.repXp.holder:IsShown(), 'the experience bar shows')
+	check(not p.cells.repNpc.holder:IsShown() and not p.cells.repNpc.caption:IsShown(), 'no NPC health bar')
+	check(not p.cells.repTip.holder:IsShown() and not p.cells.repTip.caption:IsShown(), 'no tooltip')
+	eq(bar_color(p.repXp.bar), PICKED, 'the experience bar in the color')
+	eq(at(F, p.repXp.bar), 20 + 110, '150 centered in 370')
+	-- npc = false alone leaves the tooltip.
+	F, p = open_bar({ style = 'reputation', label = 'Hated', npc = false })
+	check(not p.cells.repNpc.holder:IsShown() and p.cells.repTip.holder:IsShown(), 'npc = false leaves only the bar out')
+	reset()
+end)
+
+test('every label in a tile has a width and is cut at its end: none runs past its bar or tile in a wide face', function()
+	T.theme('thick')
+	local F, p = open_bar({ style = 'unit', label = 'Demon Hunter' })
+	local function bounded(fs, limit, what)
+		eq(fs:CanWordWrap(), false, what .. ': no word wrap')
+		local w = fs:GetWidth()
+		check(w > 0 and w <= limit, what .. (': a width of its own, within %d (got %s)'):format(limit, tostring(w)))
+	end
+	bounded(p.unitBar.label, 200 - 12 - 40, 'unit label')
+	bounded(p.unitBar.percent, 40, 'percent')
+	bounded(p.unitRaid.label, 80, 'raid frame label')
+	bounded(p.unitTip.label, 74 - 14, 'tooltip name')
+	bounded(p.unitTip.level, 74 - 14, 'tooltip level')
+	check(p.unitBar.label:GetWidth() + p.unitBar.percent:GetWidth() <= 200 - 12, 'the label and percent fit the bar together')
+	F, p = open_bar({ style = 'role', name = 'Healer' })
+	bounded(p.roleRaid.label, 80, 'role label')
+	F, p = open_bar({ style = 'plate', threat = true })
+	bounded(p.plate.name, 200, 'plate name'); bounded(p.plate.threat, 40, 'threat percent')
+	for _, style in ipairs({ 'reputation', 'power' }) do
+		F, p = open_bar({ style = style, label = 'Demon Hunter' })
+		for _, key in ipairs({ 'repXp', 'repNpc', 'powerBars' }) do
+			if p[key].label then
+				eq(p[key].label:CanWordWrap(), false, key .. ' label: no word wrap')
+				eq(p[key].label:IsTruncated() or true, true, key)
+			end
+		end
+	end
+	reset()
+end)
+
+test('bar power: a health bar 200 by 24 with the power bar 200 by 12 under it, the power bar in the color with its label', function()
+	T.theme('thick')
+	local F, p = open_bar({ style = 'power', label = 'Rage' })
+	local b = p.powerBars
+	eq(size(b.health) .. ' ' .. size(b.power), '200,24 200,12', 'sizes')
+	local _, hy = at(F, b.health)
+	local _, py = at(F, b.power)
+	check(py - (hy + 24) >= 4, 'clear of the health bar and its border')
+	eq(bar_color(b.power), PICKED, 'the power bar in the color')
+	eq(bar_color(b.health), class_color(), 'the health bar in a class color')
+	eq(b.label:GetText(), 'Rage', 'the label')
+	eq(b.power:GetValue(), 70, 'filled 70%')
+	reset()
+end)
+
+test('bar points: five points 34 by 20, 7 apart, three lit in the color; Blizzard draws them Thick with a note', function()
+	T.theme('thick')
+	local F, p = open_bar({ style = 'points' })
+	local pts = p.pointsRow.points
+	eq(#pts, 5, 'five points')
+	local x0 = at(F, pts[1])
+	for i, point in ipairs(pts) do
+		eq(size(point), '34,20', 'point ' .. i)
+		eq(at(F, point), x0 + (i - 1) * 41, 'point ' .. i .. ' 7 on from the last')
+		eq(point:GetValue(), i <= 3 and 1 or 0, 'point ' .. i .. (i <= 3 and ' lit' or ' empty'))
+		eq(drawn(point), 'theme,solid,control', 'point ' .. i .. ' drawn as a control')
+	end
+	for i = 1, 3 do eq(bar_color(pts[i]), PICKED, 'lit point ' .. i .. ' in the color') end
+	check(not F.previewNote:IsShown(), 'no note under Thick')
+	T.theme('blizzard')
+	check(F.previewNote:IsShown(), 'a note under Blizzard')
+	eq(F.previewNote:GetText(), "Shown as Thick: under Blizzard, class power points wear Blizzard's art.", 'its text')
+	for i, point in ipairs(pts) do eq(drawn(point), 'thick,solid,control', 'point ' .. i .. ' drawn Thick') end
+	T.theme('thick')
+	check(not F.previewNote:IsShown(), 'back: the note goes')
+	eq(drawn(pts[2]), 'theme,solid,control', 'the points follow the theme again')
+	-- Other styles have no note under Blizzard.
+	T.theme('blizzard')
+	local F2 = open_bar({ style = 'unit', label = 'Mage' })
+	check(not F2.previewNote:IsShown(), 'a unit preview has no note under Blizzard')
+	T.theme('thick')
+	reset()
+end)
+
+test('bar plate: a nameplate 200 by 20 with its name and, with threat, the percent above its right end in the color', function()
+	T.theme('thick')
+	local F, p = open_bar({ style = 'plate', threat = true, name = 'Bad' })
+	local pl = p.plate
+	eq(size(pl.bar), '200,20', 'the plate')
+	eq(bar_color(pl.bar), PICKED, "the plate's bar in the color")
+	eq(pl.name:GetText(), 'Wolf', 'its name')
+	check(pl.threat:IsShown(), 'the threat percent shows')
+	eq(rgb3(pl.threat:GetTextColor()), PICKED, 'in the color')
+	check(pl.threat:GetBottom() > pl.bar:GetTop() and pl.threat:GetRight() <= pl.bar:GetRight() + 0.001, 'above the bar, at its right end')
+	eq(rgb3(pl.name:GetTextColor()), rgb3(st:Color('text', 'danger'):GetRGB()), 'a hostile name')
+	local F2, p2 = open_bar({ style = 'plate', name = 'Bad' })
+	check(not p2.plate.threat:IsShown(), 'without threat there is no percent')
+	reset()
+end)
+
+test("border slot: a 36 slot drawn as a slot with its border in the color through st:SetBorderColor, an icon inside it, and a feed line with the name in the color", function()
+	for _, look in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		T.theme(look)
+		local F, p = open_border('slot')
+		local where = look .. ': '
+		local s = p.slotSlot
+		eq(size(s.slot), '36,36', where .. 'the slot')
+		eq(drawn(s.slot), 'theme,solid,slot', where .. 'the Slot theme')
+		if look ~= 'blizzard' then eq(border_color(s.slot.backdrop), PICKED, where .. 'its border in the color') end
+		local inset = st:DrawnInset(s.slot) or 0
+		eq(s.icon:GetLeft() - s.slot:GetLeft(), inset, where .. 'the icon inside the border, by the drawn inset')
+		eq(s.slot:GetTop() - s.icon:GetTop(), inset, where .. 'on top too')
+		check(s.icon:GetTexture() ~= nil, where .. 'an icon')
+		local l = p.slotLine
+		eq(size(l.line), '200,32', where .. 'the feed line')
+		eq(drawn(l.line), 'theme,solid,panel', where .. 'a panel')
+		eq(drawn(l.icon), 'theme,solid,slot', where .. 'its icon a slot')
+		eq(l.name:GetText(), 'Item name', where .. 'an item name')
+		eq(rgb3(l.name:GetTextColor()), PICKED, where .. 'in the color')
+		eq(p.cells.slotSlot.caption:GetText() .. ',' .. p.cells.slotLine.caption:GetText(), 'Slot,Feed line', where .. 'captions')
+		nomouse(s.slot, where .. 'the slot'); nomouse(l.line, where .. 'the line'); nomouse(l.icon, where .. 'its icon')
+		check(not p.cells.entryLine.holder:IsShown(), where .. 'no entry')
+	end
+	T.theme('thick')
+	reset()
+end)
+
+test('border entry: a feed entry 250 by 32 with its border and its icon\'s border in the color and its fill at 60%', function()
+	T.theme('thick')
+	local F, p = open_border('entry')
+	local e = p.entryLine
+	eq(size(e.line), '250,32', 'the entry')
+	eq(border_color(e.line.backdrop), PICKED, 'its border')
+	eq(rgb3(e.line.backdrop:GetBackdropColor()), PICKED, 'its fill')
+	eq(select(4, e.line.backdrop:GetBackdropColor()), 0.6, 'at 60%')
+	eq(border_color(e.icon.backdrop), PICKED, "its icon's border")
+	eq(e.name:GetText(), 'Mount name', 'a name')
+	eq(rgb3(e.name:GetTextColor()), normal(), 'in Text')
+	check(not p.cells.slotSlot.holder:IsShown() and not p.cells.slotLine.holder:IsShown(), 'no slot')
+	local x = at(F, e.line)
+	eq(x, 20 + 60, 'centered: 250 in 370 is 60 in')
+	reset()
+end)
+
+test('the bar and border kinds follow a drag and the picker puts the saved color back on the next opening', function()
+	T.theme('thick')
+	reset()
+	local told, F = open({ preview = { kind = 'bar', style = 'unit', label = 'Mage' }, name = 'Mage', r = 0.9, g = 0.1, b = 0.1 })
+	local u = F.previewPieces.bar.unitBar
+	eq(bar_color(u.bar), '0.90,0.10,0.10', 'the opening color')
+	press(F.square, 0.37, 0.61)
+	release(F.square)
+	local last = told.changes[#told.changes]
+	check(last ~= nil, 'a drag changed it')
+	eq(bar_color(u.bar), rgb3(last[1], last[2], last[3]), 'the bar follows the drag')
+	eq(rgb3(F.previewPieces.bar.unitTip.label:GetTextColor()), rgb3(last[1], last[2], last[3]), 'and the tooltip name')
+	W.CloseColorPicker() -- Cancel
+	local _, F2 = open({ preview = { kind = 'bar', style = 'unit', label = 'Mage' }, name = 'Mage', r = 0.9, g = 0.1, b = 0.1 })
+	eq(bar_color(F2.previewPieces.bar.unitBar.bar), '0.90,0.10,0.10', 'the saved color again after Cancel')
+	reset()
+	local _, F3 = open({ preview = { kind = 'border', style = 'entry' }, name = 'Mount', r = 0.9, g = 0.1, b = 0.1 })
+	local e = F3.previewPieces.border.entryLine
+	press(F3.square, 0.2, 0.2)
+	release(F3.square)
+	check(border_color(e.line.backdrop) ~= '0.90,0.10,0.10', 'the entry follows a drag')
+	W.CloseColorPicker()
+	_, F3 = open({ preview = { kind = 'border', style = 'entry' }, name = 'Mount', r = 0.9, g = 0.1, b = 0.1 })
+	eq(border_color(F3.previewPieces.border.entryLine.line.backdrop), '0.90,0.10,0.10', 'the entry has the saved color after Cancel')
+	reset()
+end)
+
+test("a theme recolor with the picker open puts the bar and border kinds' own colors back", function()
+	T.theme('thick')
+	local F, p = open_bar({ style = 'unit', label = 'Mage' })
+	st:SetBorderColor(p.unitTip.tip, 1, 1, 1)
+	p.unitBar.bar:SetStatusBarColor(1, 1, 1)
+	st:RecolorThemed()
+	eq(border_color(p.unitTip.tip), PICKED, 'the tooltip border is back')
+	eq(bar_color(p.unitBar.bar), PICKED, 'and the bar')
+	local F2, b = open_border('slot')
+	st:SetBorderColor(b.slotSlot.slot.backdrop, 1, 1, 1)
+	st:RecolorThemed()
+	eq(border_color(b.slotSlot.slot.backdrop), PICKED, 'the slot border is back')
+	local F3, e = open_border('entry')
+	st:SetBorderColor(e.entryLine.line.backdrop, 1, 1, 1)
+	st:RedrawThemed()
+	eq(border_color(e.entryLine.line.backdrop), PICKED, 'the entry border is back after a redraw')
+	reset()
+end)
+
+local BAR_CASES = {
+	{ kind = 'bar', style = 'unit', label = 'Mage' },
+	{ kind = 'bar', style = 'unit', label = 'Offline', tooltip = false },
+	{ kind = 'bar', style = 'role' },
+	{ kind = 'bar', style = 'reputation', label = 'Friendly' },
+	{ kind = 'bar', style = 'power', label = 'Rage' },
+	{ kind = 'bar', style = 'points' },
+	{ kind = 'bar', style = 'plate', threat = true },
+	{ kind = 'border', style = 'slot' },
+	{ kind = 'border', style = 'entry' },
+}
+
+test('the bar and border kinds paint without making anything: 1000 paints, 24 setter calls at most, under 4 KB', function()
+	for _, case in ipairs(BAR_CASES) do
+		for _, look in ipairs({ 'thick', 'thin', 'blizzard' }) do
+			T.theme(look)
+			reset()
+			local _, F = open({ preview = case, name = 'Row' })
+			local where = case.kind .. ' ' .. case.style .. ' under ' .. look .. ': '
+			local def, pieces = W.PreviewKinds()[case.kind], F.previewPieces[case.kind]
+			local spec = { fields = case, name = 'Row', hasAlpha = false }
+			def.Paint(pieces, 0.1, 0.2, 0.3, 1, spec) -- each widget's first color call makes its table once
+			local i = 0
+			local m = C.measure(function()
+				i = i + 1
+				def.Paint(pieces, 0.1 + (i % 7) / 10, 0.2, 0.3, 1, spec)
+			end, 1000)
+			check(m.calls.total <= 24 * 1000, where .. 'at most 24 setter calls a paint, got ' .. m.calls.total / 1000)
+			check(m.calls.total > 0, where .. 'and it does paint')
+			check(m.kb < 4, where .. ('under 4 KB, got %.2f'):format(m.kb))
+			eq(m.made, 0, where .. 'nothing made')
+			eq(m.forbidden.total, 0, where .. 'nothing placed, shown or sized')
+			F.paintPreview()
+			m = C.measure(function() F.paintPreview() end, 1000)
+			check(m.calls.total <= 24 * 1000, where .. "the picker's path: at most 24 setter calls")
+			check(m.kb < 4, where .. ("the picker's path under 4 KB, got %.2f"):format(m.kb))
+			eq(m.forbidden.total, 0, where .. "the picker's path places and shows nothing")
+			reset()
+		end
+	end
+	T.theme('thick')
+end)
+
+test('the bar and border kinds: every part on whole pixels under Thick, Thin and Blizzard, with sizes read back a hair off', function()
+	local HAIR = 2 ^ -14
+	for _, case in ipairs(BAR_CASES) do
+		for _, look in ipairs({ 'thick', 'thin', 'blizzard' }) do
+			for _, noise in ipairs({ 0, HAIR, -HAIR }) do
+				T.theme(look)
+				stub.size_noise = noise
+				reset()
+				stub.size_noise = noise
+				local where = case.kind .. ' ' .. case.style .. ' ' .. look .. ' noise ' .. noise .. ': '
+				local _, F = open({ preview = case, name = 'Row' })
+				local off = P.off(F.frame)
+				eq(#off, 0, where .. P.report(off))
+				check(F.preview:IsShown(), where .. 'the area is part of what was checked')
+				press(F.square, 0.37, 0.61)
+				release(F.square)
+				off = P.off(F.frame)
+				eq(#off, 0, where .. 'after a drag: ' .. P.report(off))
+				reset()
+			end
+		end
+	end
+	stub.size_noise = 0
+	T.theme('thick')
+end)
+
+test('the cells and captions stay inside the strip, every caption has word wrap off, under each look', function()
+	for _, look in ipairs({ 'thick', 'blizzard' }) do
+		T.theme(look)
+		for _, case in ipairs(BAR_CASES) do
+			reset()
+			local _, F = open({ preview = case, name = 'Row' })
+			local p = F.previewPieces[case.kind]
+			local where = case.kind .. ' ' .. case.style .. ' ' .. look .. ': '
+			local any = false
+			for key, cell in pairs(p.cells) do
+				if cell.holder:IsShown() then
+					any = true
+					check(cell.holder:GetLeft() + 0.001 >= F.preview:GetLeft() and cell.holder:GetRight() <= F.preview:GetRight() + 0.001,
+						where .. key .. ' inside the strip across')
+					check(cell.caption:GetTop() - cell.caption:GetStringHeight() >= F.preview:GetBottom() - 0.001, where .. key .. ' caption inside the area')
+					eq(cell.caption:CanWordWrap(), false, where .. key .. ' caption: no word wrap')
+					check(cell.caption:GetLeft() + 0.001 >= cell.holder:GetLeft() and cell.caption:GetRight() <= cell.holder:GetRight() + 0.001, where .. key .. ' caption under its cell')
+				end
+			end
+			check(any, where .. 'something shows')
+			reset()
+		end
+	end
+	T.theme('thick')
+end)
+
+test('a style no kind has shows nothing and errors nothing', function()
+	T.theme('thick')
+	reset()
+	for _, kind in ipairs({ 'bar', 'border' }) do
+		local told, F = open({ preview = { kind = kind, style = 'nothing' }, name = 'Row' })
+		check(told.opened and F.frame:GetHeight() == 436, kind .. ': opens')
+		for _, cell in pairs(F.previewPieces[kind].cells) do check(not cell.holder:IsShown(), kind .. ': nothing shows') end
+		reset()
+		told, F = open({ preview = kind, name = 'Row' })
+		check(told.opened, kind .. ' with no style opens')
+		reset()
+	end
+end)
+
+test('a bar and a border row with an opacity (402 wide): the cells centered, whole, inside the strip', function()
+	local HAIR = 2 ^ -14
+	for _, case in ipairs(BAR_CASES) do
+		for _, look in ipairs({ 'thick', 'blizzard' }) do
+			T.theme(look)
+			stub.size_noise = HAIR
+			reset()
+			stub.size_noise = HAIR
+			local where = case.kind .. ' ' .. case.style .. ' ' .. look .. ' 402: '
+			local _, F = open({ preview = case, name = 'Row', hasAlpha = true, a = 0.5 })
+			check(math.abs(F.preview:GetWidth() - 402) < 0.01, where .. 'the strip is 402 wide')
+			local off = P.off(F.frame)
+			eq(#off, 0, where .. P.report(off))
+			local first, last
+			for _, cell in pairs(F.previewPieces[case.kind].cells) do
+				if cell.holder:IsShown() then
+					check(cell.holder:GetLeft() + 0.001 >= F.preview:GetLeft() and cell.holder:GetRight() <= F.preview:GetRight() + 0.001, where .. 'inside the strip')
+					first = math.min(first or 1e9, cell.holder:GetLeft() - F.preview:GetLeft())
+					last = math.min(last or 1e9, F.preview:GetRight() - cell.holder:GetRight())
+				end
+			end
+			local gap = math.abs(first - last)
+			check(gap <= 1, where .. ('centered (left room %s, smallest right room %s)'):format(first, last))
+			reset()
+		end
+	end
+	stub.size_noise = 0
+	T.theme('thick')
+end)
+
+------------------------------------------------------------------ the rows
+
+local function walk_rows()
+	local CO = st:GetModule('Colors')
+	local rows = {}
+	for _, section in ipairs(CO.SECTIONS) do
+		for _, color in ipairs(section.colors) do
+			rows[#rows + 1] = { section = section, color = color, option = CO:GetConfigTable().args[section.key].args[tostring(color.key or color.group)] }
+		end
+	end
+	rows[#rows + 1] = { accent = true, option = CO:AccentOption(1) }
+	return rows
+end
+
+test('every Colors row and the Accent have a preview whose kind is defined, and each opens at 436 with no error', function()
+	local rows = walk_rows()
+	eq(#rows, 80, 'the walk found the 79 Colors rows and the Accent')
+	for _, row in ipairs(rows) do
+		local name = row.accent and 'Accent' or (row.section.key .. '.' .. tostring(row.color.key or row.color.group))
+		local preview = row.option.preview
+		check(preview ~= nil, name .. ' has a preview')
+		local kind = W.ReadPreview(preview)
+		check(kind ~= nil and W.PreviewKinds()[kind] ~= nil, name .. ' names a defined kind')
+		reset()
+		local told, F = open({
+			preview = preview, name = row.option.name, hasAlpha = row.option.hasAlpha == true,
+		})
+		check(told.opened, name .. ' opens')
+		eq(F.frame:GetHeight(), 436, name .. ' opens with its preview')
+		reset()
+	end
+end)
+
+test("the rows carry the previews the spec's table gives", function()
+	local CO = st:GetModule('Colors')
+	local args = CO:GetConfigTable().args
+	local function view(p) return type(p) == 'table' and (p.kind .. ',' .. tostring(p.style) .. ',' .. tostring(p.label) .. ',' .. tostring(p.threat) .. ',' .. tostring(p.tooltip) .. (p.npc == nil and '' or ',npc=' .. tostring(p.npc))) or tostring(p) end
+	for key, color in pairs(args.class.args) do
+		eq(view(color.preview), 'bar,unit,' .. color.name .. ',nil,nil', 'Class > ' .. key .. ': the unit frame, labeled with the class')
+	end
+	eq(view(args.class.args.MAGE.preview), 'bar,unit,Mage,nil,nil', 'Class > Mage')
+	for _, key in ipairs({ 'TANK', 'HEALER', 'DAMAGER' }) do eq(view(args.roles.args[key].preview), 'bar,role,nil,nil,nil', 'Roles > ' .. key) end
+	for i = 1, 8 do
+		local o = args.reaction.args[tostring(i)]
+		eq(view(o.preview), 'bar,reputation,' .. o.name .. ',nil,nil', 'Reputation > ' .. o.name)
+	end
+	eq(view(args.reaction.args.renown.preview), 'bar,reputation,Renown,nil,false,npc=false', 'Renown: the experience bar only')
+	for _, key in ipairs({ 'COMBO_POINTS', 'CHI', 'HOLY_POWER', 'SOUL_SHARDS', 'ARCANE_CHARGES' }) do
+		eq(view(args.power.args[key].preview), 'bar,points,nil,nil,nil', 'Power > ' .. key .. ' is the points')
+	end
+	eq(view(args.power.args.MANA.preview), 'bar,power,Mana,nil,nil', 'Power > Mana')
+	eq(view(args.power.args.RUNIC_POWER.preview), 'bar,power,Runic power,nil,nil', 'Power > Runic power')
+	eq(view(args.power.args.LUNAR_POWER.preview), 'bar,power,Astral power,nil,nil', 'Power > Astral power')
+	for i = 0, 8 do eq(view(args.item_quality.args[tostring(i)].preview), 'border,slot,nil,nil,nil', 'Item quality > ' .. i) end
+	eq(view(args.loot.args.mount.preview), 'border,entry,nil,nil,nil', 'Loot > Mount')
+	for _, key in ipairs({ 'need', 'greed', 'transmog', 'pass' }) do eq(args.loot.args[key].preview, 'text', 'Loot > ' .. key .. ' is text') end
+	eq(view(args.status.args.disconnected.preview), 'bar,unit,Offline,nil,false', 'Status > Disconnected: no tooltip')
+	eq(view(args.status.args.tapped.preview), 'bar,unit,Tapped,nil,false', 'Status > Tapped')
+	eq(view(args.threat.args.warning.preview), 'bar,plate,nil,true,nil', 'Threat > Warning')
+	eq(view(args.threat.args.bad.preview), 'bar,plate,nil,true,nil', 'Threat > Bad')
+	-- One table per row, the same on every walk (the picker reads it as constants).
+	local again = CO:GetConfigTable().args
+	check(again.class.args.MAGE.preview == args.class.args.MAGE.preview, 'Class > Mage keeps its table')
+	check(again.status.args.tapped.preview == args.status.args.tapped.preview, 'Status > Tapped keeps its table')
+	check(again.power.args.MANA.preview == args.power.args.MANA.preview, 'Power > Mana keeps its table')
+end)
+
+test('a unit frame color row near the bottom of the screen: the 436-tall picker with a bar preview stays on the screen', function()
+	T.theme('thick')
+	reset()
+	local owner = field(100, 640)
+	local _, F = open({ owner = owner, preview = { kind = 'bar', style = 'unit', label = 'Mage' }, name = 'Mage' })
+	check(F.frame:GetBottom() >= 0 and F.frame:GetTop() <= UIParent:GetTop() + 0.001, 'on the screen')
 	reset()
 end)

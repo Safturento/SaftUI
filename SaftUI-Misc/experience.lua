@@ -214,6 +214,7 @@ function XP:GetWatchedFactionInfo()
 			rank = factionData.renownLevel,
 			rankLabel = 'Rank '..factionData.renownLevel,
 			color = Colors().renown,
+			colorGroup = 'renown',
 			current = factionData.renownReputationEarned,
 			max = factionData.renownLevelThreshold,
 			rewardMessage = factionData.unlockDescription or nil
@@ -226,6 +227,7 @@ function XP:GetWatchedFactionInfo()
 			rank = rank,
 			rankLabel = "Paragon " .. math.floor(value/10000),
 			color = Colors().reaction[rank],
+			colorGroup = 'reaction',
 			current = rewardPending and max or value % 10000,
 			max = max,
 			rewardPending = rewardPending,
@@ -237,6 +239,7 @@ function XP:GetWatchedFactionInfo()
 			rank = rank,
 			rankLabel = friendshipInfo.reaction,
 			color = Colors().reaction[rank],
+			colorGroup = 'reaction',
 			current = friendshipInfo.standing - friendshipInfo.reactionThreshold,
 			-- TODO: nextThreshold is nil when maxed, need to handle that edge case
 			max = friendshipInfo.nextThreshold - friendshipInfo.reactionThreshold
@@ -247,6 +250,7 @@ function XP:GetWatchedFactionInfo()
 			rank = rank,
 			rankLabel = _G['FACTION_STANDING_LABEL'..rank],
 			color = Colors().reaction[rank],
+			colorGroup = 'reaction',
 			current = value - minRep,
 			max = maxRep - minRep
 		}
@@ -255,6 +259,11 @@ end
 
 function XP:UpdateReputation()
 	local info = self:GetWatchedFactionInfo()
+
+	-- What the bar wears, for a color pass (OnColorsChanged), which recolors
+	-- and does nothing else: the group and the standing, nil while it is hidden.
+	self.repGroup = info and info.colorGroup or nil
+	self.repRank = info and info.rank or nil
 
 	if info then
 		self.bars.reputation:SetMinMaxValues(0, info.max)
@@ -269,12 +278,15 @@ function XP:UpdateReputation()
 end
 
 -- A reputation or renown color changed on the Colors tab (st:ColorsChanged
--- calls this): draws the reputation bar again, which reads them in
--- GetWatchedFactionInfo. Nothing to do before the module is enabled.
+-- calls this): a pass only colors, so the shown bar takes its color again and
+-- nothing else is set (no Show, no range, no value: UpdateReputation's). Nothing
+-- to do before the module is enabled, while the bar is hidden, or for the
+-- other of the two colors.
 function XP:OnColorsChanged(group)
-	if (group == 'reaction' or group == 'renown') and self.bars and self.bars.reputation then
-		self:UpdateReputation()
-	end
+	if group ~= 'reaction' and group ~= 'renown' then return end
+	if not (self.bars and self.bars.reputation) or group ~= self.repGroup then return end
+	local color = group == 'renown' and Colors().renown or Colors().reaction[self.repRank]
+	if color then self.bars.reputation:SetStatusBarColor(color:GetRGB()) end
 end
 
 function XP:UpdateExperience()

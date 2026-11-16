@@ -165,11 +165,35 @@ end
 -- when there's neither.
 function ZT:ZoneLine()
 	local levels = ZT.FormatLevels(self:PlayerZoneLevels())
-	local faction = not IsInInstance() and self:ColorFaction(self:LiveFaction() or self:SubZoneZoneFaction() or 'Neutral') or nil
+	local word = not IsInInstance() and (self:LiveFaction() or self:SubZoneZoneFaction() or 'Neutral') or nil
+	local faction = word and self:ColorFaction(word) or nil
+	-- What a color pass needs to make the line again (ZT:RecolorZoneLine): the
+	-- parts and the color the faction word wears now. One table, kept.
+	local parts = self.zoneLineParts or {}
+	self.zoneLineParts = parts
+	parts.levels, parts.word, parts.r, parts.g, parts.b = levels, word, nil, nil, nil
+	if word then parts.r, parts.g, parts.b = st:Color('factions', word):GetRGB() end
 	if levels and faction then
 		return levels .. ' ' .. MIDDLE_DOT .. ' ' .. faction
 	end
 	return levels or faction or ''
+end
+
+-- A Text or Factions pass on the line on screen: colors only, and no
+-- SetPoint (the subzone's place depends on whether the line is empty, which a
+-- color cannot change). The line takes Text > Normal, and its faction word is
+-- made again only when its color changed, so a pass that changes none makes
+-- nothing.
+function ZT:RecolorZoneLine()
+	local line, parts = self.ZoneLineString, self.zoneLineParts
+	if not (line and parts) or (line:GetText() or '') == '' then return end
+	line:SetTextColor(st:Color('text', 'normal'):GetRGB())
+	if not parts.word then return end
+	local r, g, b = st:Color('factions', parts.word):GetRGB()
+	if r == parts.r and g == parts.g and b == parts.b then return end
+	parts.r, parts.g, parts.b = r, g, b
+	local faction = self:ColorFaction(parts.word)
+	line:SetText(parts.levels and (parts.levels .. ' ' .. MIDDLE_DOT .. ' ' .. faction) or faction)
 end
 
 -- The line and the subzone name are both subtitle text, whose height leaves
@@ -306,7 +330,7 @@ function ZT:OnColorsChanged(group)
 		self:ColorFlourishes()
 	elseif (group == 'text' or group == 'factions') and self.ZoneLineString then
 		self.mapLineFor = nil
-		if ZoneTextFrame:IsShown() then self:UpdateZoneLine() end
+		if ZoneTextFrame:IsShown() then self:RecolorZoneLine() end
 	end
 end
 
