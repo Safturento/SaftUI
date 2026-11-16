@@ -101,9 +101,18 @@ local function Blizzard() return st:IsBlizzardLook('theme', 'solid') end
 
 -- The mover's look and its selected state: out of a pass (a new mover, a selection,
 -- a theme recolor or redraw, which gives the backdrop the theme's colors back).
+local looks = setmetatable({}, { __mode = 'k' }) -- overlay -> { blizzard, inset } it was last restyled for
+
 local function SetBorderColor(mover, selected)
 	local overlay = mover.overlay
-	if Blizzard() then
+	-- A Theme recolor is a pass (it moves nothing): the states are restyled (their pieces
+	-- placed again) only when the look they were styled for changed, which is what a
+	-- theme switch and a scale change move.
+	local blizzard, inset = Blizzard(), st:DrawnInset(overlay)
+	local look = looks[overlay]
+	local flipped = not look or look.blizzard ~= blizzard or look.inset ~= inset
+	if flipped then looks[overlay] = { blizzard = blizzard, inset = inset } end
+	if blizzard then
 		ShowKit(overlay, selected and 'selected' or 'highlight')
 	else
 		ShowKit(overlay, nil)
@@ -111,7 +120,7 @@ local function SetBorderColor(mover, selected)
 		backdrop:SetBackdropColor(0, 0, 0, 0.3)
 		RestEdge(overlay)
 	end
-	st:RestyleStates(overlay)
+	if flipped then st:RestyleStates(overlay) end
 	st:SetState(overlay, 'selected', selected)
 end
 

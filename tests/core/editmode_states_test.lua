@@ -48,9 +48,18 @@ local function leave(frame) stub.fire_script(frame, 'OnLeave', true) end
 local function look(frame) return st:StateLook(frame) end
 local function lit(piece) return piece and piece.shown and piece.alpha > 0 end
 local function rgb(...) return T.text(...) end
+local function label(row) local r, g, b = row.label:GetTextColor() return T.text(r, g, b) end
 local function edge_of(mover) return T.edge(mover.overlay.backdrop) end
 
 local WHITE = '1.00,1.00,1.00,1.00'
+-- What a Theme recolor costs per pass: the base's (b84937c1) forbidden calls (the bar's own) and setters
+local ON_FORBIDDEN, ON_SETTERS, OFF_SETTERS = 5, 535, 498
+local function by_name(by)
+	local out = {}
+	for k, v in pairs(by or {}) do out[#out + 1] = k .. '=' .. v end
+	table.sort(out)
+	return table.concat(out, ',')
+end
 
 ------------------------------------------------------------------ movers
 
@@ -294,6 +303,157 @@ test('the Filter movers box hovers like every box: the body tints, the edge stay
 	EM:Deactivate()
 end)
 
+------------------------------------------------------------------ every way a drag ends
+
+local function clean(mover, what)
+	local o = mover.overlay
+	check(not st:GetState(o, 'hover'), what .. ': no hover')
+	check(not st:GetState(o, 'pushed'), what .. ': not pushed')
+	check(not lit(look(o).layer), what .. ': no tint')
+end
+
+-- OnMouseDown, OnDragStart, then the cursor runs off the overlay.
+local function begin_drag(mover)
+	local o = mover.overlay
+	enter(o)
+	stub.fire_script(o, 'OnMouseDown', 'LeftButton')
+	stub.fire_script(o, 'OnDragStart')
+	check(mover.drag ~= nil, 'a drag started')
+	check(lit(look(o).layer), 'the drag is lit')
+	leave(o)
+	check(lit(look(o).layer), 'and stays lit off the overlay')
+end
+
+test('a release ends a drag: off the mover nothing is left; on it only the hover, which a leave takes', function()
+	local mover = world()
+	begin_drag(mover)
+	stub.fire_script(mover.overlay, 'OnDragStop')
+	stub.fire_script(mover.overlay, 'OnMouseUp', 'LeftButton')
+	clean(mover, 'released off the mover')
+	enter(mover.overlay)
+	stub.fire_script(mover.overlay, 'OnMouseDown', 'LeftButton')
+	stub.fire_script(mover.overlay, 'OnDragStart')
+	stub.fire_script(mover.overlay, 'OnDragStop')
+	stub.fire_script(mover.overlay, 'OnMouseUp', 'LeftButton')
+	check(st:GetState(mover.overlay, 'hover') and not st:GetState(mover.overlay, 'pushed'), 'released on it: hover only')
+	leave(mover.overlay)
+	clean(mover, 'then the leave')
+	EM:Deactivate()
+end)
+
+test('Esc with a mover selected deselects it and the drag goes on, the release clears it', function()
+	local mover = world()
+	EM:Select(mover)
+	begin_drag(mover)
+	stub.fire_script(EM.keyCatcher, 'OnKeyDown', 'ESCAPE')
+	eq(EM.selected, nil, 'deselected')
+	check(not look(mover.overlay).fill.shown, 'no fade')
+	stub.fire_script(mover.overlay, 'OnDragStop')
+	stub.fire_script(mover.overlay, 'OnMouseUp', 'LeftButton')
+	clean(mover, 'released')
+	EM:Deactivate()
+end)
+
+test('Esc with nothing selected closes edit mode mid-drag; combat does too; nothing is left lit when it opens again', function()
+	for _, how in ipairs({ 'Esc', 'combat' }) do
+		local mover = world()
+		begin_drag(mover)
+		if how == 'Esc' then
+			stub.fire_script(EM.keyCatcher, 'OnKeyDown', 'ESCAPE')
+		else
+			EM:PLAYER_REGEN_DISABLED()
+		end
+		check(not EM.active, how .. ': edit mode closed')
+		clean(mover, how)
+		EM:Activate()
+		clean(mover, how .. ', open again')
+		EM:Deactivate()
+	end
+end)
+
+test('a profile change mid-drag drops the drag; the release clears the states', function()
+	local mover = world()
+	begin_drag(mover)
+	EM:ClearPositions()
+	EM:UpdateConfig()
+	eq(mover.drag, nil, 'the drag is dropped')
+	stub.fire_script(mover.overlay, 'OnDragStop')
+	stub.fire_script(mover.overlay, 'OnMouseUp', 'LeftButton')
+	clean(mover, 'released')
+	EM:Deactivate()
+end)
+
+test('a right-button press is no drag: not pushed, no tint beyond the hover', function()
+	local mover = world()
+	stub.fire_script(mover.overlay, 'OnMouseDown', 'RightButton')
+	check(not st:GetState(mover.overlay, 'pushed'), 'not pushed')
+	stub.fire_script(mover.overlay, 'OnMouseUp', 'RightButton')
+	clean(mover, 'released')
+	EM:Deactivate()
+end)
+
+------------------------------------------------------------------ History row labels
+
+test('a Text pass re-picks the label of a row under the mouse (an undone row hovered is Normal, not Muted)', function()
+	world()
+	local list = open_list()
+	local undone
+	for _, row in ipairs(list.rows) do if row:IsShown() and row.index > History:Position() then undone = row end end
+	check(undone, 'an undone row')
+	eq(label(undone), rgb(st:Color('text', 'muted'):GetRGB()), 'Muted at rest')
+	enter(undone)
+	local normal = st:Color('text', 'normal')
+	normal:SetRGB(0.8, 0.8, 0.7)
+	st:ColorChanged('text', 'normal')
+	eq(label(undone), rgb(0.8, 0.8, 0.7), 'a Text pass: Normal over the tint (the helper\'s pick), not Muted')
+	leave(undone)
+	eq(label(undone), rgb(st:Color('text', 'muted'):GetRGB()), 'Muted again when left')
+	EM:Deactivate()
+end)
+
+test('an Accent pass keeps the helper\'s dark text on the current step at Selected 60% with a pale Accent', function()
+	world()
+	local list = open_list()
+	local accent, settings = st.config.profile.theme.accent, st.config.profile.theme.states
+	local keep_r, keep_g, keep_b, keep_s = accent.r, accent.g, accent.b, settings.selected
+	accent:SetRGB(1, 1, 0.6)
+	settings.selected = 0.6
+	st.States.Changed()
+	local current
+	for _, row in ipairs(list.rows) do if row:IsShown() and st:GetState(row, 'selected') then current = row end end
+	check(current, 'a current row')
+	local want = look(current).text
+	check(SL.near(want, '111111'), 'the pick is the dark text: ' .. SL.bytes(want))
+	accent:SetRGB(1, 1, 0.7)
+	st:ColorChanged('accent')
+	local got = look(current).text
+	eq(label(current), rgb(got.r, got.g, got.b), 'after an Accent pass the label is still the pick')
+	check(select(1, current.label:GetTextColor()) < 0.2, 'dark')
+	accent:SetRGB(keep_r, keep_g, keep_b)
+	settings.selected = keep_s
+	st.States.Changed()
+	EM:Deactivate()
+end)
+
+test('a row the refresh hides is not selected: at most one selected record', function()
+	world()
+	History:Clear()
+	for i = 1, 5 do
+		History:Push({ kind = 'bulk', label = 'Step ' .. i, changes = { { kind = 'position', where = 'player',
+			old = { point = 'CENTER', x_off = i, y_off = 0 }, new = { point = 'CENTER', x_off = 0, y_off = 0 } } } })
+	end
+	EM:ShowHistoryList()
+	for _ = 1, 5 do History:Undo() end -- the start row is the current step
+	EM:RefreshHistoryList()
+	History:Push({ kind = 'bulk', label = 'New', changes = { { kind = 'position', where = 'player',
+		old = { point = 'CENTER', x_off = 9, y_off = 0 }, new = { point = 'CENTER', x_off = 0, y_off = 0 } } } })
+	EM:RefreshHistoryList()
+	local n = 0
+	for _, row in ipairs(EM:GetHistoryList().rows) do if st:GetState(row, 'selected') then n = n + 1 end end
+	eq(n, 1, 'one selected record')
+	EM:Deactivate()
+end)
+
 ------------------------------------------------------------------ cost
 
 test('a pass of the Accent with 60 movers shown and one selected: under 250 calls, nothing made or forbidden, under 4 KB', function()
@@ -320,4 +480,25 @@ test('a pass of the Accent with 60 movers shown and one selected: under 250 call
 	check(m.kb < 4, 'garbage over 100 passes: ' .. m.kb .. ' KB')
 	C.print('60 movers, a pass of the accent', m)
 	EM:Deactivate()
+end)
+
+test('a Theme recolor lays out nothing on a mover: 60 movers, 100 passes, edit mode on and off', function()
+	world()
+	for i = 1, 58 do add_mover('m' .. i) end
+	EM:Select(EM.movers.first)
+	EM:UpdateShown()
+	st:RecolorThemed() -- every widget colored once
+	local function passes()
+		return C.measure(function() st:RecolorThemed() end, 100)
+	end
+	local on = passes()
+	eq(on.made, 0, 'on: nothing made')
+	check(on.kb < 4500, 'on: garbage over 100 passes is the base\'s, not the movers\' (' .. on.kb .. ' KB)')
+	eq(on.forbidden.total, ON_FORBIDDEN * 100, 'on: only the base\'s (the bar\'s own ClearAllPoints, SetPoint, SetTextInsets, SetTexture), none for 60 movers: ' .. by_name(on.forbidden.by))
+	eq(on.calls.total, ON_SETTERS * 100, 'on: setters per pass')
+	EM:Deactivate()
+	local off = passes()
+	eq(off.forbidden.total, 0, 'off: nothing forbidden: ' .. by_name(off.forbidden.by))
+	eq(off.made, 0, 'off: nothing made')
+	eq(off.calls.total, OFF_SETTERS * 100, 'off: setters per pass')
 end)

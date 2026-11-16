@@ -191,8 +191,8 @@ end
 
 ------------------------------------------------------------------ the look
 
--- The list's colours and art for the theme in use: its rows' hover and marks,
--- the hairlines, the texts, the number box and the reverts.
+-- The list's colours and art for the theme in use: its rows' states (the helper's
+-- tint, bar and fade, restyled; Blizzard's rowHover art), the hairlines, the texts, the number box and the reverts.
 local function LookList()
 	local blizzard = W.BlizzardLook()
 	list.blizzard = blizzard
@@ -229,10 +229,12 @@ local function RecolorList(group)
 	for _, row in ipairs(list.rows) do
 		row.line:SetColorTexture(unpack(OB.HAIRLINE))
 		row.detail:SetTextColor(OB.Muted())
-		if row.index then
+		-- A pass of the Accent sets a label only under Blizzard (the current step's accent
+		-- text): under SaftUI's look the labels follow no Accent, and the helper's own
+		-- pass has just picked the text over a tint or fade.
+		if row.index and (group ~= 'accent' or blizzard) then
 			row.label:SetTextColor(LabelColor(row, position))
-			-- a label under the helper's tint or fade picks its own color again (a pass of the
-			-- Accent is the helper's own: it paints the rows that show a state)
+			-- a label under the helper's tint or fade picks its own color again
 			if group ~= 'accent' then st:PaintStates(row) end
 		end
 		W.LookControl(row.revert, blizzard)
@@ -325,6 +327,8 @@ function EM:RefreshHistoryList()
 			row.line:SetShown(i < shown)
 			row:Show()
 		else
+			-- a row that does not show is not the current step: no bar or fade for a pass to color
+			if st:GetState(row, 'selected') then st:SetState(row, 'selected', false) end
 			row:Hide()
 		end
 	end

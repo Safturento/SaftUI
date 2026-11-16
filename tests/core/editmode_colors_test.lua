@@ -200,14 +200,16 @@ test('Accent: the strip, a selected mover, the grid, the Coordinates label and t
 	eq(T.edge(EM.movers.livecolors.overlay.backdrop), want, 'the selected mover')
 	eq(T.text(EM.coordinates.text:GetTextColor()), T.text(0.9, 0.4, 0.1, 1), 'the Coordinates label')
 	local list = EM.historyList
+	local seen = 0
 	for i, row in ipairs(list.rows) do
-		if row:IsShown() then
+		if row:IsShown() and st:GetState(row, 'selected') then
 			local bar = st:StateLook(row).bar
-			if st:GetState(row, 'selected') then
-				eq(T.text(bar.r, bar.g, bar.b, 1), T.text(0.9, 0.4, 0.1, 1), 'row ' .. i .. ': its bar')
-			end
+			seen = seen + 1
+			check(bar.shown, 'row ' .. i .. ': its bar shows')
+			eq(T.text(bar.r, bar.g, bar.b, 1), T.text(0.9, 0.4, 0.1, 1), 'row ' .. i .. ': its bar')
 		end
 	end
+	eq(seen, 1, 'exactly one row is the selected one')
 	restore()
 	st:ColorChanged('accent')
 	off()

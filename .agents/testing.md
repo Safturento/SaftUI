@@ -184,3 +184,5 @@ Every file starts with the WoW stubs and the core shell loaded.
 5. Never loosen an assertion, delete a failing check, or make a stub kinder to get a green run.
 
 The design is in `docs/superpowers/specs/2026-11-09-saftui-test-suite-design.md`, and the plan in `docs/superpowers/plans/2026-11-09-saftui-test-suite.md`.
+
+`tests/core/editmode_states_test.lua` is edit mode's interaction states: a mover's hover, drag (every way it ends), selection and Blizzard kits, the History rows (hover, the current step as the selected row, label picks), the Filter movers box, and the cost cases (a pass of the Accent with 60 movers; a Theme recolor with 60 movers lays nothing out, on and off).
