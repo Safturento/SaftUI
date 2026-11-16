@@ -115,17 +115,21 @@ function UF:UpdateElement(element, configOverride)
                 text:Hide()
             end
         end
-        -- On a plate, a part other parts can be anchored to (one UF:GetFrame
-        -- finds on the frame by its name; an element's own texts and icons
-        -- aren't) is still sized and placed by its config. A plate's frame
-        -- takes the other kind's config whenever its unit's kind changes
-        -- (nameplates.lua), and a part left where the other config put it
-        -- would take the parts anchored to it there too: the friendly config
-        -- hangs the castbar, the aura areas and the quest icon off a health
-        -- bar it turns off. Placed by its own config, the hidden bar holds
-        -- them where they'd sit if it were shown.
+        -- A part other parts can be anchored to (one UF:GetFrame finds on
+        -- the frame by its name; an element's own texts and icons aren't) is
+        -- still sized and placed by its config, on a unit frame as on a
+        -- plate. A plate's frame takes the other kind's config whenever its
+        -- unit's kind changes (nameplates.lua), and a part left where the
+        -- other config put it would take the parts anchored to it there too:
+        -- the friendly config hangs the castbar, the aura areas and the
+        -- quest icon off a health bar it turns off. On a unit frame, a
+        -- profile switch clears every part's points (ClearPartPoints,
+        -- unitframes.lua), and a part left with none would leave a part hung
+        -- from it unplaceable (or, left with its old ones, closing an anchor
+        -- loop). Placed by its own config, the hidden bar holds them where
+        -- they'd sit if it were shown.
         local unitframe = element.unitframe
-        if unitframe and unitframe.isNamePlate and element.name and unitframe[element.name] == element then
+        if unitframe and element.name and unitframe[element.name] == element then
             self:UpdateElementSize(element, configOverride)
             self:UpdateElementPosition(element, configOverride)
         end

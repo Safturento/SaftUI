@@ -96,6 +96,31 @@ test('a profile switch places a unit frame\'s parts against the new anchors, whi
 	end
 end)
 
+test('a part switched off in the new profile is placed by its config, so a part hung from it still places', function()
+	local st, UF, P, frame = player_world()
+	profile_a(P)
+	UF:UpdateConfig()
+	take_errors()
+	-- Profile B: Power off, the health bar hung from it.
+	profile_b(P)
+	P.player.power.enable = false
+	for round = 1, 2 do
+		UF:UpdateConfig()
+		local errors = take_errors()
+		eq(#errors, 0, 'round ' .. round .. ': no error ' .. tostring(errors[1]))
+		eq(frame.Health:GetNumPoints(), 1, 'round ' .. round .. ': the health bar keeps a point')
+		eq(anchored_to(frame.Health), frame.Power, 'round ' .. round .. ': hung from the switched-off bar')
+		eq(anchored_to(frame.Power), frame, 'round ' .. round .. ': which is placed by its config')
+		eq(frame.Power:IsShown(), false, 'and stays hidden')
+		profile_a(P)
+		P.player.power.enable = true
+		UF:UpdateConfig()
+		eq(#take_errors(), 0, 'round ' .. round .. ': back to A: no error')
+		profile_b(P)
+		P.player.power.enable = false
+	end
+end)
+
 test('a profile switch in combat places no part', function()
 	local st, UF, P, frame = player_world()
 	profile_a(P)

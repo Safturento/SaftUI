@@ -320,3 +320,23 @@ test("a profile switch places the previews' parts against the new anchors, which
 	end
 	toggle.set({ 'boss', 'general', 'layout', 'test_mode' }, false)
 end)
+
+-- A preview places a part its profile switches off by its config too, as the
+-- real frames do, so a part hung from it keeps its anchor.
+test('a preview part hung from a switched-off part is anchored to a placed part', function()
+	local boss = UF:GetProfileConfig().boss
+	local toggle = general().args.layout.args.test_mode
+	toggle.set({ 'boss', 'general', 'layout', 'test_mode' }, true)
+	if not check(previews_shown(), 'the previews show') then return end
+	boss.health.enable, boss.name.enable = true, false
+	boss.name.position = { point = 'CENTER', element = '', rel_point = 'CENTER', x_off = 0, y_off = 0 }
+	boss.health.position = { point = 'TOP', element = 'Name', rel_point = 'BOTTOM', x_off = 0, y_off = -2 }
+	UF:UpdateConfig()
+	local errors = take_errors()
+	eq(#errors, 0, 'no error ' .. tostring(errors[1]))
+	local preview = previews()[1]
+	eq(select(2, preview.Health:GetPoint(1)), preview.Name, 'the bar hangs from the switched-off name')
+	check(preview.Name:GetNumPoints() == 1, 'which has its point')
+	boss.name.enable = true
+	toggle.set({ 'boss', 'general', 'layout', 'test_mode' }, false)
+end)

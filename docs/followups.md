@@ -30,7 +30,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-15 — Auto Vendor counts a fresh purchase in a just-sold slot as a refused sale](#2026-11-15--auto-vendor-counts-a-fresh-purchase-in-a-just-sold-slot-as-a-refused-sale)
   - [2026-11-15 — Auto Vendor's second question overstates the earlier stacks that leave](#2026-11-15--auto-vendors-second-question-overstates-the-earlier-stacks-that-leave)
   - [2026-11-15 — Nameplates: Blizzard's friendly plates key binding and the next login](#2026-11-15--nameplates-blizzards-friendly-plates-key-binding-and-the-next-login)
-  - [2026-11-15 — Unit frames: a part switched off in the new profile keeps its old points](#2026-11-15--unit-frames-a-part-switched-off-in-the-new-profile-keeps-its-old-points)
   - [2026-11-15 — Two lines of the profile switch fix that no test pins](#2026-11-15--two-lines-of-the-profile-switch-fix-that-no-test-pins)
   - [2026-11-15 — getHealthPercentText's floor branch is never used](#2026-11-15--gethealthpercenttexts-floor-branch-is-never-used)
   - [2026-11-15 — Unit frame defaults: string offsets left outside the castbars](#2026-11-15--unit-frame-defaults-string-offsets-left-outside-the-castbars)
@@ -134,6 +133,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-15 — Unit frames: a part switched off in the new profile keeps its old points](#2026-11-15--unit-frames-a-part-switched-off-in-the-new-profile-keeps-its-old-points)
   - [2026-11-15 — Unit frames: a vehicle power type with no oUF color falls back to Mana](#2026-11-15--unit-frames-a-vehicle-power-type-with-no-ouf-color-falls-back-to-mana)
   - [2026-11-15 — Unit frames: a color oUF lacks is set to the profile's own table](#2026-11-15--unit-frames-a-color-ouf-lacks-is-set-to-the-profiles-own-table)
   - [2026-11-15 — Two Misc readers break "a pass only colors"](#2026-11-15--two-misc-readers-break-a-pass-only-colors)
@@ -482,20 +482,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 **Shape of work:** Small if left; a listener and a test if Friendly plates follows the game.
 
 **Open questions:** Should Blizzard's friendly plates key binding change SaftUI's Friendly plates, or be undone at the next login?
-
-### 2026-11-15 — Unit frames: a part switched off in the new profile keeps its old points
-
-**What:** A part switched off in the new profile keeps its old points on a unit frame and can still close an anchor loop (profile A: Power on, under Health; profile B: Power off, Health hung from Power: Health's `SetPoint` errors and it is left with no points). Pre-existing. Test mode's previews have the opposite edge: `StylePreviewFrame` clears every preview element and all its texts, but a preview places only the parts that are on, so a preview part hung from a switched-off part is left anchored to a region with no points and won't draw (inferred: the stubs don't model the rect), while the real boss frame keeps the old points and shows that part. Test mode only, and it needs a part hung from a switched-off one.
-
-**Why noticed:** The fu-p2 review (finding m1, and N1 of its re-review), after the fix that clears each frame's enabled parts before a profile switch places them. The comment at `grouppreview.lua:160` ("as for the real frames") doesn't hold for it.
-
-**Anchors:** `SaftUI-Unitframes/unitframes.lua` (`ClearPartPoints`, `ClearAllPartPoints`), `SaftUI-Unitframes/updaters.lua` (`UF:UpdateElement`, the `unitframe.isNamePlate` condition), `SaftUI-Unitframes/nameplates/nameplates.lua` (`ClearPlacedPoints`), `SaftUI-Unitframes/grouppreview.lua` (`StylePreviewFrame`), `tests/unitframes/profile_switch_test.lua`, `tests/unitframes/boss_preview_test.lua`.
-
-**What's been considered:** Place a disabled named part by its config on unit frames too (drop the `unitframe.isNamePlate` condition in `UF:UpdateElement`) and clear every element, as `ClearPlacedPoints` does for plates. For the previews, use the real frames' rule: clear an element only when `element:GetConfig().enable` is true, and its texts only when theirs is (export `ClearPartPoints` and call it on the preview frame, whose elements would need to be `previewElements`); or only note the case here.
-
-**Shape of work:** Small: one rule for which parts a clear touches, shared by frames and previews, and a test with a part hung from a switched-off one.
-
-**Open questions:** Whether a disabled part should be placed at all, or the clear should skip it as the real frames do.
 
 ### 2026-11-15 — Two lines of the profile switch fix that no test pins
 
@@ -2450,6 +2436,22 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-15 — Unit frames: a part switched off in the new profile keeps its old points
+
+**What:** A part switched off in the new profile keeps its old points on a unit frame and can still close an anchor loop (profile A: Power on, under Health; profile B: Power off, Health hung from Power: Health's `SetPoint` errors and it is left with no points). Pre-existing. Test mode's previews have the opposite edge: `StylePreviewFrame` clears every preview element and all its texts, but a preview places only the parts that are on, so a preview part hung from a switched-off part is left anchored to a region with no points and won't draw (inferred: the stubs don't model the rect), while the real boss frame keeps the old points and shows that part. Test mode only, and it needs a part hung from a switched-off one.
+
+**Why noticed:** The fu-p2 review (finding m1, and N1 of its re-review), after the fix that clears each frame's enabled parts before a profile switch places them. The comment at `grouppreview.lua:160` ("as for the real frames") doesn't hold for it.
+
+**Anchors:** `SaftUI-Unitframes/unitframes.lua` (`ClearPartPoints`, `ClearAllPartPoints`), `SaftUI-Unitframes/updaters.lua` (`UF:UpdateElement`, the `unitframe.isNamePlate` condition), `SaftUI-Unitframes/nameplates/nameplates.lua` (`ClearPlacedPoints`), `SaftUI-Unitframes/grouppreview.lua` (`StylePreviewFrame`), `tests/unitframes/profile_switch_test.lua`, `tests/unitframes/boss_preview_test.lua`.
+
+**What's been considered:** Place a disabled named part by its config on unit frames too (drop the `unitframe.isNamePlate` condition in `UF:UpdateElement`) and clear every element, as `ClearPlacedPoints` does for plates. For the previews, use the real frames' rule: clear an element only when `element:GetConfig().enable` is true, and its texts only when theirs is (export `ClearPartPoints` and call it on the preview frame, whose elements would need to be `previewElements`); or only note the case here.
+
+**Shape of work:** Small: one rule for which parts a clear touches, shared by frames and previews, and a test with a part hung from a switched-off one.
+
+**Open questions:** Whether a disabled part should be placed at all, or the clear should skip it as the real frames do.
+
+**Resolved 2026-11-15:** `UF:UpdateElement` now sizes and places a switched-off named part by its config on unit frames and previews as on plates, and `ClearPartPoints` clears every element, so no part keeps the old profile's points; pinned in `profile_switch_test.lua` and `boss_preview_test.lua`. The owner's open question is answered as the entry recommended (place it).
 
 ### 2026-11-15 — Unit frames: a vehicle power type with no oUF color falls back to Mana
 

@@ -741,8 +741,8 @@ local function ClearUnitFramePoints(self)
 	return previous
 end
 
--- Clears the points of the parts a full update of frame places: each element
--- its new config has on, and that element's texts and icons that are on (the
+-- Clears the points of the parts a full update of frame places: each element,
+-- and the texts and icons of the ones its new config has on that are on (the
 -- rule of ClearPlacedPoints in nameplates/nameplates.lua, which clears a
 -- plate's before a switch of its config). Read from the profile now, not from
 -- the configs the parts cache, which still belong to the profile switched
@@ -756,8 +756,11 @@ local function ClearPartPoints(frame)
 		return config and config.enable
 	end
 	for _, element in pairs(frame.elements or {}) do
+		-- Every element, off or on: UF:UpdateElement places a switched-off
+		-- one by its config too (parts hang from it), so none keeps the old
+		-- profile's points.
+		element:ClearAllPoints()
 		if On(element) then
-			element:ClearAllPoints()
 			for _, text in pairs(element.textElements or {}) do
 				if On(text) then text:ClearAllPoints() end
 			end
