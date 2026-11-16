@@ -88,6 +88,14 @@ function generators.uf_element_position(order, get, set, target, desc, name, sav
 		return names
 	end
 
+	-- Which element (and its text or icon) the position places, for an All units row's check against
+	-- each follower's own frame (sharedoptions.lua): a weak side table, so the option gains no field.
+	local UF = st:GetModule('Unitframes', true)
+	if UF and UF.targetSpecs and type(target) == 'function' and UF.targetSpecs[target] then
+		UF.positionSpecs = UF.positionSpecs or setmetatable({}, { __mode = 'k' })
+		UF.positionSpecs[option] = UF.targetSpecs[target]
+	end
+
 	option.target = 'select'
 	-- 4 narrower than the kit's TO dropdown, so the whole block (351 less 4) fits a part menu's cell (347).
 	option.selectWidth = 136

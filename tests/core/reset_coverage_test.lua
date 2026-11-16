@@ -138,6 +138,7 @@ local PARTS = {
 	['SaftUI-Unitframes/config/position.lua'] = 'unitframes/config_test.lua',
 	['SaftUI-Unitframes/config/groupoptions.lua'] = 'unitframes/config_test.lua',
 	['SaftUI-Unitframes/config/parts.lua'] = 'unitframes/config_test.lua',
+	['SaftUI-Unitframes/config/sharedoptions.lua'] = 'unitframes/config_test.lua',
 	['SaftUI-Unitframes/nameplates/threat.lua'] = 'unitframes/config_test.lua',
 	['SaftUI-Unitframes/nameplates/subtext.lua'] = 'unitframes/config_test.lua',
 	['SaftUI-Unitframes/nameplates/options.lua'] = 'unitframes/config_test.lua',

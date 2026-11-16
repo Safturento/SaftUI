@@ -162,8 +162,9 @@ test('G the conversion refuses while an element is not registered, and nothing i
 	local ok, err = pcall(UF.ConvertShared, UF, profile)
 	eq(ok, false)
 	check(tostring(err):find('Castbar', 1, true), 'it names the element: ' .. tostring(err))
-	eq(UF:PrepareShared(profile), false, 'reported')
-	eq(#take_errors(), 1)
+	eq(UF:PrepareShared(profile), false, 'not converted')
+	eq(UF:SharedState(profile), 'missing')
+	eq(#take_errors(), 0, 'a part that did not load is said once in chat, not raised on every update')
 	check(listing(profile) == listed, 'values, flags, marker and backup untouched')
 	eq(rawget(profile, 'all'), nil)
 	eq(rawget(profile, 'backup'), nil)
@@ -222,9 +223,13 @@ local function nothing_is_written(label, db, newer)
 	local listed = listing(profile)
 	local pending = UF.sharedTicker:IsShown()
 	for name, call in pairs(writers(profile)) do
-		local ok, why = call()
-		eq(ok, false, label .. ': ' .. name .. ' does nothing')
-		check(type(why) == 'string' and #why > 0, label .. ': ' .. name .. ' says why')
+		-- OwnShared writes the one flag that protects a unit's edit, on any converted profile (I2); the
+		-- others do nothing.
+		if not (newer and name == 'OwnShared') then
+			local ok, why = call()
+			eq(ok, false, label .. ': ' .. name .. ' does nothing')
+			check(type(why) == 'string' and #why > 0, label .. ': ' .. name .. ' says why')
+		end
 	end
 	check(listing(profile) == listed, label .. ': nothing was written by any of them')
 	eq(UF.sharedTicker:IsShown(), pending, label .. ': no update was marked')
@@ -256,7 +261,8 @@ test('on a newer marker every writer does nothing', function()
 	local listed = listing(profile)
 	nothing_is_written('newer marker', db, true)
 	eq(rawget(profile.all, 'version'), UF.SHARED_VERSION + 1, 'the marker is left')
-	eq(UF:PrepareShared(profile), true)
+	eq(UF:PrepareShared(profile), false)
+	eq(UF:SharedState(profile), 'newer')
 	check(listing(profile) == listed, 'PrepareShared writes nothing either')
 	-- A non-number marker counts as unconverted.
 	rawset(profile.all, 'version', 'x')
@@ -306,9 +312,10 @@ test('a restore after a logout and a login gives back working values with no rel
 	check(type(profile.target.buffs.friend) == 'table', 'a wildcard table is still made by a read')
 	shows_the_same(before, profile, 'every shared setting is as before the conversion')
 	eq(UF:SharedReady(profile), false)
-	-- Converting again after the restore gives the same flags as the first time.
+	-- Converting again after the restore (asked for: a login does not) gives the same flags as the first time.
 	local first = {}
-	UF:PrepareShared(profile)
+	eq(UF:PrepareShared(profile), false, 'a login does not convert a restored profile')
+	eq(UF:EnableShared(profile), true)
 	for _, unit in ipairs(SW.MEMBERS) do first[unit] = owned(profile)[unit] end
 	eq(rawget(profile.target, 'own')['name.font'], true)
 end)
@@ -426,36 +433,204 @@ end)
 
 ------------------------------------------------------------------ Important 5: who may call the API
 
+-- The sharing API and who may call it (N3). Every mention of one of these words, in any file of any
+-- addon but config/shared.lua, must sit in a top-level function listed here for that file: the calls
+-- that wire sharing (login, profile changes, the pages) and nothing else. An alias, a call through self
+-- or a string key is a mention too. Any other mention fails, naming the file, the function and the word.
 local API = { 'ConvertShared', 'SyncShared', 'PrepareShared', 'RestoreShared', 'UpdateShared', 'PropagateShared',
 	'CopyShared', 'SameShared', 'HasShared', 'SharedValue', 'SharedReady', 'OwnShared', 'SetShared', 'DefaultShared',
-	'CopyProfileData', 'HasSharedBackup', 'sharedTicker', 'SHARE_MEMBERS', 'SHARED_BY_KEY', 'SHARED_BY_PATH' }
+	'CopyProfileData', 'HasSharedBackup', 'sharedTicker',
+	'SharedState', 'SharedStateText', 'EnableShared', 'SharedRestored', 'SharedWhole', 'CanMarkOwn' }
+-- Names another addon has too (the action bars' own sharing): a mention is a call on UF, Unitframes, or self
+-- in a Unitframes file.
 local SHORT = { 'ApplyTo', 'ApplyToAll', 'FollowAll', 'OwnersOf', 'IsOwn' }
+-- Data the pages read (never written): any function of these files.
+local DATA = { 'SHARE_MEMBERS', 'SHARED_BY_KEY', 'SHARED_BY_PATH', 'SHARED_VERSION' }
+local DATA_FILES = { ['SaftUI-Unitframes/config/sharedoptions.lua'] = true, ['SaftUI-Unitframes/config/config.lua'] = true }
+
+-- file -> top-level function -> the words it may mention. '<file>' is the file's own level.
+local ALLOWED = {
+	['SaftUI-Unitframes/unitframes.lua'] = {
+		['UF:OnEnable'] = { 'PrepareShared' },
+		['UF:UpdateConfig'] = { 'PrepareShared', 'PropagateShared' },
+	},
+	['SaftUI-Unitframes/config/profiles.lua'] = {
+		PromptNewProfile = { 'CopyProfileData' },
+		PromptExportProfile = { 'CopyProfileData' },
+		ConfirmDeleteProfile = { 'SharedReady', 'SharedState' },
+	},
+	['SaftUI-Unitframes/config/config.lua'] = {
+		['UF:CopySettings'] = { 'SharedReady', 'HasShared', 'SameShared', 'OwnShared' },
+		['UF:GetConfigTable'] = { 'SharedReady' },
+	},
+	['SaftUI-Unitframes/config/sharedoptions.lua'] = {
+		Applied = { 'UpdateShared' },
+		Targets = { 'HasShared' },
+		['UF.SharedWhole'] = { 'SharedWhole' },
+		AllValue = { 'SharedReady', 'SharedWhole' },
+		['UF.SettingShare'] = { 'SharedWhole', 'ApplyToAll', 'ApplyTo', 'OwnersOf', 'IsOwn', 'FollowAll' },
+		['UF.SharesElement'] = { 'HasShared' },
+		OwnThenSet = { 'OwnShared', 'IsOwn', 'SameShared' },
+		PausedReset = { 'IsOwn', 'CopyShared' },
+		CheckFollowers = { 'HasShared', 'IsOwn' },
+		Decorate = { 'HasShared' },
+		['UF.DecorateShares'] = { 'SharedReady', 'CanMarkOwn' },
+		['UF.SharedNoticePage'] = { 'SharedState', 'SharedStateText', 'EnableShared' },
+		['UF:RestoreSharedNow'] = { 'RestoreShared' },
+		['UF:RestoreSharedCommand'] = { 'HasSharedBackup', 'SharedState', 'SharedStateText' },
+		['UF:ShareCommand'] = { 'EnableShared', 'SharedState' },
+		WhenText = {},
+	},
+}
 
 local function masked(path)
 	local source = read_saftui_source(path)
 	if not source then return nil end
 	local _, mask = L.Lex(source)
-	return mask
+	return mask, source
 end
 
-test('no file of any addon but config/shared.lua calls the sharing API (unwired)', function()
-	local scanned = 0
+-- The top-level function a position of the masked source is in: '<file>' outside every function.
+local function enclosing(mask, position)
+	local events = {}
+	for offset, name in mask:gmatch('\n()function%s+([%w_.:]+)%s*%(') do events[#events + 1] = { offset, name } end
+	for offset, name in mask:gmatch('\n()local%s+function%s+([%w_]+)%s*%(') do events[#events + 1] = { offset, name } end
+	for offset in mask:gmatch('\n()end%f[^%w_]') do events[#events + 1] = { offset, '<file>' } end
+	table.sort(events, function(a, b) return a[1] < b[1] end)
+	local current = '<file>'
+	for _, event in ipairs(events) do
+		if event[1] > position then break end
+		current = event[2]
+	end
+	return current
+end
+
+local function listed(list, word)
+	for _, entry in ipairs(list or {}) do
+		if entry == word then return true end
+	end
+	return false
+end
+
+test('wiring: only the listed functions of the listed files mention the sharing API', function()
+	local scanned, mentions = 0, 0
 	for _, path in ipairs((T.saftui_files())) do
 		if path ~= 'SaftUI-Unitframes/config/shared.lua' then
-			local mask = masked(path)
+			local mask, source = masked(path)
 			if mask then
 				scanned = scanned + 1
+				local allowed = ALLOWED[path] or {}
 				for _, word in ipairs(API) do
-					check(not mask:find('%f[%w_]' .. word .. '%f[^%w_]'), path .. ' mentions ' .. word)
+					for position in mask:gmatch('()%f[%w_]' .. word .. '%f[^%w_]') do
+						local where = enclosing(mask, position)
+						mentions = mentions + 1
+						check(listed(allowed[where], word), path .. ': ' .. where .. ' mentions ' .. word)
+					end
+					-- A string key (UF['SyncShared']) or a quoted name is a mention too.
+					check(not source:find('[\'"]' .. word .. '[\'"]'), path .. ' names ' .. word .. ' in a string')
 				end
 				for _, word in ipairs(SHORT) do
-					check(not mask:find('UF%s*[:.]%s*' .. word .. '%f[^%w_]'), path .. ' calls UF.' .. word)
-					check(not mask:find("Unitframes'?%)?%s*[:.]%s*" .. word .. '%f[^%w_]'), path .. ' calls Unitframes.' .. word)
+					local own = path:find('^SaftUI%-Unitframes/') ~= nil
+					for _, receiver in ipairs(own and { 'UF', 'Unitframes', 'self' } or { 'UF', 'Unitframes' }) do
+						for position in mask:gmatch('()%f[%w_]' .. receiver .. '%s*[:.]%s*' .. word .. '%f[^%w_]') do
+							local where = enclosing(mask, position)
+							mentions = mentions + 1
+							check(listed(allowed[where], word), path .. ': ' .. where .. ' calls ' .. receiver .. '.' .. word)
+						end
+					end
+					check(not source:find('[\'"]' .. word .. '[\'"]') or not own, path .. ' names ' .. word .. ' in a string')
+				end
+				for _, word in ipairs(DATA) do
+					if not DATA_FILES[path] and path ~= 'SaftUI-Unitframes/unitframes.lua' then
+						check(not mask:find('%f[%w_]' .. word .. '%f[^%w_]'), path .. ' mentions ' .. word)
+					end
 				end
 			end
 		end
 	end
 	check(scanned > 150, 'it scanned ' .. scanned .. ' files, every addon\'s')
+	check(mentions > 20, 'it found the wiring: ' .. mentions .. ' mentions')
+	-- And every listed word is really there: a stale entry hides a new mention.
+	for path, functions in pairs(ALLOWED) do
+		local mask = masked(path)
+		for name, words in pairs(functions) do
+			for _, word in ipairs(words) do
+				local found = false
+				for position in mask:gmatch('()%f[%w_]' .. word .. '%f[^%w_]') do
+					if enclosing(mask, position) == name then found = true end
+				end
+				check(found, path .. ': ' .. name .. ' is listed for ' .. word .. ' and does not mention it')
+			end
+		end
+	end
+end)
+
+test('wiring: the scan itself finds a disguised call', function()
+	local function mentions(source, word, where)
+		local _, mask = L.Lex(source)
+		for position in mask:gmatch('()%f[%w_]' .. word .. '%f[^%w_]') do
+			if enclosing(mask, position) == where then return true end
+		end
+		return false
+	end
+	local source = '\nlocal function A()\n\tlocal sync = UF.SyncShared\nend\nfunction UF:B()\n\tself:FollowAll(1)\nend\nfunction UF.C()\n\tUF[\'SyncShared\'](UF)\nend\n'
+	eq(mentions(source, 'SyncShared', 'A'), true, 'an alias')
+	eq(mentions(source, 'FollowAll', 'UF:B'), true, 'a call through self')
+	eq(source:find('[\'"]SyncShared[\'"]') ~= nil, true, 'a string key')
+	eq(mentions(source, 'SyncShared', 'UF:B'), false, 'and the function it is in')
+end)
+
+-- Every mention of an API word inside shared.lua outside its own definition, counted: a new one, an alias
+-- (`local sync = UF.SyncShared`, called from the ticker) included, changes a count and fails here.
+local SHARED_MENTIONS = { ApplyTo = 0, ApplyToAll = 0, CanMarkOwn = 1, ConvertShared = 1, CopyProfileData = 0, CopyShared = 6,
+	DefaultShared = 2, EnableShared = 0, FollowAll = 0, HasShared = 11, HasSharedBackup = 2, IsOwn = 1, OwnShared = 0,
+	OwnersOf = 0, PrepareShared = 1, PropagateShared = 0, RestoreShared = 0, SameShared = 9, SetShared = 0, SharedReady = 0,
+	SharedRestored = 2, SharedState = 4, SharedStateText = 3, SharedValue = 0, SharedWhole = 0, SyncShared = 2,
+	UpdateShared = 1, sharedTicker = 4 }
+local function shared_mentions()
+	local mask = masked('SaftUI-Unitframes/config/shared.lua')
+	local counts = {}
+	for _, word in ipairs(API) do
+		local n = 0
+		for position in mask:gmatch('()%f[%w_]' .. word .. '%f[^%w_]') do
+			if not mask:sub(math.max(1, position - 12), position - 1):find('function%s+[%w_]*[:.]?$') then n = n + 1 end
+		end
+		counts[word] = n
+	end
+	for _, word in ipairs(SHORT) do
+		local n = 0
+		for position in mask:gmatch('()%f[%w_]' .. word .. '%f[^%w_]') do
+			if not mask:sub(math.max(1, position - 12), position - 1):find('function%s+[%w_]*[:.]?$') then n = n + 1 end
+		end
+		counts[word] = n
+	end
+	return counts
+end
+
+test('shared.lua\'s own mentions of the API are pinned by count (an alias or a new call site changes one)', function()
+	local counts = shared_mentions()
+	for word, n in pairs(counts) do
+		eq(n, SHARED_MENTIONS[word], 'shared.lua mentions ' .. word .. ' ' .. n .. ' times')
+	end
+end)
+
+-- What a static scan can close: the API reached by a name built at run time. It cannot see `getfenv`, `loadstring`,
+-- `_G[...]`, a method name read from a data table, or a module handed around by another addon.
+test('no string-built access to the API: no UF[...] index, and no other addon reaches the Unitframes module by a name', function()
+	for _, path in ipairs((T.saftui_files())) do
+		local mask, source = masked(path)
+		if mask and path ~= 'SaftUI-Unitframes/config/shared.lua' then
+			if path:find('^SaftUI%-Unitframes/') then
+				check(not mask:find('%f[%w_]UF%s*%['), path .. ' indexes UF by a computed name')
+				check(not mask:find("%f[%w_]Unitframes'?%)?%s*%["), path .. ' indexes the module by a computed name')
+				check(not mask:find('%f[%w_]self%s*%[%s*[^%]]-%.%.'), path .. ' builds a self[...] name')
+			else
+				check(not source:find('GetModule%(%s*[\'"]Unitframes'), path .. ' reaches the Unitframes module')
+				check(not source:find('modules%.Unitframes') and not source:find('modules%s*%['), path .. ' reaches st.modules by name')
+				check(not mask:find('GetModule%([^)]-%.%.'), path .. ' builds a module name')
+			end
+		end
+	end
 end)
 
 test('config/shared.lua wires nothing itself: no hook, event or login call, and its own calls are the ones it needs', function()
@@ -465,8 +640,8 @@ test('config/shared.lua wires nothing itself: no hook, event or login call, and 
 		check(not mask:find('%f[%w_]' .. word .. '%f[^%w_]'), 'shared.lua uses ' .. word)
 	end
 	-- Calls of the entry points outside their definitions: the file's own, counted. A new one is wiring.
-	local allowed = { ConvertShared = 1, SyncShared = 1, UpdateShared = 1, PrepareShared = 0, RestoreShared = 0, PropagateShared = 0,
-		SetShared = 0, OwnShared = 0, FollowAll = 0, ApplyToAll = 0, ApplyTo = 0 }
+	local allowed = { ConvertShared = 1, SyncShared = 2, UpdateShared = 1, PrepareShared = 1, RestoreShared = 0, PropagateShared = 0,
+		SetShared = 0, OwnShared = 0, FollowAll = 0, ApplyToAll = 0, ApplyTo = 0, EnableShared = 0 }
 	for word, count in pairs(allowed) do
 		local n = 0
 		for _, owner in ipairs({ 'self', 'UF' }) do
@@ -759,4 +934,38 @@ test('an error in one unit\'s update does not strand the marks after it', functi
 	calls = {}
 	SW.step(UF)
 	eq(#calls, 0, 'and nothing is left for the next frame')
+end)
+
+------------------------------------------------------------------ N1 and N2
+
+test('N1 a restore refuses while an element is not registered, and writes nothing', function()
+	local db = customized(SW.customize)
+	local profile = profile_of(db)
+	UF:PrepareShared(profile)
+	local listed = listing(profile)
+	local castbar = UF.elements.Castbar
+	UF.elements.Castbar = nil
+	local ok, why = UF:RestoreShared(profile)
+	eq(ok, false)
+	check(tostring(why):find('Castbar', 1, true), 'it names the part: ' .. tostring(why))
+	check(listing(profile) == listed, 'nothing was written, the marker included')
+	eq(rawget(profile, 'restored'), nil, 'and no restore is recorded')
+	UF.elements.Castbar = castbar
+	eq(UF:RestoreShared(profile), true, 'it restores once the element is back')
+end)
+
+test('N2 reading a setting of an unconverted profile makes no All units: it never reaches the saved file', function()
+	world()
+	local db = SW.acedb({})
+	local profile = profile_of(db)
+	for _, key in ipairs({ 'name.font', 'health.colorClass', 'castbar.colors.normal', 'buffs.border' }) do
+		for _, unit in ipairs({ 'all', 'player', 'party' }) do
+			UF:SharedValue(unit, key)
+			UF:IsOwn(unit, key)
+		end
+		UF:OwnersOf(key)
+	end
+	eq(rawget(profile, 'all'), nil, 'no All units made by a read')
+	local saved = SW.logout(db)
+	eq(rawget(saved.profiles.SaftUI.unitframes.profiles.SaftUI or {}, 'all'), nil, 'and none in the saved file')
 end)

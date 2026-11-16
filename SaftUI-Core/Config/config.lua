@@ -24,6 +24,15 @@ function Config:AddCommand(command, label, func, icon)
 	commands[#commands + 1] = { command = command:lower(), label = label, func = func, icon = icon }
 end
 
+-- '/sui <word> <the rest>' runs func(rest) for each word added here, with no button of its own (a
+-- command that takes words after it: SaftUI-Unitframes' '/sui uf restore'). word is matched lowercase,
+-- rest is what follows it, trimmed.
+local subcommands = {}
+
+function Config:AddSubcommand(word, func)
+	subcommands[word:lower()] = func
+end
+
 local function FindCommand(command)
 	for _, entry in ipairs(commands) do
 		if entry.command == command then return entry end
@@ -125,6 +134,11 @@ function Config:InitializeAceConfig()
 			else
 				st:Print("The Keep prompt didn't load, so a size can't be tried. Type /sui scale reset to go back to Automatic at 100%.")
 			end
+			return
+		end
+		local word, rest = command:match('^(%S+)%s*(.-)$')
+		if word and subcommands[word] then
+			subcommands[word](rest)
 			return
 		end
 		local entry = FindCommand(command)

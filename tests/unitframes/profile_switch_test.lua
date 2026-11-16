@@ -221,6 +221,13 @@ test('a profile switch places boss frames and a group header\'s buttons against 
 		P[unit].power.position = { point = 'BOTTOM', element = '', rel_point = 'BOTTOM', x_off = 0, y_off = 0 }
 		P[unit].health.position = { point = 'BOTTOM', element = 'Power', rel_point = 'TOP', x_off = 0, y_off = 2 }
 	end
+	-- The switch is made by editing the profile in use, so both units own these layouts before the first
+	-- update converts it (a unit that follows All units and is edited by hand is a drift the sync puts
+	-- right, as a profile switch never edits a profile).
+	a('boss')
+	a('party')
+	UF:UpdateConfig()
+	take_errors()
 	for _, case in ipairs({ { 'boss', boss2 }, { 'party', button } }) do
 		local unit, frame = case[1], case[2]
 		P[unit].enable, P[unit].health.enable, P[unit].power.enable = true, true, true

@@ -44,7 +44,12 @@
 local PW = load_test_file('unitframes/page_world.lua').world()
 local T, st, OM, OW, W, UF, AceConfigRegistry, OF = PW.T, PW.st, PW.OM, PW.OW, PW.W, PW.UF, PW.AceConfigRegistry, PW.OF
 local updates = 0
-function UF:UpdateConfig() updates = updates + 1 end
+-- unitframes.lua's two lines for sharing, as page_world.lua's stand-in has them.
+function UF:UpdateConfig(unit, element)
+	updates = updates + 1
+	if unit == 'all' then return self:PropagateShared(element) end
+	if not unit then self:PrepareShared() end
+end
 
 local click = stub.click
 
@@ -535,9 +540,9 @@ test('the unit picker lists the units in a fixed order, Player first, and no Pro
 	local view = OM.BuildView({ Unitframes = UF:GetConfigTable() }, 'Unitframes')
 	local keys = {}
 	for i, entry in ipairs(view.picker.values) do keys[i] = entry.key end
-	eq(table.concat(keys, ','), 'player,target,targettarget,focus,focustarget,pet,pettarget,boss,party,raid10,raid40,nameplate,friendlynameplate',
-		'Player, Target, TargetTarget, Focus, FocusTarget, Pet, PetTarget, Boss, Party, Raid 10, Raid 40, Enemy nameplates, Friendly nameplates')
-	eq(view.picker.selected, 'player', 'the page opens on Player')
+	eq(table.concat(keys, ','), 'all,player,target,targettarget,focus,focustarget,pet,pettarget,boss,party,raid10,raid40,nameplate,friendlynameplate',
+		'All units, Player, Target, TargetTarget, Focus, FocusTarget, Pet, PetTarget, Boss, Party, Raid 10, Raid 40, Enemy nameplates, Friendly nameplates')
+	eq(view.picker.selected, 'all', 'the page opens on All units, the picker\'s first')
 end)
 
 test("the unit frames' table passes AceConfigRegistry validation, SaftUI's fields aside", function()
@@ -1625,4 +1630,87 @@ test("at half: the Health and Power tabs' note wraps to the body, clear of the r
 	st.config.profile.theme.name = 'thick'
 	check(seen >= 3 * 3 * 4, 'the tabs have notes (' .. seen .. ' checked)')
 	eq(#take_errors(), 0, 'no errors')
+end)
+
+------------------------------------------------------------------ All units, and the members' shares (S1)
+
+-- The profile converted to shared settings for the cases below, and put back after (the world is one for the
+-- whole file): the members' shared rows have the share source, All units' rows are derived.
+local function convert()
+	UF:PrepareShared()
+	assert(UF:SharedReady(), 'the profile did not convert')
+end
+local function unconvert()
+	local profile = UF:GetProfileConfig()
+	rawset(profile, 'all', nil)
+	rawset(profile, 'backup', nil)
+	for _, unit in ipairs(UF.SHARE_MEMBERS) do rawset(profile[unit], 'own', nil) end
+	UF:UpdateConfig()
+end
+
+test('every unit frame row has a reset, All units included: fourteen picks, shared rows by their share, the rest derived', function()
+	convert()
+	local tree = UF:GetConfigTable()
+	local picks = 0
+	for _ in pairs(tree.args) do picks = picks + 1 end
+	eq(picks, 14, 'fourteen picks')
+	R.check_page(Page(), 'Unitframes', { probe = false, fresh = false })
+	-- Each shared row of a member (and its part row) says its source is the share; All units' rows are derived.
+	local root = { Unitframes = tree }
+	local shared, derived = 0, 0
+	each_option({ args = root }, function(option, path)
+		if type(option) ~= 'table' or type(option.type) ~= 'string' then return end
+		if path[2] == 'party' and option.share ~= nil and path[#path] == 'font' then
+			local row = { option = option, path = path, type = option.type, key = path[#path] }
+			if path[3] == 'general' then
+				-- A part menu's row is read through its menu root.
+				return
+			end
+			eq(OM.DefaultSource(root, row), 'share', 'party ' .. table.concat(path, '/'))
+			shared = shared + 1
+		end
+	end)
+	check(shared > 0, 'party has shared rows on its tabs')
+	unconvert()
+end)
+
+test("All units' derived resets round-trip, reaching every follower", function()
+	convert()
+	local tree = UF:GetConfigTable()
+	local root = { Unitframes = { type = 'group', name = tree.name, childGroups = tree.childGroups, args = { all = tree.args.all } } }
+	-- A row's set copies into the followers: allow every member's copy of the entry's paths.
+	local allow = {}
+	local name = UF:GetProfile()
+	each_option({ args = root }, function(option, path)
+		if type(option) ~= 'table' or option.share == nil or option.share.own ~= nil then return end
+		local keys = {}
+		local joined = table.concat(path, '.')
+		-- The entry of the row, found by the paths its share was made from: every entry it could be.
+		for _, entry in ipairs(UF.SHARED) do
+			for _, member in ipairs(UF.SHARE_MEMBERS) do
+				for _, entry_path in ipairs(entry.paths) do
+					keys[#keys + 1] = 'unitframes.profiles.' .. name .. '.' .. member .. '.' .. table.concat(entry_path, '.')
+				end
+			end
+		end
+		allow[joined] = keys
+	end)
+	R.check_page(root, 'Unitframes', { fresh = false, allow = allow })
+	unconvert()
+end)
+
+test('the part rows of every member walk as share rows, and each unit page keeps its own rows derived', function()
+	convert()
+	local tree = UF:GetConfigTable()
+	local root = { Unitframes = tree }
+	for _, unit in ipairs({ 'player', 'party', 'boss' }) do
+		for _, part in ipairs(UF.UnitParts(unit)) do
+			local item = tree.args[unit].args.general.args.parts and tree.args[unit].args.general.args.parts.args[part.key]
+			if item and UF.PartShare(unit, part) then
+				eq(OM.DefaultSource(root, { option = item, path = { 'Unitframes', unit, 'general', 'parts', part.key }, type = 'item', key = part.key }),
+					'share', unit .. ' ' .. part.key)
+			end
+		end
+	end
+	unconvert()
 end)

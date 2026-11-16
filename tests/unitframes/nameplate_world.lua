@@ -61,7 +61,7 @@ function NP.world(client)
 	-- config/load.xml: position.lua, default.lua and the units' files, then
 	-- the files that need the module (unitframes.lua) first: profiles.lua,
 	-- groupoptions.lua, parts.lua and config.lua, which UW.load_module loads after it.
-	local NEEDS_MODULE = { ['shared.lua'] = true, ['profiles.lua'] = true, ['groupoptions.lua'] = true, ['parts.lua'] = true, ['config.lua'] = true }
+	local NEEDS_MODULE = { ['shared.lua'] = true, ['sharedoptions.lua'] = true, ['profiles.lua'] = true, ['groupoptions.lua'] = true, ['parts.lua'] = true, ['config.lua'] = true }
 	for _, file in ipairs(scripts('SaftUI-Unitframes/config/load.xml')) do
 		if not NEEDS_MODULE[file:match('[^/]+$')] then load_saftui(file) end
 	end

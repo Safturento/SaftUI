@@ -380,3 +380,25 @@ test('C6c in-session missing anchor against the base', function()
 	end)
 end)
 
+
+-- N4: the conversion compares a member by what it will show after the next login (Shown): a key that is nil in the
+-- session comes back as the default, and a color with no channels does too. Pinned by who owns what, since a
+-- member that is wrongly taken for different owns a setting it shows the same as everyone (a mark nothing shows).
+test('N4 a nil value and an empty color count as the default the login will fill: the member does not own them', function()
+	local db = customized(function(p)
+		rawset(p.player.name, 'font', nil)
+		rawset(p.focus.health.text, 'font', nil)
+		p.target.castbar.colors.normal = {}
+		p.boss.castbar.colors.nointerrupt = {}
+	end, false)
+	local profile = profile_of(db)
+	UF:ConvertShared(profile)
+	local function owns(unit, key)
+		local own = rawget(profile[unit], 'own')
+		return own ~= nil and own[key] == true
+	end
+	eq(owns('player', 'name.font'), false, 'a nil Name font is the default Name font')
+	eq(owns('focus', 'health.text.font'), false, 'a nil Health text font is the default')
+	eq(owns('target', 'castbar.colors.normal'), false, 'an empty cast bar color is the default color')
+	eq(owns('boss', 'castbar.colors.nointerrupt'), false, 'and so is the other')
+end)

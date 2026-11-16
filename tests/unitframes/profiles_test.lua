@@ -43,6 +43,7 @@ function st.Config:Import(text)
 	return false
 end
 
+load_saftui('SaftUI-Unitframes/config/shared.lua') -- UF.CopyProfileData: New, Copy and Export use it
 load_saftui('SaftUI-Unitframes/config/profiles.lua')
 load_saftui('SaftUI-Unitframes/config/groupoptions.lua')
 load_saftui('SaftUI-Unitframes/config/parts.lua')
@@ -125,7 +126,10 @@ end)
 
 test('export shows the current profile in a box, with one Close button', function()
 	press('export')
-	check(box():GetText() == 'EXPORTED' and exportData == P.profiles.Main, 'export shows the current profile')
+	check(box():GetText() == 'EXPORTED', 'export shows text')
+	-- The current profile's data as a copy that never carries the backup (UF.CopyProfileData).
+	check(exportData ~= P.profiles.Main and exportData.player.width == P.profiles.Main.player.width, 'of the current profile')
+	eq(rawget(exportData, 'backup'), nil, 'without a backup')
 	eq(box():GetMaxLetters(), 0, 'export uncapped')
 	eq(D().yes.text:GetText(), 'Close', 'the one button is Close')
 	check(D().yes:IsShown() and not D().no:IsShown(), 'and it is the only one')

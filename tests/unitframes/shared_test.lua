@@ -562,8 +562,11 @@ test('a conversion that fails leaves every member and flag as it was, and the sy
 	take_errors()
 	P.pet = good
 	eq(P.target.name.font, 'pixel')
-	-- Once the profile reads again it converts.
-	eq(UF:PrepareShared(P), true)
+	-- Not tried again this session (one message, not one per update): the owner's ask tries again, and
+	-- once the profile reads it converts.
+	eq(UF:PrepareShared(P), false, 'a failed profile is not retried by every update')
+	eq(UF:SharedState(P), 'failed')
+	eq(UF:EnableShared(P), true)
 	eq(UF:SharedReady(P), true)
 	eq(P.target.name.font, 'pixel')
 end)
@@ -578,7 +581,8 @@ test('PrepareShared converts, then syncs only a converted profile', function()
 	-- A marker above this version (a newer SaftUI converted it): left alone, no sync.
 	rawset(P.all, 'version', UF.SHARED_VERSION + 1)
 	rawset(P.target.name, 'font', 'pixel')
-	eq(UF:PrepareShared(P), true)
+	eq(UF:PrepareShared(P), false)
+	eq(UF:SharedState(P), 'newer')
 	eq(P.target.name.font, 'pixel')
 	-- A non-number marker counts as 0.
 	rawset(P.all, 'version', 'x')
@@ -595,16 +599,20 @@ test('the one-time backup holds the shared settings and their flags, and putting
 	eq(type(backup), 'table', 'a backup was made')
 	eq(backup.version, 1)
 	eq(type(backup.when), 'number')
-	for _, unit in ipairs(SW.MEMBERS) do eq(type(backup.units[unit]), 'table', unit .. ' is in it') end
+	-- A unit with nothing to keep has no entry (no empty tables in the saved file).
+	for _, unit in ipairs({ 'target', 'player' }) do eq(type(backup.units[unit]), 'table', unit .. ' is in it') end
+	for unit, saved in pairs(backup.units) do
+		check(next(saved) ~= nil and (saved.values == nil or next(saved.values) ~= nil) and (saved.own == nil or next(saved.own) ~= nil), unit .. ' has no empty table')
+	end
 	eq(backup.units.nameplate, nil, 'no plate')
 	eq(backup.units.all, nil, 'no All units')
 	eq(backup.units.target.values['name.font'], 'pixel', 'the value it had')
 	eq(backup.units.player.values['buffs.size'], 31)
-	eq(backup.units.targettarget.values['castbar.enable'], nil, 'a setting the unit lacks is not in it')
+	eq((backup.units.targettarget or { values = {} }).values['castbar.enable'], nil, 'a setting the unit lacks is not in it')
 	eq(getmetatable(backup.units.target), nil, 'plain data')
 	-- Only the shared settings: no unit place, size or other key.
 	for _, saved in pairs(backup.units) do
-		for key in pairs(saved.values) do check(UF.SHARED_BY_PATH[key], key .. ' is a shared path') end
+		for key in pairs(saved.values or {}) do check(UF.SHARED_BY_PATH[key], key .. ' is a shared path') end
 	end
 	-- It is made once: later changes and another conversion leave it.
 	P.target.name.font = 'normal'
@@ -645,8 +653,11 @@ test('the one-time backup holds the shared settings and their flags, and putting
 		if not (d:match('^player%.width$') or d:match('^player%.position$') or d:match('^raid10%.width$')) then only[#only + 1] = d end
 	end
 	eq(#only, 0, 'every shared setting is as it was: ' .. table.concat(only, ', '))
-	-- And a profile converts again after a restore.
-	UF:PrepareShared(P)
+	-- A restored profile is not converted again by a login or an update; asking for it is.
+	eq(UF:PrepareShared(P), false)
+	eq(UF:SharedState(P), 'restored')
+	eq(UF:SharedReady(P), false)
+	eq(UF:EnableShared(P), true)
 	eq(UF:SharedReady(P), true)
 	-- No backup, no restore.
 	world()

@@ -40,14 +40,18 @@ end
 -- check reads the anchors of (UF.PlatePartAnchors): a plate's frame can draw
 -- from the other page's config.
 function UF:ConfigTarget(unit, element, key)
-	return function()
+	local target = function()
 		local frame = self:GetConfigFrame(unit)
-		local target = frame and frame[element]
-		if target and key then
-			target = target[key]
+		local part = frame and frame[element]
+		if part and key then
+			part = part[key]
 		end
-		return target, unit
+		return part, unit
 	end
+	-- What it was made for, so All units' Position can ask each follower's own frame (sharedoptions.lua).
+	self.targetSpecs = self.targetSpecs or setmetatable({}, { __mode = 'k' })
+	self.targetSpecs[target] = { element = element, key = key }
+	return target
 end
 
 -- An element's size (UF:UpdateElementSize), on one line: Width and its
@@ -186,12 +190,17 @@ function UF.CustomColorOption(order, spec)
 			settings.customColor = { r, g, b }
 		end
 	end
+	-- Where the color is saved, which All units' decorator finds the setting by (sharedoptions.lua). The
+	-- reset does not read it: the hand default below comes first.
+	local savedKeys = { unpack(spec.path) }
+	savedKeys[#savedKeys + 1] = 'customColor'
 	return {
 		order = order,
 		name = spec.name,
 		desc = spec.desc,
 		type = 'color',
 		size = 'small',
+		saved = UF.SavedAt(spec.unit, unpack(savedKeys)),
 		get = function() return UF.UnpackColor(config().customColor) end,
 		set = function(_, r, g, b)
 			Write(config(), r, g, b)
@@ -391,6 +400,35 @@ local ufsetting = {
 	missing = function(where) return ConfigOf(where) == nil end,
 }
 
+-- The ownership a Copy from made, as part of the same step: where = { profile, unit, keys }, a value a table of
+-- own flags by shared setting key (true, false or absent), so Undo gives back what the unit owned before the
+-- copy (a unit that followed All units follows it again) and Redo what the copy made it own. Table writes only.
+local ufown = {
+	read = function(where)
+		local config = ConfigOf(where)
+		local own = config and rawget(config, 'own')
+		local out = {}
+		for _, key in ipairs(where.keys) do out[key] = own and own[key] or nil end
+		return out
+	end,
+	write = function(where, value)
+		local config = ConfigOf(where)
+		if config == nil then return end
+		local own = rawget(config, 'own')
+		if not own then
+			if next(value) == nil then return end
+			own = {}
+			rawset(config, 'own', own)
+		end
+		for _, key in ipairs(where.keys) do own[key] = value[key] end
+	end,
+	finish = ufsetting.finish,
+	place = function(where) return 'ufown:' .. where.profile .. ':' .. where.unit end,
+	name = ufsetting.name,
+	check = ufsetting.check,
+	missing = function(where) return ConfigOf(where) == nil end,
+}
+
 -- The history, when edit mode is loaded (it always is in game; the unit
 -- frames' tests load this file without it). The kind is registered at load,
 -- and again before a step is pushed, so a world that loads edit mode after
@@ -398,7 +436,10 @@ local ufsetting = {
 local function History()
 	local EM = st.EditModeFrames
 	local history = EM and EM.History
-	if history then history:RegisterKind('ufsetting', ufsetting) end
+	if history then
+		history:RegisterKind('ufsetting', ufsetting)
+		history:RegisterKind('ufown', ufown)
+	end
 	return history
 end
 History()
@@ -496,13 +537,38 @@ function UF:CopySettings(unit, from, keys)
 			end
 		end
 	end
+	local copied = {}
 	for _, change in ipairs(changes) do
 		local key = change.where.key
 		change.new = CopyValue(config[from][key])
 		config[unit][key] = CopyValue(config[from][key])
+		copied[key] = true
+	end
+	-- Shared settings (sharedoptions.lua): what was copied is the unit's own where it differs from what
+	-- All units holds, else the sync would put All units' value back at the next profile load, unmarked.
+	-- A setting that came out the same as All units' keeps following it. Table writes only.
+	local ownChange
+	if next(copied) and self:SharedReady() and UF.IsShareMember(unit) then
+		local all = rawget(config, 'all')
+		local own = rawget(config[unit], 'own')
+		local keys, old, new = {}, {}, {}
+		for _, entry in ipairs(UF.SHARED) do
+			if copied[entry.paths[1][1]] and all and self:HasShared(unit, entry.key) then
+				keys[#keys + 1] = entry.key
+				old[entry.key] = own and own[entry.key] or nil
+				if not UF.SameShared(entry, config[unit], all) then self:OwnShared(unit, entry.key) end
+				local now = rawget(config[unit], 'own')
+				new[entry.key] = now and now[entry.key] or nil
+			end
+		end
+		-- The ownership goes into the same history step, so Undo gives it back with the values.
+		if #keys > 0 then
+			ownChange = { kind = 'ufown', where = { profile = profile, unit = unit, keys = keys }, old = old, new = new }
+		end
 	end
 	self:UpdateConfig()
 	local history = History()
+	if ownChange and #changes > 0 then changes[#changes + 1] = ownChange end
 	if not history or #changes == 0 then return nil, skipped end
 	return history:Push({
 		kind = 'bulk', label = 'Copied ' .. UnitName(from) .. ' to ' .. UnitName(unit), changes = changes,
@@ -658,7 +724,7 @@ end
 -- The units' order in /sui's unit picker (their keys are UF.unit_strings',
 -- UF.group_strings' and the nameplates'); the page opens on the first. A unit
 -- not listed sorts after these.
-local UNIT_ORDER = {}
+local UNIT_ORDER = { all = 0 }
 for i, unit in ipairs({
 	'player', 'target', 'targettarget', 'focus', 'focustarget', 'pet', 'pettarget', 'boss',
 	'party', 'raid10', 'raid40', 'nameplate', 'friendlynameplate',
@@ -679,6 +745,10 @@ function UF:GetConfigTable()
 
 	local function GetUnitConfig(unit)
 		if not unit then return end
+		-- All units: the shared settings every unit follows (sharedoptions.lua). Built by the same code
+		-- as a unit's page, with the frame's Theme and Background alone in General (an Enable, a size and
+		-- a place are each unit's own), no Position, and the elements any unit has a shared setting of.
+		local isAll = unit == 'all'
 
 		local profile = UF.GenerateProfileControl() -- this unit's own copies
 
@@ -693,8 +763,58 @@ function UF:GetConfigTable()
 			return UnitConfig().position[key]
 		end
 
+		local pickerArgs = {
+			copy = {
+				order = 1,
+				name = 'Copy from',
+				desc = "Copies chosen settings from another unit frame onto this one.",
+				type = 'execute',
+				func = function()
+					UF:OpenCopyTable(unit)
+				end,
+			},
+			profile = profile.profile,
+			manage = profile.manage,
+		}
+		if isAll then pickerArgs.copy = nil end
+
+		local frameArgs = {
+			-- A half, so Theme sits beside it with no empty quarter
+			-- between (as Class power's).
+			enable = st.Config.generators.enable(0, 'Shows this unit frame. When off, the unit frame is hidden.'),
+			theme = st.Config.generators.theme(1, "How this unit frame's border and background are drawn."),
+			background = st.Config.generators.background(1.5),
+			width = st.Config.generators.width(2, "The unit frame's width."),
+			height = st.Config.generators.height(3, "The unit frame's height."),
+		}
+		if isAll then
+			frameArgs.enable, frameArgs.width, frameArgs.height = nil, nil, nil
+			frameArgs.theme.desc = "How every unit frame's border and background are drawn, unless a unit sets its own."
+		end
+
+		local generalArgs = {
+			-- General's sections, in order: Frame, Position, then a group's
+			-- Layout (6) and Range (500), then the Parts (2000, parts.lua).
+			frame = {
+				order = 1,
+				name = 'Frame',
+				type = 'group',
+				inline = true,
+				args = frameArgs,
+			},
+		}
+		if not isAll then
+			-- Every SetPoint parameter, the relative frame included.
+			-- Passing the mover's frame makes a typed frame go through
+			-- st:ValidateAnchor, which rejects the frame itself and
+			-- anything anchored back to it (e.g. Pet for Player).
+			-- The second section of General.
+			generalArgs.position = st.Config.generators.position(2, true, frame_position_get, frame_position_set,
+				self:GetMoverFrame(unit), nil, nil, UF.SavedAt(unit, 'position'))
+		end
+
 		local config_table = {
-			name = self.unit_strings[unit] or self.group_strings[unit] or unit,
+			name = isAll and 'All units' or self.unit_strings[unit] or self.group_strings[unit] or unit,
 			order = UNIT_ORDER[unit],
 			type = 'group',
 			inline = false,
@@ -707,19 +827,7 @@ function UF:GetConfigTable()
 			pickerControl = {
 				type = 'group',
 				name = '',
-				args = {
-					copy = {
-						order = 1,
-						name = 'Copy from',
-						desc = "Copies chosen settings from another unit frame onto this one.",
-						type = 'execute',
-						func = function()
-							UF:OpenCopyTable(unit)
-						end,
-					},
-					profile = profile.profile,
-					manage = profile.manage,
-				},
+				args = pickerArgs,
 			},
 			args = {
 				-- Clicking the unit's frame in edit mode selects this group (the
@@ -736,32 +844,7 @@ function UF:GetConfigTable()
 						UnitConfig()[info[#info]] = value
 						UF:UpdateConfig(unit)
 					end,
-					args = {
-						-- General's sections, in order: Frame, Position, then a group's
-						-- Layout (6) and Range (500), then the Parts (2000, parts.lua).
-						frame = {
-							order = 1,
-							name = 'Frame',
-							type = 'group',
-							inline = true,
-							args = {
-								-- A half, so Theme sits beside it with no empty quarter
-								-- between (as Class power's).
-								enable = st.Config.generators.enable(0, 'Shows this unit frame. When off, the unit frame is hidden.'),
-								theme = st.Config.generators.theme(1, "How this unit frame's border and background are drawn."),
-								background = st.Config.generators.background(1.5),
-								width = st.Config.generators.width(2, "The unit frame's width."),
-								height = st.Config.generators.height(3, "The unit frame's height."),
-							},
-						},
-						-- Every SetPoint parameter, the relative frame included.
-						-- Passing the mover's frame makes a typed frame go through
-						-- st:ValidateAnchor, which rejects the frame itself and
-						-- anything anchored back to it (e.g. Pet for Player).
-						-- The second section of General.
-						position = st.Config.generators.position(2, true, frame_position_get, frame_position_set,
-							self:GetMoverFrame(unit), nil, nil, UF.SavedAt(unit, 'position')),
-					}
+					args = generalArgs,
 				}
 			}
 		}
@@ -780,7 +863,9 @@ function UF:GetConfigTable()
 		-- tab, Buffs and Debuffs under Auras, every other element a tab.
 		local built = {}
 		for element_name, element in pairs(UF.elements) do
-			if element.GetConfigTable and (not element.ValidUnit or element.ValidUnit(unit)) then
+			-- All units has the elements some unit has a shared setting of.
+			local has = isAll and UF.SharesElement(element_name) or (not isAll and (not element.ValidUnit or element.ValidUnit(unit)))
+			if element.GetConfigTable and has then
 				built[element_name] = element.GetConfigTable(unit)
 			end
 		end
@@ -789,6 +874,10 @@ function UF:GetConfigTable()
 		-- A nameplate page's tabs are disabled while its box is checked, but
 		-- those it keeps.
 		UF.DisablePlatePageTabs(unit, config_table)
+
+		-- The shares (sharedoptions.lua): each shared row of a member's page and of All units, last, once
+		-- every row is there. Nothing while the profile in use does not share.
+		if UF.DecorateShares then UF.DecorateShares(unit, config_table) end
 
 		return config_table
 	end
@@ -799,6 +888,12 @@ function UF:GetConfigTable()
 
 	for unit in pairs(self.groups or {}) do
 		config.args[unit] = GetUnitConfig(unit)
+	end
+
+	-- All units first in the picker: its page while the profile in use shares settings, else a page
+	-- that says why it doesn't (and has the button that turns sharing on where it can be asked for).
+	if UF.SharedNoticePage then
+		config.args.all = UF:SharedReady() and GetUnitConfig('all') or UF.SharedNoticePage()
 	end
 
 	-- Always there, whether SaftUI draws the plates or not: their pages turn
