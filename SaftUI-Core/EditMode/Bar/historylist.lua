@@ -34,14 +34,15 @@ local Guard = EM.BarGuard
 	of whole parts.
 
 	A row is a step (index 1 to #steps) or, last, "Before these changes" (index
-	0). Its parts, left to right: a 2px accent mark when it is the current step
-	(History:Position()), the label (the field font; Text > Muted while the step is
+	0). Its parts, left to right: the label (the field font; Text > Muted while the step is
 	undone), a detail in the small font and Text > Muted ('undone', '<n>
 	settings' for a bulk step, else how long ago), and a revert, a 14 square
 	rotate-ccw link shown for an applied step whose History:CanRevert says
-	something (true, or the reason it can't) and enabled only on true. A row under
-	the mouse is filled at 25% accent (the dropdown list's rowHover art under
-	Blizzard); a click on it goes to that point (EM:JumpToStep). It never reads a
+	something (true, or the reason it can't) and enabled only on true. A row is a state frame
+	of shape 'row' (Widgets/states.lua): under the mouse it tints (the dropdown
+	list's rowHover art under Blizzard), and the current step (History:Position())
+	is the selected row, the accent bar and fade (under Blizzard, whose art
+	draws no mark, its label is the accent); a click on it goes to that point (EM:JumpToStep). It never reads a
 	change's old (the first move of a mover that has no saved position has none):
 	the label comes from History.Label.
 
@@ -61,7 +62,6 @@ local floor, ceil, max, min = math.floor, math.ceil, math.max, math.min
 EM.HISTORY = { WIDTH = 300, PAD = 12, ROW = 26, ROWS = 12, LEVEL = 9700, WHEEL = 3 }
 local HL = EM.HISTORY
 
-local MARK = 2            -- the current step's mark
 local TEXT_X = 10         -- a row's label, in from its left
 local REVERT = 14         -- the revert link
 local EDGE_GAP = 6        -- the revert, in from the row's right
@@ -109,8 +109,19 @@ end
 
 ------------------------------------------------------------------ the rows
 
+-- Blizzard's rowHover art shows under the mouse; SaftUI's own look is the states
+-- helper's tint (the art is only for Blizzard).
 local function PaintHover(row)
-	row.hover:SetShown(row.hovered == true)
+	row.hover:SetShown(row.hovered == true and list ~= nil and list.blizzard == true)
+end
+
+-- A row's label: Muted while its step is undone; the accent for the current
+-- step under Blizzard (whose art draws no mark; SaftUI's look has the helper's
+-- bar and fade, and picks the text over them); else Normal.
+local function LabelColor(row, position)
+	if row.index > position then return OB.Muted() end
+	if list.blizzard and row.index == position then return st:StateColor('edge') end
+	return OB.Normal()
 end
 
 local function RowTip(row)
@@ -132,11 +143,6 @@ local function NewRow(i)
 	row.hover = row:CreateTexture(nil, 'BACKGROUND')
 	row.hover:SetAllPoints(row)
 	row.hover:Hide()
-
-	row.mark = row:CreateTexture(nil, 'OVERLAY')
-	row.mark:SetSize(MARK, HL.ROW - 1)
-	row.mark:SetPoint('TOPLEFT', row, 'TOPLEFT', 0, 0)
-	row.mark:Hide()
 
 	row.line = row:CreateTexture(nil, 'ARTWORK')
 	row.line:SetHeight(1)
@@ -173,6 +179,13 @@ local function NewRow(i)
 		PaintHover(self)
 	end)
 	row:SetScript('OnClick', Guard(function(self) EM:JumpToStep(self.index, self) end))
+	-- after the scripts above: the states hook enter, leave, press and release
+	st:AddStates(row, 'row', {
+		text = row.label,
+		textRest = function(self) return LabelColor(self, History:Position()) end,
+		inset = 0,
+		blizzard = function() return list ~= nil and list.blizzard == true end,
+	})
 	return row
 end
 
@@ -188,16 +201,14 @@ local function LookList()
 	list.foot1:SetTextColor(OB.Muted())
 	list.foot2:SetTextColor(OB.Muted())
 	W.LookNumberBox(list.box, blizzard)
-	EM.RecolorNumberBox(list.box, blizzard)
+	EM.RecolorNumberBox(list.box)
 	for _, row in ipairs(list.rows) do
 		if blizzard then
 			row.hover:SetAtlas(look.rowHover)
 			row.hover:SetAlpha(1)
-		else
-			row.hover:SetColorTexture(OB.Accent())
-			row.hover:SetAlpha(st.TINT_ROW)
 		end
-		row.mark:SetColorTexture(OB.Accent())
+		PaintHover(row)
+		st:RestyleStates(row)
 		row.line:SetColorTexture(unpack(OB.HAIRLINE))
 		row.detail:SetTextColor(OB.Muted())
 		W.LookControl(row.revert, blizzard)
@@ -208,19 +219,22 @@ end
 -- label colors (Muted while undone, else Normal) FillRow gave them. Nothing is
 -- refreshed, placed, shown or hidden. The art is the one LookList put on
 -- (list.blizzard).
-local function RecolorList()
+local function RecolorList(group)
 	local blizzard = list.blizzard
 	list.title:SetTextColor(OB.Muted())
 	list.foot1:SetTextColor(OB.Muted())
 	list.foot2:SetTextColor(OB.Muted())
-	EM.RecolorNumberBox(list.box, blizzard)
+	EM.RecolorNumberBox(list.box)
 	local position = History:Position()
 	for _, row in ipairs(list.rows) do
-		if not blizzard then row.hover:SetColorTexture(OB.Accent()) end
-		row.mark:SetColorTexture(OB.Accent())
 		row.line:SetColorTexture(unpack(OB.HAIRLINE))
 		row.detail:SetTextColor(OB.Muted())
-		if row.index then row.label:SetTextColor((row.index > position and OB.Muted or OB.Normal)()) end
+		if row.index then
+			row.label:SetTextColor(LabelColor(row, position))
+			-- a label under the helper's tint or fade picks its own color again (a pass of the
+			-- Accent is the helper's own: it paints the rows that show a state)
+			if group ~= 'accent' then st:PaintStates(row) end
+		end
 		W.LookControl(row.revert, blizzard)
 	end
 end
@@ -257,7 +271,7 @@ local function FillRow(row, index, position, now)
 	row.index = index
 	local undone = index > position
 	row.label:SetText(step and tostring(History.Label(step)) or EM.HISTORY_START)
-	row.label:SetTextColor((undone and OB.Muted or OB.Normal)())
+	row.label:SetTextColor(LabelColor(row, position))
 	local detail = ''
 	if step then
 		if undone then
@@ -269,7 +283,7 @@ local function FillRow(row, index, position, now)
 		end
 	end
 	row.detail:SetText(detail)
-	row.mark:SetShown(index == position)
+	st:SetState(row, 'selected', index == position)
 	-- A tooltip showing under the mouse follows what the row now says.
 	if row.hovered and GameTooltip:IsShown() and GameTooltip:IsOwned(row) then
 		local title, lines = RowTip(row)
@@ -419,6 +433,11 @@ local function Build()
 		-- A hidden box may keep the keyboard, which would stop nudging and the
 		-- player's keybinds.
 		self.box.edit:ClearFocus()
+		-- a hidden list shows no selected row: a pass of the Accent would color its bar and
+		-- fade for nothing (OnShow's refresh sets the current step again)
+		for _, row in ipairs(self.rows) do
+			if st:GetState(row, 'selected') then st:SetState(row, 'selected', false) end
+		end
 		ButtonRefresh()
 	end)
 
@@ -502,7 +521,7 @@ EM:On('ColorsChanged', function(group, key)
 		LookList()
 		if list:IsShown() then EM:RefreshHistoryList() end
 	elseif EM.DrawsColor(group, key) and list:IsShown() then
-		RecolorList()
+		RecolorList(group)
 	end
 end)
 EM:On('Disabled', function() EM:HideHistoryList() end)

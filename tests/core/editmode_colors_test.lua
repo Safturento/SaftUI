@@ -202,7 +202,10 @@ test('Accent: the strip, a selected mover, the grid, the Coordinates label and t
 	local list = EM.historyList
 	for i, row in ipairs(list.rows) do
 		if row:IsShown() then
-			eq(T.text(unpack(stub.state(row.mark).color_texture)), T.text(0.9, 0.4, 0.1, 1), 'row ' .. i .. ': its mark')
+			local bar = st:StateLook(row).bar
+			if st:GetState(row, 'selected') then
+				eq(T.text(bar.r, bar.g, bar.b, 1), T.text(0.9, 0.4, 0.1, 1), 'row ' .. i .. ': its bar')
+			end
 		end
 	end
 	restore()
