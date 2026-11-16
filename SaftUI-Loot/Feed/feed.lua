@@ -196,7 +196,9 @@ end
 --     Mount: the mount entries take their Loot > Mount color back;
 --   'item_quality': the lines of that quality set their name again (SetText on
 --     SaftUI's own font string);
---   'reaction' and 'renown': the progress lines' bars that name that color.
+--   'reaction' and 'renown': the progress lines' bars that name that color;
+--   'class' and Loot > Pass: a roll result's right text (the winner's name,
+--     "All passed"), built again from its rolls (LT.RollResultText).
 function LT:ColorFeed(group, key)
 	if not self.feed then return end
 	-- The buttons' icons are tinted in Colors -> Text and the accent.
@@ -208,7 +210,8 @@ function LT:ColorFeed(group, key)
 	local mounts = group == 'theme' or (group == 'loot' and (key == nil or key == 'mount'))
 	local names = group == 'item_quality'
 	local bars = group == 'reaction' or group == 'renown'
-	if not (mounts or names or bars) then return end
+	local results = group == 'class' or group == 'loot'
+	if not (mounts or names or bars or results) then return end
 	for _, item in ipairs(self.feed.items) do
 		local info = item:IsShown() and item.info
 		if info then
@@ -217,6 +220,9 @@ function LT:ColorFeed(group, key)
 			end
 			if names and info.plain and info.quality and (key == nil or key == info.quality) then
 				item.text:SetText(self.FeedItemName(info))
+			end
+			if results and info.rolls and self.RollResultUses(info.rolls, group, key) then
+				item.rightText:SetText(self.RollResultText(info.rolls))
 			end
 			local progress = info.progress
 			if bars and progress and progress.colorGroup == group and (key == nil or key == progress.colorKey) then
@@ -259,7 +265,7 @@ function LT:UpdateFeed(recentlyScrolled, useCache)
 				item.text:SetText(self.FeedItemName(info))
 			end
 
-			item.rightText:SetText(info.rightText or '')
+			item.rightText:SetText(info.rolls and LT.RollResultText(info.rolls) or info.rightText or '')
 
 			item.count:SetText(info.count or '')
 			item.icon:SetTexture(info.icon)

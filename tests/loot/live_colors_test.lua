@@ -463,6 +463,58 @@ test("a roll result's entry keeps its plain name and quality, and its line follo
 	eq(uncached.plain, nil, 'an item with no data keeps no plain name')
 end)
 
+-- A roll result: a winner, or all passed.
+local function winner_rolls() return { list = { { name = 'Winner', class = 'WARRIOR', state = LT.ROLL_STATE.Greed, roll = 50 } }, winner = 1 } end
+
+test("a roll result's right text is built as the line draws: the winner follows their Class color and All passed follows Loot > Pass", function()
+	wipe(LT:GetAllItems())
+	local a = LT:BuildRollEntry(loot_match('Won Blade', 4).link, winner_rolls(), false)
+	local b = LT:BuildRollEntry(loot_match('Passed Blade', 4).link, { allPassed = true, list = {} }, false)
+	LT:LootFeedPush(a); LT:LootFeedPush(b)
+	local la, lb = line_of(a), line_of(b)
+	eq(la.rightText:GetText(), LT.RollResultText(a.rolls), 'the line shows the text built from the rolls')
+	local keep = { colors.class.WARRIOR:GetRGB() }
+	set(colors.class.WARRIOR, 0.1, 0.2, 0.3)
+	st:ColorChanged('class', 'WARRIOR')
+	eq(la.rightText:GetText():match('^|cff(%x%x%x%x%x%x)'), hex(0.1, 0.2, 0.3), "a shown line's winner follows Class")
+	check(la.rightText:GetText():find('Winner', 1, true), 'and still names the winner')
+	local pkeep = { colors.loot.pass:GetRGB() }
+	set(colors.loot.pass, 0.4, 0.5, 0.6)
+	st:ColorChanged('loot', 'pass')
+	eq(lb.rightText:GetText():match('^|cff(%x%x%x%x%x%x)'), hex(0.4, 0.5, 0.6), 'All passed follows Loot > Pass')
+	-- A line drawn later takes the current colors, and a restored one (saved with
+	-- its rolls, and an older save's baked text) does too.
+	wipe(LT:GetHistoryStore().feed)
+	a.saved = nil
+	LT:SaveFeedEntry(a)
+	set(colors.class.WARRIOR, 0.7, 0.8, 0.9)
+	wipe(LT:GetAllItems())
+	LT.feedRestored = false
+	LT:RestoreFeed()
+	local restored = LT:GetAllItems()[1]
+	restored.time = GetTime()
+	LT:GetFilteredItems(); LT:UpdateFeed()
+	local line
+	for _, l in ipairs(shown_lines()) do if l.info == restored then line = l end end
+	eq(line.rightText:GetText():match('^|cff(%x%x%x%x%x%x)'), hex(0.7, 0.8, 0.9), 'a restored line is colored as it draws, not as it was saved')
+	set(colors.class.WARRIOR, unpack(keep)); st:ColorChanged('class', 'WARRIOR')
+	set(colors.loot.pass, unpack(pkeep)); st:ColorChanged('loot', 'pass')
+	wipe(LT:GetHistoryStore().feed)
+end)
+
+test("a roll result's right text follows a new roll summary (a late result) and a Class change of another class leaves it", function()
+	wipe(LT:GetAllItems())
+	local a = LT:BuildRollEntry(loot_match('Late Blade', 4).link, winner_rolls(), false)
+	LT:LootFeedPush(a)
+	local line = line_of(a)
+	local before = line.rightText:GetText()
+	a.rolls.list[1].class = 'MAGE'
+	LT:ColorFeed('class', 'WARRIOR')
+	eq(line.rightText:GetText(), before, 'a Warrior change does not recolor a Mage winner as a Warrior')
+	LT:ColorFeed('class', 'MAGE')
+	check(line.rightText:GetText() ~= before, 'a Mage change reaches a Mage winner')
+end)
+
 test('a save and restore round trip: the restored lines follow Item quality and Reputation; an older save shows its name', function()
 	wipe(LT:GetAllItems())
 	wipe(LT:GetHistoryStore().feed)
@@ -523,12 +575,19 @@ test('a pass makes nothing and allocates under 4 KB over 100', function()
 	local roll = { rollID = frames[1].rollID, choice = 'Need', ends = GetTime() + 30, length = 60,
 		link = GetLootRollItemLink(), item = 'item:19019' }
 	local bar = LT:HoldRoll(frames[1], roll)
+	-- Two roll results in the feed: a winner and All passed.
+	local won = LT:BuildRollEntry(loot_match('Cost Won', 4).link, winner_rolls(), false)
+	local passed = LT:BuildRollEntry(loot_match('Cost Passed', 4).link, { allPassed = true, list = {} }, false)
+	LT:LootFeedPush(won); LT:LootFeedPush(passed)
+	line_of(won)
 	local passes = {
 		{ 'loot', 'need' }, { 'loot', 'mount' }, { 'item_quality', 4 }, { 'item_quality', 3 },
-		{ 'reaction', 5 }, { 'renown' }, { 'accent' },
+		{ 'reaction', 5 }, { 'renown' }, { 'accent' }, { 'loot', 'pass' }, { 'class', 'WARRIOR' }, { 'class' },
 	}
 	-- Each color once first: a stub widget's first color call makes its table.
 	for _, p in ipairs(passes) do st:ColorChanged(p[1], p[2]) end
+	eq(pass('class', 'WARRIOR').by.SetText, 1, 'a Class pass sets only the winner line\'s text')
+	eq(pass('loot', 'pass').by.SetText, 1, 'and Loot > Pass only the All passed line')
 	for _, p in ipairs(passes) do
 		local m = C.measure(function() st:ColorChanged(p[1], p[2]) end, 100)
 		C.print(p[1] .. ' ' .. tostring(p[2]), m)

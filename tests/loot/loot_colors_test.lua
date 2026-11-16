@@ -151,7 +151,8 @@ test("the paired counts and the feed's roll tooltip read Loot: All passed and Pa
 	-- The feed line's right side, "All passed", in Loot > Pass too.
 	C_Item = { GetItemInfo = function() end, GetItemInfoInstant = function() return 1, 'Armor', 'Cloth', nil, 134400 end }
 	local entry = LT:BuildRollEntry('item:1', { allPassed = true }, true)
-	check(entry and entry.rightText:find('^|cffdc6464All passed|r$'), 'the feed line: ' .. tostring(entry and entry.rightText))
+	local result = entry and LT.RollResultText(entry.rolls)
+	check(result and result:find('^|cffdc6464All passed|r$'), 'the feed line: ' .. tostring(result))
 
 	LT:AddRollLines(tooltip, { allPassed = true }, false)
 	eq(lines[#lines].text, 'All passed'); eq(T.rgb(lines[#lines].r, lines[#lines].g, lines[#lines].b), RED, 'All passed in Loot > Pass')
