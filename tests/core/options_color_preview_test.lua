@@ -710,13 +710,14 @@ local function strength(key, factor) local c = buttons_color(key); return rgba(c
 -- Buttons colors no default has, so a reader that draws a default fails.
 local function with_buttons(fn)
 	local keep = {}
-	for _, key in ipairs({ 'normal', 'hover', 'pushed', 'danger' }) do
+	for _, key in ipairs({ 'normal', 'hover', 'pushed', 'checked', 'danger' }) do
 		local c = buttons_color(key)
 		keep[key] = { c.r, c.g, c.b, c.a }
 	end
 	buttons_color('normal'):SetRGBA(0.1, 0.2, 0.3, 0.8)
 	buttons_color('hover'):SetRGBA(0.4, 0.5, 0.6, 0.9)
 	buttons_color('pushed'):SetRGBA(0.7, 0.2, 0.9, 0.6)
+	buttons_color('checked'):SetRGBA(0.2, 0.8, 0.5, 0.75)
 	buttons_color('danger'):SetRGBA(0.9, 0.3, 0.1, 0.5)
 	local ok, err = pcall(fn)
 	for key, v in pairs(keep) do buttons_color(key):SetRGBA(unpack(v)) end
@@ -784,7 +785,7 @@ test("the button kind: the held states are the button's own: LockHighlight on Ho
 	reset()
 end)
 
-test("Buttons > Hover at 0.7: the Hover tile's thumb and the Checked tile's box draw it; the rest are the profile's; Hover and Checked are captioned in Text", function()
+test("Buttons > Hover at 0.7: the Hover tile's thumb and the held button's highlight (at 0.4) draw it; the rest are the profile's; Hover alone is captioned in Text", function()
 	T.theme('thick')
 	with_buttons(function()
 		reset()
@@ -792,21 +793,21 @@ test("Buttons > Hover at 0.7: the Hover tile's thumb and the Checked tile's box 
 		local p = F.previewPieces.button
 		local picked = rgba(0.4, 0.5, 0.6, 0.7)
 		eq(thumb_color(p.thumbs[2]), picked, 'the thumb under the mouse')
-		eq(vertex_color(p.check:GetCheckedTexture()), picked, "the checked box's fill")
+		eq(vertex_color(p.buttons[2].hover), rgba(0.4, 0.5, 0.6, 0.7 * 0.4), "the held button's highlight: Hover at 0.4 times its opacity")
+		eq(vertex_color(p.check:GetCheckedTexture()), strength('checked'), "the checked box's fill is Checked as it is")
 		eq(thumb_color(p.thumbs[1]), strength('normal'), 'the thumb at rest is Normal as it is')
 		eq(thumb_color(p.thumbs[3]), strength('pushed'), 'the pressed thumb is Pushed as it is')
-		eq(vertex_color(p.buttons[2].hover), strength('normal'), "the button's highlight is Normal as it is")
 		eq(vertex_color(p.buttons[3].pushed), strength('pushed'), "the pressed fill is Pushed as it is")
 		eq(texture_color(p.flash), strength('danger', 0.4), 'the flash is Danger as it is, at 0.4')
 		local text, muted = rgb3(st:Color('text', 'normal'):GetRGB()), rgb3(st:Color('text', 'muted'):GetRGB())
-		for i, expect in ipairs({ muted, text, muted, text, muted }) do
+		for i, expect in ipairs({ muted, text, muted, muted, muted }) do
 			eq(rgb3(p.captions[i]:GetTextColor()), expect, 'caption ' .. i .. (expect == text and ' in Text' or ' in Muted'))
 		end
 		reset()
 	end)
 end)
 
-test('Buttons > Normal reaches the Rest thumb and the Hover button; > Pushed the Pressed tile', function()
+test('Buttons > Normal reaches the Rest thumb alone; > Pushed the Pressed tile; > Checked the Checked tile', function()
 	T.theme('thick')
 	with_buttons(function()
 		reset()
@@ -814,12 +815,12 @@ test('Buttons > Normal reaches the Rest thumb and the Hover button; > Pushed the
 		local p = F.previewPieces.button
 		local picked = rgba(0.9, 0.9, 0.1, 0.5)
 		eq(thumb_color(p.thumbs[1]), picked, 'the thumb at rest')
-		eq(vertex_color(p.buttons[2].hover), picked, "the held button's highlight")
+		eq(vertex_color(p.buttons[2].hover), strength('hover', 0.4), "the held button's highlight is Hover's, not Normal")
 		eq(thumb_color(p.thumbs[2]), strength('hover'), 'the other thumb is not')
 		local text = rgb3(st:Color('text', 'normal'):GetRGB())
 		local lit = {}
 		for i = 1, 5 do lit[i] = rgb3(p.captions[i]:GetTextColor()) == text end
-		eq(table.concat({ tostring(lit[1]), tostring(lit[2]), tostring(lit[3]), tostring(lit[4]), tostring(lit[5]) }, ','), 'true,true,false,false,false', 'Rest and Hover are captioned in Text')
+		eq(table.concat({ tostring(lit[1]), tostring(lit[2]), tostring(lit[3]), tostring(lit[4]), tostring(lit[5]) }, ','), 'true,false,false,false,false', 'Rest alone is captioned in Text')
 		_, F = open({ preview = { kind = 'button', key = 'pushed' }, hasAlpha = true, r = 0.2, g = 0.9, b = 0.1, a = 0.5 })
 		p = F.previewPieces.button
 		picked = rgba(0.2, 0.9, 0.1, 0.5)
@@ -827,6 +828,13 @@ test('Buttons > Normal reaches the Rest thumb and the Hover button; > Pushed the
 		eq(vertex_color(p.buttons[3].pushed), picked, "and the pressed button's fill")
 		for i = 1, 5 do lit[i] = rgb3(p.captions[i]:GetTextColor()) == text end
 		eq(tostring(lit[3]) .. tostring(lit[1]) .. tostring(lit[2]), 'truefalsefalse', 'Pressed alone is captioned in Text')
+		_, F = open({ preview = { kind = 'button', key = 'checked' }, hasAlpha = true, r = 0.2, g = 0.4, b = 0.9, a = 0.5 })
+		p = F.previewPieces.button
+		eq(vertex_color(p.check:GetCheckedTexture()), rgba(0.2, 0.4, 0.9, 0.5), "the checked box's fill")
+		eq(thumb_color(p.thumbs[2]), strength('hover'), 'the Hover thumb is not')
+		eq(vertex_color(p.buttons[2].hover), strength('hover', 0.4), 'nor the held highlight')
+		for i = 1, 5 do lit[i] = rgb3(p.captions[i]:GetTextColor()) == text end
+		eq(table.concat({ tostring(lit[1]), tostring(lit[2]), tostring(lit[3]), tostring(lit[4]), tostring(lit[5]) }, ','), 'false,false,false,true,false', 'Checked alone is captioned in Text')
 		reset()
 	end)
 end)
@@ -840,6 +848,7 @@ test('Buttons > Danger at 0.5: the flash at 0.4 times it, the bank slot tint at 
 		eq(texture_color(p.flash), rgba(0.9, 0.3, 0.1, 0.4 * 0.5), 'the flash')
 		eq(texture_color(p.locked), rgba(0.9, 0.3, 0.1, 0.3 * 0.5), "the unbought slot's tint")
 		eq(thumb_color(p.thumbs[2]), strength('hover'), 'the thumbs are as they are')
+		eq(vertex_color(p.check:GetCheckedTexture()), strength('checked'), 'and the checked box')
 		check(rgb3(p.captions[5]:GetTextColor()) == rgb3(st:Color('text', 'normal'):GetRGB()), 'Flash is captioned in Text')
 		check(rgb3(p.captions[1]:GetTextColor()) == rgb3(st:Color('text', 'muted'):GetRGB()), 'Rest in Muted')
 		-- A drag changes it at once.
@@ -904,14 +913,14 @@ test("the button kind: a real button's own follower and the picker's paint agree
 	T.theme('thick')
 	with_buttons(function()
 		reset()
-		local _, F = open({ preview = { kind = 'button', key = 'normal' }, hasAlpha = true, r = 0.4, g = 0.5, b = 0.6, a = 0.7 })
+		local _, F = open({ preview = { kind = 'button', key = 'hover' }, hasAlpha = true, r = 0.4, g = 0.5, b = 0.6, a = 0.7 })
 		local p = F.previewPieces.button
 		-- The field writes the pick into the profile, as the Colors row's set does.
-		buttons_color('normal'):SetRGBA(0.4, 0.5, 0.6, 0.7)
-		st:ColorChanged('button', 'normal')
+		buttons_color('hover'):SetRGBA(0.4, 0.5, 0.6, 0.7)
+		st:ColorChanged('button', 'hover')
 		C.step(st)
-		eq(vertex_color(p.buttons[2].hover), rgba(0.4, 0.5, 0.6, 0.7), "the held button's highlight, repainted by its own follower")
-		eq(thumb_color(p.thumbs[1]), rgba(0.4, 0.5, 0.6, 0.7), 'the thumb, painted by the picker')
+		eq(vertex_color(p.buttons[2].hover), rgba(0.4, 0.5, 0.6, 0.7 * 0.4), "the held button's highlight, repainted by its own follower")
+		eq(thumb_color(p.thumbs[2]), rgba(0.4, 0.5, 0.6, 0.7), 'the thumb, painted by the picker')
 		reset()
 	end)
 end)
@@ -1197,7 +1206,7 @@ end)
 test('the Buttons rows and the Accent row carry their previews, and each opens', function()
 	local CO = st:GetModule('Colors')
 	local args = CO:GetConfigTable().args
-	for _, key in ipairs({ 'normal', 'hover', 'pushed', 'danger' }) do
+	for _, key in ipairs({ 'normal', 'hover', 'pushed', 'checked', 'danger' }) do
 		local option = args.button.args[key]
 		local preview = option.preview
 		check(type(preview) == 'table', 'Buttons > ' .. key .. ' has a table preview')
@@ -1716,7 +1725,7 @@ end
 
 test('every Colors row and the Accent have a preview whose kind is defined, and each opens at 436 with no error', function()
 	local rows = walk_rows()
-	eq(#rows, 80, 'the walk found the 79 Colors rows and the Accent')
+	eq(#rows, 81, 'the walk found the 80 Colors rows and the Accent')
 	for _, row in ipairs(rows) do
 		local name = row.accent and 'Accent' or (row.section.key .. '.' .. tostring(row.color.key or row.color.group))
 		local preview = row.option.preview

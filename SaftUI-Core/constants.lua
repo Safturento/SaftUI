@@ -37,6 +37,12 @@ st.BOX_COLORS = {
 -- selected object's fill (a selected mover in the edit mode).
 st.TINT_ROW = 0.25
 st.TINT_OBJECT = 0.15
+-- The strength a hover highlight draws Buttons > Hover at (times its opacity):
+-- a flat tint over the button's fill, in alpha blend, not a solid block. The
+-- micro buttons' highlight has always drawn it. Readers that draw Hover as a
+-- fill of its own (a hovered scroll bar thumb, a resize corner, the minimap's
+-- buttons) keep their own strengths.
+st.HOVER_TINT = 0.4
 st.BLANK_TEX = [[Interface\BUTTONS\WHITE8X8]]
 -- One line wide, as every border is (UIScale:SetTokens sets it again on every
 -- change of the scale). st.line is 1 until the scale model loads.

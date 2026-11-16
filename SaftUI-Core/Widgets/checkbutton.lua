@@ -40,27 +40,27 @@ local function Outside(texture, button)
 end
 
 -- SaftUI's flat look on one of the textures: blank, filling the button, in the
--- Buttons color key at its opacity.
-local function Flat(texture, button, key, blend)
+-- Buttons color key at its opacity (times strength, when given).
+local function Flat(texture, button, key, strength, blend)
 	texture:SetTexture(st.BLANK_TEX)
 	texture:SetTexCoord(0, 1, 0, 1)
 	texture:ClearAllPoints()
 	texture:SetAllPoints(button)
-	texture:SetVertexColor(st:ColorRGBA('button', key))
+	texture:SetVertexColor(st:ColorRGBA('button', key, strength))
 	if blend then texture:SetBlendMode(blend) end
 end
 
--- A check box follows Buttons > Hover (its checked fill) and Normal (its
--- highlight) at once (st:FollowColor), where it draws SaftUI's flat look;
+-- A check box follows Buttons > Checked (its checked fill) and Hover (its
+-- highlight, at st.HOVER_TINT) at once (st:FollowColor), where it draws SaftUI's flat look;
 -- under Blizzard its art is white and a pass leaves it. A bare one wears the
 -- flat look in every theme: its highlight follows, its checked texture is its caller's.
 local function PaintChecked(skin)
-	if not skin.blizzard then skin.checked:SetVertexColor(st:ColorRGBA('button', 'hover')) end
+	if not skin.blizzard then skin.checked:SetVertexColor(st:ColorRGBA('button', 'checked')) end
 end
 local function PaintHighlight(skin)
-	if not skin.blizzard then skin.hover:SetVertexColor(st:ColorRGBA('button', 'normal')) end
+	if not skin.blizzard then skin.hover:SetVertexColor(st:ColorRGBA('button', 'hover', st.HOVER_TINT)) end
 end
-local function PaintFlatHighlight(texture) texture:SetVertexColor(st:ColorRGBA('button', 'normal')) end
+local function PaintFlatHighlight(texture) texture:SetVertexColor(st:ColorRGBA('button', 'hover', st.HOVER_TINT)) end
 
 -- Puts a check button's look on, when its Theme and Background
 -- (st:IsBlizzardLook) changed between Blizzard and the rest.
@@ -92,8 +92,8 @@ local function Draw(skin)
 		Outside(skin.hover, button)
 	else
 		if skin.box then skin.box:Hide() end
-		Flat(skin.checked, button, 'hover')
-		Flat(skin.hover, button, 'normal', skin.hoverBlend)
+		Flat(skin.checked, button, 'checked')
+		Flat(skin.hover, button, 'hover', st.HOVER_TINT, skin.hoverBlend)
 	end
 end
 
@@ -122,13 +122,13 @@ function st:SkinCheckButton(button, style)
 
 	local checked = button:CreateTexture(nil, 'OVERLAY')
 	checked:SetTexture(self.BLANK_TEX)
-	checked:SetVertexColor(st:ColorRGBA('button', 'hover'))
+	checked:SetVertexColor(st:ColorRGBA('button', 'checked'))
 	checked:SetAllPoints(button)
 	button:SetCheckedTexture(checked)
 
 	local hover = button:CreateTexture(nil, 'OVERLAY')
 	hover:SetTexture(self.BLANK_TEX)
-	hover:SetVertexColor(st:ColorRGBA('button', 'normal'))
+	hover:SetVertexColor(st:ColorRGBA('button', 'hover', st.HOVER_TINT))
 	hover:SetAllPoints(button)
 	button:SetHighlightTexture(hover)
 
@@ -150,7 +150,7 @@ function st:SkinCheckButton(button, style)
 	if style == 'bare' then
 		-- Only its highlight follows: its caller restyles the checked texture (the
 		-- bags' currency veil and bank eye), which no pass may repaint.
-		st:FollowColor(hover, 'button', 'normal', PaintFlatHighlight)
+		st:FollowColor(hover, 'button', 'hover', PaintFlatHighlight)
 		return
 	end
 	-- It wears SaftUI's flat look, just made.
@@ -164,8 +164,8 @@ function st:SkinCheckButton(button, style)
 		button:HookScript('PostClick', Repaint)
 	end
 	st:KeepOwnColors(skin, Draw)
-	st:FollowColor(skin, 'button', 'hover', PaintChecked)
-	st:FollowColor(skin, 'button', 'normal', PaintHighlight)
+	st:FollowColor(skin, 'button', 'checked', PaintChecked)
+	st:FollowColor(skin, 'button', 'hover', PaintHighlight)
 	Draw(skin)
 end
 

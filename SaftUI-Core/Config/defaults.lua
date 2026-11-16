@@ -139,6 +139,7 @@ st.defaults.colors = {
 		normal		=  CreateColor(0.1, 0.1, 0.1, 1),
 		hover 		=  CreateColor(0.3, 0.5, 0.7, 1),
 		pushed		=  CreateColor(0.3, 0.4, 0.5, 1),
+		checked		=  CreateColor(0.3, 0.5, 0.7, 1),
 		danger		=  CreateColor(0.6, 0.1, 0.1, 1),
 	},
 	roles = {

@@ -522,10 +522,9 @@ test('step 5: every saved Buttons opacity goes back to 100%, in place, never nil
 	eq(saved.normal, nil, 'and nothing of a color that only had one')
 end)
 
-test('step 5 is the last step of the migration, and only touches opacity', function()
+test('step 5 only touches opacity', function()
 	fresh(on({}))
 	local step = st:GetModule('Colors').MIGRATION_STEPS[5]
-	eq(#st:GetModule('Colors').MIGRATION_STEPS, 5)
 	eq(step.copy, nil); eq(step.retire, nil)
 	eq(table.concat(step.opacity, ','), 'button.normal,button.hover,button.pushed,button.danger')
 end)
@@ -621,4 +620,102 @@ test('step 5 after step 4: the Danger made from Buttons > Red is at 100% too, an
 	local raw = { colors = { version = 3, button = { red = { r = 0.9, a = 0.5 } } } }
 	st:MigrateColors(raw)
 	eq(rgb(raw.colors.button.danger), RGB(0.9, 0.1, 0.1)); eq(raw.colors.button.danger.a, 1)
+end)
+
+------------------------------------------------------------------ step 6: Checked is Hover's old color
+
+test('step 6 is the last step: it seeds Buttons > Checked from a customized Hover, and nothing else', function()
+	fresh(on({}))
+	local Colors = st:GetModule('Colors')
+	eq(#Colors.MIGRATION_STEPS, 6)
+	local step = Colors.MIGRATION_STEPS[6]
+	eq(step.copy, nil); eq(step.retire, nil); eq(step.opacity, nil)
+	eq(table.concat(step.seed[1], ','), 'button.hover,button.checked')
+	eq(Colors.OLD_COLORS['button.hover'], nil, 'OLD_COLORS stays frozen: Hover is no retired key')
+	eq(Colors.OLD_COLORS['button.checked'], nil)
+end)
+
+test('step 6: a Hover customized in color is copied into Checked, opacity and all; Hover keeps its own', function()
+	for _, version in ipairs({ 5, 4, 0 }) do
+		local raw = { colors = { version = version, button = { hover = { r = 0.9, g = 0.2, b = 0.6, a = version == 5 and 0.7 or 1 } } } }
+		st:MigrateColors(raw)
+		local b = raw.colors.button
+		eq(rgb(b.checked), RGB(0.9, 0.2, 0.6), 'version ' .. version)
+		eq(b.checked.a, version == 5 and 0.7 or 1, 'its opacity too (step 5 reset an older one first)')
+		eq(rgb(b.hover), RGB(0.9, 0.2, 0.6), 'Hover is left as it is')
+		eq(raw.colors.version, LAST())
+	end
+end)
+
+test('step 6: one saved channel is enough, the rest comes from the default; a changed opacity alone counts', function()
+	local raw = { colors = { version = 5, button = { hover = { r = 0.9 } } } }
+	st:MigrateColors(raw)
+	eq(rgb(raw.colors.button.checked), RGB(0.9, 0.5, 0.7), "the other channels are Hover's default")
+	raw = { colors = { version = 5, button = { hover = { a = 0.5 } } } }
+	st:MigrateColors(raw)
+	eq(raw.colors.button.checked.a, 0.5); eq(rgb(raw.colors.button.checked), RGB(0.3, 0.5, 0.7))
+end)
+
+test("step 6: a Hover at its default (to the byte) seeds nothing; an untouched profile has the defaults", function()
+	local raw = { colors = { version = 5, button = { hover = { r = 0.3, g = 0.5, b = 0.7, a = 1 } } } }
+	st:MigrateColors(raw)
+	eq(raw.colors.button.checked, nil, 'no table made')
+	raw = { colors = { version = 5 } }
+	st:MigrateColors(raw); eq(raw.colors.button, nil, 'no Buttons group made'); eq(raw.colors.version, LAST())
+	fresh(on({}))
+	eq(rgb(st.config.profile.colors.button.checked), RGB(0.3, 0.5, 0.7), 'the default')
+	eq(st.config.profile.colors.button.checked.a, 1)
+	st.config:SetProfile('Two')
+	eq(SaftUI_DB.profiles.Old.colors.button, nil, 'nothing saved for it')
+end)
+
+test('step 6: data it does not expect is left alone, and nothing raises', function()
+	for _, bad in ipairs({ 'x', 5, true }) do
+		local raw = { colors = { version = 5, button = bad } }
+		check(pcall(st.MigrateColors, st, raw)); eq(raw.colors.button, bad)
+	end
+	for _, bad in ipairs({ 'x', 5, true }) do
+		local raw = { colors = { version = 5, button = { hover = bad } } }
+		check(pcall(st.MigrateColors, st, raw)); eq(raw.colors.button.checked, nil, 'a Hover that is ' .. type(bad))
+	end
+	local raw = { colors = { version = 5, button = { hover = { r = 'x', g = 0.1 } } } }
+	check(pcall(st.MigrateColors, st, raw)); eq(raw.colors.button.checked.g, 0.1)
+	eq(raw.colors.button.checked.r, 0.3, 'a channel that is no number takes the default')
+end)
+
+test('step 6 on a real AceDB: runs once, at login; a later Hover change does not reach Checked; Checked stays saved', function()
+	fresh(on({ colors = { version = 5, button = { hover = { r = 0.9, g = 0.2, b = 0.6 } } } }))
+	local b = st.config.profile.colors.button
+	eq(rgb(b.checked), RGB(0.9, 0.2, 0.6)); eq(st.config.profile.colors.version, LAST())
+	b.hover:SetRGB(0.1, 0.1, 0.1)
+	st:MigrateColors(st.config.profile)
+	eq(rgb(b.checked), RGB(0.9, 0.2, 0.6), 'a second run changes nothing')
+	st.config:SetProfile('Two'); st.config:SetProfile('Old')
+	eq(rgb(st.config.profile.colors.button.checked), RGB(0.9, 0.2, 0.6), 'a switch away and back')
+	local saved = SaftUI_DB
+	fresh(saved)
+	eq(rgb(st.config.profile.colors.button.checked), RGB(0.9, 0.2, 0.6), 'and the next login')
+	eq(rgb(st.config.profile.colors.button.hover), RGB(0.1, 0.1, 0.1))
+end)
+
+test('step 6: a switch to, a copy from and a reset of a profile', function()
+	fresh(on({}))
+	SaftUI_DB.profiles.Two = { colors = { version = 5, button = { hover = { r = 0.9, g = 0.2, b = 0.6 } } } }
+	SaftUI_DB.profiles.Three = { colors = { version = 5, button = { hover = { r = 0.1, g = 0.9, b = 0.3 } } } }
+	st.config:SetProfile('Two')
+	eq(rgb(st.config.profile.colors.button.checked), RGB(0.9, 0.2, 0.6), 'a switch to an unmigrated profile')
+	st.config:SetProfile('Old')
+	eq(rgb(st.config.profile.colors.button.checked), RGB(0.3, 0.5, 0.7), 'the other profile is left at its default')
+	st.config:CopyProfile('Three')
+	eq(rgb(st.config.profile.colors.button.checked), RGB(0.1, 0.9, 0.3), 'a copy from an unmigrated profile')
+	st.config:ResetProfile()
+	eq(rgb(st.config.profile.colors.button.checked), RGB(0.3, 0.5, 0.7), 'a reset: the defaults')
+	eq(rgb(st.config.profile.colors.button.hover), RGB(0.3, 0.5, 0.7))
+	eq(st.config.profile.colors.version, LAST())
+end)
+
+test('step 6 in combat: a switch migrates at once', function()
+	fresh(on({})); SaftUI_DB.profiles.Two = { colors = { version = 5, button = { hover = { r = 0.9, g = 0.2, b = 0.6 } } } }
+	stub.in_combat = true; st.config:SetProfile('Two')
+	eq(rgb(st.config.profile.colors.button.checked), RGB(0.9, 0.2, 0.6)); eq(#stub.blocked, 0); stub.in_combat = false
 end)

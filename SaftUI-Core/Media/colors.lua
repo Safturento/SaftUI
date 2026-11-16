@@ -445,10 +445,13 @@ CO.OLD_COLORS = {
 }
 
 -- One step per change of the colors' keys, run in order on a profile saved
--- before it. A step is { copy, retire, opacity }: copy lists { source,
+-- before it. A step is { copy, retire, opacity, seed }: copy lists { source,
 -- destination, ...} (a customized source's color goes into each destination),
 -- retire the paths that leave, opacity the colors whose saved opacity goes back
--- to the default's. A path is 'group.key' under profile.colors. The steps are
+-- to the default's, seed lists { source, destination } for a color that is
+-- not retired (so OLD_COLORS holds no value for it): a source saved differently
+-- from its default today (to the byte, opacity too) is copied whole into the
+-- destination, which takes the source's default until then. A path is 'group.key' under profile.colors. The steps are
 -- never edited once shipped; each change appends one.
 CO.MIGRATION_STEPS = {
 	{
@@ -505,6 +508,14 @@ CO.MIGRATION_STEPS = {
 		-- defaults are 100% and a chosen opacity from here on is kept. The
 		-- colors themselves are untouched.
 		opacity = { 'button.normal', 'button.hover', 'button.pushed', 'button.danger' },
+	},
+	{
+		-- Hover is everything under the mouse and a checked check box has a
+		-- color of its own, Buttons > Checked. A checked box read Hover, so a
+		-- Hover the owner changed is Checked's too, and the box looks as it
+		-- did; Hover keeps its value, and a button's highlight reads it from
+		-- here on. An untouched Hover leaves Checked at its default (the same).
+		seed = { { 'button.hover', 'button.checked' } },
 	},
 }
 
@@ -564,6 +575,30 @@ local function WriteColor(profile, path, c)
 	end
 end
 
+-- A source that is saved and differs from its default (to the byte, opacity
+-- too) is written whole into the destination, in place when there is a table
+-- (the live profile has one: AceDB gives it its defaults). A channel that is no
+-- number takes the default's. A source that is no table, or no default, seeds
+-- nothing.
+local function SeedColor(profile, source, destination)
+	local group, key = SplitPath(source)
+	local holder = group and profile.colors[group]
+	local saved = type(holder) == 'table' and holder[key]
+	local defaults = st.defaults and st.defaults.colors and group and st.defaults.colors[group]
+	local default = type(defaults) == 'table' and defaults[key]
+	if type(saved) ~= 'table' or type(default) ~= 'table' then return end
+	local c, differs = {}, false
+	for _, channel in ipairs({ 'r', 'g', 'b', 'a' }) do
+		local fallback = default[channel] or 1
+		c[channel] = type(saved[channel]) == 'number' and saved[channel] or fallback
+		if Byte(c[channel]) ~= Byte(fallback) then differs = true end
+	end
+	if not differs then return end
+	WriteColor(profile, destination, c)
+	local dgroup, dkey = SplitPath(destination)
+	profile.colors[dgroup][dkey].a = c.a
+end
+
 local function RunStep(profile, step)
 	for _, copy in ipairs(step.copy or {}) do
 		local c = CustomizedColor(profile, copy[1])
@@ -576,6 +611,7 @@ local function RunStep(profile, step)
 		local holder = group and profile.colors[group]
 		if type(holder) == 'table' then holder[key] = nil end
 	end
+	for _, pair in ipairs(step.seed or {}) do SeedColor(profile, pair[1], pair[2]) end
 	for _, path in ipairs(step.opacity or {}) do
 		local group, key = SplitPath(path)
 		local holder = group and profile.colors[group]
@@ -644,9 +680,10 @@ CO.SECTIONS = {
 	{
 		key = 'button', name = 'Buttons', note = "Opacity sets how strongly each is drawn: 100% is SaftUI's own.", hasAlpha = true,
 		colors = Colors('button', {
-			{ 'normal', 'Normal', "A SaftUI button's or check box's highlight, a scroll bar thumb at rest, and the highlight of the micro menu bar's own items (the zone text and the addon compartment)." },
-			{ 'hover', 'Hover', "A checked check box, a hovered scroll bar thumb, the micro buttons' highlight, the minimap's tracking, queue and expansion buttons under the mouse, and resize corners." },
+			{ 'normal', 'Normal', 'A scroll bar thumb at rest.' },
+			{ 'hover', 'Hover', "Everything under the mouse: a SaftUI button's or check box's highlight, the highlight of the micro menu bar's own items (the zone text and the addon compartment), a hovered scroll bar thumb, the micro buttons' highlight, the minimap's tracking, queue and expansion buttons, and resize corners. Highlights draw it light, over the fill." },
 			{ 'pushed', 'Pushed', 'A pressed SaftUI button, scroll bar thumb or micro menu button.' },
+			{ 'checked', 'Checked', "A checked check box's fill." },
 			{ 'danger', 'Danger', "Locked bank slots, and the flash on an action bar or totem button." },
 		}),
 	},

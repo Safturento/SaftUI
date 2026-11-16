@@ -214,10 +214,11 @@ local function Pressed()
 	return true
 end
 
--- A skinned button's flat highlight and pressed fill follow Buttons > Normal
--- and Pushed at their opacity (st:FollowColor). Painted under Blizzard too,
+-- A skinned button's flat highlight and pressed fill follow Buttons > Hover (at
+-- st.HOVER_TINT: a tint over the fill) and Pushed at their opacity
+-- (st:FollowColor). Painted under Blizzard too,
 -- where their alpha is 0: they come back right when the look switches.
-local function PaintHighlight(texture) texture:SetVertexColor(st:ColorRGBA('button', 'normal')) end
+local function PaintHighlight(texture) texture:SetVertexColor(st:ColorRGBA('button', 'hover', st.HOVER_TINT)) end
 local function PaintPushed(texture) texture:SetVertexColor(st:ColorRGBA('button', 'pushed')) end
 
 -- button -> how st:SkinButton keeps it: { button, theme, background, flat,
@@ -304,12 +305,12 @@ function st:SkinButton(button, theme, background, font)
 	if button.SetHighlightTexture and not button.hover then
 		local hover = button:CreateTexture(nil, 'OVERLAY')
         hover:SetTexture(self.BLANK_TEX)
-        hover:SetVertexColor(st:ColorRGBA('button', 'normal'))
+        hover:SetVertexColor(st:ColorRGBA('button', 'hover', st.HOVER_TINT))
         hover:SetAllPoints(button)
 
         button:SetHighlightTexture(hover)
         button.hover = hover
-		st:FollowColor(hover, 'button', 'normal', PaintHighlight)
+		st:FollowColor(hover, 'button', 'hover', PaintHighlight)
 	end
 
 	if button.SetPushedTexture and not button.pushed then

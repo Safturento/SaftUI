@@ -261,12 +261,12 @@ end
 	Five tiles of the states a Buttons color reaches, each piece the real one at
 	its reader's strength times the opacity (docs/superpowers/specs/
 	2026-11-15-saftui-live-colors-design.md, Part B):
-	  Rest     a SaftUI button at rest; a scroll bar thumb at rest (Normal)
-	  Hover    the button's highlight held by LockHighlight (Normal); a thumb
-	           under the mouse (Hover)
+	  Rest     a scroll bar thumb at rest (Normal)
+	  Hover    the button's highlight held by LockHighlight (Hover at 0.4,
+	           st.HOVER_TINT); a thumb under the mouse (Hover)
 	  Pressed  the button pushed by SetButtonState('PUSHED', true) (Pushed); a
 	           pressed thumb (Pushed)
-	  Checked  a check box, checked (Hover)
+	  Checked  a check box, checked (Checked)
 	  Flash    an action button's attack flash at 0.4 and an unbought bank
 	           slot's tint at 0.3 (Danger)
 	fields.key is the Buttons key edited: the pieces it reaches take the picked
@@ -279,9 +279,10 @@ local BUTTON_TILE = 74
 local BUTTON_NAMES = { 'Rest', 'Hover', 'Pressed', 'Checked', 'Flash' }
 -- The tiles each key reaches (their captions are in Text).
 local BUTTON_REACHES = {
-	normal = { true, true },
-	hover = { [2] = true, [4] = true },
+	normal = { true },
+	hover = { [2] = true },
 	pushed = { [3] = true },
+	checked = { [4] = true },
 	danger = { [5] = true },
 }
 local FLASH_ALPHA, LOCKED_ALPHA = 0.4, 0.3 -- ActionBars' skin.lua; Bags' bank.lua
@@ -384,9 +385,9 @@ function button.Paint(pieces, r, g, b, a, spec)
 	thumbs[1].backdrop:SetBackdropColor(Shade('button', 'normal', 1, key, r, g, b, a))
 	thumbs[2].backdrop:SetBackdropColor(Shade('button', 'hover', 1, key, r, g, b, a))
 	thumbs[3].backdrop:SetBackdropColor(Shade('button', 'pushed', 1, key, r, g, b, a))
-	buttons[2].hover:SetVertexColor(Shade('button', 'normal', 1, key, r, g, b, a))
+	buttons[2].hover:SetVertexColor(Shade('button', 'hover', st.HOVER_TINT, key, r, g, b, a))
 	buttons[3].pushed:SetVertexColor(Shade('button', 'pushed', 1, key, r, g, b, a))
-	pieces.checked:SetVertexColor(Shade('button', 'hover', 1, key, r, g, b, a))
+	pieces.checked:SetVertexColor(Shade('button', 'checked', 1, key, r, g, b, a))
 	pieces.flash:SetColorTexture(Shade('button', 'danger', FLASH_ALPHA, key, r, g, b, a))
 	pieces.locked:SetColorTexture(Shade('button', 'danger', LOCKED_ALPHA, key, r, g, b, a))
 	local reaches = BUTTON_REACHES[key]
