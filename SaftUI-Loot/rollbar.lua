@@ -22,10 +22,6 @@ local roll_buttons = {
 -- the held rolls (roll.lua). Each has the same size, theme, font, spacing, icon,
 -- name, timer and buttons as a skinned bar, the buttons with their counts.
 
--- The alpha of a locked bar's other buttons: Blizzard's for a roll button it
--- disables.
-local LOCKED_ALPHA = 0.35
-
 -- A bar with all four roll buttons, in the real buttons' order (the first sits
 -- at the right edge), Greed or Transmog hidden by SetBarTransmog. The buttons
 -- draw Blizzard's roll button art, and are plain frames that take no mouse:
@@ -92,31 +88,29 @@ local function SetBarTransmog(bar, transmog)
 	end
 end
 
--- The lit border of a locked bar's chosen button: the accent on its icon's
--- backdrop. Kept through a theme recolor or redraw (st:KeepOwnColors).
-local function ColorLit(icon)
-	if icon.backdrop then
-		st:SetBorderColor(icon.backdrop, st:Color('accent'):GetRGB())
+-- The alpha of a button of a locked bar that wasn't chosen: the states' dim
+-- (the Disabled setting).
+local function DimOthers(bar)
+	for _, button in ipairs(bar.buttons) do
+		button:SetAlpha((bar.choice == nil or button.choice == bar.choice) and 1 or st:StateAlpha())
 	end
 end
 
 -- Locks a bar on your choice (a roll button's name), or unlocks it (nil): the
 -- chosen button stays bright and the others dim, and the label names it.
--- ApplyBarConfig gives the chosen button its lit border.
+-- ApplyBarConfig gives the chosen button its selected border and fade.
 local function LockBar(bar, choice)
 	bar.choice = choice
-	for _, button in ipairs(bar.buttons) do
-		button:SetAlpha((choice == nil or button.choice == choice) and 1 or LOCKED_ALPHA)
-	end
+	DimOthers(bar)
 	bar.Choice:SetText(choice or '')
 	bar.Choice:SetShown(choice ~= nil)
 end
 
--- A locked bar's lit border and label in the current accent.
+-- A locked bar's label in the current accent ("Choice" is not a state: the
+-- Accent itself), and the others' dim in the current Disabled setting. The
+-- chosen button's border and fade follow the Accent in the states' own pass.
 local function ColorLocked(bar)
-	for _, button in ipairs(bar.buttons) do
-		if button.choice == bar.choice then ColorLit(button.Icon) end
-	end
+	DimOthers(bar)
 	bar.Choice:SetTextColor(st:Color('accent'):GetRGB())
 end
 
@@ -155,12 +149,19 @@ local function ApplyBarConfig(bar, config)
 		button.Icon:SetPoint('TOPLEFT', button, 'TOPLEFT', inset, -inset)
 		button.Icon:SetPoint('BOTTOMRIGHT', button, 'BOTTOMRIGHT', -inset, inset)
 		if lit then
+			-- Selected: the theme's edge in the Accent and the fade (a box on the
+			-- icon's backdrop, no scripts: nothing on a bar takes the mouse).
 			st:SetBackdrop(button.Icon, config.theme, config.background, 'small')
-			st:KeepOwnColors(button.Icon, ColorLit)
+			local backdrop = button.Icon.backdrop
+			if backdrop then
+				st:AddStates(backdrop, 'box', { edge = 'theme', wire = false })
+				st:SetState(backdrop, 'selected', true)
+			end
 		elseif button.Icon.backdrop then
 			-- Lit for an earlier choice (a held bar is reused).
+			local backdrop = button.Icon.backdrop
+			if st:GetState(backdrop, 'selected') ~= nil then st:SetState(backdrop, 'selected', false) end
 			st:SetBackdrop(button.Icon, 'none')
-			st:KeepOwnColors(button.Icon, nil)
 		end
 	end
 

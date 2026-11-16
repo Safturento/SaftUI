@@ -8,7 +8,6 @@ local get_match, decreasePatterns = LT.parse.get_match, LT.parse.decreasePattern
 
 local MAX_HISTORY = LT.MAX_HISTORY -- Feed/history.lua
 local feed_stack = {}
-local TintButton -- below
 
 
 ------------------------------------
@@ -28,20 +27,21 @@ end
 
 -- The feed's two small buttons (the filter and the jump to the newest entry) are
 -- a Lucide icon on a button drawn in the feed's theme: Colors -> Text -> Normal
--- at rest, the accent under the mouse. The icon is 16 px on the 20 px button: Lucide's
--- funnel fills 20 of its 24 grid, the arrow 14, so 16 leaves the funnel 13 px
--- wide and each a few px of the button round it.
+-- at rest, the lighter tone of the states under the mouse (the interaction states:
+-- the button's Layer is the hover, the icon its glyph). The icon is 16 px on the
+-- 20 px button: Lucide's funnel fills 20 of its 24 grid, the arrow 14, so 16
+-- leaves the funnel 13 px wide and each a few px of the button round it.
 local ICON_SIZE = 16
 
-TintButton = function(button)
-	if not button then return end
-	button.icon:SetVertexColor((button.lit and st:Color('accent') or st:Color('text', 'normal')):GetRGB())
+-- The icon's rest color, Text -> Normal (the states put it back after a hover).
+local function IconRest()
+	return st:Color('text', 'normal'):GetRGB()
 end
 
 -- A feed button with its icon and its tooltip: a title and, for the filter, a line
--- under it. Hovering lights the icon; a button that hides under the cursor
--- (UpdateFeedButtons) gets no OnLeave, so hiding puts the icon and the tooltip
--- away too.
+-- under it. Hovering lights the button and its icon (the states'); a button that
+-- hides under the cursor (UpdateFeedButtons) gets no OnLeave, so hiding puts the
+-- tooltip away too (the states clear the hover on hide).
 function LT:CreateFeedIconButton(name, icon, title, line)
 	local button = st:CreateButton(name, self.feed, nil, 'theme', 'solid')
 	button:SetSize(20, 20)
@@ -49,11 +49,11 @@ function LT:CreateFeedIconButton(name, icon, title, line)
 	button.icon:SetTexture(icon)
 	button.icon:SetSize(ICON_SIZE, ICON_SIZE)
 	button.icon:SetPoint('CENTER')
-	TintButton(button)
+	-- Merged into the skinner's states: no `text`, the label stays the skinner's.
+	st:AddStates(button, 'box', { edge = 'theme', glyph = button.icon, glyphRest = IconRest })
+	st:PaintStates(button) -- the icon's rest color: only an explicit paint puts it on
 
 	button:SetScript('OnEnter', function(self)
-		self.lit = true
-		TintButton(self)
 		if GameTooltip:IsForbidden() then return end
 		GameTooltip:SetOwner(self, 'ANCHOR_TOP')
 		GameTooltip:SetText(title)
@@ -61,8 +61,6 @@ function LT:CreateFeedIconButton(name, icon, title, line)
 		GameTooltip:Show()
 	end)
 	local function Away(self)
-		self.lit = false
-		TintButton(self)
 		if not GameTooltip:IsForbidden() and GameTooltip:IsOwned(self) then GameTooltip:Hide() end
 	end
 	button:SetScript('OnLeave', Away)
@@ -191,7 +189,7 @@ end
 
 -- A color change (st:ColorChanged, through LT:OnColorsChanged, init.lua); `key`
 -- is nil on a whole group. Only colors are set, on the lines shown:
---   'text' and 'accent': the buttons' icons;
+--   'text': the buttons' icons at rest (the accent is the states' own pass);
 --   'theme' (st:RecolorThemed gave every line the theme's colors) and Loot >
 --     Mount: the mount entries take their Loot > Mount color back;
 --   'item_quality': the lines of that quality set their name again (SetText on
@@ -201,12 +199,15 @@ end
 --     "All passed"), built again from its rolls (LT.RollResultText).
 function LT:ColorFeed(group, key)
 	if not self.feed then return end
-	-- The buttons' icons are tinted in Colors -> Text and the accent.
-	if group == 'text' or group == 'accent' then
-		TintButton(self.feed.filterButton)
-		TintButton(self.feed.reset_button)
+	-- The buttons' icons rest in Colors -> Text -> Normal; the accent group is the
+	-- states' own pass (the hover tone follows it).
+	if group == 'text' then
+		for _, button in ipairs({ self.feed.filterButton, self.feed.reset_button }) do
+			if button and st:GetState(button, 'hover') ~= nil then st:PaintStates(button) end
+		end
 		return
 	end
+	if group == 'accent' then return end
 	local mounts = group == 'theme' or (group == 'loot' and (key == nil or key == 'mount'))
 	local names = group == 'item_quality'
 	local bars = group == 'reaction' or group == 'renown'
