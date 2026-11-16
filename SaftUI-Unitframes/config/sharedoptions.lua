@@ -396,6 +396,18 @@ end
 
 local function Say(text) st:Print(text) end
 
+-- A restore or a share asked in combat runs when combat ends, for the profile TABLE it was asked on: another
+-- SaftUI profile switched to meanwhile has a unit frame profile of the same name, which must not be touched.
+-- One key, so the last command asked in a fight is the one that runs.
+local REQUEST_KEY = 'UnitframesShareRequest'
+
+-- Whether the unit frame profile in use is no longer the table asked on; says so once if it is not.
+local function DropIfChanged(profile)
+	if UF:GetProfileConfig() == profile then return false end
+	Say('The unit frame profile changed during combat, so the request was dropped and nothing was done.')
+	return true
+end
+
 local function WhenText(profile)
 	local backup = rawget(profile, 'backup')
 	local when = type(backup) == 'table' and backup.when
@@ -407,9 +419,8 @@ end
 -- Puts the named profile's shared settings back as the backup has them (see UF:RestoreShared), refreshes
 -- the frames and /sui, and says what it did. No reload. Table writes, then UF:UpdateConfig, which waits for
 -- combat to end for the frames themselves.
-function UF:RestoreSharedNow(name)
-	local profiles = st.config.profile.unitframes.profiles
-	local profile = rawget(profiles, name)
+function UF:RestoreSharedNow(name, profile)
+	profile = profile or rawget(st.config.profile.unitframes.profiles, name)
 	if not profile then
 		Say('There is no unit frame profile named ' .. tostring(name) .. ' any more.')
 		return false
@@ -446,7 +457,10 @@ function UF:RestoreSharedCommand(confirmed)
 			:format(name, WhenText(profile)))
 		return false
 	end
-	if st:QueueAfterCombat('UnitframesRestore', function() UF:RestoreSharedNow(name) end) then
+	if st:QueueAfterCombat(REQUEST_KEY, function()
+		if DropIfChanged(profile) then return end
+		UF:RestoreSharedNow(name, profile)
+	end) then
 		Say('You are in combat: the unit frame settings will be restored when combat ends.')
 		return false
 	end
@@ -462,8 +476,8 @@ end
 -- Turns sharing on for the named profile (UF:EnableShared), then, when it is the profile in use, applies what
 -- the sync changed (UF:UpdateConfig: the frames are updated without a reload) and refreshes /sui. Returns what
 -- EnableShared does. Table writes, then UF:UpdateConfig, which waits for combat to end for the frames themselves.
-function UF:ShareNow(name)
-	local profile = rawget(st.config.profile.unitframes.profiles, name)
+function UF:ShareNow(name, profile)
+	profile = profile or rawget(st.config.profile.unitframes.profiles, name)
 	if not profile then return false, 'There is no unit frame profile named ' .. tostring(name) .. ' any more.' end
 	local ok, why = self:EnableShared(profile)
 	if self:GetProfile() == name then
@@ -485,8 +499,11 @@ end
 -- conversion never runs in combat), one chat line says so, and the conversion and its line come when combat
 -- ends. Returns ok, why, queued.
 function UF:RequestShare()
-	local name = self:GetProfile()
-	if st:QueueAfterCombat('UnitframesShare', function() SaySharedOn(name, UF:ShareNow(name)) end) then
+	local name, profile = self:GetProfile(), self:GetProfileConfig()
+	if st:QueueAfterCombat(REQUEST_KEY, function()
+		if DropIfChanged(profile) then return end
+		SaySharedOn(name, UF:ShareNow(name, profile))
+	end) then
 		Say('You are in combat: shared settings will be turned on for unit frame profile ' .. tostring(name) .. ' when combat ends.')
 		return false, nil, true
 	end

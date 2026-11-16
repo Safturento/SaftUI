@@ -889,3 +889,107 @@ test('the All units page\'s Turn on button in combat waits for combat\'s end as 
 	check(updated >= 1, 'the frames were updated')
 	eq(#take_errors(), 0)
 end)
+
+------------------------------------------------------------------ fix round 2: a request made in combat is for the profile it was made on
+
+local function uf_of(db) return db.profile.unitframes.profiles.SaftUI end
+
+-- Counts the calls of UF[name] while fn runs.
+local function calls_of(name, fn)
+	local real, n = UF[name], 0
+	UF[name] = function(...) n = n + 1; return real(...) end
+	local ok, err = pcall(fn)
+	UF[name] = real
+	if not ok then error(err, 0) end
+	return n
+end
+
+-- Two SaftUI profiles, each with a unit frame profile named SaftUI. Returns the db, the first's and the other's tables.
+local function two_profiles()
+	world()
+	local db = SW.acedb({})
+	SW.enable()
+	db:SetProfile('Other')
+	UF:UpdateConfig()
+	local other = uf_of(db)
+	db:SetProfile('SaftUI')
+	UF:UpdateConfig()
+	return db, uf_of(db), other
+end
+
+local function switch_in_combat(db, to)
+	db:SetProfile(to)
+	UF:UpdateConfig()
+end
+
+test('R1: /sui uf share confirm asked in combat does nothing for another profile switched to in that fight, and says so', function()
+	local db, first, other = two_profiles()
+	check(first ~= other, 'two tables')
+	UF:RunShareCommand('restore confirm')
+	db:SetProfile('Other'); UF:UpdateConfig()
+	UF:RunShareCommand('restore confirm')
+	db:SetProfile('SaftUI'); UF:UpdateConfig()
+	eq(UF:SharedState(first), 'restored')
+	stub.in_combat = true
+	UF:RunShareCommand('share confirm')
+	switch_in_combat(db, 'Other')
+	stub.in_combat = false
+	local lines = printed_by(function() stub.fire_event('PLAYER_REGEN_ENABLED') end)
+	-- (A profile that is not the active one has no AceDB tables, so each is read while it is the active one.)
+	eq(UF:SharedState(uf_of(db)), 'restored', 'the other profile\'s sharing was not turned on')
+	db:SetProfile('SaftUI'); UF:UpdateConfig()
+	eq(UF:SharedState(uf_of(db)), 'restored', 'nor the one asked for: the request was dropped')
+	local told = table.concat(lines, ' | ')
+	check(told:find('changed', 1, true) and told:find('nothing was done', 1, true), 'one plain line: ' .. told)
+	eq(#take_errors(), 0)
+end)
+
+test('R1: /sui uf restore confirm asked in combat does nothing for another profile switched to in that fight, and says so', function()
+	local db, first, other = two_profiles()
+	-- The other profile has an edit of its own: Player's name font.
+	db:SetProfile('Other'); UF:UpdateConfig()
+	UF:SetShared('player', 'name.font', 'pixel')
+	eq(other.player.name.font, 'pixel')
+	db:SetProfile('SaftUI'); UF:UpdateConfig()
+	stub.in_combat = true
+	UF:RunShareCommand('restore confirm')
+	switch_in_combat(db, 'Other')
+	stub.in_combat = false
+	local lines = printed_by(function() stub.fire_event('PLAYER_REGEN_ENABLED') end)
+	eq(UF:SharedState(uf_of(db)), 'ready', 'the other profile still shares')
+	eq(uf_of(db).player.name.font, 'pixel', 'and keeps Player\'s own font')
+	db:SetProfile('SaftUI'); UF:UpdateConfig()
+	eq(UF:SharedState(uf_of(db)), 'ready', 'the one asked for was not restored either')
+	check(table.concat(lines, ' | '):find('changed', 1, true), 'it says why: ' .. table.concat(lines, ' | '))
+	eq(#take_errors(), 0)
+end)
+
+test('R1: a request in combat with no switch still runs once, asked twice in one fight, and the last command wins', function()
+	local db, first = two_profiles()
+	UF:RunShareCommand('restore confirm')
+	eq(UF:SharedState(first), 'restored')
+	stub.in_combat = true
+	UF:RunShareCommand('share confirm')
+	UF:RunShareCommand('share confirm')
+	stub.in_combat = false
+	local n = calls_of('EnableShared', function() stub.fire_event('PLAYER_REGEN_ENABLED') end)
+	eq(n, 1, 'asked twice, run once')
+	eq(UF:SharedState(first), 'ready')
+	-- Restore then share in one fight: the share, the last, runs and the restore does not.
+	stub.in_combat = true
+	UF:RunShareCommand('restore confirm')
+	UF:RunShareCommand('share confirm')
+	stub.in_combat = false
+	local restores = calls_of('RestoreShared', function() stub.fire_event('PLAYER_REGEN_ENABLED') end)
+	eq(restores, 0, 'the earlier restore was replaced')
+	eq(UF:SharedState(first), 'ready')
+	-- And a restore alone runs once.
+	stub.in_combat = true
+	UF:RunShareCommand('restore confirm')
+	UF:RunShareCommand('restore confirm')
+	stub.in_combat = false
+	restores = calls_of('RestoreShared', function() stub.fire_event('PLAYER_REGEN_ENABLED') end)
+	eq(restores, 1)
+	eq(UF:SharedState(first), 'restored')
+	eq(#take_errors(), 0)
+end)
