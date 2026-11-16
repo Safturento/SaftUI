@@ -7,11 +7,22 @@
 -- UF:UpdateGroupPreview and UF.testGroups live in grouppreview.lua,
 -- which isn't loaded; the tests stand them in.
 load_core_helpers()
+-- oUF as far as colors go: its color tables, the power type indexes sharing
+-- their token's table (colors.power[0] is colors.power.MANA), and CreateColor,
+-- which makes a color with the GetCurve oUF's gradient path calls.
+local ouf_mana = CreateColor(0, 0, 1)
+local ouf_methods = { GetCurve = function(self) return self.curve end }
 addon_namespace('SaftUI-Unitframes').oUF = {
+	CreateColor = function(_, r, g, b, a)
+		local color = CreateColor(r, g, b, a)
+		color.GetCurve = ouf_methods.GetCurve
+		color.curve = { 'curve' }
+		return color
+	end,
 	colors = {
 		class = { MAGE = CreateColor(1, 1, 1) },
-		reaction = {},
-		power = {},
+		reaction = { [2] = CreateColor(1, 0, 0) },
+		power = { MANA = ouf_mana, [0] = ouf_mana },
 		disconnected = CreateColor(1, 1, 1),
 		tapped = CreateColor(1, 1, 1),
 		roles = {},
@@ -159,4 +170,92 @@ test('before unit frames are enabled a change does nothing', function()
 	UF:OnColorsChanged('class')
 	UF.UpdateColors = original
 	eq(called, 0, 'UpdateColors not called')
+end)
+
+local function snapshot(t)
+	local out = {}
+	for k, v in pairs(t) do out[k] = v end
+	return out
+end
+
+test('the whole pass merges class, reaction, power and status in place: oUF keeps its tables, methods and aliases', function()
+	reset()
+	local oc = UF.oUF.colors
+	profile_colors.power.MANA = CreateColor(0.31, 0.32, 0.33)
+	profile_colors.reaction[2] = CreateColor(0.41, 0.42, 0.43)
+	profile_colors.class.MAGE = CreateColor(0.51, 0.52, 0.53)
+	profile_colors.status.disconnected = CreateColor(0.61, 0.62, 0.63)
+	local mana, reaction2, mage, disconnected = oc.power.MANA, oc.reaction[2], oc.class.MAGE, oc.disconnected
+	local tables = { oc.power, oc.reaction, oc.class }
+	UF:UpdateColors()
+	check(oc.power.MANA == mana and oc.reaction[2] == reaction2 and oc.class.MAGE == mage and oc.disconnected == disconnected,
+		"oUF's own color tables were replaced")
+	check(oc.power == tables[1] and oc.reaction == tables[2] and oc.class == tables[3], "oUF's groups were replaced")
+	check(oc.power[0] == oc.power.MANA, "the power type index is no longer Mana's table")
+	eq(rgb(oc.power[0]), '0.31,0.32,0.33', 'so it follows the pick')
+	eq(rgb(oc.reaction[2]), '0.41,0.42,0.43')
+	eq(rgb(oc.class.MAGE), '0.51,0.52,0.53')
+	eq(rgb(oc.disconnected), '0.61,0.62,0.63')
+	for _, group in ipairs({ 'power', 'reaction', 'class' }) do
+		for key, color in pairs(profile_colors[group]) do
+			check(oc[group][key] ~= color, group .. '.' .. tostring(key) .. ": a profile table became oUF's")
+		end
+	end
+end)
+
+test('a pass with every color already in oUF makes no table', function()
+	reset()
+	UF:UpdateColors()   -- any copy a key oUF lacked needs is made here
+	collectgarbage(); collectgarbage()
+	collectgarbage('stop')
+	local before = collectgarbage('count')
+	for _ = 1, 200 do UF:UpdateColors() end
+	local grown = collectgarbage('count') - before
+	collectgarbage('restart')
+	check(grown < 8, 'a whole pass allocated: ' .. grown .. ' KB over 200 passes')
+	local snap = snapshot(UF.oUF.colors.power)
+	UF:UpdateColors('power', 'MANA')
+	for k, v in pairs(snap) do check(UF.oUF.colors.power[k] == v, 'a by-key pass replaced ' .. tostring(k)) end
+end)
+
+test('a color oUF lacks is made by oUF, so its elements can call its methods: a copy, never the profile table', function()
+	reset()
+	for _, key in ipairs({ 'POWER_TYPE_STEAM', 'POWER_TYPE_PYRITE', 'ALTPOWER' }) do
+		local mine = CreateColor(0.2, 0.4, 0.6)
+		profile_colors.power[key] = mine
+		UF.oUF.colors.power[key] = nil
+		UF:UpdateColors()
+		local made = UF.oUF.colors.power[key]
+		check(made ~= mine, key .. ': the profile table became oUF\'s')
+		eq(type(made.GetCurve), 'function', key .. ': a gradient can ask it for its curve')
+		eq(rgb(made), '0.20,0.40,0.60', key .. ': with the profile\'s values')
+		-- the by-key path the same
+		UF.oUF.colors.power[key] = nil
+		UF:UpdateColors('power', key)
+		check(UF.oUF.colors.power[key] ~= mine and UF.oUF.colors.power[key].GetCurve, key .. ': by key')
+		profile_colors.power[key] = nil
+		UF.oUF.colors.power[key] = nil
+	end
+end)
+
+test('a color oUF lacks is copied in, so a later profile switch cannot write into the old profile', function()
+	reset()
+	local old = CreateColor(0.1, 0.2, 0.3)
+	profile_colors.class.ZZZ = old
+	UF:UpdateColors()
+	check(UF.oUF.colors.class.ZZZ ~= old, 'the whole pass aliased the profile color')
+	eq(rgb(UF.oUF.colors.class.ZZZ), '0.10,0.20,0.30')
+	-- the switch: another profile's value for the same key
+	profile_colors.class.ZZZ = CreateColor(0.7, 0.8, 0.9)
+	UF:UpdateColors()
+	eq(rgb(old), '0.10,0.20,0.30', 'the old profile keeps its color')
+	eq(rgb(UF.oUF.colors.class.ZZZ), '0.70,0.80,0.90', 'oUF follows the new one')
+	-- the by-key path
+	UF.oUF.colors.class.ZZZ = nil
+	local third = CreateColor(0.4, 0.5, 0.6)
+	profile_colors.class.ZZZ = third
+	UF:UpdateColors('class', 'ZZZ')
+	check(UF.oUF.colors.class.ZZZ ~= third, 'the key pass aliased the profile color')
+	profile_colors.class.ZZZ = nil
+	UF.oUF.colors.class.ZZZ = nil
 end)

@@ -131,6 +131,22 @@ end
 -- tabs SaftUI is holding at alpha 1 now (tabs.fade was off at the last HoldTabAlpha).
 local held = setmetatable({}, { __mode = 'k' })
 
+-- Holds a tab, or the dock's overflow button, at alpha 1 while tabs.fade is off: a
+-- post-hook on its SetAlpha (made once) that reads the profile each time and puts 1 back
+-- with the widget's own method, and 1 now.
+local function HoldAtOne(widget)
+	if not hooked[widget] then
+		hooked[widget] = true
+		hooksecurefunc(widget, 'SetAlpha', function(self, alpha)
+			if not CHT.config.tabs.fade and alpha ~= 1 then
+				SetTabAlpha(self, 1)
+			end
+		end)
+	end
+	held[widget] = true
+	if widget:GetAlpha() ~= 1 then SetTabAlpha(widget, 1) end
+end
+
 -- With tab fading off (tabs.fade) a tab stays at alpha 1: after Blizzard's own SetAlpha
 -- on it, which UIFrameFade makes at every step of a fade, a post-hook puts 1 back. The
 -- hook reads the profile each time. It calls the widget's own method, not the hooked
@@ -157,39 +173,49 @@ function CHT:HoldTabAlpha(frame)
 		end
 		return
 	end
-	if not hooked[tab] then
-		hooked[tab] = true
-		hooksecurefunc(tab, 'SetAlpha', function(widget, alpha)
-			if not CHT.config.tabs.fade and alpha ~= 1 then
-				SetTabAlpha(widget, 1)
-			end
-		end)
-	end
-	held[tab] = true
-	if tab:GetAlpha() ~= 1 then SetTabAlpha(tab, 1) end
+	HoldAtOne(tab)
 end
 
--- Every window's tab takes tabs.fade now (a profile change, the /sui toggle).
+-- The dock's overflow button (the tabs that don't fit) fades with the tabs: Blizzard's
+-- FCF_FadeInChatFrame and FCF_FadeOutChatFrame fade it through its SetAlpha to the selected
+-- tab's alphas. It is held at 1 the same way a tab is, and given the selected tab's alpha
+-- back (CHAT_FRAME_TAB_SELECTED_MOUSEOVER_ALPHA once ChatFrame1 has been faded, else the
+-- no-mouse one) when fading comes on again.
+function CHT:HoldOverflowAlpha()
+	local dock = GENERAL_CHAT_DOCK
+	local button = dock and dock.overflowButton
+	if not button then return end
+	if self.config.tabs.fade then
+		if held[button] then
+			held[button] = nil
+			local alpha = ChatFrame1 and ChatFrame1.hasBeenFaded and CHAT_FRAME_TAB_SELECTED_MOUSEOVER_ALPHA
+				or CHAT_FRAME_TAB_SELECTED_NOMOUSE_ALPHA
+			if alpha then SetTabAlpha(button, alpha) end
+		end
+		return
+	end
+	HoldAtOne(button)
+end
+
+-- Every window's tab takes tabs.fade now (a profile change, the /sui toggle), and so does
+-- the dock's overflow button.
 function CHT:ApplyTabFading()
 	for chatID = 1, NUM_CHAT_WINDOWS do
 		local frame = _G['ChatFrame' .. chatID]
 		if frame then self:HoldTabAlpha(frame) end
 	end
+	self:HoldOverflowAlpha()
 end
 
 function CHT:SkinChatFrame(frame)
 	local name = frame:GetName()
 	st:StripTextures(frame)
 	st:SetBackdropIn(backdrops, frame, self.config.theme, self.config.background, 'panel')
-	local backdrop = backdrops[frame]
 
 	st:Kill(_G[frame:GetName()..'Background'])
 	st:Kill(_G[frame:GetName()..'RightTexture'])
 
 	st:SkinScrollBar(frame.ScrollBar)
-	frame.ScrollBar:ClearAllPoints()
-	frame.ScrollBar:SetPoint('TOPLEFT', backdrop, 'TOPRIGHT', 5, 0)
-	frame.ScrollBar:SetPoint('BOTTOMLEFT', backdrop, 'BOTTOMRIGHT', 5, 0)
 
 	frame:SetScript('OnMouseWheel', onMouseScroll)
 	
@@ -215,9 +241,6 @@ function CHT:SkinChatFrame(frame)
 	editbox:SetFrameLevel(frame:GetFrameLevel()+2)
 	editbox:SetAltArrowKeyMode(false)
 	st:SkinEditBox(editbox, self.config.theme, self.config.background, self.config.font)
-	editbox:ClearAllPoints()
-	editbox:SetPoint('BOTTOMLEFT', backdrop, 'TOPLEFT', 0, 1)
-	editbox:SetPoint('BOTTOMRIGHT', backdrop, 'TOPRIGHT', 0, 1)
 	-- Added to Blizzard's own OnShow and OnHide (ChatFrameEditBoxMixin), which run first and
 	-- stay: they reset the chat type, deactivate the box and pick the last active window.
 	if not hooked[editbox] then
@@ -240,7 +263,8 @@ function CHT:SkinChatFrame(frame)
 end
 
 function CHT:UpdateChatFrameDisplay(frame)
-	st:SetBackdropIn(backdrops, frame, self.config.theme, self.config.background, 'panel')
+	-- The backdrop when a look is drawn; nil under None, even after a theme was drawn once.
+	local drawnBackdrop = st:SetBackdropIn(backdrops, frame, self.config.theme, self.config.background, 'panel')
 
 	local offset = 0
 	if frame.CombatLogQuickButtonFrame then
@@ -252,6 +276,26 @@ function CHT:UpdateChatFrameDisplay(frame)
 		backdrop:ClearAllPoints()
 		backdrop:SetPoint('TOPLEFT', -self.config.padding, self.config.padding + offset)
 		backdrop:SetPoint('BOTTOMRIGHT', self.config.padding, -self.config.padding)
+	end
+
+	-- The edit box and the scroll bar sit against the backdrop, or against the window itself
+	-- while the theme is None: a nil relative frame would mean the box's parent, which
+	-- Blizzard sets to UIParent, and put it off the top of the screen. Only for a window
+	-- SkinChatFrame skinned (a temporary one comes through here from Blizzard's hook too).
+	local own = pieces[frame]
+	if own then
+		local against = drawnBackdrop or frame
+		-- The backdrop's top already includes the combat log's quick button bar (`offset`);
+		-- the window's own top is that much lower.
+		local rise = drawnBackdrop and 1 or offset + 1
+		local editbox = own.editbox
+		editbox:ClearAllPoints()
+		editbox:SetPoint('BOTTOMLEFT', against, 'TOPLEFT', 0, rise)
+		editbox:SetPoint('BOTTOMRIGHT', against, 'TOPRIGHT', 0, rise)
+		local scrollbar = frame.ScrollBar
+		scrollbar:ClearAllPoints()
+		scrollbar:SetPoint('TOPLEFT', against, 'TOPRIGHT', 5, 0)
+		scrollbar:SetPoint('BOTTOMLEFT', against, 'BOTTOMRIGHT', 5, 0)
 	end
 
 	if frame == ChatFrame1 then
@@ -451,6 +495,7 @@ function CHT:ApplyAppearance()
 	for chatID=1, NUM_CHAT_WINDOWS do
 		self:ApplyChatFrameConfig(_G['ChatFrame'..chatID])
 	end
+	self:HoldOverflowAlpha()
 end
 
 -- A profile change: chat size and position, then each chat frame's look, tab fading
@@ -545,15 +590,25 @@ end
 function CHT:FCFDock_UpdateTabs(dock, forceUpdate)
 	if not (dock.isDirty or forceUpdate) then return end
 
+	-- The dock scrolls an overflowing row by moving its scroll child, so a tab that
+	-- Blizzard anchors to the scroll child (the first one that isn't static docked, from
+	-- ChatFrame3 up) keeps that anchor, and the tabs after it follow it and scroll with it.
+	local scrollFrame = dock.scrollFrame
+	local scrollChild = scrollFrame and scrollFrame:GetScrollChild()
 	local prev
 	for index, frame in ipairs(dock.DOCKED_CHAT_FRAMES) do
 		local tab = TabOf(frame)
 		if tab then
-			if prev then
-				tab:SetPoint('BOTTOMLEFT', prev, 'BOTTOMRIGHT', 0, 0)
-			else
+			local _, relative = tab:GetPoint(1)
+			if not (scrollChild and relative == scrollChild) then
+				-- Blizzard's layout just gave this tab an anchor of its own (LEFT of the one
+				-- before it, or on the dock): cleared, so the tab keeps only this one.
 				tab:ClearAllPoints()
-				tab:SetPoint('BOTTOMLEFT', frame, 'TOPLEFT', 0, 10)
+				if prev then
+					tab:SetPoint('BOTTOMLEFT', prev, 'BOTTOMRIGHT', 0, 0)
+				else
+					tab:SetPoint('BOTTOMLEFT', frame, 'TOPLEFT', 0, 10)
+				end
 			end
 			prev = tab
 		end
@@ -574,6 +629,7 @@ function CHT:OnEnable()
 	for chatID=1, NUM_CHAT_WINDOWS do
 		self:SkinChatFrame(_G['ChatFrame'..chatID])
 	end
+	self:HoldOverflowAlpha()
 
 	-- The holder exists, with its hooks and the screen edge margin (TakeOverChatFrame),
 	-- before it is first placed: placing it copies the size and where it shows to
