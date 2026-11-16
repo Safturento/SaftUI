@@ -41,6 +41,12 @@
 
 local locked = load_test_file('lib/locked_widget.lua')
 
+-- Where the roll buttons are: Forever keeps them in a LootButtonContainer child,
+-- retail directly on the roll frame (GroupLootFrame.xml on each). The tests of a
+-- click run on both (each_shape); the rest on Forever's.
+local SHAPE = 'forever'
+local function BC(frame) return frame.LootButtonContainer or frame end
+
 local LT, st, T, drawn, S
 local game -- { rolls = { [rollID] = roll }, drops = { drop, ... }, rolled = { [rollID] = rollType } }
 
@@ -81,17 +87,24 @@ local function game_api()
 	-- it returns (the events are synchronous): a roll that needs no confirmation
 	-- is cancelled for you (CANCEL_LOOT_ROLL, so Blizzard takes the bar away and
 	-- the next waiting roll may take its frame), one that needs it (bind on
-	-- pickup, `confirm`) asks (CONFIRM_LOOT_ROLL: the bar stays up, and nothing
-	-- more happens until you accept), and a main spec Need (`needAnim`) starts
-	-- its dice animation (MAIN_SPEC_NEED_ROLL: the timer zeroed, the bar up; 'instant'
-	-- also cancels it at once). A roll the game doesn't know, or a type it
-	-- doesn't have, does nothing.
+	-- pickup, `confirm`: Need, Greed, Transmog and Disenchant ask, Pass binds
+	-- nothing and never does) asks (CONFIRM_LOOT_ROLL: the bar stays up, and
+	-- nothing more happens until you accept). A main spec Need (`needAnim`)
+	-- starts its dice animation (MAIN_SPEC_NEED_ROLL: the timer zeroed, the bar
+	-- up). That event almost certainly comes later, from the server (the
+	-- animation could not play if the roll were cancelled inside the call), so
+	-- `needAnim = 'later'` is the realistic case (nothing inside the call, the
+	-- test sends the event); `true` has it inside the call and `'instant'`
+	-- inside it and cancelled at once, to show the code handles that order too.
+	-- A roll the game doesn't know, or a type it doesn't have, does nothing.
 	function RollOnLoot(rollID, rollType)
 		game.rolled[rollID] = rollType
 		local roll = game.rolls[rollID]
 		if not roll or type(rollType) ~= 'number' or rollType < 0 or rollType > 4 then return end
-		if roll.confirm then
+		if roll.confirm and rollType ~= 0 then
 			stub.fire_event('CONFIRM_LOOT_ROLL', rollID, rollType)
+		elseif rollType == 1 and roll.needAnim == 'later' then
+			return
 		elseif rollType == 1 and roll.needAnim then
 			stub.fire_event('MAIN_SPEC_NEED_ROLL', rollID, 77, true)
 			if roll.needAnim == 'instant' then stub.fire_event('CANCEL_LOOT_ROLL', rollID) end
@@ -217,7 +230,7 @@ local function blizzard()
 		end
 		self.IconFrame.Icon:SetTexture(texture)
 		self.Name:SetText(name)
-		local buttons = self.LootButtonContainer
+		local buttons = BC(self)
 		buttons.TransmogButton:SetShown(canTransmog)
 		buttons.GreedButton:SetShown(not canTransmog)
 		self:RegisterEvent('CANCEL_LOOT_ROLL')
@@ -225,12 +238,12 @@ local function blizzard()
 		self:RegisterEvent('MAIN_SPEC_NEED_ROLL')
 	end
 	function GroupLootFrame_StopNeedAnimation(self)
-		for _, button in ipairs(self.LootButtonContainer.LootButtons) do button:Show() end
+		for _, button in ipairs(BC(self).LootButtons) do button:Show() end
 		self.NeedRollAnim:Hide()
 	end
 	function GroupLootFrame_StartNeedAnimation(self)
 		self.Timer:SetValue(0)
-		for _, button in ipairs(self.LootButtonContainer.LootButtons) do button:Hide() end
+		for _, button in ipairs(BC(self).LootButtons) do button:Hide() end
 		self.NeedRollAnim:Show()
 	end
 	function GroupLootFrame_OnHide(self)
@@ -279,8 +292,11 @@ local function blizzard()
 		_G[name .. 'Corner'] = frame:CreateTexture(nil, 'ARTWORK')
 		frame.NeedRollAnim = CreateFrame('Frame', nil, frame)
 		frame.NeedRollAnim:Hide()
-		local buttons = CreateFrame('Frame', nil, frame)
-		frame.LootButtonContainer = buttons
+		local buttons = frame -- retail: the buttons are the frame's own
+		if SHAPE == 'forever' then
+			buttons = CreateFrame('Frame', nil, frame)
+			frame.LootButtonContainer = buttons
+		end
 		buttons.LootButtons = {}
 		for _, def in ipairs(BUTTONS) do
 			local button = CreateFrame('Button', nil, buttons)
@@ -293,7 +309,8 @@ local function blizzard()
 			art:SetAtlas('lootroll-toast-icon-' .. def[1]:lower() .. '-up')
 			buttonArt[button] = art
 			button:SetScript('OnClick', function(self)
-				RollOnLoot(self:GetParent():GetParent().rollID, self:GetID())
+				local owner = SHAPE == 'forever' and self:GetParent():GetParent() or self:GetParent()
+				RollOnLoot(owner.rollID, self:GetID())
 			end)
 			buttons[def[1] .. 'Button'] = button
 			table.insert(buttons.LootButtons, button)
@@ -414,14 +431,18 @@ end
 local STATE_OF = { Need = 'NeedMainSpec', Greed = 'Greed', Pass = 'Pass', Transmog = 'Transmog' }
 
 -- A click on a button: its PreClick, OnClick (RollOnLoot) and PostClick.
+-- The game delivers no click to a hidden or disabled button (as stub.click
+-- refuses), so then none of the three scripts runs. Returns whether it clicked.
 local function click(button)
+	if not button:IsVisible() or not button:IsEnabled() then return false end
 	stub.fire_script(button, 'PreClick', 'LeftButton', false)
 	stub.fire_script(button, 'OnClick', 'LeftButton', false)
 	stub.fire_script(button, 'PostClick', 'LeftButton', false)
+	return true
 end
 
 local function click_of(rollID, choice)
-	click(frame_of(rollID).LootButtonContainer[choice .. 'Button'])
+	return click(BC(frame_of(rollID))[choice .. 'Button'])
 end
 
 -- You click a roll button on Blizzard's bar: RollOnLoot, inside which the game
@@ -469,7 +490,7 @@ end
 
 -- The atlas a Blizzard roll frame's button for a choice draws.
 local function live_atlas(frame, choice)
-	return buttonArt[frame.LootButtonContainer[choice .. 'Button']]:GetAtlas()
+	return buttonArt[BC(frame)[choice .. 'Button']]:GetAtlas()
 end
 
 -- Whether any of the tooltip's left texts has needle in it.
@@ -629,19 +650,47 @@ test('the counts follow loot history updates', function()
 	check(tooltip_has('Stonefist'), 'and the open tooltip is rebuilt with it')
 end)
 
-test('a main spec Need held after its dice animation keeps its drop and its time', function()
+test('a main spec Need whose animation starts inside the call is held after it, with its drop and its time', function()
 	world()
 	local drop = add_drop('amulet', { { 'Brightblade', 'PALADIN', 'NeedMainSpec', 41 } })
 	local roll = start_roll('amulet', { needAnim = true })
 	LT:UpdateRollBars()
 	tick(20)
 
-	-- The client answers a main spec Need, inside RollOnLoot, with the dice
-	-- animation: Blizzard's bar stays up for 5 seconds, its timer zeroed (before
-	-- RollOnLoot returns) and its buttons hidden.
+	-- If the client starts the dice animation inside RollOnLoot (probably it does
+	-- not: the event comes later, from the server; the code handles both), Blizzard's
+	-- bar stays up for 5 seconds, its timer zeroed (before RollOnLoot returns) and
 	local frame = frame_of(roll)
 	click_of(roll, 'Need')
 	eq(frame.Timer:GetValue(), 0, 'the timer was zeroed inside the call')
+	history_choice(drop, 'NeedMainSpec', 77)
+	LT:UpdateRollBars()
+	tick(5)
+	check(frame:IsShown() and frame.Timer:GetValue() == 0, "Blizzard's bar is still up, its timer at 0")
+	GroupLootFrame_Remove(frame) -- its C_Timer.After(5) callback
+
+	local bar = held_bar(roll)
+	check(bar ~= nil, 'held once the animation ends')
+	if not bar then return end
+	eq(count(bar, 'Need'), '2', 'with its drop: Brightblade and you')
+	eq(bar.Timer.Text:GetText(), '01:35', 'and the time left when you chose, run on since')
+	eq(bar.Choice:GetText(), 'Need', 'locked on Need')
+end)
+
+test('a main spec Need whose animation starts after the call (the server answers later) is held after it, with its drop and its time', function()
+	world()
+	local drop = add_drop('amulet', { { 'Brightblade', 'PALADIN', 'NeedMainSpec', 41 } })
+	local roll = start_roll('amulet', { needAnim = 'later' })
+	LT:UpdateRollBars()
+	tick(20)
+
+	-- The server answers a main spec Need a moment after the call, with the dice
+	-- animation: Blizzard's bar stays up for 5 seconds, its timer zeroed and its
+	-- buttons hidden.
+	local frame = frame_of(roll)
+	click_of(roll, 'Need')
+	check(frame:IsShown() and frame.Timer:GetValue() > 0, 'nothing happened inside the call')
+	stub.fire_event('MAIN_SPEC_NEED_ROLL', roll, 77, true)
 	history_choice(drop, 'NeedMainSpec', 77)
 	LT:UpdateRollBars()
 	tick(5)
@@ -984,7 +1033,7 @@ test('the held roll debug prints each early return, finishing and release, once'
 
 	st.DEBUG = true
 	local late = start_roll('ring')
-	choose(late, 'Greed')
+	choose(late, 'Transmog')
 	lines = printed_by(function() tick(125) end)
 	check(any_line(lines, 'held roll finished: ' .. late .. ' time'), 'a held roll that times out says why')
 	eq(#lines, 1, 'the frame it finishes prints that and nothing else: ' .. table.concat(lines, ' | '))
@@ -1491,17 +1540,17 @@ end)
 
 test('a Disenchant choice lights the Greed or Transmog button the bar shows', function()
 	world()
-	local greed = start_roll('amulet') -- Greed shows
-	local transmog = start_roll('ring') -- Transmog shows
+	local greed = start_roll('amulet', { confirm = true }) -- Greed shows
+	local transmog = start_roll('ring', { confirm = true }) -- Transmog shows
 	tick(5)
-	-- Disenchant (3) has no button on these bars: a button given that ID (the
-	-- game's click path reads the ID, so this is the click's Disenchant).
+	-- Neither client has a Disenchant button: an addon calls RollOnLoot(roll, 3).
+	-- A roll with no confirmation would be cancelled inside the call (not held,
+	-- see docs/followups.md); one that asks (bind on pickup) stays up, the post-hook
+	-- notes the choice, and accepting the popup takes the bar away.
 	for _, roll in ipairs({ greed, transmog }) do
-		local buttons = frame_of(roll).LootButtonContainer
-		local button = buttons.NeedButton
-		button:SetID(3)
-		click(button)
-		button:SetID(1)
+		RollOnLoot(roll, 3)
+		check(frame_of(roll) ~= nil, 'the bar stays up for the popup')
+		stub.fire_event('CANCEL_LOOT_ROLL', roll) -- you accept
 	end
 
 	local a, b = held_bar(greed), held_bar(transmog)
@@ -1516,6 +1565,18 @@ end)
 
 ------------------------------------------------------------------ a click holds the roll at the bar's hide
 
+-- A test run once on each client's roll frame shape.
+local function each_shape(name, fn)
+	for _, shape in ipairs({ 'forever', 'retail' }) do
+		test(name .. ' [' .. shape .. ']', function()
+			SHAPE = shape
+			local ok, err = pcall(fn)
+			SHAPE = 'forever'
+			if not ok then error(err, 0) end
+		end)
+	end
+end
+
 -- A plain click (no confirmation): the client cancels the roll inside
 -- RollOnLoot, so the bar hides before RollOnLoot returns and before any post-hook
 -- on it could note the choice. The click's PreClick has noted it already.
@@ -1524,7 +1585,7 @@ for _, case in ipairs({
 	{ 'Transmog', 'ring', 'Transmog' },
 }) do
 	local choice, key, label = case[1], case[2], case[3]
-	test('a plain click on ' .. choice .. ' holds the roll with its choice, drop, time and place', function()
+	each_shape('a plain click on ' .. choice .. ' holds the roll with its choice, drop, time and place', function()
 		world()
 		local first = add_drop('sword', {})
 		local drop = add_drop(key, { { 'Brightblade', 'PALADIN', 'Greed' } })
@@ -1556,7 +1617,7 @@ for _, case in ipairs({
 	end)
 end
 
-test('a roll chosen with a fifth waiting is held with its own item while its frame shows the next', function()
+each_shape('a roll chosen with a fifth waiting is held with its own item while its frame shows the next', function()
 	world()
 	local drops = { add_drop('sword', {}), add_drop('amulet', { { 'Mistweave', 'PRIEST', 'Greed' } }),
 		add_drop('cloth', {}), add_drop('ring', {}), add_drop('sword', {}) }
@@ -1583,7 +1644,7 @@ test('a roll chosen with a fifth waiting is held with its own item while its fra
 	eq(count(bar, 'Greed'), '2', 'and the old roll\'s counts, not the new one\'s')
 end)
 
-test('a confirmation roll is held once you accept, and not when you cancel the popup', function()
+each_shape('a confirmation roll is held once you accept, and not when you cancel the popup', function()
 	world()
 	local drop = add_drop('amulet', {})
 	local roll = start_roll('amulet', { confirm = true })
@@ -1610,7 +1671,7 @@ test('a confirmation roll is held once you accept, and not when you cancel the p
 	eq(held_bar(declined), nil, 'a later time-out is not shown as chosen')
 end)
 
-test('a main spec Need whose timer is zeroed inside the call is held with the time read before it', function()
+test('a main spec Need cancelled right after its animation, inside the call, is held with the time read before it', function()
 	world()
 	local drop = add_drop('amulet', {})
 	local roll = start_roll('amulet', { needAnim = 'instant' })
@@ -1643,14 +1704,14 @@ test('a click that hides nothing leaves no pending choice, and a pending choice 
 	local c = start_roll('cloth')
 	tick(0)
 	local frame = frame_of(c)
-	stub.fire_script(frame.LootButtonContainer.GreedButton, 'PreClick', 'LeftButton', false)
-	stub.fire_script(frame.LootButtonContainer.GreedButton, 'PostClick', 'LeftButton', false)
+	stub.fire_script(BC(frame).GreedButton, 'PreClick', 'LeftButton', false)
+	stub.fire_script(BC(frame).GreedButton, 'PostClick', 'LeftButton', false)
 	tick(30)
 	stub.fire_event('CANCEL_LOOT_ROLL', c)
 	eq(held_bar(c), nil, 'a cleared pending choice holds nothing')
 end)
 
-test('a roll click holds in combat with no call blocked', function()
+test('a roll click holds in combat', function()
 	world()
 	local drop = add_drop('amulet', {})
 	local roll = start_roll('amulet')
@@ -1660,7 +1721,62 @@ test('a roll click holds in combat with no call blocked', function()
 	choose(roll, 'Greed', drop)
 	stub.in_combat = false
 	check(held_bar(roll) ~= nil, 'held in combat')
-	eq(#stub.blocked, 0, 'no protected call was blocked')
+end)
+
+each_shape('a bind on pickup Need, then Pass while its popup is up, is held as Pass', function()
+	world()
+	add_drop('amulet', {})
+	local roll = start_roll('amulet', { confirm = true })
+	LT:UpdateRollBars()
+	tick(10)
+	click_of(roll, 'Need') -- the popup: the choice is noted, the bar stays
+	check(frame_of(roll) ~= nil, 'the bar is still up')
+	click_of(roll, 'Pass') -- a Pass binds nothing: the client cancels the roll inside the call
+	local bar = held_bar(roll)
+	check(bar ~= nil, 'held')
+	if bar then eq(bar.Choice:GetText(), 'Pass', 'on Pass, not the Need noted before it') end
+end)
+
+test('a roll whose hold is skipped is not reported as held at the bar hiding', function()
+	world()
+	local roll = start_roll('amulet')
+	LT:UpdateRollBars()
+	tick(119.5)
+	st.DEBUG = true
+	local lines = printed_by(function() choose(roll, 'Greed') end)
+	st.DEBUG = false
+	check(any_line(lines, 'hold ' .. roll .. ' skipped: under a second left'), 'the hold is skipped: ' .. table.concat(lines, ' | '))
+	check(not any_line(lines, 'choice held at the bar hiding'), 'and nothing says it was held')
+end)
+
+test('CANCEL_ALL_LOOT_ROLLS clears a pending click (its PostClick never ran), so no later hide holds it', function()
+	world()
+	local roll = start_roll('amulet')
+	LT:UpdateRollBars()
+	tick(10)
+	-- A PreClick with no PostClick after it (an error in OnClick, say).
+	stub.fire_script(BC(frame_of(roll)).GreedButton, 'PreClick', 'LeftButton', false)
+	stub.fire_event('CANCEL_ALL_LOOT_ROLLS') -- SaftUI hears it first
+	eq(#LT:GetHeldRolls(), 0, 'nothing held after SaftUI and then Blizzard hear it')
+	for i = 1, 4 do check(not _G['GroupLootFrame' .. i]:IsShown(), "Blizzard's bars are gone") end
+end)
+
+test('a disabled Need takes no click: nothing is pending, nothing held', function()
+	world()
+	local roll = start_roll('amulet')
+	LT:UpdateRollBars()
+	tick(10)
+	local need = BC(frame_of(roll)).NeedButton
+	need:Disable() -- canNeed false: Blizzard disables it with a reason
+	st.DEBUG = true
+	local clicked
+	local lines = printed_by(function() clicked = click(need) end)
+	st.DEBUG = false
+	eq(clicked, false, 'the game delivers no click to a disabled button')
+	eq(game.rolled[roll], nil, 'RollOnLoot was not called')
+	check(not any_line(lines, 'choice pending'), 'nothing pending')
+	stub.fire_event('CANCEL_LOOT_ROLL', roll) -- the roll ends
+	eq(held_bar(roll), nil, 'not held')
 end)
 
 ------------------------------------------------------------------ no fields on Blizzard's frames

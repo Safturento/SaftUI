@@ -7,7 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
-  - [2026-11-15 — A roll an addon or the gamepad UI rolls with RollOnLoot is not held on a plain choice](#2026-11-15--a-roll-an-addon-or-the-gamepad-ui-rolls-with-rollonloot-is-not-held-on-a-plain-choice)
+  - [2026-11-15 — An addon's direct RollOnLoot on a roll with no confirmation is not held](#2026-11-15--an-addons-direct-rollonloot-on-a-roll-with-no-confirmation-is-not-held)
   - [2026-11-15 — The color picker's preview copies other widgets' geometry](#2026-11-15--the-color-pickers-preview-copies-other-widgets-geometry)
   - [2026-11-15 — UI scale: a frame drawn parentless and parented later into a frame with a scale of its own keeps UIParent's line](#2026-11-15--ui-scale-a-frame-drawn-parentless-and-parented-later-into-a-frame-with-a-scale-of-its-own-keeps-uiparents-line)
   - [2026-11-15 — UI scale: the bags' loading overlay holds st.BACKDROP and needs SetBackdrop(nil) to take a new line](#2026-11-15--ui-scale-the-bags-loading-overlay-holds-stbackdrop-and-needs-setbackdropnil-to-take-a-new-line)
@@ -208,9 +208,9 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 ## Active
 
-### 2026-11-15 — A roll an addon or the gamepad UI rolls with RollOnLoot is not held on a plain choice
+### 2026-11-15 — An addon's direct RollOnLoot on a roll with no confirmation is not held
 
-**What:** A held roll (`SaftUI-Loot/rollinfo.lua`) is held at the bar's hide from the choice a roll button's `PreClick` noted. A call to `RollOnLoot` with no click on a Blizzard roll button (another addon, or the gamepad UI) has no PreClick, and on a roll with no confirmation the client cancels the roll inside the call, so the bar hides with no choice known and is not held. Only the post-hook's own case (a confirmation, a Need's animation: the bar stays up) works for such a call.
+**What:** A held roll (`SaftUI-Loot/rollinfo.lua`) is held at the bar's hide from the choice a roll button's `PreClick` noted. A call to `RollOnLoot` with no click on a Blizzard roll button (another addon's) has no PreClick, and on a roll with no confirmation the client cancels the roll inside the call, so the bar hides with no choice known and is not held. Only the post-hook's own case (a confirmation, a Need's animation: the bar stays up) works for such a call. (The gamepad UI is not a case: with it on, on Forever, Blizzard's own cards show the rolls and SaftUI's frames never show one.)
 
 **Why noticed:** Fixing "loot roll didn't stay open" (the owner's debug lines were `bar hid: ... choice noted false frame hidden true`, then `choice not noted: ... no shown bar with that roll`): the cause was that a plain click's roll is cancelled inside `RollOnLoot`, before the post-hook runs. The fix covers a button click through PreClick; this is the part it leaves.
 

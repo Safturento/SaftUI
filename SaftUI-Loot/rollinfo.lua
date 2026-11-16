@@ -19,16 +19,16 @@
 -- click as pending, and the bar hiding holds the roll with it; a post-hook on
 -- RollOnLoot notes the choice that leaves the bar up (a bind on pickup
 -- confirmation, a Need's dice animation). The held bar carries the roll's drop
--- forward and is matched and updated here with the Blizzard bars. A Blizzard bar never takes a drop
--- you've chosen on (only a bar that keeps its roll keeps one), and a held roll
--- only takes one you have. It finishes when its drop resolves (here) or its
+-- forward and is matched and updated here with the Blizzard bars. A Blizzard
+-- bar never takes a drop you've chosen on (only a bar that keeps its roll keeps
+-- one), and a held roll only takes one you have. It finishes when its drop resolves (here) or its
 -- time runs out (roll.lua): it then stays up a few seconds and fades before it
 -- goes (roll.lua), takes no drop and is left out of matching; it still shows
 -- the later results of the drop it finished on (counts only).
 --
 -- The roll frames and their buttons are Blizzard's: nothing is written onto
 -- them. Each bar's count font strings and matched drop live in `bars`, keyed by
--- the roll frame, and Blizzard's scripts get post-hooks only. The info frame
+-- the roll frame, and Blizzard's scripts get native hooks only. The info frame
 -- (the bar's body) is SaftUI's own, from roll.lua (LT:GetRollInfoFrame).
 --
 -- Feed/rolls.lua calls LT:UpdateRollBars after every loot history update, and
@@ -56,8 +56,9 @@ local chosen = {}
 -- The same, for a roll button's click still under way, by rollID: recorded at
 -- PreClick, before RollOnLoot, and cleared at PostClick, so it never outlives its
 -- click. The time is read then: the game can cancel the roll inside RollOnLoot
--- (a plain click), and a main spec Need zeroes Blizzard's timer for its dice
--- animation. `held` is set once the bar's hiding has held the roll with it.
+-- (a plain click), and a main spec Need's dice animation zeroes Blizzard's timer
+-- (it probably starts after the call, on the server's answer; if it starts inside
+-- it, the time is still the one read here). `held` is set once the bar's hiding has held the roll with it.
 local pending = {}
 -- [roll button] = the rollID its click is pending for, to clear it at PostClick
 -- (the frame may show another roll by then).
@@ -414,12 +415,13 @@ local function OnBarHide(frame)
 		end
 		if choice and not frame:IsShown() then
 			chosen[state.rollID] = nil
-			choice.held = true
-			LT:HoldRoll(frame, {
+			local bar = LT:HoldRoll(frame, {
 				rollID = state.rollID, choice = choice.choice, ends = choice.ends, length = choice.length,
 				link = state.link, item = state.item, itemID = state.itemID,
 				dropID = state.dropID or state.lastDropID, rolls = state.dropID and state.rolls,
 			})
+			-- Only a hold that happened: the post-hook says nothing of one skipped.
+			if bar then choice.held = true end
 		end
 		ClearBar(state)
 	end
@@ -477,10 +479,11 @@ end
 -- a roll a skinned bar still shows, with the time it has left. A roll whose bar
 -- already went (a plain click: the game cancelled it inside the call) was held
 -- at that hide. A click's choice is the one PreClick read, before the call (a
--- Need's dice animation zeroes the timer inside it); a direct call's time is
--- read here. A choice the game asks you to confirm (CONFIRM_LOOT_ROLL, for a
--- bind on pickup item) is noted at once; cancelling it leaves the bar up, and
--- the next choice replaces it.
+-- Need's dice animation, if it starts inside the call, zeroes the timer; it
+-- probably comes after, from the server, and the code handles both); a direct
+-- call's time is read here. A choice the game asks you to confirm
+-- (CONFIRM_LOOT_ROLL, for a bind on pickup item) is noted at once; cancelling it
+-- leaves the bar up, and the next choice replaces it.
 local function OnRollChosen(rollID, rollType)
 	local PlainNumber = LT.PlainNumber
 	rollID, rollType = PlainNumber(rollID), PlainNumber(rollType)
@@ -521,6 +524,7 @@ end
 -- there's no choice left to hold.
 function LT:OnCancelAllLootRolls()
 	wipe(chosen)
+	wipe(pending)
 	local list = {}
 	for _, bar in ipairs(self:GetHeldRolls()) do tinsert(list, bar) end
 	for _, bar in ipairs(list) do self:ReleaseHeldRoll(bar) end
