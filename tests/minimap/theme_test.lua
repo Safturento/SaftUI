@@ -47,8 +47,20 @@ test('every value row of the Minimap and Micro menu pages has a reset', function
 	local update, updateMicro = MM.UpdateConfig, MicroMenu.UpdateConfig
 	function MM:UpdateConfig() end -- the rows' own sets still run; what they apply is not under test
 	function MicroMenu:UpdateConfig() end
+	-- Each setup calls its registration (deleting a call would leave a frame with no mover), and the keys are the real ones.
+	local function Calls(path, setup, call)
+		local body = read_saftui_source(path):match('function ' .. setup .. '%(%).-\nend')
+		check(body and body:find(call, 1, true), setup .. ' calls ' .. call)
+	end
+	Calls('SaftUI-Minimap/minimap.lua', 'MM:OnEnable', 'self:RegisterMinimapMover()')
+	Calls('SaftUI-Minimap/micromenu.lua', 'MicroMenu:OnEnable', 'self:RegisterMicroMenuMover()')
+	local registerMover, keys = st.RegisterConfigMover, {}
+	function st:RegisterConfigMover(frame, opts) keys[#keys + 1] = opts.key; return registerMover(self, frame, opts) end
 	MM:RegisterMinimapMover()
 	MicroMenu:RegisterMicroMenuMover()
+	st.RegisterConfigMover = registerMover
+	eq(keys[1], 'minimap', "the minimap mover's key")
+	eq(keys[2], 'micromenu', "the micro menu mover's key")
 	local R = load_test_file('lib/reset_walk.lua')
 	local ok, err = pcall(function()
 		R.check_page({ Minimap = MM:GetConfigTable() }, 'Minimap')
