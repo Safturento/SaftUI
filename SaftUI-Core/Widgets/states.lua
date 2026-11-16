@@ -973,6 +973,15 @@ function st:PaintStates(frame, derived)
 end
 
 -- After a look change (Blizzard or not, a new inset): out of a pass.
+-- The labels that followed a font object, painted again from it. A pass paints followers before
+-- modules, and the kit's field font is recolored by a module (Config:OnColorsChanged), so the
+-- FollowText follower reads its old color: Config calls this once that font is recolored.
+function st:RepaintKeptText()
+	for _, rec in pairs(records) do
+		if rec.follows then FollowText(rec) end
+	end
+end
+
 function st:RestyleStates(frame)
 	local rec = records[frame]
 	if rec then Restyle(rec) end

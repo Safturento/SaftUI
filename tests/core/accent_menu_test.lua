@@ -745,3 +745,32 @@ test('L6: the note under the strip under Blizzard takes 18 units: the menu rows 
 	T.theme('thick')
 	close_all()
 end)
+
+------------------------------------------------------------------ fix round 2
+
+test('M1: a label that went dark once shows Text > Normal in the same pass: three changes in a row, its reset, a profile switch', function()
+	fresh()
+	st.config.profile.theme.accent = CreateColor(0.9, 0.78, 0.29)
+	states().hover = 0.6
+	ST.Changed()
+	local b = W.Button(CreateFrame('Frame', nil, UIParent), 'Go', function() end)
+	b:SetSize(80, 26)
+	stub.fire_script(b, 'OnEnter', true)
+	eq(T.rgb(b.text:GetTextColor()), '0.07,0.07,0.07', 'dark')
+	stub.fire_script(b, 'OnLeave', true)
+	local normal = st.config.profile.colors.text.normal
+	for _, c in ipairs({ { 0.3, 0.9, 0.3 }, { 0.9, 0.3, 0.3 }, { 0.3, 0.3, 0.9 } }) do
+		normal:SetRGB(c[1], c[2], c[3])
+		st:ColorChanged('text', 'normal')
+		eq(T.rgb(b.text:GetTextColor()), T.rgb(c[1], c[2], c[3]), 'after the pass: that color')
+	end
+	-- Text > Normal's own reset
+	local default = st.defaults.colors.text.normal
+	normal:SetRGB(default.r, default.g, default.b)
+	st:ColorChanged('text', 'normal')
+	eq(T.rgb(b.text:GetTextColor()), T.rgb(default.r, default.g, default.b), 'its reset')
+	-- a profile switch (a whole pass of Text)
+	normal:SetRGB(0.5, 0.6, 0.7)
+	st:ColorsChanged('text')
+	eq(T.rgb(b.text:GetTextColor()), '0.50,0.60,0.70', 'a whole pass of Text')
+end)

@@ -291,6 +291,8 @@ function Config:OnColorsChanged(group, key)
 	if group == 'text' and (key == nil or key == 'normal') then
 		local OB = st.OptionsBody
 		if OB then OB.ColorFonts() end
+		-- the labels a state turned dark once follow it again, in this pass (the follower ran before it)
+		st:RepaintKeptText()
 	end
 end
 
