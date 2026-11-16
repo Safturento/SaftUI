@@ -144,16 +144,29 @@ end
 
 -- A label its owner recolors while a state is drawn on it (no hook on the label: a hooked
 -- SetTextColor would cost every pass): the helper remembers the color it painted last, and
--- when the label no longer has it, the owner set another. That is the owner's newest color,
--- and what comes back at rest (read from the first label, as the rest color is one for
--- all). A color within 1/1000 of the painted one is the painted one (the game hands colors
--- back in single precision).
+-- when a label no longer has it, the owner set another. That is the owner's newest color
+-- for that label, and what comes back at rest, label by label. A color within a byte and a
+-- half of the painted one is the painted one: the game keeps a color as bytes (8 bits a
+-- channel), so what it hands back is a byte step off what was set. A secret value is never
+-- compared.
+local TOL = 1.5 / 255
+
 local function NoteOwner(rec)
 	if not rec.painted then return end
-	local r, g, b = rec.texts[1]:GetTextColor()
-	if type(r) ~= 'number' then return end
-	if math.abs(r - rec.paintR) > 0.001 or math.abs(g - rec.paintG) > 0.001 or math.abs(b - rec.paintB) > 0.001 then
-		rec.ownR, rec.ownG, rec.ownB, rec.hasOwn = r, g, b, true
+	local texts = rec.texts
+	local own = rec.own
+	if not own then
+		own = {}
+		rec.own = own
+	end
+	for i = 1, #texts do
+		local r, g, b = texts[i]:GetTextColor()
+		r, g, b = st.PlainNumber(r), st.PlainNumber(g), st.PlainNumber(b)
+		if r and g and b
+			and (math.abs(r - rec.paintR) > TOL or math.abs(g - rec.paintG) > TOL or math.abs(b - rec.paintB) > TOL) then
+			local at = i * 4
+			own[at - 3], own[at - 2], own[at - 1], own[at] = r, g, b, true
+		end
 	end
 end
 
@@ -168,11 +181,16 @@ end
 local function RestText(rec)
 	NoteOwner(rec)
 	rec.painted = false
-	if rec.hasOwn then
-		rec.hasOwn = false
-		PutText(rec, rec.ownR, rec.ownG, rec.ownB)
-	else
-		PutText(rec, TextRest(rec))
+	local texts, own = rec.texts, rec.own
+	local rr, rg, rb = TextRest(rec)
+	for i = 1, #texts do
+		local at = i * 4
+		if own and own[at] then
+			own[at] = false
+			texts[i]:SetTextColor(own[at - 3], own[at - 2], own[at - 1])
+		else
+			texts[i]:SetTextColor(rr, rg, rb)
+		end
 	end
 end
 
@@ -578,13 +596,20 @@ end
 -- pass, and a recolor over hundreds of buttons and check boxes would pay it for each. A
 -- record's error is reported and the walk goes on. The walker is registered once, by the
 -- first AddStates.
+-- A record's error is reported once (not on every recolor): the first time it fails.
 local keptRec
 local function CallKept() return Kept(keptRec) end
+local function ReportOnce(err)
+	if not keptRec.reported then
+		keptRec.reported = true
+		return geterrorhandler()(err)
+	end
+end
 local function KeptAll()
 	for _, rec in pairs(records) do
 		if rec.edgeKind == 'theme' then
 			keptRec = rec
-			xpcall(CallKept, geterrorhandler())
+			xpcall(CallKept, ReportOnce)
 		end
 	end
 	keptRec = nil
@@ -624,6 +649,8 @@ function Restyle(rec)
 	rec.host = opts.host or frame
 	rec.blizzard = IsBlizzard(rec)
 	rec.inset = opts.inset or st:DrawnInset(rec.host) or 0
+	-- a mark left to the art (Blizzard's) may be moved by it: placed again on return
+	if MarkAlone(rec) then rec.pmHost = nil end
 	local kind = opts.edge
 	-- no edge said: a frame the theme engine drew has its border colored through the engine
 	if kind == nil and SHAPES[rec.shape].edge and st:DrawnFrame(frame) then kind = 'theme' end
@@ -649,8 +676,6 @@ function Restyle(rec)
 	if rec.layer then Place(rec.layer, rec.host, rec.inset) end
 	if rec.fill then Place(rec.fill, rec.host, rec.inset) end
 	if rec.bar then PlaceBar(rec) end
-	-- the mark is placed when it shows (Refresh): a hidden one costs a restyle no size read
-	if rec.mark and rec.selected and not MarkAlone(rec) then PlaceMark(rec) end
 	for i = 1, #GAME_PIECES do
 		local piece = mine[GAME_PIECES[i]]
 		if piece then Place(piece, rec.host, rec.inset) end
@@ -669,22 +694,28 @@ end
 local scaleHooked = false
 local scaleRec
 local function CallRestyle() return Restyle(scaleRec) end
+local function ReportScaleOnce(err)
+	if not scaleRec.reported then
+		scaleRec.reported = true
+		return geterrorhandler()(err)
+	end
+end
 local function RestyleAll()
 	for _, rec in pairs(records) do
 		scaleRec = rec
-		xpcall(CallRestyle, geterrorhandler())
+		xpcall(CallRestyle, ReportScaleOnce)
 	end
 	scaleRec = nil
 end
 
--- A barOffset of whole lines (a tab passes one line, st:GetLineSize(tab)) is kept as that
--- many lines, so a scale change moves it with the line.
+-- A barOffset is in units, and moves with the UI scale's line in one case only: it is exactly
+-- one line at the scale it is given (a tab passes st:GetLineSize(tab)), which is kept as one
+-- line. Any other number stays that many units (a 2 at 1.0 is not two lines); a caller that
+-- wants more than one line says so with barLines = n.
 local function LinesOf(offset, host)
-	local line = type(offset) == 'number' and offset > 0 and st:GetLineSize(host)
+	local line = type(offset) == 'number' and st:GetLineSize(host)
 	if not line or line <= 0 then return nil end
-	local n = offset / line
-	local whole = math.floor(n + 0.5)
-	if whole >= 1 and math.abs(n - whole) < 1e-4 then return whole end
+	if math.abs(offset - line) < 1e-4 then return 1 end
 	return nil
 end
 
@@ -699,6 +730,7 @@ end
 --   body       { r, g, b } or function(frame) -> r, g, b: what the text sits on, for the pick
 --   mark       the check's square (a texture; one is made when the shape is a check)
 --   glyphHover function(frame) -> r, g, b: a glyph's color under hover and pushed instead of edgeHover (a link's Text > Strong)
+--   barLines   the Bar's offset in lines (st:GetLineSize), which follows a UI scale change; barOffset of exactly one line is the same
 --   barOffset  units the Bar moves down (bottom) or left (left) from the host: a tab's underline one line below the tab
 --   glyph      a texture, a font string or a list of them, colored by the states on every shape; glyphRest = function(frame) -> r, g, b
 --   solid      a thumb's or knob's fill: a texture, or function(frame, r, g, b); else the knob's glyph or the thumb's backdrop
@@ -728,7 +760,11 @@ function st:AddStates(frame, shape, opts)
 		st:KeepOwnColors(KEEP, KeptAll)
 		if st.UIScale and st.UIScale.OnChanged then st.UIScale:OnChanged(RestyleAll) end
 	end
-	if opts and opts.barOffset ~= nil then rec.offLines = LinesOf(opts.barOffset, rec.opts.host or frame) end
+	if opts and opts.barLines ~= nil then
+		rec.offLines = type(opts.barLines) == 'number' and opts.barLines > 0 and opts.barLines or nil
+	elseif opts and opts.barOffset ~= nil then
+		rec.offLines = LinesOf(opts.barOffset, rec.opts.host or frame)
+	end
 	if not rec.followed then
 		rec.followed = true
 		st:FollowColor(rec, 'accent', nil, PaintRecord)
@@ -758,7 +794,13 @@ function st:SetState(frame, key, on)
 		elseif was then
 			rec.host:SetAlpha(rec.restAlpha or 1)
 			-- enabled again under the mouse: hover shows again (the game fires no OnEnter for it)
-			if not rec.hover and type(frame.IsMouseOver) == 'function' and frame:IsMouseOver() then rec.hover = true end
+			if not rec.hover and frame:IsVisible() then
+				-- the mouse focus where the client has it (a frame under another is not hovered: no
+				-- OnLeave would clear it), else the rectangle
+				local over
+				if frame.IsMouseMotionFocus then over = frame:IsMouseMotionFocus() else over = frame:IsMouseOver() end
+				if over then rec.hover = true end
+			end
 		end
 	elseif rec.disabled and (key == 'hover' or key == 'pushed') then
 		rec[key] = false

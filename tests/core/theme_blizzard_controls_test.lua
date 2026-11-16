@@ -278,6 +278,21 @@ test("a check box takes checkbox-minimal, checked checkmark-minimal, and SaftUI'
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+test("H2: a checked check box has its Mark 2 in again after Thick, Blizzard, Thick", function()
+	local st = fresh()
+	st.config.profile.theme.name = 'blizzard'
+	local box = st:CreateCheckButton('ThemeTestCheckBoxH2', UIParent)
+	box:SetPoint('CENTER')
+	T.theme('thick')
+	box:SetChecked(true)
+	local checked = box:GetCheckedTexture()
+	eq(T.around(checked, box), '2,-2,-2,2', 'Thick, checked')
+	T.theme('blizzard'); T.theme('thick')
+	eq(T.around(checked, box), '2,-2,-2,2', 'Thick again, still checked')
+	box:SetChecked(false); T.theme('blizzard'); T.theme('thick'); box:SetChecked(true)
+	eq(T.around(checked, box), '2,-2,-2,2', 'unchecked through the trip, then checked')
+end)
+
 test("a check button styled 'button' is a panel button, pressed while checked", function()
 	local st = fresh()
 	st.config.profile.theme.name = 'blizzard'

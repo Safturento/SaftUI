@@ -658,8 +658,11 @@ local function put_color(s, field, r, g, b, a)
 	end
 	c[1], c[2], c[3], c[4] = r, g, b, a or 1
 end
+-- stub.color_bytes (a test opts in): a vertex or text color is kept as bytes, 8 bits a channel
+-- (byte x 0.00392156), as the game hands one back.
+local function byte(v) if stub.color_bytes then return math.floor(v * 255 + 0.5) * 0.00392156 end return v end
 function Region.SetVertexColor(self, s, r, g, b, a)
-	put_color(s, 'vertex_color', number_arg(s, r, 'r'), number_arg(s, g, 'g'), number_arg(s, b, 'b'), a)
+	put_color(s, 'vertex_color', byte(number_arg(s, r, 'r')), byte(number_arg(s, g, 'g')), byte(number_arg(s, b, 'b')), a)
 end
 function Region.GetVertexColor(self, s)
 	local c = s.vertex_color or { 1, 1, 1, 1 }
@@ -835,7 +838,7 @@ function FontInstance.SetFontObject(self, s, font)
 end
 function FontInstance.GetFontObject(self, s) return s.font_object end
 function FontInstance.SetTextColor(self, s, r, g, b, a)
-	put_color(s, 'text_color', number_arg(s, r, 'r'), number_arg(s, g, 'g'), number_arg(s, b, 'b'), a)
+	put_color(s, 'text_color', byte(number_arg(s, r, 'r')), byte(number_arg(s, g, 'g')), byte(number_arg(s, b, 'b')), a)
 end
 -- Its own SetTextColor, else its font object's, else white.
 local function text_color_of(s)
