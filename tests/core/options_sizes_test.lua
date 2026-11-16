@@ -760,6 +760,36 @@ test('a scale change that leaves the full window no room shows it at half and sa
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+test('a scale change that leaves no room for full does not draw a closed window, and keeps the row in view when it shows half', function()
+	theme('thick')
+	stub.screen_width, stub.screen_height = 1024, 768
+	start_uiscale({ mode = 'auto', size = 1 })
+	st.config.global.optionsWindow = nil
+	st.Config:Open('Many')
+	local F = frames()
+	local t11 = H.cell('t11')
+	OW.S.SetScroll(t11.y)
+	st.UIScale:Apply({ mode = 'auto', size = 1.3 })
+	eq(OW:GetWindowSize(), 'half', 'half')
+	local path = OW.FirstInView(OW.GetDrawnRows(), F.body:GetVerticalScroll())
+	eq(path[#path], 't11', 'the row that was first in view still is')
+	check(F.body:GetVerticalScroll() > 0, 'on a scrolled page')
+	-- A closed window: nothing is drawn, and its size is left.
+	st.Config:Close()
+	st.UIScale:Apply(nil)
+	st.Config:Open('Many')
+	st.Config:Close()
+	eq(OW:GetWindowSize(), 'full', 'full when it was last open, with room')
+	local renders = OW.GetRenderCount()
+	st.UIScale:Apply({ mode = 'auto', size = 1.3 })
+	eq(OW.GetRenderCount(), renders, 'not drawn while closed')
+	eq(OW:GetWindowSize(), 'full', 'and its size is not touched')
+	end_runtime()
+	st.config.global.optionsWindow = nil
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
 test('a scale change that leaves full room leaves the window at full, and a closed window alone', function()
 	theme('thick')
 	stub.screen_width, stub.screen_height = 1920, 1080

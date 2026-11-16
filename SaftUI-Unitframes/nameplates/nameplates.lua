@@ -491,9 +491,10 @@ function UF.PlateDriverSize(width, height)
 	local pixel = st:GetPixelSize(UIParent)
 	if not pixel then return width, height end
 	local ratio = ui / world
-	-- 2 * floor(n / 2 + 0.5), with a hair added so a count that is 15 less float
-	-- noise (20 / 1.3333) is 15 and not 14.99999.
-	local function Even(n) return 2 * math.floor(n / 2 + 0.5 + 1e-6) end
+	-- 2 * floor(n / 2 + 0.5), the count first trimmed to 1e-4, as Task 1's pixel
+	-- helpers trim a length (PixelsToLength), so a count that is 15 less float
+	-- noise (20 / 1.3333) is 15 and not 14.99999, and a tie settles one way.
+	local function Even(n) return 2 * math.floor(math.floor(n * 10000 + 0.5) / 10000 / 2 + 0.5) end
 	return Even(width / pixel) * pixel * ratio, Even(height / pixel) * pixel * ratio
 end
 

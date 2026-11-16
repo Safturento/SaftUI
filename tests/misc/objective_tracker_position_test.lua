@@ -588,6 +588,23 @@ test("while SaftUI's tracker owns Blizzard's the mover places nothing, is disabl
 	clean()
 end)
 
+for _, client in ipairs({ 'forever', 'retail' }) do
+	test(client .. ": away from one unit a pixel the tracker's clamp is the holder's inset to the pixel: the rounded margin and the reach make the tracker's own limit", function()
+		world(client)
+		UIParent:SetScale(0.98461538461538) -- a pixel of 1.3 units
+		st.UIScale:SetTokens()
+		OT.tracker:SetClampedToScreen(true)
+		OT.tracker:SetClampRectInsets(-100, 100, 100, -100)
+		OTP:KeepInMargin()
+		local pixel = st:GetPixelSize(OTP.holder)
+		check(math.abs(pixel - 1.3) < 1e-6, 'a pixel of 1.3: ' .. pixel)
+		local _, right, top = st:GetScreenMargin(OTP.holder)
+		check(math.abs(right - 100) < 1e-6, 'right: the tracker keeps 100 in, got ' .. right)
+		check(math.abs(top - 100) < 1e-6, 'top: 100, got ' .. top)
+		clean()
+	end)
+end
+
 -- What the edit mode bar reads from the mover (SaftUI-Core/EditMode/editmode.lua).
 for _, client in ipairs({ 'forever', 'retail' }) do
 	test(client .. ": the mover's default is Blizzard's default spot, a copy each time; it's hidden while the tracker is", function()

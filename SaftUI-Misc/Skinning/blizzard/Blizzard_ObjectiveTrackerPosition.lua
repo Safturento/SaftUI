@@ -314,7 +314,8 @@ function OTP:TrackerReach()
 		return 0, 0, 0, 0
 	end
 	local k = scale / holderScale
-	local margin = st.config.profile.misc.clamp_inset
+	-- The margin st:GetScreenMargin adds (whole pixels of the holder), so the sum is exact.
+	local margin = st:RoundToPixel(st.config.profile.misc.clamp_inset, holder)
 	local function Past(keptIn, outside) return math.max(0, keptIn * k + outside - margin) end
 	return Past(-left, width * k - holderWidth), Past(right, 0), Past(top, 0), Past(-bottom, height * k - holderHeight)
 end

@@ -750,7 +750,8 @@ local function HeldFrameReach(holder)
 	end
 	-- The frame's units to the holder's.
 	local k = scale / holderScale
-	local margin = st.config.profile.misc.clamp_inset
+	-- The margin st:GetScreenMargin adds (whole pixels of the holder), so the sum is exact.
+	local margin = st:RoundToPixel(st.config.profile.misc.clamp_inset, holder)
 	local function Past(keptIn, outside)
 		return math.max(0, (keptIn + outside) * k - margin)
 	end

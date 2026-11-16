@@ -233,6 +233,20 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		clean()
 	end)
 
+	test(client .. ': away from one unit a pixel the right inset is exactly how far in the figure sits, and the margin is whole pixels', function()
+		world(client, nil, { scale = 0.98461538461538 }) -- a pixel of 1.3 units
+		DF.show()
+		stub.run_timers()
+		local pixel = st:GetPixelSize(DUR.holder)
+		check(math.abs(pixel - 1.3) < 1e-6, 'a pixel of 1.3: ' .. pixel)
+		local left, right, top = st:GetScreenMargin(DUR.holder)
+		check(math.abs(left - 19.5) < 1e-6, 'the margin is 15 pixels: ' .. left)
+		local x = -DUR:GetPosition().x_off -- the 5, in whole pixels of the holder
+		check(math.abs(x / 1.3 - math.floor(x / 1.3 + 0.5)) < 1e-3, 'x is whole pixels: ' .. x)
+		check(math.abs(right - x) < 1e-6, 'the right inset is exactly how far in the figure sits: ' .. right .. ' for ' .. x)
+		clean()
+	end)
+
 	test(client .. ': an unmoved figure\'s outline sits on the figure, not the screen margin; a saved place keeps the margin', function()
 		world(client)
 		DF.show()

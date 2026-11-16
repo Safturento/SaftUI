@@ -654,6 +654,70 @@ test('the change callback lays the bar out and places it on the next frame, with
 	reset_edit_mode()
 end)
 
+test("the docked bar's handler does not run while the bar is the floating window", function()
+	local restore = without_the_pass()
+	EM:Activate()
+	EM:GetBar()
+	stub.click(frame_of('detach'))
+	set_screen(1920, 1080)
+	start_uiscale({ mode = 'pixel', size = 1 })
+	local placed, laid = 0, 0
+	local place, lay = EM.PlaceBar, EM.LayoutBar
+	EM.PlaceBar = function(...) placed = placed + 1; return place(...) end
+	EM.LayoutBar = function(...) laid = laid + 1; return lay(...) end
+	st.UIScale:Apply({ mode = 'auto', size = 1.5 })
+	stub.run_timers()
+	EM.PlaceBar, EM.LayoutBar = place, lay
+	eq(placed, 0, 'the docked bar is not placed while floating')
+	eq(laid, 1, "and the layout runs once, for the window's handler")
+	EM:SetBarFloating(false)
+	st.config.global.editModeBar = nil
+	restore()
+	st.config.global.uiScale = nil
+	set_screen(1920, 1080)
+	reset_edit_mode()
+end)
+
+test("a display change at another scale, end to end: the engine's event, the check, the real pass, the callbacks, a placement and the margin", function()
+	EM:Activate()
+	local bar = EM:GetBar()
+	local width = bar:GetWidth()
+	stub.screen_width, stub.screen_height = 1920, 1080
+	start_uiscale({ mode = 'auto', size = 1 })
+	stub.run_timers()
+	local frame = CreateFrame('Frame', nil, UIParent)
+	frame:SetSize(100, 50)
+	local position = { point = 'TOPRIGHT', rel_point = 'TOPRIGHT', x_off = -20, y_off = -33 }
+	local mover = st:RegisterConfigMover(frame, {
+		key = 'end_to_end', config = function() return { position = position } end,
+		apply = function() st:PlaceAtPosition(frame, position) end,
+	})
+	local passes = 0
+	local update = st.Config.UpdateConfig
+	st.Config.UpdateConfig = function(...) passes = passes + 1; return update(...) end
+	st.UIScale:OnChanged(function() st:PlaceAtPosition(frame, position) end)
+	-- The game moves to the Mac's screen and sets UIParent to its own scale over SaftUI's.
+	stub.engine_resets_scale = true
+	stub.change_display(3456, 2234)
+	stub.run_timers()
+	stub.engine_resets_scale = false
+	st.Config.UpdateConfig = update
+	check(math.abs(UIParent:GetEffectiveScale() - 768 / 2234 * 1.5514) < 1e-3 * (768 / 2234), "SaftUI's scale is back")
+	eq(passes, 1, 'one pass')
+	local pixel = st:GetPixelSize(UIParent)
+	local function whole(v) return math.abs(v / pixel - math.floor(v / pixel + 0.5)) < 1e-3 end
+	local _, _, _, x, y = frame:GetPoint(1)
+	check(whole(x) and whole(y), 'placed on whole pixels: ' .. x .. ', ' .. y)
+	local clamp = select(2, frame:GetClampRectInsets())
+	eq(math.floor(clamp / pixel + 0.5), 31, 'the margin is 31 pixels')
+	check(math.abs(bar:GetLeft() - UIParent:GetLeft() - (UIParent:GetWidth() - width) / 2) <= 1, 'the docked bar is centred on the new screen: ' .. bar:GetLeft())
+	eq(position.x_off, -20, 'the save is as it was')
+	EM.movers.end_to_end = nil
+	st.config.global.uiScale = nil
+	set_screen(1920, 1080)
+	reset_edit_mode()
+end)
+
 test("every piece of the bar sits on whole pixels, at any screen, under each look, with the game's read-back noise, and after a UI scale change", function()
 	local HAIR = 2 ^ -14
 	EM:Activate()

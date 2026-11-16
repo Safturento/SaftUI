@@ -120,6 +120,22 @@ test("PlaceAtPosition: at k 1 whole offsets are today's numbers and a saved 1.33
 	use_scale(1)
 end)
 
+test("PlaceAtPosition: the offsets are whole pixels of the frame's own scale, not UIParent's", function()
+	use_scale(1)
+	local frame = Frame()
+	frame:SetScale(1.13) -- a pixel of 0.885 units here, 1 in UIParent
+	st:PlaceAtPosition(frame, { point = 'CENTER', x_off = 5, y_off = -5 })
+	local p = Points(frame)[1]
+	local pixel = st:GetPixelSize(frame)
+	eq(math.floor(p[4] / pixel + 0.5), 6, 'a saved 5 is 5.65 pixels of the frame: 6')
+	eq(math.floor(p[5] / pixel + 0.5), -6, 'and -5 is -6')
+	check(math.abs(p[4] - 6 / 1.13) < 1e-3 and math.abs(p[4] - 5) > 0.1, "not UIParent's 5")
+	use_scale(1)
+	stub.screen_width, stub.screen_height = 1000, 600
+	UIParent:SetScale(768 / 600)
+	st.UIScale:SetTokens()
+end)
+
 scaled_test('PlaceAtPosition: a saved position is never written, and goes through a scale change and back with no drift', function()
 	local frame = Frame()
 	local position = { point = 'TOPLEFT', rel_point = 'TOPLEFT', x_off = 157.5, y_off = -130.3333 }

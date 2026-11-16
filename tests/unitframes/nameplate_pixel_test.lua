@@ -619,6 +619,17 @@ test("the driver's size: 200 x 20 is 150 x 16 pixels at 0.75 and 310 x 32 at 1.5
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+test("the driver's size settles a tie as Task 1's helpers do: a count within 1e-4 of a half goes the way the exact number does", function()
+	local st, UF = world('forever')
+	use_scale(1.25) -- a pixel of 0.8: 204 units are 255 pixels, a tie between 254 and 256
+	local real = st.GetPixelSize
+	-- The game reads a scale back in single precision: a pixel a hair over, 254.99998 pixels.
+	st.GetPixelSize = function(self, frame) return real(self, frame) * (1 + 6e-8) end
+	local w = driver_pixels(UF, 204, 20)
+	st.GetPixelSize = real
+	eq(('%.2f'):format(w), '256.00', 'the tie goes up, as for the exact 255')
+end)
+
 scaled_test("the driver's size is a whole, even number of pixels on each axis, at every scale", function()
 	local st, UF = world('forever')
 	use_scale(test_scale())

@@ -127,7 +127,8 @@ end
 -- (a drag's own limit is the margin).
 function DUR:MarginReach()
 	if self:Placing() or not followed then return 0, 0, 0, 0 end
-	local margin = st.config.profile.misc.clamp_inset
+	-- The margin st:GetScreenMargin adds (whole pixels of the holder), so the sum is exact.
+	local margin = st:RoundToPixel(st.config.profile.misc.clamp_inset, self.holder)
 	return 0, math.min(0, -followed.x_off - margin), math.min(0, -followed.y_off - margin), 0
 end
 
