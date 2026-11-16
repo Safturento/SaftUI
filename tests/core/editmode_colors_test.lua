@@ -55,7 +55,7 @@ local function setup(floating, theme)
 	EM:ShowHistoryList()
 	EM:SetBarStatus('Moved it', nil, false)
 	-- Every widget colored once: a cold stub widget makes its table at its first color call.
-	for _, g in ipairs({ { 'text', 'muted' }, { 'text', 'normal' }, { 'button', 'hover' }, { 'accent' } }) do st:ColorChanged(g[1], g[2]) end
+	for _, g in ipairs({ { 'text', 'muted' }, { 'text', 'normal' }, { 'button', 'danger' }, { 'accent' } }) do st:ColorChanged(g[1], g[2]) end
 	st:ColorChanged('theme')
 end
 
@@ -93,9 +93,9 @@ local function restore()
 		local c = st.defaults.colors.text[key]
 		colors().text[key]:SetRGB(c.r, c.g, c.b)
 	end
-	for _, key in ipairs({ 'normal', 'hover', 'pushed' }) do
-		local c = st.defaults.colors.button[key]
-		colors().button[key]:SetRGB(c.r, c.g, c.b)
+	do
+		local c = st.defaults.colors.button.danger
+		colors().button.danger:SetRGB(c.r, c.g, c.b)
 	end
 end
 
@@ -104,7 +104,7 @@ end
 test('edit mode off: a pass of any group costs nothing (no call, no Hide, no SetScript, no garbage)', function()
 	setup(false)
 	off()
-	for _, case in ipairs({ { 'text', 'muted' }, { 'button', 'hover' }, { 'accent' }, { 'class', 'MAGE' }, { 'text', 'danger' } }) do
+	for _, case in ipairs({ { 'text', 'muted' }, { 'button', 'danger' }, { 'accent' }, { 'class', 'MAGE' }, { 'text', 'danger' } }) do
 		local m = cost(case[1], case[2])
 		local label = case[1] .. ' ' .. tostring(case[2])
 		if case[1] == 'accent' then
@@ -174,7 +174,7 @@ for _, floating in ipairs({ false, true }) do
 
 	test(('edit mode on, %s: a group edit mode does not draw (Class > Mage, Loot, Status) colors nothing'):format(where), function()
 		setup(floating, theme)
-		for _, case in ipairs({ { 'class', 'MAGE' }, { 'loot', 'rare' }, { 'status', 'tapped' }, { 'roles', 'TANK' }, { 'text', 'danger' }, { 'button', 'hover' } }) do
+		for _, case in ipairs({ { 'class', 'MAGE' }, { 'loot', 'rare' }, { 'status', 'tapped' }, { 'roles', 'TANK' }, { 'text', 'danger' }, { 'button', 'danger' } }) do
 			local ok = pcall(function()
 				local m = C.measure(function() st:ColorChanged(case[1], case[2]) end, 100)
 				eq(m.calls.total, 0, case[1] .. ': no setter')
@@ -267,7 +267,7 @@ test('the bar looks again only for the groups it draws: Theme looks, Text (Norma
 	eq(count('text', 'muted'), '0/1', 'Text > Muted: once')
 	eq(count('text', 'normal'), '0/1', 'Text > Normal: once')
 	eq(count('text', 'danger'), '0/0', 'Text > Danger: not drawn by the bar')
-	eq(count('button', 'hover'), '0/0', 'Buttons: the bar draws none')
+	eq(count('button', 'danger'), '0/0', 'Buttons: the bar draws none')
 	eq(count('theme'), '1/0', 'Theme: looks again')
 	st:ColorsChanged('text')
 	eq(looks .. '/' .. recolors, '1/1', 'a whole pass of Text recolors once')

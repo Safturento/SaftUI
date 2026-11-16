@@ -76,7 +76,7 @@ builders.input = function(w)
 		Edge(self, false)
 		w:Refresh()
 	end)
-	HoverStates(edit, function() return w.disabled end)
+	HoverStates(edit)
 end
 
 define('input', {
@@ -307,7 +307,7 @@ builders.color = function(w)
 	PlaceParts(w, false)
 	-- the states last, after the scripts: the code's color is the field's own (Refresh); the helper
 	-- keeps it and turns it dark only where the dark reads better (textKeep)
-	HoverStates(button, function() return w.disabled end, { text = w.text, textKeep = true })
+	HoverStates(button, { text = w.text, textKeep = true })
 end
 
 -- The checker under a see-through color (shown), else none: the dark grey
@@ -565,7 +565,7 @@ builders.execute = function(w)
 	button:SetScript('OnMouseDown', function() w.text:SetPoint('CENTER', button, 'CENTER', 0, -1) end)
 	button:SetScript('OnMouseUp', function() w.text:SetPoint('CENTER', button, 'CENTER', 0, 0) end)
 	button:SetScript('OnClick', function() w:Run() end)
-	HoverStates(button, function() return w.disabled end, { text = w.text, textKeep = true })
+	HoverStates(button, { text = w.text, textKeep = true })
 end
 
 -- The execute button's look, when it changed: the window's own (Box), or

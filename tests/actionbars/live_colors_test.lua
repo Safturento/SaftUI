@@ -92,8 +92,8 @@ test("Buttons > Danger: every button's flash once under Thick and Thin (164 SetC
 		end
 		-- The whole group's pass reaches it too, and another key of the group does not.
 		st.config.profile.colors.button.danger:SetRGB(0.2, 0.9, 0.3)
-		m = C.measure(function() st:ColorChanged('button', 'hover') end)
-		eq(m.calls.by.SetColorTexture, nil, theme .. ': Hover is not the flash')
+		m = C.measure(function() st:ColorChanged('class', 'MAGE') end)
+		eq(m.calls.by.SetColorTexture, nil, theme .. ': another group is not the flash')
 		st:ColorsChanged('button')
 		eq(flash(buttons[7]), T.rgb(0.2, 0.9, 0.3) .. ' 0.40', theme .. ': a whole pass')
 	end

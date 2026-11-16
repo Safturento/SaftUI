@@ -107,7 +107,7 @@ local function PositionEdit(w, parent, justify, onEnter)
 		W.Edge(self, false)
 		w:Refresh()
 	end)
-	HoverStates(edit, function() return w.disabled end) -- after the scripts above
+	HoverStates(edit) -- after the scripts above
 	Kit.Track(w, edit)
 	return edit
 end
@@ -137,7 +137,7 @@ builders.position = function(w)
 		if W.ListOwner() == self then W.CloseList() end
 	end)
 	DropdownStates(w.select, function() return w.disabled end)
-	HoverStates(w.select, function() return w.disabled end) -- after the scripts above
+	HoverStates(w.select) -- after the scripts above
 	Kit.Track(w, w.select)
 
 	-- X and Y: label, box, then the nudge pair, overlapping the box's right edge by 1.

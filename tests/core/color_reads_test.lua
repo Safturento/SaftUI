@@ -35,11 +35,15 @@ local EXEMPT = 'SaftUI-Core/Media/colors.lua'
 -- Retired keys by group; a task adds its own.
 local RETIRED = {
 	text = { 'purple', 'blue', 'grey', 'white', 'red', 'orange', 'yellow', 'green', 'cyan' },
-	button = { 'yellow', 'blue', 'green', 'grey', 'red' },
+	button = { 'yellow', 'blue', 'green', 'grey', 'red', 'normal', 'hover', 'pushed', 'checked' },
 }
 
+-- The four state keys of Buttons: a frame field's name as well as a color's.
+local STATE_KEYS = { normal = true, hover = true, pushed = true, checked = true }
+
 -- Rule E's identifiers, word-bounded, in code (comments and strings blanked).
-local HUE_NAMES = { 'Blue', 'LinkBlue', 'OWN_TEXT', 'Grey', 'GreyRGB', 'DIFF_COLOR' }
+local HUE_NAMES = { 'Blue', 'LinkBlue', 'OWN_TEXT', 'Grey', 'GreyRGB', 'DIFF_COLOR',
+	'HOVER_TINT', 'TINT_ROW', 'TINT_OBJECT', 'HOVER_ALPHA', 'PUSHED_ALPHA', 'HoverEdge' }
 
 -- Rule D: the groups whose every read goes through the accessor.
 local DIRECT_GROUPS = { 'text', 'roles', 'factions', 'loot', 'button' }
@@ -80,8 +84,12 @@ local function Scan(path, source, defaults)
 		for group, keys in pairs(RETIRED) do
 			for _, key in ipairs(keys) do
 				local from = 1
+				-- (the state keys are names of a button frame's own textures too, button.hover:
+				-- they are read as a color only through a colors table: the other forms are B, C and D's)
+				local dotted = STATE_KEYS[key] and '%f[%w_][Cc]olors%s*%.%s*' .. group .. '%s*%.%s*' .. key
+					or '%f[%w_]' .. group .. '%s*%.%s*' .. key
 				while true do
-					local s, e = mask:find('%f[%w_]' .. group .. '%s*%.%s*' .. key .. '%f[^%w_]', from)
+					local s, e = mask:find(dotted .. '%f[^%w_]', from)
 					if not s then break end
 					Fail(found, path, 'A retired key', mask, s, source)
 					from = e + 1
@@ -289,7 +297,7 @@ local function Rules(found)
 end
 
 test('the rules, on samples: each fails what it names and passes the rest', function()
-	local d = { text = { normal = 1 }, loot = { pass = 1 }, button = { normal = 1, hover = 1 } }
+	local d = { text = { normal = 1 }, loot = { pass = 1 }, button = { danger = 1 } }
 	-- Rule D has its own samples below; the others' samples read `colors.text` freely.
 	local function without(src, keep)
 		local out = {}
@@ -323,6 +331,12 @@ test('the rules, on samples: each fails what it names and passes the rest', func
 	eq(scan("local c = colors.button['grey']"), 'A')
 	eq(scan('local c = colors.text.greyish'), '', 'a longer name is not the key')
 	eq(scan('local c = colors.text.muted:GetRGB()'), '', 'the new key')
+	for _, key in ipairs({ 'normal', 'hover', 'pushed', 'checked' }) do
+		eq(scan('local c = st.config.profile.colors.button.' .. key .. ':GetRGB()'), 'A', 'Buttons > ' .. key .. ' is retired')
+		eq(scan("local c = colors.button['" .. key .. "']"), 'A', key .. ' by a string')
+		eq(scan('local t = button.' .. key .. '\nbutton.' .. key .. ':Show()'), '', 'a button frame\'s own ' .. key .. ' texture is no color')
+		eq(scan("local c = st:ColorRGBA('button', '" .. key .. "', 0.4)"), 'C', 'a literal pair')
+	end
 	-- B
 	eq(scan('local textColors = st.config.profile.colors.text\nlocal c = textColors.purple'), 'B')
 	eq(scan("local Buttons = Colors().button\nlocal c = Buttons['yellow']"), 'B')
@@ -340,6 +354,11 @@ test('the rules, on samples: each fails what it names and passes the rest', func
 	eq(scan('local r, g, b = OB.Accent()\nlocal s = OB.OWN_STRENGTH'), '', 'the new names')
 	eq(scan("-- OB.Blue and OWN_TEXT\nlocal s = 'LinkBlue'"), '', 'a comment and a string')
 	eq(scan('local Blues = 1\nlocal NotBlue = 2'), '', 'a longer name is not the word')
+	for _, name in ipairs({ 'HOVER_TINT', 'TINT_ROW', 'TINT_OBJECT', 'HOVER_ALPHA', 'PUSHED_ALPHA', 'HoverEdge' }) do
+		eq(scan('local x = st.' .. name), 'E', name .. ' is retired')
+		eq(scan('local x = st.' .. name .. 'S'), '', 'a longer name is not the word')
+		eq(scan("-- " .. name .. "\nlocal s = '" .. name .. "'"), '', 'a comment and a string')
+	end
 	eq(scan('local r, g, b = OB.Grey()'), 'E')
 	eq(scan('local function Grey() return 1 end'), 'E')
 	eq(scan('local function GreyRGB() return 1 end'), 'E')
@@ -399,14 +418,14 @@ test('the rules, on samples: each fails what it names and passes the rest', func
 	eq(scanD('local t = st.config.profile.theme\nreturn t.name'), '', 'the theme alias read for something else')
 	eq(scanD("-- local c = Colors(); c.text.danger\nlocal s = 'rawget(colors, \"text\")'"), '', 'a comment and a string')
 	-- F
-	eq(scan("local c = st:Color('button', 'normal')"), 'F', 'a Buttons read through st:Color')
-	eq(scan("local r, g, b = st:Color('button', 'hover'):GetRGB()"), 'F')
+	eq(scan("local c = st:Color('button', 'danger')"), 'F', 'a Buttons read through st:Color')
+	eq(scan("local r, g, b = st:Color('button', 'danger'):GetRGB()"), 'F')
 	eq(scan('local c = st:Color ( "button", key )'), 'F', 'with spaces and the other quotes')
-	eq(scan("local r, g, b, a = st:ColorRGBA('button', 'normal', 1)"), '', 'st:ColorRGBA at a strength')
+	eq(scan("local r, g, b, a = st:ColorRGBA('button', 'danger', 1)"), '', 'st:ColorRGBA at a strength')
 	eq(scan("local c = st:Color('buttons', 'x')"), 'C', 'a longer group is no Buttons read (and has no default)')
 	eq(scan("-- st:Color('button', 'danger')\nlocal s = \"st:Color('button', 'danger')\""), '', 'a comment and a string')
-	eq(scan("local c = self:Color('button', 'normal'):GetRGB()"), 'F', 'self:Color in a method of st')
-	eq(scan("local c = self:ColorRGBA('button', 'normal')"), '', 'self:ColorRGBA at a strength')
+	eq(scan("local c = self:Color('button', 'danger'):GetRGB()"), 'F', 'self:Color in a method of st')
+	eq(scan("local c = self:ColorRGBA('button', 'danger')"), '', 'self:ColorRGBA at a strength')
 	eq(scan("local c = myself:Color('button', 'normal')"), '', 'a longer receiver is not self')
 	eq(scan("local c = self:Color('hues', 'x')"), 'C', 'rule C reads self:Color too')
 	eq(scan("local c = self:ColorRGBA('text', 'normal2', 1)"), 'C', 'and self:ColorRGBA')

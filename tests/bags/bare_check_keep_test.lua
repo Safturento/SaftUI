@@ -34,23 +34,25 @@ local function passes(check, want, label)
 	local function read() return T.text(check:GetCheckedTexture():GetVertexColor()) end
 	st:ColorsChanged('button')
 	eq(read(), want, label .. ': a whole Buttons pass')
+	local accent = st.config.profile.theme.accent
+	local keep = { accent.r, accent.g, accent.b }
 	C.edit(st, function()
-		st.config.profile.colors.button.hover:SetRGB(0.9, 0.2, 0.6)
-		st:ColorChanged('button', 'hover')
+		accent:SetRGB(0.9, 0.2, 0.6)
+		st:ColorChanged('accent')
 		C.step(st)
-		eq(read(), want, label .. ': a Buttons > Hover pick, before the edit ends')
-		st.config.profile.colors.button.checked:SetRGB(0.2, 0.9, 0.6)
-		st:ColorChanged('button', 'checked')
+		eq(read(), want, label .. ': an Accent pick, before the edit ends')
+		st.config.profile.colors.button.danger:SetRGB(0.2, 0.9, 0.6)
+		st:ColorChanged('button', 'danger')
 		C.step(st)
-		eq(read(), want, label .. ': a Buttons > Checked pick, before the edit ends')
+		eq(read(), want, label .. ': a Buttons > Danger pick, before the edit ends')
 	end)
+	accent:SetRGB(keep[1], keep[2], keep[3])
+	local d = st.defaults.colors.button.danger
+	st.config.profile.colors.button.danger:SetRGB(d.r, d.g, d.b)
 	T.theme('blizzard'); T.theme('thick')
 	eq(read(), want, label .. ': a theme switch')
 	for _, group in ipairs(st.COLOR_GROUPS) do st:ColorsChanged(group) end
 	eq(read(), want, label .. ': a profile switch (every group, whole)')
-	local d = st.defaults.colors.button.hover
-	st.config.profile.colors.button.hover:SetRGB(d.r, d.g, d.b)
-	st.config.profile.colors.button.checked:SetRGB(d.r, d.g, d.b)
 end
 
 test("a hidden currency's veil keeps its black 0.6 through every Buttons pass", function()

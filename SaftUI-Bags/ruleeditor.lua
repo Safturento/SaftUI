@@ -375,7 +375,7 @@ local function MakeField(f)
 		if W.ListOwner() == self then W.CloseList() end
 	end)
 	-- after the scripts above (a SetScript drops the helper's hooks)
-	W.HoverStates(field, IsDisabled)
+	W.HoverStates(field)
 	W.DropdownStates(field, IsDisabled)
 	return field
 end
@@ -393,7 +393,7 @@ local function MakeCheck(f)
 		if self.w and not self.w.disabled and self.toggle then self.toggle() end
 	end)
 	-- a check box of the helper: the edge, the mark and the fade when checked
-	W.HoverStates(check, function() return check.w == nil or check.w.disabled end, { shape = 'check', mark = check.mark })
+	W.HoverStates(check, { shape = 'check', mark = check.mark })
 	return check
 end
 
@@ -811,7 +811,7 @@ local function RowFrame(w, i)
 		if record then Edit(w, function(rule) return R.ToggleNot(rule, record.path) end) end
 	end)
 	-- after the scripts above (a SetScript drops the helper's hooks)
-	W.HoverStates(notBox, nil, { text = notBox.text, textRest = Muted })
+	W.HoverStates(notBox, { text = notBox.text, textRest = Muted })
 	f.notBox = notBox
 
 	f.label = Text(f)

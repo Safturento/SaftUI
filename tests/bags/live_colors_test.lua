@@ -449,8 +449,6 @@ test("Buttons > Danger: the bank's unbought slots, at their region's 0.3", funct
 	end
 	quiet()
 	eq(m.forbidden.total, 0, 'nothing forbidden')
-	m = bags_pass('button', 'hover')
-	eq(setters(m, 'SetVertexColor'), 0, 'another Buttons color: nothing')
 end)
 
 test("Text > Danger and Strong: the bank's price of a tab follows the one it is drawn in", function()

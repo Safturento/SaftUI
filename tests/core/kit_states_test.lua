@@ -469,10 +469,10 @@ test('F3: W.Edge on a frame with no record paints the border directly, as it did
 	close_all()
 end)
 
-test('F4: W.HoverEdge stays as an alias of W.HoverStates until Task 11', function()
-	check(W.HoverEdge == W.HoverStates, 'the same function')
+test('F4: W.HoverEdge is gone; W.HoverStates takes the frame and its options, no isDisabled', function()
+	check(W.HoverEdge == nil, 'the alias is gone')
 	local box = W.Box(st:CreateFrame('Button', nil, UIParent))
-	W.HoverEdge(box, function() return false end)
+	W.HoverStates(box)
 	check(st:GetState(box, 'hover') == false, 'it makes a state frame')
 	enter(box)
 	check(st:GetState(box, 'hover'), 'and hover holds under the mouse')

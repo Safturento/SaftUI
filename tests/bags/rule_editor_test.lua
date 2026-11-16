@@ -385,7 +385,7 @@ end)
 
 ------------------------------------------------------------------ the fields
 
-test("the rule editor's dropdown fields and check boxes are enabled (full alpha) and tint under the mouse (W.HoverEdge's isDisabled is asked live, never at build)", function()
+test("the rule editor's dropdown fields and check boxes are enabled (full alpha) and tint under the mouse (the state is the helper's: disabled is set live, never asked at build)", function()
 	local ed = editor(grp('or', { blk('tooltip', { text = '' }), blk('class', {}) }))
 	local seen = 0
 	for _, row in ipairs(ed.w.rows) do

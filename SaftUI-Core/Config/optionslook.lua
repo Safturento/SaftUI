@@ -185,10 +185,10 @@ end
 --[[
 	A kit box (a field, a button, a face, a check box) as a state frame: hover
 	and pushed tint its body, selected and focus light its edge, disabled dims
-	it (Widgets/states.lua). isDisabled is unused (a caller's answer is
-	nil while its widget is built, and asking it once at registration dimmed the rule
-	editor's fields for good); disabled is st:SetState(frame, 'disabled', ...), after which
-	the box shows neither hover nor pushed. Task 11 removes the parameter with W.HoverEdge. extra, optional,
+	it (Widgets/states.lua). Disabled is st:SetState(frame, 'disabled', ...) (a
+	caller's own answer is never asked at registration: it is nil while the widget is
+	built, and asking once dimmed the rule editor's fields for good), after which
+	the box shows neither hover nor pushed. extra, optional,
 	adds to the helper's options (shape, text, glyph, mark, solid...); a box's label is given
 	to the helper as text with textKeep (it keeps the color it has, and turns dark only where
 	the dark reads better: Hover at 60% on a pale Accent). The
@@ -196,7 +196,7 @@ end
 	widget's own SetScript of OnEnter, OnLeave, OnMouseDown, OnMouseUp and OnHide
 	(a SetScript drops the helper's hooks until its next call).
 ]]
-function W.HoverStates(frame, isDisabled, extra)
+function W.HoverStates(frame, extra)
 	local opts = { edge = 'backdrop', inset = 1, body = BodyOf, blizzard = WearsBlizzard }
 	-- The box's label (its .text, or an edit box's own text) takes the readable-text pick
 	-- and keeps the color it has otherwise (textKeep: its owner's, or the font object's).
@@ -214,8 +214,6 @@ function W.HoverStates(frame, isDisabled, extra)
 	st:AddStates(frame, shape, opts)
 	return frame
 end
--- Task 11 removes this alias (the rule editor's two calls).
-W.HoverEdge = W.HoverStates
 
 -- Records the look frame's art is for; false when it wears it already.
 local function Changes(art, blizzard)
@@ -541,7 +539,7 @@ local function CheckBox(parent, size)
 	box.mark = box:CreateTexture(nil, 'OVERLAY')
 	box.mark:SetTexture(st.BLANK_TEX)
 	box.mark:Hide()
-	W.HoverStates(box, nil, { shape = 'check', mark = box.mark })
+	W.HoverStates(box, { shape = 'check', mark = box.mark })
 	return box
 end
 

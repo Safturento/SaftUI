@@ -114,7 +114,7 @@ local function Register(control)
 		})
 	else
 		-- No text: a label keeps the color it has (a caller's own, or the font object's, which follows Text)
-		W.HoverStates(control, nil, { glyph = control.icon, glyphRest = IconRest, glyphHover = IconHover })
+		W.HoverStates(control, { glyph = control.icon, glyphRest = IconRest, glyphHover = IconHover })
 	end
 end
 
@@ -579,7 +579,7 @@ function W.NumberBox(parent, opts)
 	local function Nudge(direction)
 		return function() opts.set(Clamp((tonumber(opts.get()) or 0) + direction * step)) end
 	end
-	W.HoverStates(edit, function() return box.disabled end, { wire = false })
+	W.HoverStates(edit, { wire = false })
 	-- the box's own frame follows the Disabled opacity (a record with nothing drawn)
 	st:AddStates(box, 'glyph', { wire = false })
 	local pair = Kit.NudgePair(box, box, Nudge(1), Nudge(-1))
