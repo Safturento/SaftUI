@@ -57,7 +57,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-15 — SaftUI's tracker phase 6: zone widgets](#2026-11-15--saftuis-tracker-phase-6-zone-widgets)
   - [2026-11-15 — SaftUI's tracker: do quest items work under [vehicleui] and [overridebar]?](#2026-11-15--saftuis-tracker-do-quest-items-work-under-vehicleui-and-overridebar)
   - [2026-11-15 — Chat's font size against Blizzard's per-window Font Size](#2026-11-15--chats-font-size-against-blizzards-per-window-font-size)
-  - [2026-11-15 — A bag window's least width ignores a Window titles change](#2026-11-15--a-bag-windows-least-width-ignores-a-window-titles-change)
   - [2026-11-14 — Position rows of secure frames can anchor to a frame that is moved in combat](#2026-11-14--position-rows-of-secure-frames-can-anchor-to-a-frame-that-is-moved-in-combat)
   - [2026-11-14 — The options kit's keybinding widget doesn't know META or Blizzard's ignored keys](#2026-11-14--the-options-kits-keybinding-widget-doesnt-know-meta-or-blizzards-ignored-keys)
   - [2026-11-14 — A first-run setup dialog: UI size, theme, unit frame layout](#2026-11-14--a-first-run-setup-dialog-ui-size-theme-unit-frame-layout)
@@ -131,6 +130,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-15 — A bag window's least width ignores a Window titles change](#2026-11-15--a-bag-windows-least-width-ignores-a-window-titles-change)
   - [2026-11-11 — Bag categories: a Set checkbox is dead while the Equipment sets entry hides the window](#2026-11-11--bag-categories-a-set-checkbox-is-dead-while-the-equipment-sets-entry-hides-the-window)
   - [2026-11-11 — Rule editor: a level mode picked before a number is typed does nothing](#2026-11-11--rule-editor-a-level-mode-picked-before-a-number-is-typed-does-nothing)
   - [2026-11-15 — Auto Vendor's second question overstates the earlier stacks that leave](#2026-11-15--auto-vendors-second-question-overstates-the-earlier-stacks-that-leave)
@@ -833,18 +833,6 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 **Shape of work:** small: a hook pair in `chatframe.lua` for (a), or removing `'font_size'` from chat's `fields` and the conversion for (b), plus a test either way.
 
 **Open questions:** does `UPDATE_CHAT_WINDOWS` fire after `PLAYER_LOGIN`, and is chat at SaftUI's size or Blizzard's chat-cache size after login? Does a Fonts tab change that does not touch chat undo a size picked from the tab menu (it should not now)? Which of (a) and (b) does the owner want?
-
-### 2026-11-15 — A bag window's least width ignores a Window titles change
-
-**What:** A bag window's least width counts its title's width (`INV:HeaderMinWidth`, `SaftUI-Bags/header.lua`), and nothing lays the window out again when Window titles changes. The title itself follows at once (Task 5), so after a change to a wider font the title can run over the buttons until the window is next laid out.
-
-**Why noticed:** Review of fonts Task 5, m6. It already behaved this way for a Fonts tab change to Text; it is more visible now that Window titles applies at once.
-
-**Anchors:** `SaftUI-Bags/header.lua` (`INV:HeaderMinWidth`), `SaftUI-Bags/layout.lua:284` and `:355`, `INV:UpdateContainer`.
-
-**What's been considered:** fonts Task 7 (2026-11-15) looked at it and left it, because the one-line `INV:OnFontsChanged() self:UpdateConfig() end` (which already waits for the end of combat through `st:QueueAfterCombat('Inventory')`) also runs `CategoriesChanged`, a full re-sort of every item, on each step of a Size drag on any font (`st:FontsChanged()` fires on every step), and a narrower re-fit of the least width alone needs `layout.lua`'s held layout (`ReleaseLayout`, `layoutPending`) understood and checked in game. A debounce to one run a frame would cut it but not the re-sort. Task 7 did move the bags' footer texts and search box to Text, so Window titles no longer reaches anything in a window but its title.
-
-**Shape of work:** small, but needs a design look at the layout first: an `INV:OnFontsChanged` that re-fits each open container's least width only (out of combat; a bag window can be protected, so it goes through the combat queue), with a test, and only when the title's font is what changed (its value, or a shared font it names, changed since the last run).
 
 ### 2026-11-14 — Position rows of secure frames can anchor to a frame that is moved in combat
 
@@ -2411,6 +2399,20 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-15 — A bag window's least width ignores a Window titles change
+
+**What:** A bag window's least width counts its title's width (`INV:HeaderMinWidth`, `SaftUI-Bags/header.lua`), and nothing lays the window out again when Window titles changes. The title itself follows at once (Task 5), so after a change to a wider font the title can run over the buttons until the window is next laid out.
+
+**Why noticed:** Review of fonts Task 5, m6. It already behaved this way for a Fonts tab change to Text; it is more visible now that Window titles applies at once.
+
+**Anchors:** `SaftUI-Bags/header.lua` (`INV:HeaderMinWidth`), `SaftUI-Bags/layout.lua:284` and `:355`, `INV:UpdateContainer`.
+
+**What's been considered:** fonts Task 7 (2026-11-15) looked at it and left it, because the one-line `INV:OnFontsChanged() self:UpdateConfig() end` (which already waits for the end of combat through `st:QueueAfterCombat('Inventory')`) also runs `CategoriesChanged`, a full re-sort of every item, on each step of a Size drag on any font (`st:FontsChanged()` fires on every step), and a narrower re-fit of the least width alone needs `layout.lua`'s held layout (`ReleaseLayout`, `layoutPending`) understood and checked in game. A debounce to one run a frame would cut it but not the re-sort. Task 7 did move the bags' footer texts and search box to Text, so Window titles no longer reaches anything in a window but its title.
+
+**Shape of work:** small, but needs a design look at the layout first: an `INV:OnFontsChanged` that re-fits each open container's least width only (out of combat; a bag window can be protected, so it goes through the combat queue), with a test, and only when the title's font is what changed (its value, or a shared font it names, changed since the last run).
+
+**Resolved 2026-11-15:** `INV:OnFontsChanged` (`SaftUI-Bags/inventory.lua`) asks for a layout with `INV:QueueUpdate(true)`: one update a frame however many steps a font drag takes, which re-lays the window out to its least width (`SizeWindow`, `SectionLineSlots`) with no category rebuild or re-sort, and is held in combat as any layout is. Test: `tests/bags/views_width_test.lua`. Needs an in-game look.
 
 ### 2026-11-11 — Bag categories: a Set checkbox is dead while the Equipment sets entry hides the window
 

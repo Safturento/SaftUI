@@ -272,6 +272,15 @@ function INV:StyleContainerContents(container)
 	end
 end
 
+-- A font change can change the window title's width (Window titles, Text), and
+-- so the window's least width (INV:HeaderMinWidth). It asks for a layout (an
+-- update, at most one a frame whatever the number of steps a Size drag takes):
+-- no sort of the items and no skin, as UpdateConfig would do, and the layout
+-- is held in combat as any other is.
+function INV:OnFontsChanged()
+	self:QueueUpdate(true)
+end
+
 -- Restyles the texts of one bag font setting, 'titles' (the category titles) or
 -- 'icons' (the item level and count on the item and currency slots), and
 -- nothing else. A font changes no size, place, order or border, so the bags

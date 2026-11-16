@@ -575,3 +575,28 @@ test('combat: two frames on different lines, the narrower holding more items tha
 	end)
 	eq(#take_errors(), 0, 'no errors')
 end)
+
+test('a font change that widens the window title widens the window, with no sort of the items', function()
+	for _, view in ipairs({ 'compact', 'rows' }) do
+		local c = world(view, SPARSE)
+		local width = c:GetWidth()
+		INV.UpdateGold = function() end
+		H.search(c)
+		-- A wider font for Window titles: the title is 200 wider than the window had room for.
+		local titleWidth = c.title:GetStringWidth() + (width - INV:HeaderMinWidth(c)) + 200
+		c.title.GetStringWidth = function() return titleWidth end
+		local sorts = 0
+		local sort = INV.GetSortedInventory
+		INV.GetSortedInventory = function(...) sorts = sorts + 1; return sort(...) end
+		SaftUI:FontsChanged()
+		INV:UpdateHandler(nil, 1)
+		INV.GetSortedInventory = sort
+		check(c:GetWidth() > width, view .. ': the window is wider than it was')
+		check(c:GetWidth() >= INV:HeaderMinWidth(c), view .. ': and holds the title')
+		check(INV:HeaderMinWidth(c) >= width + 200, view .. ': the least width counts the new title')
+		check(sorts <= 1, view .. ': the items were read once, not re-sorted by a category rebuild')
+		local errors = take_errors()
+		eq(#errors, 0, view .. ': no errors ' .. tostring(errors[1]))
+	end
+end)
+
