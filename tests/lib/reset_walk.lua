@@ -19,6 +19,12 @@
 -- row's round trip. For a set with a known side effect, say Theme > Theme marking
 -- fonts.version: allow = { ['Fonts.theme.theme'] = { 'fonts.version' } }.
 --
+-- A group with `mirrorOf` (a part's settings drawn a second time, on a tab) is
+-- walked at its item: each value row under it is checked to be the item's own,
+-- one of its menu's very tables (rawequal) or saved where the item's Show box is
+-- (the tab's Enable), else "<path>: the mirror's <key> is not the part's own
+-- option"; it is not walked again, so it counts once.
+--
 -- It walks with each_option every option under the page, an item's menu rows
 -- on OM.MenuRoot(item) with a { 'menu', ... } path, and every group's
 -- pickerControl on its own tree. For each value row (a toggle, range, select,
@@ -180,6 +186,75 @@ local function SavedPath(root, row)
 	local node = GetNode(root, row)
 	if not (node and type(node.saved) == 'function') then return nil end
 	return { node.saved(OM.Info(root, row.path)) }
+end
+
+-- The option at path of root, or nil.
+local function OptionAt(root, path)
+	local group = { args = root }
+	for _, key in ipairs(path) do
+		if type(group) ~= 'table' or type(group.args) ~= 'table' then return nil end
+		group = OM.SubOption(group, key)
+	end
+	return group
+end
+
+-- The keys from group down to option, when option is one of the options under it
+-- (its args, nested groups included), by identity; else nil.
+local function Holds(group, option)
+	if type(group) ~= 'table' or type(group.args) ~= 'table' then return nil end
+	for key, each in pairs(group.args) do
+		if rawequal(each, option) then return { key } end
+		if type(each) == 'table' and each.type == 'group' then
+			local below = Holds(each, option)
+			if below then
+				table.insert(below, 1, key)
+				return below
+			end
+		end
+	end
+	return nil
+end
+
+-- A value row under a group with mirrorOf (path, from the page): the part's own,
+-- as its tab draws it, or a problem. mirror is the item's path (OM.MirrorOf). The
+-- row inherits get, set, saved and handler from the tab's groups, which are not the
+-- menu's, so it needs a reset where the tab draws it (a source), and the same
+-- saved path as in the menu (or as the item's box).
+local function CheckMirror(root, path, option, mirror, opts, problems)
+	if opts.skip and opts.skip[Joined(path)] then return end
+	local item = OptionAt(root, mirror)
+	local label = ('%s: the mirror\'s %s'):format(Joined(path), tostring(path[#path]))
+	local tab = { option = option, path = path, type = option.type }
+	local wanted
+	if type(item) == 'table' then
+		local inside = Holds(item.menu, option)
+		if inside then
+			local menuPath = { 'menu' }
+			for _, key in ipairs(inside) do menuPath[#menuPath + 1] = key end
+			wanted = SavedPath(OM.MenuRoot(item), { option = option, path = menuPath, type = option.type })
+		else
+			-- Saved where the item's Show box is.
+			local box = SavedPath(root, { option = item, path = mirror, type = item.type })
+			local mine = SavedPath(root, tab)
+			if not (mine and box and Joined(mine) == Joined(box)) then
+				problems[#problems + 1] = label .. ' is not the part\'s own option'
+				return
+			end
+			wanted = box
+		end
+	else
+		problems[#problems + 1] = label .. ' is not the part\'s own option'
+		return
+	end
+	if OM.DefaultSource(root, tab) == nil then
+		problems[#problems + 1] = label .. ' has no reset where its tab draws it (give the tab\'s group the menu\'s get, set and saved)'
+		return
+	end
+	local here = SavedPath(root, tab)
+	if wanted and (not here or Joined(here) ~= Joined(wanted)) then
+		problems[#problems + 1] = ('%s is saved at %s where its tab draws it, the part\'s at %s'):format(label,
+			here and Joined(here) or 'nothing', Joined(wanted))
+	end
 end
 
 local function Probe(root, row, current)
@@ -360,7 +435,12 @@ local function Walk(root, pageKey, opts, problems)
 	end
 	each_option({ args = { [pageKey] = root[pageKey] } }, function(option, path)
 		local rowRoot, rowPath = Resolve(root, path)
-		Visit(rowRoot, rowPath, option, path)
+		local mirror = IsValueRow(option) and OM.MirrorOf(root, path)
+		if mirror then
+			CheckMirror(root, path, option, mirror, opts, problems)
+		else
+			Visit(rowRoot, rowPath, option, path)
+		end
 		-- A group's pickerControl: its options, on a tree of their own.
 		if type(option) == 'table' and type(option.pickerControl) == 'table' then
 			local tree = { [OM.PICKER_CONTROL_KEY] = option.pickerControl }

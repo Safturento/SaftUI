@@ -34,6 +34,8 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	      more room there.
 	  OW.GetMenuFrames() -> { frame, catcher, title, content, body, keys,
 	      owner = { body, path } } (owner nil while closed), for tests.
+	  A part row's dots (an item with a summary) are drawn in the accent while
+	  its menu is open (Kit.MarkSlot), and as they were when it closes.
 
 	The menu: a frame over UIParent at FULLSCREEN_DIALOG, level 410 (over the
 	small dialog's 300), 400 wide, drawn as the small dialog is
@@ -42,9 +44,11 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	menuTitle, else its name; the section font, Text > Muted) 12 in and 10 down;
 	under it a plain content frame (no scroll frame: it is as tall as what it
 	holds, so nothing opened from it is cut off) holding a body of its own,
-	OB.New(content, OM.MenuRoot({ menu = group }), MenuChanged, 376, { oneColumn =
-	true }), which draws OM.BuildView(root, OM.MENU_KEY).sections: every row
-	a line of its own, on panels under Thick and Thin (a closing line of
+	OB.New(content, OM.MenuRoot({ menu = group }), MenuChanged, 376), told it is
+	a half body (body:SetWidth(376, true), as the window's half width lays a
+	page out: OB.HalfSize), which draws OM.BuildView(root, OM.MENU_KEY).sections:
+	two small rows to a line (the 376's halves), every other row a line of its
+	own, on panels under Thick and Thin (a closing line of
 	buttons floats under its panel), none under Blizzard. The menu is as tall
 	as its title and its body: its last row ends 12 above its edge, or a
 	closing line of buttons 24 (OB.FLOAT_GAP), as far as it floats under the
@@ -204,6 +208,11 @@ end
 -- gave one.
 local function Draw(body, row, dots, menu, title)
 	M.owner = { body = body, path = row.path }
+	-- A part row's dots are open while its menu is (the last ones, possibly another
+	-- pooled widget's by now, are let go).
+	if M.dots then W.Kit.MarkSlot(M.dots, false) end
+	M.dots = type(row.option) == 'table' and type(row.option.summary) == 'function' and dots or nil
+	if M.dots then W.Kit.MarkSlot(M.dots, true) end
 	M.root = OM.MenuRoot({ menu = menu })
 	M.body:SetRoot(M.root)
 	if title == nil then title = OM.Member(body.root, row, 'menuTitle') end
@@ -287,7 +296,9 @@ local function Build()
 	content:SetSize(BODY_WIDTH, 1)
 
 	M.frame, M.catcher, M.title, M.content = frame, catcher, title, content
-	M.body = OB.New(content, nil, MenuChanged, BODY_WIDTH, { oneColumn = true })
+	M.body = OB.New(content, nil, MenuChanged, BODY_WIDTH)
+	-- As a half body: two small rows to a line, the rest a line each (OB.HalfSize).
+	M.body:SetWidth(BODY_WIDTH, true)
 
 	-- Esc, only while the menu is shown.
 	local keys = EscapeKeys(frame, function() return false end, function() OW:CloseMenu() end)
@@ -311,7 +322,8 @@ local function Build()
 		if owner and Inside(owner, frame) then W.CloseList() end
 		W.CancelConfirm()
 		M.body:Release()
-		M.owner, M.root, M.dragging = nil, nil, nil
+		if M.dots then W.Kit.MarkSlot(M.dots, false) end
+		M.owner, M.root, M.dragging, M.dots = nil, nil, nil, nil
 		-- Off the dots it was on: they belong to a widget that goes back to a pool.
 		frame:ClearAllPoints()
 	end)

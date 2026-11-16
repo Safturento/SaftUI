@@ -84,12 +84,10 @@ local function Filter(bar)
 		box.hint:SetShown(box:GetText() == '' and not box:HasFocus())
 	end
 	box:SetScript('OnEnter', function(self)
-		W.Edge(self, true)
 		W.ShowTip(self, 'Filter movers',
 			{ 'Shows only the movers whose name has this text. Enter selects the first one, Esc clears it.' })
 	end)
 	box:SetScript('OnLeave', function(self)
-		W.Edge(self, self:HasFocus())
 		W.HideTip(self)
 	end)
 	box:SetScript('OnEditFocusGained', function(self)
@@ -112,6 +110,8 @@ local function Filter(bar)
 		self:SetText('')
 		self:ClearFocus()
 	end)
+	-- a box: hover tints its body, focus lights its edge (W.Edge above); after the scripts
+	W.HoverStates(box)
 
 	-- Keyboard back to edit mode's catcher: the arrow keys nudge again.
 	local function Drop() box:ClearFocus() end

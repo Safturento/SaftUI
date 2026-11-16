@@ -480,7 +480,9 @@ local function three()
 	return p, t, f, pc, tc, fc
 end
 
-test('the History list: newest first, the current step marked, undone ones grey, a row click goes back to it', function()
+local function selected(row) return st:GetState(row, 'selected') == true end
+
+test('the History list: newest first, the current step selected, undone ones grey, a row click goes back to it', function()
 	reset()
 	local p, t, f, pc, tc, fc = three()
 	local button = frame_of('history')
@@ -490,14 +492,16 @@ test('the History list: newest first, the current step marked, undone ones grey,
 	check(list:IsShown() and EM:IsHistoryListShown(), 'the list is shown')
 	check(button.on == true, 'History is on while the list is open')
 	eq(table.concat(labels(list), '|'), 'Moved Focus|Moved Target|Moved Player|Before these changes', 'newest first, then the start')
-	check(list.rows[1].mark:IsShown() and not list.rows[2].mark:IsShown(), 'the first row has the mark')
-	eq(list.rows[1].mark:GetWidth(), 2, 'a 2px mark')
-	eq((fill(list.rows[1].mark)), rgb(st.config.profile.theme.accent), 'in the accent')
+	check(selected(list.rows[1]) and not selected(list.rows[2]), 'the first row is the selected one')
+	local bar = st:StateLook(list.rows[1]).bar
+	eq(bar.width, 2 * st:GetLineSize(list.rows[1]), 'its bar is two lines')
+	eq(string.format('%.2f,%.2f,%.2f', bar.r, bar.g, bar.b), rgb(st.config.profile.theme.accent), 'in the accent')
 	do -- a non-default accent: a literal blue fails
 		local accent = st.config.profile.theme.accent
 		accent:SetRGB(0.9, 0.1, 0.2)
 		st:ColorsChanged('accent')
-		eq((fill(EM:GetHistoryList().rows[1].mark)), '0.90,0.10,0.20', 'the current step follows the accent')
+		bar = st:StateLook(EM:GetHistoryList().rows[1]).bar
+		eq(string.format('%.2f,%.2f,%.2f', bar.r, bar.g, bar.b), '0.90,0.10,0.20', 'the current step follows the accent')
 		accent:SetRGB(0, 0.68, 0.94)
 		st:ColorsChanged('accent')
 	end
@@ -505,7 +509,7 @@ test('the History list: newest first, the current step marked, undone ones grey,
 	eq(rgb(CreateColor(list.rows[1].label:GetTextColor())), rgb(colors().text.normal), 'applied: normal')
 
 	stub.click(frame_of('undo'))
-	check(not list.rows[1].mark:IsShown() and list.rows[2].mark:IsShown(), 'undo: the mark moves to the second')
+	check(not selected(list.rows[1]) and selected(list.rows[2]), 'undo: the selected row moves to the second')
 	eq(rgb(CreateColor(list.rows[1].label:GetTextColor())), rgb(colors().text.muted), 'the undone one is grey')
 	eq(list.rows[1].detail:GetText(), 'undone', 'and says undone')
 	eq(rgb(CreateColor(list.rows[1].detail:GetTextColor())), rgb(colors().text.muted), 'in Text > Muted')
@@ -517,13 +521,13 @@ test('the History list: newest first, the current step marked, undone ones grey,
 	eq(tc.position.x_off, 0, 'Target is back')
 	eq(fc.position.x_off, 0, 'Focus is back')
 	eq(status(), 'Went back to: Moved Player', 'the status says so')
-	check(list.rows[3].mark:IsShown(), 'the mark follows')
+	check(selected(list.rows[3]), 'the selected row follows')
 	stub.click(list.rows[4])
 	eq(History:Position(), 0, "'Before these changes': position 0")
 	eq(pc.position.x_off, 0, 'Player is at the start')
 	eq(status(), 'Went back to: Before these changes', 'named')
 	check(History:CanRedo(), 'Redo still works')
-	check(list.rows[4].mark:IsShown(), 'the start row is marked')
+	check(selected(list.rows[4]), 'the start row is the selected one')
 	stub.click(frame_of('redo'))
 	eq(pc.position.x_off, 10, 'Redo brings the first step back')
 	stub.click(list.rows[1])
@@ -574,35 +578,29 @@ test("a bulk step's detail is its number of settings; a row's tooltip is its lab
 	reset()
 end)
 
-test('a row under the mouse is filled at 25% accent, or with the dropdown list\'s rowHover under Blizzard', function()
+test('a row under the mouse tints (the states helper\'s hover), or shows the dropdown list\'s rowHover under Blizzard', function()
 	reset()
 	three()
 	stub.click(frame_of('history'))
 	local list = EM:GetHistoryList()
 	local row = list.rows[2]
-	check(not row.hover:IsShown(), 'not hovered: no fill')
+	local function layer() return st:StateLook(row).layer end
+	check(not layer().shown, 'not hovered: no tint')
 	stub.fire_script(row, 'OnEnter', true)
-	check(row.hover:IsShown(), 'under the mouse: filled')
-	eq(row.hover:GetAlpha(), 0.25, 'at 25%')
-	eq((fill(row.hover)), rgb(st.config.profile.theme.accent), 'in the accent')
-	do -- at the row tint, by its name, not a number of its own
-		local keep = st.TINT_ROW
-		st.TINT_ROW = 0.4
-		look('blizzard'); look('thick')
-		eq(row.hover:GetAlpha(), 0.4, 'at st.TINT_ROW')
-		st.TINT_ROW = keep
-		look('blizzard'); look('thick')
-	end
+	check(layer().shown, 'under the mouse: tinted')
+	eq(string.format('%.2f', layer().a), string.format('%.2f', select(4, st:StateColor('hover'))), 'at the hover strength')
+	check(not row.hover:IsShown(), "and Blizzard's art stays off")
 	do
 		local accent = st.config.profile.theme.accent
 		accent:SetRGB(0.9, 0.1, 0.2)
 		st:ColorsChanged('accent')
-		eq((fill(EM:GetHistoryList().rows[2].hover)), '0.90,0.10,0.20', 'the hover follows the accent')
+		local l = layer()
+		check(l.r > l.b, 'the tint follows the accent: ' .. string.format('%.2f,%.2f,%.2f', l.r, l.g, l.b))
 		accent:SetRGB(0, 0.68, 0.94)
 		st:ColorsChanged('accent')
 	end
 	stub.fire_script(row, 'OnLeave', true)
-	check(not row.hover:IsShown(), 'left: no fill')
+	check(not layer().shown, 'left: no tint')
 	look('blizzard')
 	stub.fire_script(row, 'OnEnter', true)
 	eq(row.hover:GetAtlas(), st.ThemeArt.Control('dropdown').rowHover, "Blizzard: the dropdown list's rowHover")

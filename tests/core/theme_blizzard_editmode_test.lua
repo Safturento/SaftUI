@@ -148,7 +148,9 @@ test("under Blizzard a mover shows Blizzard's highlight kit, and the selected ki
 	eq(T.fill(backdrop), '0.00,0.00,0.00,0.30', 'with the dim fill')
 	local blue = T.text(st.config.profile.theme.accent:GetRGB())
 	eq(T.edge(other.overlay.backdrop), blue .. ',1.00', 'the selected one: a blue line')
-	eq(T.fill(other.overlay.backdrop), blue .. ',0.15', 'and its blue fill')
+	eq(T.fill(other.overlay.backdrop), '0.00,0.00,0.00,0.30', 'over the dim body')
+	local fade = st:StateLook(other.overlay).fill
+	check(fade and fade.shown and T.text(fade.r, fade.g, fade.b) == blue, 'and its blue fade (the states helper\'s fill)')
 
 	-- And Blizzard once more reuses the pieces it made.
 	switch('blizzard')
