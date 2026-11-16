@@ -6,6 +6,8 @@
 --     A fresh world (reset_world()): uf_world.lua's (opts as UW.world's) with config/shared.lua and every unit's config file,
 --     'all' too, and every element file, Name's too. UF.units, UF.groups and UF.holders hold a frame
 --     by config unit, so UF:GetConfigTable builds the member pages (the frames have no elements).
+--     opts.bare: the world without Task 2's files (no units/all.lua, no shared.lua): the base the inertness
+--     test compares the saved data of the same operations with.
 --   SW.MEMBERS, SW.ELEMENTS, SW.NOT_SHARED(path)
 --   SW.rows(UF, unit) -> { { path, type, key, name, hand, at }, ... }
 --     Every value row of the member's page with the path below the unit it saves at (nil for the six
@@ -41,9 +43,11 @@ function SW.world(opts)
 	opts = opts or {}
 	reset_world()
 	local units = {}
-	for _, unit in ipairs(UW.UNITS) do units[#units + 1] = unit end
+	for _, unit in ipairs(UW.UNITS) do
+		if not (opts.bare and unit == 'all') then units[#units + 1] = unit end
+	end
 	for _, unit in ipairs(PLATES) do units[#units + 1] = unit end
-	local after = { 'config/shared' }
+	local after = opts.bare and {} or { 'config/shared' }
 	for _, file in ipairs(opts.after or {}) do after[#after + 1] = file end
 	local st, UF, P = UW.world({
 		client = opts.client, position = true, units = units, after = after, elements = opts.elements or SW.ELEMENTS,
@@ -152,7 +156,10 @@ end
 local function Plain(value)
 	if type(value) ~= 'table' then return value end
 	local copy = {}
-	for k, v in pairs(value) do copy[k] = Plain(v) end
+	for k, v in pairs(value) do
+		-- (A color's methods are fields of its table: they are not values.)
+		if type(v) ~= 'function' then copy[k] = Plain(v) end
+	end
 	return copy
 end
 
@@ -242,15 +249,43 @@ function SW.acedb(saved)
 	return db
 end
 
-function SW.relog(db)
+-- What WoW's SavedVariables file keeps: strings, numbers, booleans and tables; functions are dropped (a
+-- color object's methods are fields of its table in game, and are not in the file).
+local function SavedCopy(value, seen)
+	if type(value) ~= 'table' then return value end
+	seen = seen or {}
+	if seen[value] then return seen[value] end
+	local copy = {}
+	seen[value] = copy
+	for k, v in pairs(value) do
+		if type(v) ~= 'function' and type(v) ~= 'userdata' then copy[k] = SavedCopy(v, seen) end
+	end
+	return copy
+end
+SW.saved_copy = SavedCopy
+
+-- A login over saved data (a table as SW.acedb's db.sv, or SW.relog's): AceDB fills the defaults in.
+function SW.acedb_from(sv)
 	local st = SaftUI
-	local AceDB = LibStub('AceDB-3.0')
+	if not LibStub('AceDB-3.0', true) then
+		load_saftui('SaftUI-Core/Libraries/CallbackHandler-1.0/CallbackHandler-1.0.lua')
+		load_saftui('SaftUI-Core/Libraries/Ace3/AceDB-3.0/AceDB-3.0.lua')
+	end
+	local db = LibStub('AceDB-3.0'):New(sv, { profile = st.defaults }, 'SaftUI')
+	st.config = db
+	return db
+end
+
+-- A logout and a login, as the game does them: PLAYER_LOGOUT (AceDB strips what equals a default), the saved
+-- data written out and read back (functions dropped, no table shared with the old session), then AceDB over it.
+function SW.logout(db)
 	stub.fire_event('PLAYER_LOGOUT')
-	local sv = db.sv
-	AceDB.db_registry[db] = nil
-	local fresh = AceDB:New(sv, { profile = st.defaults }, 'SaftUI')
-	st.config = fresh
-	return fresh
+	LibStub('AceDB-3.0').db_registry[db] = nil
+	return SavedCopy(db.sv)
+end
+
+function SW.relog(db)
+	return SW.acedb_from(SW.logout(db))
 end
 
 function SW.step(UF)

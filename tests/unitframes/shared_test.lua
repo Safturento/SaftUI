@@ -190,6 +190,10 @@ test('a fresh profile writes nothing into All units', function()
 		for k, v in pairs(was) do
 			if type(v) == 'table' then
 				walk(v, type(now[k]) == 'table' and now[k] or {}, path .. '.' .. tostring(k))
+			elseif path == '.debuffs' and k == 'enable' then
+				-- The one value All units' own defaults give it (config/units/all.lua), written by the conversion.
+				eq(v, false, 'All units held the wildcard default before')
+				eq(now[k], true, 'All units takes Debuffs on')
 			else
 				eq(now[k], v, 'All units ' .. path .. '.' .. tostring(k))
 			end
@@ -581,7 +585,7 @@ test('PrepareShared converts, then syncs only a converted profile', function()
 	eq(UF:SharedReady(P), false)
 end)
 
-test('the one-time backup of the unit tables, and putting it back', function()
+test('the one-time backup holds the shared settings and their flags, and putting it back changes only those', function()
 	world()
 	P.target.name.font = 'pixel'
 	P.player.buffs.size = 31
@@ -591,30 +595,56 @@ test('the one-time backup of the unit tables, and putting it back', function()
 	eq(type(backup), 'table', 'a backup was made')
 	eq(backup.version, 1)
 	eq(type(backup.when), 'number')
-	check(backup.units.target and backup.units.player and backup.units.raid40 and backup.units.nameplate, 'every unit table')
-	eq(backup.units.all, nil, 'not All units')
-	eq(backup.units.backup, nil)
-	eq(backup.units.target.name.font, 'pixel')
+	for _, unit in ipairs(SW.MEMBERS) do eq(type(backup.units[unit]), 'table', unit .. ' is in it') end
+	eq(backup.units.nameplate, nil, 'no plate')
+	eq(backup.units.all, nil, 'no All units')
+	eq(backup.units.target.values['name.font'], 'pixel', 'the value it had')
+	eq(backup.units.player.values['buffs.size'], 31)
+	eq(backup.units.targettarget.values['castbar.enable'], nil, 'a setting the unit lacks is not in it')
 	eq(getmetatable(backup.units.target), nil, 'plain data')
+	-- Only the shared settings: no unit place, size or other key.
+	for _, saved in pairs(backup.units) do
+		for key in pairs(saved.values) do check(UF.SHARED_BY_PATH[key], key .. ' is a shared path') end
+	end
 	-- It is made once: later changes and another conversion leave it.
 	P.target.name.font = 'normal'
 	rawset(P.all, 'version', nil)
 	UF:ConvertShared(P)
 	eq(rawget(P, 'backup'), backup)
-	eq(backup.units.target.name.font, 'pixel')
-	-- Restore: the unit tables as they were, in place, All units and the marker gone.
+	eq(backup.units.target.values['name.font'], 'pixel')
+	-- Changes the conversion and sharing could not make stay as the player has them now.
+	P.nameplate.name.font = 'pixel'
+	P.player.width = 411
+	P.player.position.x_off = 123
+	P.player.classpower.height = 9
+	P.raid10.width = 77
 	local targetTable = P.target
-	UF:SetShared('target', 'name.font', 'normal')
+	UF:SetShared('target', 'name.font', 'header')
+	UF:SetShared('all', 'health.text.font', 'pixel')
 	check(UF.HasSharedBackup(P))
 	local restored, why = UF:RestoreShared(P)
 	eq(restored, true, tostring(why))
 	eq(rawequal(P.target, targetTable), true, 'the unit table keeps its identity')
-	eq(rawget(P.target, 'own'), nil, 'no flags')
+	eq(P.target.name.font, 'pixel', 'the setting is as it was before sharing')
+	eq(P.player.health.text.font, 'normal')
+	eq(rawget(P.target, 'own') == nil or rawget(P.target, 'own')['name.font'] == nil, true, 'no flag')
 	eq(rawget(P.all, 'version'), nil, 'no marker')
 	eq(UF:SharedReady(P), false)
-	local ok, diffs = SW.same(before, SW.snapshot(P))
-	check(ok, 'every member shows what it showed before the upgrade: ' .. table.concat(diffs, ', '))
+	eq(P.nameplate.name.font, 'pixel', 'a plate is as the player has it')
+	eq(P.player.width, 411)
+	eq(P.player.position.x_off, 123)
+	eq(P.player.classpower.height, 9)
+	eq(P.raid10.width, 77)
 	eq(rawget(P, 'backup'), backup, 'the backup stays')
+	for _, unit in ipairs(SW.MEMBERS) do
+		for _, entry in ipairs(UF.SHARED) do check(not UF:IsOwn(unit, entry.key), unit .. ' ' .. entry.key .. ' is not owned') end
+	end
+	local ok, diffs = SW.same(before, SW.snapshot(P))
+	local only = {}
+	for _, d in ipairs(diffs) do
+		if not (d:match('^player%.width$') or d:match('^player%.position$') or d:match('^raid10%.width$')) then only[#only + 1] = d end
+	end
+	eq(#only, 0, 'every shared setting is as it was: ' .. table.concat(only, ', '))
 	-- And a profile converts again after a restore.
 	UF:PrepareShared(P)
 	eq(UF:SharedReady(P), true)
@@ -625,50 +655,33 @@ test('the one-time backup of the unit tables, and putting it back', function()
 	check(type(reason) == 'string' and #reason > 0)
 end)
 
-test('a profile with no All units (an imported export from before) converts by rawset', function()
+test('a profile copy or export leaves the backup out', function()
 	world()
-	-- What an in-session import makes: a plain table, no defaults, no metatables, no All units, and a unit missing.
-	local imported = {}
-	for _, unit in ipairs(SW.MEMBERS) do
-		if unit ~= 'boss' then imported[unit] = st.tablecopy(P[unit], true) end
+	UF:ConvertShared(P)
+	check(rawget(P, 'backup') ~= nil)
+	local copy = UF.CopyProfileData(P)
+	eq(rawget(copy, 'backup'), nil, 'the copy has none')
+	eq(rawget(P, 'backup') ~= nil, true, 'the source keeps it')
+	eq(rawget(copy.all, 'version'), 1, 'the marker is carried')
+	check(rawget(copy, 'target') ~= nil or copy.target ~= nil, 'the units are carried')
+	check(not rawequal(copy.target, P.target), 'a deep copy')
+end)
+
+test('the backup is small: the shared values, not the profile', function()
+	world()
+	SW.customize(P)
+	UF:ConvertShared(P)
+	local function size(value, seen)
+		if type(value) ~= 'table' then return #tostring(value) + 2 end
+		local total = 2
+		for k, v in pairs(value) do total = total + #tostring(k) + 2 + size(v) end
+		return total
 	end
-	imported.target.name.font = 'pixel'
-	imported.player.name.font = 'pixel'
-	imported.pet.name.font = 'pixel'
-	imported.raid10.name.font = 'pixel'
-	eq(rawget(imported, 'all'), nil)
-	eq(UF:PrepareShared(imported), true, 'no error')
-	eq(#take_errors(), 0)
-	eq(type(rawget(imported, 'all')), 'table', 'All units was made')
-	eq(rawget(imported.all, 'version'), 1)
-	eq(imported.all.name.font, 'normal', 'the majority of eight')
-	-- Every entry's value is written into All units from the members, or the default.
-	for _, entry in ipairs(UF.SHARED) do
-		local members = 0
-		for _, unit in ipairs(SW.MEMBERS) do
-			if imported[unit] and UF:HasShared(unit, entry.key) then members = members + 1 end
-		end
-		if members > 0 then
-			local value = imported.all
-			for _, key in ipairs(entry.paths[1]) do value = type(value) == 'table' and value[key] or nil end
-			-- A check box that reads unticked (and a toggle's false) may be missing: nil and false are the same.
-			check(value ~= nil or entry.type == 'toggle' or entry.type == 'colortoggle', entry.key .. ' has a value in All units')
-		end
-	end
-	for _, unit in ipairs({ 'target', 'player', 'pet', 'raid10' }) do
-		eq(imported[unit].name.font, 'pixel', unit .. ' shows what it showed')
-		eq(imported[unit].own['name.font'], true, unit .. ' owns it')
-	end
-	eq(imported.boss, nil, 'a unit the export lacks is skipped')
-	eq(imported.focus.name.font, 'normal')
-	eq(rawget(imported.focus, 'own')['name.font'], nil)
-	for _, entry in ipairs(UF.SHARED) do
-		for _, unit in ipairs(SW.MEMBERS) do
-			if imported[unit] and UF:HasShared(unit, entry.key) and not (rawget(imported[unit], 'own') or {})[entry.key] then
-				check(UF.SameShared(entry, imported[unit], imported.all), unit .. ' ' .. entry.key .. ' follows')
-			end
-		end
-	end
+	local backup, rest = size(rawget(P, 'backup')), 0
+	for k, v in pairs(P) do if k ~= 'backup' and type(v) == 'table' then rest = rest + size(v) end end
+	print(('backup %d characters, the rest of the profile %d'):format(backup, rest))
+	check(backup < rest / 2, 'smaller than half of the profile')
+	check(backup < 40000, 'under 40000 characters: ' .. backup)
 end)
 
 test('the interface is table writes: no function of the file touches a frame but the ticker', function()

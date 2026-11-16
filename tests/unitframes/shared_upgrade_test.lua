@@ -167,7 +167,7 @@ test('a fresh profile writes nothing into All units', function()
 	stub.fire_event('PLAYER_LOGOUT')
 	local saved = rawget(db.sv.profiles.SaftUI.unitframes.profiles.SaftUI, 'all')
 	eq(type(saved), 'table', 'All units is saved')
-	eq(table.concat(leaves(saved), ','), 'version', 'only the marker')
+	eq(table.concat(leaves(saved), ','), 'debuffs.enable,version', "only All units' own default (Debuffs on) and the marker")
 end)
 
 test('the backup survives a logout and puts the unit tables back', function()
@@ -188,58 +188,14 @@ test('the backup survives a logout and puts the unit tables back', function()
 	check(UF:RestoreShared(profile))
 	eq(UF:SharedReady(profile), false)
 	shows_the_same(before, profile, 'after the restore')
-	for _, unit in ipairs(SW.MEMBERS) do eq(rawget(profile[unit], 'own'), nil, unit .. ' has no flags') end
+	for _, unit in ipairs(SW.MEMBERS) do
+		for _, entry in ipairs(UF.SHARED) do
+			local own = rawget(profile[unit], 'own')
+			check(not (own and own[entry.key]), unit .. ' ' .. entry.key .. ' has no flag')
+		end
+	end
 	-- The restored profile converts again, to the same.
 	UF:PrepareShared(profile)
 	shows_the_same(before, profile, 'converted again')
 end)
 
-test('nothing is wired: loading the files and logging in on an existing profile adds nothing to it', function()
-	world()
-	local db = SW.acedb({})
-	local profile = profile_of(db)
-	SW.customize(profile)
-	db = SW.relog(db)
-	profile = profile_of(db)
-	-- What a login does to the profile: the unit frames' config is read.
-	UF:GetProfileConfig()
-	local before = SW.snapshot(profile)
-	stub.fire_event('PLAYER_LOGIN')
-	stub.fire_event('PLAYER_LOGOUT')
-	db = SW.relog(db)
-	profile = profile_of(db)
-	check(rawget(profile.all, 'version') == nil, 'no marker')
-	eq(rawget(profile, 'backup'), nil, 'no backup')
-	for _, unit in ipairs(SW.MEMBERS) do
-		local own = rawget(profile[unit], 'own')
-		local flags = 0
-		for key, value in pairs(own or {}) do
-			if UF.SHARED_BY_KEY[key] and value ~= nil then flags = flags + 1 end
-		end
-		eq(flags, 0, unit .. ' has no own flags')
-	end
-	shows_the_same(before, profile, 'after the login')
-	-- And the saved data holds no All units: at a logout AceDB strips what equals a default.
-	stub.fire_event('PLAYER_LOGOUT')
-	local saved = rawget(db.sv.profiles.SaftUI.unitframes.profiles.SaftUI, 'all')
-	eq(table.concat(leaves(saved), ','), '', 'no All units saved')
-end)
-
-test('nothing is wired: no unit frame file but config/shared.lua calls the conversion, the sync or the update', function()
-	local words = { 'ConvertShared', 'SyncShared', 'PrepareShared', 'RestoreShared', 'UpdateShared', 'PropagateShared',
-		'SetShared', 'FollowAll', 'ApplyToAll', 'OwnShared', 'SharedReady' }
-	local T = load_test_file('lib/theme_helpers.lua')
-	local scanned = 0
-	for _, path in ipairs((T.saftui_files())) do
-		if path:sub(1, 15) == 'SaftUI-Unitfram' and path ~= 'SaftUI-Unitframes/config/shared.lua' then
-			local source = read_saftui_source(path)
-			if source then
-				scanned = scanned + 1
-				for _, word in ipairs(words) do
-					check(not source:find(word, 1, true), path .. ' calls ' .. word .. ' before the wiring task')
-				end
-			end
-		end
-	end
-	check(scanned > 30, 'it scanned ' .. scanned .. ' files')
-end)

@@ -14,16 +14,20 @@ local UF = st:GetModule('Unitframes')
 	group layout are never shared (so no entry), nor are Class power, Additional power and the plates.
 
 	Where it is stored, in the unit frame profile (unitframes.profiles.<name>):
-	  <profile>.all             All units' values, a unit-shaped table; its defaults are AceDB's
-	                            unit wildcard and config/units/all.lua
+	  <profile>.all             All units' values, a unit-shaped table. Its defaults are AceDB's unit
+	                            wildcard with st.ALL_UNITS_DEFAULTS (config/units/all.lua) over it, which
+	                            are not registered with AceDB: no `all` table exists in a profile's saved data
+	                            until it is converted
 	  <profile>.<unit>.own      { ['name.font'] = true | false, ... }: dotted keys, cleared to false and
 	                            never nil. AceDB fills this table with the element defaults at each login
 	                            (enable = true, ...): never iterate it, only read a key an entry names.
 	  <profile>.all.version     the marker: UF.SHARED_VERSION once converted. Read and written with
 	                            rawget and rawset: a missing key reads as a new table through AceDB's
 	                            wildcard.
-	  <profile>.backup          { version, when, units }: a copy of the profile's unit tables, made once
-	                            before the first conversion (UF:RestoreShared puts it back).
+	  <profile>.backup          { version, when, units }: kept once before the first conversion, for each
+	                            member the values of the shared settings it has and its own flags for them,
+	                            as they were (UF:RestoreShared writes them back into the live tables).
+	                            UF.CopyProfileData(profile) copies a profile without it.
 	  <profile>.<unit>.<path>   every member's own stored values stay where they are, and hold what the
 	                            member SHOWS: its own value where it owns the setting, else a copy of All
 	                            units'. So no reader, oUF element or hot path changes. UF:SharedValue says
@@ -38,7 +42,13 @@ local UF = st:GetModule('Unitframes')
 	It computes everything first, then writes (the backup, All units' values, the own flags), and the
 	marker last: an error before the marker leaves the profile with no marker and nothing the
 	frames read changed. UF:PrepareShared(profile) is the one guarded entry a login or a profile change
-	calls: the conversion, then the sync only while the marker says converted.
+	calls: the conversion, then the sync only while the marker says converted. A plain table with no AceDB
+	metatable (an import in this session) is left unconverted until the login that gives it one, and the
+	conversion refuses while an element an entry names is not registered.
+
+	Every writer (SyncShared, SetShared, OwnShared, FollowAll, ApplyToAll, ApplyTo, PropagateShared) does
+	nothing and returns false and a reason unless the profile is converted (UF:SharedReady) and every
+	element is registered: on an unconverted profile they would overwrite customized values with All units'.
 
 	A setting added later gets since = n, UF.SHARED_VERSION rises to n, and the conversion runs that
 	step for those entries alone, so a unit whose default for the new setting differs owns it from the
@@ -465,18 +475,66 @@ local function WriteValue(entry, config, value, part)
 end
 
 -- What a fresh profile's All units holds for the entry: the defaults at its paths, as a unit-shaped
--- table (plain copies; the defaults themselves are never written).
-function UF.DefaultShared(entry)
+-- table (plain copies; the defaults themselves are never written). All units' own defaults are
+-- st.ALL_UNITS_DEFAULTS (config/units/all.lua), laid over AceDB's unit wildcard here: they are
+-- not registered with AceDB, so no profile's saved data gains an All units block before it is converted.
+-- wildcardOnly leaves them out: what AceDB's own wildcard gives an `all` table that is made by a read.
+function UF.DefaultShared(entry, wildcardOnly)
 	local config = {}
 	local profile = UF:GetProfile() or 'SaftUI'
 	for _, path in ipairs(entry.paths) do
 		local found, value = st:DefaultAt('unitframes', 'profiles', profile, 'all', unpack(path))
+		local own = not wildcardOnly and Get(st.ALL_UNITS_DEFAULTS or {}, path) or nil
+		if own ~= nil then found, value = true, own end
 		if found then Set(config, path, CopyPlain(value)) end
 	end
 	return config
 end
 
+-- What the member will show once AceDB has filled its defaults in again (at the next login a key that is
+-- nil in a saved table, a position's missing part, a color with no channels, comes back as the default's
+-- value; a false stays false). The conversion compares and copies this, so what it decides holds after a
+-- login. The config itself when nothing is missing, else a stand-in holding this entry's paths.
+local PARTS = { 'point', 'rel_point', 'x_off', 'y_off', 'element', 'frame' }
+
+local function Shown(entry, unit, config)
+	local stand
+	local profile = UF:GetProfile() or 'SaftUI'
+	for _, path in ipairs(entry.paths) do
+		local value = Get(config, path)
+		local fill
+		local isColor = entry.type == 'color' or (entry.type == 'colortoggle' and path == entry.paths[2])
+		if value == nil then
+			local found, default = st:DefaultAt('unitframes', 'profiles', profile, unit, unpack(path))
+			if found then fill = CopyPlain(default) end
+		elseif entry.type == 'position' and type(value) == 'table' then
+			local found, default = st:DefaultAt('unitframes', 'profiles', profile, unit, unpack(path))
+			if found and type(default) == 'table' then
+				for _, part in ipairs(PARTS) do
+					if value[part] == nil and default[part] ~= nil then
+						fill = fill or CopyPlain(value)
+						fill[part] = default[part]
+					end
+				end
+			end
+		elseif isColor and type(value) == 'table' and value.r == nil and value[1] == nil then
+			local found, default = st:DefaultAt('unitframes', 'profiles', profile, unit, unpack(path))
+			if found then fill = CopyPlain(default) end
+		end
+		if fill ~= nil then
+			if not stand then
+				stand = {}
+				for _, other in ipairs(entry.paths) do Set(stand, other, CopyPlain(Get(config, other))) end
+			end
+			Set(stand, path, fill)
+		end
+	end
+	return stand or config
+end
+
 ------------------------------------------------------------------ who has what, who owns what
+
+local MEMBER_LIST = UF.SHARE_MEMBERS
 
 -- Whether the unit's page shows the row: a member, the entry's element registered for it and valid for
 -- the unit, and a kind of unit its frames can show. 'all' has every entry.
@@ -508,8 +566,7 @@ local function OwnTable(config)
 	return own
 end
 
--- The unit frame profile's unit table, nil for a unit it doesn't hold (a profile imported from an
--- older export has no table for a unit that wasn't saved).
+-- The unit frame profile's unit table, nil for a unit it doesn't hold.
 local function ConfigOf(profile, unit)
 	local config = profile[unit]
 	if type(config) == 'table' then return config end
@@ -537,6 +594,24 @@ function UF:SharedReady(profile)
 	return type(profile) == 'table' and Marker(profile) == UF.SHARED_VERSION
 end
 
+local function MissingElement()
+	for _, entry in ipairs(SHARED) do
+		if entry.element and not (UF.elements and UF.elements[entry.element]) then return entry.element end
+	end
+end
+
+-- Why nothing may be written for the profile, or nil: every writer asks. The profile is converted (the
+-- marker equals UF.SHARED_VERSION: on an unconverted profile an unowned member counts as following, and
+-- All units' defaults would overwrite its customized values; on a newer marker a newer SaftUI owns the
+-- flags) and every element an entry names is registered (a member whose element is missing has no
+-- setting for it, and would be written when it comes back).
+local function NotReady(profile)
+	if type(profile) ~= 'table' then return 'There is no unit frame profile.' end
+	if Marker(profile) ~= UF.SHARED_VERSION then return 'The unit frame profile is not converted to shared settings.' end
+	local missing = MissingElement()
+	if missing then return 'The unit frame element ' .. missing .. ' is not registered.' end
+end
+
 function UF:IsOwn(unit, key)
 	if not IS_MEMBER[unit] then return false end
 	local config = ConfigOf(self:GetProfileConfig(), unit)
@@ -546,7 +621,7 @@ end
 -- The members, in order, that have the key and hold a config table: { { unit, config }, ... }.
 local function Members(self, profile, key)
 	local list = {}
-	for _, unit in ipairs(UF.SHARE_MEMBERS) do
+	for _, unit in ipairs(MEMBER_LIST) do
 		if self:HasShared(unit, key) then
 			local config = ConfigOf(profile, unit)
 			if config then list[#list + 1] = { unit = unit, config = config } end
@@ -573,35 +648,47 @@ end
 -- The units of a set, in member order.
 local function Ordered(set)
 	local list = {}
-	for _, unit in ipairs(UF.SHARE_MEMBERS) do
+	for _, unit in ipairs(MEMBER_LIST) do
 		if set[unit] then list[#list + 1] = unit end
 	end
 	return list
 end
 
 -- Every follower of the entry (a member that has it and doesn't own it) takes All units' value where
--- its own differs. Marks the units written in changed.
+-- its own differs. Marks the units written in changed. Makes no table.
 local function Follow(self, profile, entry, changed)
 	local all = AllOf(profile)
-	if not all then return end
-	for _, member in ipairs(Members(self, profile, entry.key)) do
-		if not OwnsKey(member.config, entry.key) and not UF.SameShared(entry, member.config, all) then
-			UF.CopyShared(entry, all, member.config)
-			changed[member.unit] = true
+	if not all then return 0 end
+	local writes = 0
+	for index = 1, #MEMBER_LIST do
+		local unit = MEMBER_LIST[index]
+		if self:HasShared(unit, entry.key) then
+			local config = ConfigOf(profile, unit)
+			if config and not OwnsKey(config, entry.key) and not UF.SameShared(entry, config, all) then
+				UF.CopyShared(entry, all, config)
+				if changed then changed[unit] = true end
+				writes = writes + 1
+			end
 		end
 	end
+	return writes
 end
 
 ------------------------------------------------------------------ writes
+
+-- Every writer below does nothing, and returns false and why, unless the profile is converted and every
+-- element is registered (NotReady). Else each returns the units whose stored values changed.
 
 -- On 'all': All units' value, and every follower's copy (an owner keeps its own). On a member: the
 -- member owns the key, and its value is written. A position is written part by part, every part; a
 -- color in place; a typeface as a copy. part: one part of a position, or 'toggle' or 'color' for a
 -- colortoggle. Returns the units whose stored values changed, in member order. Applies nothing.
 function UF:SetShared(unit, key, value, part)
+	local profile = self:GetProfileConfig()
+	local why = NotReady(profile)
+	if why then return false, why end
 	local entry = BY_KEY[key]
 	if not entry then return {} end
-	local profile = self:GetProfileConfig()
 	local changed = {}
 	if unit == 'all' then
 		WriteValue(entry, AllOf(profile, true), value, part)
@@ -618,17 +705,23 @@ end
 
 -- The member owns the key, and nothing else is written: what it shows stays what it shows.
 function UF:OwnShared(unit, key)
-	if not (BY_KEY[key] and IS_MEMBER[unit] and self:HasShared(unit, key)) then return end
-	local config = ConfigOf(self:GetProfileConfig(), unit)
+	local profile = self:GetProfileConfig()
+	local why = NotReady(profile)
+	if why then return false, why end
+	if not (BY_KEY[key] and IS_MEMBER[unit] and self:HasShared(unit, key)) then return false, 'The unit has no such setting.' end
+	local config = ConfigOf(profile, unit)
 	if config then OwnTable(config)[key] = true end
+	return true
 end
 
 -- The member follows All units again: the flag is false (never nil) and its stored value becomes All
 -- units'. Returns the units whose stored value changed.
 function UF:FollowAll(unit, key)
+	local profile = self:GetProfileConfig()
+	local why = NotReady(profile)
+	if why then return false, why end
 	local entry = BY_KEY[key]
 	if not (entry and IS_MEMBER[unit] and self:HasShared(unit, key)) then return {} end
-	local profile = self:GetProfileConfig()
 	local config, all = ConfigOf(profile, unit), AllOf(profile)
 	if not (config and all) then return {} end
 	OwnTable(config)[key] = false
@@ -640,9 +733,11 @@ end
 -- From a member: All units takes the member's value, then every member that has the key follows it.
 -- From 'all': every member follows. Returns the units whose stored value changed.
 function UF:ApplyToAll(unit, key)
+	local profile = self:GetProfileConfig()
+	local why = NotReady(profile)
+	if why then return false, why end
 	local entry = BY_KEY[key]
 	if not entry then return {} end
-	local profile = self:GetProfileConfig()
 	local all = AllOf(profile, true)
 	if unit ~= 'all' then
 		if not self:HasShared(unit, key) then return {} end
@@ -662,9 +757,11 @@ end
 -- owns a copy of the member's value, or follows when that value is All units'. From 'all': each target
 -- follows. Returns the units whose stored value changed.
 function UF:ApplyTo(unit, key, targets)
+	local profile = self:GetProfileConfig()
+	local why = NotReady(profile)
+	if why then return false, why end
 	local entry = BY_KEY[key]
 	if not entry then return {} end
-	local profile = self:GetProfileConfig()
 	local all = AllOf(profile, true)
 	local source
 	if unit ~= 'all' then
@@ -710,7 +807,8 @@ end
 
 -- Marks the units to update and shows UF.sharedTicker; its OnUpdate hides it and runs
 -- UF:UpdateConfig(unit, element) for each mark, once, in member order. A held slider on All units
--- marks every follower again and again and costs one update of each per frame.
+-- marks every follower again and again and costs one update of each per frame. An error in one
+-- unit's update is reported and doesn't strand the marks after it.
 UF.sharedTicker = CreateFrame('Frame')
 UF.sharedTicker:Hide()
 
@@ -735,16 +833,21 @@ end
 
 UF.sharedTicker:SetScript('OnUpdate', function(self)
 	self:Hide()
-	for _, unit in ipairs(UF.SHARE_MEMBERS) do
+	-- Take every mark first, so a unit that fails leaves nothing behind for the next frame.
+	local runs = {}
+	for _, unit in ipairs(MEMBER_LIST) do
 		local marks = pending[unit]
 		if marks then
 			pending[unit] = nil
 			if marks['*'] then
-				UF:UpdateConfig(unit)
+				runs[#runs + 1] = { unit }
 			else
-				for element in pairs(marks) do UF:UpdateConfig(unit, element) end
+				for element in pairs(marks) do runs[#runs + 1] = { unit, element } end
 			end
 		end
+	end
+	for _, run in ipairs(runs) do
+		xpcall(function() UF:UpdateConfig(run[1], run[2]) end, geterrorhandler())
 	end
 end)
 
@@ -753,6 +856,8 @@ end)
 -- that changed. Returns them.
 function UF:PropagateShared(element)
 	local profile = self:GetProfileConfig()
+	local why = NotReady(profile)
+	if why then return false, why end
 	local changed = {}
 	for _, entry in ipairs(SHARED) do
 		if entry.element == element then Follow(self, profile, entry, changed) end
@@ -765,65 +870,160 @@ end
 ------------------------------------------------------------------ the conversion and the sync
 
 -- Puts every follower's stored value right: All units' value where it differs. Writes nothing on a
--- converted profile that has not drifted. Returns how many values it wrote (and the units).
+-- converted profile that has not drifted. Returns how many values it wrote (and the units), or false
+-- and why when the profile is not converted.
 function UF:SyncShared(profile)
 	profile = profile or self:GetProfileConfig()
-	local all = type(profile) == 'table' and AllOf(profile)
-	if not all then return 0, {} end
-	local writes, changed = 0, {}
+	local why = NotReady(profile)
+	if why then return false, why end
+	local changed = {}
+	local writes = 0
 	for _, entry in ipairs(SHARED) do
-		for _, member in ipairs(Members(self, profile, entry.key)) do
-			if not OwnsKey(member.config, entry.key) and not UF.SameShared(entry, member.config, all) then
-				UF.CopyShared(entry, all, member.config)
-				changed[member.unit] = true
-				writes = writes + 1
-			end
-		end
+		writes = writes + Follow(self, profile, entry, changed)
 	end
 	return writes, Ordered(changed)
 end
 
--- The unit tables of a profile worth keeping a copy of: the keys the defaults name as units.
-local function IsUnitKey(key)
-	if key == 'all' or key == 'backup' or key == '**' then return false end
-	local defaults = st.defaults.unitframes.profiles['**']
-	return type(defaults[key]) == 'table'
+-- The one-time backup, kept before the first conversion: for each member, the values of the settings it
+-- has (the shared paths, as plain data, as the saved file holds them) and its own flags for them, as they
+-- were; a value equal to the member's default is left out (a restore writes the default). Not the whole
+-- profile: a restore puts back only what the conversion and later sharing could change, and a unit's
+-- place, size and the plates stay as the player has them.
+local function JoinPath(path) return table.concat(path, '.') end
+
+local function DeepEqual(a, b)
+	if type(a) ~= 'table' or type(b) ~= 'table' then return a == b end
+	for k, v in pairs(a) do
+		if not DeepEqual(v, b[k]) then return false end
+	end
+	for k in pairs(b) do
+		if a[k] == nil then return false end
+	end
+	return true
 end
 
--- A one-time copy of the profile's unit tables, kept before the first conversion. Plain data, as
--- the saved file holds it.
-local function MakeBackup(profile)
+-- The member's default at a path: found, value (AceDB's, read and never written).
+local function DefaultOf(unit, path)
+	return st:DefaultAt('unitframes', 'profiles', UF:GetProfile() or 'SaftUI', unit, unpack(path))
+end
+
+local function MakeBackup(self, profile)
 	local units = {}
-	for key, value in pairs(profile) do
-		if type(value) == 'table' and IsUnitKey(key) then units[key] = CopyPlain(value) end
+	for _, unit in ipairs(MEMBER_LIST) do
+		local config = ConfigOf(profile, unit)
+		if config then
+			local values, own = {}, {}
+			local flags = rawget(config, 'own')
+			for _, entry in ipairs(SHARED) do
+				if self:HasShared(unit, entry.key) then
+					for _, path in ipairs(entry.paths) do
+						local value = Get(config, path)
+						-- A value that is the unit's default is left out: a restore writes the default back.
+						local found, default = DefaultOf(unit, path)
+						if value ~= nil and not (found and DeepEqual(value, default)) then
+							values[JoinPath(path)] = CopyPlain(value)
+						end
+					end
+					if flags and flags[entry.key] ~= nil then own[entry.key] = flags[entry.key] end
+				end
+			end
+			units[unit] = { values = values, own = own }
+		end
 	end
 	return { version = UF.SHARED_VERSION, when = time(), units = units }
 end
 
--- Whether the profile holds the backup of its unit tables from before the first conversion.
+-- Whether the profile holds the backup from before the first conversion.
 function UF.HasSharedBackup(profile)
 	local backup = rawget(profile, 'backup')
 	return type(backup) == 'table' and type(backup.units) == 'table'
 end
 
--- Puts the backup back: each unit table in the profile gets the contents it had before the first
--- conversion (in place, so what holds a reference reads them), All units is dropped, and so the
--- marker is: the next conversion starts again. The backup stays. Returns true, or false and why.
--- Applies nothing: the caller updates the unit frames.
+-- A copy of a unit frame profile for a new profile or an export: everything but the backup, which
+-- belongs to the profile it was made for. (profiles.lua's New, Copy and Export use it when sharing is wired.)
+function UF.CopyProfileData(profile)
+	local copy = st.tablecopy(profile, true)
+	rawset(copy, 'backup', nil)
+	return copy
+end
+
+-- Saved values into the live tables: a table into the live table in place (keeping its metatable, and the
+-- function fields a color's methods are, which the saved file doesn't hold), every other value assigned.
+local function MergeInPlace(live, saved)
+	for key, value in pairs(saved) do
+		local current = rawget(live, key)
+		if type(value) == 'table' and type(current) == 'table' then
+			MergeInPlace(current, value)
+		else
+			live[key] = CopyPlain(value)
+		end
+	end
+	local gone
+	for key, value in pairs(live) do
+		if saved[key] == nil and type(value) ~= 'function' then
+			gone = gone or {}
+			gone[#gone + 1] = key
+		end
+	end
+	if gone then
+		for _, key in ipairs(gone) do live[key] = nil end
+	end
+end
+
+local function WriteBack(config, path, saved)
+	local parent = config
+	for index = 1, #path - 1 do
+		local nextNode = parent[path[index]]
+		if type(nextNode) ~= 'table' then
+			nextNode = {}
+			parent[path[index]] = nextNode
+		end
+		parent = nextNode
+	end
+	local last = path[#path]
+	local current = rawget(parent, last)
+	if saved == nil then
+		parent[last] = nil
+	elseif type(saved) == 'table' and type(current) == 'table' then
+		MergeInPlace(current, saved)
+	else
+		parent[last] = CopyPlain(saved)
+	end
+end
+
+-- Puts the backup back: each member's shared settings get the values and own flags they had before the
+-- first conversion, written into the live tables in place (so the tables keep AceDB's wildcards, a color its
+-- methods, and what holds a reference reads them), and All units is dropped, and so the marker is: the next
+-- conversion starts again. Everything else in the profile (a unit's place and size, the plates, Class power)
+-- is as the player has it now. The backup stays. Returns true, or false and why. Applies nothing: the
+-- caller reloads the interface, or updates the unit frames.
 function UF:RestoreShared(profile)
 	profile = profile or self:GetProfileConfig()
 	if type(profile) ~= 'table' or not UF.HasSharedBackup(profile) then
 		return false, 'There is no backup of the unit frame settings from before sharing.'
 	end
-	for key, saved in pairs(rawget(profile, 'backup').units) do
-		if type(saved) == 'table' and IsUnitKey(key) then
-			local live = profile[key]
-			if type(live) ~= 'table' then
-				live = {}
-				rawset(profile, key, live)
+	for unit, saved in pairs(rawget(profile, 'backup').units) do
+		local config = IS_MEMBER[unit] and type(saved) == 'table' and ConfigOf(profile, unit)
+		if config then
+			local values, own = saved.values or {}, saved.own or {}
+			local flags = rawget(config, 'own')
+			for _, entry in ipairs(SHARED) do
+				if self:HasShared(unit, entry.key) then
+					for _, path in ipairs(entry.paths) do
+						local value = values[JoinPath(path)]
+						if value == nil then
+							local found, default = DefaultOf(unit, path)
+							if found then value = default end
+						end
+						WriteBack(config, path, value)
+					end
+					if own[entry.key] ~= nil then
+						OwnTable(config)[entry.key] = own[entry.key]
+					elseif flags then
+						flags[entry.key] = nil
+					end
+				end
 			end
-			for k in pairs(live) do live[k] = nil end
-			for k, v in pairs(CopyPlain(saved)) do live[k] = v end
 		end
 	end
 	rawset(profile, 'all', nil)
@@ -832,24 +1032,27 @@ end
 
 -- What the conversion would do, all of it computed before anything is written: for each entry of the
 -- steps above the marker, the value All units takes (nil when it holds it already), and the members
--- that own it.
+-- that own it. A member is compared by what it will show after the next login (Shown).
 local function PlanConversion(self, profile, marker)
-	local all = AllOf(profile) or {}
+	-- All units as it reads now: the saved table, or, while there is none (a profile never converted: no
+	-- `all` table is made before it is), what AceDB's wildcard would give a table made by a read.
+	local all = rawget(profile, 'all') and profile.all
 	local plan = { writes = {}, owns = {} }
 	for _, entry in ipairs(SHARED) do
 		if (entry.since or 1) > marker then
 			local members = Members(self, profile, entry.key)
+			for _, member in ipairs(members) do member.shown = Shown(entry, member.unit, member.config) end
 			if #members > 0 then
 				local groups = {}
 				for index, member in ipairs(members) do
 					local group
 					for _, candidate in ipairs(groups) do
-						if UF.SameShared(entry, candidate.config, member.config) then group = candidate break end
+						if UF.SameShared(entry, candidate.config, member.shown) then group = candidate break end
 					end
 					if group then
 						group.count = group.count + 1
 					else
-						groups[#groups + 1] = { config = member.config, count = 1, first = index }
+						groups[#groups + 1] = { config = member.shown, count = 1, first = index }
 					end
 				end
 				local best = 0
@@ -868,11 +1071,11 @@ local function PlanConversion(self, profile, marker)
 					end
 					winner = winner or tied[1].config
 				end
-				if not UF.SameShared(entry, all, winner) then
+				if not UF.SameShared(entry, all or UF.DefaultShared(entry, true), winner) then
 					plan.writes[#plan.writes + 1] = { entry = entry, from = winner }
 				end
 				for _, member in ipairs(members) do
-					if not UF.SameShared(entry, member.config, winner) then
+					if not UF.SameShared(entry, member.shown, winner) then
 						plan.owns[#plan.owns + 1] = { config = member.config, key = entry.key }
 					end
 				end
@@ -884,7 +1087,10 @@ end
 
 -- Once per unit frame profile, for each step above the marker (see the top). Table writes only.
 -- Computes everything first, then writes: the one-time backup, All units' values, the own flags,
--- and the marker last. Does nothing on a converted profile.
+-- and the marker last. Does nothing on a converted profile. Raises, and so writes nothing, for a
+-- profile AceDB hasn't made (a plain imported table: it converts at the login that fills it, on the data
+-- the frames will read) and while any element an entry names is not registered (the conversion would
+-- take a missing element's settings for none and mark its members as following).
 function UF:ConvertShared(profile)
 	profile = profile or self:GetProfileConfig()
 	local marker = Marker(profile)
@@ -896,9 +1102,16 @@ function UF:ConvertShared(profile)
 		end
 	end
 	if marker >= UF.SHARED_VERSION then return end
+	if getmetatable(profile) == nil then
+		error('The unit frame profile has no AceDB defaults yet: it converts at the next login.', 0)
+	end
+	local missing = MissingElement()
+	if missing then
+		error('The unit frame element ' .. missing .. ' is not registered: the conversion waits for it.', 0)
+	end
 	local plan = PlanConversion(self, profile, marker)
 	local backup
-	if marker == 0 and not UF.HasSharedBackup(profile) then backup = MakeBackup(profile) end
+	if marker == 0 and not UF.HasSharedBackup(profile) then backup = MakeBackup(self, profile) end
 	if backup then rawset(profile, 'backup', backup) end
 	local all = AllOf(profile, true)
 	for _, write in ipairs(plan.writes) do UF.CopyShared(write.entry, write.from, all) end
@@ -908,11 +1121,14 @@ end
 
 -- Everything a login or a profile change does for sharing, guarded: the conversion, then the sync
 -- only while the marker says the profile is converted. A profile the conversion can't read (a malformed
--- saved table) is reported through the error handler, left without the marker, and the frames build
--- from the stored values as they are; the sync never runs over it. Returns whether it ran clean.
+-- saved table, a missing element) is reported through the error handler, left without the marker, and
+-- the frames build from the stored values as they are; the sync never runs over it. A plain table with no
+-- AceDB metatable (an import in this session) is left alone, quietly: it converts at the next login.
+-- Returns whether it ran clean (false, 'plain' for the plain table).
 function UF:PrepareShared(profile)
 	profile = profile or self:GetProfileConfig()
-	if type(profile) ~= 'table' then return false end
+	if type(profile) ~= 'table' then return false, 'There is no unit frame profile.' end
+	if getmetatable(profile) == nil then return false, 'plain' end
 	local ok = xpcall(function()
 		if Marker(profile) < UF.SHARED_VERSION then self:ConvertShared(profile) end
 		if Marker(profile) == UF.SHARED_VERSION then self:SyncShared(profile) end
