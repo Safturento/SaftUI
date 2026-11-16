@@ -9,8 +9,9 @@ local UF = st:GetModule('Unitframes')
 	borders whole:
 
 	  * Each plate's frame is pinned to UIParent's scale (UF:PinPlateScale): it
-	    ignores its plate's scale and takes UIParent's, on which SaftUI makes
-	    one unit a pixel (Core's init.lua). The plate's own scale, which the
+	    ignores its plate's scale and takes UIParent's, which SaftUI sets
+	    (Core's uiscale.lua) and which UIScale re-pins the plates to after
+	    every change. The plate's own scale, which the
 	    game sets by distance and for the target, is kept at 1 by the game's
 	    scale settings SaftUI sets (cvars.lua), since the frame still covers
 	    its plate.
@@ -88,14 +89,15 @@ UF:RegisterPlateCallback('added', function(frame) UF:PinPlateScale(frame) end)
 -- too (the target's art, target.lua).
 UF:RegisterPlateCallback('updated', function(frame) UF.RoundLayout(frame, true) end)
 
--- The UI's scale changed (Blizzard's UI scale setting) or the display did:
--- every plate's frame is pinned to UIParent's scale again, at once, and the
--- plates' size, which is in UIParent's pixels (UF.PlateDriverSize), is set
--- again, which waits for the end of combat. Nothing before the driver is made.
-local events = CreateFrame('Frame')
-events:RegisterEvent('UI_SCALE_CHANGED')
-events:RegisterEvent('DISPLAY_SIZE_CHANGED')
-events:SetScript('OnEvent', function()
+-- The UI's scale changed (the player's choice, Blizzard's UI Scale slider or the
+-- display): UIParent's scale is set and the profile update has run (Core's
+-- UIScale, uiscale.lua), so every plate's frame is pinned to UIParent's scale
+-- again, at once, and the plates' size, which is in UIParent's pixels
+-- (UF.PlateDriverSize), is set again, which waits for the end of combat. Heard
+-- here, after Core, and not from the screen events: two handlers of one event
+-- run in no set order, so a plate pinning on its own could pin before Core set
+-- the scale. Nothing before the driver is made.
+st.UIScale:OnChanged(function()
 	UF:ForEachPlate(function(frame) UF:PinPlateScale(frame) end)
 	UF:ApplyPlateSize()
 end)

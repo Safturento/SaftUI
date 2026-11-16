@@ -329,15 +329,22 @@ test('minPixels raises any non-zero value under it, its sign kept (Fix round 1, 
 	check(near4(st:RoundToPixel(1.2 * pixel), pixel), 'no minimum: as before')
 end)
 
-test('Start sets Pixel for pixel on a screen, in every size (Fix round 1, m1)', function()
+test("Start sets the saved choice on a screen: Pixel for pixel is 768 / H in every size, with the tokens 1; none saved is Automatic (Task 4; was Pixel for pixel only)", function()
 	local st = world()
 	for _, h in ipairs({ 1080, 1440, 2160 }) do
 		stub.screen_width, stub.screen_height = h * 16 / 9, h
 		UIParent:SetScale(1)
 		st.pixel, st.lineWeight, st.line = 9, 9, 9
-		st.UIScale:Start()
-		check(rawequal(UIParent:GetScale(), 768 / h), h .. ': UIParent is 768 / H, not Automatic')
+		start_uiscale({ mode = 'pixel', size = 1 })
+		check(rawequal(UIParent:GetScale(), 768 / h), h .. ': Pixel for pixel: UIParent is 768 / H')
 		check(st.pixel == 1 and st.lineWeight == 1 and st.line == 1, h .. ': the tokens are 1')
+
+		UIParent:SetScale(1)
+		st.config.global.uiScale = nil
+		st.UIScale:Start()
+		local auto = st.UIScale.Resolve({ mode = 'auto', size = 1 }, { width = h * 16 / 9, height = h })
+		check(rawequal(UIParent:GetScale(), auto.uiScale), h .. ': nothing saved: Automatic, as the model gives it')
+		check(near(st.pixel, 1 / auto.k, 1e-9), h .. ': and its pixel')
 	end
 end)
 

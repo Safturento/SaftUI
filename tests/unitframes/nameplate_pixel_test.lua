@@ -8,8 +8,9 @@
 --     on the container's button) is rounded where it's drawn, on plates only;
 --     a config update rounds what it drew anew;
 --   - each plate's frame is pinned to UIParent's effective scale, whatever its
---     plate's, on every add and when the UI's scale or the display changes,
---     and the plates' size is set again (out of combat);
+--     plate's, on every add and after every scale change (Core's
+--     UIScale:OnChanged, not an event of the plates' own), and the plates'
+--     size is set again (out of combat; in combat both wait for its end);
 --   - the size handed to the game is the config's, in UIParent's pixels: the
 --     plate and SaftUI's frame on it are the config's width and height in
 --     physical pixels;
@@ -471,42 +472,77 @@ test('a secret scale leaves the frame as it is, and the size as the config has i
 	eq(driver(UF, 200, 20), '200x20', 'a zero scale')
 	WorldFrame:SetScale(1)
 
-	-- Readable again, the next UI scale change pins it.
-	stub.fire_event('UI_SCALE_CHANGED')
+	-- Readable again, the next scale change pins it.
+	start_uiscale({ mode = 'auto', size = 1 })
+	st.UIScale:Apply({ mode = 'auto', size = 1.25 })
 	local frame = UF:PlateForUnit('nameplate1')
 	eq(frame:GetEffectiveScale(), UIParent:GetEffectiveScale(), 'pinned')
 end)
 
-test('a UI scale change re-pins every plate and re-applies the size', function() -- Review Focus 5
+test('a scale change re-pins every plate and re-applies the size, after the pass; in combat both wait for its end (Ruling 5)', function() -- Review Focus 5
 	for _, client in ipairs({ 'forever', 'retail' }) do
 		local st, UF = world(client)
+		start_uiscale({ mode = 'auto', size = 1 })
+		local order = {}
+		st.Config.UpdateConfig = function() order[#order + 1] = 'pass' end
+		st.UIScale:OnChanged(function() order[#order + 1] = 'late' end)
 		local one, two = enemy('nameplate1'), enemy('nameplate2')
 		-- A plate showing no unit now is pinned too, for its next add.
 		local three = enemy('nameplate3')
 		NP.remove('nameplate3')
 
-		UIParent:SetScale(0.6)
-		stub.fire_event('UI_SCALE_CHANGED')
+		-- The player's choice.
+		st.UIScale:Apply({ mode = 'auto', size = 1.25 })
+		local scale = UIParent:GetEffectiveScale()
+		check(near(scale, 768 / 1080 * 0.75 * 1.25, 1e-9), client .. ': UIParent is at 1.25')
 		for _, frame in ipairs({ one, two, three }) do
-			eq(frame:GetEffectiveScale(), 0.6, client .. ': ' .. frame:GetName() .. ' re-pinned')
+			eq(frame:GetEffectiveScale(), scale, client .. ': ' .. frame:GetName() .. ' re-pinned')
 		end
 		eq(size(), driver(UF, 200, 20), client .. ': the size set again')
+		eq(order[1], 'pass', client .. ': after the pass')
 		check(near(one:GetWidth(), 200) and near(one:GetHeight(), 20), client .. ': still 200 by 20 of its own units')
 
-		-- In combat: re-pinned (the plate's frame isn't protected), the size
-		-- waits for the end of combat.
-		local inCombat = size()
+		-- The display, with the engine setting UIParent over SaftUI's: the check
+		-- puts it back and the plates are pinned to that.
+		stub.engine_resets_scale = true
+		stub.change_display(2560, 1440)
+		stub.run_timers()
+		check(near(UIParent:GetEffectiveScale(), 768 / 1440 * 1.25, 1e-9), client .. ': SaftUI\'s scale is back')
+		eq(one:GetEffectiveScale(), UIParent:GetEffectiveScale(), client .. ': the plate is pinned to it')
+		eq(size(), driver(UF, 200, 20), client .. ': and the size follows')
+		stub.engine_resets_scale = false
+
+		-- In combat: the engine moves UIParent and nothing of SaftUI's runs; both
+		-- the pin and the size wait for the end of it.
+		local pinned, inCombat = one:GetEffectiveScale(), size()
 		stub.in_combat = true
-		UIParent:SetScale(0.5)
-		stub.fire_event('DISPLAY_SIZE_CHANGED')
-		eq(one:GetEffectiveScale(), 0.5, client .. ': re-pinned in combat')
+		stub.engine_set_scale(0.5)
+		stub.run_timers()
+		eq(one:GetEffectiveScale(), pinned, client .. ': not pinned in combat')
 		eq(size(), inCombat, client .. ': the size waits')
 		eq(#stub.blocked, 0, client .. ': nothing tried in combat')
 		stub.in_combat = false
 		stub.fire_event('PLAYER_REGEN_ENABLED')
-		eq(size(), driver(UF, 200, 20), client .. ': set once combat ends')
+		check(near(UIParent:GetEffectiveScale(), 768 / 1440 * 1.25, 1e-9), client .. ': SaftUI\'s scale after combat')
+		eq(one:GetEffectiveScale(), UIParent:GetEffectiveScale(), client .. ': pinned once combat ends')
+		eq(size(), driver(UF, 200, 20), client .. ': the size set once combat ends')
 		eq(#take_errors(), 0, client .. ': no error')
 	end
+end)
+
+test('the plates no longer hear the screen events themselves', function()
+	local source = read_saftui_source('SaftUI-Unitframes/nameplates/pixels.lua')
+	check(not source:find('UI_SCALE_CHANGED', 1, true) and not source:find('DISPLAY_SIZE_CHANGED', 1, true), "pixels.lua names neither event")
+	check(source:find('UIScale:OnChanged', 1, true), 'it hears the scale interface')
+	local st, UF = world('forever')
+	local frame = enemy('nameplate1')
+	-- No scale runtime started: UIParent moves and the events fire, and nothing re-pins.
+	local pinned = frame:GetEffectiveScale()
+	UIParent:SetScale(0.6)
+	stub.fire_event('UI_SCALE_CHANGED')
+	stub.fire_event('DISPLAY_SIZE_CHANGED')
+	stub.run_timers()
+	eq(frame:GetEffectiveScale(), pinned, 'the plate is not pinned by an event of its own')
 end)
 
 test("the plate size is the config's in UIParent pixels", function()

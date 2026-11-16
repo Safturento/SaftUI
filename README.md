@@ -14,7 +14,7 @@ A modular World of Warcraft UI replacement: unit frames and nameplates, action b
    Repeat for each `SaftUI-*` folder. From WSL, run it through `cmd.exe /c`. A WSL `ln -s` link shows up as a file to the game, not a folder.
 3. Enable the SaftUI addons on the character select screen. `SaftUI-Core` is required by all the others.
 
-SaftUI sets the UI scale itself, to be pixel-perfect for your screen height, and ignores Blizzard's UI Scale setting.
+SaftUI sizes itself to your screen: it is laid out for a screen 1440 pixels high and drawn at the same share of yours, with every line on whole pixels. It sets Blizzard's UI Scale setting back after it moves.
 
 ## Usage
 
