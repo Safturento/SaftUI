@@ -136,14 +136,13 @@ end
 
 -- Grid size: a number box, on while Grid or Snap to grid is, as both use the
 -- grid's lines.
--- A number box's colors, for a color pass: its edit box's edge (the Accent
--- while it has the keyboard, else the line's) and its arrows at rest (Muted).
--- The mouse is not asked: a pass runs while the color picker has it, not a
+-- A number box's colors, for a color pass: its arrows at rest (Muted). The
+-- edit box's edge (the Accent while it has the keyboard) is the states helper's
+-- (W.NumberBox's box: a focus state), which a pass of the Accent colors on its
+-- own. The mouse is not asked: a pass runs while the color picker has it, not a
 -- bar control, and a hover paints itself again on the next enter. Nothing of
 -- its look: no art, no state, no table (W.LookNumberBox makes one).
-function EM.RecolorNumberBox(box, blizzard)
-	local edit = box.edit
-	if not blizzard then W.Edge(edit, not box.disabled and edit:HasFocus()) end
+function EM.RecolorNumberBox(box)
 	local r, g, b = st:Color('text', 'muted'):GetRGB()
 	box.pair.up.arrow:SetVertexColor(r, g, b)
 	box.pair.down.arrow:SetVertexColor(r, g, b)
@@ -170,7 +169,7 @@ local function GridSize(bar)
 		-- among them, and that must not take the hovered arrow's Normal back
 		-- (the catch-up of Muted is the bar's Enabled listener, bar.lua).
 		Look = function(_, blizzard) W.LookNumberBox(box, blizzard) end,
-		Recolor = function(_, blizzard) EM.RecolorNumberBox(box, blizzard) end,
+		Recolor = function() EM.RecolorNumberBox(box) end,
 		Refresh = function()
 			local settings = EM:GetSettings()
 			-- Not while it is being typed in, unless the size itself changed since

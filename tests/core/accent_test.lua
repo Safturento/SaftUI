@@ -98,7 +98,7 @@ local function mover_world()
 	return st:RegisterConfigMover(frame, { key = 'accent_mover', config = function() return config end, apply = function() end })
 end
 
-test('edit mode: a selected mover is the accent border and the accent at TINT_OBJECT, and follows a change at once', function()
+test('edit mode: a selected mover is the accent border and the accent fade (the states helper\'s fill), and follows a change at once', function()
 	theme('thick')
 	local mover = mover_world()
 	EM:Activate()
@@ -106,14 +106,15 @@ test('edit mode: a selected mover is the accent border and the accent at TINT_OB
 	local backdrop = mover.overlay.backdrop
 	local r, g, b = backdrop:GetBackdropBorderColor()
 	eq(text(r, g, b), DEFAULT, 'the border')
-	local fr, fg, fb, fa = backdrop:GetBackdropColor()
-	eq(text(fr, fg, fb), DEFAULT, 'the fill'); eq(string.format('%.2f', fa), string.format('%.2f', st.TINT_OBJECT), 'at TINT_OBJECT')
+	local fade = st:StateLook(mover.overlay).fill
+	check(fade.shown, 'the fade shows')
+	eq(text(fade.r, fade.g, fade.b), DEFAULT, 'the fill'); eq(string.format('%.2f', fade.a), string.format('%.2f', select(4, st:StateColor('fill'))), 'at the fill strength')
 	with_accent(0.9, 0.1, 0.2, function()
 		st:ColorsChanged('accent')
 		r, g, b = backdrop:GetBackdropBorderColor()
 		eq(text(r, g, b), '0.90,0.10,0.20', 'the border follows at once')
-		fr, fg, fb = backdrop:GetBackdropColor()
-		eq(text(fr, fg, fb), '0.90,0.10,0.20', 'and the fill')
+		fade = st:StateLook(mover.overlay).fill
+		eq(text(fade.r, fade.g, fade.b), '0.90,0.10,0.20', 'and the fill')
 	end)
 	st:ColorsChanged('accent')
 	EM:Deactivate()

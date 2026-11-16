@@ -164,7 +164,9 @@ test('a profile switch to a profile with another theme redraws what was drawn on
 		eq(alpha(window), '0.90', theme .. ": the /sui window is see-through with the theme")
 		eq(inset(mover.overlay.backdrop), px, theme .. ": the mover's outline at the theme's border")
 		eq(edge(mover.overlay.backdrop), blue .. ',1.00', theme .. ': the selected mover keeps its blue line')
-		eq(fill(mover.overlay.backdrop), blue .. ',0.15', theme .. ': and its blue tint')
+		eq(fill(mover.overlay.backdrop), '0.00,0.00,0.00,0.30', theme .. ': the dim body stays (the fade is the helper\'s fill)')
+		local l = st:StateLook(mover.overlay)
+		check(l.fill and l.fill.shown, theme .. ': and the selected mover shows the accent fade')
 	end
 	looks('thick', THICK_EDGE, '0.30,0.30,0.30,0.40')
 
@@ -371,7 +373,9 @@ test('a mover keeps its color through a recolor', function()
 		eq(fill(b), '0.00,0.00,0.00,0.30', when .. ': a mover keeps its see-through fill')
 		eq(edge(b), '1.00,1.00,1.00,1.00', when .. ': and its white line')
 		b = picked.overlay.backdrop
-		eq(fill(b), blue .. ',0.15', when .. ': the selected mover keeps its blue tint')
+		eq(fill(b), '0.00,0.00,0.00,0.30', when .. ': the selected mover keeps the dim body')
+		local l = st:StateLook(picked.overlay)
+		check(l.fill and l.fill.shown and text(l.fill.r, l.fill.g, l.fill.b) == blue, when .. ': and the accent fade over it')
 		eq(edge(b), blue .. ',1.00', when .. ': and its blue line')
 	end
 	check_colors('drawn')
