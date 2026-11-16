@@ -24,7 +24,8 @@ local st = SaftUI
 	    says childGroups = 'select'.
 	  - Inside the selected tab or pick, non-inline child groups are a second
 	    tab row, or the picker when that group says 'select' (when the picker
-	    is already the page's, they're the tabs).
+	    is already the page's, they're the tabs; and a tab that says
+	    childGroups = 'tab' has a second row of its own, under a picker only).
 	  - Anything deeper, inline or not, is drawn as sections. Nothing is
 	    dropped.
 	  - A group's child groups are inline with inline = true (or guiInline,
@@ -446,24 +447,30 @@ end
 
 -- Which selection a level below the page is: depth 2 is the page's tabs or
 -- picker, depth 3 the selected one's second tab row or picker (or tabs, when
--- the picker is taken).
+-- the picker is taken), depth 4 (only under a picker's tab that says
+-- childGroups = 'tab', see Levels) that tab's own second row.
 local function SlotFor(depth, previous, group)
 	local select = group.childGroups == 'select'
 	if depth == 2 then
 		return select and 'pick' or 'tab'
 	elseif previous == 'pick' then
 		return 'tab'
+	elseif depth == 4 then
+		return 'subtab'
 	end
 	return select and 'pick' or 'subtab'
 end
 
 -- The levels below a page: up to two, each { slot, group, path, list, entry,
--- child, childPath }. choose(slot, list, depth) gives the selected entry, or
--- nil to stop there.
+-- child, childPath }; three when the page has a picker and the picked unit's
+-- selected tab says childGroups = 'tab' (a tab with a second row of its own: the
+-- picker, tabs and sub tabs). choose(slot, list, depth) gives the selected entry,
+-- or nil to stop there.
 local function Levels(options, page, pagePath, choose)
 	local levels = {}
 	local group, path, slot = page, pagePath, nil
-	for depth = 2, 3 do
+	for depth = 2, 4 do
+		if depth == 4 and not (slot == 'tab' and group.childGroups == 'tab') then break end
 		local list = SubGroups(group, options, path)
 		if #list == 0 then break end
 		slot = SlotFor(depth, slot, group)
@@ -482,7 +489,7 @@ end
 -- disabled tab named by key opens only while no tab is enabled (a page
 -- standing down), so a tab carried over from another pick can't open one
 -- the user can't use.
-local function Choose(list, key, skipDisabled)
+local function Choose(list, key, skipDisabled, firstIfAllOff)
 	local named
 	if key ~= nil then
 		for _, entry in ipairs(list) do
@@ -493,7 +500,9 @@ local function Choose(list, key, skipDisabled)
 	for _, entry in ipairs(list) do
 		if not (skipDisabled and entry.disabled) then return entry end
 	end
-	return named
+	-- A second row with every sub tab disabled (a page standing down) opens its first, dimmed, as
+	-- the tab it holds did when it was a tab of the page's own.
+	return named or (firstIfAllOff and list[1]) or nil
 end
 
 -- The entries of a level a selection can open (Choose): every pick, and the
@@ -651,7 +660,7 @@ function OM.BuildView(root, pageKey, selection)
 		footer = type(page.footer) == 'table' and page.footer or nil,
 	}
 	local levels = Levels(options, page, pagePath, function(slot, list)
-		return Choose(list, selection[slot], slot ~= 'pick')
+		return Choose(list, selection[slot], slot ~= 'pick', slot == 'subtab')
 	end)
 
 	local sections = {}
@@ -678,7 +687,7 @@ function OM.BuildView(root, pageKey, selection)
 		end
 		if level.child then
 			-- The selected group at the last level draws everything below it.
-			Feed(sections, options, level.child, level.childPath, i == 2)
+			Feed(sections, options, level.child, level.childPath, (i == 2 and not levels[3]) or i == 3)
 		end
 	end
 	view.sections = WithRows(sections)
@@ -1312,7 +1321,7 @@ function OM.MenuOffers(root, row)
 	for i = 1, #rows do
 		local each = rows[i]
 		local share = each.option.share
-		if type(share) == 'table' and share.own ~= nil then
+		if type(share) == 'table' and type(share.own) == 'function' then
 			if not MenuRowOff(options, each) then
 				each.info = each.info or BuildInfo(each.option, options, each.path)
 				local ok, answer = xpcall(share.own, geterrorhandler(), each.info)
@@ -1407,6 +1416,8 @@ function OM.Search(root, text)
 		for _, name in ipairs(tabNames) do
 			if matches(name) then tabMatch = true end
 		end
+		-- A tab group's own searchText (more words for the tab) matches like its name.
+		if type(group) == 'table' and not tabMatch and matches(rawget(group, 'searchText')) then tabMatch = true end
 		local tabName = #tabNames > 0 and tconcat(tabNames, ' > ') or nil
 		local sections = {}
 		Feed(sections, within or options, group, path, deep)
@@ -1477,10 +1488,19 @@ function OM.Search(root, text)
 			local thirdSlot = SlotFor(3, slot, group)
 			for _, third in ipairs(Openable(SubGroups(group, options, path), thirdSlot)) do
 				local thirdGroup, thirdPath = GetSubOption(group, third.key), Append(path, third.key)
-				if Collect(key, thirdGroup, thirdPath, true, { second.name, third.name }) then
+				-- A tab of a picked unit with a second row of its own: its rows, then each sub tab's.
+				local fourths = slot == 'pick' and thirdGroup.childGroups == 'tab'
+					and Openable(SubGroups(thirdGroup, options, thirdPath), 'subtab') or nil
+				if Collect(key, thirdGroup, thirdPath, not fourths, { second.name, third.name }) then
 					return results
 				end
 				if CollectControl(key, thirdSlot, thirdGroup, thirdPath, { second.name, third.name }) then return results end
+				for _, fourth in ipairs(fourths or emptyTbl) do
+					local fourthGroup, fourthPath = GetSubOption(thirdGroup, fourth.key), Append(thirdPath, fourth.key)
+					if Collect(key, fourthGroup, fourthPath, true, { second.name, third.name, fourth.name }) then
+						return results
+					end
+				end
 			end
 		end
 	end

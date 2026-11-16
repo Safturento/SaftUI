@@ -33,7 +33,7 @@
 local SAFTUI_FIELDS = {
 	category = true, size = true, target = true, nameKey = true, pickerLabel = true, align = true,
 	disabledDesc = true, justifyH = true, fill = true, footer = true, share = true, menu = true, menuTitle = true,
-	summary = true, mirrorOf = true,
+	summary = true, mirrorOf = true, selectWidth = true,
 	default = true, pickerControl = true, reserveBox = true, searchText = true, toggle = true,
 	faceOnly = true, fontFields = true, saved = true, noReset = true, preview = true, applyOnRelease = true,
 }

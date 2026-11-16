@@ -18,6 +18,7 @@ UF.elements = {}
 function UF:RegisterElement() end
 load_saftui('SaftUI-Unitframes/config/profiles.lua')
 load_saftui('SaftUI-Unitframes/config/groupoptions.lua')
+load_saftui('SaftUI-Unitframes/config/parts.lua')
 load_saftui('SaftUI-Unitframes/config/config.lua')
 UF.oUF = { Tags = { Events = {}, Methods = {} },
 	colors = { class = st.config.profile.colors.class, reaction = st.config.profile.colors.reaction } }

@@ -55,6 +55,7 @@ local function world(client)
 	end
 	load_saftui('SaftUI-Unitframes/config/profiles.lua')
 	load_saftui('SaftUI-Unitframes/config/groupoptions.lua')
+	load_saftui('SaftUI-Unitframes/config/parts.lua')
 	load_saftui('SaftUI-Unitframes/config/config.lua')
 	load_saftui('SaftUI-Unitframes/updaters.lua')
 	load_saftui('SaftUI-Unitframes/constructors.lua')

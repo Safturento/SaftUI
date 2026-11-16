@@ -271,6 +271,47 @@ test('a page picker with tabs inside, and a third non-inline level drawn as a se
 	eq(layout(view), '-:enable', 'its rows')
 end)
 
+test("a picked unit's tab that says childGroups = 'tab' has a second row: picker, tabs, sub tabs", function()
+	local function root()
+		return { Unitframes = group('Unitframes', {
+			player = group('Player', {
+				general = group('General', { enable = opt('toggle', 'Enable', { order = 0 }) }, { order = 0 }),
+				power = group('Power', {
+					bar = group('Power bar', { fill = opt('toggle', 'Fill') }, { order = 1 }),
+					extra = group('Extra power', { mana = opt('toggle', 'Mana') }, { order = 2 }),
+				}, { order = 1, childGroups = 'tab' }),
+				health = group('Health', {
+					text = group('Text', { size = opt('range', 'Font size') }, { order = 2 }),
+				}, { order = 2 }),
+			}, { order = 1, childGroups = 'tab' }),
+		}, { childGroups = 'select' }) }
+	end
+	local r = root()
+	local view = OM.BuildView(r, 'Unitframes', { pick = 'player', tab = 'power' })
+	eq(view.picker.selected, 'player', 'the picker')
+	eq(keys(view.tabs), 'general,power,health', 'its tabs')
+	eq(view.tab, 'power', 'the chosen tab')
+	eq(keys(view.subtabs), 'bar,extra', "the tab's own second row")
+	eq(view.subtab, 'bar', 'its first')
+	eq(layout(view), '-:fill', "only the selected sub tab's rows")
+	view = OM.BuildView(r, 'Unitframes', { pick = 'player', tab = 'power', subtab = 'extra' })
+	eq(view.subtab, 'extra', 'a chosen sub tab')
+	eq(layout(view), '-:mana', 'and its rows')
+	view = OM.BuildView(r, 'Unitframes', { pick = 'player', tab = 'health' })
+	eq(#view.subtabs, 0, 'a tab that does not say it has none: its child group is a section, as before')
+	eq(layout(view), 'Text:size', 'drawn deep')
+	-- A path opens it, and Search finds a row in a sub tab with the sub tab's name.
+	local page, selection = OM.SelectionForPath(r, { 'Unitframes', 'player', 'power', 'extra' })
+	check(page == 'Unitframes' and selection.pick == 'player' and selection.tab == 'power' and selection.subtab == 'extra',
+		'a path names the sub tab')
+	local hits = OM.Search(r, 'mana')
+	eq(#hits, 1, 'the row is found once')
+	eq(hits[1].tabName, 'Player > Power > Extra power', 'under its sub tab')
+	eq(table.concat(hits[1].path, '.'), 'Unitframes.player.power.extra.mana', 'on its own path')
+	eq(#OM.Search(r, 'fill'), 1, 'the first sub tab too')
+	eq(#OM.Search(r, 'font size'), 1, 'a tab with no second row, as before')
+end)
+
 test('SelectionForPath: a path of option keys (edit mode, /sui) to a page and selection', function()
 	local root = unitframes_root()
 	root.Minimap = minimap_page()
