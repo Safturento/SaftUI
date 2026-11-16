@@ -232,6 +232,33 @@ test('the screen events', function()
 	check(hasVerticalLineAt(1101), 'registers DISPLAY_SIZE_CHANGED')
 end)
 
+test('the change callback redraws the grid', function()
+	-- SaftUI's own scale change fires no screen event: the scale's callback is
+	-- all that tells the grid its center moved.
+	settings.grid = true
+	set_screen(2101, 1081)
+	start_uiscale({ mode = 'pixel', size = 1 })
+	EM:UpdateGrid()
+	local before = EM:GetGridCenter()
+	check(hasVerticalLineAt(before), 'drawn at the center of the pixel for pixel screen: ' .. before)
+	st.UIScale:Apply({ mode = 'auto', size = 1 })
+	local after = EM:GetGridCenter()
+	check(after ~= before, 'the new scale moved the center: ' .. before .. ' to ' .. after)
+	check(hasVerticalLineAt(after), 'the grid is drawn at the new center')
+	check(not hasVerticalLineAt(before), 'and no longer at the old one')
+	st.UIScale:Apply({ mode = 'pixel', size = 1 })
+	check(hasVerticalLineAt(before), 'and back')
+	-- Off, it stays off: the callback draws nothing.
+	settings.grid = false
+	EM:UpdateGrid()
+	st.UIScale:Apply({ mode = 'auto', size = 1 })
+	check(not EM.gridFrame:IsShown(), 'a grid that is off stays hidden')
+	settings.grid = true
+	st.config.global.uiScale = nil
+	set_screen(2201, 1081)
+	EM:UpdateGrid()
+end)
+
 test('the /sui options', function()
 	local opts = EM:GetConfigTable()
 	local g = opts.args.general.args

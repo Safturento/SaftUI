@@ -20,7 +20,7 @@ end
 build()
 
 local EMH = load_test_file('core/editmode_helpers.lua')
-local settings, set_screen, look = EMH.settings, EMH.set_screen, EMH.look
+local settings, set_screen, look, frame_of = EMH.settings, EMH.set_screen, EMH.look, EMH.frame_of
 
 
 local function add_mover(key, position, size)
@@ -296,6 +296,48 @@ test("a position changed in /sui (a module's setter, a reset) reaches the label 
 	EM:Deactivate()
 	eq(label:GetScript('OnUpdate'), nil, 'edit mode off: nothing runs')
 	EM.movers.coord_sui = nil
+	reset()
+end)
+
+
+-- The profile update (the pass) taken out, so what a case shows is the scale's
+-- change callback alone, and not the margin's hooks the pass would also run.
+-- Returns the call that puts it back.
+local function without_the_pass()
+	local own = rawget(st.Config, 'UpdateConfig')
+	st.Config.UpdateConfig = function() end
+	return function() st.Config.UpdateConfig = own end
+end
+
+test('the change callback places the Coordinates label', function()
+	local restore = without_the_pass()
+	local m = add_mover('coord_callback', { point = 'CENTER', x_off = 0, y_off = 0 })
+	EM:Activate()
+	EM:SetSetting('coordinates', true)
+	EM:Select(m)
+	-- The bar a floating window: a docked bar's own placing tells the label too
+	-- (BarModeChanged), which would hide whether the callback ran.
+	stub.click(frame_of('detach'))
+	set_screen(1920, 1080)
+	start_uiscale({ mode = 'pixel', size = 1 })
+	st.UIScale:Apply({ mode = 'pixel', size = 1 })
+	-- No screen event and no tick of the label's clock: the callback alone.
+	for _, choice in ipairs({ { mode = 'auto', size = 1.5 }, { mode = 'pixel', size = 1 }, { mode = 'auto', size = 1 } }) do
+		stub.size_noise = 0
+		-- The mover's frame is re-placed by the game (anchored to UIParent's middle).
+		-- A stale label: put where the old screen had it.
+		EM.coordinates:ClearAllPoints()
+		EM.coordinates:SetPoint('BOTTOMLEFT', UIParent, 'BOTTOMLEFT', 5, 5)
+		st.UIScale:Apply(choice)
+		local l, r = EM.GetOutlineRect(m)
+		local mid = (EM.coordinates:GetLeft() + EM.coordinates:GetRight()) / 2
+		check(math.abs(mid - (l + r) / 2) <= 1, ('%s %s: centred on the outline (%s vs %s)'):format(choice.mode, choice.size, mid, (l + r) / 2))
+	end
+	restore()
+	EM:SetBarFloating(false)
+	st.config.global.editModeBar = nil
+	st.config.global.uiScale = nil
+	EM.movers.coord_callback = nil
 	reset()
 end)
 

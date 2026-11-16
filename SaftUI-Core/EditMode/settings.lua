@@ -52,9 +52,13 @@ end)
 
 function EM:OnEnable()
 	self:ApplyHistoryLimit()
-	-- The grid is sized in physical pixels, so it redraws when the screen does.
+	-- The grid is sized in physical pixels, so it redraws when the screen does,
+	-- and when SaftUI's own scale changes (which fires no screen event: the
+	-- scale's change callback, st.UIScale:OnChanged, runs it too).
+	local function OnScreenChanged() EM:UpdateGrid() end
 	self:RegisterEvent('UI_SCALE_CHANGED', 'UpdateGrid')
 	self:RegisterEvent('DISPLAY_SIZE_CHANGED', 'UpdateGrid')
+	st.UIScale:OnChanged(OnScreenChanged)
 end
 
 -- The "Edit mode" section in /sui. Getters and setters go through

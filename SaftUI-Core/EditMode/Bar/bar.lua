@@ -411,13 +411,17 @@ function EM:GetBar()
 	-- (In the floating window the window's own events lay it out.) The screen
 	-- events can fire before UIParent has its new size, so the bar is placed
 	-- again on the next frame too (bardock.lua).
-	bar:RegisterEvent('UI_SCALE_CHANGED')
-	bar:RegisterEvent('DISPLAY_SIZE_CHANGED')
-	bar:SetScript('OnEvent', function()
+	-- A change of SaftUI's own scale fires no screen event, so the scale's
+	-- change callback (st.UIScale:OnChanged, after the pass) runs it too.
+	local function OnScreenChanged()
 		if windowed then return end
 		EM:LayoutBar()
 		C_Timer.After(0, function() if not windowed then EM:PlaceBar() end end)
-	end)
+	end
+	bar:RegisterEvent('UI_SCALE_CHANGED')
+	bar:RegisterEvent('DISPLAY_SIZE_CHANGED')
+	bar:SetScript('OnEvent', OnScreenChanged)
+	st.UIScale:OnChanged(OnScreenChanged)
 	for _, group in ipairs(groups) do BuildGroup(group) end
 	if self:IsBarFloating() then
 		windowed = true

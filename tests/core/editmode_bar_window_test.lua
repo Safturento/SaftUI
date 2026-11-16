@@ -103,6 +103,16 @@ local function drag_title(window, left, top)
 end
 local function margin() return st.config.profile.misc.clamp_inset end
 
+-- The scale runtime for a case: pixel for pixel on the file's 1920 x 1080 screen
+-- (1920 units wide), until Apply changes it. reset() puts the screen back.
+local function runtime()
+	set_screen(1920, 1080)
+	start_uiscale({ mode = 'pixel', size = 1 })
+end
+local function end_runtime()
+	st.config.global.uiScale = nil
+end
+
 ------------------------------------------------------------------ detach and dock
 
 test('Detach turns the bar into a window holding the same controls in sections; Dock puts them back', function()
@@ -754,6 +764,52 @@ test('the History list takes the side with room inside the margin; with room on 
 	eq(list:GetLeft(), window:GetRight() + 8, 'room on neither side: the right has more (278 against 190)')
 	drag_title(window, 290, -100)
 	eq(list:GetRight(), window:GetLeft() - 8, 'and here the left (280 against 188)')
+	reset()
+end)
+
+-- The profile update (the pass) taken out, so what a case shows is the scale's
+-- change callback alone, and not the margin's hooks the pass would also run.
+-- Returns the call that puts it back.
+local function without_the_pass()
+	local own = rawget(st.Config, 'UpdateConfig')
+	st.Config.UpdateConfig = function() end
+	return function() st.Config.UpdateConfig = own end
+end
+
+test('the change callback puts the floating window and the History list back inside the margin', function()
+	reset()
+	local restore = without_the_pass()
+	runtime()
+	EM:Activate()
+	stub.click(frame_of('detach'))
+	local window = EM:GetBarWindow()
+	local list = EM:GetHistoryList()
+	st.config.profile.misc.clamp_inset = 20
+	st:UpdateScreenMargin()
+	stub.click(frame_of('history'))
+	drag_title(window, 1250, -100)
+	local width = UIParent:GetWidth()
+	eq(list:GetLeft(), window:GetRight() + 8, 'on a 1920 wide screen the list is right of the window')
+	check(list:GetRight() - UIParent:GetLeft() <= width - margin(), 'and inside the margin')
+	local saved = st.config.global.editModeBar.x
+	-- Automatic at 150%: 1706.7 units wide, with no screen event.
+	st.UIScale:Apply({ mode = 'auto', size = 1.5 })
+	stub.run_timers()
+	local narrower = UIParent:GetWidth()
+	check(narrower < 1710 and narrower > 1700, 'the screen is 1707 units wide now: ' .. narrower)
+	check(window:GetRight() - UIParent:GetLeft() <= narrower - margin(), 'the window is inside the margin')
+	check(list:GetRight() - UIParent:GetLeft() <= narrower - margin(), 'the list is inside it too: ' .. list:GetRight())
+	check(list:GetLeft() - UIParent:GetLeft() >= margin(), 'and not off the left edge')
+	eq(list:GetRight(), window:GetLeft() - 8, 'it went to the window\'s left, where there is room')
+	eq(st.config.global.editModeBar.x, saved, 'the saved place is left as it was')
+	-- Back: the window is where it was saved.
+	st.UIScale:Apply(nil)
+	stub.run_timers()
+	eq(left_of(window), saved, 'and back where it was saved')
+	check(UIParent:GetWidth() > 1900, 'on the wide screen')
+	eq(#take_errors(), 0, 'no errors')
+	restore()
+	end_runtime()
 	reset()
 end)
 

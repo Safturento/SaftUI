@@ -134,6 +134,91 @@ test('st:EnableMoving makes a Blizzard frame draggable without the margin', func
 	Set(20)
 end)
 
+------------------------------------------------------------------ in whole pixels
+
+-- Back to the file's own screen after a case put the world on another: 1000 x
+-- 600, one unit a pixel.
+local function back_to_the_files_screen()
+	stub.screen_width, stub.screen_height = 1000, 600
+	UIParent:SetScale(768 / 600)
+	st.UIScale:SetTokens()
+end
+
+local function Number(text) return tonumber(text) end
+
+scaled_test("every kept frame's clamp insets are the profile's margin in whole pixels", function()
+	use_scale(test_scale())
+	local pixel = st:GetPixelSize(UIParent)
+	local bar, holder, reaching = Frame(), Frame(), Frame()
+	Mover(bar)
+	Mover(holder)
+	st:KeepInScreenMargin(reaching, function() return 8, 2, 16, 4 end)
+	for _, margin in ipairs({ 20, 7, 0, -10 }) do
+		Set(margin)
+		local want = st:RoundToPixel(margin, bar)
+		for name, frame in pairs({ bar = bar, holder = holder }) do
+			local left, right, top, bottom = frame:GetClampRectInsets()
+			eq(left, -want, name .. ' left, margin ' .. margin)
+			eq(right, want, name .. ' right')
+			eq(top, want, name .. ' top')
+			eq(bottom, -want, name .. ' bottom')
+			check(math.abs(want / pixel - math.floor(want / pixel + 0.5)) < 1e-3, name .. ' is whole pixels, margin ' .. margin)
+		end
+		-- The reach is added as it is: the margin whole, the art's own reach after it.
+		local l, r, t, b = reaching:GetClampRectInsets()
+		eq(table.concat({ -l, r, t, -b }, ','), table.concat({ want + 8, want + 2, want + 16, want + 4 }, ','), "the reach on top, margin " .. margin)
+	end
+	Set(20)
+	eq(#take_errors(), 0, 'no errors')
+	back_to_the_files_screen()
+end)
+
+test('at 1.55 a margin of 20 is 31 pixels; at k 1 it is 20, rawequal', function()
+	local frame = Frame()
+	use_scale(1.55)
+	local pixel = st:GetPixelSize(UIParent)
+	local left, right, top, bottom = st:GetScreenMargin(frame)
+	for name, value in pairs({ left = left, right = right, top = top, bottom = bottom }) do
+		eq(math.floor(value / pixel + 0.5), 31, name .. ': 31 pixels')
+	end
+	-- What the game's clamp gets, with the real call, after the pass's step 4.
+	local kept = Frame()
+	Mover(kept)
+	local insets = Number((select(2, kept:GetClampRectInsets())))
+	eq(math.floor(insets / pixel + 0.5), 31, 'the clamp: 31 pixels')
+	use_scale(1)
+	st:UpdateScreenMargin()
+	local l, r, t, b = st:GetScreenMargin(frame)
+	check(rawequal(l, 20) and rawequal(r, 20) and rawequal(t, 20) and rawequal(b, 20), 'at k 1 it is 20, to the bit')
+	check(rawequal(select(2, kept:GetClampRectInsets()), 20), 'and so is the clamp')
+	-- Another margin at k 1: today's number, whole or not.
+	Set(7)
+	check(rawequal(st:GetScreenMargin(frame), 7), '7 stays 7')
+	Set(20)
+	eq(#take_errors(), 0, 'no errors')
+	back_to_the_files_screen()
+end)
+
+test('a frame with a scale of its own: the margin is whole pixels of that frame', function()
+	local frame = Frame()
+	frame:SetScale(1.5)
+	use_scale(1)
+	local pixel = st:GetPixelSize(frame)
+	local left = st:GetScreenMargin(frame)
+	eq(math.floor(left / pixel + 0.5), 30, "a margin of 20 of the frame's units at its scale of 1.5 is 30 pixels")
+	check(math.abs(left / pixel - 30) < 1e-3, 'and whole')
+	-- A scale where the frame's pixel and UIParent's round a margin differently: 7 units
+	-- is 7 pixels of UIParent but 7.91, so 8, of a frame at 1.13.
+	Set(7)
+	frame:SetScale(1.13)
+	pixel = st:GetPixelSize(frame)
+	left = st:GetScreenMargin(frame)
+	eq(math.floor(left / pixel + 0.5), 8, "the frame's pixels: 8")
+	check(math.abs(left - 8 / 1.13) < 1e-3 and math.abs(left - 7) > 0.05, 'not UIParent\'s 7')
+	Set(20)
+	back_to_the_files_screen()
+end)
+
 ------------------------------------------------------------------ when it's applied
 
 test("the General tab's margin reaches every frame kept in it at once: movers, windows with a header, /sui and its dialog", function()
@@ -342,6 +427,25 @@ test("st:GetScreenMargin is the margin plus a frame's reach on each side; a fram
 	st:KeepInScreenMargin(frame, function() return 8, 2, 16, 4 end)
 	eq(table.concat({ st:GetScreenMargin(frame) }, ','), '28,22,36,24', 'left, right, top, bottom')
 	eq(table.concat({ st:GetScreenMargin(Frame()) }, ','), '20,20,20,20', 'the margin alone')
+end)
+
+scaled_test("a held frame's clamp is the holder's inset to the pixel: the rounded margin and the reach add up to the frame's own limit", function()
+	use_scale(test_scale())
+	for _, case in ipairs({ { 20, 50, 5, 4 }, { 7, 33, 3, 2 }, { 20, 12, 1, 1 } }) do
+		local margin, keptIn, x, y = case[1], case[2], case[3], case[4]
+		local holder = Frame(100, 20)
+		local bar = ClampedSystem({ -keptIn, keptIn, keptIn, -keptIn })
+		st:HoldFrame(bar, holder, x, y)
+		st:KeepHolderInScreenMargin(holder, bar, x, y)
+		Set(margin)
+		local left, right, top, bottom = holder:GetClampRectInsets()
+		local rounded = st:RoundToPixel(margin, holder)
+		local wantX, wantY = math.max(rounded, keptIn + x), math.max(rounded, keptIn + y)
+		check(math.abs(-left - wantX) < 1e-6 and math.abs(right - wantX) < 1e-6, 'x: ' .. margin .. '/' .. keptIn .. ' is ' .. wantX .. ', got ' .. -left .. ' and ' .. right)
+		check(math.abs(top - wantY) < 1e-6 and math.abs(-bottom - wantY) < 1e-6, 'y: ' .. wantY .. ', got ' .. top .. ' and ' .. -bottom)
+	end
+	Set(20)
+	back_to_the_files_screen()
 end)
 
 test("st:KeepHolderInScreenMargin: a bar 5 and 4 outside its holder, kept on screen by its own clamp, stops at the screen's edge with the holder", function()
