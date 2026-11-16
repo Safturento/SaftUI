@@ -46,9 +46,9 @@ local UF = st:GetModule('Unitframes')
 	metatable (an import in this session) is left unconverted until the login that gives it one, and the
 	conversion refuses while an element an entry names is not registered.
 
-	Every writer (SyncShared, SetShared, OwnShared, FollowAll, ApplyToAll, ApplyTo, PropagateShared) does
+	Every writer (SyncShared, SetShared, FollowAll, ApplyToAll, ApplyTo, PropagateShared) does
 	nothing and returns false and a reason unless the profile is converted (UF:SharedReady) and every
-	element is registered: on an unconverted profile they would overwrite customized values with All units'.
+	element is registered (OwnShared needs only UF:CanMarkOwn): on an unconverted profile they would overwrite customized values with All units'.
 
 	A setting added later gets since = n, UF.SHARED_VERSION rises to n, and the conversion runs that
 	step for those entries alone, so a unit whose default for the new setting differs owns it from the
@@ -1175,7 +1175,7 @@ end
 
 -- Why sharing is not in force for the profile, without doing anything: nil while it is, else
 --   'none'      there is no profile
---   'plain'     a table with no AceDB defaults (an import or copy made in this session: it shares from the next login)
+--   'plain'     a table with no AceDB defaults (an import made in this session: it shares from the next login; a copy keeps AceDB's tables)
 --   'restored'  the owner restored the backup: nothing converts it again until UF:EnableShared
 --   'newer'     a newer SaftUI converted it: its flags and values are left alone
 --   'missing'   a part of the unit frames did not load (an element an entry names is not registered)
