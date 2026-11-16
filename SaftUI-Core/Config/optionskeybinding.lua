@@ -16,7 +16,7 @@ local Piece, HidePieces, ShowBox = Kit.Piece, Kit.HidePieces, Kit.ShowBox
 
 local IGNORED_KEYS = {
 	BUTTON1 = true, BUTTON2 = true, UNKNOWN = true,
-	LSHIFT = true, LCTRL = true, LALT = true, RSHIFT = true, RCTRL = true, RALT = true,
+	LSHIFT = true, LCTRL = true, LALT = true, RSHIFT = true, RCTRL = true, RALT = true, LMETA = true, RMETA = true,
 }
 local MOUSE_BUTTONS = { MiddleButton = 'BUTTON3', Button4 = 'BUTTON4', Button5 = 'BUTTON5' }
 
