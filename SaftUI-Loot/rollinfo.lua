@@ -13,18 +13,22 @@
 --
 -- Held rolls: once you choose on a roll, Blizzard takes its bar away, and
 -- roll.lua shows a bar of SaftUI's in its place, locked on your choice
--- (LT:HoldRoll), until the roll ends. Your choice is seen through a post-hook on
--- RollOnLoot; the held bar carries the roll's drop forward and is matched and
--- updated here with the Blizzard bars. A Blizzard bar never takes a drop
--- you've chosen on (only a bar that keeps its roll keeps one), and a held roll
--- only takes one you have. It finishes when its drop resolves (here) or its
+-- (LT:HoldRoll), until the roll ends. Your choice is known before the bar goes:
+-- on a plain click the game cancels the roll inside RollOnLoot, so the bar hides
+-- before RollOnLoot returns. A pre-hook on each roll button (PreClick) notes the
+-- click as pending, and the bar hiding holds the roll with it; a post-hook on
+-- RollOnLoot notes the choice that leaves the bar up (a bind on pickup
+-- confirmation, a Need's dice animation). The held bar carries the roll's drop
+-- forward and is matched and updated here with the Blizzard bars. A Blizzard
+-- bar never takes a drop you've chosen on (only a bar that keeps its roll keeps
+-- one), and a held roll only takes one you have. It finishes when its drop resolves (here) or its
 -- time runs out (roll.lua): it then stays up a few seconds and fades before it
 -- goes (roll.lua), takes no drop and is left out of matching; it still shows
 -- the later results of the drop it finished on (counts only).
 --
 -- The roll frames and their buttons are Blizzard's: nothing is written onto
 -- them. Each bar's count font strings and matched drop live in `bars`, keyed by
--- the roll frame, and Blizzard's scripts get post-hooks only. The info frame
+-- the roll frame, and Blizzard's scripts get native hooks only. The info frame
 -- (the bar's body) is SaftUI's own, from roll.lua (LT:GetRollInfoFrame).
 --
 -- Feed/rolls.lua calls LT:UpdateRollBars after every loot history update, and
@@ -44,10 +48,21 @@ local bars = setmetatable({}, { __mode = 'k' })
 
 -- Your choice on each roll still on a Blizzard bar, by rollID: { choice (the
 -- roll button it's counted on), ends (the GetTime its time runs out), length
--- (the roll's, in seconds) }. Recorded when RollOnLoot is called for it (a roll
--- button's click, or an addon's), and taken when its bar goes. The time is read
--- then: a main spec Need zeroes Blizzard's timer for its dice animation.
+-- (the roll's, in seconds) }. Recorded after RollOnLoot returns with the bar
+-- still up (a bind on pickup confirmation, a Need's dice animation), and taken
+-- when its bar goes.
 local chosen = {}
+
+-- The same, for a roll button's click still under way, by rollID: recorded at
+-- PreClick, before RollOnLoot, and cleared at PostClick, so it never outlives its
+-- click. The time is read then: the game can cancel the roll inside RollOnLoot
+-- (a plain click), and a main spec Need's dice animation zeroes Blizzard's timer
+-- (it probably starts after the call, on the server's answer; if it starts inside
+-- it, the time is still the one read here). `held` is set once the bar's hiding has held the roll with it.
+local pending = {}
+-- [roll button] = the rollID its click is pending for, to clear it at PostClick
+-- (the frame may show another roll by then).
+local clicking = setmetatable({}, { __mode = 'k' })
 
 ------------------------------------
 ---- Counts ------------------------
@@ -382,25 +397,31 @@ local function OnBarShow()
 end
 
 -- The bar hid. Hidden itself (not only with UIParent), Blizzard took its roll
--- away: it ended, or you chose on it. If you chose, the roll is held, carrying
+-- away: it ended, or you chose on it. If you chose (a click under way, or a
+-- choice noted), the roll is held now, from the bar's state as it is at this
+-- hide: the frame may show another roll before RollOnLoot returns. It carries
 -- the drop it was matched to (or last was: one that resolved just before
 -- makes the held roll finish at once (LT:UpdateRollBars, below): it stays up a
 -- few seconds and fades).
 local function OnBarHide(frame)
 	local state = bars[frame]
 	if state then
-		local choice = state.rollID and chosen[state.rollID]
+		-- A click under way is newer than a choice noted before it.
+		local choice = state.rollID and (pending[state.rollID] or chosen[state.rollID])
 		if st.DEBUG and state.rollID then
-			st:Debug('Loot', 'bar hid:', state.rollID, 'choice noted', choice ~= nil,
+			st:Debug('Loot', 'bar hid:', state.rollID, 'choice noted', chosen[state.rollID] ~= nil,
+				'pending', pending[state.rollID] ~= nil,
 				'frame hidden', not frame:IsShown(), 'drop', state.dropID or state.lastDropID)
 		end
 		if choice and not frame:IsShown() then
 			chosen[state.rollID] = nil
-			LT:HoldRoll(frame, {
+			local bar = LT:HoldRoll(frame, {
 				rollID = state.rollID, choice = choice.choice, ends = choice.ends, length = choice.length,
 				link = state.link, item = state.item, itemID = state.itemID,
 				dropID = state.dropID or state.lastDropID, rolls = state.dropID and state.rolls,
 			})
+			-- Only a hold that happened: the post-hook says nothing of one skipped.
+			if bar then choice.held = true end
 		end
 		ClearBar(state)
 	end
@@ -412,10 +433,57 @@ end
 -- LT:HoldRoll lights whichever of Greed and Transmog the bar shows.
 local CHOICE_FOR_ROLL_TYPE = { [0] = 'Pass', [1] = 'Need', [2] = 'Greed', [3] = 'Disenchant', [4] = 'Transmog' }
 
+-- The roll's time left, as Blizzard's timer shows it now: { ends (the GetTime
+-- it runs out), length (the roll's, in seconds), left } in plain seconds, or nil
+-- when its values are not plain numbers.
+local function ReadTimer(frame)
+	local PlainNumber = LT.PlainNumber
+	local _, length = frame.Timer:GetMinMaxValues()
+	local left = PlainNumber(frame.Timer:GetValue())
+	length = PlainNumber(length)
+	if not (left and length) then return end
+	return {
+		ends = GetTime() + LT.RollSeconds(left, length),
+		length = LT.RollSeconds(length, length),
+		left = LT.RollSeconds(left, length),
+	}
+end
+
+-- A roll button's PreClick, before RollOnLoot: notes the click as pending, with
+-- the time left read now. On a roll with no confirmation the game cancels it
+-- inside RollOnLoot and the bar hides (OnBarHide) before any post-hook runs.
+local function OnRollPreClick(frame, button)
+	local PlainNumber = LT.PlainNumber
+	local rollID, rollType = PlainNumber(frame.rollID), PlainNumber(button:GetID())
+	local choice = rollType and CHOICE_FOR_ROLL_TYPE[rollType]
+	if not (rollID and choice and frame:IsShown()) then return end
+	local timer = ReadTimer(frame)
+	if not timer then
+		if st.DEBUG then st:Debug('Loot', 'choice not pending:', rollID, 'the timer values are not plain') end
+		return
+	end
+	timer.choice = choice
+	pending[rollID] = timer
+	clicking[button] = rollID
+	if st.DEBUG then st:Debug('Loot', 'choice pending:', rollID, choice, 'seconds left', ('%.1f'):format(timer.left)) end
+end
+
+-- PostClick: the click is over, whatever the roll did.
+local function OnRollPostClick(button)
+	local rollID = clicking[button]
+	clicking[button] = nil
+	if rollID then pending[rollID] = nil end
+end
+
 -- After RollOnLoot (a roll button's OnClick, or an addon): notes your choice on
--- a roll a skinned bar shows, with the time it has left. A choice the game asks
--- you to confirm (CONFIRM_LOOT_ROLL, for a bind on pickup item) is noted at
--- once; cancelling it leaves the bar up, and the next choice replaces it.
+-- a roll a skinned bar still shows, with the time it has left. A roll whose bar
+-- already went (a plain click: the game cancelled it inside the call) was held
+-- at that hide. A click's choice is the one PreClick read, before the call (a
+-- Need's dice animation, if it starts inside the call, zeroes the timer; it
+-- probably comes after, from the server, and the code handles both); a direct
+-- call's time is read here. A choice the game asks you to confirm
+-- (CONFIRM_LOOT_ROLL, for a bind on pickup item) is noted at once; cancelling it
+-- leaves the bar up, and the next choice replaces it.
 local function OnRollChosen(rollID, rollType)
 	local PlainNumber = LT.PlainNumber
 	rollID, rollType = PlainNumber(rollID), PlainNumber(rollType)
@@ -424,18 +492,18 @@ local function OnRollChosen(rollID, rollType)
 		if st.DEBUG then st:Debug('Loot', 'choice not noted: no plain roll ID or roll type', rollID, rollType) end
 		return
 	end
+	local click = pending[rollID]
+	if click and click.choice ~= choice then click = nil end
+	if click and click.held then
+		if st.DEBUG then st:Debug('Loot', 'choice held at the bar hiding:', rollID, choice) end
+		return
+	end
 	for frame in pairs(bars) do
 		if frame:IsShown() and PlainNumber(frame.rollID) == rollID then
-			local _, length = frame.Timer:GetMinMaxValues()
-			local left = PlainNumber(frame.Timer:GetValue())
-			length = PlainNumber(length)
-			if left and length then
-				chosen[rollID] = {
-					choice = choice,
-					ends = GetTime() + LT.RollSeconds(left, length),
-					length = LT.RollSeconds(length, length),
-				}
-				if st.DEBUG then st:Debug('Loot', 'choice noted:', rollID, choice, 'seconds left', ('%.1f'):format(LT.RollSeconds(left, length))) end
+			local noted = click or ReadTimer(frame)
+			if noted then
+				chosen[rollID] = { choice = choice, ends = noted.ends, length = noted.length }
+				if st.DEBUG then st:Debug('Loot', 'choice noted:', rollID, choice, 'seconds left', ('%.1f'):format(noted.left)) end
 			elseif st.DEBUG then
 				st:Debug('Loot', 'choice not noted:', rollID, 'the timer values are not plain')
 			end
@@ -456,6 +524,7 @@ end
 -- there's no choice left to hold.
 function LT:OnCancelAllLootRolls()
 	wipe(chosen)
+	wipe(pending)
 	local list = {}
 	for _, bar in ipairs(self:GetHeldRolls()) do tinsert(list, bar) end
 	for _, bar in ipairs(list) do self:ReleaseHeldRoll(bar) end
@@ -469,6 +538,15 @@ function LT:AttachRollInfo(frame, counts)
 
 	frame:HookScript('OnShow', OnBarShow)
 	frame:HookScript('OnHide', OnBarHide)
+	-- The roll buttons are Blizzard's and not secure: native hooks only.
+	local container = frame.LootButtonContainer or frame
+	for _, name in ipairs({ 'Need', 'Greed', 'Transmog', 'Pass' }) do
+		local button = container[name .. 'Button']
+		if button and button.HookScript then
+			button:HookScript('PreClick', function(self) OnRollPreClick(frame, self) end)
+			button:HookScript('PostClick', OnRollPostClick)
+		end
+	end
 	frame.IconFrame:HookScript('OnEnter', AddIconLines)
 	frame.IconFrame:HookScript('OnUpdate', AddIconLines)
 	self:SetRollTooltipScripts(self:GetRollInfoFrame(frame), InfoTooltip)
