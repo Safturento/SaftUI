@@ -28,8 +28,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-15 — Buffs and debuffs: one helper for the wrap the layout keeps, so the layout and Wrap's default cannot drift](#2026-11-15--buffs-and-debuffs-one-helper-for-the-wrap-the-layout-keeps-so-the-layout-and-wraps-default-cannot-drift)
   - [2026-11-15 — Buffs and debuffs: Wrap's hand reset copies the General group's set](#2026-11-15--buffs-and-debuffs-wraps-hand-reset-copies-the-general-groups-set)
   - [2026-11-15 — Blizzard's tracker: the Position reset is tested on Forever only](#2026-11-15--blizzards-tracker-the-position-reset-is-tested-on-forever-only)
-  - [2026-11-15 — Auto Vendor counts a fresh purchase in a just-sold slot as a refused sale](#2026-11-15--auto-vendor-counts-a-fresh-purchase-in-a-just-sold-slot-as-a-refused-sale)
-  - [2026-11-15 — Auto Vendor's second question overstates the earlier stacks that leave](#2026-11-15--auto-vendors-second-question-overstates-the-earlier-stacks-that-leave)
   - [2026-11-15 — Nameplates: Blizzard's friendly plates key binding and the next login](#2026-11-15--nameplates-blizzards-friendly-plates-key-binding-and-the-next-login)
   - [2026-11-15 — Unit frames: a part switched off in the new profile keeps its old points](#2026-11-15--unit-frames-a-part-switched-off-in-the-new-profile-keeps-its-old-points)
   - [2026-11-15 — Two lines of the profile switch fix that no test pins](#2026-11-15--two-lines-of-the-profile-switch-fix-that-no-test-pins)
@@ -135,6 +133,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-15 — Auto Vendor's second question overstates the earlier stacks that leave](#2026-11-15--auto-vendors-second-question-overstates-the-earlier-stacks-that-leave)
+  - [2026-11-15 — Auto Vendor counts a fresh purchase in a just-sold slot as a refused sale](#2026-11-15--auto-vendor-counts-a-fresh-purchase-in-a-just-sold-slot-as-a-refused-sale)
   - [2026-11-15 — Forever: Show in > Bank does nothing for the default bank (the combined bank)](#2026-11-15--forever-show-in--bank-does-nothing-for-the-default-bank-the-combined-bank)
   - [2026-11-15 — Two Misc readers break "a pass only colors"](#2026-11-15--two-misc-readers-break-a-pass-only-colors)
   - [2026-11-11 — UIParent's scale is set once, at login, so plates leave whole pixels after a UI scale or display change](#2026-11-11--uiparents-scale-is-set-once-at-login-so-plates-leave-whole-pixels-after-a-ui-scale-or-display-change)
@@ -458,30 +458,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 **Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_ObjectiveTrackerPosition.lua` (`st:DefaultTrackerPosition()`), `tests/misc/objective_tracker_position_test.lua` ("Blizzard's tracker's Position resets to Blizzard's spot").
 
 **Shape of work:** Run that case for both clients, as the walk cases of Action bars and the Tracker now are.
-
-### 2026-11-15 — Auto Vendor counts a fresh purchase in a just-sold slot as a refused sale
-
-**What:** `Account` (`SaftUI-Bags/autovendor.lua`) decides a stack was sold when its slot is empty or holds another item or count. A stack bought from the merchant that is the same item in the same count as one just sold, landing in the slot that stack left before the next pass (2 seconds), reads as a refused sale. `tailSold` is one short, the purchase is sold again with no question, and at a visit already at 12 one stack leaves the buyback list unasked.
-
-**Why noticed:** The re-review of Auto Vendor's fix round 1 (probe L3, "Check of fix round 2", 2026-11-15). All five conditions must hold together: a caught item the merchant sells, the same count, the first free slot being the one just emptied, inside one pass window, and a visit already at 12. The reviewer called it rare and costing one stack, and the owner accepted it for the merge.
-
-**Anchors:** `SaftUI-Bags/autovendor.lua` (`Account`, `Sell`); `tests/bags/autovendor_sale_test.lua`.
-
-**What's been considered:** A bought-back stack in the same slot is harmless to the count (its buyback entry is removed, so the list still matches) but it is sold again, which undoes the buyback. A fresh purchase removes no entry, which is why only it breaks the promise.
-
-**Shape of work:** Small. Record `C_Item.GetItemGUID(ItemLocation:CreateFromBagAndSlot(bag, slot))` in `Sell` and compare it in `Account`: a different GUID counts as sold. `GetItemGUID` is in `ItemDocumentation.lua` on both branches. A purchase has a new GUID; a bought-back stack keeps its GUID (counted as now, correct) or gets a new one (counted twice, which only asks sooner), so the count is never short. Optionally also a post-hook (`hooksecurefunc`, `.agents/taint.md` rule 2) on `BuyMerchantItem` and `BuybackItem` to end the unasked part of a visit once the player starts buying, which would also stop SaftUI selling back what the player just bought back. Tests need a stub GUID per item.
-
-**Open questions:** Whether to also end the unasked sales when the player buys.
-
-### 2026-11-15 — Auto Vendor's second question overstates the earlier stacks that leave
-
-**What:** The second question of a visit says how many stacks sold earlier this visit will leave the buyback ("... and N stacks sold earlier this visit will leave the buyback"). Once a visit has already sold more than 12 (after a Sell them to 13 stacks, say) the number is too high: with a 14th stack the question says 2 and the true number is 1. The formula `min(earlier + in flight, earlier + in flight + its own - size)` is right while `earlier + in flight` is 12 or fewer.
-
-**Why noticed:** The re-review of Auto Vendor's fix round 1 (probe N7b, 2026-11-15). It errs on the safe side (the question warns of more than will happen), so it was left for later.
-
-**Anchors:** `SaftUI-Bags/autovendor.lua` (`QuestionText`, the `pushed` figure); `tests/bags/autovendor_sale_test.lua` ("N-2").
-
-**Shape of work:** Small. With `e = tailSold + pendingTail` and `n` the new stacks, only `min(e, size)` of the earlier stacks are still in the buyback, so the number that leave is `min(e, size) - min(min(e, size), max(0, size - n))`; or cap it at `min(n, ...)`. Add a test for a visit past 12.
 
 ### 2026-11-15 — Nameplates: Blizzard's friendly plates key binding and the next login
 
@@ -2464,6 +2440,34 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-15 — Auto Vendor's second question overstates the earlier stacks that leave
+
+**What:** The second question of a visit says how many stacks sold earlier this visit will leave the buyback ("... and N stacks sold earlier this visit will leave the buyback"). Once a visit has already sold more than 12 (after a Sell them to 13 stacks, say) the number is too high: with a 14th stack the question says 2 and the true number is 1. The formula `min(earlier + in flight, earlier + in flight + its own - size)` is right while `earlier + in flight` is 12 or fewer.
+
+**Why noticed:** The re-review of Auto Vendor's fix round 1 (probe N7b, 2026-11-15). It errs on the safe side (the question warns of more than will happen), so it was left for later.
+
+**Anchors:** `SaftUI-Bags/autovendor.lua` (`QuestionText`, the `pushed` figure); `tests/bags/autovendor_sale_test.lua` ("N-2").
+
+**Shape of work:** Small. With `e = tailSold + pendingTail` and `n` the new stacks, only `min(e, size)` of the earlier stacks are still in the buyback, so the number that leave is `min(e, size) - min(min(e, size), max(0, size - n))`; or cap it at `min(n, ...)`. Add a test for a visit past 12.
+
+**Resolved 2026-11-15:** `QuestionText` now counts only the earlier stacks still in the buyback (`min(earlier, size)`) that the new ones push out, so a visit past 12 says 1 where it said 2. Test: `tests/bags/autovendor_sale_test.lua` ("N-2: past 12").
+
+### 2026-11-15 — Auto Vendor counts a fresh purchase in a just-sold slot as a refused sale
+
+**What:** `Account` (`SaftUI-Bags/autovendor.lua`) decides a stack was sold when its slot is empty or holds another item or count. A stack bought from the merchant that is the same item in the same count as one just sold, landing in the slot that stack left before the next pass (2 seconds), reads as a refused sale. `tailSold` is one short, the purchase is sold again with no question, and at a visit already at 12 one stack leaves the buyback list unasked.
+
+**Why noticed:** The re-review of Auto Vendor's fix round 1 (probe L3, "Check of fix round 2", 2026-11-15). All five conditions must hold together: a caught item the merchant sells, the same count, the first free slot being the one just emptied, inside one pass window, and a visit already at 12. The reviewer called it rare and costing one stack, and the owner accepted it for the merge.
+
+**Anchors:** `SaftUI-Bags/autovendor.lua` (`Account`, `Sell`); `tests/bags/autovendor_sale_test.lua`.
+
+**What's been considered:** A bought-back stack in the same slot is harmless to the count (its buyback entry is removed, so the list still matches) but it is sold again, which undoes the buyback. A fresh purchase removes no entry, which is why only it breaks the promise.
+
+**Shape of work:** Small. Record `C_Item.GetItemGUID(ItemLocation:CreateFromBagAndSlot(bag, slot))` in `Sell` and compare it in `Account`: a different GUID counts as sold. `GetItemGUID` is in `ItemDocumentation.lua` on both branches. A purchase has a new GUID; a bought-back stack keeps its GUID (counted as now, correct) or gets a new one (counted twice, which only asks sooner), so the count is never short. Optionally also a post-hook (`hooksecurefunc`, `.agents/taint.md` rule 2) on `BuyMerchantItem` and `BuybackItem` to end the unasked part of a visit once the player starts buying, which would also stop SaftUI selling back what the player just bought back. Tests need a stub GUID per item.
+
+**Open questions:** Whether to also end the unasked sales when the player buys.
+
+**Resolved 2026-11-15:** `Sell` records the stack's `C_Item.GetItemGUID` (in ItemDocumentation on both clients' branches) and `Account` counts a stack in its slot with another GUID as sold, so a fresh purchase landing in a just-sold slot no longer reads as a refused sale and the tail count is never short. Not done: ending the unasked sales when the player buys (the entry's open question; the promise holds without it). Test: `tests/bags/autovendor_sale_test.lua`.
 
 ### 2026-11-15 — Forever: Show in > Bank does nothing for the default bank (the combined bank)
 

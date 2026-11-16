@@ -98,9 +98,18 @@ local function SlotKey(info)
 	return info.bagID .. ':' .. info.slotID .. ':' .. info.itemID
 end
 
+-- The item GUID of the stack in a slot (C_Item.GetItemGUID, in ItemDocumentation
+-- on both clients), or nil where the game gives none. A purchase has a GUID of
+-- its own, which tells it from the stack sold from the same slot.
+local function GuidAt(bagID, slotID)
+	if not (C_Item and C_Item.GetItemGUID and ItemLocation) then return nil end
+	return C_Item.GetItemGUID(ItemLocation:CreateFromBagAndSlot(bagID, slotID))
+end
+
 -- Counts the stacks asked of the game: one that is gone from its slot (or has
 -- changed there) was sold, and leaves the question's named list (a stack
--- bought back into its slot is a new stack). One still there and locked is a
+-- bought back or bought into its slot is a new stack: another GUID). One still
+-- there and locked is a
 -- sale in flight: it stays in v.attempted, counted in the budget and the tail
 -- until it lands. One still there and not locked was refused. Every one still
 -- there is returned.
@@ -108,7 +117,12 @@ local function Account(v)
 	local left, pending = {}, {}
 	for _, entry in ipairs(v.attempted) do
 		local now = C_Container.GetContainerItemInfo(entry.bagID, entry.slotID)
-		if not now or now.itemID ~= entry.itemID or now.stackCount ~= entry.count then
+		local gone = not now or now.itemID ~= entry.itemID or now.stackCount ~= entry.count
+		if not gone and entry.guid ~= nil then
+			local guid = GuidAt(entry.bagID, entry.slotID)
+			gone = guid ~= nil and guid ~= entry.guid
+		end
+		if gone then
 			v.sold = v.sold + 1
 			v.money = v.money + entry.price
 			if entry.tail then v.tailSold = v.tailSold + 1 end
@@ -184,9 +198,12 @@ local function QuestionText(v, stacks, pendingTail)
 		byValue[i] = info
 		if info.quality == 0 then junk = true end
 	end
-	-- Stacks sold earlier this visit without asking that these would push out
-	-- of the buyback list.
-	local pushed = math.min(v.tailSold + pendingTail, math.max(0, v.tailSold + pendingTail + #stacks - INV:BuybackSize()))
+	-- Stacks sold earlier this visit that these would push out of the buyback
+	-- list: of the earlier ones only the last `size` are still in it, and the
+	-- new ones leave room for size - #stacks of those.
+	local size = INV:BuybackSize()
+	local inList = math.min(v.tailSold + pendingTail, size)
+	local pushed = inList - math.min(inList, math.max(0, size - #stacks))
 	table.sort(byValue, function(a, b)
 		if a.stackPrice ~= b.stackPrice then return a.stackPrice > b.stackPrice end
 		if a.bagID ~= b.bagID then return a.bagID < b.bagID end
@@ -242,7 +259,7 @@ local function Sell(v, info, tail)
 	v.tries[key] = (v.tries[key] or 0) + 1
 	if tail then v.tailStarted = true end
 	tinsert(v.attempted, { bagID = info.bagID, slotID = info.slotID, itemID = info.itemID,
-		count = info.count, price = info.stackPrice, tail = tail })
+		count = info.count, price = info.stackPrice, tail = tail, guid = GuidAt(info.bagID, info.slotID) })
 	C_Container.UseContainerItem(info.bagID, info.slotID)
 	return true
 end
