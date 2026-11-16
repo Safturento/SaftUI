@@ -7,6 +7,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-15 — The options kit's keybinding widget commits mouse buttons 6 to 31 raw](#2026-11-15--the-options-kits-keybinding-widget-commits-mouse-buttons-6-to-31-raw)
+  - [2026-11-13 — Loot rolls: the roll bar doesn't hold after a choice](#2026-11-13--loot-rolls-the-roll-bar-doesnt-hold-after-a-choice)
   - [2026-11-15 — UI scale: the kit's buttons and labels are off whole pixels on every screen that is not 1440p](#2026-11-15--ui-scale-the-kits-buttons-and-labels-are-off-whole-pixels-on-every-screen-that-is-not-1440p)
   - [2026-11-15 — UI scale: a kit confirm dialog or an open select list can cover the Keep prompt](#2026-11-15--ui-scale-a-kit-confirm-dialog-or-an-open-select-list-can-cover-the-keep-prompt)
   - [2026-11-15 — An addon's direct RollOnLoot on a roll with no confirmation is not held](#2026-11-15--an-addons-direct-rollonloot-on-a-roll-with-no-confirmation-is-not-held)
@@ -18,16 +20,10 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-15 — Edit mode: a Theme pass with edit mode on still does the full look and list refresh](#2026-11-15--edit-mode-a-theme-pass-with-edit-mode-on-still-does-the-full-look-and-list-refresh)
   - [2026-11-15 — Unit frames: a Warrior class pick updates every Warrior NPC plate](#2026-11-15--unit-frames-a-warrior-class-pick-updates-every-warrior-npc-plate)
   - [2026-11-15 — Unit frames: what a color pass's real element updates cost](#2026-11-15--unit-frames-what-a-color-passs-real-element-updates-cost)
-  - [2026-11-15 — A roll result line's All passed and winner color are baked in at push](#2026-11-15--a-roll-result-lines-all-passed-and-winner-color-are-baked-in-at-push)
   - [2026-11-15 — A Position reset runs a unit frame's update once for every part it writes](#2026-11-15--a-position-reset-runs-a-unit-frames-update-once-for-every-part-it-writes)
   - [2026-11-15 — After a UI scale change, a reset half-pixel Position can show its icon again](#2026-11-15--after-a-ui-scale-change-a-reset-half-pixel-position-can-show-its-icon-again)
   - [2026-11-15 — Shipped category names shown numbered: no test pins that they show no reset icon](#2026-11-15--shipped-category-names-shown-numbered-no-test-pins-that-they-show-no-reset-icon)
-  - [2026-11-15 — Buffs and debuffs: Size and Outline keep hand defaults a derived one would replace](#2026-11-15--buffs-and-debuffs-size-and-outline-keep-hand-defaults-a-derived-one-would-replace)
-  - [2026-11-15 — Reset walks: the feed's, Minimap's and Micro menu's movers are registered inline, so the tests pin a copy](#2026-11-15--reset-walks-the-feeds-minimaps-and-micro-menus-movers-are-registered-inline-so-the-tests-pin-a-copy)
   - [2026-11-15 — Reset walk: the profile compare is most of a unit page's cost](#2026-11-15--reset-walk-the-profile-compare-is-most-of-a-unit-pages-cost)
-  - [2026-11-15 — Buffs and debuffs: one helper for the wrap the layout keeps, so the layout and Wrap's default cannot drift](#2026-11-15--buffs-and-debuffs-one-helper-for-the-wrap-the-layout-keeps-so-the-layout-and-wraps-default-cannot-drift)
-  - [2026-11-15 — Buffs and debuffs: Wrap's hand reset copies the General group's set](#2026-11-15--buffs-and-debuffs-wraps-hand-reset-copies-the-general-groups-set)
-  - [2026-11-15 — Blizzard's tracker: the Position reset is tested on Forever only](#2026-11-15--blizzards-tracker-the-position-reset-is-tested-on-forever-only)
   - [2026-11-15 — Forever: Show in > Bank does nothing for the default bank (the combined bank)](#2026-11-15--forever-show-in--bank-does-nothing-for-the-default-bank-the-combined-bank)
   - [2026-11-15 — Auto Vendor counts a fresh purchase in a just-sold slot as a refused sale](#2026-11-15--auto-vendor-counts-a-fresh-purchase-in-a-just-sold-slot-as-a-refused-sale)
   - [2026-11-15 — Auto Vendor's second question overstates the earlier stacks that leave](#2026-11-15--auto-vendors-second-question-overstates-the-earlier-stacks-that-leave)
@@ -57,7 +53,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-15 — Chat's font size against Blizzard's per-window Font Size](#2026-11-15--chats-font-size-against-blizzards-per-window-font-size)
   - [2026-11-15 — A bag window's least width ignores a Window titles change](#2026-11-15--a-bag-windows-least-width-ignores-a-window-titles-change)
   - [2026-11-14 — Position rows of secure frames can anchor to a frame that is moved in combat](#2026-11-14--position-rows-of-secure-frames-can-anchor-to-a-frame-that-is-moved-in-combat)
-  - [2026-11-14 — The options kit's keybinding widget doesn't know META or Blizzard's ignored keys](#2026-11-14--the-options-kits-keybinding-widget-doesnt-know-meta-or-blizzards-ignored-keys)
   - [2026-11-14 — A first-run setup dialog: UI size, theme, unit frame layout](#2026-11-14--a-first-run-setup-dialog-ui-size-theme-unit-frame-layout)
   - [2026-11-14 — /sui at half with the sidebar collapsed: a validation error is cut or hidden in the footer](#2026-11-14--sui-at-half-with-the-sidebar-collapsed-a-validation-error-is-cut-or-hidden-in-the-footer)
   - [2026-11-13 — Design decisions waiting to be built](#2026-11-13--design-decisions-waiting-to-be-built)
@@ -65,7 +60,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-13 — Scale SaftUI across resolutions and stay pixel perfect](#2026-11-13--scale-saftui-across-resolutions-and-stay-pixel-perfect)
   - [2026-11-13 — Bags: a general sort order of draggable blocks, with a per-category override](#2026-11-13--bags-a-general-sort-order-of-draggable-blocks-with-a-per-category-override)
   - [2026-11-13 — Unit frames: shared settings across units, and small parts as menu items](#2026-11-13--unit-frames-shared-settings-across-units-and-small-parts-as-menu-items)
-  - [2026-11-13 — Loot rolls: the roll bar doesn't hold after a choice](#2026-11-13--loot-rolls-the-roll-bar-doesnt-hold-after-a-choice)
   - [2026-11-13 — Test mode: choose which elements the previews show](#2026-11-13--test-mode-choose-which-elements-the-previews-show)
   - [2026-11-13 — Unit frame profiles are hard to find in /sui](#2026-11-13--unit-frame-profiles-are-hard-to-find-in-sui)
   - [2026-11-13 — Codebase cleanup: small things left over](#2026-11-13--codebase-cleanup-small-things-left-over)
@@ -131,6 +125,13 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-14 — The options kit's keybinding widget doesn't know META or Blizzard's ignored keys](#2026-11-14--the-options-kits-keybinding-widget-doesnt-know-meta-or-blizzards-ignored-keys)
+  - [2026-11-15 — Reset walks: the feed's, Minimap's and Micro menu's movers are registered inline, so the tests pin a copy](#2026-11-15--reset-walks-the-feeds-minimaps-and-micro-menus-movers-are-registered-inline-so-the-tests-pin-a-copy)
+  - [2026-11-15 — Blizzard's tracker: the Position reset is tested on Forever only](#2026-11-15--blizzards-tracker-the-position-reset-is-tested-on-forever-only)
+  - [2026-11-15 — Buffs and debuffs: Size and Outline keep hand defaults a derived one would replace](#2026-11-15--buffs-and-debuffs-size-and-outline-keep-hand-defaults-a-derived-one-would-replace)
+  - [2026-11-15 — Buffs and debuffs: Wrap's hand reset copies the General group's set](#2026-11-15--buffs-and-debuffs-wraps-hand-reset-copies-the-general-groups-set)
+  - [2026-11-15 — Buffs and debuffs: one helper for the wrap the layout keeps, so the layout and Wrap's default cannot drift](#2026-11-15--buffs-and-debuffs-one-helper-for-the-wrap-the-layout-keeps-so-the-layout-and-wraps-default-cannot-drift)
+  - [2026-11-15 — A roll result line's All passed and winner color are baked in at push](#2026-11-15--a-roll-result-lines-all-passed-and-winner-color-are-baked-in-at-push)
   - [2026-11-15 — Chat's Fade tabs: ChatFrameUtil.GetTabAlphas isn't in the retail source](#2026-11-15--chats-fade-tabs-chatframeutilgettabalphas-isnt-in-the-retail-source)
   - [2026-11-15 — Chat: the dock hook adds a second anchor to docked tabs 2 to n, and the dock test can't see it](#2026-11-15--chat-the-dock-hook-adds-a-second-anchor-to-docked-tabs-2-to-n-and-the-dock-test-cant-see-it)
   - [2026-11-15 — Chat's edit box can sit off the top of the screen when the chat Theme is None](#2026-11-15--chats-edit-box-can-sit-off-the-top-of-the-screen-when-the-chat-theme-is-none)
@@ -211,6 +212,50 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-15 — The options kit's keybinding widget commits mouse buttons 6 to 31 raw
+
+**What:** The `keybinding` widget (`SaftUI-Core/Config/optionskeybinding.lua`) converts only `MiddleButton`, `Button4` and `Button5` (its `MOUSE_BUTTONS` table). Mouse buttons 6 to 31 reach `Press` as `Button6` and so on and are committed raw, where the game's binding names are `BUTTON6`. `/sui kb` converts every button with `GetConvertedKeyOrButton` (`SaftUI-ActionBars/keybindmode.lua`).
+
+**Why noticed:** Review of the small-followups package (2026-11-15), reading the widget's new use of Blizzard's binding helpers. The gap is older than that change; it is rare (a mouse with more than five buttons).
+
+**Anchors:** `SaftUI-Core/Config/optionskeybinding.lua` (`MOUSE_BUTTONS`, the `OnMouseDown` script), `SaftUI-ActionBars/keybindmode.lua` (`BindingKey`), `Blizzard_SharedXML/BindingUtil.lua` (`GetConvertedKeyOrButton`, the same on both clients), `tests/core/options_fields_test.lua`.
+
+**Shape of work:** small: in `OnMouseDown`, convert through `GetConvertedKeyOrButton` where the client has it, keeping `MOUSE_BUTTONS` as the fallback; a test that `Button6` commits `BUTTON6`.
+
+### 2026-11-13 — Loot rolls: the roll bar doesn't hold after a choice
+
+**What:** After a choice on a group loot roll, SaftUI should show its own bar in Blizzard's place, locked on the choice, until the roll ends (the held rolls feature, built 2026-11-10). In game it doesn't: the user reports the bars "don't seem to be staying up after selecting a choice" (Forever, the night of 2026-11-12).
+
+**Why noticed:** Step 32 of the cleanup's in-game checks. The feature was built from Blizzard's source and has never been seen working in game ([Loot rolls: confirm the client assumptions in game](#2026-11-08--loot-rolls-confirm-the-client-assumptions-in-game)), so it may never have worked there.
+
+**Anchors:** `SaftUI-Loot/rollinfo.lua` (`OnRollChosen`, the `RollOnLoot` post-hook that notes the choice; `OnBarHide`, which calls `LT:HoldRoll`; `LT:UpdateRollBars`, which releases a held bar whose drop isn't open); `SaftUI-Loot/roll.lua` (`LT:HoldRoll`, `LT:ReleaseHeldRoll`, `LT:UpdateHeldRolls`); `SaftUI-Loot/Feed/loothistory.lua` (`LT:GetOpenDrops`, `HasEnded`, `RollTimeOver`); `tests/loot/roll_held_test.lua` (19 tests, all passing on stubs); Forever's `Interface/AddOns/Blizzard_UIPanels_Game/Mainline/GroupLootFrame.lua` and `.xml`.
+
+**What's been considered:** A read of the code against Forever's source (2026-11-13) found no cause:
+
+- The cleanup didn't change the logic. 81bf0b4 swapped Loot's local plain-value helpers for Core's (`st.PlainNumber`, the same test), and the other commits only moved code between files. `LT.PlainNumber` is set before anything runs.
+- Blizzard's source matches what the code assumes: a roll button's click calls `RollOnLoot(rollID, rollType)`; `CANCEL_LOOT_ROLL` leads to `GroupLootFrame_Remove`, `GroupLootContainer_RemoveFrame` and `frame:Hide()`, which is where `OnBarHide` runs; a main spec Need plays its dice for 5 seconds first.
+- The timer's values are plain: the timer draws in game.
+
+What's left needs evidence from the game. In the order they'd be checked:
+
+1. An error inside `LT:HoldRoll` or `OnBarHide`. It would be in BugGrabber's log.
+2. The held bar is shown and released at once, because its drop isn't in `LT:GetOpenDrops()` when `LT:UpdateRollBars` runs right after the hide. That is by design when everyone else has already chosen (the roll is over). Otherwise `HasEnded` or `RollTimeOver` reads Forever's drop wrongly (the units of `startTime` and `duration`, or `winner` being a table before the roll ends).
+3. `chosen[rollID]` is never set: the frame's `rollID` or the timer's values aren't plain at the click, or the click doesn't go through the global `RollOnLoot`.
+4. `LT:HoldRoll` returns early: `skins[frame].shown` is missing or for another roll, or under a second is left.
+5. The bar is up, but off screen or behind something.
+
+**Shape of work:** Evidence first: BugGrabber's log for Loot errors, and what the user saw (which button, whether others were still rolling, whether the bar went at once or after a Need's dice). If that doesn't settle it, a debug print at each decision in the list above, off by default, for the next group run. Then a failing test and a small fix.
+
+**Open questions:** Was anyone else still rolling when the bar went? If not, the bar going is the design, and the question becomes whether a finished roll should hold for a moment to show its result.
+
+**In game 2026-11-13:** BugGrabber's log has no Loot error, so cause 1 is out. The user: "I was pressing greed, it went away as soon as I clicked. It could very well be that I was the last one to roll, I wasn't paying much attention." That fits cause 2's by-design case: the last to choose, so the roll resolved at the click and the held bar was released in the same update.
+
+**Decided 2026-11-13:** The user: "I like the hold for a finished roll, we can hold it for a few seconds and fade out after. the debug print is a good idea, lets add that as well." Being built on branch `fb-rollhold`: a held bar that finishes (its drop resolved, or its time ran out) stays 3 seconds, locked on the choice with its final counts, fades over half a second, then goes; and `/sui debug` turns on `st:Debug('Loot', ...)` lines at each decision in the list above, for the next group run. The 3 seconds and the half second are the builder's numbers, not the user's. This entry stays Active until the held bar has been seen in game with others still rolling.
+
+**Merged 2026-11-13 (7c2ab54):** built and reviewed, with one fix round. Beyond the above, a finished bar keeps showing later results for the drop it finished on (counts and tooltip only), so a roll that times out can show its auto-passes and winner before it fades. The finish line under `/sui debug` reads `held roll finished: <id> <why> waiting <n> <winner | all passed | no winner | no summary>`: a `winner` with others still waiting, a second or two after your click, means Forever's drop fields are misread (cause 2 above). Not yet seen in game.
+
+**Fixed in code 2026-11-15, awaiting an in-game roll:** the cause was that a plain click's roll is cancelled inside `RollOnLoot`, so Blizzard's bar hid before the post-hook noted the choice and nothing was held (the owner's debug lines from before the fix: `bar hid: ... choice noted false frame hidden true`, then `choice not noted: ... no shown bar with that roll`). Fixed on `fb-rollhold` (merged 2026-11-15, 357f415f, 5b9411c5): each roll button's `PreClick` notes the click as pending (roll, type, time left) before `RollOnLoot`, the bar's hide holds the roll with it, and the post-hook still notes a choice that leaves the bar up (a confirmation, a Need's dice). `tests/loot/roll_held_test.lua`'s `RollOnLoot` stub answers inside the call as the game does. Not yet seen in game. A real roll with `/sui debug` on should print, in order: `choice pending: <id> <type> seconds left <n>`, `bar hid: <id> choice noted false pending true ...`, `held roll <id> choice <type> ...`, `choice held at the bar hiding: <id> <type>`. Close this entry once the held bar has been seen in game with others still rolling. See also [Loot rolls: confirm the client assumptions in game](#2026-11-08--loot-rolls-confirm-the-client-assumptions-in-game). An addon's direct `RollOnLoot` is its own entry.
 
 ### 2026-11-15 — UI scale: the kit's buttons and labels are off whole pixels on every screen that is not 1440p
 
@@ -356,19 +401,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **Open questions:** the slowest pass the owner sees in game.
 
-### 2026-11-15 — A roll result line's All passed and winner color are baked in at push
-
-**What:** A roll result's feed line (`Feed/rolls.lua`, `ResultText`) builds its right text once, at push: "All passed" in Loot > Pass, or the winner's name in their class color. A shown line, and a saved one after a reload, never follows a change to Loot > Pass or to a class color, though the Pass row's description names "All passed (on the feed line and in its roll tooltip)".
-
-**Why noticed:** Review of the live colors Task 6 (Loot). The audit and the brief didn't list this reader, so the task made the feed's item names and progress bars live and left this one. Context: the plan's goal is that every Colors page color reaches every SaftUI reader on screen as the picker is dragged.
-
-**Anchors:** `SaftUI-Loot/Feed/rolls.lua` (`ResultText`, `BuildRollEntry`), `SaftUI-Loot/Feed/feed.lua` (`LT:ColorFeed`, `LT.FeedItemName`), `docs/superpowers/plans/2026-11-15-saftui-live-colors.md` Ruling 15, `.superpowers/sdd/2026-11-15-saftui-live-colors/task-6-review.md` (m4).
-
-**What's been considered:** The same shape as the item names: the entry already keeps `rolls`, so keep it and build the right text at draw (`LT.RollResultText(info)`), and have `ColorFeed` set it again for `loot` (nil or `pass`) and `class`. A class color change then reaches only the lines with a winner.
-
-**Shape of work:** Small: one function moved out of the push, one branch in `ColorFeed`, a test beside `live_colors_test.lua`'s feed cases; saved entries already hold `rolls`, so restored lines follow too.
-
-**Open questions:** Whether the roll tooltip's lines (colored when shown) need a change: they read the color each time they open, so probably not.
 ### 2026-11-15 — A Position reset runs a unit frame's update once for every part it writes
 
 **What:** A reset of a unit frame part's Position whose anchor and offsets all differ writes point, rel_point, `relative_to` (twice, for a Global frame) and the offsets, and each part's own `set` calls `UF:UpdateConfig(unit)`: six updates for one click.
@@ -403,26 +435,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **Shape of work:** One case: a user category called like a shipped one, the list numbers the shipped one, and its Name icon is absent until the name is edited. Small.
 
-### 2026-11-15 — Buffs and debuffs: Size and Outline keep hand defaults a derived one would replace
-
-**What:** The Duration and Stack count Font rows take their default from where they are saved; their Size and Outline rows still have hand `default` tables over `st.defaults`.
-
-**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
-
-**Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua` (`AP:GetTextOptions`, the `for _, field in ipairs({ 'size', 'outline' })` loop), `tests/misc/buff_text_font_default_test.lua` (the Size and Outline resets case).
-
-**Shape of work:** Delete the loop; the group's `saved` (`SavedIn('auras', key, kind)`) derives both, and a derived reset runs the group's `set` (`Apply`), as the hand one does. The case in `buff_text_font_default_test.lua` moves to the kit's calls.
-
-### 2026-11-15 — Reset walks: the feed's, Minimap's and Micro menu's movers are registered inline, so the tests pin a copy
-
-**What:** The loot feed, the minimap and the micro menu register their movers inside their setup functions, so the walks register copies and a source check pins the key, `configPath` and `defaults` text.
-
-**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
-
-**Anchors:** `SaftUI-Loot/Feed/feed.lua` (`st:RegisterConfigMover(feed, ...)`), `SaftUI-Minimap/minimap.lua`, `SaftUI-Minimap/micromenu.lua`; `tests/loot/theme_test.lua` and `tests/minimap/theme_test.lua` (the `feedSource` and `PinnedTo` checks).
-
-**Shape of work:** Move each registration into a method (`LT:RegisterFeedMover()`, as `LT:RegisterRollMover()` and `CHT:RegisterChatMover()` are) that the world calls. Three small changes and the source checks go.
-
 ### 2026-11-15 — Reset walk: the profile compare is most of a unit page's cost
 
 **What:** `tests/unitframes/config_test.lua` takes 12 s: each probed row diffs the whole profile twice, which is almost all of it.
@@ -432,36 +444,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 **Anchors:** `tests/lib/reset_walk.lua` (`Changes`, `RoundTrip`, `ctx.base`), `tests/unitframes/config_test.lua`.
 
 **Shape of work:** A cheaper way to see a write outside a row's saved path: a write log on the profile table, or comparing only the saved path's top-level key plus one whole-profile compare at the end of a page.
-
-### 2026-11-15 — Buffs and debuffs: one helper for the wrap the layout keeps, so the layout and Wrap's default cannot drift
-
-**What:** `GetGeometry`, `WrapForGrow`'s last line and `DefaultWrap` each repeat the fallback (`horizontal and 'DOWN' or 'LEFT'`).
-
-**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
-
-**Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua` (lines about 129, 163-170 and 203-209), `tests/misc/options_pages_test.lua` (the Wrap cases).
-
-**Shape of work:** One local `WrapInUse(grow, wrap)` used in all three; the existing Wrap and Grow cases pin it.
-
-### 2026-11-15 — Buffs and debuffs: Wrap's hand reset copies the General group's set
-
-**What:** Wrap's hand `reset` repeats the body of the General group's `set` instead of calling it.
-
-**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
-
-**Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua` (`default` on `args.wrap`), `tests/misc/options_pages_test.lua`.
-
-**Shape of work:** A shared local function for the write and the refresh, called by `set` and by the reset.
-
-### 2026-11-15 — Blizzard's tracker: the Position reset is tested on Forever only
-
-**What:** The default differs by client (`y_off` -275 or -260); the test runs on Forever. A retail run on the scratch check gave -260, which is right.
-
-**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
-
-**Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_ObjectiveTrackerPosition.lua` (`st:DefaultTrackerPosition()`), `tests/misc/objective_tracker_position_test.lua` ("Blizzard's tracker's Position resets to Blizzard's spot").
-
-**Shape of work:** Run that case for both clients, as the walk cases of Action bars and the Tracker now are.
 
 ### 2026-11-15 — Forever: Show in > Bank does nothing for the default bank (the combined bank)
 
@@ -538,6 +520,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 **What's been considered:** Resolving the named frame needs a global lookup of a Blizzard frame and its rect, a read; the default spot is a safe fallback.
 
 **Shape of work:** Small if wanted; probably not worth it.
+
+**Recommendation 2026-11-15 (left for the owner):** abandon. A resolved offset is only right if the other frame's rect at login is the one Blizzard's Edit Mode applied: `EditModeSpot` runs as `EDIT_MODE_LAYOUTS_UPDATED` fires, which may come before Edit Mode has placed that frame (a nil or stale rect), and SaftUI's Minimap module moves parts of that area, so the answer could be worse than the default spot, with nothing outside the game to check it. If wanted: read `GetLeft/GetRight/GetTop/GetBottom` of `_G[anchor.relativeTo]`, scale them by its effective scale over UIParent's, and fall back to the default spot on any nil.
 
 **Open questions:** Not confirmed in game: the preset-layout offset (`activeLayout` counts the preset layouts in front of the saved ones, from Blizzard's source), and what `GetLayouts` answers before the layouts load (the gate no longer depends on it). Checks: a character whose Blizzard tracker was dragged (right edge snap, bottom corner, free drag) on a new profile starts at that spot; a Modern or Classic preset with the tracker undragged starts at the default spot; a `/reload` with a saved SaftUI position leaves it unmoved; a fresh login where the layouts arrive after SaftUI builds.
 
@@ -643,13 +627,13 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 
 ### 2026-11-15 — Option descriptions that say "red" or "yellow" for what Danger and Caution color
 
-**What:** A few player-facing descriptions name a hue for a color that is now a role the player can change, so they can stop being true: the totem bar's timers ("It turns red in the last 10 seconds", `SaftUI-Misc/totemoptions.lua`), the tracker's "Out of range in red" (`SaftUI-Tracker/options.lua`), and the unit frames' "Color hostile" and Color by reaction descriptions ("names of hostile units red, and ... yellow", `SaftUI-Unitframes/elements/name.lua`, `config/config.lua`). They could say "in the danger color" or point at Global settings > Colors > Text.
+**What:** Two unit frame descriptions still name a hue for a color that is now a role the player can change, so they can stop being true: "Color hostile" ("names of hostile units red, and of unfriendly and neutral ones yellow", `SaftUI-Unitframes/elements/name.lua:71`) and the Color by reaction description ("red when hostile, yellow when neutral, green when friendly", `SaftUI-Unitframes/config/config.lua:125`). They could say "in the Danger color" and "in the Caution color" (Global settings > Colors > Text). The totem bar's two timer descriptions, the tracker's out of range row (now named "Tint out of range") and the README's totem line were reworded 2026-11-15 and are done.
 
 **Why noticed:** Color roles Task 4 moved those readers to Text > Danger and Text > Caution (the hue-named keys went), and its rule for the Colors page's own descriptions is that they name what a color colors, never its hue. These option descriptions sit outside that page, so the task left them.
 
-**Anchors:** `SaftUI-Misc/totemoptions.lua:21,24`; `SaftUI-Tracker/options.lua:143-144`; `SaftUI-Unitframes/elements/name.lua:71`; `README.md:43` (both turn red in the last 10 seconds); `docs/design-system/25-colour-roles.md`.
+**Anchors:** `SaftUI-Unitframes/elements/name.lua:71`; `SaftUI-Unitframes/config/config.lua:125` (the Color by reaction description names the Reputation colors for neutral and friendly, which are not roles, so only the hostile part is a role: check which of the three the reader uses before rewording); `docs/design-system/25-colour-roles.md`.
 
-**Shape of work:** a wording pass over six strings; the tests that pin a description's text change with them. The reaction color's own description ("red when hostile") is about the Reputation colors, which are not roles, so it stays.
+**Shape of work:** a wording pass over two strings in Unitframes (left because another package was editing that addon); the tests that pin a description's text change with them. The power color's "blue for mana, red for rage" and the health gradient's "red through yellow to green" describe resource and health colors, not roles: they stay.
 
 ### 2026-11-15 — Check box labels: no font setting until a SaftUI check box has a visible label
 
@@ -860,16 +844,6 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 
 **Open questions:** whether to refuse by a registry of "moves in combat" frames or by asking each row's owner.
 
-### 2026-11-14 — The options kit's keybinding widget doesn't know META or Blizzard's ignored keys
-
-**What:** The `keybinding` widget (`SaftUI-Core/Config/optionskeybinding.lua`) builds a key from `Is*KeyDown` in ALT-CTRL-SHIFT order and a short ignore list; unlike `/sui kb` (`GetConvertedKeyOrButton`, `IsKeyPressIgnoredForBinding`, `CreateKeyChordStringUsingMetaKeyState`) it has no META and doesn't use Blizzard's ignore list, so a Mac player can't bind META chords there and a key Blizzard refuses to bind is tried anyway (the game then refuses it, and the nearest button's Key row says "Can't bind ...").
-
-**Why noticed:** Review of Task 10 of the objective tracker, which uses the widget for its Key row. Pre-existing Core behaviour, out of that task's scope.
-
-**Anchors:** `SaftUI-Core/Config/optionskeybinding.lua` (`Press`, `IGNORED_KEYS`), `SaftUI-ActionBars/keybindmode.lua`, `SaftUI-Tracker/options.lua` (the `key` row).
-
-**Shape of work:** Small: build the key through Blizzard's own functions where they exist, guarded by presence; extend `tests/core/options_fields_test.lua`.
-
 ### 2026-11-14 — A first-run setup dialog: UI size, theme, unit frame layout
 
 **What:** A dialog shown the first time SaftUI runs that walks a new player through a few choices and introduces the UI: the UI size (a default worked out from their resolution, which they can override), the theme (Thick, Thin, Blizzard, and any added later), and which unit frame layout to use, from a few the owner will make.
@@ -898,6 +872,8 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 **Shape of work:** A small design pass on where an error shows when the region is short (a tooltip on the field is the smallest), then a change in `PlaceFooter` or the field plus a test at W4 with the real command set and with one more icon command.
 
 **Open questions:** Where should the message show when the footer has no room: the field's tooltip, a line over the footer, or both? An in-game check at W4 with Keybind mode only (54 wide) decides how often it matters.
+
+**Recommendation 2026-11-15 (left for the owner, a look):** show the message without the mouse on the field: a tooltip anchored to the field, opened by the failed commit itself (the value is committed from the keyboard, so the mouse can be anywhere), only while the status line has no room for the message. It closes on the next edit of the field, on focus lost, or after a few seconds. It adds no line, so nothing can overlap; the status line stays as it is when it has room.
 
 ### 2026-11-13 — Design decisions waiting to be built
 
@@ -998,38 +974,6 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 **Anchors:** `.superpowers/brainstorm/46409-1794604463/content/actionbars-shared-v4.html` (part 2, the mockup), `docs/superpowers/specs/2026-11-13-saftui-actionbars-shared-settings-design.md` ("Later"), `SaftUI-Unitframes/config/`, `SaftUI-Core/Config/optionsposition.lua`.
 
 **Shape of work:** A project of its own, after the action bars prove the kit pieces. Health, Power, Cast bar and Auras keep tabs. Needs its own design round: what "All units" means when units differ so much by default, and whether sharing is per unit group (party and raid) instead.
-
-### 2026-11-13 — Loot rolls: the roll bar doesn't hold after a choice
-
-**What:** After a choice on a group loot roll, SaftUI should show its own bar in Blizzard's place, locked on the choice, until the roll ends (the held rolls feature, built 2026-11-10). In game it doesn't: the user reports the bars "don't seem to be staying up after selecting a choice" (Forever, the night of 2026-11-12).
-
-**Why noticed:** Step 32 of the cleanup's in-game checks. The feature was built from Blizzard's source and has never been seen working in game ([Loot rolls: confirm the client assumptions in game](#2026-11-08--loot-rolls-confirm-the-client-assumptions-in-game)), so it may never have worked there.
-
-**Anchors:** `SaftUI-Loot/rollinfo.lua` (`OnRollChosen`, the `RollOnLoot` post-hook that notes the choice; `OnBarHide`, which calls `LT:HoldRoll`; `LT:UpdateRollBars`, which releases a held bar whose drop isn't open); `SaftUI-Loot/roll.lua` (`LT:HoldRoll`, `LT:ReleaseHeldRoll`, `LT:UpdateHeldRolls`); `SaftUI-Loot/Feed/loothistory.lua` (`LT:GetOpenDrops`, `HasEnded`, `RollTimeOver`); `tests/loot/roll_held_test.lua` (19 tests, all passing on stubs); Forever's `Interface/AddOns/Blizzard_UIPanels_Game/Mainline/GroupLootFrame.lua` and `.xml`.
-
-**What's been considered:** A read of the code against Forever's source (2026-11-13) found no cause:
-
-- The cleanup didn't change the logic. 81bf0b4 swapped Loot's local plain-value helpers for Core's (`st.PlainNumber`, the same test), and the other commits only moved code between files. `LT.PlainNumber` is set before anything runs.
-- Blizzard's source matches what the code assumes: a roll button's click calls `RollOnLoot(rollID, rollType)`; `CANCEL_LOOT_ROLL` leads to `GroupLootFrame_Remove`, `GroupLootContainer_RemoveFrame` and `frame:Hide()`, which is where `OnBarHide` runs; a main spec Need plays its dice for 5 seconds first.
-- The timer's values are plain: the timer draws in game.
-
-What's left needs evidence from the game. In the order they'd be checked:
-
-1. An error inside `LT:HoldRoll` or `OnBarHide`. It would be in BugGrabber's log.
-2. The held bar is shown and released at once, because its drop isn't in `LT:GetOpenDrops()` when `LT:UpdateRollBars` runs right after the hide. That is by design when everyone else has already chosen (the roll is over). Otherwise `HasEnded` or `RollTimeOver` reads Forever's drop wrongly (the units of `startTime` and `duration`, or `winner` being a table before the roll ends).
-3. `chosen[rollID]` is never set: the frame's `rollID` or the timer's values aren't plain at the click, or the click doesn't go through the global `RollOnLoot`.
-4. `LT:HoldRoll` returns early: `skins[frame].shown` is missing or for another roll, or under a second is left.
-5. The bar is up, but off screen or behind something.
-
-**Shape of work:** Evidence first: BugGrabber's log for Loot errors, and what the user saw (which button, whether others were still rolling, whether the bar went at once or after a Need's dice). If that doesn't settle it, a debug print at each decision in the list above, off by default, for the next group run. Then a failing test and a small fix.
-
-**Open questions:** Was anyone else still rolling when the bar went? If not, the bar going is the design, and the question becomes whether a finished roll should hold for a moment to show its result.
-
-**In game 2026-11-13:** BugGrabber's log has no Loot error, so cause 1 is out. The user: "I was pressing greed, it went away as soon as I clicked. It could very well be that I was the last one to roll, I wasn't paying much attention." That fits cause 2's by-design case: the last to choose, so the roll resolved at the click and the held bar was released in the same update.
-
-**Decided 2026-11-13:** The user: "I like the hold for a finished roll, we can hold it for a few seconds and fade out after. the debug print is a good idea, lets add that as well." Being built on branch `fb-rollhold`: a held bar that finishes (its drop resolved, or its time ran out) stays 3 seconds, locked on the choice with its final counts, fades over half a second, then goes; and `/sui debug` turns on `st:Debug('Loot', ...)` lines at each decision in the list above, for the next group run. The 3 seconds and the half second are the builder's numbers, not the user's. This entry stays Active until the held bar has been seen in game with others still rolling.
-
-**Merged 2026-11-13 (7c2ab54):** built and reviewed, with one fix round. Beyond the above, a finished bar keeps showing later results for the drop it finished on (counts and tooltip only), so a roll that times out can show its auto-passes and winner before it fades. The finish line under `/sui debug` reads `held roll finished: <id> <why> waiting <n> <winner | all passed | no winner | no summary>`: a `winner` with others still waiting, a second or two after your click, means Forever's drop fields are misread (cause 2 above). Not yet seen in game.
 
 ### 2026-11-13 — Test mode: choose which elements the previews show
 
@@ -2204,7 +2148,7 @@ The one route left is to work out the button order without reading the buttons. 
 - **History clears:** it's unknown when `LOOT_HISTORY_CLEAR_HISTORY` fires (zoning, leaving the group).
 - **Trash rolls:** it's unknown whether trash and other non-boss group-loot rolls appear in `C_LootHistory` on Forever. README says "every item your group rolls on".
 - **Held rolls** (`roll.lua`'s held rolls, `rollinfo.lua`'s `OnRollChosen` and `OnBarHide`), from Blizzard's source, not the game:
-  - choosing (any button) makes the server send `CANCEL_LOOT_ROLL`, so Blizzard's bar hides at once, and a main spec Need hides it after its 5 second dice animation;
+  - a plain click with no confirmation: **seen in game 2026-11-15** (the owner's debug lines, one click; which choice it was is not known): the bar hid before the post-hook ran (`bar hid: ... choice noted false frame hidden true`, then `choice not noted: ... no shown bar with that roll`), so the client cancels the roll inside `RollOnLoot` (inferred from that order; not read from C code). Not yet seen: the hold working after the fix (`PreClick`, `OnRollPreClick`), each choice, a main spec Need (its 5 second dice animation before the bar hides) and a choice that asks for a confirmation (bind on pickup), where the bar stays up and the post-hook notes the choice;
   - a roll's time: `START_LOOT_ROLL`'s rollTime and `GetLootRollTimeLeft` share a unit (Blizzard's `GroupLootFrame_OnUpdate` clamps one to the other) and `GetLootRollTimeLeft` is documented in milliseconds, so the live bars' countdown, which showed it as seconds, was wrong. `LT.RollSeconds` takes a length over 1000 as milliseconds, and the live and held countdowns both read through it. Look at the countdown in game;
   - `GameTooltip:SetHyperlink` takes the roll's full item link (a held bar's tooltip);
   - does `GetLootRollItemInfo(rollID)` still return the item after you've rolled, until the roll ends? If so, it could end a held roll with no loot history drop when the roll ends. Today such a held roll stays until its time runs out, even once the item is awarded;
@@ -2215,7 +2159,7 @@ The one route left is to work out the button order without reading the buttons. 
 
 **Anchors:**
 - `SaftUI-Loot/Feed/rolls.lua`: `RollTimeOver`, `GetOpenDrops`, `CatchUp`, `EstimateWhen`.
-- `SaftUI-Loot/rollinfo.lua`: `UpdateRollBars`, `OnRollChosen`, `OnBarHide`.
+- `SaftUI-Loot/rollinfo.lua`: `UpdateRollBars`, `OnRollPreClick`, `OnRollChosen`, `OnBarHide`.
 - `SaftUI-Loot/roll.lua`: `LT.RollSeconds`, `LT:HoldRoll`, `LT:LayoutRollFrames`.
 - `.agents/clients.md` "Loot rolls".
 - `docs/superpowers/specs/2026-11-08-saftui-loot-rolls-history-design.md`.
@@ -2225,7 +2169,7 @@ The one route left is to work out the button order without reading the buttons. 
 - Fix whatever doesn't hold.
 - Record what's confirmed in `.agents/clients.md`.
 
-**In game 2026-11-13:** the held bar doesn't stay up after a choice. See [Loot rolls: the roll bar doesn't hold after a choice](#2026-11-13--loot-rolls-the-roll-bar-doesnt-hold-after-a-choice).
+**In game 2026-11-13 and 2026-11-15:** the held bar did not stay up after a choice; fixed (see Resolved: [Loot rolls: the roll bar doesn't hold after a choice](#2026-11-13--loot-rolls-the-roll-bar-doesnt-hold-after-a-choice)). **Next real roll:** with others still rolling, watch the held bar and read `/sui debug`'s lines: first the ones that prove the fix, in order (`choice pending: <id> <type> seconds left <n>`, `bar hid: <id> choice noted false pending true ...`, `held roll <id> choice <type> ...`, `choice held at the bar hiding: <id> <type>`), then (`held roll finished: <id> <why> waiting <n> <winner | all passed | no winner | no summary>`): a `winner` with others waiting, a second or two after the click, means Forever's drop fields are misread. Also look at the countdown (its unit) and the held bar's tooltip, and try a Need and a bind on pickup choice.
 
 ### 2026-11-08 — Saved loot feed size in SaftUI_DB
 
@@ -2238,6 +2182,8 @@ The one route left is to work out the button order without reading the buttons. 
 **What's been considered:** Store each choice's names as one compact string, Pass especially. Cap roll lists. Keep fewer entries for other players' results.
 
 **Shape of work:** Measure first: check `SaftUI_DB.lua`'s size after a raid night. Shrink the saved roll format only if it's large.
+
+**Measured 2026-11-15:** the owner's whole saved file (`SaftUI-Core.lua`, which holds `SaftUI_DB`) is 173 KB; the busiest character's `feed` is 500 entries and 125 KB (about 250 bytes an entry), and only one saved entry holds a roll list so far, so a raid night's cost is still unmeasured. Computed 2026-11-15 by serializing a roll result as SavedVariables writes it (tab-indented, five fields a player, 20-character names): 5 players about 1.0 KB an entry (0.5 MB a character at 500), 20 players about 2.9 KB (1.5 MB), 40 players about 5.5 KB (2.7 MB). This replaces the untested estimate. Left open on purpose: shrinking changes the saved format (a compact Pass string, a cap on roll lists), which wants a number from a real raid night first. Measure again after one: if the file passes about 1 MB, shrink; the cheapest first step is one compact string for Pass names.
 
 ### 2026-11-08 — Confirm the totem bar's protection and secret-value claims in game, then document the duration-object pattern
 
@@ -2442,6 +2388,94 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-14 — The options kit's keybinding widget doesn't know META or Blizzard's ignored keys
+
+**What:** The `keybinding` widget (`SaftUI-Core/Config/optionskeybinding.lua`) builds a key from `Is*KeyDown` in ALT-CTRL-SHIFT order and a short ignore list; unlike `/sui kb` (`GetConvertedKeyOrButton`, `IsKeyPressIgnoredForBinding`, `CreateKeyChordStringUsingMetaKeyState`) it has no META and doesn't use Blizzard's ignore list, so a Mac player can't bind META chords there and a key Blizzard refuses to bind is tried anyway (the game then refuses it, and the nearest button's Key row says "Can't bind ...").
+
+**Why noticed:** Review of Task 10 of the objective tracker, which uses the widget for its Key row. Pre-existing Core behaviour, out of that task's scope.
+
+**Anchors:** `SaftUI-Core/Config/optionskeybinding.lua` (`Press`, `IGNORED_KEYS`), `SaftUI-ActionBars/keybindmode.lua`, `SaftUI-Tracker/options.lua` (the `key` row).
+
+**Shape of work:** Small: build the key through Blizzard's own functions where they exist, guarded by presence; extend `tests/core/options_fields_test.lua`.
+
+**Resolved 2026-11-15:** the widget's `Press` asks `IsKeyPressIgnoredForBinding` and builds the chord with `CreateKeyChordStringUsingMetaKeyState` where the client has them (META included), keeping the short ignore list and the plain chord (plus META when `IsMetaKeyDown` exists) as the fallback. Test in `tests/core/options_fields_test.lua`; in-game check on a Mac client not possible here.
+
+### 2026-11-15 — Reset walks: the feed's, Minimap's and Micro menu's movers are registered inline, so the tests pin a copy
+
+**What:** The loot feed, the minimap and the micro menu register their movers inside their setup functions, so the walks register copies and a source check pins the key, `configPath` and `defaults` text.
+
+**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
+
+**Anchors:** `SaftUI-Loot/Feed/feed.lua` (`st:RegisterConfigMover(feed, ...)`), `SaftUI-Minimap/minimap.lua`, `SaftUI-Minimap/micromenu.lua`; `tests/loot/theme_test.lua` and `tests/minimap/theme_test.lua` (the `feedSource` and `PinnedTo` checks).
+
+**Shape of work:** Move each registration into a method (`LT:RegisterFeedMover()`, as `LT:RegisterRollMover()` and `CHT:RegisterChatMover()` are) that the world calls. Three small changes and the source checks go.
+
+**Resolved 2026-11-15:** the registrations are methods now (`LT:RegisterFeedMover`, `MM:RegisterMinimapMover`, `MicroMenu:RegisterMicroMenuMover`), called by the setup and by the walks in `tests/loot/theme_test.lua` and `tests/minimap/theme_test.lua`; the source checks are gone.
+
+### 2026-11-15 — Blizzard's tracker: the Position reset is tested on Forever only
+
+**What:** The default differs by client (`y_off` -275 or -260); the test runs on Forever. A retail run on the scratch check gave -260, which is right.
+
+**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
+
+**Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_ObjectiveTrackerPosition.lua` (`st:DefaultTrackerPosition()`), `tests/misc/objective_tracker_position_test.lua` ("Blizzard's tracker's Position resets to Blizzard's spot").
+
+**Shape of work:** Run that case for both clients, as the walk cases of Action bars and the Tracker now are.
+
+**Resolved 2026-11-15:** the case in `tests/misc/objective_tracker_position_test.lua` runs on both clients and pins each one's `y_off` (-275 Forever, -260 retail).
+
+### 2026-11-15 — Buffs and debuffs: Size and Outline keep hand defaults a derived one would replace
+
+**What:** The Duration and Stack count Font rows take their default from where they are saved; their Size and Outline rows still have hand `default` tables over `st.defaults`.
+
+**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
+
+**Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua` (`AP:GetTextOptions`, the `for _, field in ipairs({ 'size', 'outline' })` loop), `tests/misc/buff_text_font_default_test.lua` (the Size and Outline resets case).
+
+**Shape of work:** Delete the loop; the group's `saved` (`SavedIn('auras', key, kind)`) derives both, and a derived reset runs the group's `set` (`Apply`), as the hand one does. The case in `buff_text_font_default_test.lua` moves to the kit's calls.
+
+**Resolved 2026-11-15:** the hand `default` tables are gone; both rows reset from the group's `saved` (derived), through the group's `set`. `tests/misc/buff_text_font_default_test.lua`'s Size and Outline case now reads the kit's `OM.DefaultSource`, `DefaultDiffers`, `SourceState` and `DefaultReset`.
+
+### 2026-11-15 — Buffs and debuffs: Wrap's hand reset copies the General group's set
+
+**What:** Wrap's hand `reset` repeats the body of the General group's `set` instead of calling it.
+
+**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
+
+**Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua` (`default` on `args.wrap`), `tests/misc/options_pages_test.lua`.
+
+**Shape of work:** A shared local function for the write and the refresh, called by `set` and by the reset.
+
+**Resolved 2026-11-15:** the General group's `set` and Wrap's reset both call one local `SetGeneral(option, value)` (the write and the refresh).
+
+### 2026-11-15 — Buffs and debuffs: one helper for the wrap the layout keeps, so the layout and Wrap's default cannot drift
+
+**What:** `GetGeometry`, `WrapForGrow`'s last line and `DefaultWrap` each repeat the fallback (`horizontal and 'DOWN' or 'LEFT'`).
+
+**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
+
+**Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua` (lines about 129, 163-170 and 203-209), `tests/misc/options_pages_test.lua` (the Wrap cases).
+
+**Shape of work:** One local `WrapInUse(grow, wrap)` used in all three; the existing Wrap and Grow cases pin it.
+
+**Resolved 2026-11-15:** `WrapInUse(grow, wrap)` in `Blizzard_BuffFramePosition.lua` is the one fallback; `GetGeometry`, `WrapForGrow` and `AP:DefaultWrap` all call it. The Wrap and Grow cases in `tests/misc/options_pages_test.lua` pin it.
+
+### 2026-11-15 — A roll result line's All passed and winner color are baked in at push
+
+**What:** A roll result's feed line (`Feed/rolls.lua`, `ResultText`) builds its right text once, at push: "All passed" in Loot > Pass, or the winner's name in their class color. A shown line, and a saved one after a reload, never follows a change to Loot > Pass or to a class color, though the Pass row's description names "All passed (on the feed line and in its roll tooltip)".
+
+**Why noticed:** Review of the live colors Task 6 (Loot). The audit and the brief didn't list this reader, so the task made the feed's item names and progress bars live and left this one. Context: the plan's goal is that every Colors page color reaches every SaftUI reader on screen as the picker is dragged.
+
+**Anchors:** `SaftUI-Loot/Feed/rolls.lua` (`ResultText`, `BuildRollEntry`), `SaftUI-Loot/Feed/feed.lua` (`LT:ColorFeed`, `LT.FeedItemName`), `docs/superpowers/plans/2026-11-15-saftui-live-colors.md` Ruling 15, `.superpowers/sdd/2026-11-15-saftui-live-colors/task-6-review.md` (m4).
+
+**What's been considered:** The same shape as the item names: the entry already keeps `rolls`, so keep it and build the right text at draw (`LT.RollResultText(info)`), and have `ColorFeed` set it again for `loot` (nil or `pass`) and `class`. A class color change then reaches only the lines with a winner.
+
+**Shape of work:** Small: one function moved out of the push, one branch in `ColorFeed`, a test beside `live_colors_test.lua`'s feed cases; saved entries already hold `rolls`, so restored lines follow too.
+
+**Open questions:** Whether the roll tooltip's lines (colored when shown) need a change: they read the color each time they open, so probably not.
+
+**Resolved 2026-11-15:** a roll result's entry keeps its `rolls` and no `rightText`; the line's right text is built as it draws (`LT.RollResultText`, `Feed/rolls.lua`), and `LT:ColorFeed` sets it again for Class and Loot > Pass (only the lines it names), so shown, new and restored lines follow. Tests in `tests/loot/live_colors_test.lua` (the cost case includes both passes).
 
 ### 2026-11-15 — Chat's Fade tabs: ChatFrameUtil.GetTabAlphas isn't in the retail source
 

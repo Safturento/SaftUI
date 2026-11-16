@@ -192,6 +192,12 @@ function MicroMenu:OnEnable()
     self:UpdateButtons()
     self:SetupMinimapButtons()
 
+    self:RegisterMicroMenuMover()
+end
+
+-- The bar's edit mode mover: a method of its own so the tests' reset walk
+-- registers the real one.
+function MicroMenu:RegisterMicroMenuMover()
     st:RegisterConfigMover(self.Container, {
         key = 'micromenu',
         label = 'Micro Menu',

@@ -73,8 +73,13 @@ function MM:OnEnable()
 
 	MM:UpdateConfig()
 
-    -- Minimap is Blizzard's, moved with no SaftUI holder, so SaftUI doesn't clamp
-    -- it: only edit mode drags and nudges keep it inside the screen edge margin.
+    self:RegisterMinimapMover()
+end
+
+-- Minimap is Blizzard's, moved with no SaftUI holder, so SaftUI doesn't clamp
+-- it: only edit mode drags and nudges keep it inside the screen edge margin. A method
+-- of its own so the tests' reset walk registers the real mover.
+function MM:RegisterMinimapMover()
     st:RegisterConfigMover(Minimap, {
         key = 'minimap',
         blizzardFrame = true,

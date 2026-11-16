@@ -123,6 +123,16 @@ local function IsPerpendicular(grow, wrap)
 	return HORIZONTAL[wrap] or false
 end
 
+-- The wrap the layout keeps for a grow: the one given if it runs across the grow, else
+-- the fallback (Down for a horizontal grow, Left for a vertical one). GetGeometry,
+-- WrapForGrow and AP:DefaultWrap all go through it, so they cannot drift.
+local function WrapInUse(grow, wrap)
+	if IsPerpendicular(grow, wrap) then
+		return wrap
+	end
+	return HORIZONTAL[grow] and 'DOWN' or 'LEFT'
+end
+
 -- The wrap to use after grow changes from oldGrow to newGrow. Within an axis the wrap
 -- stays. Across axes it keeps the side of the first icon that the new grow doesn't set,
 -- e.g. grow left, wrap down (first icon top right) becomes grow down, wrap left.
@@ -136,10 +146,7 @@ local function WrapForGrow(oldGrow, oldWrap, newGrow)
 	else
 		wrap = HORIZONTAL[newGrow] and oldGrow or oldWrap
 	end
-	if IsPerpendicular(newGrow, wrap) then
-		return wrap
-	end
-	return HORIZONTAL[newGrow] and 'DOWN' or 'LEFT'
+	return WrapInUse(newGrow, wrap)
 end
 
 local function Clamp(value, low, high)
@@ -167,7 +174,7 @@ function AP:GetGeometry(key)
 	local config, holder, buttons = self.config[key], self.holders[key], self.maxAuras[key]
 	local grow = START_SIDE[config.grow] and config.grow or 'LEFT'
 	local horizontal = HORIZONTAL[grow] or false
-	local wrap = IsPerpendicular(grow, config.wrap) and config.wrap or (horizontal and 'DOWN' or 'LEFT')
+	local wrap = WrapInUse(grow, config.wrap)
 	local xdir = horizontal and grow or wrap
 	local ydir = horizontal and wrap or grow
 
@@ -204,8 +211,7 @@ end
 function AP:DefaultWrap(key)
 	local _, shipped = st:DefaultAt('auras', key, 'wrap')
 	local geo = self:GetGeometry(key)
-	if IsPerpendicular(geo.grow, shipped) then return shipped end
-	return geo.horizontal and 'DOWN' or 'LEFT'
+	return WrapInUse(geo.grow, shipped)
 end
 
 function AP:Invalidate(key)
@@ -728,19 +734,8 @@ function AP:GetTextOptions(key, kind, name, order)
 	}
 	options.args.size.hidden = SharedFont
 	options.args.outline.hidden = SharedFont
-	-- Resets: the font's comes from the group's `saved`; Size and Outline go back to
-	-- what a typeface starts from.
-	local shipped = st.defaults.auras[key][kind]
-	for _, field in ipairs({ 'size', 'outline' }) do
-		options.args[field].default = {
-			differs = function() return self.config[key][kind][field] ~= shipped[field] end,
-			reset = function()
-				self.config[key][kind][field] = shipped[field]
-				Apply()
-			end,
-			value = function() return shipped[field] end,
-		}
-	end
+	-- Resets: all three rows' come from the group's `saved` (the font's Small text, Size
+	-- and Outline what a typeface starts from), written through the group's set.
 	return options
 end
 
@@ -768,6 +763,18 @@ function AP:GetFrameOptions(info, order)
 		return self:GetGeometry(key).horizontal and 'Icons per row' or 'Icons per column'
 	end
 
+	-- Writes a General setting, a Grow change taking the wrap with it, and lays out:
+	-- the group's set, and Wrap's reset.
+	local function SetGeneral(option, value)
+		local config = self.config[key]
+		if option == 'grow' then
+			local geo = self:GetGeometry(key)
+			config.wrap = WrapForGrow(geo.grow, geo.wrap, value)
+		end
+		config[option] = value
+		self:Refresh(key)
+	end
+
 	local max = generators.range(2, 'Max icons shown', 1, buttons, 1,
 		('Up to the %d buttons Blizzard makes. Auras past this are not shown.'):format(buttons))
 
@@ -789,15 +796,7 @@ function AP:GetFrameOptions(info, order)
 					end
 					return self.config[key][option]
 				end,
-				set = function(i, value)
-					local config, option = self.config[key], i[#i]
-					if option == 'grow' then
-						local geo = self:GetGeometry(key)
-						config.wrap = WrapForGrow(geo.grow, geo.wrap, value)
-					end
-					config[option] = value
-					self:Refresh(key)
-				end,
+				set = function(i, value) SetGeneral(i[#i], value) end,
 				args = {
 					size = generators.range(1, 'Icon size', 10, 80, 1, "The icons' width and height."),
 					max = max,
@@ -825,10 +824,7 @@ function AP:GetFrameOptions(info, order)
 							differs = function()
 								return self:GetGeometry(key).wrap ~= self:DefaultWrap(key)
 							end,
-							reset = function()
-								self.config[key].wrap = self:DefaultWrap(key)
-								self:Refresh(key)
-							end,
+							reset = function() SetGeneral('wrap', self:DefaultWrap(key)) end,
 							value = function() return self:DefaultWrap(key) end,
 						},
 					},

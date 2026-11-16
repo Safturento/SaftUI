@@ -72,17 +72,16 @@ test('every value row of the Loot page has a reset', function()
 	function LT:UpdateLootFeedConfig() fed = fed + 1 end
 	function LT:UpdatePopup() end
 	LT:RegisterRollMover()
-	st:RegisterConfigMover(LT.feed, {
-		key = 'lootfeed', label = 'Loot Feed', config = function() return LT.config.feed end,
-		apply = function() end, configPath = { 'Loot', 'feed', 'general' }, module = 'Loot',
-		defaults = function() return st.defaults.loot.feed end,
-	})
-	-- The feed's mover is registered inline in feed.lua's setup, so this copy is pinned against the source:
-	-- the Position row's reset is the mover's only while the key and configPath are the real ones.
-	local feedSource = read_saftui_source('SaftUI-Loot/Feed/feed.lua')
-	for _, line in ipairs({ "key = 'lootfeed',", "configPath = { 'Loot', 'feed', 'general' },", "defaults = function() return st.defaults.loot.feed end," }) do
-		check(feedSource:find(line, 1, true) ~= nil, "feed.lua registers its mover with " .. line)
-	end
+	local updateFeedDraw = LT.UpdateFeed
+	function LT:UpdateFeed() end -- the mover's apply draws the feed; that is not under test
+	-- The setup calls the registration (deleting the call would leave the feed with no mover), and the key is the real one.
+	local setup = read_saftui_source('SaftUI-Loot/Feed/feed.lua'):match('function LT:InitializeLootFeed%(%).-\nend')
+	check(setup and setup:find('self:RegisterFeedMover()', 1, true), 'InitializeLootFeed registers the feed mover')
+	local registerMover, registered = st.RegisterConfigMover, nil
+	function st:RegisterConfigMover(frame, opts) registered = opts; return registerMover(self, frame, opts) end
+	LT:RegisterFeedMover()
+	st.RegisterConfigMover = registerMover
+	eq(registered and registered.key, 'lootfeed', "the feed mover's key")
 	local R = load_test_file('lib/reset_walk.lua')
 	local ok, err = pcall(function() R.check_page({ Loot = LT:GetConfigTable() }, 'Loot') end)
 	if ok then
@@ -99,6 +98,7 @@ test('every value row of the Loot page has a reset', function()
 		end)
 	end
 	LT.UpdateGroupLootConfig, LT.UpdateLootFeedConfig, LT.UpdatePopup = updateRolls, updateFeed, updatePopup
+	LT.UpdateFeed = updateFeedDraw
 	LT.rollAnchor, LT.feed = nil, nil
 	if not ok then error(err, 0) end
 end)

@@ -291,6 +291,14 @@ test('Buffs: the text positions are Position options over the same keys', functi
 	check(not OM.DefaultDiffers(aroot, wraprow), 'and one Wrap reset gives a fresh profile')
 	eq(profile.auras.buffs.wrap, st.defaults.auras.buffs.wrap, 'Wrap is its default')
 
+	-- A saved wrap that runs along a horizontal Grow is not kept: the layout and Wrap's default use Down.
+	profile.auras.buffs.wrap = 'RIGHT'
+	AP:Invalidate('buffs')
+	eq(AP:GetGeometry('buffs').wrap, 'DOWN', 'the horizontal fallback in the layout')
+	eq(AP:DefaultWrap('buffs'), 'DOWN', "and in Wrap's default")
+	profile.auras.buffs.wrap = st.defaults.auras.buffs.wrap
+	AP:Invalidate('buffs')
+
 	local duration = tree.args.buffs.args.text.args.duration
 	local p = duration.args.position
 	eq(p.type, 'position', 'Duration has a Position option')

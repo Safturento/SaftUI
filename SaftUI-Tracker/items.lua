@@ -641,8 +641,8 @@ function TR:OnBlobChanged(questID, inside)
 	end
 end
 
--- The range timer: one OnUpdate, set only while a button shows and Out of range
--- in red is on. Every RANGE_INTERVAL it reads each shown button's range.
+-- The range timer: one OnUpdate, set only while a button shows and Tint out of range
+-- is on. Every RANGE_INTERVAL it reads each shown button's range.
 local function OnRangeUpdate(watcher, elapsed)
 	watcher.waited = watcher.waited + elapsed
 	if watcher.waited < TR.RANGE_INTERVAL then return end

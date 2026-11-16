@@ -168,7 +168,7 @@ test('the source: the shipped texts name the key', function()
 	check(not code:find('font = pixel.font_name', 1, true), 'no copy of the face in the defaults')
 end)
 
-test("the buffs' Size and Outline resets: differs, value and reset put the shipped 10 and monochrome outline back", function()
+test("the buffs' Size and Outline resets, from the group's saved path: differs, value and reset put the shipped 10 and monochrome outline back", function()
 	fresh()
 	AP:ConvertFonts()
 	local real = { UpdateText = AP.UpdateText, GetGeometry = AP.GetGeometry }
@@ -180,17 +180,25 @@ test("the buffs' Size and Outline resets: differs, value and reset put the shipp
 	for _, key in ipairs(FRAMES) do
 		for _, kind in ipairs(KINDS) do
 			local group = tree.args[key].args.text.args[kind]
-			local size, outline = group.args.size.default, group.args.outline.default
-			eq(size.differs(), false, 'Size at its default')
-			eq(outline.differs(), false, 'Outline at its default')
+			local OM = st.OptionsModel
+			local root = { Auras = tree }
+			local function row(name)
+				return { option = group.args[name], path = { 'Auras', key, 'text', kind, name }, key = name,
+					type = name == 'size' and 'range' or 'select' }
+			end
+			local size, outline = row('size'), row('outline')
+			eq(OM.DefaultSource(root, size), 'derived', key .. ' ' .. kind .. ': Size resets from where its group saves it')
+			eq(OM.DefaultSource(root, outline), 'derived', 'and Outline')
+			eq(OM.DefaultDiffers(root, size), false, 'Size at its default')
+			eq(OM.DefaultDiffers(root, outline), false, 'Outline at its default')
 			group.set({ 'size' }, 14)
 			group.set({ 'outline' }, 'OUTLINE')
-			eq(size.differs(), true, key .. ' ' .. kind .. ': Size differs')
-			eq(outline.differs(), true, 'Outline differs')
-			eq(size.value(), 10, "Size's default value")
-			eq(outline.value(), 'MONOCHROMEOUTLINE', "Outline's default value")
-			size.reset()
-			outline.reset()
+			eq(OM.DefaultDiffers(root, size), true, 'Size differs')
+			eq(OM.DefaultDiffers(root, outline), true, 'Outline differs')
+			eq(OM.SourceState(root, size).value[1], 10, "Size's default value")
+			eq(OM.SourceState(root, outline).value[1], 'MONOCHROMEOUTLINE', "Outline's default value")
+			OM.DefaultReset(root, size)
+			OM.DefaultReset(root, outline)
 			eq(AP.config[key][kind].size, 10, 'Size reset')
 			eq(AP.config[key][kind].outline, 'MONOCHROMEOUTLINE', 'Outline reset')
 		end
