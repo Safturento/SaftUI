@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-15 — Auto Vendor: stop the unasked sales once the player buys or buys back](#2026-11-15--auto-vendor-stop-the-unasked-sales-once-the-player-buys-or-buys-back)
   - [2026-11-15 — UI scale: the kit's buttons and labels are off whole pixels on every screen that is not 1440p](#2026-11-15--ui-scale-the-kits-buttons-and-labels-are-off-whole-pixels-on-every-screen-that-is-not-1440p)
   - [2026-11-15 — UI scale: a kit confirm dialog or an open select list can cover the Keep prompt](#2026-11-15--ui-scale-a-kit-confirm-dialog-or-an-open-select-list-can-cover-the-keep-prompt)
   - [2026-11-15 — An addon's direct RollOnLoot on a roll with no confirmation is not held](#2026-11-15--an-addons-direct-rollonloot-on-a-roll-with-no-confirmation-is-not-held)
@@ -89,7 +90,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Loot feed: retail item quality text and profession overlay sit under the Blizzard ring](#2026-11-11--loot-feed-retail-item-quality-text-and-profession-overlay-sit-under-the-blizzard-ring)
   - [2026-11-11 — Blizzard theme: the bags' rule editor and Categories list keep the options window's own look](#2026-11-11--blizzard-theme-the-bags-rule-editor-and-categories-list-keep-the-options-windows-own-look)
   - [2026-11-11 — Bag categories: in-game checks](#2026-11-11--bag-categories-in-game-checks)
-  - [2026-11-11 — Old gear's tabard and shirt exclusion never matched](#2026-11-11--old-gears-tabard-and-shirt-exclusion-never-matched)
   - [2026-11-11 — Auto Vendor pins now beat Grays' exclusions and equipment sets](#2026-11-11--auto-vendor-pins-now-beat-grays-exclusions-and-equipment-sets)
   - [2026-11-10 — Zone level and faction line: in-game checks](#2026-11-10--zone-level-and-faction-line-in-game-checks)
   - [2026-11-10 — Zone text's fade times are written onto Blizzard's frames](#2026-11-10--zone-texts-fade-times-are-written-onto-blizzards-frames)
@@ -125,13 +125,13 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-11 — Old gear's tabard and shirt exclusion never matched](#2026-11-11--old-gears-tabard-and-shirt-exclusion-never-matched)
   - [2026-11-15 — A bag window's least width ignores a Window titles change](#2026-11-15--a-bag-windows-least-width-ignores-a-window-titles-change)
   - [2026-11-11 — Bag categories: a Set checkbox is dead while the Equipment sets entry hides the window](#2026-11-11--bag-categories-a-set-checkbox-is-dead-while-the-equipment-sets-entry-hides-the-window)
   - [2026-11-11 — Rule editor: a level mode picked before a number is typed does nothing](#2026-11-11--rule-editor-a-level-mode-picked-before-a-number-is-typed-does-nothing)
   - [2026-11-15 — Auto Vendor's second question overstates the earlier stacks that leave](#2026-11-15--auto-vendors-second-question-overstates-the-earlier-stacks-that-leave)
   - [2026-11-15 — Auto Vendor counts a fresh purchase in a just-sold slot as a refused sale](#2026-11-15--auto-vendor-counts-a-fresh-purchase-in-a-just-sold-slot-as-a-refused-sale)
   - [2026-11-15 — Forever: Show in > Bank does nothing for the default bank (the combined bank)](#2026-11-15--forever-show-in--bank-does-nothing-for-the-default-bank-the-combined-bank)
-||||||| base
   - [2026-11-15 — Chat's Fade tabs: ChatFrameUtil.GetTabAlphas isn't in the retail source](#2026-11-15--chats-fade-tabs-chatframeutilgettabalphas-isnt-in-the-retail-source)
   - [2026-11-15 — Chat: the dock hook adds a second anchor to docked tabs 2 to n, and the dock test can't see it](#2026-11-15--chat-the-dock-hook-adds-a-second-anchor-to-docked-tabs-2-to-n-and-the-dock-test-cant-see-it)
   - [2026-11-15 — Chat's edit box can sit off the top of the screen when the chat Theme is None](#2026-11-15--chats-edit-box-can-sit-off-the-top-of-the-screen-when-the-chat-theme-is-none)
@@ -212,6 +212,20 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-15 — Auto Vendor: stop the unasked sales once the player buys or buys back
+
+**What:** Auto Vendor's unasked sales go on for the whole visit, whatever the player does at the merchant. A stack the player buys back is sold again on the next pass (up to 3 tries a slot) while the visit is within 12 non-gray stacks, which undoes the buyback. A purchase of a caught item (the same item the merchant sells) can be sold again too, asked or not by the count. The question is whether buying or buying back should end the unasked part of the visit (every later stack then asks), and what a bought-back stack should do.
+
+**Why noticed:** The review of the bags package's fix round (2026-11-15, probes P2 and P3), after the GUID fix made a purchase count. The entry about a fresh purchase in a just-sold slot had it as an open question; the promise (every non-gray stack sold unasked is among the last 12 sold) holds without it.
+
+**Anchors:** `SaftUI-Bags/autovendor.lua` (`Account`, `Sell`, `VendorPass`); `tests/bags/autovendor_sale_test.lua`; Blizzard's `BuyMerchantItem` and `BuybackItem`.
+
+**What's been considered:** A post-hook (`hooksecurefunc`, `.agents/taint.md` rule 2) on `BuyMerchantItem` and `BuybackItem` that marks the visit as touched by the player and sends every later non-gray stack to a question. A bought-back stack could also be added to the visit's "do not sell again" list by its GUID (kept or new on the buyback, so by slot and item as well). Neither is needed for the promise.
+
+**Shape of work:** Small: the hooks and a flag on the visit, or the list; tests with a stand-in `BuybackItem`.
+
+**Open questions:** Should buying or buying back end the unasked sales for the visit, or only keep a bought-back stack from being sold again? Which is less surprising at a merchant?
 
 ### 2026-11-15 — UI scale: the kit's buttons and labels are off whole pixels on every screen that is not 1440p
 
@@ -1644,18 +1658,6 @@ What the plan's list doesn't cover:
 
 **Open questions:** None until the answers come in.
 
-### 2026-11-11 — Old gear's tabard and shirt exclusion never matched
-
-**What:** The old Old gear filter meant to leave tabards and shirts out. It compared the localized slot name with an `INVTYPE_` token, so the test never matched and every tabard and shirt that met the other tests was caught. The category blocks leave the test out, so nothing changes for the user.
-
-**Why noticed:** The bag categories project's plan (Global Constraints and "What can't be written exactly in blocks", item 5, `docs/superpowers/plans/2026-11-10-saftui-bag-categories.md`), reading `filters.lua` at `8dc348c`.
-
-**Anchors:** `git show 8dc348c:SaftUI-Bags/filters.lua` (`isLegacyGear`); `SaftUI-Bags/categorydefaults.lua` (Old gear); `tests/bags/fixtures/old_filters.lua` (the oracle, which keeps the old behavior).
-
-**Shape of work:** Only if the user wants tabards and shirts kept out of Old gear: a block on the item's equipment slot (an `INVTYPE_` token compared with `GetItemInfoInstant`'s equip slot), and a fixture.
-
-**Open questions:** Does the user want that exclusion at all? It has never worked, so nobody has missed it.
-
 ### 2026-11-11 — Auto Vendor pins now beat Grays' exclusions and equipment sets
 
 **What:** The old Auto Vendor list wasn't a filter: a listed item still had to get past Grays/Auto Vendor's exclusions, and equipment sets came before it. As a pin, the same entry beats both, so a listed item that is Cosmetic, has the "Fishing" or "Blizzard Account Bound" text, or is in an equipment set now shows in Grays/Auto Vendor rather than in the category it showed in before. Only where it shows changed, not what is sold: whatever an item's pin or rule says, `INV:IsAutoVendorItem` never sells an item that is Cosmetic, has the "Fishing" or "Blizzard Account Bound" text, is in an equipment set, or whose tooltip never arrived (so those words can't be read), nor one that is Protected or has no vendor price.
@@ -2365,6 +2367,20 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 
 ## Resolved
 
+### 2026-11-11 — Old gear's tabard and shirt exclusion never matched
+
+**What:** The old Old gear filter meant to leave tabards and shirts out. It compared the localized slot name with an `INVTYPE_` token, so the test never matched and every tabard and shirt that met the other tests was caught. The category blocks left the test out, and the Old gear block is one of the three ORs of Grays/Auto Vendor's rule, the category that sells: an old uncommon, rare or epic tabard or shirt was sold at the next merchant (the review of the bags package, 2026-11-15, probed it on both clients).
+
+**Why noticed:** The bag categories project's plan (Global Constraints and "What can't be written exactly in blocks", item 5, `docs/superpowers/plans/2026-11-10-saftui-bag-categories.md`), reading `filters.lua` at `8dc348c`.
+
+**Anchors:** `git show 8dc348c:SaftUI-Bags/filters.lua` (`isLegacyGear`); `SaftUI-Bags/categorydefaults.lua` (Old gear); `tests/bags/fixtures/old_filters.lua` (the oracle, which keeps the old behavior).
+
+**Shape of work:** Only if the user wants tabards and shirts kept out of Old gear: a block on the item's equipment slot (an `INVTYPE_` token compared with `GetItemInfoInstant`'s equip slot), and a fixture.
+
+**Open questions:** Does the user want that exclusion at all? It has never worked, so nobody has missed it.
+
+**Resolved 2026-11-15:** the shipped Grays/Auto Vendor rule now ANDs its Old gear block with NOT(Equip slot is `INVTYPE_TABARD`, `INVTYPE_BODY`) (`SaftUI-Bags/categorydefaults.lua`), so a tabard or a shirt is never in Old gear and never sold through it (a gray one is a gray, as before). A profile that has not edited the category's rule picks it up (an edit is stored against the shipped default, and a rename or On edit leaves the rule alone); one that edited the rule keeps its own. Test: `tests/bags/category_defaults_test.lua` (both clients), with fixtures in `fixtures/category_items.lua` marked changed, since the oracle keeps the old behavior.
+
 ### 2026-11-15 — A bag window's least width ignores a Window titles change
 
 **What:** A bag window's least width counts its title's width (`INV:HeaderMinWidth`, `SaftUI-Bags/header.lua`), and nothing lays the window out again when Window titles changes. The title itself follows at once (Task 5), so after a change to a wider font the title can run over the buttons until the window is next laid out.
@@ -2434,11 +2450,9 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 
 **What's been considered:** A bought-back stack in the same slot is harmless to the count (its buyback entry is removed, so the list still matches) but it is sold again, which undoes the buyback. A fresh purchase removes no entry, which is why only it breaks the promise.
 
-**Shape of work:** Small. Record `C_Item.GetItemGUID(ItemLocation:CreateFromBagAndSlot(bag, slot))` in `Sell` and compare it in `Account`: a different GUID counts as sold. `GetItemGUID` is in `ItemDocumentation.lua` on both branches. A purchase has a new GUID; a bought-back stack keeps its GUID (counted as now, correct) or gets a new one (counted twice, which only asks sooner), so the count is never short. Optionally also a post-hook (`hooksecurefunc`, `.agents/taint.md` rule 2) on `BuyMerchantItem` and `BuybackItem` to end the unasked part of a visit once the player starts buying, which would also stop SaftUI selling back what the player just bought back. Tests need a stub GUID per item.
+**Shape of work:** Small. Record `C_Item.GetItemGUID(ItemLocation:CreateFromBagAndSlot(bag, slot))` in `Sell` and compare it in `Account`: a different GUID counts as sold. `GetItemGUID` is in `ItemDocumentation.lua` on both branches. A purchase has a new GUID; a bought-back stack keeps its GUID (counted as now, correct) or gets a new one (counted twice, which only asks sooner), so the count is never short. Tests need a stub GUID per item. (The optional post-hook on `BuyMerchantItem` and `BuybackItem` is its own entry now: "Auto Vendor: stop the unasked sales once the player buys or buys back".)
 
-**Open questions:** Whether to also end the unasked sales when the player buys.
-
-**Resolved 2026-11-15:** `Sell` records the stack's `C_Item.GetItemGUID` (in ItemDocumentation on both clients' branches) and `Account` counts a stack in its slot with another GUID as sold, so a fresh purchase landing in a just-sold slot no longer reads as a refused sale and the tail count is never short. Not done: ending the unasked sales when the player buys (the entry's open question; the promise holds without it). Test: `tests/bags/autovendor_sale_test.lua`.
+**Resolved 2026-11-15:** `Sell` records the stack's `C_Item.GetItemGUID` (in ItemDocumentation on both clients' branches) and `Account` counts a stack in its slot with another GUID as sold, so a fresh purchase landing in a just-sold slot no longer reads as a refused sale and the tail count is never short. The part about ending the unasked sales once the player buys is its own Active entry. Test: `tests/bags/autovendor_sale_test.lua`.
 
 ### 2026-11-15 — Forever: Show in > Bank does nothing for the default bank (the combined bank)
 
@@ -2455,7 +2469,6 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Does Forever's Show in list Combined bank alone, or Bank and Combined bank? What does Bank mean while the bank is combined?
 
 **Resolved 2026-11-15:** Show in (`INV:CategoryEditorOptions`) now lists Combined bank on every client, between Bank and (on retail) the warband bank, so on Forever, where the combined bank is the default bank, unticking it hides the category there; Bank stays for the separate-bank layout. Test: `tests/bags/categories_editor_test.lua`.
-||||||| base
 ### 2026-11-15 — Chat's Fade tabs: ChatFrameUtil.GetTabAlphas isn't in the retail source
 
 **What:** Turning Fade tabs on hands a tab SaftUI was holding at alpha 1 Blizzard's own alpha back, read with `ChatFrameUtil.GetTabAlphas(tab)` (`CHT:HoldTabAlpha`, `SaftUI-Chat/chatframe.lua`). The function is in Forever's source (`Blizzard_ChatFrameBase/Shared/ChatFrameUtil.lua`, `origin/forever`) but a search of the local clone of Blizzard's `origin/live` (checked 2026-11-15) finds no `GetTabAlphas`; retail keeps the alphas in the tab's own `mouseOverAlpha` field instead. The code is guarded (`if ChatFrameUtil and ChatFrameUtil.GetTabAlphas`), so on retail the tab would stay at 1 until Blizzard's next fade rather than error.
