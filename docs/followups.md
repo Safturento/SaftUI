@@ -1205,6 +1205,8 @@ What's left needs evidence from the game. In the order they'd be checked:
 
 **Open questions:** None until something can change a box in combat.
 
+**Checked 2026-11-15:** by design for now, and still latent. `/sui` closes as combat starts and won't open in it. The one other path, a profile switch by an addon or a macro in combat (`OnProfileChanged` runs `UpdateConfig`), is the same wait as every unit frame's switch: the cached configs point at the new profile at once and the full update, plate size included, follows combat. Applying only the plates' config in combat would leave a mixed state (new look, old size) for the rest of the fight, so it stays until a visible case appears.
+
 ### 2026-11-12 — Nameplates: friendly players and friendly NPCs configured apart
 
 **What:** Friendly players' plates and friendly NPCs' plates share one config, and one on/off (the game's two friendly settings, `nameplateShowFriendlyPlayers` and `nameplateShowFriendlyNpcs`, set together). The user may want them split later: separate settings, or at least a separate on/off for NPCs.
