@@ -114,6 +114,11 @@ function Config:InitializeAceConfig()
 			st:Print('Debug prints ' .. (st.DEBUG and 'on' or 'off'))
 			return
 		end
+		-- /sui scale, and its forms: the Keep prompt (Config/uiscaleprompt.lua).
+		if command == 'scale' or command:find('^scale%s') then
+			st.UIScalePrompt:Command(command:sub(6))
+			return
+		end
 		local entry = FindCommand(command)
 		if entry then
 			entry.func()
