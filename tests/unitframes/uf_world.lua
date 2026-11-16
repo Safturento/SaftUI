@@ -59,7 +59,7 @@ local T = load_test_file('lib/theme_helpers.lua')
 local UW = {}
 
 -- Every unit's config file in config/units/ but the nameplates'.
-UW.UNITS = { 'arena', 'boss', 'focus', 'focustarget', 'party', 'pet', 'pettarget', 'player', 'raid10', 'raid40', 'target', 'targettarget' }
+UW.UNITS = { 'arena', 'boss', 'focus', 'focustarget', 'party', 'pet', 'pettarget', 'player', 'raid10', 'raid40', 'target', 'targettarget', 'all' }
 
 -- The bar, aura and indicator elements.
 UW.ELEMENTS = { 'auras', 'power', 'additionalpower', 'health', 'castbar', 'classpower', 'indicators' }

@@ -99,8 +99,9 @@ test("Blizzard's UpdateTextures running again gives the same look back", functio
 	local slot = slots[1]
 	slot:UpdateTextures()
 	local r, g, b = slot:GetHighlightTexture():GetVertexColor()
-	local ar, ag, ab = st:Color('accent'):GetRGB()
-	check(math.abs(r - ar) < 0.01 and math.abs(g - ag) < 0.01 and math.abs(b - ab) < 0.01, 'the hover is the accent again')
+	local ar, ag, ab = st:StateColor('hover')
+	check(math.abs(r - ar) < 0.01 and math.abs(g - ag) < 0.01 and math.abs(b - ab) < 0.01, 'the hover is the helper\'s T+ again')
+	eq(slot:GetHighlightTexture():GetBlendMode(), 'BLEND', 'in BLEND again')
 	eq(slot:GetNormalTexture():GetAlpha(), 0, 'the normal texture is faded again')
 end)
 

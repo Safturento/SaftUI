@@ -87,6 +87,14 @@ local FIELD_WIDTH, MODE_WIDTH, YES_NO_WIDTH, COUNT_WIDTH = 150, 80, 60, 90
 local D = INV.DragParts
 local Muted, Text, TextWidth, Inside = D.Muted, D.Text, D.TextWidth, D.Inside
 
+-- The Caught now tint (Text > Warning): its own strength, not a state's.
+local CAUGHT_ALPHA = 0.25
+
+-- A link's colors (the states helper's glyph): the accent at rest, Text > Strong
+-- under the mouse.
+local function AccentRest() return st:Color('accent'):GetRGB() end
+local function StrongHover() return st:Color('text', 'strong'):GetRGB() end
+
 -- A group's color: AND the accent, OR Warning (Text > Warning).
 local function OpColor(op)
 	if op == 'or' then return st:Color('text', 'warning'):GetRGB() end
@@ -360,13 +368,14 @@ local function MakeField(f)
 	field.text:SetPoint('RIGHT', field, 'RIGHT', -20, 0)
 	field.caret = Caret(field)
 	local function IsDisabled() return field.w == nil or field.w.disabled end
-	W.HoverEdge(field, IsDisabled)
 	field:SetScript('OnClick', function(self)
 		if self.w and not self.w.disabled and self.w.row and self.open then self.open(self) end
 	end)
 	field:SetScript('OnHide', function(self)
 		if W.ListOwner() == self then W.CloseList() end
 	end)
+	-- after the scripts above (a SetScript drops the helper's hooks)
+	W.HoverStates(field, IsDisabled)
 	W.DropdownStates(field, IsDisabled)
 	return field
 end
@@ -376,27 +385,28 @@ local function MakeCheck(f)
 	local check = W.Box(st:CreateFrame('CheckButton', nil, f))
 	check:SetSize(CHECK_SIZE, CHECK_SIZE)
 	check.mark = check:CreateTexture(nil, 'OVERLAY')
-	check.mark:SetPoint('TOPLEFT', check, 'TOPLEFT', 3, -3)
-	check.mark:SetPoint('BOTTOMRIGHT', check, 'BOTTOMRIGHT', -3, 3)
+	check.mark:SetTexture(st.BLANK_TEX)
+	check.mark:Hide()
 	check.caption = Text(check)
 	check.caption:SetPoint('LEFT', check, 'RIGHT', 6, 0)
-	W.HoverEdge(check, function() return check.w == nil or check.w.disabled end)
 	check:SetScript('OnClick', function(self)
 		if self.w and not self.w.disabled and self.toggle then self.toggle() end
 	end)
+	-- a check box of the helper: the edge, the mark and the fade when checked
+	W.HoverStates(check, function() return check.w == nil or check.w.disabled end, { shape = 'check', mark = check.mark })
 	return check
 end
 
--- + Block and + Group: accent text that runs add.run.
+-- + Block and + Group: accent text that runs add.run, Text > Strong under the mouse.
 local function MakeAdd(f)
 	local add = st:CreateFrame('Button', nil, f)
 	add.text = Text(add)
 	add.text:SetPoint('LEFT', add, 'LEFT', 0, 0)
-	add:SetScript('OnEnter', function(self) self.text:SetAlpha(0.7) end)
-	add:SetScript('OnLeave', function(self) self.text:SetAlpha(1) end)
 	add:SetScript('OnClick', function(self)
 		if self.w and not self.w.disabled and self.run then self.run(self) end
 	end)
+	-- a link: after the scripts above (a SetScript drops the helper's hooks)
+	st:AddStates(add, 'glyph', { glyph = add.text, glyphRest = AccentRest, glyphHover = StrongHover })
 	return add
 end
 
@@ -500,8 +510,7 @@ function Lay:Check(name, caption, checked, toggle)
 	local check = Take(self.f, 'check', MakeCheck)
 	check.w, check.toggle = self.w, toggle
 	check:SetChecked(checked)
-	check.mark:SetColorTexture(st:Color('accent'):GetRGB())
-	check.mark:SetShown(checked)
+	st:SetState(check, 'selected', checked and true or false)
 	check.caption:SetText(caption)
 	check.caption:SetTextColor(Muted())
 	-- The box and its caption go together.
@@ -743,14 +752,12 @@ local function KnownBlock(node)
 	return type(node) == 'table' and node.op == nil and type(node.block) == 'string' and R.BlockType(node.block) ~= nil
 end
 
+-- NOT on: the helper's selected look (the edge and the fade, the label by the
+-- pick); off: the label rests in Muted.
 local function NotLook(box, on)
 	box.on = on
-	if on then
-		box.text:SetTextColor(st:Color('accent'):GetRGB())
-	else
-		box.text:SetTextColor(Muted())
-	end
-	W.Edge(box, on)
+	box.text:SetTextColor(Muted())
+	st:SetState(box, 'selected', on and true or false)
 end
 
 -- An item on the cursor joins the Item is one of block of row i.
@@ -799,12 +806,12 @@ local function RowFrame(w, i)
 	notBox.text = Text(notBox, OB.Font('caption'))
 	notBox.text:SetPoint('CENTER', notBox, 'CENTER', 0, 0)
 	notBox.text:SetText('NOT')
-	notBox:SetScript('OnEnter', function(self) W.Edge(self, true) end)
-	notBox:SetScript('OnLeave', function(self) W.Edge(self, self.on) end)
 	notBox:SetScript('OnClick', function()
 		local record = w.rows[i]
 		if record then Edit(w, function(rule) return R.ToggleNot(rule, record.path) end) end
 	end)
+	-- after the scripts above (a SetScript drops the helper's hooks)
+	W.HoverStates(notBox, nil, { text = notBox.text, textRest = Muted })
 	f.notBox = notBox
 
 	f.label = Text(f)
@@ -859,7 +866,7 @@ local function LayRow(w, i, row, top)
 	f.connector:SetPoint('TOPLEFT', f, 'TOPLEFT', lineX, -(ROW_HEIGHT - LINE_WIDTH) / 2)
 	f.tint:SetPoint('TOPLEFT', f, 'TOPLEFT', x - 4, 0)
 	local r, g, b = st:Color('text', 'warning'):GetRGB()
-	f.tint:SetColorTexture(r, g, b, st.TINT_ROW)
+	f.tint:SetColorTexture(r, g, b, CAUGHT_ALPHA)
 
 	local known = row.kind == 'group' or (row.kind == 'block' and KnownBlock(row.node))
 	f:EnableMouse(row.kind == 'block' and known and row.node.block == 'items')

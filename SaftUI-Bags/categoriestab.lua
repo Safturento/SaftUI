@@ -20,8 +20,9 @@ local INV = st:GetModule('Inventory')
 	marker in Text > Muted, and its count in Text > Muted at the right when above 0 (what
 	the bag window's Compact header shows: INV:CountCategories). A category
 	that is off is Muted, with a 1px line through its name. The selected row is
-	tinted in the accent, with a 3px accent bar at its left. Under the list, + New
-	category in the accent, and the order's reset icon after it while the shipped
+	the states helper's selected look (a two line accent bar at its left and the
+	fading accent fill), a row under the mouse its tint. Under the list, + New
+	category in the accent (Text > Strong under the mouse), and the order's reset icon after it while the shipped
 	categories are out of their order (INV:ResetCategoryOrder). A click on a row selects it. Dragging a
 	handle moves the category (INV:MoveCategory) above the row under the
 	cursor, or below it from its lower half, but never below Miscellaneous;
@@ -157,7 +158,6 @@ local ROW_HEIGHT = 22
 local RESET_SIZE = 14 -- the order's reset icon (the kit's size)
 local PAD = 8 -- a row's contents from its edges
 local GAP = 6
-local BAR_WIDTH = 3
 local FOOTER_GAP = 8
 local FOOTER_HEIGHT = FOOTER_GAP + ROW_HEIGHT -- + New category and the order's reset, under the list
 local LIST_BAR_GAP = 4 -- the list's scroll bar, between it and the divider
@@ -538,15 +538,19 @@ local function Selected(list)
 	return id
 end
 
--- + New category: accent text that runs run(button).
+local function AccentRest() return st:Color('accent'):GetRGB() end
+local function StrongHover() return st:Color('text', 'strong'):GetRGB() end
+
+-- + New category: accent text that runs run(button), Text > Strong under the
+-- mouse (a link: the states helper's glyph).
 local function Action(parent, text, run)
 	local button = CreateFrame('Button', nil, parent)
 	button.text = Text(button, W.GetFont())
 	button.text:SetPoint('LEFT', button, 'LEFT', 0, 0)
 	button.text:SetText(text)
-	button:SetScript('OnEnter', function(self) self.text:SetAlpha(0.7) end)
-	button:SetScript('OnLeave', function(self) self.text:SetAlpha(1) end)
 	button:SetScript('OnClick', function(self) run(self) end)
+	-- after the button's own scripts (a SetScript drops the helper's hooks)
+	st:AddStates(button, 'glyph', { glyph = button.text, glyphRest = AccentRest, glyphHover = StrongHover })
 	return button
 end
 
@@ -636,6 +640,15 @@ local function Select(w, i)
 	Changed(w)
 end
 
+-- The rows (weak): which wear the Settings list's art (Blizzard) now, and the
+-- color each row's name rests in (Muted when the category is off).
+local rowArt = setmetatable({}, { __mode = 'k' })
+local rowOff = setmetatable({}, { __mode = 'k' })
+local function RowTextRest(row)
+	if rowOff[row] then return Muted() end
+	return Normal()
+end
+
 -- Row frame i of the list: made once, used for the list's row i every time.
 local function ListRow(w, i)
 	local f = w.rowFrames[i]
@@ -646,17 +659,16 @@ local function ListRow(w, i)
 	f:SetPoint('TOPRIGHT', w.list, 'TOPRIGHT', 0, -(i - 1) * ROW_HEIGHT)
 	f:RegisterForClicks('LeftButtonUp')
 	f:SetScript('OnClick', function() Select(w, i) end)
+	-- Under Blizzard the Settings list's art (its hover and picked atlases); under
+	-- Thick and Thin the hover, the selected bar and the fill are the helper's.
 	f.hover = f:CreateTexture(nil, 'BACKGROUND')
 	f.hover:SetAllPoints(f)
 	f.hover:Hide()
-	f:SetScript('OnEnter', function(self) self.hover:Show() end)
+	f:SetScript('OnEnter', function(self) if rowArt[self] then self.hover:Show() end end)
 	f:SetScript('OnLeave', function(self) self.hover:Hide() end)
 	f.tint = f:CreateTexture(nil, 'BACKGROUND')
 	f.tint:SetAllPoints(f)
-	f.bar = f:CreateTexture(nil, 'ARTWORK')
-	f.bar:SetPoint('TOPLEFT', f, 'TOPLEFT', 0, 0)
-	f.bar:SetPoint('BOTTOMLEFT', f, 'BOTTOMLEFT', 0, 0)
-	f.bar:SetWidth(BAR_WIDTH)
+	f.tint:Hide()
 	f.handle = D.Handle(f, ROW_HEIGHT)
 	f.handle:SetPoint('TOPLEFT', f, 'TOPLEFT', PAD, 0)
 	f.handle:SetScript('OnMouseDown', function(_, button)
@@ -671,6 +683,11 @@ local function ListRow(w, i)
 	f.marker = Text(f, OB.Font('small'))
 	f.count = Text(f, OB.Font('small'), 'RIGHT')
 	f.count:SetPoint('RIGHT', f, 'RIGHT', -PAD, 0)
+	-- A row of the states helper, after the scripts above (a SetScript drops its hooks).
+	st:AddStates(f, 'row', {
+		text = f.name, textRest = RowTextRest, inset = 0, bar = 'left',
+		blizzard = function(self) return rowArt[self] == true end,
+	})
 	w.rowFrames[i] = f
 	return f
 end
@@ -685,20 +702,21 @@ local function LayListRow(w, i, entry, count, selected)
 	-- row on its art, no accent bar, the name gold (white when picked). Else the
 	-- accent tint and bar. Read on each layout, so a theme switch shows at once.
 	local look = W.BlizzardLook() and st.ThemeArt.Control('optionslist')
+	if (rowArt[f] or false) ~= (look and true or false) then
+		rowArt[f] = look and true or false
+		st:RestyleStates(f) -- the look changed: the helper reads it again
+	end
 	if look then
 		f.hover:SetAtlas(look.hover)
 		f.hover:SetAlpha(1)
 		f.tint:SetAtlas(look.picked)
 		f.tint:SetAlpha(1)
-		f.bar:Hide()
+		f.tint:SetShown(selected)
 	else
-		local r, g, b = st:Color('accent'):GetRGB()
-		f.hover:SetColorTexture(r, g, b, st.TINT_ROW)
-		f.tint:SetColorTexture(r, g, b, st.TINT_ROW)
-		f.bar:SetColorTexture(r, g, b)
-		f.bar:SetShown(selected)
+		f.hover:Hide()
+		f.tint:Hide()
 	end
-	f.tint:SetShown(selected)
+	rowOff[f] = not entry.enabled
 	f.handle:SetShown(entry.kind ~= 'misc')
 
 	local x, right = PAD + D.HANDLE_WIDTH + GAP, LIST_WIDTH - PAD
@@ -720,6 +738,9 @@ local function LayListRow(w, i, entry, count, selected)
 	else
 		f.name:SetTextColor(Normal())
 	end
+	-- Selected: the helper's bar and fill (and the name's pick over them); set every
+	-- layout, so a row the list reuses for another category is right.
+	st:SetState(f, 'selected', selected and true or false)
 	local nameWidth = max(1, min(TextWidth(f.name), right - x))
 	f.name:SetWidth(nameWidth)
 	f.name:ClearAllPoints()
@@ -735,7 +756,7 @@ local function LayListRow(w, i, entry, count, selected)
 
 	w.rows[i] = {
 		frame = f, id = entry.id, entry = entry, handle = f.handle, name = f.name, marker = f.marker,
-		count = f.count, strike = f.strike, tint = f.tint, bar = f.bar,
+		count = f.count, strike = f.strike, tint = f.tint,
 	}
 end
 

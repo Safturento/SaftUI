@@ -175,7 +175,7 @@ test('the button opens the list as a menu: the same rows and counts; a pick clos
 	eq(row_of(w, SELL).count:GetText(), '1')
 	check(not row_of(w, MISC).handle:IsShown(), 'Miscellaneous has no handle')
 	check(row_of(w, 'Armor').handle:IsShown(), 'the others do')
-	check(w.rows[1].tint:IsShown(), 'the selected row is tinted')
+	check(SaftUI:GetState(w.rows[1].frame, 'selected') == true, 'the selected row is the helper\'s selected')
 	eq(w.listScroll:GetHeight(), 14 * 22, 'its view is 14 rows')
 	check(#w.rows > 14, 'there are more rows than that')
 	check(w.addButton:IsVisible(), '+ New category in it')

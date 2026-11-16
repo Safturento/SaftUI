@@ -76,6 +76,11 @@ local portrait = {
 
 local castbar = {
     enable = false,
+    -- The values the element wildcard gives a cast bar anyway (width 0, relative): named here so AceDB does
+    -- not strip them from a follower of All units that holds them (config/shared.lua), which the units that
+    -- name them (Player, Target, Focus) would otherwise read as their own at the next login.
+    width = 0,
+    relative_width = true,
     relative_height = false,
     height = 15,
     theme = 'thin',

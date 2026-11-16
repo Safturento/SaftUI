@@ -22,9 +22,10 @@ local VISIBLE_GAP = 3
 	the same on both clients: a square, four squares, a dot grid and lines,
 	drawn on a 12 by 12 grid (GLYPHS: x, y, width, height of each piece) whose
 	unit is a whole number of pixels, so the pieces stay sharp at any title bar
-	height. The button for the window's view is lit in the accent (Theme > Accent), kept
-	with st:KeepOwnColors so a theme recolor and redraw don't take it away;
-	under the Blizzard theme, whose panel buttons they are, it's pressed.
+	height, in Text > Normal in every look and state (the states helper is
+	given no glyph). The button for the window's view is the helper's
+	selected state (st:SetButtonPressed: the accent edge and the fade; under the
+	Blizzard theme, whose panel buttons they are, it's pressed).
 	The buttons are SaftUI's own plain buttons, so lighting one is fine in
 	combat; the layout is what waits (INV:SetView, INV:ApplyView).
 
@@ -45,11 +46,6 @@ local GLYPHS = {
 	},
 	rows = { { 0, 1, 12, 2 }, { 0, 5, 12, 2 }, { 0, 9, 12, 2 } },
 }
-
--- The lit button's border: the accent (Theme > Accent).
-local function ColorLit(button)
-	st:SetBorderColor(button.backdrop, st:Color('accent'):GetRGB())
-end
 
 -- A button's glyph is drawn in Colors -> Text -> Normal.
 local function ColorGlyph(button)
@@ -197,10 +193,10 @@ function INV:CreateSlotToggle(container, bar, name)
 	return slotToggle
 end
 
--- Lights the window's view's button and puts the others back to the theme's
--- border, when that changed (a button that kept its look isn't drawn again).
--- Under the Blizzard theme, where a control's border is left alone, the lit
--- one shows Blizzard's panel button pressed (st:SetButtonPressed).
+-- Lights the window's view's button and puts the others back, when that
+-- changed: the button is the helper's selected state (st:SetButtonPressed: the
+-- accent edge and the fade; under the Blizzard theme, where a control's
+-- border is left alone, Blizzard's panel button pressed).
 function INV:UpdateViewButtons(id)
 	local container = self.containers[id]
 	if not (container and container.viewButtons) then return end
@@ -210,29 +206,17 @@ function INV:UpdateViewButtons(id)
 		if on ~= button.viewLit then
 			button.viewLit = on
 			st:SetButtonPressed(button, on)
-			if on then
-				ColorLit(button)
-				st:KeepOwnColors(button, ColorLit)
-			else
-				st:KeepOwnColors(button, nil)
-				st:SetBackdrop(button, 'theme', 'theme', 'control')
-			end
 		end
 	end
 end
 
 -- A color the view buttons are drawn in changed (st:ColorChanged's group and
--- key, key nil for any of the group): the accent lights the lit buttons,
--- Text -> Normal draws every glyph, no other Text color touches them.
+-- key, key nil for any of the group): Text -> Normal draws every glyph, no
+-- other Text color touches them. The accent is the helper's own pass.
 function INV:ColorViewButtons(group, key)
-	local lit = group == 'accent'
-	local glyphs = group == 'text' and (key == nil or key == 'normal')
-	if not (lit or glyphs) then return end
+	if not (group == 'text' and (key == nil or key == 'normal')) then return end
 	for _, container in pairs(self.containers) do
-		for _, button in pairs(container.viewButtons or {}) do
-			if lit and button.viewLit then ColorLit(button) end
-			if glyphs then ColorGlyph(button) end
-		end
+		for _, button in pairs(container.viewButtons or {}) do ColorGlyph(button) end
 	end
 end
 

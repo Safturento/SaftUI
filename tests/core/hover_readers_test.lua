@@ -15,7 +15,6 @@ local st = SaftUI
 -- thumb (Widgets/scrollbar.lua) takes the key of its state, so it names no pair.
 local ALLOWED = {
 	['SaftUI-Core/Widgets/scrollbar.lua'] = 'the scroll bar thumb at rest',
-	['SaftUI-Core/Config/optionspreview.lua'] = "the preview's Rest tile, a copy of the thumb",
 }
 
 local PATTERNS = {
@@ -30,7 +29,7 @@ test('st.HOVER_TINT is the strength a hover highlight draws Hover at, 0.4 as the
 	eq(st.HOVER_TINT, 0.4)
 end)
 
-test('no file but the scroll bar thumb (and the preview that copies it) reads Buttons > Normal, by a pair or directly', function()
+test('no file but the scroll bar thumb reads Buttons > Normal, by a pair or directly', function()
 	local found = {}
 	for _, path in ipairs((T.saftui_files())) do
 		local source = read_saftui_source(path)
@@ -57,11 +56,4 @@ test('the scan catches what it is for', function()
 	check(hits('local c = Colors().button.normal'), 'through Colors()')
 	check(not hits("st:ColorRGBA('button', 'hover', st.HOVER_TINT)"), 'Hover is no read of Normal')
 	check(not hits('colors.button.normalize'), 'a longer key')
-end)
-
-test('the preview reads Normal for the Rest thumb only', function()
-	local source = read_saftui_source('SaftUI-Core/Config/optionspreview.lua')
-	local count = 0
-	for _ in source:gmatch("Shade%('button', 'normal'") do count = count + 1 end
-	eq(count, 1, 'one read: the thumb at rest')
 end)

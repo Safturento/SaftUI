@@ -15,6 +15,8 @@
 	<Script file="units\raid40.lua"/>
 	<Script file="units\nameplate.lua"/>
 	<Script file="units\friendlynameplate.lua"/>
+	<Script file="units\all.lua"/>
+	<Script file="shared.lua"/>
 	<Script file="profiles.lua"/>
 	<Script file="groupoptions.lua"/>
 	<Script file="parts.lua"/>

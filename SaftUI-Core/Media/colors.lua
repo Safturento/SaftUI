@@ -714,12 +714,8 @@ CO.SECTIONS = {
 		}),
 	},
 	{
-		key = 'button', name = 'Buttons', note = "Opacity sets how strongly each is drawn: 100% is SaftUI's own.", hasAlpha = true,
+		key = 'button', name = 'Buttons', note = "Opacity sets how strongly it is drawn: 100% is SaftUI's own.", hasAlpha = true,
 		colors = Colors('button', {
-			{ 'normal', 'Normal', 'A scroll bar thumb at rest.' },
-			{ 'hover', 'Hover', "A SaftUI button's, check box's highlight and the highlight of the micro menu bar's own items (the zone text and the addon compartment) under the mouse, a hovered scroll bar thumb, the micro buttons' highlight, the minimap's tracking, queue and expansion buttons, and resize corners. Highlights draw it light, over the fill. Slots and action buttons under the mouse use the Accent, and a close button Text > Danger." },
-			{ 'pushed', 'Pushed', 'A pressed SaftUI button, scroll bar thumb or micro menu button.' },
-			{ 'checked', 'Checked', "A checked check box's fill." },
 			{ 'danger', 'Danger', "Locked bank slots, and the flash on an action bar or totem button." },
 		}),
 	},
@@ -906,8 +902,8 @@ local PREVIEWS = {
 }
 
 -- A color's preview that names its key or its label is one table per color,
--- kept (the picker reads it as constants); the Buttons rows name their key,
--- the others what their bar or slot shows.
+-- kept (the picker reads it as constants); the rows name what their bar or
+-- slot shows.
 local POINT_POWERS = { COMBO_POINTS = true, CHI = true, HOLY_POWER = true, SOUL_SHARDS = true, ARCANE_CHARGES = true }
 local STATUS_LABELS = { disconnected = 'Offline', tapped = 'Tapped' }
 local ROLES_PREVIEW = { kind = 'bar', style = 'role' }
@@ -915,6 +911,7 @@ local POINTS_PREVIEW = { kind = 'bar', style = 'points' }
 local QUALITY_PREVIEW = { kind = 'border', style = 'slot' }
 local MOUNT_PREVIEW = { kind = 'border', style = 'entry' }
 local THREAT_PREVIEW = { kind = 'bar', style = 'plate', threat = true }
+local DANGER_PREVIEW = 'danger'
 local KEPT = {}
 local function Kept(color, make)
 	local id = color.group .. '.' .. tostring(color.key)
@@ -925,9 +922,7 @@ end
 local function PreviewOf(color)
 	local group = color.group
 	if group == 'text' then return TEXT_PREVIEW end
-	if group == 'button' then
-		return Kept(color, function() return { kind = 'button', key = tostring(color.key) } end)
-	end
+	if group == 'button' then return DANGER_PREVIEW end
 	if group == 'class' then
 		return Kept(color, function() return { kind = 'bar', style = 'unit', label = color.name } end)
 	end
@@ -1007,11 +1002,11 @@ end
 function CO:AccentOption(order)
 	return {
 		type = 'color',
-		preview = 'accent',
+		preview = 'states',
 		size = 'small',
 		order = order,
 		name = 'Accent',
-		desc = "SaftUI's accent under every theme: what is on, picked, current or under the mouse in SaftUI's frames and windows, its links, and the chat prefix.",
+		desc = "SaftUI's accent under every theme: what is on, picked or current, a field you type in, links and marks, fills that show progress, and the chat prefix. Hover, pushed and selected are made from it; the dots set how.",
 		get = function()
 			return st:Color('accent'):GetRGB()
 		end,
