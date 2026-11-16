@@ -330,3 +330,39 @@ test("under None the edit box and scroll bar anchor to the chat window, and a th
 	eq(select(2, editbox:GetPoint(1)), frame, 'back under None, the window again')
 	profile.chat.theme = 'theme'
 end)
+
+-- The dock's overflow button (the tabs that don't fit) is part of the tab row: it fades with
+-- the tabs (FCF_FadeInChatFrame and FCF_FadeOutChatFrame fade it through its SetAlpha to
+-- the selected tab's alphas), so Fade tabs off holds it at 1 too, and on gives it back.
+test("with Fade tabs off the dock's overflow button stays at 1, and fading on gives Blizzard's alpha back", function()
+	local had_dock, had_windows = _G.GENERAL_CHAT_DOCK, NUM_CHAT_WINDOWS
+	NUM_CHAT_WINDOWS = 0 -- the button only
+	local had = { _G.CHAT_FRAME_TAB_SELECTED_MOUSEOVER_ALPHA, _G.CHAT_FRAME_TAB_SELECTED_NOMOUSE_ALPHA }
+	_G.CHAT_FRAME_TAB_SELECTED_MOUSEOVER_ALPHA, _G.CHAT_FRAME_TAB_SELECTED_NOMOUSE_ALPHA = 1.0, 0.4
+	local button = CreateFrame('Button', nil, UIParent)
+	_G.GENERAL_CHAT_DOCK = { overflowButton = button }
+
+	profile.chat.tabs.fade = true
+	button:SetAlpha(0.4)
+	CHT:ApplyTabFading()
+	eq(button:GetAlpha(), 0.4, 'with fading on it is left to Blizzard')
+
+	profile.chat.tabs.fade = false
+	CHT:ApplyTabFading()
+	eq(button:GetAlpha(), 1, 'held at 1 at once')
+	button:SetAlpha(0.4) -- a fade step
+	eq(button:GetAlpha(), 1, 'and through a fade')
+	local hook = rawget(button, 'SetAlpha')
+	CHT:ApplyTabFading()
+	eq(rawget(button, 'SetAlpha'), hook, 'a second apply adds no second hook')
+
+	profile.chat.tabs.fade = true
+	CHT:ApplyTabFading()
+	eq(button:GetAlpha(), 0.4, "fading on again: Blizzard's no-mouse alpha")
+	button:SetAlpha(0.7)
+	eq(button:GetAlpha(), 0.7, 'and Blizzard fades it')
+
+	profile.chat.tabs.fade = false
+	_G.GENERAL_CHAT_DOCK, NUM_CHAT_WINDOWS = had_dock, had_windows
+	_G.CHAT_FRAME_TAB_SELECTED_MOUSEOVER_ALPHA, _G.CHAT_FRAME_TAB_SELECTED_NOMOUSE_ALPHA = had[1], had[2]
+end)

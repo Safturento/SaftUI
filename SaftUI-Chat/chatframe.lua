@@ -169,12 +169,44 @@ function CHT:HoldTabAlpha(frame)
 	if tab:GetAlpha() ~= 1 then SetTabAlpha(tab, 1) end
 end
 
--- Every window's tab takes tabs.fade now (a profile change, the /sui toggle).
+-- The dock's overflow button (the tabs that don't fit) fades with the tabs: Blizzard's
+-- FCF_FadeInChatFrame and FCF_FadeOutChatFrame fade it through its SetAlpha to the selected
+-- tab's alphas. It is held at 1 the same way a tab is, and given the selected tab's alpha
+-- back (CHAT_FRAME_TAB_SELECTED_MOUSEOVER_ALPHA once ChatFrame1 has been faded, else the
+-- no-mouse one) when fading comes on again.
+function CHT:HoldOverflowAlpha()
+	local dock = GENERAL_CHAT_DOCK
+	local button = dock and dock.overflowButton
+	if not button then return end
+	if self.config.tabs.fade then
+		if held[button] then
+			held[button] = nil
+			local alpha = ChatFrame1 and ChatFrame1.hasBeenFaded and CHAT_FRAME_TAB_SELECTED_MOUSEOVER_ALPHA
+				or CHAT_FRAME_TAB_SELECTED_NOMOUSE_ALPHA
+			if alpha then SetTabAlpha(button, alpha) end
+		end
+		return
+	end
+	if not hooked[button] then
+		hooked[button] = true
+		hooksecurefunc(button, 'SetAlpha', function(widget, alpha)
+			if not CHT.config.tabs.fade and alpha ~= 1 then
+				SetTabAlpha(widget, 1)
+			end
+		end)
+	end
+	held[button] = true
+	if button:GetAlpha() ~= 1 then SetTabAlpha(button, 1) end
+end
+
+-- Every window's tab takes tabs.fade now (a profile change, the /sui toggle), and so does
+-- the dock's overflow button.
 function CHT:ApplyTabFading()
 	for chatID = 1, NUM_CHAT_WINDOWS do
 		local frame = _G['ChatFrame' .. chatID]
 		if frame then self:HoldTabAlpha(frame) end
 	end
+	self:HoldOverflowAlpha()
 end
 
 function CHT:SkinChatFrame(frame)
@@ -462,6 +494,7 @@ function CHT:ApplyAppearance()
 	for chatID=1, NUM_CHAT_WINDOWS do
 		self:ApplyChatFrameConfig(_G['ChatFrame'..chatID])
 	end
+	self:HoldOverflowAlpha()
 end
 
 -- A profile change: chat size and position, then each chat frame's look, tab fading
@@ -587,6 +620,7 @@ function CHT:OnEnable()
 	for chatID=1, NUM_CHAT_WINDOWS do
 		self:SkinChatFrame(_G['ChatFrame'..chatID])
 	end
+	self:HoldOverflowAlpha()
 
 	-- The holder exists, with its hooks and the screen edge margin (TakeOverChatFrame),
 	-- before it is first placed: placing it copies the size and where it shows to
