@@ -516,6 +516,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **Shape of work:** Small if wanted; probably not worth it.
 
+**Recommendation 2026-11-15 (left for the owner):** abandon. A resolved offset is only right if the other frame's rect at login is the one Blizzard's Edit Mode applied: `EditModeSpot` runs as `EDIT_MODE_LAYOUTS_UPDATED` fires, which may come before Edit Mode has placed that frame (a nil or stale rect), and SaftUI's Minimap module moves parts of that area, so the answer could be worse than the default spot, with nothing outside the game to check it. If wanted: read `GetLeft/GetRight/GetTop/GetBottom` of `_G[anchor.relativeTo]`, scale them by its effective scale over UIParent's, and fall back to the default spot on any nil.
+
 **Open questions:** Not confirmed in game: the preset-layout offset (`activeLayout` counts the preset layouts in front of the saved ones, from Blizzard's source), and what `GetLayouts` answers before the layouts load (the gate no longer depends on it). Checks: a character whose Blizzard tracker was dragged (right edge snap, bottom corner, free drag) on a new profile starts at that spot; a Modern or Classic preset with the tracker undragged starts at the default spot; a `/reload` with a saved SaftUI position leaves it unmoved; a fresh login where the layouts arrive after SaftUI builds.
 
 ### 2026-11-15 — The bag bar and Hekili: what still writes onto Blizzard's frames
@@ -863,6 +865,8 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 **Shape of work:** A small design pass on where an error shows when the region is short (a tooltip on the field is the smallest), then a change in `PlaceFooter` or the field plus a test at W4 with the real command set and with one more icon command.
 
 **Open questions:** Where should the message show when the footer has no room: the field's tooltip, a line over the footer, or both? An in-game check at W4 with Keybind mode only (54 wide) decides how often it matters.
+
+**Recommendation 2026-11-15 (left for the owner, a look):** the field's tooltip, set from `Base:Commit`'s failed validation and cleared on the next commit or Release, shown by hovering the field and by `OnEnter` right after the failure (the mouse is on the field when Enter was pressed); the status line stays as it is when it has room. It adds no line, so nothing can overlap.
 
 ### 2026-11-13 — Design decisions waiting to be built
 
