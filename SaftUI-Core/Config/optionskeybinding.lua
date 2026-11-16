@@ -148,8 +148,9 @@ builders.keybinding = function(w)
 		PaintBinding(w)
 	end)
 	button:HookScript('OnHide', function() art.down = false end)
-	-- after the scripts above. The label's color is its own (Refresh), so the helper is not told it.
-	HoverStates(button, function() return w.disabled end)
+	-- after the scripts above. The label's color is its own (Paint): the helper keeps it and turns it
+	-- dark only where the dark reads better (textKeep).
+	HoverStates(button, function() return w.disabled end, { text = w.text, textKeep = true })
 end
 
 define('keybinding', {

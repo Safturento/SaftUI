@@ -214,6 +214,13 @@ function W.Create(parent, rowType)
 		-- starts a new one (W.Define).
 		widget = setmetatable({ type = rowType, width = W.WIDTH[rowType], pool = pools[rowType] }, Base)
 		build(widget)
+		-- A composite's frame (a range, a font row, a position block, an item, a multiselect, a
+		-- custom row) is no state frame, and a pass of the Accent group repaints only state
+		-- frames: it has a record of its own (shape 'glyph', no scripts, nothing drawn) so a
+		-- Disabled opacity that moves is put on it at once, not at the next redraw.
+		if st:GetState(widget.frame, 'disabled') == nil then
+			st:AddStates(widget.frame, 'glyph', { wire = false })
+		end
 	end
 	widget.released = false
 	ClearStates(widget.frame)

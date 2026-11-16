@@ -111,6 +111,20 @@ test('the check is real: an option without desc fails it, and so does an Ace wid
 		'the width check alone')
 end)
 
+-- The Accent row's menu is a group of its own under the row (each_option walks an option's menu
+-- as an item's): its rows each have a tooltip, and the walk meets them.
+test("the Accent row's menu rows are walked: each has a tooltip", function()
+	local root = st.Config:GetOptionsTable()
+	local met = {}
+	each_option({ args = { Fonts = root.Fonts } }, function(option, path)
+		if #path > 4 and path[3] == 'accent' and path[4] == 'menu' then met[#met + 1] = path[#path] end
+	end)
+	table.sort(met)
+	eq(table.concat(met, ','), 'chroma,direction,disabled,fade,hover,hue,mode,preview,pushed,selected,shift,step,strengths,tones',
+		'the menu\'s own options, found under accent.menu')
+	eq(#Problems('Fonts', root.Fonts), 0, 'no row of the page (the menu\'s included) lacks a desc')
+end)
+
 -- Global settings (General, Fonts, Colors, Theme and Edit mode) are page 'Fonts':
 -- every value row has a reset, and each derived one round-trips. Theme's
 -- Theme also writes the fonts' version (st:ThemeChanged).

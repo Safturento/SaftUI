@@ -252,7 +252,7 @@ end
 -- state, so the pieces are drawn as Thick, with a note.
 local function SharedLook() return W.BlizzardLook() and 'thick' or 'theme' end
 local function SharedNote(blizzard)
-	if blizzard then return "Shown as Thick: under Blizzard, SaftUI's controls wear Blizzard's art." end
+	if blizzard then return "Shown as Thick: Blizzard's art draws its own." end
 end
 
 local function PaintCaptionsMuted(captions)
@@ -275,7 +275,8 @@ end
 	Build and Layout place it on any frame.
 ]]
 local STATE_TILE, STATE_BUTTON_WIDTH, STATE_BUTTON_HEIGHT, STATE_BUTTON_X = 58, 46, 20, 6
-local STATE_NAMES = { 'Rest', 'Hover', 'Pushed', 'Selected', 'Sel. + hover', 'Disabled' }
+local STATE_TILE_GAP = 4
+local STATE_NAMES = { 'Rest', 'Hover', 'Pushed', 'Selected', '+ hover', 'Disabled' }
 local STATE_HELD = {
 	{}, { hover = true }, { pushed = true }, { selected = true }, { selected = true, hover = true }, { disabled = true },
 }
@@ -299,7 +300,7 @@ end
 
 function states.Build(area)
 	local look = SharedLook()
-	local pieces = { area = area, look = look, derived = st.States.NewDerived(), tiles = {}, captions = {}, buttons = {} }
+	local pieces = { area = area, look = look, tile = STATE_TILE, derived = st.States.NewDerived(), tiles = {}, captions = {}, buttons = {} }
 	for i, name in ipairs(STATE_NAMES) do
 		local tile, caption = NewTile(area, STATE_TILE, look, name)
 		pieces.tiles[i], pieces.captions[i] = tile, caption
@@ -313,6 +314,15 @@ function states.Build(area)
 	return pieces
 end
 
+-- The tile is 58 wide across the picker's 370 (or 402), and narrower across a strip that has
+-- less room (the Accent menu's row under a panel: 348), 4 apart at the least.
+local function StateTile(width)
+	return math.min(STATE_TILE, floor((width - 5 * STATE_TILE_GAP) / 6))
+end
+
+-- Runs every time the strip is shown: hiding it clears every held state, not only hover and
+-- pushed (the helper's OnHide, and the kit button's own Paint on hide), so the states are held
+-- again here.
 function states.Layout(pieces, width)
 	local look = SharedLook()
 	HoldStates(pieces)
@@ -320,18 +330,33 @@ function states.Layout(pieces, width)
 		pieces.look = look
 		for _, tile in ipairs(pieces.tiles) do st:SetTemplate(tile, look, 'solid', 'panel') end
 	end
+	local size = StateTile(width)
+	if pieces.tile ~= size then
+		pieces.tile = size
+		for i, tile in ipairs(pieces.tiles) do
+			tile:SetSize(size, PV.TILE_HEIGHT)
+			pieces.captions[i]:SetWidth(size)
+			Put(pieces.buttons[i], tile, floor((size - STATE_BUTTON_WIDTH) / 2), floor((PV.TILE_HEIGHT - STATE_BUTTON_HEIGHT) / 2))
+		end
+	end
 	for i, tile in ipairs(pieces.tiles) do
-		Put(tile, pieces.area, TileX(i, 6, width, STATE_TILE), 0)
+		Put(tile, pieces.area, TileX(i, 6, width, size), 0)
 	end
 end
 
 -- The strip's paint with the Accent r, g, b under settings (the profile's when
 -- nil). Colors only: one derivation into the strip's own table, six
--- st:PaintStates and the captions.
+-- st:PaintStates and the captions. With no r the strip is painted from the
+-- cache, the saved Accent and settings (the Accent menu's row: nothing is
+-- derived, and a pass paints the same).
 function W.PaintStates(pieces, r, g, b, settings)
 	local ST = st.States
-	ST.Derive(r, g, b, settings or ST.Settings(), pieces.derived)
-	for _, button in ipairs(pieces.buttons) do st:PaintStates(button, pieces.derived) end
+	if r == nil then
+		for _, button in ipairs(pieces.buttons) do st:PaintStates(button) end
+	else
+		ST.Derive(r, g, b, settings or ST.Settings(), pieces.derived)
+		for _, button in ipairs(pieces.buttons) do st:PaintStates(button, pieces.derived) end
+	end
 	PaintCaptionsMuted(pieces.captions)
 end
 
@@ -383,7 +408,8 @@ function danger.Layout(pieces, width)
 	end
 	for i, tile in ipairs(pieces.tiles) do
 		Put(tile, pieces.area, TileX(i, 2, width, PV.TILE_WIDTH), 0)
-		local size = pieces.slots[i]:GetWidth()
+		-- from the constants, never a size read back from the game
+		local size = i == 1 and FLASH_SIZE or LOCKED_SIZE
 		Put(pieces.slots[i], tile, floor((PV.TILE_WIDTH - size) / 2), floor((PV.TILE_HEIGHT - size) / 2))
 	end
 end
@@ -841,3 +867,87 @@ kinds.border = border
 -- Last: the kinds above are the built-in ones. Tasks that add a kind add it here
 -- before this loop.
 for name in pairs(kinds) do builtin[name] = true end
+
+------------------------------------------------------------------ the statepreview row
+
+--[[
+	The Accent menu's row (Media/states.lua's ST.MenuGroup, optionsmenu.lua): the states kind's
+	strip as a row of its own, a bare type with no label and no reset, 370 wide where there is
+	room (the menu's body gives it what a panel leaves: 348 under Thick and Thin, and the strip's
+	tiles are narrower then). Each widget builds its own strip with the kind's Build, so a pooled
+	widget has its pieces already.
+
+	It takes no mouse. It is laid out (the states held again) every time it is shown, bound or
+	given a width: hiding clears every held state. It is painted from the profile, the cache
+	(W.PaintStates with no color: the saved Accent and settings, nothing derived): the buttons
+	in the tiles are state frames that follow the Accent as every other, so a pass paints them
+	with the settings the menu has just saved; it follows Text for its captions. Under Blizzard
+	the strip is Thick and the row says so under it, the states kind's note, in Text > Muted.
+]]
+local STRIP_WIDTH, NOTE_ROOM = 370, 18
+local stripOf = setmetatable({}, { __mode = 'k' }) -- row frame -> its widget, for the Text follower
+
+local function LayStrip(w)
+	local blizzard = W.BlizzardLook()
+	local note = states.note(blizzard)
+	w.note:SetText(note or '')
+	w.note:SetShown(note ~= nil)
+	local height = PV.HEIGHT + (note and NOTE_ROOM or 0)
+	if w.frame:GetHeight() ~= height then w.frame:SetHeight(height) end
+	states.Layout(w.pieces, w.stripWidth)
+end
+
+local function PaintMuted(frame)
+	local w = stripOf[frame]
+	if not w then return end
+	PaintCaptionsMuted(w.pieces.captions)
+	w.note:SetTextColor(st:Color('text', 'muted'):GetRGB())
+end
+
+W.Define('statepreview', {
+	bare = true,
+	width = STRIP_WIDTH,
+	build = function(w)
+		local frame = CreateFrame('Frame', nil, UIParent)
+		frame:SetSize(STRIP_WIDTH, PV.HEIGHT)
+		w.frame = frame
+		w.stripWidth = STRIP_WIDTH
+		w.pieces = states.Build(frame)
+		w.note = TextFont(Kit.NewText(frame, 'LEFT'))
+		w.note:SetWordWrap(false)
+		w.note:SetPoint('TOPLEFT', frame, 'TOPLEFT', 0, -(PV.HEIGHT + 2))
+		w.note:Hide()
+		stripOf[frame] = w
+		st:FollowColor(frame, 'text', nil, PaintMuted)
+		-- shown again after a release: the states held again, whoever shows it
+		frame:SetScript('OnShow', function()
+			LayStrip(w)
+			W.PaintStates(w.pieces)
+		end)
+	end,
+	methods = {
+		-- The look before the row, and the row's width: the strip for it.
+		Bind = function(self, root, row, onChanged)
+			LayStrip(self)
+			return Kit.Base.Bind(self, root, row, onChanged)
+		end,
+
+		Refresh = function(self)
+			LayStrip(self)
+			W.PaintStates(self.pieces)
+			PaintMuted(self.frame)
+		end,
+
+		-- The body's width for a bare row.
+		SetWidth = function(self, width)
+			self.stripWidth = width
+			self.frame:SetWidth(width)
+			self.note:SetWidth(width)
+			LayStrip(self)
+		end,
+
+		OnRelease = function(self)
+			self.stripWidth = STRIP_WIDTH
+		end,
+	},
+})

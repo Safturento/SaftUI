@@ -53,7 +53,8 @@ local function edge_of(mover) return T.edge(mover.overlay.backdrop) end
 
 local WHITE = '1.00,1.00,1.00,1.00'
 -- What a Theme recolor costs per pass: the base's (b84937c1) forbidden calls (the bar's own) and setters
-local ON_FORBIDDEN, ON_SETTERS, OFF_SETTERS = 5, 535, 498
+-- (534, was 535: the bar's number box has a state record now, so its Paint no longer sets its alpha by hand each pass)
+local ON_FORBIDDEN, ON_SETTERS, OFF_SETTERS = 5, 534, 498
 local function by_name(by)
 	local out = {}
 	for k, v in pairs(by or {}) do out[#out + 1] = k .. '=' .. v end

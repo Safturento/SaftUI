@@ -326,4 +326,4 @@ define('item', {
 	end,
 })
 
-Kit.NewSlot, Kit.PaintSlot, Kit.MarkSlot = NewSlot, PaintSlot, MarkSlot
+Kit.NewSlot, Kit.PaintSlot, Kit.MarkSlot, Kit.DotsTip = NewSlot, PaintSlot, MarkSlot, DotsTip

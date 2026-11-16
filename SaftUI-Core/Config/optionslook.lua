@@ -189,13 +189,24 @@ end
 	nil while its widget is built, and asking it once at registration dimmed the rule
 	editor's fields for good); disabled is st:SetState(frame, 'disabled', ...), after which
 	the box shows neither hover nor pushed. Task 11 removes the parameter with W.HoverEdge. extra, optional,
-	adds to the helper's options (shape, text, glyph, mark, solid...). The
+	adds to the helper's options (shape, text, glyph, mark, solid...); a box's label is given
+	to the helper as text with textKeep (it keeps the color it has, and turns dark only where
+	the dark reads better: Hover at 60% on a pale Accent). The
 	Layer, Fill and Bar sit inside the box's own 1 unit edge. Call it after the
 	widget's own SetScript of OnEnter, OnLeave, OnMouseDown, OnMouseUp and OnHide
 	(a SetScript drops the helper's hooks until its next call).
 ]]
 function W.HoverStates(frame, isDisabled, extra)
 	local opts = { edge = 'backdrop', inset = 1, body = BodyOf, blizzard = WearsBlizzard }
+	-- The box's label (its .text, or an edit box's own text) takes the readable-text pick
+	-- and keeps the color it has otherwise (textKeep: its owner's, or the font object's).
+	local label = frame.text
+	if type(label) ~= 'table' or type(label.SetTextColor) ~= 'function' then
+		label = frame.GetObjectType and frame:GetObjectType() == 'EditBox' and frame or nil
+	end
+	-- (a caller that gives its own text, as the rule editor's NOT box does, gets the helper's own pick
+	-- with its textRest, unless it also says textKeep)
+	if label and not (extra and extra.text) then opts.text, opts.textKeep = label, true end
 	local shape = 'box'
 	for key, value in pairs(extra or {}) do
 		if key == 'shape' then shape = value else opts[key] = value end

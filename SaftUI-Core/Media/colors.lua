@@ -282,6 +282,20 @@ end
 
 function st:InColorEdit() return editing end
 
+-- An edit held by more than one holder (the color picker and the Accent menu can be open at
+-- once, in either order): each holds it and the edit ends when the last lets go.
+local holders = 0
+function st:HoldColorEdit()
+	holders = holders + 1
+	st:BeginColorEdit()
+end
+
+function st:ReleaseColorEdit()
+	if holders == 0 then return end
+	holders = holders - 1
+	if holders == 0 then st:EndColorEdit() end
+end
+
 -- One color changed (a Colors row's set or reset, the Accent's).
 function st:ColorChanged(group, key)
 	if not editing then
@@ -1007,6 +1021,9 @@ function CO:AccentOption(order)
 		order = order,
 		name = 'Accent',
 		desc = "SaftUI's accent under every theme: what is on, picked or current, a field you type in, links and marks, fills that show progress, and the chat prefix. Hover, pushed and selected are made from it; the dots set how.",
+		-- The dots: how its states are made (Media/states.lua's ST.MenuGroup), a menu of the row's own.
+		menu = st.States.MenuGroup(),
+		menuTitle = 'Accent',
 		get = function()
 			return st:Color('accent'):GetRGB()
 		end,
