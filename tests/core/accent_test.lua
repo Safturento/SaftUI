@@ -135,8 +135,9 @@ test('every live recolor of the accent: the edit mode bar follows at once (Coord
 	EM:Deactivate()
 end)
 
-test("the Accent's description says nothing of a reload and ends at the chat prefix", function()
-	local desc = st:GetModule('Colors'):AccentOption(5).desc
-	check(not desc:lower():find('reload', 1, true), 'no reload')
-	check(desc:sub(-#'and the chat prefix.') == 'and the chat prefix.', 'ends at the chat prefix')
+test("the Accent's description says nothing of a reload, names what it is not a state of, and says the states are made from it", function()
+	local option = st:GetModule('Colors'):AccentOption(5)
+	eq(option.desc, "SaftUI's accent under every theme: what is on, picked or current, a field you type in, links and marks, fills that show progress, and the chat prefix. Hover, pushed and selected are made from it; the dots set how.")
+	check(not option.desc:lower():find('reload', 1, true), 'no reload')
+	eq(option.preview, 'states', 'its preview is the states kind')
 end)
