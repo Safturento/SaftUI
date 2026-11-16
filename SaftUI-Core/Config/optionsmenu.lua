@@ -66,6 +66,12 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	dropdown's list and a confirm draw at TOOLTIP, above it: their catchers
 	close them and leave the menu, and Esc closes the list first.
 
+	A menu group with colorEdit = true (the Accent's) begins a color edit as it opens
+	(st:BeginColorEdit, when none is on) and ends it as it closes, so a drag in it is one
+	pass of the colors a frame and the whole pass runs at the close; it ends only an edit
+	it began (the color picker's is the picker's). The menu and the picker never overlap:
+	the catcher takes the click outside the menu.
+
 	A set in it (MenuChanged): a failed validate shows in the status line of
 	what its item is in, the window's, or the small dialog's when the item is
 	one of its rows (the window's sits behind it), and nothing is drawn
@@ -326,6 +332,11 @@ local function Build()
 		M.owner, M.root, M.dragging, M.dots = nil, nil, nil, nil
 		-- Off the dots it was on: they belong to a widget that goes back to a pool.
 		frame:ClearAllPoints()
+		-- The color edit it began ends last: its whole pass covers what the menu set.
+		if M.beganEdit then
+			M.beganEdit = nil
+			st:EndColorEdit()
+		end
 	end)
 	-- Its sets can reach protected frames, as the dialog's.
 	frame:RegisterEvent('PLAYER_REGEN_DISABLED')
@@ -382,6 +393,12 @@ function OW:OpenMenu(widget)
 	if not M.frame then Build() end
 	self:CloseMenu()
 	Draw(widget.rowBody, row, widget.dots, menu, title)
+	-- A menu that changes colors (colorEdit) edits as the picker does: changes pass once a
+	-- frame, the whole pass at the close. Only an edit it began is its to end.
+	if menu.colorEdit == true and not st:InColorEdit() then
+		st:BeginColorEdit()
+		M.beganEdit = true
+	end
 	M.frame:Show()
 	return true
 end

@@ -523,6 +523,12 @@ test('Accent: one color for every theme, no opacity, its own reset, and it says 
 	eq(row.name, 'Accent'); eq(row.type, 'color'); eq(row.size, 'small'); eq(row.order, 5.5); eq(row.hasAlpha, nil)
 	check(row.desc:find('accent', 1, true), 'its desc names what it colors')
 	check(not row.desc:lower():find('reload', 1, true), 'and it says nothing of a reload: it follows as it is picked')
+	-- the dots: a menu of the states' derivation, which makes the row 190 wide in the window
+	-- (the control and its slot: tests/core/accent_menu_test.lua draws it)
+	eq(type(row.menu), 'table', 'the row has a menu'); eq(row.menuTitle, 'Accent')
+	local menu = {}
+	for _, key in ipairs({ 'preview', 'mode', 'strengths', 'tones', 'hue' }) do menu[#menu + 1] = row.menu.args[key] and key or '-' end
+	eq(table.concat(menu, ','), 'preview,mode,strengths,tones,hue', 'its sections')
 	local default = st.defaults.theme.accent
 	eq(Rgb({ default.r, default.g, default.b }), '0,0.68,0.94'); check(default.a == nil or default.a == 1, 'no alpha: fully opaque')
 	eq(Rgb({ Get('accent') }), '0,0.68,0.94')

@@ -121,6 +121,18 @@ define('input', {
 	clear of its border and round corners; the white square parts it from the
 	code, so there's no line.
 
+	A color with a menu (SaftUI's field, read raw, as an item's: menu, a group, and
+	menuTitle; the Accent's) has a slot at the field's right, Lucide's
+	ellipsis-vertical (Kit.NewSlot, w.dots), Kit.FONT_SLOT_GAP after the field (4,
+	8 under Blizzard) and 16 wide, so the control is 190 wide (194 under Blizzard)
+	like a font row, where a color without one is 170. Its tooltip is the menu's title
+	and " states" ("Accent states") and how the states are made from the Accent. A click opens the
+	menu (w:OpenMenu, w:ToggleMenu: the item's, optionsmenu.lua), which
+	holds the option's menu group; the slot takes no mouse while the row is disabled.
+	The swatch, the code and the reset are as without a menu; the slot sits outside the
+	field's own frame, at its right, and the widget places the field that much left of the
+	row's right edge (w.room).
+
 	A color with a toggle (SaftUI's field, OM.ToggleState: get, set, offText,
 	desc) is one control for "use this color" and the color: a check box at the
 	field's left, CHECK_SIZE square on its line, the kit's (Blizzard's art under
@@ -293,8 +305,9 @@ builders.color = function(w)
 	end)
 	-- Box's look until the first look change (LookColor).
 	PlaceParts(w, false)
-	-- the states last, after the scripts: the code's color is the field's own, never recolored
-	HoverStates(button, function() return w.disabled end)
+	-- the states last, after the scripts: the code's color is the field's own (Refresh); the helper
+	-- keeps it and turns it dark only where the dark reads better (textKeep)
+	HoverStates(button, function() return w.disabled end, { text = w.text, textKeep = true })
 end
 
 -- The checker under a see-through color (shown), else none: the dark grey
@@ -343,13 +356,75 @@ local function HexText(r, g, b, a, hasAlpha)
 end
 W.HexText = HexText -- a color's code as its field writes it: a setting's reset names its default with it (optionsshare.lua)
 
+-- The menu's slot, made the first time a row has a menu: outside the field, at its right.
+local function MakeSlot(w)
+	local dots = Kit.NewSlot(w.frame, st.icons.ellipsisVertical)
+	dots.onClick = function() w:ToggleMenu() end
+	dots.tip = function()
+		local title = w.row and OM.Member(w.root, w.row, 'menuTitle')
+		if type(title) ~= 'string' or title == '' then title = w.row and w.row.name or '' end
+		return title .. ' states', { 'How hover, pushed, selected and disabled are made from the Accent.' }
+	end
+	w.dots = dots
+	return dots
+end
+
 define('color', {
-	Bind = function(self, ...)
+	Bind = function(self, root, row, onChanged)
 		-- A picker open for this field's last row is over: it cancels while the
 		-- field still has that row to put the opening color back on.
 		W.CloseColorPicker(self.frame)
-		LookColor(self, BlizzardLook())
-		return Base.Bind(self, ...)
+		local blizzard = BlizzardLook()
+		LookColor(self, blizzard)
+		-- A row with a menu has its slot (the item's: optionsitem.lua) and a control as wide as both.
+		local option = type(row) == 'table' and row.option or nil
+		local hasMenu = type(option) == 'table' and type(option.menu) == 'table'
+		if hasMenu then
+			if not self.dots then MakeSlot(self) end
+			self.dots.blizzard = blizzard
+			Kit.PaintSlot(self.dots, false)
+			local gap = Kit.FONT_SLOT_GAP[blizzard and 'blizzard' or 'theme']
+			self.dots:ClearAllPoints()
+			self.dots:SetPoint('LEFT', self.frame, 'RIGHT', gap, 0)
+			self.room = gap + self.dots:GetWidth()
+		else
+			self.room = 0
+		end
+		if self.dots then self.dots:SetShown(hasMenu) end
+		self.width = W.WIDTH.color + self.room
+		return Base.Bind(self, root, row, onChanged)
+	end,
+
+	-- The field at the row's right edge, less the slot's room.
+	SetPoint = function(self, point, relative, relPoint, x, y)
+		if self.room and self.room > 0 and (point == 'RIGHT' or point == 'TOPRIGHT' or point == 'BOTTOMRIGHT') then
+			x = (x or 0) - self.room
+		end
+		self.frame:SetPoint(point, relative, relPoint, x, y)
+	end,
+
+	-- The option's menu (a group), what OW:OpenMenu draws; nil without one or while disabled.
+	Menu = function(self)
+		local option = self.row and self.row.option
+		if self.disabled or type(option) ~= 'table' or type(option.menu) ~= 'table' then return nil end
+		return option.menu
+	end,
+
+	OpenMenu = function(self)
+		local OW = st.OptionsWindow
+		if not (OW and OW.OpenMenu) then return false end
+		return OW:OpenMenu(self)
+	end,
+
+	-- The slot's click: the menu, or closed when it's this row's.
+	ToggleMenu = function(self)
+		if self.disabled or not self.row then return end
+		local OW = st.OptionsWindow
+		if OW and OW.IsMenuShown and OW:IsMenuShown(self) then
+			OW:CloseMenu()
+		else
+			self:OpenMenu()
+		end
 	end,
 
 	Refresh = function(self)
@@ -400,6 +475,10 @@ define('color', {
 	OnRelease = function(self)
 		W.CloseColorPicker(self.frame)
 		if self.check and GameTooltip then W.HideTip(self.check) end
+		if self.dots then
+			if GameTooltip then W.HideTip(self.dots) end
+			Kit.PaintSlot(self.dots, false)
+		end
 	end,
 
 	-- Opens SaftUI's picker (optionscolorpicker.lua) on the current color. Each
@@ -447,6 +526,11 @@ define('color', {
 			self.check:EnableMouse(not disabled)
 			SetCheck(self.check, self.check:GetChecked(), disabled)
 		end
+		-- the slot takes no mouse while disabled either
+		if self.dots then
+			self.dots.disabled = disabled
+			self.dots:EnableMouse(not disabled)
+		end
 		Kit.PaintFace(self.frame)
 	end,
 })
@@ -467,7 +551,7 @@ builders.execute = function(w)
 	button:SetScript('OnMouseDown', function() w.text:SetPoint('CENTER', button, 'CENTER', 0, -1) end)
 	button:SetScript('OnMouseUp', function() w.text:SetPoint('CENTER', button, 'CENTER', 0, 0) end)
 	button:SetScript('OnClick', function() w:Run() end)
-	HoverStates(button, function() return w.disabled end)
+	HoverStates(button, function() return w.disabled end, { text = w.text, textKeep = true })
 end
 
 -- The execute button's look, when it changed: the window's own (Box), or

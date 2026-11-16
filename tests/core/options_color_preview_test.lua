@@ -827,7 +827,7 @@ test("the states kind under Blizzard: drawn as Thick with the note; Thick and Th
 	local _, F = open_states()
 	local p = F.previewPieces.states
 	check(F.previewNote:IsShown(), 'a note under Blizzard')
-	eq(F.previewNote:GetText(), "Shown as Thick: under Blizzard, SaftUI's controls wear Blizzard's art.", 'its text')
+	eq(F.previewNote:GetText(), "Shown as Thick: Blizzard's art draws its own.", 'its text')
 	for i, tile in ipairs(p.tiles) do eq(drawn(tile), 'thick,solid,panel', 'tile ' .. i .. ' drawn Thick') end
 	for i, button in ipairs(p.buttons) do
 		eq(st:StateLook(button).blizzard, false, 'button ' .. i .. ' wears the kit look, not Blizzard\'s art')
@@ -934,13 +934,75 @@ test("the danger kind: the flash at 0.4 and the locked slot at 0.3 times the pic
 	reset()
 end)
 
+test('the danger slots are centred from the size constants, with sizes read back a hair off; the veil is over the slot\'s fill', function()
+	T.theme('thick')
+	for _, noise in ipairs({ 0, 2 ^ -14 }) do
+		reset()
+		stub.size_noise = noise
+		local _, F = danger_open()
+		local p = F.previewPieces.danger
+		for i, want in ipairs({ { 44, -7 }, { 49, -12 } }) do
+			local _, _, _, x, y = p.slots[i]:GetPoint()
+			eq(x .. ',' .. y, want[1] .. ',' .. want[2], ('slot %d is placed at its constants (noise %s)'):format(i, tostring(noise)))
+			eq((p.veils[i]:GetDrawLayer()), 'OVERLAY', 'the veil is over the slot\'s fill (' .. i .. ')')
+		end
+	end
+	reset()
+end)
+
+test("a preview paint derives into the strip's own table, never the saved cache; with no color it paints from the cache", function()
+	T.theme('thick')
+	reset()
+	local _, F = open({ preview = 'states', name = 'Accent', r = 0.54, g = 0.36, b = 0.96 })
+	local p = F.previewPieces.states
+	check(p.derived ~= st.States.cache, 'a table of its own')
+	local function snapshot()
+		local out = {}
+		for _, name in ipairs({ 'hover', 'pushed', 'fill', 'fillHover', 'edge', 'edgeHover' }) do
+			out[#out + 1] = table.concat({ st:StateColor(name) }, ',')
+		end
+		return table.concat(out, '|') .. '|' .. st.States.cache.mode
+	end
+	local before = snapshot()
+	W.PaintStates(p, 0.9, 0.2, 0.2, { mode = 'layers', hover = 0.5, pushed = 0.5, selected = 0.5, fade = 0.5, disabled = 0.5,
+		step = 0.1, shift = 10, chroma = 0.1, direction = 'warm' })
+	eq(snapshot(), before, "the saved cache, and so every real widget's states, are untouched")
+	eq(st:StateLook(p.buttons[2]).layer.a, 0.5, 'while the strip shows the draft')
+	W.PaintStates(p)
+	eq(st:StateLook(p.buttons[2]).layer.a, st.States.cache.h, 'with no color: the cache, the saved settings')
+	reset()
+end)
+
+test('the states strip narrower than the picker: 54 wide tiles across 348, 4 apart at least; 58 at 370 and 402 as before', function()
+	T.theme('thick')
+	reset()
+	local _, F = open({ preview = 'states', name = 'Accent' })
+	local kind = W.PreviewKinds().states
+	local p = F.previewPieces.states
+	local function lefts()
+		local out = {}
+		for i, tile in ipairs(p.tiles) do out[i] = ('%d:%d'):format(tile:GetLeft() - F.preview:GetLeft(), tile:GetWidth()) end
+		return table.concat(out, ' ')
+	end
+	eq(lefts(), '0:58 62:58 124:58 187:58 249:58 312:58', '370')
+	kind.Layout(p, 348)
+	eq(lefts(), '0:54 58:54 117:54 176:54 235:54 294:54', '348: narrower tiles, the last at the right edge')
+	local b = p.buttons[1]
+	eq((b:GetLeft() - p.tiles[1]:GetLeft()) .. ',' .. b:GetWidth(), '4,46', 'the button is centred in its tile')
+	kind.Layout(p, 402)
+	eq(lefts(), '0:58 68:58 137:58 206:58 275:58 344:58', '402')
+	kind.Layout(p, 370)
+	eq(lefts(), '0:58 62:58 124:58 187:58 249:58 312:58', 'and back to 370')
+	reset()
+end)
+
 test('the danger kind under Blizzard: drawn as Thick with the note; no Buttons color is read', function()
 	T.theme('blizzard')
 	reset()
 	local _, F = danger_open()
 	local p = F.previewPieces.danger
 	check(F.previewNote:IsShown(), 'a note under Blizzard')
-	eq(F.previewNote:GetText(), "Shown as Thick: under Blizzard, SaftUI's controls wear Blizzard's art.", 'its text')
+	eq(F.previewNote:GetText(), "Shown as Thick: Blizzard's art draws its own.", 'its text')
 	for i = 1, 2 do
 		eq(drawn(p.tiles[i]), 'thick,solid,panel', 'tile ' .. i)
 		eq(drawn(p.slots[i]), 'thick,solid,slot', 'slot ' .. i)

@@ -315,3 +315,138 @@ end
 function st:StateAlpha(derived)
 	return (derived or ST.Current()).d
 end
+
+------------------------------------------------------------------ the dots menu
+
+--[[
+	The Accent row's menu (the spec's section 6), what CO:AccentOption gives its `menu`: a group
+	the options window draws in a menu of its own (Config/optionsmenu.lua), titled "Accent":
+	the states strip (`statepreview`, Config/optionspreview.lua), Derivation, then Strengths,
+	Tones and Hue shift, each setting a row of its own with its default's reset (saved at
+	theme.states.<key>, so the reset is the value in st.defaults and writes through the row's
+	set). Every set writes the profile and says ST.Changed(), so every state on screen follows.
+	colorEdit: the menu begins a color edit as it opens and ends it as it closes
+	(OW:OpenMenu), so a drag is one pass a frame. A row a mode doesn't use is dimmed
+	(disabled, with its disabledDesc), never hidden and never reset: it keeps its value.
+]]
+local STRENGTH_DESCS = {
+	hover = 'How strongly a widget under the mouse is tinted: its body, never only its edge.',
+	pushed = "How strongly a widget is tinted while it's held down.",
+	selected = "How strongly the fill of a selected, checked or current widget starts, at its left. Its edge, bar or underline is always the full Accent.",
+	fade = 'How far across a selected widget its fill fades to nothing: at 100% it fades over the whole width.',
+	disabled = 'How see-through a disabled widget is: at 40% it shows at 40%.',
+}
+
+-- The profile's theme.states table, made when a profile has none.
+local function SavedStates()
+	local theme = st.config.profile.theme
+	if type(theme.states) ~= 'table' then theme.states = {} end
+	return theme.states
+end
+
+-- A setting's write: the profile, then every state follows.
+local function Write(key, value)
+	SavedStates()[key] = value
+	ST.Changed()
+end
+
+local function Mode() return ST.Settings().mode end
+
+local function Setting(order, key, name, desc, extra)
+	local range = ST.RANGES[key]
+	local option = {
+		order = order,
+		type = 'range',
+		name = name,
+		desc = desc,
+		min = range[1],
+		max = range[2],
+		step = 0.01,
+		saved = st.Config.SavedAt('theme', 'states', key),
+		get = function() return ST.Settings()[key] end,
+		set = function(_, value) Write(key, value) end,
+	}
+	for field, value in pairs(extra or {}) do option[field] = value end
+	return option
+end
+
+local TONES_OFF = 'Only for Tones and Hue-shifted tones.'
+local HUE_OFF = 'Only for Hue-shifted tones.'
+
+function ST.MenuGroup()
+	local function Select(order, key, name, desc, values, sorting, extra)
+		local option = {
+			order = order,
+			type = 'select',
+			name = name,
+			desc = desc,
+			values = values,
+			sorting = sorting,
+			saved = st.Config.SavedAt('theme', 'states', key),
+			get = function() return ST.Settings()[key] end,
+			set = function(_, value) Write(key, value) end,
+		}
+		for field, value in pairs(extra or {}) do option[field] = value end
+		return option
+	end
+	local function Tones() return { disabled = function() return Mode() == 'layers' end, disabledDesc = TONES_OFF } end
+	local function Hue() return { disabled = function() return Mode() ~= 'hue' end, disabledDesc = HUE_OFF } end
+	return {
+		type = 'group',
+		name = 'Accent',
+		colorEdit = true,
+		args = {
+			preview = {
+				order = 1,
+				type = 'statepreview',
+				name = 'States',
+				desc = 'The states the Accent makes under the settings below.',
+				noReset = 'a picture of the states, not a setting',
+			},
+			mode = Select(2, 'mode', 'Derivation',
+				'How hover, pushed and selected are made from the Accent. Layers lays the Accent itself over a widget. Tones uses a lighter tone of it under the mouse and a darker one while held. Hue-shifted tones also turn the lighter tone toward warm and the darker toward cool, as a painter shades.',
+				{ layers = 'Layers', tones = 'Tones', hue = 'Hue-shifted tones' }, { 'layers', 'tones', 'hue' }),
+			strengths = {
+				order = 3,
+				type = 'group',
+				inline = true,
+				name = 'Strengths',
+				args = {
+					hover = Setting(1, 'hover', 'Hover', STRENGTH_DESCS.hover, { isPercent = true }),
+					pushed = Setting(2, 'pushed', 'Pushed', STRENGTH_DESCS.pushed, { isPercent = true }),
+					selected = Setting(3, 'selected', 'Selected fill', STRENGTH_DESCS.selected, { isPercent = true }),
+					fade = Setting(4, 'fade', 'Selected fade', STRENGTH_DESCS.fade, { isPercent = true }),
+					disabled = Setting(5, 'disabled', 'Disabled', STRENGTH_DESCS.disabled, { isPercent = true }),
+				},
+			},
+			tones = {
+				order = 4,
+				type = 'group',
+				inline = true,
+				name = 'Tones',
+				args = {
+					step = Setting(1, 'step', 'Lightness step',
+						'How much lighter the hover tone and how much darker the pushed tone are than the Accent, in OKLCH lightness (0 to 1).',
+						Tones()),
+				},
+			},
+			hue = {
+				order = 5,
+				type = 'group',
+				inline = true,
+				name = 'Hue shift',
+				args = {
+					shift = Setting(1, 'shift', 'Hue shift',
+						"How far the tones' hue turns, in degrees, toward warm (yellow) or cool (violet blue). It never turns past it.",
+						{ step = 1, disabled = Hue().disabled, disabledDesc = HUE_OFF }),
+					direction = Select(2, 'direction', 'Direction',
+						'Which way the hue turns: warm light turns the lighter tone toward yellow and the darker toward blue; cool light the reverse.',
+						{ warm = 'Warm light, cool shadow', cool = 'Cool light, warm shadow' }, { 'warm', 'cool' }, Hue()),
+					chroma = Setting(3, 'chroma', 'Chroma change',
+						"How much less colorful the lighter tone is, and how much more the darker, as a share of the Accent's.",
+						{ isPercent = true, disabled = Hue().disabled, disabledDesc = HUE_OFF }),
+				},
+			},
+		},
+	}
+end

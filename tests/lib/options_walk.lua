@@ -5,7 +5,7 @@
 --   each_option(tree, fn)  calls fn(option, path) for every option under tree
 --                          (a group: its args, their args, ...), groups
 --                          included, in key order, and an option's menu (an
---                          item's, a group) after it, with its options: the
+--                          item's or a color row's, a group) after it, with its options: the
 --                          menu's path goes on through the item's key and
 --                          'menu' ({ ..., 'hotkey', 'menu', 'size' }). path is
 --                          the list of keys from tree down to the option.
@@ -26,7 +26,8 @@
 --                          are shared, and tree itself is untouched.
 --   SAFTUI_TYPES           SaftUI's own option types, which only its options
 --                          window draws: position, item (optionsitem.lua), font
---                          (optionsfont.lua), and the types the bags define with W.Define
+--                          (optionsfont.lua), statepreview (the Accent menu's strip,
+--                          optionspreview.lua), and the types the bags define with W.Define
 --                          (optionswidgets.lua).
 
 local SAFTUI_FIELDS = {
@@ -37,7 +38,7 @@ local SAFTUI_FIELDS = {
 	faceOnly = true, fontFields = true, saved = true, noReset = true, preview = true, applyOnRelease = true,
 }
 
-SAFTUI_TYPES = { position = true, item = true, font = true, bagcategories = true, bagrule = true, bagitems = true }
+SAFTUI_TYPES = { position = true, item = true, font = true, statepreview = true, bagcategories = true, bagrule = true, bagitems = true }
 
 local function SortedKeys(args)
 	local keys = {}

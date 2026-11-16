@@ -118,9 +118,9 @@ local function TintGlyphs(rec, r, g, b)
 	for i = 1, #glyphs do Tint(glyphs[i], r, g, b) end
 end
 
--- What the label takes over its body: the body, the Layer, the Fill at its
--- strongest, then Text > Normal or the dark text by contrast.
-local function PickText(rec, d, layer, fill)
+-- What a label sits on under the states that show: the body, the Layer, then the Fill at its
+-- strongest.
+local function Composite(rec, d, layer, fill)
 	local r, g, b = rec.bodyR, rec.bodyG, rec.bodyB
 	local c
 	if layer then
@@ -131,6 +131,12 @@ local function PickText(rec, d, layer, fill)
 		c = d[fill]
 		r, g, b = ST().Mix(r, g, b, c[1], c[2], c[3], c[4])
 	end
+	return r, g, b
+end
+
+-- What the label takes over its body: Text > Normal or the dark text by contrast.
+local function PickText(rec, d, layer, fill)
+	local r, g, b = Composite(rec, d, layer, fill)
 	local n = st:Color('text', 'normal')
 	return ST().PickText(n.r, n.g, n.b, r, g, b)
 end
@@ -190,6 +196,67 @@ local function RestText(rec)
 			texts[i]:SetTextColor(own[at - 3], own[at - 2], own[at - 1])
 		else
 			texts[i]:SetTextColor(rr, rg, rb)
+		end
+	end
+end
+
+-- textKeep: a label (a kit box's) keeps the color it has, whoever gave it (its owner's, or the
+-- font object's, which follows Text > Normal live), and is written only when the dark text
+-- reads better over what is under it than its own color does. The color it had is kept while
+-- the dark text is on, and put back when that is no longer so or nothing is under the label;
+-- a color its owner sets meanwhile is its owner's and is not put back over. Nothing is
+-- written (and no table made after the first) while its own color reads.
+local function PlainColor(label)
+	local r, g, b = label:GetTextColor()
+	return st.PlainNumber(r), st.PlainNumber(g), st.PlainNumber(b)
+end
+
+local function IsDark(r, g, b)
+	local dark = ST().DARK_TEXT
+	return math.abs(r - dark[1]) <= TOL and math.abs(g - dark[2]) <= TOL and math.abs(b - dark[3]) <= TOL
+end
+
+local function KeepText(rec, d, layer, fill)
+	local texts, keep = rec.texts, rec.keep
+	if not keep then
+		keep = {}
+		rec.keep = keep
+	end
+	local cr, cg, cb = Composite(rec, d, layer, fill)
+	local dark = ST().DARK_TEXT
+	for i = 1, #texts do
+		local at = i * 4
+		local label = texts[i]
+		local r, g, b = PlainColor(label)
+		if r and g and b then
+			-- the dark text on, and its owner has recolored it since: that color is the label's own
+			if keep[at] and not IsDark(r, g, b) then keep[at] = false end
+			local lr, lg, lb = r, g, b
+			if keep[at] then lr, lg, lb = keep[at - 3], keep[at - 2], keep[at - 1] end
+			local pr, pg, pb = ST().PickText(lr, lg, lb, cr, cg, cb)
+			if pr == dark[1] and pg == dark[2] and pb == dark[3] and not (lr == pr and lg == pg and lb == pb) then
+				if not keep[at] then
+					keep[at - 3], keep[at - 2], keep[at - 1], keep[at] = r, g, b, true
+					label:SetTextColor(pr, pg, pb)
+				end
+			elseif keep[at] then
+				keep[at] = false
+				label:SetTextColor(lr, lg, lb)
+			end
+		end
+	end
+end
+
+local function KeepRest(rec)
+	local texts, keep = rec.texts, rec.keep
+	if not keep then return end
+	for i = 1, #texts do
+		local at = i * 4
+		if keep[at] then
+			keep[at] = false
+			local r, g, b = PlainColor(texts[i])
+			-- still the dark text we wrote: its own color is back; anything else is its owner's
+			if r and g and b and IsDark(r, g, b) then texts[i]:SetTextColor(keep[at - 3], keep[at - 2], keep[at - 1]) end
 		end
 	end
 end
@@ -268,7 +335,9 @@ local function Colors(rec, d, explicit)
 		end
 		if rec.edgeKind then PutEdge(rec, c[1], c[2], c[3]) end
 	end
-	if #rec.texts > 0 and (layer or fill) then PaintText(rec, PickText(rec, d, layer, fill)) end
+	if #rec.texts > 0 and (layer or fill) then
+		if rec.opts.textKeep then KeepText(rec, d, layer, fill) else PaintText(rec, PickText(rec, d, layer, fill)) end
+	end
 	if rec.glyphObject and (layer or rec.selected) then
 		if (rec.hover or rec.pushed) and rec.opts.glyphHover then
 			TintGlyphs(rec, rec.opts.glyphHover(rec.frame))
@@ -375,7 +444,7 @@ local function Refresh(rec)
 			rec.textLit = true
 		elseif rec.textLit then
 			rec.textLit = false
-			RestText(rec)
+			if rec.opts.textKeep then KeepRest(rec) else RestText(rec) end
 		end
 	end
 	if rec.glyphObject then
@@ -727,6 +796,8 @@ end
 --              (r nil: the rest edge back), or false
 --   bar        'left' | 'bottom' (a row's, a tab's by default)
 --   text       a font string or a list of them; textRest = function(frame) -> r, g, b (Text > Normal if nil)
+--   textKeep   true: the labels keep the color they have (their owner's, or the font object's) and take the dark text only
+--              where it reads better than their own color does; textRest is not used
 --   body       { r, g, b } or function(frame) -> r, g, b: what the text sits on, for the pick
 --   mark       the check's square (a texture; one is made when the shape is a check)
 --   glyphHover function(frame) -> r, g, b: a glyph's color under hover and pushed instead of edgeHover (a link's Text > Strong)

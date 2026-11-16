@@ -102,6 +102,12 @@ local st = SaftUI
 	    summary }      -- SaftUI's field, read raw: function(info) -> text, tip.
 	                   -- An item with one is a part row (optionsitem.lua): the
 	                   -- text drawn right of its name, the tip its tooltip
+	A color option (type = 'color', optionstypes.lua) may carry menu and menuTitle
+	too, as the Accent row does (Media/colors.lua's CO:AccentOption: its menu is
+	Media/states.lua's ST.MenuGroup()): the color widget then has a slot of dots at its
+	right that opens it, and OM.Search finds its settings as an item's. A menu group may carry colorEdit
+	(read raw): OW:OpenMenu then begins a color edit as the menu opens and ends it as
+	it closes (optionsmenu.lua).
 	Its menu (SaftUI's own field, never in args) is a group drawn in a menu
 	of its own (optionsmenu.lua) from the tree OM.MenuRoot(option) gives:
 	{ menu = option.menu }, so a menu option's path is { 'menu', key } and
@@ -1373,7 +1379,10 @@ function OM.Search(root, text)
 		Feed(sections, within, menu, { OM.MENU_KEY }, false)
 		for _, section in ipairs(sections) do
 			for _, inner in ipairs(section.rows) do
-				if inner.type ~= 'description' and (tabMatch or itemMatch or matches(inner.name)) then
+				-- (a picture a menu shows, a bare custom row such as the Accent menu's states strip, is no setting)
+				local widgets = st.OptionsWidgets
+				local picture = widgets and widgets.CUSTOM and widgets.CUSTOM[inner.type] and widgets.CUSTOM[inner.type].bare
+				if inner.type ~= 'description' and not picture and (tabMatch or itemMatch or matches(inner.name)) then
 					results[#results + 1] = {
 						pageKey = pageKey,
 						path = at or row.path,
@@ -1433,7 +1442,7 @@ function OM.Search(root, text)
 					}
 					if #results >= MAX_RESULTS then return true end
 				end
-				if row.type == 'item' and CollectMenu(pageKey, row, tabMatch, tabName, footer, at) then return true end
+				if (row.type == 'item' or row.type == 'color') and CollectMenu(pageKey, row, tabMatch, tabName, footer, at) then return true end
 			end
 		end
 	end

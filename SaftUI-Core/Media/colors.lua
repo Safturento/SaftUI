@@ -1007,6 +1007,9 @@ function CO:AccentOption(order)
 		order = order,
 		name = 'Accent',
 		desc = "SaftUI's accent under every theme: what is on, picked or current, a field you type in, links and marks, fills that show progress, and the chat prefix. Hover, pushed and selected are made from it; the dots set how.",
+		-- The dots: how its states are made (Media/states.lua's ST.MenuGroup), a menu of the row's own.
+		menu = st.States.MenuGroup(),
+		menuTitle = 'Accent',
 		get = function()
 			return st:Color('accent'):GetRGB()
 		end,
