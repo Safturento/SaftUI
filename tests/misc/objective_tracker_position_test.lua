@@ -507,8 +507,9 @@ test("the Blizzard's tracker page: the fonts, then Position", function()
 	clean()
 end)
 
-test("Blizzard's tracker's Position resets to Blizzard's spot", function()
-	world('forever')
+for _, client in ipairs({ 'forever', 'retail' }) do
+test("Blizzard's tracker's Position resets to Blizzard's spot (" .. client .. ')', function()
+	world(client)
 	local OM = st.OptionsModel
 	local root = { ObjectiveTracker = OTP:GetConfigTable() }
 	local position = root.ObjectiveTracker.args.general.args.position
@@ -523,8 +524,10 @@ test("Blizzard's tracker's Position resets to Blizzard's spot", function()
 	eq(('%s %s %s %d %d'):format(saved.point, saved.frame, saved.rel_point, saved.x_off, saved.y_off),
 		('%s %s %s %d %d'):format(default.point, default.frame, default.rel_point, default.x_off, default.y_off), "back at Blizzard's spot")
 	check(not OM.DefaultDiffers(root, row), 'and the icon is gone')
+	eq(saved.y_off, client == 'forever' and -275 or -260, "the client's own default")
 	clean()
 end)
+end
 
 test('the addon loading after SaftUI', function()
 	world('forever', nil, { late = true })

@@ -23,7 +23,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-15 — Shipped category names shown numbered: no test pins that they show no reset icon](#2026-11-15--shipped-category-names-shown-numbered-no-test-pins-that-they-show-no-reset-icon)
   - [2026-11-15 — Reset walks: the feed's, Minimap's and Micro menu's movers are registered inline, so the tests pin a copy](#2026-11-15--reset-walks-the-feeds-minimaps-and-micro-menus-movers-are-registered-inline-so-the-tests-pin-a-copy)
   - [2026-11-15 — Reset walk: the profile compare is most of a unit page's cost](#2026-11-15--reset-walk-the-profile-compare-is-most-of-a-unit-pages-cost)
-  - [2026-11-15 — Blizzard's tracker: the Position reset is tested on Forever only](#2026-11-15--blizzards-tracker-the-position-reset-is-tested-on-forever-only)
   - [2026-11-15 — Forever: Show in > Bank does nothing for the default bank (the combined bank)](#2026-11-15--forever-show-in--bank-does-nothing-for-the-default-bank-the-combined-bank)
   - [2026-11-15 — Auto Vendor counts a fresh purchase in a just-sold slot as a refused sale](#2026-11-15--auto-vendor-counts-a-fresh-purchase-in-a-just-sold-slot-as-a-refused-sale)
   - [2026-11-15 — Auto Vendor's second question overstates the earlier stacks that leave](#2026-11-15--auto-vendors-second-question-overstates-the-earlier-stacks-that-leave)
@@ -131,6 +130,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-15 — Blizzard's tracker: the Position reset is tested on Forever only](#2026-11-15--blizzards-tracker-the-position-reset-is-tested-on-forever-only)
   - [2026-11-15 — Buffs and debuffs: Size and Outline keep hand defaults a derived one would replace](#2026-11-15--buffs-and-debuffs-size-and-outline-keep-hand-defaults-a-derived-one-would-replace)
   - [2026-11-15 — Buffs and debuffs: Wrap's hand reset copies the General group's set](#2026-11-15--buffs-and-debuffs-wraps-hand-reset-copies-the-general-groups-set)
   - [2026-11-15 — Buffs and debuffs: one helper for the wrap the layout keeps, so the layout and Wrap's default cannot drift](#2026-11-15--buffs-and-debuffs-one-helper-for-the-wrap-the-layout-keeps-so-the-layout-and-wraps-default-cannot-drift)
@@ -405,16 +405,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 **Anchors:** `tests/lib/reset_walk.lua` (`Changes`, `RoundTrip`, `ctx.base`), `tests/unitframes/config_test.lua`.
 
 **Shape of work:** A cheaper way to see a write outside a row's saved path: a write log on the profile table, or comparing only the saved path's top-level key plus one whole-profile compare at the end of a page.
-
-### 2026-11-15 — Blizzard's tracker: the Position reset is tested on Forever only
-
-**What:** The default differs by client (`y_off` -275 or -260); the test runs on Forever. A retail run on the scratch check gave -260, which is right.
-
-**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
-
-**Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_ObjectiveTrackerPosition.lua` (`st:DefaultTrackerPosition()`), `tests/misc/objective_tracker_position_test.lua` ("Blizzard's tracker's Position resets to Blizzard's spot").
-
-**Shape of work:** Run that case for both clients, as the walk cases of Action bars and the Tracker now are.
 
 ### 2026-11-15 — Forever: Show in > Bank does nothing for the default bank (the combined bank)
 
@@ -2405,6 +2395,18 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-15 — Blizzard's tracker: the Position reset is tested on Forever only
+
+**What:** The default differs by client (`y_off` -275 or -260); the test runs on Forever. A retail run on the scratch check gave -260, which is right.
+
+**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
+
+**Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_ObjectiveTrackerPosition.lua` (`st:DefaultTrackerPosition()`), `tests/misc/objective_tracker_position_test.lua` ("Blizzard's tracker's Position resets to Blizzard's spot").
+
+**Shape of work:** Run that case for both clients, as the walk cases of Action bars and the Tracker now are.
+
+**Resolved 2026-11-15:** the case in `tests/misc/objective_tracker_position_test.lua` runs on both clients and pins each one's `y_off` (-275 Forever, -260 retail).
 
 ### 2026-11-15 — Buffs and debuffs: Size and Outline keep hand defaults a derived one would replace
 
