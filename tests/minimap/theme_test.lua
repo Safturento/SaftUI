@@ -332,14 +332,15 @@ test("a micro button's flat highlight is Hover at 0.4 and its pushed fill Pushed
 	eq(filled(button.PushedBackground), '0.50,0.80,0.10,0.60', 'and Pushed at 0.6')
 end)
 
-test("a bar item's highlight is Normal and its pushed fill Pushed, each at 1 times the opacity", function()
+test("a bar item's highlight is Hover at 0.4 and its pushed fill Pushed at 1, each times the opacity", function()
 	local MicroMenu = st:GetModule('MicroMenu')
 	for _, a in ipairs({ 1, 0.5 }) do
 		paint_buttons(a)
 		local item = CreateFrame('Button', nil, UIParent)
 		MicroMenu:SkinBarButton(item)
-		eq(T.text(item:GetHighlightTexture():GetVertexColor()), want('normal', 1, a), 'the highlight at ' .. a * 100 .. '%')
+		eq(T.text(item:GetHighlightTexture():GetVertexColor()), want('hover', 0.4, a), 'the highlight at ' .. a * 100 .. '%')
 		eq(T.text(item:GetPushedTexture():GetVertexColor()), want('pushed', 1, a), 'the pushed fill at ' .. a * 100 .. '%')
+		eq(item:GetHighlightTexture():GetBlendMode(), 'BLEND', 'the highlight mixes over the fill, as the micro buttons do')
 	end
 	paint_buttons(1)
 end)

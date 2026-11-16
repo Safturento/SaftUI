@@ -14,7 +14,7 @@ local skinned = setmetatable({}, { __mode = 'k' })
 
 -- The textures follow their colors (st:FollowColor), through paints made once
 -- that read their own color: a paint never closes over its texture.
-local function PaintBarHover(texture) texture:SetVertexColor(st:ColorRGBA('button', 'normal')) end
+local function PaintBarHover(texture) texture:SetVertexColor(st:ColorRGBA('button', 'hover', st.HOVER_TINT)) end
 local function PaintBarPushed(texture) texture:SetVertexColor(st:ColorRGBA('button', 'pushed')) end
 local function PaintHover(texture) texture:SetVertexColor(st:ColorRGBA('button', 'hover')) end
 -- Shared with the queue and expansion buttons' files
@@ -41,10 +41,10 @@ function MicroMenu:SkinBarButton(button)
 
     local hover = button:CreateTexture(nil, 'OVERLAY')
     hover:SetTexture(st.BLANK_TEX)
-    hover:SetVertexColor(st:ColorRGBA('button', 'normal'))
+    hover:SetVertexColor(st:ColorRGBA('button', 'hover', st.HOVER_TINT))
     hover:SetAllPoints(button)
-    button:SetHighlightTexture(hover)
-    st:FollowColor(hover, 'button', 'normal', PaintBarHover)
+    button:SetHighlightTexture(hover, 'BLEND') -- handed no blend mode, a highlight is additive
+    st:FollowColor(hover, 'button', 'hover', PaintBarHover)
 
     local pushed = button:CreateTexture(nil, 'OVERLAY')
     pushed:SetTexture(st.BLANK_TEX)

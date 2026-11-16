@@ -26,7 +26,10 @@ local COLOR = {
 	normal = { 0.2, 0.7, 0.4 },
 	hover = { 0.9, 0.2, 0.6 },
 	pushed = { 0.5, 0.8, 0.1 },
+	checked = { 0.2, 0.3, 0.9 },
 }
+-- What a hover highlight draws: Hover at 0.4 times its opacity (st.HOVER_TINT).
+local TINT = 0.4
 
 -- Sets Normal, Hover and Pushed to the odd colors, each at opacity a.
 local function paint(a)
@@ -70,22 +73,28 @@ local function readers(a, label)
 
 	local button = CreateFrame('Button', nil, UIParent)
 	st:SkinButton(button)
-	eq(text(button.hover:GetVertexColor()), want('normal', 1), label .. ': a button highlight, Normal')
+	eq(text(button.hover:GetVertexColor()), want('hover', TINT), label .. ': a button highlight, Hover at 0.4')
 	eq(text(button.pushed:GetVertexColor()), want('pushed', 1), label .. ': a button pushed fill, Pushed')
+	eq(button.hover:GetBlendMode(), 'BLEND', label .. ": a button's highlight mixes over the fill (never additive)")
 
 	local box = CreateFrame('CheckButton', nil, UIParent)
 	st:SkinCheckButton(box)
-	eq(text(box:GetCheckedTexture():GetVertexColor()), want('hover', 1), label .. ': a check box fill, Hover')
-	eq(text(box:GetHighlightTexture():GetVertexColor()), want('normal', 1), label .. ': a check box highlight, Normal')
+	eq(text(box:GetCheckedTexture():GetVertexColor()), want('checked', 1), label .. ': a check box fill, Checked')
+	eq(text(box:GetHighlightTexture():GetVertexColor()), want('hover', TINT), label .. ': a check box highlight, Hover at 0.4')
 	-- Drawn again as the theme switches, flat each time.
 	T.theme('blizzard'); T.theme('thick')
-	eq(text(box:GetCheckedTexture():GetVertexColor()), want('hover', 1), label .. ': the fill again after a theme switch')
-	eq(text(box:GetHighlightTexture():GetVertexColor()), want('normal', 1), label .. ': the highlight again after a theme switch')
+	eq(text(box:GetCheckedTexture():GetVertexColor()), want('checked', 1), label .. ': the fill again after a theme switch')
+	eq(text(box:GetHighlightTexture():GetVertexColor()), want('hover', TINT), label .. ': the highlight again after a theme switch')
 
+	eq(box:GetHighlightTexture():GetBlendMode(), 'BLEND', label .. ": a check box's highlight mixes over the fill")
 	local bare = CreateFrame('CheckButton', nil, UIParent)
 	st:SkinCheckButton(bare, 'bare')
-	eq(text(bare:GetCheckedTexture():GetVertexColor()), want('hover', 1), label .. ': a bare check box fill, Hover')
-	eq(text(bare:GetHighlightTexture():GetVertexColor()), want('normal', 1), label .. ': a bare check box highlight, Normal')
+	eq(bare:GetHighlightTexture():GetBlendMode(), 'BLEND', label .. ": a bare check box's highlight")
+	local panel = CreateFrame('CheckButton', nil, UIParent)
+	st:SkinCheckButton(panel, 'button')
+	eq(panel:GetHighlightTexture():GetBlendMode(), 'BLEND', label .. ": a 'button'-style check box's highlight")
+	eq(text(bare:GetCheckedTexture():GetVertexColor()), want('checked', 1), label .. ': a bare check box fill, Checked')
+	eq(text(bare:GetHighlightTexture():GetVertexColor()), want('hover', TINT), label .. ': a bare check box highlight, Hover at 0.4')
 
 	local bar = scrollBar()
 	st:SkinNewScrollBar(bar)
@@ -109,7 +118,7 @@ local function readers(a, label)
 end
 
 test('the defaults draw every Buttons color fully: 100% opacity, so every reader draws its own strength', function()
-	for _, key in ipairs({ 'normal', 'hover', 'pushed', 'danger' }) do
+	for _, key in ipairs({ 'normal', 'hover', 'pushed', 'checked', 'danger' }) do
 		eq(st.defaults.colors.button[key].a, 1, 'Buttons > ' .. key .. ' defaults at 100%')
 		eq(st.config.profile.colors.button[key].a, 1, 'and so does the profile')
 	end
@@ -117,6 +126,7 @@ test('the defaults draw every Buttons color fully: 100% opacity, so every reader
 	eq(text(st.defaults.colors.button.hover:GetRGB()), '0.30,0.50,0.70')
 	eq(text(st.defaults.colors.button.pushed:GetRGB()), '0.30,0.40,0.50')
 	eq(text(st.defaults.colors.button.danger:GetRGB()), '0.60,0.10,0.10')
+	eq(text(st.defaults.colors.button.checked:GetRGB()), '0.30,0.50,0.70', "Checked starts as Hover's default, so a checked box looks as it did")
 end)
 
 test('at 100% every reader draws the alpha it drew before: its own strength', function()
@@ -166,18 +176,18 @@ test('a pick reaches every reader at once, at its opacity (live colors)', functi
 	local frame = resizable()
 	st:EnableResizing(frame)
 	-- Outside an edit: only each color's own pass runs, so a follower under the wrong key fails.
-	for key, rgb in pairs({ normal = { 0.1, 0.9, 0.2 }, hover = { 0.8, 0.2, 0.7 }, pushed = { 0.6, 0.6, 0.1 } }) do
+	for key, rgb in pairs({ normal = { 0.1, 0.9, 0.2 }, hover = { 0.8, 0.2, 0.7 }, pushed = { 0.6, 0.6, 0.1 }, checked = { 0.3, 0.7, 0.2 } }) do
 		local c = st.config.profile.colors.button[key]
 		c:SetRGB(unpack(rgb)); c.a = 0.5
 		st:ColorChanged('button', key)
 	end
-	eq(text(button.hover:GetVertexColor()), text(0.1, 0.9, 0.2, 0.5), 'a button highlight')
+	eq(text(button.hover:GetVertexColor()), text(0.8, 0.2, 0.7, 0.5 * TINT), 'a button highlight, Hover at 0.4')
 	eq(text(button.pushed:GetVertexColor()), text(0.6, 0.6, 0.1, 0.5), 'a button pushed fill')
-	eq(text(box:GetCheckedTexture():GetVertexColor()), text(0.8, 0.2, 0.7, 0.5), 'a check box fill')
-	eq(text(box:GetHighlightTexture():GetVertexColor()), text(0.1, 0.9, 0.2, 0.5), 'a check box highlight')
+	eq(text(box:GetCheckedTexture():GetVertexColor()), text(0.3, 0.7, 0.2, 0.5), 'a check box fill, Checked')
+	eq(text(box:GetHighlightTexture():GetVertexColor()), text(0.8, 0.2, 0.7, 0.5 * TINT), 'a check box highlight, Hover at 0.4')
 	eq(text(bar:GetThumb().backdrop:GetBackdropColor()), text(0.1, 0.9, 0.2, 0.5), 'a thumb at rest')
 	eq(text(frame.ResizeButton:GetPushedTexture():GetVertexColor()), text(0.8, 0.2, 0.7, 0.5), 'a resize corner')
-	for _, key in ipairs({ 'normal', 'hover', 'pushed' }) do
+	for _, key in ipairs({ 'normal', 'hover', 'pushed', 'checked' }) do
 		local c = st.config.profile.colors.button[key]
 		c.a = 1
 	end

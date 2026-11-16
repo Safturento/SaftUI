@@ -63,7 +63,7 @@ test('the sections and their colors, in order, as small color swatches with tool
 
 	local expected = {
 		text = 'Text,Muted,Strong,Danger,Warning,Caution,Success,Shared',
-		button = 'Normal,Hover,Pushed,Danger',
+		button = 'Normal,Hover,Pushed,Checked,Danger',
 		class = 'Death Knight,Demon Hunter,Druid,Evoker,Hunter,Mage,Monk,Paladin,Priest,Rogue,Shaman,Warlock,Warrior',
 		roles = 'Tank,Healer,Damage',
 		factions = 'Alliance,Horde,Neutral',
@@ -275,10 +275,14 @@ test('the roll timer bars are not Item quality, Blue is on Theme > Accent, and t
 	eq(Section('text').args.blue, nil, 'nor Text')
 	eq(Section('button').args.green, nil, 'Buttons > Green went with it')
 	-- Each Buttons row says which highlight it is (opacity works now: the owner lowers one and watches what fades).
-	local normal, hover = Section('button').args.normal.desc, Section('button').args.hover.desc
-	check(normal:find('zone text', 1, true) and normal:find('addon compartment', 1, true) and normal:find("micro menu bar's own items", 1, true), 'Normal names the bar items: ' .. normal)
-	check(not normal:find('micro menu button', 1, true), 'and not the micro buttons')
+	local normal, hover, checked = Section('button').args.normal.desc, Section('button').args.hover.desc, Section('button').args.checked.desc
+	check(normal:find('scroll bar thumb at rest', 1, true), 'Normal names the thumb at rest: ' .. normal)
+	check(not normal:find('highlight', 1, true) and not normal:find('zone text', 1, true), 'and no highlight: Hover is everything under the mouse')
 	check(hover:find("micro buttons' highlight", 1, true) and hover:find('tracking, queue and expansion', 1, true), 'Hover names the micro buttons and the three minimap buttons: ' .. hover)
+	check(hover:find('zone text', 1, true) and hover:find('addon compartment', 1, true) and hover:find("micro menu bar's own items", 1, true), "and the bar's own items: " .. hover)
+	check(hover:find('check box', 1, true) and hover:find('under the mouse', 1, true), "and a button's or check box's highlight: " .. hover)
+	check(not hover:find('Everything', 1, true) and hover:find('Accent', 1, true) and hover:find('close button', 1, true), 'Hover claims no more than it colors: slots and the close button are named elsewhere: ' .. hover)
+	check(checked:find('checked check box', 1, true), 'Checked names the checked check box: ' .. checked)
 	check(quality['1'].desc:find('normal instances', 1, true), 'the badge is shown in raids too')
 	check(Section('text').args.normal.desc:find('summon button', 1, true), "Text names the totem bar summon button's arrow")
 	for _, word in ipairs({ 'Alliance', 'Horde', 'Neutral' }) do

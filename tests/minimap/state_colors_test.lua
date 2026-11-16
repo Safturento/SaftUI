@@ -195,10 +195,10 @@ test('Item quality 1, 3 and 4 by key: the difficulty badge (retail, which has on
 	eq(#take_errors(), 0)
 end)
 
-test('the bar items and the tracking, queue and expansion buttons follow Normal, Pushed and Hover', function()
+test('the bar items and the tracking, queue and expansion buttons follow Hover and Pushed', function()
 	world('forever')
 	local colors = st.config.profile.colors.button
-	colors.normal:SetRGB(0.3, 0.3, 0.9)
+	colors.hover:SetRGB(0.3, 0.3, 0.9)
 	local bar = CreateFrame('Button', nil, UIParent)
 	MM:SkinBarButton(bar)
 	local hover, pushed = bar:GetHighlightTexture(), bar:GetPushedTexture()
@@ -235,11 +235,11 @@ test('the bar items and the tracking, queue and expansion buttons follow Normal,
 	end
 	colors.normal:SetRGB(0.1, 0.2, 0.3); colors.pushed:SetRGB(0.4, 0.5, 0.6); colors.hover:SetRGB(0.7, 0.8, 0.9)
 	st:ColorChanged('button', 'normal')
-	eq(vertex(hover), T.rgb(0.1, 0.2, 0.3) .. ' 1.00', "the bar items' hover is Buttons > Normal, as it was drawn")
-	check(vertex(trackingHover) ~= T.rgb(0.7, 0.8, 0.9) .. ' 1.00', 'Normal does not reach the tracking hover')
+	check(vertex(hover) ~= T.rgb(0.1, 0.2, 0.3) .. ' 0.40', 'Normal does not reach the bar items')
 	st:ColorChanged('button', 'pushed')
 	eq(vertex(pushed), T.rgb(0.4, 0.5, 0.6) .. ' 1.00', 'Pushed')
 	local m = C.measure(function() st:ColorChanged('button', 'hover') end)
+	eq(vertex(hover), T.rgb(0.7, 0.8, 0.9) .. ' 0.40', "the bar items' hover is Buttons > Hover at 0.4")
 	eq(vertex(trackingHover), T.rgb(0.7, 0.8, 0.9) .. ' 1.00', 'Hover: the tracking button')
 	eq(vertex(queueHover), T.rgb(0.7, 0.8, 0.9) .. ' 1.00', 'the queue eye')
 	eq(vertex(expansionHover), T.rgb(0.7, 0.8, 0.9) .. ' 1.00', 'the expansion button')

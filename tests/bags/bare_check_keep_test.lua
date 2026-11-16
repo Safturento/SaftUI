@@ -39,6 +39,10 @@ local function passes(check, want, label)
 		st:ColorChanged('button', 'hover')
 		C.step(st)
 		eq(read(), want, label .. ': a Buttons > Hover pick, before the edit ends')
+		st.config.profile.colors.button.checked:SetRGB(0.2, 0.9, 0.6)
+		st:ColorChanged('button', 'checked')
+		C.step(st)
+		eq(read(), want, label .. ': a Buttons > Checked pick, before the edit ends')
 	end)
 	T.theme('blizzard'); T.theme('thick')
 	eq(read(), want, label .. ': a theme switch')
@@ -46,6 +50,7 @@ local function passes(check, want, label)
 	eq(read(), want, label .. ': a profile switch (every group, whole)')
 	local d = st.defaults.colors.button.hover
 	st.config.profile.colors.button.hover:SetRGB(d.r, d.g, d.b)
+	st.config.profile.colors.button.checked:SetRGB(d.r, d.g, d.b)
 end
 
 test("a hidden currency's veil keeps its black 0.6 through every Buttons pass", function()
