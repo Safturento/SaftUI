@@ -117,8 +117,11 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	closes it first (the first passes Esc on while the second shows). It is placed by
 	OW.MenuPlace on the dots that opened it, on whole pixels as the first is. While the
 	second shows the first is held as it is, as when busy: it only moves onto its item's
-	new dots, never drawing its rows again (that would release the pooled font widget
-	the second hangs from, and its dots). A set in the second saves, the font row's own
+	new dots (marking a part row's dots open again) and reads its rows' values again in
+	place (body:Refresh), never drawing its rows again (that would release the pooled
+	font widget the second hangs from, and its dots). When the second closes the first is
+	drawn again once, as the next frame renders. A tree rebuilt while both are open (a
+	profile change) closes both. A set in the second saves, the font row's own
 	Refresh shows it in the first's row, and the window renders so the page behind
 	follows (the part row's summary); the first's rows stay the same widgets. The second
 	follows its item (the font row, in the first's body) as the first does and closes
@@ -154,6 +157,34 @@ local MENU_LEVEL = { 410, 430 }
 -- A level's menu: its frames and body, and its owner while it shows. M is the first, M2 the second.
 local function NewMenu(level) return { level = level } end
 local M, M2 = NewMenu(1), NewMenu(2)
+M.child, M2.parent = M2, M -- each level knows the one below (child) and above (parent): none reaches for the other by name
+
+local function Shown(m) return m.frame ~= nil and m.frame:IsShown() end
+
+-- Forward: the level followed again (below).
+local FollowLevel
+
+-- A level closed, the one place that does it (its catcher, Esc, its item gone, OW:CloseMenuOf and
+-- CloseMenu(body)). Closing the first closes its child first (its OnHide). A second level's close
+-- leaves the first as it was held, so the first is drawn again once (S.Schedule on the next frame;
+-- with the window closed, now): what changed meanwhile shows.
+local function CloseLevel(m)
+	if not Shown(m) then return end
+	local parent = m.parent
+	m.frame:Hide()
+	if parent and Shown(parent) then
+		if OW:IsShown() then S.Schedule() else xpcall(FollowLevel, geterrorhandler(), parent) end
+	end
+end
+
+-- A part row's dots are open (accent) while its menu is: the ones the menu was last marked on
+-- (possibly another pooled widget's by now) are let go, and these marked. Also on a held menu's
+-- follow, since a render hands the row a pooled widget whose mark was cleared.
+local function MarkDots(m, row, dots)
+	if m.dots then W.Kit.MarkSlot(m.dots, false) end
+	m.dots = type(row.option) == 'table' and type(row.option.summary) == 'function' and dots or nil
+	if m.dots then W.Kit.MarkSlot(m.dots, true) end
+end
 
 ------------------------------------------------------------------ where it goes
 
@@ -252,11 +283,8 @@ end
 -- gave one.
 local function Draw(m, body, row, dots, menu, title)
 	m.owner = { body = body, path = row.path }
-	-- A part row's dots are open while its menu is (the last ones, possibly another
-	-- pooled widget's by now, are let go).
-	if m.dots then W.Kit.MarkSlot(m.dots, false) end
-	m.dots = type(row.option) == 'table' and type(row.option.summary) == 'function' and dots or nil
-	if m.dots then W.Kit.MarkSlot(m.dots, true) end
+	m.menu = menu -- the table drawn: a rebuilt tree gives another
+	MarkDots(m, row, dots)
 	m.root = OM.MenuRoot({ menu = menu })
 	m.body:SetRoot(m.root)
 	if title == nil then title = OM.Member(body.root, row, 'menuTitle') end
@@ -316,7 +344,7 @@ local function Build(m)
 	-- second level's catcher is over the first menu: a click there closes the second only.
 	catcher:SetScript('OnMouseDown', function()
 		if ColorPickerShown() then return end
-		if level == 2 then m.frame:Hide() else OW:CloseMenu() end
+		CloseLevel(m)
 	end)
 
 	local frame = st:CreateFrame('Frame', nil, UIParent)
@@ -351,10 +379,8 @@ local function Build(m)
 
 	-- Esc, only while the menu is shown. The first passes it on while the second shows,
 	-- which closes first.
-	local keys = EscapeKeys(frame, function() return level == 1 and M2.frame ~= nil and M2.frame:IsShown() end,
-		function()
-			if level == 2 then m.frame:Hide() else OW:CloseMenu() end
-		end)
+	local keys = EscapeKeys(frame, function() return m.child ~= nil and Shown(m.child) end,
+		function() CloseLevel(m) end)
 	m.keys = keys
 
 	frame:SetScript('OnShow', function()
@@ -365,7 +391,7 @@ local function Build(m)
 	end)
 	frame:SetScript('OnHide', function()
 		-- The second level first: it hangs from this menu's rows.
-		if level == 1 and M2.frame and M2.frame:IsShown() then M2.frame:Hide() end
+		if m.child and Shown(m.child) then m.child.frame:Hide() end
 		catcher:Hide()
 		keys:EnableKeyboard(false)
 		keys:Hide()
@@ -394,13 +420,11 @@ end
 
 ------------------------------------------------------------------ following its item
 
-local function Shown(m) return m.frame ~= nil and m.frame:IsShown() end
-
 -- Whether the user is busy in the menu: its own list open, a confirm, its
 -- slider held (a lost mouse-up can't hold it off), one of its boxes typed in;
 -- or, for the first, a second level open over it, which hangs from its rows.
 local function Busy(m)
-	if m.level == 1 and Shown(M2) then return true end
+	if m.child and Shown(m.child) then return true end
 	local owner = W.ListOwner()
 	if owner and Inside(owner, m.frame) then return true end
 	if W.ConfirmText() then return true end
@@ -409,22 +433,24 @@ local function Busy(m)
 	return focus ~= nil and Inside(focus, m.frame)
 end
 
-local function FollowLevel(m)
+function FollowLevel(m)
 	if not (Shown(m) and m.owner) then return end
 	local cell = ItemCell(m.owner.body, m.owner.path)
 	-- Its widget's menu again: a font row has none once its value is no longer
 	-- a typeface, so the menu closes (even while busy: it has nothing to draw).
 	local menu, title
 	if cell then menu, title = MenuOf(cell.widget) end
-	if not menu then
-		if m.level == 2 then m.frame:Hide() else OW:CloseMenu() end
-		return
-	end
+	if not menu then return CloseLevel(m) end
+	local held = m.child ~= nil and Shown(m.child)
+	-- A menu held over a tree that was rebuilt (a profile change): its child reads and writes through
+	-- the old tree, so both close.
+	if held and menu ~= m.menu then return CloseLevel(m) end
 	if Busy(m) then
 		Anchor(m, cell.widget.dots)
+		MarkDots(m, cell.row, cell.widget.dots)
 		-- Held by a second level: the rows stay the same widgets, reading their values again in
 		-- place (a font row's kind, which its second menu asks), nothing released.
-		if m.level == 1 and Shown(M2) then xpcall(m.body.Refresh, geterrorhandler(), m.body) end
+		if held then xpcall(m.body.Refresh, geterrorhandler(), m.body) end
 		return
 	end
 	m.dragging = nil
@@ -455,7 +481,7 @@ function OW:OpenMenu(widget)
 	if M.body and Shown(M) and widget.rowBody == M.body then m = M2 end
 	if not m.frame then Build(m) end
 	if m == M2 then
-		m.frame:Hide() -- one that was open (another row's): its owner, colour edit and rows go first
+		m.frame:Hide() -- one that was open (another row's): its owner, color edit and rows go first
 	else
 		self:CloseMenu()
 	end
@@ -477,8 +503,8 @@ function OW:CloseMenu(body)
 		return
 	end
 	-- With a body: the menus whose item is in it. The first menu's body is the second's.
-	if Shown(M2) and M2.owner and M2.owner.body == body then M2.frame:Hide() end
-	if Shown(M) and M.owner and M.owner.body == body then M.frame:Hide() end
+	if Shown(M2) and M2.owner and M2.owner.body == body then CloseLevel(M2) end
+	if Shown(M) and M.owner and M.owner.body == body then CloseLevel(M) end
 end
 
 local function OwnedBy(m, widget)
@@ -490,7 +516,7 @@ end
 -- else the first (and the second with it).
 function OW:CloseMenuOf(widget)
 	if widget and OwnedBy(M2, widget) then
-		M2.frame:Hide()
+		CloseLevel(M2)
 	elseif widget == nil or OwnedBy(M, widget) then
 		self:CloseMenu()
 	end

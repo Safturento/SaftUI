@@ -27,7 +27,7 @@ The owner's rule: a part with three or more settings, or with settings that only
 - Off: the Show box empty, the label `text-muted`; the menu still opens.
 - Own: the item is own-marked when its Show or anything inside its menu is a member's own (`OwnMark`); on the All page a `DiffIcon` follows the name.
 - Two levels at most: a row in a menu that has its own dots (a typeface Font row in a part's menu) opens a second menu over the first, which stays open and still; a click on the first menu or outside closes the second, then Esc or a click closes the first. A row of the second opens nothing.
-- One menu at a time; it closes on Esc, a click outside, a page change and the window closing; it stays on screen near the window's right and bottom edges; a dropdown or TO list opened inside draws above it.
+- One first-level menu at a time; it closes on Esc, a click outside, a page change and the window closing; it stays on screen near the window's right and bottom edges; a dropdown or TO list opened inside draws above it.
 
 ## Status
 

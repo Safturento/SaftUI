@@ -192,13 +192,15 @@ end)
 test('a render with both open leaves the first menu\'s rows and moves both onto their new dots', function()
 	local font = open_both()
 	local first, second = M(1), M(2)
-	local rows = {}
-	for _, c in ipairs(first.body.cells) do rows[c.row.key] = c.widget end
+	local rows, kept = {}, {}
+	for i, c in ipairs(first.body.cells) do rows[c.row.key], kept[i] = c.widget, c end
 	local rows2 = #second.body.cells
 	local title = first.title:GetText()
 	OW:Render()
 	check(first.frame:IsShown() and second.frame:IsShown(), 'both still shown')
-	for _, c in ipairs(first.body.cells) do
+	eq(#first.body.cells, #kept, "the first menu's rows: as many")
+	for i, c in ipairs(first.body.cells) do
+		check(kept[i] == c, "the first menu's cell " .. i .. ' is the very cell (a redraw makes new ones)')
 		check(rows[c.row.key] == c.widget, "the first menu's " .. tostring(c.row.key) .. ' row is the same widget')
 	end
 	eq(first.title:GetText(), title, "its title as it was")
@@ -212,15 +214,16 @@ end)
 test('a set in the second level saves, shows in the first menu\'s Font row and the page, and draws nothing of the first again', function()
 	local font = open_both()
 	local first, second = M(1), M(2)
-	local rows = {}
-	for _, c in ipairs(first.body.cells) do rows[c.row.key] = c.widget end
+	local rows, kept = {}, {}
+	for i, c in ipairs(first.body.cells) do rows[c.row.key], kept[i] = c.widget, c end
 	eq(cell('part').widget.summary:GetText(), 'size 12', 'the page: the part row\'s summary')
 	menuCell(second, 'Size').widget:Commit(23)
 	eq(FN.FieldValue(st:FontFields(vals.font), 'font_size'), 23, 'saved')
 	eq(font.widget.value.font_size, 23, "the first menu's Font row shows it")
 	eq(cell('part').widget.summary:GetText(), 'size 23', 'and the page behind follows')
 	check(first.frame:IsShown() and second.frame:IsShown(), 'both stay')
-	for _, c in ipairs(first.body.cells) do
+	for i, c in ipairs(first.body.cells) do
+		check(kept[i] == c, "the first menu's cell " .. i .. ' is the very cell')
 		check(rows[c.row.key] == c.widget, "the first menu's " .. tostring(c.row.key) .. ' row is the same widget')
 	end
 	close_all()
@@ -298,4 +301,134 @@ test('the second level sits on whole pixels, as the first does', function()
 	stub.size_noise = 0
 	st.config.global.optionsWindow = nil
 	theme('thick')
+end)
+
+-- Fix round 1.
+
+local function tick() H.tick() end
+
+test('I1: the part row\'s dots keep their open mark through a set in the second level and after it closes', function()
+	open_both()
+	check(cell('part').widget.dots.open == true, 'marked while the first shows')
+	menuCell(M(2), 'Size').widget:Commit(23)
+	check(M(1).frame:IsShown() and M(2).frame:IsShown(), 'both shown')
+	check(cell('part').widget.dots.open == true, 'still marked after a set in the second')
+	stub.fire_script(M(2).catcher, 'OnMouseDown', 'LeftButton')
+	tick()
+	check(M(1).frame:IsShown(), 'the first stays')
+	check(cell('part').widget.dots.open == true, 'still marked after the second closes')
+	OW:CloseMenu()
+	check(cell('part').widget.dots.open ~= true, 'and let go when the first closes')
+	close_all()
+end)
+
+test('M2: when the second closes, the first is drawn again once and stays open', function()
+	open_both()
+	local first = M(1)
+	local before = {}
+	for i, c in ipairs(first.body.cells) do before[i] = c end
+	stub.fire_script(M(2).catcher, 'OnMouseDown', 'LeftButton')
+	tick()
+	check(first.frame:IsShown() and not M(2).frame:IsShown(), 'the first stays, the second is closed')
+	local drawn = 0
+	for i, c in ipairs(first.body.cells) do
+		if before[i] ~= c then drawn = drawn + 1 end
+	end
+	check(drawn > 0 and #first.body.cells == #before, 'its rows were drawn again: ' .. drawn)
+	-- Once: another frame draws nothing more.
+	local again = {}
+	for i, c in ipairs(first.body.cells) do again[i] = c end
+	tick()
+	for i, c in ipairs(first.body.cells) do check(again[i] == c, 'cell ' .. i .. ' not drawn a second time') end
+	close_all()
+	-- By the toggle too.
+	local font = open_both()
+	before = {}
+	for i, c in ipairs(first.body.cells) do before[i] = c end
+	click(font.widget.dots)
+	tick()
+	check(first.frame:IsShown() and first.body.cells[1] ~= before[1], 'the toggle: drawn again, still open')
+	close_all()
+end)
+
+test('M1: a tree rebuilt while both are open (a profile change) closes both', function()
+	open_both()
+	OW:SetRoot(st.Config:RegisterOptions())
+	tick()
+	check(not M(1).frame:IsShown() and not M(2).frame:IsShown(), 'both closed')
+	close_all()
+end)
+
+test('M5: another row of the first opens its second level while one shows: the old one goes with its color edit', function()
+	st.Config:Open('Levels', 'texts')
+	fresh()
+	click(cell('part').widget.dots)
+	menuCell(M(), 'font').widget:Pick('face:Arial Narrow')
+	local function color_edits(sub) cell('part').row.option.menu.args.sub.menu.colorEdit = sub or nil end
+	color_edits(true)
+	click(menuCell(M(), 'sub').widget.dots)
+	check(st:InColorEdit(), "Sub's menu holds a color edit")
+	check(OW:OpenMenu(menuCell(M(), 'font').widget), 'the Font row asks while Sub\'s is shown')
+	eq(M(2).owner.path[#M(2).owner.path], 'font', 'the second is the Font row\'s now')
+	check(not st:InColorEdit(), "Sub's color edit was let go")
+	color_edits(false)
+	close_all()
+end)
+
+test('M5: the second level\'s status line goes where the first\'s item is: the small dialog\'s', function()
+	fresh()
+	st.Config:Open('Levels', 'texts')
+	OW:OpenDialog('Dialog', { type = 'group', name = 'Dialog', args = { part = { order = 1, type = 'item', name = 'Part',
+		get = function() return true end, set = function() end, menu = MenuOfPart() } } })
+	local d = OW.GetDialogFrames()
+	click(d.body.cells[1].widget.dots)
+	click(menuCell(M(), 'sub').widget.dots)
+	check(M(2).frame:IsShown(), 'the second is open over the dialog\'s menu')
+	M(2).body.root.menu.args.count.validate = function() return 'Count: bad' end
+	menuCell(M(2), 'Count').widget:Commit(3)
+	eq(d.status:GetText(), 'Count: bad', "in the dialog's status line")
+	eq(H.frames().status:GetText(), '', "not the window's")
+	M(2).body.root.menu.args.count.validate = nil
+	menuCell(M(2), 'Count').widget:Commit(4)
+	eq(d.status:GetText(), '', 'cleared by a good set')
+	close_all()
+end)
+
+test('M5: a Size drag in the second level: the first is not drawn during it, the font is saved right after', function()
+	local font = open_both()
+	local first = M(1)
+	local kept, renders = {}, OW.GetRenderCount()
+	for i, c in ipairs(first.body.cells) do kept[i] = c end
+	local slider = menuCell(M(2), 'Size').widget
+	stub.mouse_buttons.LeftButton = true
+	for size = 13, 16 do
+		slider.dragging = true
+		slider:Commit(size)
+		eq(OW.GetRenderCount(), renders, 'no render mid-drag at ' .. size)
+		check(menuCell(M(2), 'Size').widget == slider, 'the held slider stays at ' .. size)
+		for i, c in ipairs(first.body.cells) do check(kept[i] == c, 'the first menu\'s cell ' .. i .. ' kept at ' .. size) end
+		eq(point(M(2).frame), font.widget.dots, 'the second stays on the Font dots')
+	end
+	stub.mouse_buttons.LeftButton = nil
+	slider.dragging = nil
+	slider:Commit(16)
+	eq(FN.FieldValue(st:FontFields(vals.font), 'font_size'), 16, 'the saved font right after the drag')
+	eq(cell('part').widget.summary:GetText(), 'size 16', 'and the page follows')
+	check(first.frame:IsShown() and M(2).frame:IsShown(), 'both shown')
+	close_all()
+end)
+
+test('R5: the window changes size with both open: both stay, on their dots, the first\'s cells kept', function()
+	local font = open_both()
+	local first = M(1)
+	local kept = {}
+	for i, c in ipairs(first.body.cells) do kept[i] = c end
+	check(OW:SetWindowSize('half'), 'to half')
+	check(first.frame:IsShown() and M(2).frame:IsShown(), 'both stay')
+	eq(point(first.frame), cell('part').widget.dots, 'the first on the part\'s dots')
+	eq(point(M(2).frame), font.widget.dots, 'the second on the Font dots')
+	for i, c in ipairs(first.body.cells) do check(kept[i] == c, 'cell ' .. i .. ' kept') end
+	OW:SetWindowSize('mini')
+	check(not first.frame:IsShown() and not M(2).frame:IsShown(), 'the bar closes both')
+	close_all()
 end)

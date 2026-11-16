@@ -425,7 +425,7 @@ define('color', {
 		local OW = st.OptionsWindow
 		if OW and OW.IsMenuShown and OW:IsMenuShown(self) then
 			-- Its own menu: the second level alone when that is what it opened (optionsmenu.lua).
-			if OW.CloseMenuOf then OW:CloseMenuOf(self) else OW:CloseMenu() end
+			OW:CloseMenuOf(self)
 		else
 			self:OpenMenu()
 		end
