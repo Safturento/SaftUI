@@ -23,6 +23,8 @@ UIScale.SNAP = 72 -- pixels either side of a whole multiple of 1440 (5%)
 UIScale.FLOOR = 0.75 -- the automatic part's least
 UIScale.SIZE = { min = 0.70, max = 1.50, step = 0.05 }
 UIScale.MODES = { 'auto', 'pixel', 'game' } -- the Scale select's order
+-- The names of the modes, as the Scale select, the Keep prompt and /sui scale say them.
+UIScale.MODE_NAMES = { auto = 'Automatic', pixel = 'Pixel for pixel', game = "The game's UI scale" }
 UIScale.DEFAULT = { mode = 'auto', size = 1 }
 
 -- Until the first SetTokens: a unit is a pixel and a line is one.
@@ -186,6 +188,8 @@ local setbacks = {} -- the times of the latest set-backs
 local gaveUp -- the screen the check gave up on ('width x height'), or nil
 local warned
 local settling -- The game's UI scale: the scale a changed reading is waiting to repeat
+local lastCvars -- the game's UI Scale setting as the last check read it ('useUiScale|uiScale')
+local sliderTold -- Blizzard's slider line, said once a session
 
 local preview -- the choice being tried, or nil
 local previous -- the choice in effect before the first preview, for the Keep prompt's Go back
@@ -228,6 +232,11 @@ function UIScale:Previous()
 end
 function UIScale:IsPreviewing() return preview ~= nil end
 
+-- Whether the check has stopped setting the scale back on this screen (the
+-- guard's): until a Preview, Apply or Revert or another screen, UIParent has
+-- the engine's scale, not the choice's.
+function UIScale:GaveUp() return gaveUp ~= nil end
+
 -- The game's own UI scale: Blizzard's slider while Use UI Scale is on, else the
 -- default for the screen where the client has one (E1: both read on WoW
 -- Forever; the slider is read from the settings, never written). nil when the
@@ -241,6 +250,16 @@ function UIScale.GameScale()
 	end
 	return nil
 end
+
+-- The game's UI Scale setting as one string: Use UI Scale and the slider.
+local function ReadCvars()
+	return tostring(C_CVar.GetCVar('useUiScale')) .. '|' .. tostring(C_CVar.GetCVar('uiScale'))
+end
+
+UIScale.FIRST_LOGIN = "SaftUI now sizes itself to your screen: here it draws at %d%% of its 1440p size, so it takes the same share of the screen as on the screen it was laid out on. To keep the size it had before, type /sui scale pixel. The choices are in /sui > Global settings > General."
+UIScale.SLIDER_LINE = "SaftUI sets the UI's scale itself. To use the game's UI Scale, choose The game's UI scale in /sui > Global settings > General."
+-- What st.config.global.uiScaleNotice is set to once the first login line has been shown.
+UIScale.NOTICE_VERSION = 1
 
 -- What a choice makes of the screen as it is now; in The game's UI scale the
 -- scale is whatever UIParent has.
@@ -290,6 +309,18 @@ function UIScale:Start()
 		end
 	end
 	Record()
+	lastCvars = ReadCvars()
+
+	-- The first login after the update: once per account, with nothing saved,
+	-- where Automatic isn't pixel for pixel. It is a version number, set only
+	-- when the line is shown, so the owner's screen (k 1) is never told and
+	-- would still be told on another screen.
+	local global = st.config and st.config.global
+	if resolved and global and not UIScale:Saved() and abs(resolved.k - 1) > 1e-6
+		and (tonumber(global.uiScaleNotice) or 0) < UIScale.NOTICE_VERSION then
+		global.uiScaleNotice = UIScale.NOTICE_VERSION
+		st:Print(UIScale.FIRST_LOGIN:format(floor(resolved.k * 100 + 0.5)))
+	end
 
 	if not events then
 		events = CreateFrame('Frame')
@@ -367,10 +398,18 @@ function UIScale:Check()
 		end
 	elseif abs(UIParent:GetScale() - resolved.uiScale) > TOLERANCE then
 		movedBack = SetBack(resolved)
+		-- Blizzard's slider (Ruling 16): the engine's scale was put back and the
+		-- game's setting reads differently from the last check, which tells the
+		-- player's move from a display change. Once a session.
+		if movedBack and not sliderTold and lastCvars and ReadCvars() ~= lastCvars then
+			sliderTold = true
+			st:Print(UIScale.SLIDER_LINE)
+		end
 	else
 		gaveUp = nil
 	end
 
+	lastCvars = ReadCvars()
 	UIScale:SetTokens()
 	local scale = UIParent:GetScale()
 	local changed = movedBack or lastScale == nil or abs(scale - lastScale) > TOLERANCE

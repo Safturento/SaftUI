@@ -93,6 +93,7 @@ local function render(node)
 	if b == 'nameis' then return neg .. 'is"' .. node.text .. '"' end
 	if b == 'quality' then return neg .. 'quality ' .. table.concat(node.qualities, ',') end
 	if b == 'binding' then return neg .. 'binding ' .. table.concat(node.states, ',') end
+	if b == 'slot' then return neg .. 'slot ' .. table.concat(node.slots, ',') end
 	if b == 'oldgear' then return neg .. 'oldgear ' .. node.levels .. '/' .. node.expansion .. '/' .. node.share end
 	if b == 'items' then return neg .. 'items(' .. #node.ids .. ')' end
 	if b == 'vendorprice' then return neg .. 'price ' .. (node.value and 'yes' or 'no') end
@@ -177,7 +178,7 @@ end)
 
 local RESOLVED = {
 	both = {
-		['Grays/Auto Vendor'] = 'and(or(quality 0, oldgear 10/9/0.9, and(binding soulbound, tt"cffff2020Classes:")), '
+		['Grays/Auto Vendor'] = 'and(or(quality 0, and(oldgear 10/9/0.9, !slot INVTYPE_BODY,INVTYPE_TABARD), and(binding soulbound, tt"cffff2020Classes:")), '
 			.. '!protected, !sub 4/5, !tt"Fishing", !tt"Blizzard Account Bound", price yes)',
 		['Container'] = 'and(or(tt"Right Click to Open", tt"Open the container", tt"Open the sack", tt"Use: collect", '
 			.. 'tt"Use: Open", tt"Flightstones"), !class 4, !class 2)',
@@ -418,6 +419,46 @@ test('a pin beats the rules and the order; a pin to a category that is off or mi
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+-- Old gear is one of the three ORs of Grays/Auto Vendor's rule, which sells: a
+-- tabard or a shirt that passes its other tests was sold at the next merchant,
+-- because today's filter compared a field no item info has.
+for _, client in ipairs({ 'forever', 'retail' }) do
+	test(client .. ': a tabard and a shirt are never old gear, and never sold by Auto Vendor through it', function()
+		world(client)
+		local LABELS = { 'old gear: a rare tabard', 'old gear: an epic tabard', 'old gear: an uncommon shirt' }
+		for _, label in ipairs(LABELS) do
+			local info = put(fixture(label).item)
+			eq(OLD.categorize(info), 'Grays/Auto Vendor', label .. ": today's filter put it in the seller (the bug)")
+			eq((INV:GetItemCategory(info)), 'Armor', label .. ': the defaults keep it out of Grays/Auto Vendor')
+			eq(INV:IsAutoVendorItem(info), false, label .. ': and Auto Vendor does not sell it')
+		end
+		-- Any quality: the block takes qualities 2 to 4, and a tabard or shirt of
+		-- another quality is not in it either (a gray is a gray, sold as any gray).
+		for quality = 1, 5 do
+			for i, loc in ipairs({ 'INVTYPE_TABARD', 'INVTYPE_BODY' }) do
+				local info = put({ itemID = 5000 + quality * 10 + i, name = 'Cloth ' .. loc .. quality, classID = 4,
+					subclassID = 0, equipLoc = loc, quality = quality, reqLevel = 30, expacID = 2, ilvl = 20 })
+				eq(INV:IsAutoVendorItem(info), false, loc .. ' of quality ' .. quality .. ' is not sold')
+			end
+		end
+		-- Other equipment is as before.
+		local legs = put(fixture('old gear: rare plate, level 30, expansion 2, item level 60').item)
+		eq(INV:IsAutoVendorItem(legs), true, 'old plate legs still sell')
+		-- A profile that has not edited the rule picks up the corrected one, with or
+		-- without another edit (a rename); one that edited the rule keeps its own.
+		local tabard = put(fixture('old gear: a rare tabard').item)
+		set_store({ edits = { ['Grays/Auto Vendor'] = { name = 'Junk' } } })
+		eq(INV:IsAutoVendorItem(tabard), false, 'a profile that only renamed the category: the corrected rule')
+		set_store({ edits = {} })
+		local own = { op = 'or', items = { { block = 'oldgear', levels = 10, expansion = 9, share = 0.9 } } }
+		set_store({ edits = { ['Grays/Auto Vendor'] = { rule = own } } })
+		eq(INV:IsAutoVendorItem(tabard), true, 'a profile that edited the rule keeps its own')
+		set_store({ edits = {} })
+		eq(INV:IsAutoVendorItem(tabard), false, 'the edit gone: the shipped rule')
+		eq(#take_errors(), 0, 'no errors')
+	end)
+end
+
 test('GetItemCategory says why: pin, set, rule with its path, misc', function()
 	world('forever')
 	local function why(fields)
@@ -427,8 +468,8 @@ test('GetItemCategory says why: pin, set, rule with its path, misc', function()
 	end
 	local grey = fixture('a grey "Broken Fang"').item
 	eq(why(grey), 'Grays/Auto Vendor rule{1,1}', 'Grays: the OR, by quality')
-	eq(why(fixture('old gear: rare plate, level 30, expansion 2, item level 60').item), 'Grays/Auto Vendor rule{1,2}',
-		'Grays: the OR, by old gear')
+	eq(why(fixture('old gear: rare plate, level 30, expansion 2, item level 60').item), 'Grays/Auto Vendor rule{1,2,1}',
+		'Grays: the OR, by old gear (the block in its AND with the tabard and shirt exclusion)')
 	eq(why(fixture('a soulbound robe with the red Classes: line').item), 'Grays/Auto Vendor rule{1,3,1}',
 		'Grays: the OR, by the soulbound AND')
 	eq(why(fixture('a Miscellaneous item "Key-Ring of Doom"').item), 'Keys rule{2}', 'Keys by its name')

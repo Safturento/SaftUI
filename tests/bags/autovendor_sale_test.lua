@@ -92,6 +92,15 @@ local function world(grays, others)
 		if info then info.locked = W.bags[bagID].items[slotID].locked or false end
 		return info
 	end
+	-- An item's GUID: its own, given the first time it is asked, so a stack
+	-- put in a slot later (a purchase) has a GUID of its own.
+	local guids = 0
+	C_Item.GetItemGUID = function(location)
+		local item = W.bags[location.bagID].items[location.slot]
+		if not item or item.noguid then return nil end -- noguid: an item the game gives no GUID for
+		if not item.guid then guids = guids + 1; item.guid = 'Item-1-' .. guids end
+		return item.guid
+	end
 	SaftUI.Print = function(_, ...) prints[#prints + 1] = table.concat({ ... }, ' ') end
 	SaftUI.StringFormat = { GoldFormat = function(_, money) return 'gold ' .. money end }
 	SaftUI.OptionsWidgets = {
@@ -855,4 +864,53 @@ test('n-4: a refused stack is not a sale in flight: it is not counted twice', fu
 	step()
 	eq(prompt, nil, 'no question for the retry')
 	eq(#used, 13, 'the refused one is sold on the next pass')
+end)
+
+test('a fresh purchase of the same item and count in a slot just sold is a sale landed, not a refused one', function()
+	-- Twelve sold with no question; the first slot is refilled by a purchase
+	-- before the next pass. It is a new stack (a new GUID): the twelfth sale is
+	-- counted, so selling the purchase would be a 13th and asks.
+	world({}, 12)
+	open_merchant()
+	step()
+	eq(#used, 12, 'twelve sold unasked')
+	W.put(0, 1, W.item(701, 'Thing 701', 'Miscellaneous', 1, { quality = 1, vendorPrice = 40 }))
+	step()
+	eq(#used, 12, 'the purchase is not sold under the old count')
+	check(prompt ~= nil, 'it asks first')
+end)
+
+test('a stack that stays in its slot is the same stack: a refused one is not counted sold', function()
+	world({}, 12)
+	W.refused[701] = true
+	open_merchant()
+	step()
+	step()
+	eq(#used, 13, 'the refused one is tried again')
+	eq(prompt, nil, 'and with eleven counted, it fits')
+end)
+
+test("N-2: past 12 the question says how many of the earlier stacks leave, not all of them", function()
+	world({}, 13)
+	open_merchant()
+	step()
+	answer(true)
+	step()
+	eq(#used, 13, 'thirteen sold')
+	add_pinned(899, 5, 1, 1)
+	step() -- the 13 sold are counted, and the new stack is a question of its own
+	check(prompt ~= nil, 'asked')
+	-- 13 sold, 12 still in the buyback: one more pushes out one of them.
+	check(prompt.text:find('(and 1 stack sold earlier this visit will leave the buyback)', 1, true), prompt.text)
+end)
+
+test("a slot that answers no GUID where a GUID was recorded is a changed stack: the safe side, so it is counted and asks", function()
+	world({}, 12)
+	open_merchant()
+	step()
+	eq(#used, 12, 'twelve sold unasked')
+	W.put(0, 1, W.item(701, 'Thing 701', 'Miscellaneous', 1, { quality = 1, vendorPrice = 40, noguid = true }))
+	step()
+	eq(#used, 12, 'the purchase, with no GUID to compare, counts the twelfth as sold: no 13th unasked')
+	check(prompt ~= nil, 'it asks first')
 end)

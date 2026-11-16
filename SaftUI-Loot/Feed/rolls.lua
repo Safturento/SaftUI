@@ -187,11 +187,38 @@ local function Winner(rolls)
 	if IsLine(winner) then return winner end
 end
 
--- The feed line's right side: the winner, class-coloured, or "All passed".
-local function ResultText(rolls)
-	if rolls.allPassed then return Colored(ALL_PASSED, 'pass') end
+-- A color code around `text`: the same text LibStringFormat's ColorString makes,
+-- without its tables, as a color pass sets every line again.
+local function ColorCode(text, r, g, b)
+	if r < 0 or r > 1 then r = r / 255 end
+	if g < 0 or g > 1 then g = g / 255 end
+	if b < 0 or b > 1 then b = b / 255 end
+	return ('|cff%02x%02x%02x%s|r'):format(r * 255, g * 255, b * 255, text)
+end
+
+-- The feed line's right side, built as the line draws from the entry's `rolls`
+-- (so a changed Loot > Pass or Class color reaches a line shown or saved): the
+-- winner, class-colored, or "All passed".
+function LT.RollResultText(rolls)
+	if rolls.allPassed then
+		local r, g, b = st:Color('loot', 'pass'):GetRGB()
+		return ColorCode(ALL_PASSED, r, g, b)
+	end
 	local winner = Winner(rolls)
-	return winner and ClassColored(winner.name, winner.class) or ''
+	if not winner then return '' end
+	local class = winner.class
+	local color = type(class) == 'string'
+		and (st.config.profile.colors.class[class] or (RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]))
+	if color then return ColorCode(winner.name, color.r, color.g, color.b) end
+	return winner.name
+end
+
+-- Whether a color pass (`group`, `key`; key nil is the whole group) changes the
+-- text LT.RollResultText builds for `rolls`.
+function LT.RollResultUses(rolls, group, key)
+	if rolls.allPassed then return group == 'loot' and (key == nil or key == 'pass') end
+	local winner = Winner(rolls)
+	return winner ~= nil and group == 'class' and (key == nil or key == winner.class)
 end
 
 -- A roll result's feed entry, or nil while the item's data isn't cached.
@@ -219,7 +246,6 @@ function LT:BuildRollEntry(link, rolls, allowUncached)
 		icon = texture,
 		link = link,
 		type = 'Rolls',
-		rightText = ResultText(rolls),
 		rolls = rolls,
 		itemType = itemType,
 		itemSubType = itemSubType,
@@ -284,7 +310,7 @@ end
 local function FoldIntoLootEntry(entry, rolls)
 	entry.type = 'Rolls'
 	entry.rolls = rolls
-	entry.rightText = ResultText(rolls)
+	entry.rightText = nil
 	entry.looted = true
 	LT:SaveFeedEntry(entry)
 	LT:UpdateFeed()
@@ -329,12 +355,10 @@ end
 local function RefreshResult(key, drop)
 	local info = entryByKey[key]
 	if not info then return end
+	local before = info.rolls and LT.RollResultText(info.rolls)
 	info.rolls = Summarize(drop, true)
-	local rightText = ResultText(info.rolls)
-	local changed = rightText ~= info.rightText
-	info.rightText = rightText
 	LT:SaveFeedEntry(info)
-	if changed then LT:UpdateFeed() end
+	if LT.RollResultText(info.rolls) ~= before then LT:UpdateFeed() end
 end
 
 -- Records a drop whose roll has ended, once. `restored`: found at load, so it

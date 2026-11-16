@@ -7,6 +7,23 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-15 — Auto Vendor: stop the unasked sales once the player buys or buys back](#2026-11-15--auto-vendor-stop-the-unasked-sales-once-the-player-buys-or-buys-back)
+  - [2026-11-15 — UI scale phase 2: the options kit and SaftUI's windows](#2026-11-15--ui-scale-phase-2-the-options-kit-and-saftuis-windows)
+  - [2026-11-15 — UI scale phase 3: edit mode](#2026-11-15--ui-scale-phase-3-edit-mode)
+  - [2026-11-15 — UI scale phase 4: each addon, 4a to 4g](#2026-11-15--ui-scale-phase-4-each-addon-4a-to-4g)
+  - [2026-11-15 — UI scale phase 5: crispness on dense screens](#2026-11-15--ui-scale-phase-5-crispness-on-dense-screens)
+  - [2026-11-15 — UI scale: the docked edit mode bar is off whole pixels away from k = 1](#2026-11-15--ui-scale-the-docked-edit-mode-bar-is-off-whole-pixels-away-from-k--1)
+  - [2026-11-15 — UI scale: a nameplate's inner parts are not yet even in pixels](#2026-11-15--ui-scale-a-nameplates-inner-parts-are-not-yet-even-in-pixels)
+  - [2026-11-15 — UI scale: EvenIfCentred and st:EvenPixels disagree for negative counts](#2026-11-15--ui-scale-evenifcentred-and-stevenpixels-disagree-for-negative-counts)
+  - [2026-11-15 — UI scale: the Blizzard theme's art is not on whole pixels in a scaled frame](#2026-11-15--ui-scale-the-blizzard-themes-art-is-not-on-whole-pixels-in-a-scaled-frame)
+  - [2026-11-15 — UI scale: E4, SetScale in combat, still to run](#2026-11-15--ui-scale-e4-setscale-in-combat-still-to-run)
+  - [2026-11-15 — UI scale: E0, the friends' check of the default UI size and its range](#2026-11-15--ui-scale-e0-the-friends-check-of-the-default-ui-size-and-its-range)
+  - [2026-11-15 — UI scale: E6 and deleting the font demo](#2026-11-15--ui-scale-e6-and-deleting-the-font-demo)
+  - [2026-11-15 — UI scale: E1 on the friends' screens](#2026-11-15--ui-scale-e1-on-the-friends-screens)
+  - [2026-11-15 — UI scale: the owner's standing calls](#2026-11-15--ui-scale-the-owners-standing-calls)
+  - [2026-11-15 — UI scale: the Keep prompt's line weight at 150% and the Esc order](#2026-11-15--ui-scale-the-keep-prompts-line-weight-at-150-and-the-esc-order)
+  - [2026-11-15 — The options kit's keybinding widget commits mouse buttons 6 to 31 raw](#2026-11-15--the-options-kits-keybinding-widget-commits-mouse-buttons-6-to-31-raw)
+  - [2026-11-13 — Loot rolls: the roll bar doesn't hold after a choice](#2026-11-13--loot-rolls-the-roll-bar-doesnt-hold-after-a-choice)
   - [2026-11-15 — UI scale: the kit's buttons and labels are off whole pixels on every screen that is not 1440p](#2026-11-15--ui-scale-the-kits-buttons-and-labels-are-off-whole-pixels-on-every-screen-that-is-not-1440p)
   - [2026-11-15 — UI scale: a kit confirm dialog or an open select list can cover the Keep prompt](#2026-11-15--ui-scale-a-kit-confirm-dialog-or-an-open-select-list-can-cover-the-keep-prompt)
   - [2026-11-15 — An addon's direct RollOnLoot on a roll with no confirmation is not held](#2026-11-15--an-addons-direct-rollonloot-on-a-roll-with-no-confirmation-is-not-held)
@@ -18,19 +35,10 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-15 — Edit mode: a Theme pass with edit mode on still does the full look and list refresh](#2026-11-15--edit-mode-a-theme-pass-with-edit-mode-on-still-does-the-full-look-and-list-refresh)
   - [2026-11-15 — Unit frames: a Warrior class pick updates every Warrior NPC plate](#2026-11-15--unit-frames-a-warrior-class-pick-updates-every-warrior-npc-plate)
   - [2026-11-15 — Unit frames: what a color pass's real element updates cost](#2026-11-15--unit-frames-what-a-color-passs-real-element-updates-cost)
-  - [2026-11-15 — A roll result line's All passed and winner color are baked in at push](#2026-11-15--a-roll-result-lines-all-passed-and-winner-color-are-baked-in-at-push)
   - [2026-11-15 — A Position reset runs a unit frame's update once for every part it writes](#2026-11-15--a-position-reset-runs-a-unit-frames-update-once-for-every-part-it-writes)
   - [2026-11-15 — After a UI scale change, a reset half-pixel Position can show its icon again](#2026-11-15--after-a-ui-scale-change-a-reset-half-pixel-position-can-show-its-icon-again)
   - [2026-11-15 — Shipped category names shown numbered: no test pins that they show no reset icon](#2026-11-15--shipped-category-names-shown-numbered-no-test-pins-that-they-show-no-reset-icon)
-  - [2026-11-15 — Buffs and debuffs: Size and Outline keep hand defaults a derived one would replace](#2026-11-15--buffs-and-debuffs-size-and-outline-keep-hand-defaults-a-derived-one-would-replace)
-  - [2026-11-15 — Reset walks: the feed's, Minimap's and Micro menu's movers are registered inline, so the tests pin a copy](#2026-11-15--reset-walks-the-feeds-minimaps-and-micro-menus-movers-are-registered-inline-so-the-tests-pin-a-copy)
   - [2026-11-15 — Reset walk: the profile compare is most of a unit page's cost](#2026-11-15--reset-walk-the-profile-compare-is-most-of-a-unit-pages-cost)
-  - [2026-11-15 — Buffs and debuffs: one helper for the wrap the layout keeps, so the layout and Wrap's default cannot drift](#2026-11-15--buffs-and-debuffs-one-helper-for-the-wrap-the-layout-keeps-so-the-layout-and-wraps-default-cannot-drift)
-  - [2026-11-15 — Buffs and debuffs: Wrap's hand reset copies the General group's set](#2026-11-15--buffs-and-debuffs-wraps-hand-reset-copies-the-general-groups-set)
-  - [2026-11-15 — Blizzard's tracker: the Position reset is tested on Forever only](#2026-11-15--blizzards-tracker-the-position-reset-is-tested-on-forever-only)
-  - [2026-11-15 — Forever: Show in > Bank does nothing for the default bank (the combined bank)](#2026-11-15--forever-show-in--bank-does-nothing-for-the-default-bank-the-combined-bank)
-  - [2026-11-15 — Auto Vendor counts a fresh purchase in a just-sold slot as a refused sale](#2026-11-15--auto-vendor-counts-a-fresh-purchase-in-a-just-sold-slot-as-a-refused-sale)
-  - [2026-11-15 — Auto Vendor's second question overstates the earlier stacks that leave](#2026-11-15--auto-vendors-second-question-overstates-the-earlier-stacks-that-leave)
   - [2026-11-15 — Nameplates: Blizzard's friendly plates key binding and the next login](#2026-11-15--nameplates-blizzards-friendly-plates-key-binding-and-the-next-login)
   - [2026-11-15 — Bag search box: the magnifier and the clear button](#2026-11-15--bag-search-box-the-magnifier-and-the-clear-button)
   - [2026-11-15 — Tracker: an Edit Mode anchor to a frame other than UIParent gives the default spot](#2026-11-15--tracker-an-edit-mode-anchor-to-a-frame-other-than-uiparent-gives-the-default-spot)
@@ -55,9 +63,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-15 — SaftUI's tracker phase 6: zone widgets](#2026-11-15--saftuis-tracker-phase-6-zone-widgets)
   - [2026-11-15 — SaftUI's tracker: do quest items work under [vehicleui] and [overridebar]?](#2026-11-15--saftuis-tracker-do-quest-items-work-under-vehicleui-and-overridebar)
   - [2026-11-15 — Chat's font size against Blizzard's per-window Font Size](#2026-11-15--chats-font-size-against-blizzards-per-window-font-size)
-  - [2026-11-15 — A bag window's least width ignores a Window titles change](#2026-11-15--a-bag-windows-least-width-ignores-a-window-titles-change)
   - [2026-11-14 — Position rows of secure frames can anchor to a frame that is moved in combat](#2026-11-14--position-rows-of-secure-frames-can-anchor-to-a-frame-that-is-moved-in-combat)
-  - [2026-11-14 — The options kit's keybinding widget doesn't know META or Blizzard's ignored keys](#2026-11-14--the-options-kits-keybinding-widget-doesnt-know-meta-or-blizzards-ignored-keys)
   - [2026-11-14 — A first-run setup dialog: UI size, theme, unit frame layout](#2026-11-14--a-first-run-setup-dialog-ui-size-theme-unit-frame-layout)
   - [2026-11-14 — /sui at half with the sidebar collapsed: a validation error is cut or hidden in the footer](#2026-11-14--sui-at-half-with-the-sidebar-collapsed-a-validation-error-is-cut-or-hidden-in-the-footer)
   - [2026-11-13 — Design decisions waiting to be built](#2026-11-13--design-decisions-waiting-to-be-built)
@@ -65,7 +71,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-13 — Scale SaftUI across resolutions and stay pixel perfect](#2026-11-13--scale-saftui-across-resolutions-and-stay-pixel-perfect)
   - [2026-11-13 — Bags: a general sort order of draggable blocks, with a per-category override](#2026-11-13--bags-a-general-sort-order-of-draggable-blocks-with-a-per-category-override)
   - [2026-11-13 — Unit frames: shared settings across units, and small parts as menu items](#2026-11-13--unit-frames-shared-settings-across-units-and-small-parts-as-menu-items)
-  - [2026-11-13 — Loot rolls: the roll bar doesn't hold after a choice](#2026-11-13--loot-rolls-the-roll-bar-doesnt-hold-after-a-choice)
   - [2026-11-13 — Test mode: choose which elements the previews show](#2026-11-13--test-mode-choose-which-elements-the-previews-show)
   - [2026-11-13 — Unit frame profiles are hard to find in /sui](#2026-11-13--unit-frame-profiles-are-hard-to-find-in-sui)
   - [2026-11-13 — Codebase cleanup: small things left over](#2026-11-13--codebase-cleanup-small-things-left-over)
@@ -92,10 +97,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Per-dispel-type debuff art on SaftUI's own aura buttons](#2026-11-11--per-dispel-type-debuff-art-on-saftuis-own-aura-buttons)
   - [2026-11-11 — Loot feed: retail item quality text and profession overlay sit under the Blizzard ring](#2026-11-11--loot-feed-retail-item-quality-text-and-profession-overlay-sit-under-the-blizzard-ring)
   - [2026-11-11 — Blizzard theme: the bags' rule editor and Categories list keep the options window's own look](#2026-11-11--blizzard-theme-the-bags-rule-editor-and-categories-list-keep-the-options-windows-own-look)
-  - [2026-11-11 — Rule editor: a level mode picked before a number is typed does nothing](#2026-11-11--rule-editor-a-level-mode-picked-before-a-number-is-typed-does-nothing)
   - [2026-11-11 — Bag categories: in-game checks](#2026-11-11--bag-categories-in-game-checks)
-  - [2026-11-11 — Bag categories: a Set checkbox is dead while the Equipment sets entry hides the window](#2026-11-11--bag-categories-a-set-checkbox-is-dead-while-the-equipment-sets-entry-hides-the-window)
-  - [2026-11-11 — Old gear's tabard and shirt exclusion never matched](#2026-11-11--old-gears-tabard-and-shirt-exclusion-never-matched)
   - [2026-11-11 — Auto Vendor pins now beat Grays' exclusions and equipment sets](#2026-11-11--auto-vendor-pins-now-beat-grays-exclusions-and-equipment-sets)
   - [2026-11-10 — Zone level and faction line: in-game checks](#2026-11-10--zone-level-and-faction-line-in-game-checks)
   - [2026-11-10 — Zone text's fade times are written onto Blizzard's frames](#2026-11-10--zone-texts-fade-times-are-written-onto-blizzards-frames)
@@ -131,6 +133,20 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-11 — Old gear's tabard and shirt exclusion never matched](#2026-11-11--old-gears-tabard-and-shirt-exclusion-never-matched)
+  - [2026-11-15 — A bag window's least width ignores a Window titles change](#2026-11-15--a-bag-windows-least-width-ignores-a-window-titles-change)
+  - [2026-11-11 — Bag categories: a Set checkbox is dead while the Equipment sets entry hides the window](#2026-11-11--bag-categories-a-set-checkbox-is-dead-while-the-equipment-sets-entry-hides-the-window)
+  - [2026-11-11 — Rule editor: a level mode picked before a number is typed does nothing](#2026-11-11--rule-editor-a-level-mode-picked-before-a-number-is-typed-does-nothing)
+  - [2026-11-15 — Auto Vendor's second question overstates the earlier stacks that leave](#2026-11-15--auto-vendors-second-question-overstates-the-earlier-stacks-that-leave)
+  - [2026-11-15 — Auto Vendor counts a fresh purchase in a just-sold slot as a refused sale](#2026-11-15--auto-vendor-counts-a-fresh-purchase-in-a-just-sold-slot-as-a-refused-sale)
+  - [2026-11-15 — Forever: Show in > Bank does nothing for the default bank (the combined bank)](#2026-11-15--forever-show-in--bank-does-nothing-for-the-default-bank-the-combined-bank)
+  - [2026-11-14 — The options kit's keybinding widget doesn't know META or Blizzard's ignored keys](#2026-11-14--the-options-kits-keybinding-widget-doesnt-know-meta-or-blizzards-ignored-keys)
+  - [2026-11-15 — Reset walks: the feed's, Minimap's and Micro menu's movers are registered inline, so the tests pin a copy](#2026-11-15--reset-walks-the-feeds-minimaps-and-micro-menus-movers-are-registered-inline-so-the-tests-pin-a-copy)
+  - [2026-11-15 — Blizzard's tracker: the Position reset is tested on Forever only](#2026-11-15--blizzards-tracker-the-position-reset-is-tested-on-forever-only)
+  - [2026-11-15 — Buffs and debuffs: Size and Outline keep hand defaults a derived one would replace](#2026-11-15--buffs-and-debuffs-size-and-outline-keep-hand-defaults-a-derived-one-would-replace)
+  - [2026-11-15 — Buffs and debuffs: Wrap's hand reset copies the General group's set](#2026-11-15--buffs-and-debuffs-wraps-hand-reset-copies-the-general-groups-set)
+  - [2026-11-15 — Buffs and debuffs: one helper for the wrap the layout keeps, so the layout and Wrap's default cannot drift](#2026-11-15--buffs-and-debuffs-one-helper-for-the-wrap-the-layout-keeps-so-the-layout-and-wraps-default-cannot-drift)
+  - [2026-11-15 — A roll result line's All passed and winner color are baked in at push](#2026-11-15--a-roll-result-lines-all-passed-and-winner-color-are-baked-in-at-push)
   - [2026-11-15 — Chat's Fade tabs: ChatFrameUtil.GetTabAlphas isn't in the retail source](#2026-11-15--chats-fade-tabs-chatframeutilgettabalphas-isnt-in-the-retail-source)
   - [2026-11-15 — Chat: the dock hook adds a second anchor to docked tabs 2 to n, and the dock test can't see it](#2026-11-15--chat-the-dock-hook-adds-a-second-anchor-to-docked-tabs-2-to-n-and-the-dock-test-cant-see-it)
   - [2026-11-15 — Chat's edit box can sit off the top of the screen when the chat Theme is None](#2026-11-15--chats-edit-box-can-sit-off-the-top-of-the-screen-when-the-chat-theme-is-none)
@@ -212,11 +228,248 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 ## Active
 
+### 2026-11-15 — Auto Vendor: stop the unasked sales once the player buys or buys back
+
+**What:** Auto Vendor's unasked sales go on for the whole visit, whatever the player does at the merchant. A stack the player buys back is sold again on the next pass (up to 3 tries a slot) while the visit is within 12 non-gray stacks, which undoes the buyback. A purchase of a caught item (the same item the merchant sells) can be sold again too, asked or not by the count. The question is whether buying or buying back should end the unasked part of the visit (every later stack then asks), and what a bought-back stack should do.
+
+**Why noticed:** The review of the bags package's fix round (2026-11-15, probes P2 and P3), after the GUID fix made a purchase count. The entry about a fresh purchase in a just-sold slot had it as an open question; the promise (every non-gray stack sold unasked is among the last 12 sold) holds without it.
+
+**Anchors:** `SaftUI-Bags/autovendor.lua` (`Account`, `Sell`, `VendorPass`); `tests/bags/autovendor_sale_test.lua`; Blizzard's `BuyMerchantItem` and `BuybackItem`.
+
+**What's been considered:** A post-hook (`hooksecurefunc`, `.agents/taint.md` rule 2) on `BuyMerchantItem` and `BuybackItem` that marks the visit as touched by the player and sends every later non-gray stack to a question. A bought-back stack could also be added to the visit's "do not sell again" list by its GUID (kept or new on the buyback, so by slot and item as well). Neither is needed for the promise.
+
+**Shape of work:** Small: the hooks and a flag on the visit, or the list; tests with a stand-in `BuybackItem`.
+
+**Open questions:** Should buying or buying back end the unasked sales for the visit, or only keep a bought-back stack from being sold again? Which is less surprising at a merchant?
+
+### 2026-11-15 — UI scale phase 2: the options kit and SaftUI's windows
+
+**What:** The second of the scaling work's five phases: the options kit (`SaftUI-Core/Config`) and SaftUI's own windows put on whole pixels at any scale, so a kit control on a 1080p or Mac screen is no longer a fraction of a pixel off. Phase 1 made every line the theme engine draws whole and put the scale under the game's; this makes the controls drawn on top of those lines whole too.
+
+**Why noticed:** The spec's Phasing section (`docs/superpowers/specs/2026-11-14-saftui-ui-scaling-design.md`) cuts it from phase 1, and the phase 1 reviews (Tasks 3, 5, 6 and 7) each found the same thing from the other side: the Keep prompt's buttons and the UI scale section's boxes are the first pages a friend sees, and they are off whole pixels on every screen but 1440p. The existing entry [the kit's buttons and labels](#2026-11-15--ui-scale-the-kits-buttons-and-labels-are-off-whole-pixels-on-every-screen-that-is-not-1440p) is this phase's first symptom.
+
+**Anchors:** `docs/superpowers/specs/2026-11-14-saftui-ui-scaling-design.md` ("Phasing", "The audit" A4, A5, A6, A9, A12), `docs/superpowers/plans/2026-11-15-saftui-ui-scaling-phase-1.md` (the notes on what phase 1 leaves), `SaftUI-Core/Config/optionslook.lua` (`Box`, `LINE`), `optionscontrols.lua` (`W.Button`, `Layout`), `optionsbody.lua` (hairlines, dividers), `optionscolorpicker.lua` (the rings), `optionswidgets.lua` (lists and menus, `LIST_STRATA`), `SaftUI-Core/EditMode/Bar/`, `tests/lib/pixels.lua` (`P.off`), `tests/core/general_tab_test.lua` (the section's whole-pixel case, the model for the others).
+
+**What's been considered:** E5 and E5b (the owner, 2026-11-15) showed a line a whole number of pixels wide is drawn whole at a fractional scale wherever it sits once its textures are unsnapped, and that the game's layout rounding is a nicety, not a need. So the kit needs its one-unit lines to be `st:GetLineSize(frame)` and its sizes and offsets to go through `st:RoundToPixel`, and probably not `SetRoundLayoutToNearestPixel` over the whole window. The spec's list: the kit's boxes (`Box`, `LookLine`), the color picker's rings, every hairline and divider, the one-unit offsets, the kit's pure layouts on the grid, icons in even pixels (the Lucide files stay 32 pixels), lists and menus with their own scale. Also named for this phase: `OW.MaxHeight` should win over the window's least height when the screen is shorter (the body scrolls), for The game's UI scale at 1.15 on a short screen (668 units); `TitleHeight`'s unrounded readers in `panels.lua`; `OW.MaxWidth` and the margin's reach on `/sui`. Nothing the friends have reported yet: E0, E1 and E6 are not run (see the entries for them).
+
+**Shape of work:** One plan, after the friends have looked at phase 1. A pass over `optionslook.lua`, `optionscontrols.lua`, `optionsbody.lua`, the dialogs and `EditMode/Bar/` with `scaled_test` cases that run `P.off` over the open window at 0.75, 1.25 and 1.55, and the scan in `theme_kinds_test.lua` extended to `SetHeight(1)` and `SetWidth(1)` in the finished areas (the spec's test 3).
+
+**Open questions:** Whether text height is rounded to pixels too, or left to the game; whether the layout rounding is worth adding after all if a friend's screen shows a gap.
+
+### 2026-11-15 — UI scale phase 3: edit mode
+
+**What:** The third phase of the scaling work: edit mode's grid lines and snap guides at one line, snapping's border rule with `line`, the outline, the Position editor's boxes showing one decimal at most, and the picker's list. Arrow-key nudges stay one pixel, Shift ten.
+
+**Why noticed:** The spec's Phasing section (`docs/superpowers/specs/2026-11-14-saftui-ui-scaling-design.md`, "Phase 3: edit mode"; audit A7). Phase 1 moved edit mode's bar, floating window, grid and Coordinates label onto the scale change's callback and made placement round to whole pixels, but left the grid's and the guides' own one-unit lines, and two gaps its reviews named (the entries for [the docked bar](#2026-11-15--ui-scale-the-docked-edit-mode-bar-is-off-whole-pixels-away-from-k--1) and the Coordinates label below).
+
+**Anchors:** `docs/superpowers/specs/2026-11-14-saftui-ui-scaling-design.md` ("Phasing", A7), `SaftUI-Core/EditMode/grid.lua` (`EM.GridLinePositions`, `EM:GetGridCenter`), `snap.lua` (`EM.SNAP_REACH`, the outline's border rule), `coordinates.lua` (`EM.CoordinatesText`, which prints the stored position, in stored units), `picker.lua`, `Bar/`, `.agents/edit-mode.md`, `tests/core/editmode_*`.
+
+**What's been considered:** The Coordinates label shows stored units, so at a scale other than 1 a frame dragged to "120" shows 120 while it sits on a position that is a whole number of pixels and not 120 of them. Showing pixels instead changes a number the owner reads; showing units rounded keeps it. Not decided.
+
+**Shape of work:** One plan after phase 2 (the bar's controls are the kit's). The grid and guides to `st.line`, the snap rule onto it, the Position editor's boxes to one decimal, the Coordinates label decided, with the edit mode tests under the scale parameter.
+
+**Open questions:** What the Coordinates label should say at a scale other than 1 (stored units, or pixels).
+
+### 2026-11-15 — UI scale phase 4: each addon, 4a to 4g
+
+**What:** The fourth phase of the scaling work, one plan per addon, in the order the friends look at them (the spec's call 26): 4a unit frames and nameplates (the plates' even pixels, the auras' inner line), 4b action bars and their extras (onto `st:EvenPixels`), 4c bags (the Categories tab's and rule editor's lines, the loading overlay), 4d Misc (experience bars, tooltip, totem bar, durability) and the skins (the buff frame's `+ 1`, the objective tracker's line), 4e loot (the timer lines, the feed's progress line), 4f minimap and micro menu, 4g chat and SaftUI's tracker. Each: its one-unit lines to one line (`st:GetLineSize`), its sizes and offsets that meet a border onto the grid, its centred frames even, and its layout tests under the scale parameter. The spec's scan (`tests/core/theme_kinds_test.lua`) bans a literal `edgeSize = 1` outside an allow-list that shrinks as each plan lands, and from phase 2 `SetHeight(1)` and `SetWidth(1)` in finished areas.
+
+**Why noticed:** The spec's Phasing section (`docs/superpowers/specs/2026-11-14-saftui-ui-scaling-design.md`) and the audit; the phase 1 plan (`docs/superpowers/plans/2026-11-15-saftui-ui-scaling-phase-1.md`) lists what each addon still has. Until each lands, that addon's one-unit lines are `1` unit (a fraction of a pixel away from 1440p) wherever the theme engine doesn't draw them.
+
+**Anchors:** `docs/superpowers/specs/2026-11-14-saftui-ui-scaling-design.md` ("Phasing", "The audit"), the entries for the leftovers that belong here: [a nameplate's inner parts](#2026-11-15--ui-scale-a-nameplates-inner-parts-are-not-yet-even-in-pixels), [EvenIfCentred](#2026-11-15--ui-scale-evenifcentred-and-stevenpixels-disagree-for-negative-counts), [the bags' loading overlay](#2026-11-15--ui-scale-the-bags-loading-overlay-holds-stbackdrop-and-needs-setbackdropnil-to-take-a-new-line) and [the parentless frame and the two `st:ThemeInset` readers](#2026-11-15--ui-scale-a-frame-drawn-parentless-and-parented-later-into-a-frame-with-a-scale-of-its-own-keeps-uiparents-line) (`SaftUI-Misc/totemskin.lua`, `SaftUI-Bags/categoriestab.lua`).
+
+**What's been considered:** E5's outcome sizes this: a whole-width line is whole wherever it sits, so an addon's work is the widths and the grid-meeting offsets, not the game's layout rounding. Nothing the friends have reported yet. The scaling followup ("Scale SaftUI across resolutions and stay pixel perfect") stays Active until 4g ends.
+
+**Shape of work:** Seven plans (4a to 4g), each a small audit-and-convert like phase 1's Task 3 on one addon, each with its in-game check at the friends' scales. 4a first: the plates are what a friend sees most.
+
+**Open questions:** Whether the order should change once a friend says which addon looks worst.
+
+### 2026-11-15 — UI scale phase 5: crispness on dense screens
+
+**What:** The fifth phase of the scaling work, done only if the in-game checks ask for it: a rule for Homespun at the Mac's scale (from E6 and the Mac friend's G3), a second size of the Lucide icons (they are 32 pixel files drawn at even whole pixels, so at 1.55 they scale up softly), and anything else the Mac friend reports.
+
+**Why noticed:** The spec's Phasing section (`docs/superpowers/specs/2026-11-14-saftui-ui-scaling-design.md`, "Phase 5"; calls 8 and 22). Phase 1 takes the spec's default font call, fonts follow the scale unrounded, and awaits E6; the friends' checks of both are not in.
+
+**Anchors:** `docs/superpowers/specs/2026-11-14-saftui-ui-scaling-design.md` ("Fonts", "Icons, textures and Blizzard's art", calls 8 and 22), `SaftUI-Core/Media/fonts.lua`, `tools/lucide-to-tga.cjs`, [E6 and deleting the font demo](#2026-11-15--ui-scale-e6-and-deleting-the-font-demo), `docs/superpowers/plans/2026-11-15-saftui-ui-scaling-phase-1-in-game-checklist.md`.
+
+**What's been considered:** If Homespun is rough at 15.5 (10 at 1.55), a rule rounds its size to whole pixels or to a multiple it was drawn for. If the Lucide icons are soft, a 64 pixel set drawn at the scale's nearest size. If neither is, this phase is closed unwritten.
+
+**Shape of work:** Decided by the Mac friend's answer: a rule in `Media/fonts.lua`, and `tools/lucide-to-tga.cjs` run for a second size with `st.icons` choosing by k; or nothing.
+
+**Open questions:** All of it, until E6 and G3 are in.
+
+### 2026-11-15 — UI scale: the docked edit mode bar is off whole pixels away from k = 1
+
+**What:** The docked edit mode bar is centred in units by `floor`, so away from k = 1 its left edge is a fraction of a pixel off the grid (756.75 pixels at 0.75, 1307.82 on the Mac's screen in the probe). Its border is whole (the theme engine unsnaps it), but its contents may not be.
+
+**Why noticed:** The Task 5 review (`sc-task5`, n2) of the scale's placement work, from a probe at 0.75 and on the Mac's screen. Cut from phase 1 by the spec: it is edit mode's ground.
+
+**Anchors:** `SaftUI-Core/EditMode/Bar/` (the docked bar's placement and `EM.BarLayout`), `.agents/edit-mode.md`, `tests/core/editmode_bar_test.lua`.
+
+**Shape of work:** Phase 3 (see [UI scale phase 3: edit mode](#2026-11-15--ui-scale-phase-3-edit-mode)): place the bar through `st:RoundToPixel` with an even width, and a `scaled_test` that runs `P.off` over the open bar.
+
+**Open questions:** None.
+
+### 2026-11-15 — UI scale: a nameplate's inner parts are not yet even in pixels
+
+**What:** Phase 1 makes a plate's driver size a whole, even number of pixels, so a plate's centred parts land on whole pixels at the owner's scale and at every other. The parts inside a plate (the name and health texts, the castbar and its icon, the auras' rows, the threat text and the raid mark) still take sizes and offsets from their configs in units, so away from k = 1 an odd one is a fraction of a pixel off.
+
+**Why noticed:** The Task 5 review (`sc-task5`), which listed it with the leftovers that already had owners.
+
+**Anchors:** `SaftUI-Unitframes/nameplates/pixels.lua` (`UF.PlateDriverSize`, `UF.RoundLayout`), `SaftUI-Unitframes/elements/auras.lua`, `SaftUI-Unitframes/config/units/nameplate.lua`, `tests/unitframes/nameplate_pixel_test.lua`.
+
+**Shape of work:** Phase 4a ([UI scale phase 4](#2026-11-15--ui-scale-phase-4-each-addon-4a-to-4g)): each inner part's size and offset through `st:RoundToPixel`, centred ones even, with the plate's in-game check at the friends' scales.
+
+**Open questions:** None.
+
+### 2026-11-15 — UI scale: EvenIfCentred and st:EvenPixels disagree for negative counts
+
+**What:** `EvenIfCentred` in `SaftUI-ActionBars/bars.lua` and `st:EvenPixels` in `SaftUI-Core/api.lua` both make a centred frame an even number of pixels long, but an odd negative count goes toward zero in the first and away from it in the second (-45 pixels gives -44 and -46). Phase 4b moves the action bars, and the totem bar's `EvenPixels`, onto `st:EvenPixels`, and that move changes a result for a negative input.
+
+**Why noticed:** Phase 1 Task 1's review (`sc-task1`, n4 and r4): `st:EvenPixels` rounds away from zero on purpose, and a comment at it says the two must not be assumed to agree. Negative lengths are rare (an offset, not a size), so no current setting is known to hit it.
+
+**Anchors:** `SaftUI-Core/api.lua` (`st:EvenPixels`, the comment on negative counts), `SaftUI-ActionBars/bars.lua` (`EvenIfCentred`, `AB:PlaceFrame`), `SaftUI-Misc/totemlayout.lua` (`EvenPixels`), `.agents/architecture.md` ("Half pixels from centred anchors").
+
+**Shape of work:** Phase 4b ([UI scale phase 4](#2026-11-15--ui-scale-phase-4-each-addon-4a-to-4g)): move both onto `st:EvenPixels` with a case for a negative odd count, or pick which direction is right for an offset first.
+
+**Open questions:** Which direction a negative odd count should go.
+
+### 2026-11-15 — UI scale: the Blizzard theme's art is not on whole pixels in a scaled frame
+
+**What:** Under the Blizzard theme the atlas corners and edges, the ring and slot art, and the like scale with k as Blizzard's own UI does, and are not placed on whole pixels in a frame that carries a scale. The plan's Ruling 11 allows it: only the lines SaftUI draws itself are whole.
+
+**Why noticed:** Phase 1's design (call 21: "the Blizzard theme's art scales with k like Blizzard's own UI, its offsets rounded, with no line weight") and the Task 3 review (`sc-task3`). Whether it looks wrong is the owner's eye, not a measurement.
+
+**Anchors:** `SaftUI-Core/themeart.lua` and `themeart_data.lua` (`ThemeArt.WholeInset`, `WholeTop`, `LayBorder`), `.agents/architecture.md` ("Borders are whole pixels"), `docs/superpowers/plans/2026-11-15-saftui-ui-scaling-phase-1.md` (Ruling 11).
+
+**What's been considered:** Setting `SetSnapToPixelGrid(false)` on the art as for the lines (it would only unsnap, not make the art whole); drawing the art at a whole multiple of its own size, which is not what an atlas is for.
+
+**Shape of work:** Look at it at 0.75, 1.25 and 1.55 under Blizzard (the checklist asks); only if a friend or the owner finds a seam, a pass over `ThemeArt` placing each piece on whole pixels.
+
+**Open questions:** Whether it looks wrong at all.
+
+### 2026-11-15 — UI scale: E4, SetScale in combat, still to run
+
+**What:** Experiment E4: is `UIParent:SetScale` refused in combat? It is inferred to be (`SetScale` is a protected function and UIParent is protected in combat, since protection spreads to a secure frame's parents), so SaftUI builds as if it were: a scale change in combat waits for the end of the fight (`.agents/taint.md`, rule 6; `.agents/clients.md`, F8, "inferred"). E4 was not run.
+
+**Why noticed:** The scaling design's experiments; the owner ran E1 to E3, E5 and E5b on 2026-11-15 and said to go on without E4.
+
+**Anchors:** `.agents/clients.md` ("Screen and UI scale", F8), `.agents/taint.md` rule 6, `SaftUI-Core/uiscale.lua` (`UIScale:Check`, `st:QueueAfterCombat('UIScale', ...)`), `docs/superpowers/plans/2026-11-15-saftui-ui-scaling-phase-1-in-game-checklist.md` (the check, first).
+
+**What's been considered:** What each outcome changes: nothing unsafe either way. If `SetScale` in combat is blocked (an "Interface action failed" or `ADDON_ACTION_BLOCKED`, UIParent's scale unchanged), F8 is confirmed and the docs drop "inferred". If it is allowed, the wait could in principle go, but the pass still cannot run in combat (it moves protected frames), so the scale would change in a fight with SaftUI's frames at the old line until the end of it: the wait stays and only the docs change.
+
+**Shape of work:** The owner's two commands in a fight on a dummy (the checklist has them), then update F8 and rule 6 from "inferred" to "confirmed" with the result.
+
+**Open questions:** The result, on Forever and, if possible, on retail.
+
+### 2026-11-15 — UI scale: E0, the friends' check of the default UI size and its range
+
+**What:** Experiment E0: each friend looks at SaftUI's automatic size on their own screen and says whether 100% is right and whether 70% to 150% is the right range. It was not run: the owner said to finish phase 1 without it ("if it's just fine tuning that would change we can get feedback from him later"), so the spec's defaults ship: Automatic at 100%, a UI size of 70% to 150% in 5% steps.
+
+**Why noticed:** The phase 1 plan placed E0 before Task 7; the owner's ruling (the plan's ledger, 2026-11-15) shipped Task 7 without it.
+
+**Anchors:** `SaftUI-Core/uiscale.lua` (`UIScale.DEFAULT`, `UIScale.SIZE` with its `min`, `max` and `step`), `SaftUI-Core/Config/general.lua` (the UI size row), `.agents/clients.md`, `docs/superpowers/specs/2026-11-14-saftui-ui-scaling-design.md` ("The default and the choice", call 4), `docs/superpowers/plans/2026-11-15-saftui-ui-scaling-phase-1-in-game-checklist.md`.
+
+**What's been considered:** The change is one line if a friend wants another default or range: `UIScale.DEFAULT.size` (1) for the default and `UIScale.SIZE` for the range, with the tests that pin 70% and 150% (`tests/core/uiscale_test.lua`, `general_tab_test.lua`) and the row's description. A default other than 100% makes every screen a size other than the design's, so it would change the owner's own screen only if the owner moved it too.
+
+**Shape of work:** Ask each friend (the checklist's questions); retune if they say so.
+
+**Open questions:** The friends' answers.
+
+### 2026-11-15 — UI scale: E6 and deleting the font demo
+
+**What:** Experiment E6: the Mac friend looks at Homespun at the Mac's scale in the font demo (`/suifonts`) and says whether it is crisp. Not run: phase 1 takes the spec's default (fonts follow the scale, unrounded) and leaves the font demo in place so the Mac friend can still run E6. Once E6 is in, delete the demo, and if Homespun is rough at 1.55 open phase 5's font rule ([UI scale phase 5](#2026-11-15--ui-scale-phase-5-crispness-on-dense-screens)). Homespun stays either way (design-system decision 41).
+
+**Why noticed:** The phase 1 plan's Task 8 deleted the demo; the owner's ruling (2026-11-15) kept it for E6.
+
+**Anchors:** `SaftUI-Core/Dev/fontdemo.lua` (its header lists what goes), `docs/design-system/05-decisions.md` (decisions 41 and 59), `docs/superpowers/plans/2026-11-15-saftui-ui-scaling-phase-1-in-game-checklist.md`.
+
+**Shape of work:** Small, once E6 is in. By the demo's own five steps (its header): (1) delete `SaftUI-Core/Dev/fontdemo.lua`, `SaftUI-Core/Dev/load.xml` and the `Dev` folder; (2) the `Dev\load.xml` line in `SaftUI-Core/SaftUI-Core_Forever.toc` and `SaftUI-Core_Mainline.toc`; (3) the folder `SaftUI-Core/Media/Fonts/Candidates/` (every candidate and its `OFL.txt`; none is kept, Homespun stays); (4) the LibSharedMedia registrations (the loop over `CANDIDATES` in `fontdemo.lua`, which go with step 1; Global settings > Fonts then lists no "Candidate:" faces); (5) `tests/core/fontdemo_test.lua`, the demo's sentence in `AGENTS.md`'s Core row, the `/suifonts` line in `README.md`, the mention in `.agents/testing.md`, the demo's exception in `tests/core/setfont_scan_test.lua` (line 31) and its entry in the allow-list of `tests/core/theme_kinds_test.lua` (line 371). Then run `tests/run`, `tests/run --scales=all` and `tests/run --self-check`; `git grep -n -e "Candidate: " -e "fontdemo" -e "suifonts" -- 'SaftUI-*' tests/ AGENTS.md README.md` and `git grep -n "Dev" -- 'SaftUI-Core/*.toc'` print nothing (the tracker's own `Candidates` don't match).
+
+**Open questions:** The Mac friend's answer.
+
+### 2026-11-15 — UI scale: E1 on the friends' screens
+
+**What:** Experiment E1 (what the game reports: `GetPhysicalScreenSize()`, the default scale, render scale, the scales read back) was run on the owner's 2560 x 1440 screen only. The two friends' screens (1080p and the Mac's 3456 x 2234) are not run: F2 (the physical size on a Retina display is device pixels) and F4 (render scale does not change it) stay inferred, and nothing says yet whether either screen has an odd notch in Automatic's size (a size whose line weight or pixel jumps where a friend's window or resolution puts it).
+
+**Why noticed:** The phase 1 plan's experiments and the owner's results (`experiments-results.md`, E1).
+
+**Anchors:** `.agents/clients.md` (F2, F4, F5), `SaftUI-Core/uiscale.lua` (`UIScale.ReadScreen`, `Resolve`, the snap band), `docs/superpowers/plans/2026-11-15-saftui-ui-scaling-phase-1-in-game-checklist.md` (the command to ask each friend to run).
+
+**What's been considered:** If a friend's E1 shows an odd notch (a size that falls between lines, or a physical size that is not what Automatic assumed), the fix is half pixels from it: a snap or a line weight chosen from that reading, in `Resolve`.
+
+**Shape of work:** Each friend runs the command and pastes the line; update F2 and F4 from "inferred" to "confirmed", or open the half pixel work.
+
+**Open questions:** The friends' lines.
+
+### 2026-11-15 — UI scale: the owner's standing calls
+
+**What:** Two calls the owner made while phase 1 was built, kept here so a later reader does not reopen them by accident. (1) One-pixel lines stay one pixel on frames Blizzard scales (the Cooldown Manager and buffs at an Edit Mode Icon size other than 100%, the swing timers at a Scale other than 100%): their lines are now exact, where they used to be as thick as the frame's scale made them; the alternative, weighting a line by the frame's own scale, needs a spec ruling and the owner declined it (2026-11-15). (2) An odd nameplate Width or Height is one pixel larger at the owner's scale (201 by 21 becomes 202 by 22), because a plate is a whole, even number of pixels so its centred parts land on whole pixels; the default 200 by 20 is unchanged. The owner was told; no objection is recorded.
+
+**Why noticed:** The phase 1 ledger (the Task 3 and Task 5 reviews).
+
+**Anchors:** `SaftUI-Core/theme.lua` (`st:GetLineSize`, `st:DrawingFrame`), `SaftUI-Unitframes/nameplates/pixels.lua` (`UF.PlateDriverSize`), `docs/design-system/05-decisions.md` (decisions 57 and 60), `docs/superpowers/plans/2026-11-15-saftui-ui-scaling-phase-1-in-game-checklist.md`.
+
+**Shape of work:** None unless the owner changes a call. The checklist asks the owner to look at both once.
+
+### 2026-11-15 — UI scale: the Keep prompt's line weight at 150% and the Esc order
+
+**What:** Two small open points on the Keep prompt, both only visible in the game. (1) A 150% preview on a 1440p screen gives the prompt 2 pixel lines (Thick 6), since a line is `st.lineWeight` pixels of UIParent's scale and the prompt ignores its parent's scale only for size: whole, but the weight jumps at the preview. The owner's line-weight call (one pixel lines stay on frames the game scales) stands, so this is a note, not a bug. (2) With `/sui` and the prompt both up, Esc should go back and leave `/sui` open, and a second Esc closes `/sui`. That order is inferred from WoW's top-down keyboard order and no test can show it; if the game gives `/sui`'s catcher the key first, one Esc closes `/sui` and leaves the prompt, which still goes back at 0, so nothing keeps by accident.
+
+**Why noticed:** The Task 6 review (`sc-task6`, concern 1 and m2) and the Task 7 review.
+
+**Anchors:** `SaftUI-Core/Config/uiscaleprompt.lua` (`Build`'s `OnKeyDown`, `Fit`), `docs/design-system/components/KeepPrompt/README.md` ("Known gaps"), `docs/superpowers/plans/2026-11-15-saftui-ui-scaling-phase-1-in-game-checklist.md` (the Esc check).
+
+**Shape of work:** The owner's check settles (2); if one Esc closes `/sui` first, raise the prompt's catcher or have `/sui`'s Esc handler skip while the prompt shows. Close this entry on the owner's word.
+
+**Open questions:** The Esc order, in the game.
+
+### 2026-11-15 — The options kit's keybinding widget commits mouse buttons 6 to 31 raw
+
+**What:** The `keybinding` widget (`SaftUI-Core/Config/optionskeybinding.lua`) converts only `MiddleButton`, `Button4` and `Button5` (its `MOUSE_BUTTONS` table). Mouse buttons 6 to 31 reach `Press` as `Button6` and so on and are committed raw, where the game's binding names are `BUTTON6`. `/sui kb` converts every button with `GetConvertedKeyOrButton` (`SaftUI-ActionBars/keybindmode.lua`).
+
+**Why noticed:** Review of the small-followups package (2026-11-15), reading the widget's new use of Blizzard's binding helpers. The gap is older than that change; it is rare (a mouse with more than five buttons).
+
+**Anchors:** `SaftUI-Core/Config/optionskeybinding.lua` (`MOUSE_BUTTONS`, the `OnMouseDown` script), `SaftUI-ActionBars/keybindmode.lua` (`BindingKey`), `Blizzard_SharedXML/BindingUtil.lua` (`GetConvertedKeyOrButton`, the same on both clients), `tests/core/options_fields_test.lua`.
+
+**Shape of work:** small: in `OnMouseDown`, convert through `GetConvertedKeyOrButton` where the client has it, keeping `MOUSE_BUTTONS` as the fallback; a test that `Button6` commits `BUTTON6`.
+
+### 2026-11-13 — Loot rolls: the roll bar doesn't hold after a choice
+
+**What:** After a choice on a group loot roll, SaftUI should show its own bar in Blizzard's place, locked on the choice, until the roll ends (the held rolls feature, built 2026-11-10). In game it doesn't: the user reports the bars "don't seem to be staying up after selecting a choice" (Forever, the night of 2026-11-12).
+
+**Why noticed:** Step 32 of the cleanup's in-game checks. The feature was built from Blizzard's source and has never been seen working in game ([Loot rolls: confirm the client assumptions in game](#2026-11-08--loot-rolls-confirm-the-client-assumptions-in-game)), so it may never have worked there.
+
+**Anchors:** `SaftUI-Loot/rollinfo.lua` (`OnRollChosen`, the `RollOnLoot` post-hook that notes the choice; `OnBarHide`, which calls `LT:HoldRoll`; `LT:UpdateRollBars`, which releases a held bar whose drop isn't open); `SaftUI-Loot/roll.lua` (`LT:HoldRoll`, `LT:ReleaseHeldRoll`, `LT:UpdateHeldRolls`); `SaftUI-Loot/Feed/loothistory.lua` (`LT:GetOpenDrops`, `HasEnded`, `RollTimeOver`); `tests/loot/roll_held_test.lua` (19 tests, all passing on stubs); Forever's `Interface/AddOns/Blizzard_UIPanels_Game/Mainline/GroupLootFrame.lua` and `.xml`.
+
+**What's been considered:** A read of the code against Forever's source (2026-11-13) found no cause:
+- The cleanup didn't change the logic. 81bf0b4 swapped Loot's local plain-value helpers for Core's (`st.PlainNumber`, the same test), and the other commits only moved code between files. `LT.PlainNumber` is set before anything runs.
+- Blizzard's source matches what the code assumes: a roll button's click calls `RollOnLoot(rollID, rollType)`; `CANCEL_LOOT_ROLL` leads to `GroupLootFrame_Remove`, `GroupLootContainer_RemoveFrame` and `frame:Hide()`, which is where `OnBarHide` runs; a main spec Need plays its dice for 5 seconds first.
+- The timer's values are plain: the timer draws in game.
+What's left needs evidence from the game. In the order they'd be checked:
+1. An error inside `LT:HoldRoll` or `OnBarHide`. It would be in BugGrabber's log.
+2. The held bar is shown and released at once, because its drop isn't in `LT:GetOpenDrops()` when `LT:UpdateRollBars` runs right after the hide. That is by design when everyone else has already chosen (the roll is over). Otherwise `HasEnded` or `RollTimeOver` reads Forever's drop wrongly (the units of `startTime` and `duration`, or `winner` being a table before the roll ends).
+3. `chosen[rollID]` is never set: the frame's `rollID` or the timer's values aren't plain at the click, or the click doesn't go through the global `RollOnLoot`.
+4. `LT:HoldRoll` returns early: `skins[frame].shown` is missing or for another roll, or under a second is left.
+5. The bar is up, but off screen or behind something.
+
+**Shape of work:** Evidence first: BugGrabber's log for Loot errors, and what the user saw (which button, whether others were still rolling, whether the bar went at once or after a Need's dice). If that doesn't settle it, a debug print at each decision in the list above, off by default, for the next group run. Then a failing test and a small fix.
+
+**Open questions:** Was anyone else still rolling when the bar went? If not, the bar going is the design, and the question becomes whether a finished roll should hold for a moment to show its result.
+
+**In game 2026-11-13:** BugGrabber's log has no Loot error, so cause 1 is out. The user: "I was pressing greed, it went away as soon as I clicked. It could very well be that I was the last one to roll, I wasn't paying much attention." That fits cause 2's by-design case: the last to choose, so the roll resolved at the click and the held bar was released in the same update.
+
+**Decided 2026-11-13:** The user: "I like the hold for a finished roll, we can hold it for a few seconds and fade out after. the debug print is a good idea, lets add that as well." Being built on branch `fb-rollhold`: a held bar that finishes (its drop resolved, or its time ran out) stays 3 seconds, locked on the choice with its final counts, fades over half a second, then goes; and `/sui debug` turns on `st:Debug('Loot', ...)` lines at each decision in the list above, for the next group run. The 3 seconds and the half second are the builder's numbers, not the user's. This entry stays Active until the held bar has been seen in game with others still rolling.
+
+**Merged 2026-11-13 (7c2ab54):** built and reviewed, with one fix round. Beyond the above, a finished bar keeps showing later results for the drop it finished on (counts and tooltip only), so a roll that times out can show its auto-passes and winner before it fades. The finish line under `/sui debug` reads `held roll finished: <id> <why> waiting <n> <winner | all passed | no winner | no summary>`: a `winner` with others still waiting, a second or two after your click, means Forever's drop fields are misread (cause 2 above). Not yet seen in game.
+
+**Fixed in code 2026-11-15, awaiting an in-game roll:** the cause was that a plain click's roll is cancelled inside `RollOnLoot`, so Blizzard's bar hid before the post-hook noted the choice and nothing was held (the owner's debug lines from before the fix: `bar hid: ... choice noted false frame hidden true`, then `choice not noted: ... no shown bar with that roll`). Fixed on `fb-rollhold` (merged 2026-11-15, 357f415f, 5b9411c5): each roll button's `PreClick` notes the click as pending (roll, type, time left) before `RollOnLoot`, the bar's hide holds the roll with it, and the post-hook still notes a choice that leaves the bar up (a confirmation, a Need's dice). `tests/loot/roll_held_test.lua`'s `RollOnLoot` stub answers inside the call as the game does. Not yet seen in game. A real roll with `/sui debug` on should print, in order: `choice pending: <id> <type> seconds left <n>`, `bar hid: <id> choice noted false pending true ...`, `held roll <id> choice <type> ...`, `choice held at the bar hiding: <id> <type>`. Close this entry once the held bar has been seen in game with others still rolling. See also [Loot rolls: confirm the client assumptions in game](#2026-11-08--loot-rolls-confirm-the-client-assumptions-in-game). An addon's direct `RollOnLoot` is its own entry.
+
 ### 2026-11-15 — UI scale: the kit's buttons and labels are off whole pixels on every screen that is not 1440p
 
 **What:** The kit's buttons, text boxes, hairlines and labels (`W.Button`, `Box`, the dialogs' text) are sized in whole UIParent units, so on any screen where a unit is not a whole number of pixels (1080p at 0.75, the Mac at 1.55, any window) their edges and text fall between pixels. Only their borders are whole (Task 3's unsnapping). The Keep prompt is the visible case: it draws at the automatic size of every screen but 1440p, not only while previewing, so on 1080p its buttons are 19.5 pixels tall.
 
-**Why noticed:** The Task 6 review of the Keep prompt (`sc-task6`, `454d3fcf`): the prompt's own frame is whole pixels (placed and sized by `st:RoundToPixel`), its `W.Button`s are not. The plan names this as phases 2 to 4 ("the options kit's boxes, hairlines and dividers (the Keep prompt's buttons among them)").
+**Why noticed:** The Task 6 review of the Keep prompt (`sc-task6`, `454d3fcf`): the prompt's own frame is whole pixels (placed and sized by `st:RoundToPixel`), its `W.Button`s are not. The plan names this as phases 2 to 4 ("the options kit's boxes, hairlines and dividers (the Keep prompt's buttons among them)"). The UI scale section (Global settings > General, Task 7) is the first page a friend sees it on: its Scale box, UI size box and the reset icons are kit boxes, so ask each friend to look at them for blur (the checklist does). The phase entry is [UI scale phase 2](#2026-11-15--ui-scale-phase-2-the-options-kit-and-saftuis-windows).
 
 **Anchors:** `SaftUI-Core/Config/optionscontrols.lua` (`W.Button`, `Layout`), `optionslook.lua` (`Box`, `LINE`), `optionsdialog.lua`, `SaftUI-Core/Config/uiscaleprompt.lua` (`Fit`), `docs/superpowers/plans/2026-11-15-saftui-ui-scaling-phase-1.md` ("What an existing install sees at upgrade"), `docs/design-system/components/KeepPrompt/README.md`.
 
@@ -328,6 +581,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 **Shape of work:** Small: remember the last look in `bar.lua` and `historylist.lua`, branch the Theme listeners, and run the edit mode cost cases for a Theme pass under Thick, Thin and Blizzard.
 
 **Open questions:** Whether a Theme pass can change anything but the look's color while the art stays the same (a Background change reaches the bar's backdrop through the theme's own recolor, not here).
+
 ### 2026-11-15 — Unit frames: a Warrior class pick updates every Warrior NPC plate
 
 **What:** `UF.ColorReaches` for Class matches the unit's class token for any unit, so a Class > Warrior (or Paladin, Rogue, Mage) pick also updates every NPC plate whose unit carries that token, though a plate's bar and name don't show NPC class (`colorClassNPC` is off on plates). The spec's L3 ("nothing else updates") doesn't hold near a pack. Nothing visible changes; it is only cost.
@@ -356,19 +610,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **Open questions:** the slowest pass the owner sees in game.
 
-### 2026-11-15 — A roll result line's All passed and winner color are baked in at push
-
-**What:** A roll result's feed line (`Feed/rolls.lua`, `ResultText`) builds its right text once, at push: "All passed" in Loot > Pass, or the winner's name in their class color. A shown line, and a saved one after a reload, never follows a change to Loot > Pass or to a class color, though the Pass row's description names "All passed (on the feed line and in its roll tooltip)".
-
-**Why noticed:** Review of the live colors Task 6 (Loot). The audit and the brief didn't list this reader, so the task made the feed's item names and progress bars live and left this one. Context: the plan's goal is that every Colors page color reaches every SaftUI reader on screen as the picker is dragged.
-
-**Anchors:** `SaftUI-Loot/Feed/rolls.lua` (`ResultText`, `BuildRollEntry`), `SaftUI-Loot/Feed/feed.lua` (`LT:ColorFeed`, `LT.FeedItemName`), `docs/superpowers/plans/2026-11-15-saftui-live-colors.md` Ruling 15, `.superpowers/sdd/2026-11-15-saftui-live-colors/task-6-review.md` (m4).
-
-**What's been considered:** The same shape as the item names: the entry already keeps `rolls`, so keep it and build the right text at draw (`LT.RollResultText(info)`), and have `ColorFeed` set it again for `loot` (nil or `pass`) and `class`. A class color change then reaches only the lines with a winner.
-
-**Shape of work:** Small: one function moved out of the push, one branch in `ColorFeed`, a test beside `live_colors_test.lua`'s feed cases; saved entries already hold `rolls`, so restored lines follow too.
-
-**Open questions:** Whether the roll tooltip's lines (colored when shown) need a change: they read the color each time they open, so probably not.
 ### 2026-11-15 — A Position reset runs a unit frame's update once for every part it writes
 
 **What:** A reset of a unit frame part's Position whose anchor and offsets all differ writes point, rel_point, `relative_to` (twice, for a Global frame) and the offsets, and each part's own `set` calls `UF:UpdateConfig(unit)`: six updates for one click.
@@ -403,26 +644,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **Shape of work:** One case: a user category called like a shipped one, the list numbers the shipped one, and its Name icon is absent until the name is edited. Small.
 
-### 2026-11-15 — Buffs and debuffs: Size and Outline keep hand defaults a derived one would replace
-
-**What:** The Duration and Stack count Font rows take their default from where they are saved; their Size and Outline rows still have hand `default` tables over `st.defaults`.
-
-**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
-
-**Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua` (`AP:GetTextOptions`, the `for _, field in ipairs({ 'size', 'outline' })` loop), `tests/misc/buff_text_font_default_test.lua` (the Size and Outline resets case).
-
-**Shape of work:** Delete the loop; the group's `saved` (`SavedIn('auras', key, kind)`) derives both, and a derived reset runs the group's `set` (`Apply`), as the hand one does. The case in `buff_text_font_default_test.lua` moves to the kit's calls.
-
-### 2026-11-15 — Reset walks: the feed's, Minimap's and Micro menu's movers are registered inline, so the tests pin a copy
-
-**What:** The loot feed, the minimap and the micro menu register their movers inside their setup functions, so the walks register copies and a source check pins the key, `configPath` and `defaults` text.
-
-**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
-
-**Anchors:** `SaftUI-Loot/Feed/feed.lua` (`st:RegisterConfigMover(feed, ...)`), `SaftUI-Minimap/minimap.lua`, `SaftUI-Minimap/micromenu.lua`; `tests/loot/theme_test.lua` and `tests/minimap/theme_test.lua` (the `feedSource` and `PinnedTo` checks).
-
-**Shape of work:** Move each registration into a method (`LT:RegisterFeedMover()`, as `LT:RegisterRollMover()` and `CHT:RegisterChatMover()` are) that the world calls. Three small changes and the source checks go.
-
 ### 2026-11-15 — Reset walk: the profile compare is most of a unit page's cost
 
 **What:** `tests/unitframes/config_test.lua` takes 12 s: each probed row diffs the whole profile twice, which is almost all of it.
@@ -433,73 +654,20 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **Shape of work:** A cheaper way to see a write outside a row's saved path: a write log on the profile table, or comparing only the saved path's top-level key plus one whole-profile compare at the end of a page.
 
-### 2026-11-15 — Buffs and debuffs: one helper for the wrap the layout keeps, so the layout and Wrap's default cannot drift
 
-**What:** `GetGeometry`, `WrapForGrow`'s last line and `DefaultWrap` each repeat the fallback (`horizontal and 'DOWN' or 'LEFT'`).
 
-**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
 
-**Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua` (lines about 129, 163-170 and 203-209), `tests/misc/options_pages_test.lua` (the Wrap cases).
 
-**Shape of work:** One local `WrapInUse(grow, wrap)` used in all three; the existing Wrap and Grow cases pin it.
 
-### 2026-11-15 — Buffs and debuffs: Wrap's hand reset copies the General group's set
 
-**What:** Wrap's hand `reset` repeats the body of the General group's `set` instead of calling it.
 
-**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
 
-**Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua` (`default` on `args.wrap`), `tests/misc/options_pages_test.lua`.
 
-**Shape of work:** A shared local function for the write and the refresh, called by `set` and by the reset.
 
-### 2026-11-15 — Blizzard's tracker: the Position reset is tested on Forever only
 
-**What:** The default differs by client (`y_off` -275 or -260); the test runs on Forever. A retail run on the scratch check gave -260, which is right.
 
-**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
 
-**Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_ObjectiveTrackerPosition.lua` (`st:DefaultTrackerPosition()`), `tests/misc/objective_tracker_position_test.lua` ("Blizzard's tracker's Position resets to Blizzard's spot").
 
-**Shape of work:** Run that case for both clients, as the walk cases of Action bars and the Tracker now are.
-
-### 2026-11-15 — Forever: Show in > Bank does nothing for the default bank (the combined bank)
-
-**What:** On Forever the bank opens as the combined bank by default (`combinedBank` is on), and that window reads the category's `hide.combinedbank` flag. But Show in in `/sui` > Bags > Categories lists only Bags and Bank there (the warband bank and Combined bank are listed only where `INV:HasWarbandBank()`), so unticking Bank sets `hide.bank`, which the combined bank never reads: the category still shows in the bank the player sees. The flag the combined bank does read can be set only by the window's own Edit view checkbox on a category header (`category.lua`, `INV:SetCategoryHidden(id, categoryName, ...)`), or by a migrated profile.
-
-**Why noticed:** Review of the reset-every-setting Task 5 (2026-11-15). Show in's reset first covered only the listed windows, so a category hidden in the combined bank on Forever stayed "edited" with no reset; the fix there makes Show in's reset and "differs" cover every window a category is hidden in. The older bug (Show in cannot hide a category in the bank Forever actually shows) is separate and unfixed.
-
-**Anchors:** `SaftUI-Bags/categoriestab.lua` (`INV:CategoryEditorOptions`: `windows`, `sorting`), `SaftUI-Bags/categories.lua` (`INV:SetCategoryHidden`, `INV:IsCategoryHidden`, `INV:ShowCategoryEverywhere`), `SaftUI-Bags/category.lua` (the header checkbox), `SaftUI-Bags/movers.lua` (`INV:GetMoverIds`), `tests/bags/categories_editor_test.lua` (Show in's reset test).
-
-**What's been considered:** List the window the bank really is on each client: on Forever, Combined bank in place of (or beside) Bank. Or have Show in > Bank write both `bank` and `combinedbank` while the bank is combined. The reviewer preferred adding the combined bank to Show in on Forever.
-
-**Shape of work:** Small change in `INV:CategoryEditorOptions` (which windows Show in lists and what its labels say) plus a test on Forever that unticking the window the bank is in hides the category there.
-
-**Open questions:** Does Forever's Show in list Combined bank alone, or Bank and Combined bank? What does Bank mean while the bank is combined?
-
-### 2026-11-15 — Auto Vendor counts a fresh purchase in a just-sold slot as a refused sale
-
-**What:** `Account` (`SaftUI-Bags/autovendor.lua`) decides a stack was sold when its slot is empty or holds another item or count. A stack bought from the merchant that is the same item in the same count as one just sold, landing in the slot that stack left before the next pass (2 seconds), reads as a refused sale. `tailSold` is one short, the purchase is sold again with no question, and at a visit already at 12 one stack leaves the buyback list unasked.
-
-**Why noticed:** The re-review of Auto Vendor's fix round 1 (probe L3, "Check of fix round 2", 2026-11-15). All five conditions must hold together: a caught item the merchant sells, the same count, the first free slot being the one just emptied, inside one pass window, and a visit already at 12. The reviewer called it rare and costing one stack, and the owner accepted it for the merge.
-
-**Anchors:** `SaftUI-Bags/autovendor.lua` (`Account`, `Sell`); `tests/bags/autovendor_sale_test.lua`.
-
-**What's been considered:** A bought-back stack in the same slot is harmless to the count (its buyback entry is removed, so the list still matches) but it is sold again, which undoes the buyback. A fresh purchase removes no entry, which is why only it breaks the promise.
-
-**Shape of work:** Small. Record `C_Item.GetItemGUID(ItemLocation:CreateFromBagAndSlot(bag, slot))` in `Sell` and compare it in `Account`: a different GUID counts as sold. `GetItemGUID` is in `ItemDocumentation.lua` on both branches. A purchase has a new GUID; a bought-back stack keeps its GUID (counted as now, correct) or gets a new one (counted twice, which only asks sooner), so the count is never short. Optionally also a post-hook (`hooksecurefunc`, `.agents/taint.md` rule 2) on `BuyMerchantItem` and `BuybackItem` to end the unasked part of a visit once the player starts buying, which would also stop SaftUI selling back what the player just bought back. Tests need a stub GUID per item.
-
-**Open questions:** Whether to also end the unasked sales when the player buys.
-
-### 2026-11-15 — Auto Vendor's second question overstates the earlier stacks that leave
-
-**What:** The second question of a visit says how many stacks sold earlier this visit will leave the buyback ("... and N stacks sold earlier this visit will leave the buyback"). Once a visit has already sold more than 12 (after a Sell them to 13 stacks, say) the number is too high: with a 14th stack the question says 2 and the true number is 1. The formula `min(earlier + in flight, earlier + in flight + its own - size)` is right while `earlier + in flight` is 12 or fewer.
-
-**Why noticed:** The re-review of Auto Vendor's fix round 1 (probe N7b, 2026-11-15). It errs on the safe side (the question warns of more than will happen), so it was left for later.
-
-**Anchors:** `SaftUI-Bags/autovendor.lua` (`QuestionText`, the `pushed` figure); `tests/bags/autovendor_sale_test.lua` ("N-2").
-
-**Shape of work:** Small. With `e = tailSold + pendingTail` and `n` the new stacks, only `min(e, size)` of the earlier stacks are still in the buyback, so the number that leave is `min(e, size) - min(min(e, size), max(0, size - n))`; or cap it at `min(n, ...)`. Add a test for a visit past 12.
 
 ### 2026-11-15 — Nameplates: Blizzard's friendly plates key binding and the next login
 
@@ -538,6 +706,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 **What's been considered:** Resolving the named frame needs a global lookup of a Blizzard frame and its rect, a read; the default spot is a safe fallback.
 
 **Shape of work:** Small if wanted; probably not worth it.
+
+**Recommendation 2026-11-15 (left for the owner):** abandon. A resolved offset is only right if the other frame's rect at login is the one Blizzard's Edit Mode applied: `EditModeSpot` runs as `EDIT_MODE_LAYOUTS_UPDATED` fires, which may come before Edit Mode has placed that frame (a nil or stale rect), and SaftUI's Minimap module moves parts of that area, so the answer could be worse than the default spot, with nothing outside the game to check it. If wanted: read `GetLeft/GetRight/GetTop/GetBottom` of `_G[anchor.relativeTo]`, scale them by its effective scale over UIParent's, and fall back to the default spot on any nil.
 
 **Open questions:** Not confirmed in game: the preset-layout offset (`activeLayout` counts the preset layouts in front of the saved ones, from Blizzard's source), and what `GetLayouts` answers before the layouts load (the gate no longer depends on it). Checks: a character whose Blizzard tracker was dragged (right edge snap, bottom corner, free drag) on a new profile starts at that spot; a Modern or Classic preset with the tracker undragged starts at the default spot; a `/reload` with a saved SaftUI position leaves it unmoved; a fresh login where the layouts arrive after SaftUI builds.
 
@@ -643,13 +813,13 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 
 ### 2026-11-15 — Option descriptions that say "red" or "yellow" for what Danger and Caution color
 
-**What:** A few player-facing descriptions name a hue for a color that is now a role the player can change, so they can stop being true: the totem bar's timers ("It turns red in the last 10 seconds", `SaftUI-Misc/totemoptions.lua`), the tracker's "Out of range in red" (`SaftUI-Tracker/options.lua`), and the unit frames' "Color hostile" and Color by reaction descriptions ("names of hostile units red, and ... yellow", `SaftUI-Unitframes/elements/name.lua`, `config/config.lua`). They could say "in the danger color" or point at Global settings > Colors > Text.
+**What:** Two unit frame descriptions still name a hue for a color that is now a role the player can change, so they can stop being true: "Color hostile" ("names of hostile units red, and of unfriendly and neutral ones yellow", `SaftUI-Unitframes/elements/name.lua:71`) and the Color by reaction description ("red when hostile, yellow when neutral, green when friendly", `SaftUI-Unitframes/config/config.lua:125`). They could say "in the Danger color" and "in the Caution color" (Global settings > Colors > Text). The totem bar's two timer descriptions, the tracker's out of range row (now named "Tint out of range") and the README's totem line were reworded 2026-11-15 and are done.
 
 **Why noticed:** Color roles Task 4 moved those readers to Text > Danger and Text > Caution (the hue-named keys went), and its rule for the Colors page's own descriptions is that they name what a color colors, never its hue. These option descriptions sit outside that page, so the task left them.
 
-**Anchors:** `SaftUI-Misc/totemoptions.lua:21,24`; `SaftUI-Tracker/options.lua:143-144`; `SaftUI-Unitframes/elements/name.lua:71`; `README.md:43` (both turn red in the last 10 seconds); `docs/design-system/25-colour-roles.md`.
+**Anchors:** `SaftUI-Unitframes/elements/name.lua:71`; `SaftUI-Unitframes/config/config.lua:125` (the Color by reaction description names the Reputation colors for neutral and friendly, which are not roles, so only the hostile part is a role: check which of the three the reader uses before rewording); `docs/design-system/25-colour-roles.md`.
 
-**Shape of work:** a wording pass over six strings; the tests that pin a description's text change with them. The reaction color's own description ("red when hostile") is about the Reputation colors, which are not roles, so it stays.
+**Shape of work:** a wording pass over two strings in Unitframes (left because another package was editing that addon); the tests that pin a description's text change with them. The power color's "blue for mana, red for rage" and the health gradient's "red through yellow to green" describe resource and health colors, not roles: they stay.
 
 ### 2026-11-15 — Check box labels: no font setting until a SaftUI check box has a visible label
 
@@ -834,18 +1004,6 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 
 **Open questions:** does `UPDATE_CHAT_WINDOWS` fire after `PLAYER_LOGIN`, and is chat at SaftUI's size or Blizzard's chat-cache size after login? Does a Fonts tab change that does not touch chat undo a size picked from the tab menu (it should not now)? Which of (a) and (b) does the owner want?
 
-### 2026-11-15 — A bag window's least width ignores a Window titles change
-
-**What:** A bag window's least width counts its title's width (`INV:HeaderMinWidth`, `SaftUI-Bags/header.lua`), and nothing lays the window out again when Window titles changes. The title itself follows at once (Task 5), so after a change to a wider font the title can run over the buttons until the window is next laid out.
-
-**Why noticed:** Review of fonts Task 5, m6. It already behaved this way for a Fonts tab change to Text; it is more visible now that Window titles applies at once.
-
-**Anchors:** `SaftUI-Bags/header.lua` (`INV:HeaderMinWidth`), `SaftUI-Bags/layout.lua:284` and `:355`, `INV:UpdateContainer`.
-
-**What's been considered:** fonts Task 7 (2026-11-15) looked at it and left it, because the one-line `INV:OnFontsChanged() self:UpdateConfig() end` (which already waits for the end of combat through `st:QueueAfterCombat('Inventory')`) also runs `CategoriesChanged`, a full re-sort of every item, on each step of a Size drag on any font (`st:FontsChanged()` fires on every step), and a narrower re-fit of the least width alone needs `layout.lua`'s held layout (`ReleaseLayout`, `layoutPending`) understood and checked in game. A debounce to one run a frame would cut it but not the re-sort. Task 7 did move the bags' footer texts and search box to Text, so Window titles no longer reaches anything in a window but its title.
-
-**Shape of work:** small, but needs a design look at the layout first: an `INV:OnFontsChanged` that re-fits each open container's least width only (out of combat; a bag window can be protected, so it goes through the combat queue), with a test, and only when the title's font is what changed (its value, or a shared font it names, changed since the last run).
-
 ### 2026-11-14 — Position rows of secure frames can anchor to a frame that is moved in combat
 
 **What:** A holder with a secure child is protected, and protection spreads to the frames it is anchored to. The Position row of any mover whose holder carries secure buttons accepts any frame name (`generators.position(..., true, ...)`, which only refuses loops), so a player can anchor it to a frame SaftUI sizes or moves in combat, which then gets `ADDON_ACTION_BLOCKED`. The tracker's nearest button's row now refuses the tracker's window (`TR.NearestAnchorRefusal`); the others don't.
@@ -859,16 +1017,6 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 **A case the tracker's row can't see:** the refusal runs when the nearest row is set and each time the holder is placed (a saved anchor that now reaches the window falls back to UIParent at the next placement, out of combat), not when another frame's anchor changes. A player can attach the nearest holder to frame X (accepted), then attach X to `SaftUITracker` through X's own Position row, which only refuses loops: the window is protected through the chain until the next placement. A backstop would be `TR:LayoutWindow` skipping `SetSize` while `not st:CanMoveNow(window)` and queuing it.
 
 **Open questions:** whether to refuse by a registry of "moves in combat" frames or by asking each row's owner.
-
-### 2026-11-14 — The options kit's keybinding widget doesn't know META or Blizzard's ignored keys
-
-**What:** The `keybinding` widget (`SaftUI-Core/Config/optionskeybinding.lua`) builds a key from `Is*KeyDown` in ALT-CTRL-SHIFT order and a short ignore list; unlike `/sui kb` (`GetConvertedKeyOrButton`, `IsKeyPressIgnoredForBinding`, `CreateKeyChordStringUsingMetaKeyState`) it has no META and doesn't use Blizzard's ignore list, so a Mac player can't bind META chords there and a key Blizzard refuses to bind is tried anyway (the game then refuses it, and the nearest button's Key row says "Can't bind ...").
-
-**Why noticed:** Review of Task 10 of the objective tracker, which uses the widget for its Key row. Pre-existing Core behaviour, out of that task's scope.
-
-**Anchors:** `SaftUI-Core/Config/optionskeybinding.lua` (`Press`, `IGNORED_KEYS`), `SaftUI-ActionBars/keybindmode.lua`, `SaftUI-Tracker/options.lua` (the `key` row).
-
-**Shape of work:** Small: build the key through Blizzard's own functions where they exist, guarded by presence; extend `tests/core/options_fields_test.lua`.
 
 ### 2026-11-14 — A first-run setup dialog: UI size, theme, unit frame layout
 
@@ -885,6 +1033,7 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 **Settled 2026-11-14:** the owner builds each unit frame layout in game as a unit frame profile, and it is migrated from the game's saved settings (SaftUI's SavedVariables in the WTF folder) into built-in defaults that ship with the addon. "yep I'd build them myself in game and you can just migrate the settings from the wtf folder to actual defaults". When migrating, only the settings go into the repo: no account, realm or character names from the file or its path.
 
 **Open questions:** How a shipped layout is stored and named (data files under `SaftUI-Unitframes/config/`, listed beside the player's own profiles and not editable in place?), and how one is refreshed when the owner changes it. Whether existing players see it after the update or only fresh installs. Whether it is per account or per character. What else belongs in it (action bar layout, bags view, the tracker switch).
+
 ### 2026-11-14 — /sui at half with the sidebar collapsed: a validation error is cut or hidden in the footer
 
 **What:** With the sidebar collapsed at half width (W4), the footer's status line, where a validation error such as "Size: a number, please" shows, has a region about 54 wide under Thick and Thin (96 under Blizzard), so the message is cut after two lines, and with one more icon command registered the region is 22, under `FOOTER_MIN_ROOM` (24), so the status line is hidden and no message shows anywhere. The page's field then keeps only the typed text.
@@ -898,6 +1047,8 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 **Shape of work:** A small design pass on where an error shows when the region is short (a tooltip on the field is the smallest), then a change in `PlaceFooter` or the field plus a test at W4 with the real command set and with one more icon command.
 
 **Open questions:** Where should the message show when the footer has no room: the field's tooltip, a line over the footer, or both? An in-game check at W4 with Keybind mode only (54 wide) decides how often it matters.
+
+**Recommendation 2026-11-15 (left for the owner, a look):** show the message without the mouse on the field: a tooltip anchored to the field, opened by the failed commit itself (the value is committed from the keyboard, so the mouse can be anywhere), only while the status line has no room for the message. It closes on the next edit of the field, on focus lost, or after a few seconds. It adds no line, so nothing can overlap; the status line stays as it is when it has room.
 
 ### 2026-11-13 — Design decisions waiting to be built
 
@@ -953,6 +1104,8 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 
 ### 2026-11-13 — Scale SaftUI across resolutions and stay pixel perfect
 
+**Taken up by** `docs/superpowers/specs/2026-11-14-saftui-ui-scaling-design.md`. Phase 1 (`docs/superpowers/plans/2026-11-15-saftui-ui-scaling-phase-1.md`) shipped on 2026-11-15: the scale is set at login and after every change, every line the theme engine draws is whole pixels, and `/sui` has the UI scale section and `/sui scale`. It stays Active until phase 4 ends; what is left is the entries for [phase 2](#2026-11-15--ui-scale-phase-2-the-options-kit-and-saftuis-windows), [phase 3](#2026-11-15--ui-scale-phase-3-edit-mode), [phase 4](#2026-11-15--ui-scale-phase-4-each-addon-4a-to-4g) and [phase 5](#2026-11-15--ui-scale-phase-5-crispness-on-dense-screens), and the friends' checks (E0, E1, E6) and E4.
+
 **What:** SaftUI sets UIParent's scale to 768 over the screen's physical height, so one unit is one physical pixel on every display. Sizes are therefore in pixels: a 45 button is 45 pixels whether the screen is 1080, 1440 or 2160 tall. The user tuned their sizes on a 1440p monitor, so the UI is large on 1080p and tiny on 4K and Retina displays. Wanted: the UI scales with the display and stays pixel perfect.
 
 **Why noticed:** The user, 2026-11-13: "Another thing I'd like to look at is being able to scale saft UI to work well across different resolutions and maintain pixel perfection. since I've configured the sizing to make sense on a 1440p monitor things look blown up on a 1080 monitor and tiny on higher resolution monitors like mac retina displays or 4k monitors".
@@ -998,38 +1151,6 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 **Anchors:** `.superpowers/brainstorm/46409-1794604463/content/actionbars-shared-v4.html` (part 2, the mockup), `docs/superpowers/specs/2026-11-13-saftui-actionbars-shared-settings-design.md` ("Later"), `SaftUI-Unitframes/config/`, `SaftUI-Core/Config/optionsposition.lua`.
 
 **Shape of work:** A project of its own, after the action bars prove the kit pieces. Health, Power, Cast bar and Auras keep tabs. Needs its own design round: what "All units" means when units differ so much by default, and whether sharing is per unit group (party and raid) instead.
-
-### 2026-11-13 — Loot rolls: the roll bar doesn't hold after a choice
-
-**What:** After a choice on a group loot roll, SaftUI should show its own bar in Blizzard's place, locked on the choice, until the roll ends (the held rolls feature, built 2026-11-10). In game it doesn't: the user reports the bars "don't seem to be staying up after selecting a choice" (Forever, the night of 2026-11-12).
-
-**Why noticed:** Step 32 of the cleanup's in-game checks. The feature was built from Blizzard's source and has never been seen working in game ([Loot rolls: confirm the client assumptions in game](#2026-11-08--loot-rolls-confirm-the-client-assumptions-in-game)), so it may never have worked there.
-
-**Anchors:** `SaftUI-Loot/rollinfo.lua` (`OnRollChosen`, the `RollOnLoot` post-hook that notes the choice; `OnBarHide`, which calls `LT:HoldRoll`; `LT:UpdateRollBars`, which releases a held bar whose drop isn't open); `SaftUI-Loot/roll.lua` (`LT:HoldRoll`, `LT:ReleaseHeldRoll`, `LT:UpdateHeldRolls`); `SaftUI-Loot/Feed/loothistory.lua` (`LT:GetOpenDrops`, `HasEnded`, `RollTimeOver`); `tests/loot/roll_held_test.lua` (19 tests, all passing on stubs); Forever's `Interface/AddOns/Blizzard_UIPanels_Game/Mainline/GroupLootFrame.lua` and `.xml`.
-
-**What's been considered:** A read of the code against Forever's source (2026-11-13) found no cause:
-
-- The cleanup didn't change the logic. 81bf0b4 swapped Loot's local plain-value helpers for Core's (`st.PlainNumber`, the same test), and the other commits only moved code between files. `LT.PlainNumber` is set before anything runs.
-- Blizzard's source matches what the code assumes: a roll button's click calls `RollOnLoot(rollID, rollType)`; `CANCEL_LOOT_ROLL` leads to `GroupLootFrame_Remove`, `GroupLootContainer_RemoveFrame` and `frame:Hide()`, which is where `OnBarHide` runs; a main spec Need plays its dice for 5 seconds first.
-- The timer's values are plain: the timer draws in game.
-
-What's left needs evidence from the game. In the order they'd be checked:
-
-1. An error inside `LT:HoldRoll` or `OnBarHide`. It would be in BugGrabber's log.
-2. The held bar is shown and released at once, because its drop isn't in `LT:GetOpenDrops()` when `LT:UpdateRollBars` runs right after the hide. That is by design when everyone else has already chosen (the roll is over). Otherwise `HasEnded` or `RollTimeOver` reads Forever's drop wrongly (the units of `startTime` and `duration`, or `winner` being a table before the roll ends).
-3. `chosen[rollID]` is never set: the frame's `rollID` or the timer's values aren't plain at the click, or the click doesn't go through the global `RollOnLoot`.
-4. `LT:HoldRoll` returns early: `skins[frame].shown` is missing or for another roll, or under a second is left.
-5. The bar is up, but off screen or behind something.
-
-**Shape of work:** Evidence first: BugGrabber's log for Loot errors, and what the user saw (which button, whether others were still rolling, whether the bar went at once or after a Need's dice). If that doesn't settle it, a debug print at each decision in the list above, off by default, for the next group run. Then a failing test and a small fix.
-
-**Open questions:** Was anyone else still rolling when the bar went? If not, the bar going is the design, and the question becomes whether a finished roll should hold for a moment to show its result.
-
-**In game 2026-11-13:** BugGrabber's log has no Loot error, so cause 1 is out. The user: "I was pressing greed, it went away as soon as I clicked. It could very well be that I was the last one to roll, I wasn't paying much attention." That fits cause 2's by-design case: the last to choose, so the roll resolved at the click and the held bar was released in the same update.
-
-**Decided 2026-11-13:** The user: "I like the hold for a finished roll, we can hold it for a few seconds and fade out after. the debug print is a good idea, lets add that as well." Being built on branch `fb-rollhold`: a held bar that finishes (its drop resolved, or its time ran out) stays 3 seconds, locked on the choice with its final counts, fades over half a second, then goes; and `/sui debug` turns on `st:Debug('Loot', ...)` lines at each decision in the list above, for the next group run. The 3 seconds and the half second are the builder's numbers, not the user's. This entry stays Active until the held bar has been seen in game with others still rolling.
-
-**Merged 2026-11-13 (7c2ab54):** built and reviewed, with one fix round. Beyond the above, a finished bar keeps showing later results for the drop it finished on (counts and tooltip only), so a roll that times out can show its auto-passes and winner before it fades. The finish line under `/sui debug` reads `held roll finished: <id> <why> waiting <n> <winner | all passed | no winner | no summary>`: a `winner` with others still waiting, a second or two after your click, means Forever's drop fields are misread (cause 2 above). Not yet seen in game.
 
 ### 2026-11-13 — Test mode: choose which elements the previews show
 
@@ -1197,6 +1318,7 @@ What's left needs evidence from the game. In the order they'd be checked:
 **What's been considered:** The buff skin's way carries over: post-hook the border texture's `SetAtlas` and its frame's `Show` and `Hide`, map the atlas to a color through `AuraUtil.GetDebuffDisplayInfoTable()`, put it on SaftUI's border with `st:SetBorderColor` and again in `OnColorsChanged('theme')`, fade Blizzard's art by alpha under Thick and Thin, and fall back on it for a secret atlas (on retail the aura data, and so the atlas, can be secret in combat).
 
 **Shape of work:** Small: one function and a test on the fixture, after the in-game check (step 4 of "Cooldown Manager skin: in-game checks") says whether Blizzard's border over SaftUI's reads badly.
+
 ### 2026-11-12 — Nameplates: the Friendly page's aura borders and cooldown never reach plate buttons
 
 **What:** An aura area's group is made once per frame, on its first update with the area on, and a plate's frame always gets its first update from Enemy nameplates (`nameplate`, its unit token's config). Which borders a button shows (Buffs' Stealable border, Debuffs' Dispel type border) and whether it has a cooldown swipe (Cooldown → Show) are baked into each button by oUF's `CreateButton` from the group's options. So while Enemy nameplates has an aura area on (both are, by default), Friendly nameplates' border and Cooldown → Show for that area never reach a plate's buttons, not even after a reload. With the Enemy page's area off, the group is made from whichever config first turns it on on that frame, so the Enemy page's can be the ones left out. With the Enemy page's box checked (enemies drawn from the Friendly page) the Enemy page's area Enable still decides, though the page hides it then: to make the Friendly page's reach the plates, uncheck the box, turn the Enemy page's area off, check the box again and reload. Since the final fix wave the two options' notes on both plate pages say which page's settings a plate's buttons take (`ReloadNote`); before, they said "Reload to apply", untrue on the Friendly page.
@@ -1269,7 +1391,7 @@ What's left needs evidence from the game. In the order they'd be checked:
 
 *The plan's ten, with what the tasks added to each*
 1. Both clients. With a plate up, `/dump NamePlate1:GetParent()==WorldFrame, NamePlate1:GetEffectiveScale(), UIParent:GetEffectiveScale()`: true, WorldFrame's scale, then 768 over your screen's height. Then `/dump SaftUI_NamePlate1:GetParent()==NamePlate1, SaftUI_NamePlate1:GetEffectiveScale()`: true, and UIParent's scale. With the default 200 by 20, a screenshot of a plate's health bar measures 200 by 20 pixels. Clicking just inside the bar's edges targets the unit; clicking just outside doesn't. Then `/reload` standing next to a pack, and as soon as the plates are up click near the edges of plates that sit close together: each click targets the plate under the cursor, never its neighbour (Blizzard's own click area, which SaftUI puts back to the bar after Blizzard sets it, reaches past the bar and up to where its name would be).
-2. Both clients. Strafe and turn past a pack under Thick, Thin and Blizzard: the 1px borders round the health bar, the castbar and its icon, and the debuff and purge buttons stay whole, with no shimmer or doubling, and the name and health text don't jitter against the bar. Under Thick, a debuff's dark inner line stays whole, exactly 1px inside its border, while the plate moves. If Blizzard's UI scale setting or the window's size changed this session, `/reload` first: after a UI scale change the plates may only be fully sharp once you reload (the followup "UIParent's scale is set once, at login, so plates leave whole pixels after a UI scale or display change").
+2. Both clients. Strafe and turn past a pack under Thick, Thin and Blizzard: the 1px borders round the health bar, the castbar and its icon, and the debuff and purge buttons stay whole, with no shimmer or doubling, and the name and health text don't jitter against the bar. Under Thick, a debuff's dark inner line stays whole, exactly 1px inside its border, while the plate moves. Make the same check at the friends' scales (1080p, and the Mac's screen), where a line is one pixel at 1080p and two on the Mac and the plates' borders must be whole there too; a UI scale or display change needs no `/reload` now, since SaftUI sets its scale again and pins the plates after it (see step 14).
 3. Change Blizzard's Interface → Nameplates size or style with plates up: SaftUI's size comes back at once. Then, in a pack, click near the edges of plates that sit close together, after each of these: a change of a Blizzard nameplate option (size, style, class colors); a resize of the game's window; toggling `/sui` → Unitframes → Friendly nameplates → General → Friendly plates off and on; toggling friendly plates with Blizzard's key binding (or Interface → Nameplates' friendly options); and, with friendly players' plates up, toggling Interface → Nameplates' option to show only friendly players' names. Each time the click targets the plate under the cursor. Do each in combat too: Blizzard's size shows until combat ends, then SaftUI's; the click area is SaftUI's at once after an option change or a resize, and after a friendly plate or show-only-names toggle once combat ends; and none of these, done in combat, gives an ADDON_ACTION_BLOCKED or a Lua error. `/sui` → Unitframes → Enemy nameplates → General → Width and Height resize every plate and an enemy's click area (a friend's name box is Friendly nameplates' Width and Height: step 26).
 4. In a dungeon pull, `/run print(C_Secrets.ShouldUnitThreatStateBeSecret('player','nameplate1'))`, on retail too. As damage or healing: under the tank's threat the bar keeps its color and the percent above its right end is in the normal text color; near pulling both go orange; when the mob attacks you, red. As a tank with the tank role: a mob on you, no tint and 100%; tanking with someone else higher, orange; a mob taken from you, red; a mob another tank in the group holds, no tint (on a boss with two tanks, the off-tank sees no red on the boss the main tank holds); a mob that goes to the healer before you've touched it, red with no percent. On your own there's no tint or percent until Enemy nameplates → General → Threat when solo is on. Friendly plates never show either, and a mob that turns friendly mid-fight loses both at once. Global Settings → Colors → Threat: dragging Bad's picker recolors tinted plates and their percent live, and Reset puts them back. On Forever without a role, a warrior in Defensive Stance or a druid in Bear Form counts as a tank, and so does a party member in one holding the mob; changing stance or form changes the tint at once (`UPDATE_SHAPESHIFT_FORM`). `/dump PlayerUtil.IsPlayerEffectivelyTank()` with no role assigned, in a tank spec: the stubs take it that Forever never falls back to a spec's role. On retail in restricted content (Mythic+ or a raid): no Lua errors; where the threat state is secret, no tint or percent; where only the values are, the percent still shows. Through a long pull the percent keeps following your threat (it's written only when it, its tint or its color changes), and as a raid's tank, idle hostile plates around you stay untinted (their mobs aren't in combat, so the raid isn't read for them).
 5. Purge, on enemy plates (their purge row is on by default): a shaman or priest sees an enemy's magic buff right of the bar, and a Forever hunter with Tranquilizing Shot (or a retail druid with Soothe) an enrage. On Forever, on a mob with a Frenzy, `/dump C_UnitAuras.GetAuraDataByIndex('target', 1, 'HELPFUL').dispelName` (the buff's index in place of 1): `""`, `nil` or `"Enrage"`? As a retail character who isn't a mage, see which buffs `isStealable` picks out; a retail mage with only Spellsteal sees only stealable buffs. On Target → Buffs → Buttons, Only buffs I can purge sits after Only mine with no reload note in its tooltip; on, as a warrior with no purge, the target's buffs go, and off they come back without a reload; Only mine on Target → Debuffs applies at once. The rest is the entry "Purge filters: in-game checks".
@@ -1283,7 +1405,7 @@ What's left needs evidence from the game. In the order they'd be checked:
 11. `/reload` in the middle of a fight with plates up: no "Interface action failed" or ADDON_ACTION_BLOCKED (oUF sets the plates' size and their click area's insets itself when it makes its driver, without waiting for the end of combat as SaftUI's own size call does), and the friendly and scale settings change once the fight ends.
 12. Pull a pack so new plates appear in combat: no ADDON_ACTION_BLOCKED for `SetIgnoreParentScale`, `SetScale` or `SetRoundLayoutToNearestPixel`, and the new plates are sharp at once. No `theme.lua` "forbidden object" error from the plates' aura buttons and no threat.lua "Font not set" (both seen 2026-11-11 and fixed: the aura buttons were styled again while aura data was secret, which stopped the plate's first update); the new plates' debuffs show in SaftUI's style, and their threat percent shows. Same for a party or raid member joining in combat.
 13. Both clients. A boss's or an elite's plate, and the target's, are the same size as any other, near and far, and `/dump NamePlate1:GetScale()` is 1. With SaftUI's plates on, Interface → Nameplates shows no simplified types ticked. `/dump C_CVar.GetCVar('nameplateSimplifiedTypes')` before turning Nameplates on, and again after turning it off and reloading, shows the same text.
-14. With plates up, change Blizzard's UI scale setting (or the window's size): the plates keep their size and their click area matches it. In combat they're pinned to the new scale at once and their size settles once combat ends. Their right and bottom edges may flicker by a pixel until a `/reload` (the UIParent scale followup).
+14. With plates up, change Blizzard's UI scale setting (or the window's size): SaftUI puts its scale back on the next frame and pins the plates after it, so they keep their size, their borders stay whole and their click area matches. In combat nothing changes until the fight ends, and then the scale is put back, the plates pinned and their size set once (`.agents/architecture.md`, "The UI scale"). No `/reload` is needed.
 15. `/dump C_CVar.GetCVarInfo('nameplateShowFriendlyPlayers')`, and the same for `'nameplateShowFriendlyNpcs'`: report the 3rd to 6th returns (isStoredServerAccount, isStoredServerCharacter, isLockedFromUser, isSecure). If they're kept per account, a second character that logs in while SaftUI's plates are on records SaftUI's values as its own, and turning Nameplates off there puts back SaftUI's values, not yours. Check both settings exist on both clients (neither `/dump C_CVar.GetCVar(...)` is nil), and whether Blizzard sets them again by itself at login, or on entering or leaving an instance (Friendly plates and the game would then disagree until the next toggle).
 16. With Interface → Nameplates → Personal Resource Display on (on Forever, if the game allows it), `/dump C_NamePlate.GetNamePlateForUnit('player')` prints nil (ruling N5: the display is `PersonalResourceDisplayFrame`, not a plate), the display shows as usual with SaftUI's plates on, and targeting yourself adds nothing. If it finds a plate, the personal display needs looking at again.
 17. `/dump SaftUI_NamePlate1Auras1:GetObjectType(), SaftUI_NamePlate1Auras1:IsObjectType('AuraContainer')`, and the same for `SaftUI_NamePlate1Auras2` (a plate's two aura rows, buffs and debuffs in either order): note what the game says. The rounding walk skips SaftUI's own containers by identity, so this only says whether its `IsObjectType` fallback would work.
@@ -1657,23 +1779,6 @@ Loot feed, retail: the item's `n/m` quality text and the profession overlay unde
 
 Also check in game, under Blizzard: the item strips' (Pinned items, Caught now) action ring sits over each icon. `LayItems` (`categoriestab.lua`) moves each icon and its border's frame to new levels on every draw, and the ring's holder is a child of that border frame (`themeart.lua`, `Holder`), so it may end up level with the icon rather than above it. The stubs don't model frame level stacking.
 
-### 2026-11-11 — Rule editor: a level mode picked before a number is typed does nothing
-
-**What:** A new Item level or Required level block has no number, so it can't be read and catches nothing until it has one. Its mode list (at least, at most, between) moves the number typed to the bound the mode needs. With no number yet there's nothing to move, so picking "at most" or "between" on a new block changes nothing, and it still shows "at least". The user has to type a number first, then pick the mode.
-
-**Why noticed:** The fix for the bag categories final review's C-1 (2026-11-11). New level blocks used to start as `{ min = 0 }`, "at least 0", which caught every item the moment the block was added; in Grays/Auto Vendor's inner OR that sold every priced item at the next merchant. They now start as `{}`, and the mode switch no longer invents a 0 for a block with no number, so it has nothing to carry over.
-
-**Anchors:** `SaftUI-Bags/ruleeditor.lua` (`LevelMode`, `LevelFields`); `SaftUI-Bags/rules.lua` (`R.BLOCKS`' `new`, `level_block`); `tests/bags/rule_editor_test.lua` ("a new Item level, Required level, Crafting reagent or Has vendor price block shows nothing set ...").
-
-**What's been considered:**
-- Writing 0 again: that is what made a new block catch everything.
-- Keeping the picked mode in the saved block (a `mode` key, or `false` in the bound it means): new data in the profile for something only the editor shows.
-- Keeping it in the editor only, by the row's path, until a number is typed: no data change, but a row's path shifts when rows are added or moved above it, so it has to be dropped on any other edit.
-
-**Shape of work:** Small: the editor-only option in `LevelFields`, and a test.
-
-**Open questions:** Is it worth doing, or is "type the number, then pick the mode" fine?
-
 ### 2026-11-11 — Bag categories: in-game checks
 
 **What:** What the bag categories project could only be compile-checked and stub-tested for, to confirm in game on Forever and retail, and what to do with each answer. The first eight are the plan's own list (`docs/superpowers/plans/2026-11-10-saftui-bag-categories.md`, "In-game checks"); the rest are what the reviews and tests couldn't settle.
@@ -1709,30 +1814,6 @@ What the plan's list doesn't cover:
 15. **Auto vendor after a rename, a move or turning off:** it still sells, and the junk coin follows it (`INV:IsAutoVendorItem` finds the seller by its `sells` flag, not its name), after Grays/Auto Vendor is renamed or moved; turned off, nothing sells and no coin shows.
 
 **Open questions:** None until the answers come in.
-
-### 2026-11-11 — Bag categories: a Set checkbox is dead while the Equipment sets entry hides the window
-
-**What:** In the Edit view's Show in checkboxes, a `Set: <name>` checkbox unchecked while the Equipment sets entry already hides that window changes nothing. `INV:IsCategoryHidden` returns true for a `Set: ...` key as soon as the sets entry's `hide[windowId]` is set, before it looks at the set's own flag (`filters.categories[windowId]`), so the box is a dead control.
-
-**Why noticed:** The bag categories project's review of Show in (2026-11-11).
-
-**Anchors:** `SaftUI-Bags/categories.lua` (`INV:IsCategoryHidden` and `INV:SetCategoryHidden`, the "Show in" section, `IsSetKey`); the Edit view's checkbox in `SaftUI-Bags/category.lua` (~422-425).
-
-**What's been considered:** Disable or hide the set's checkbox while the entry hides the window, or let a set's own flag win. The first changes less.
-
-**Shape of work:** Small, with a test in `tests/bags/category_migration_test.lua` next to the Equipment sets entry's Show in cases.
-
-### 2026-11-11 — Old gear's tabard and shirt exclusion never matched
-
-**What:** The old Old gear filter meant to leave tabards and shirts out. It compared the localized slot name with an `INVTYPE_` token, so the test never matched and every tabard and shirt that met the other tests was caught. The category blocks leave the test out, so nothing changes for the user.
-
-**Why noticed:** The bag categories project's plan (Global Constraints and "What can't be written exactly in blocks", item 5, `docs/superpowers/plans/2026-11-10-saftui-bag-categories.md`), reading `filters.lua` at `8dc348c`.
-
-**Anchors:** `git show 8dc348c:SaftUI-Bags/filters.lua` (`isLegacyGear`); `SaftUI-Bags/categorydefaults.lua` (Old gear); `tests/bags/fixtures/old_filters.lua` (the oracle, which keeps the old behavior).
-
-**Shape of work:** Only if the user wants tabards and shirts kept out of Old gear: a block on the item's equipment slot (an `INVTYPE_` token compared with `GetItemInfoInstant`'s equip slot), and a fixture.
-
-**Open questions:** Does the user want that exclusion at all? It has never worked, so nobody has missed it.
 
 ### 2026-11-11 — Auto Vendor pins now beat Grays' exclusions and equipment sets
 
@@ -2204,7 +2285,7 @@ The one route left is to work out the button order without reading the buttons. 
 - **History clears:** it's unknown when `LOOT_HISTORY_CLEAR_HISTORY` fires (zoning, leaving the group).
 - **Trash rolls:** it's unknown whether trash and other non-boss group-loot rolls appear in `C_LootHistory` on Forever. README says "every item your group rolls on".
 - **Held rolls** (`roll.lua`'s held rolls, `rollinfo.lua`'s `OnRollChosen` and `OnBarHide`), from Blizzard's source, not the game:
-  - choosing (any button) makes the server send `CANCEL_LOOT_ROLL`, so Blizzard's bar hides at once, and a main spec Need hides it after its 5 second dice animation;
+  - a plain click with no confirmation: **seen in game 2026-11-15** (the owner's debug lines, one click; which choice it was is not known): the bar hid before the post-hook ran (`bar hid: ... choice noted false frame hidden true`, then `choice not noted: ... no shown bar with that roll`), so the client cancels the roll inside `RollOnLoot` (inferred from that order; not read from C code). Not yet seen: the hold working after the fix (`PreClick`, `OnRollPreClick`), each choice, a main spec Need (its 5 second dice animation before the bar hides) and a choice that asks for a confirmation (bind on pickup), where the bar stays up and the post-hook notes the choice;
   - a roll's time: `START_LOOT_ROLL`'s rollTime and `GetLootRollTimeLeft` share a unit (Blizzard's `GroupLootFrame_OnUpdate` clamps one to the other) and `GetLootRollTimeLeft` is documented in milliseconds, so the live bars' countdown, which showed it as seconds, was wrong. `LT.RollSeconds` takes a length over 1000 as milliseconds, and the live and held countdowns both read through it. Look at the countdown in game;
   - `GameTooltip:SetHyperlink` takes the roll's full item link (a held bar's tooltip);
   - does `GetLootRollItemInfo(rollID)` still return the item after you've rolled, until the roll ends? If so, it could end a held roll with no loot history drop when the roll ends. Today such a held roll stays until its time runs out, even once the item is awarded;
@@ -2215,7 +2296,7 @@ The one route left is to work out the button order without reading the buttons. 
 
 **Anchors:**
 - `SaftUI-Loot/Feed/rolls.lua`: `RollTimeOver`, `GetOpenDrops`, `CatchUp`, `EstimateWhen`.
-- `SaftUI-Loot/rollinfo.lua`: `UpdateRollBars`, `OnRollChosen`, `OnBarHide`.
+- `SaftUI-Loot/rollinfo.lua`: `UpdateRollBars`, `OnRollPreClick`, `OnRollChosen`, `OnBarHide`.
 - `SaftUI-Loot/roll.lua`: `LT.RollSeconds`, `LT:HoldRoll`, `LT:LayoutRollFrames`.
 - `.agents/clients.md` "Loot rolls".
 - `docs/superpowers/specs/2026-11-08-saftui-loot-rolls-history-design.md`.
@@ -2225,7 +2306,7 @@ The one route left is to work out the button order without reading the buttons. 
 - Fix whatever doesn't hold.
 - Record what's confirmed in `.agents/clients.md`.
 
-**In game 2026-11-13:** the held bar doesn't stay up after a choice. See [Loot rolls: the roll bar doesn't hold after a choice](#2026-11-13--loot-rolls-the-roll-bar-doesnt-hold-after-a-choice).
+**In game 2026-11-13 and 2026-11-15:** the held bar did not stay up after a choice; fixed (see Resolved: [Loot rolls: the roll bar doesn't hold after a choice](#2026-11-13--loot-rolls-the-roll-bar-doesnt-hold-after-a-choice)). **Next real roll:** with others still rolling, watch the held bar and read `/sui debug`'s lines: first the ones that prove the fix, in order (`choice pending: <id> <type> seconds left <n>`, `bar hid: <id> choice noted false pending true ...`, `held roll <id> choice <type> ...`, `choice held at the bar hiding: <id> <type>`), then (`held roll finished: <id> <why> waiting <n> <winner | all passed | no winner | no summary>`): a `winner` with others waiting, a second or two after the click, means Forever's drop fields are misread. Also look at the countdown (its unit) and the held bar's tooltip, and try a Need and a bind on pickup choice.
 
 ### 2026-11-08 — Saved loot feed size in SaftUI_DB
 
@@ -2238,6 +2319,8 @@ The one route left is to work out the button order without reading the buttons. 
 **What's been considered:** Store each choice's names as one compact string, Pass especially. Cap roll lists. Keep fewer entries for other players' results.
 
 **Shape of work:** Measure first: check `SaftUI_DB.lua`'s size after a raid night. Shrink the saved roll format only if it's large.
+
+**Measured 2026-11-15:** the owner's whole saved file (`SaftUI-Core.lua`, which holds `SaftUI_DB`) is 173 KB; the busiest character's `feed` is 500 entries and 125 KB (about 250 bytes an entry), and only one saved entry holds a roll list so far, so a raid night's cost is still unmeasured. Computed 2026-11-15 by serializing a roll result as SavedVariables writes it (tab-indented, five fields a player, 20-character names): 5 players about 1.0 KB an entry (0.5 MB a character at 500), 20 players about 2.9 KB (1.5 MB), 40 players about 5.5 KB (2.7 MB). This replaces the untested estimate. Left open on purpose: shrinking changes the saved format (a compact Pass string, a cap on roll lists), which wants a number from a real raid night first. Measure again after one: if the file passes about 1 MB, shrink; the cheapest first step is one compact string for Pass names.
 
 ### 2026-11-08 — Confirm the totem bar's protection and secret-value claims in game, then document the duration-object pattern
 
@@ -2257,7 +2340,7 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 
 ### 2026-11-08 — Specialty bags (herb, mining, etc.) count as normal bags in the bag window
 
-**What:** The bag window marks the reagent bag's items and empty slots (a green corner wedge), and the Empty Slots category's Grouped mode has one slot for the normal bags and one for the reagent bag. A specialty bag (herb, mining, enchanting, etc.) is treated as a normal bag: its items get no marker, and its free slots are counted in the normal group even though they only take that profession's items. Grouped's normal slot points at the first free normal-kind slot, which can be in a specialty bag, so dropping a non-matching item on it fails with the game's "That item doesn't go in that container" error.
+**What:** The bag window marks the reagent bag's items and empty slots (a green corner wedge), and the Empty Slots category's Grouped mode has one slot for the normal bags and one for the reagent bag. A specialty bag (herb, mining, enchanting, etc.) is treated as a normal bag: its items get no marker, and its free slots are counted in the normal group even though they only take that profession's items. (Part-closed 2026-11-15: Grouped's normal slot used to point at the first free normal-kind slot, which could be in a specialty bag, so dropping a non-matching item on it failed with the game's "That item doesn't go in that container" error. It now prefers a free slot in a bag that takes any item, `INV:GetEmptySlots` in `SaftUI-Bags/category.lua`, with a test in `tests/bags/views_data_test.lua`; the count still includes the specialty bags' free slots.)
 
 **Why noticed:** Brainstorming the reagent marker and Empty Slots category (2026-11-08). The user's problem was telling reagent bag items apart when moving reagents into a new reagent bag and swapping which items stay there. Specialty bags have the same "only some items fit" shape, but the user only raised the reagent bag, so they were left out to keep the change small.
 
@@ -2265,7 +2348,7 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 
 **What's been considered:** Grouping empty slots by bag family instead of normal/reagent would handle specialty bags with no special cases, and the first free slot of a normal-family bag would then always take any item. The marker would need a colour or shape per family, or one shared "special bag" marker.
 
-**Shape of work:** Small: group by bag family in the empty slot code, pick the Grouped normal slot from family-0 bags only, and decide the marker for specialty bags.
+**Shape of work:** Small: group by bag family in the empty slot code (so the count says what a normal item can use), and decide the marker for specialty bags.
 
 **Open questions:** Does the user (or anyone on Forever) use specialty bags enough to want them marked? One marker for all of them, or per profession?
 
@@ -2442,6 +2525,197 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-11 — Old gear's tabard and shirt exclusion never matched
+
+**What:** The old Old gear filter meant to leave tabards and shirts out. It compared the localized slot name with an `INVTYPE_` token, so the test never matched and every tabard and shirt that met the other tests was caught. The category blocks left the test out, and the Old gear block is one of the three ORs of Grays/Auto Vendor's rule, the category that sells: an old uncommon, rare or epic tabard or shirt was sold at the next merchant (the review of the bags package, 2026-11-15, probed it on both clients).
+
+**Why noticed:** The bag categories project's plan (Global Constraints and "What can't be written exactly in blocks", item 5, `docs/superpowers/plans/2026-11-10-saftui-bag-categories.md`), reading `filters.lua` at `8dc348c`.
+
+**Anchors:** `git show 8dc348c:SaftUI-Bags/filters.lua` (`isLegacyGear`); `SaftUI-Bags/categorydefaults.lua` (Old gear); `tests/bags/fixtures/old_filters.lua` (the oracle, which keeps the old behavior).
+
+**Shape of work:** Only if the user wants tabards and shirts kept out of Old gear: a block on the item's equipment slot (an `INVTYPE_` token compared with `GetItemInfoInstant`'s equip slot), and a fixture.
+
+**Open questions:** Does the user want that exclusion at all? It has never worked, so nobody has missed it.
+
+**Resolved 2026-11-15:** the shipped Grays/Auto Vendor rule now ANDs its Old gear block with NOT(Equip slot is `INVTYPE_TABARD`, `INVTYPE_BODY`) (`SaftUI-Bags/categorydefaults.lua`), so a tabard or a shirt is never in Old gear and never sold through it (a gray one is a gray, as before). A profile that has not edited the category's rule picks it up (an edit is stored against the shipped default, and a rename or On edit leaves the rule alone); one that edited the rule keeps its own. Test: `tests/bags/category_defaults_test.lua` (both clients), with fixtures in `fixtures/category_items.lua` marked changed, since the oracle keeps the old behavior.
+
+### 2026-11-15 — A bag window's least width ignores a Window titles change
+
+**What:** A bag window's least width counts its title's width (`INV:HeaderMinWidth`, `SaftUI-Bags/header.lua`), and nothing lays the window out again when Window titles changes. The title itself follows at once (Task 5), so after a change to a wider font the title can run over the buttons until the window is next laid out.
+
+**Why noticed:** Review of fonts Task 5, m6. It already behaved this way for a Fonts tab change to Text; it is more visible now that Window titles applies at once.
+
+**Anchors:** `SaftUI-Bags/header.lua` (`INV:HeaderMinWidth`), `SaftUI-Bags/layout.lua:284` and `:355`, `INV:UpdateContainer`.
+
+**What's been considered:** fonts Task 7 (2026-11-15) looked at it and left it, because the one-line `INV:OnFontsChanged() self:UpdateConfig() end` (which already waits for the end of combat through `st:QueueAfterCombat('Inventory')`) also runs `CategoriesChanged`, a full re-sort of every item, on each step of a Size drag on any font (`st:FontsChanged()` fires on every step), and a narrower re-fit of the least width alone needs `layout.lua`'s held layout (`ReleaseLayout`, `layoutPending`) understood and checked in game. A debounce to one run a frame would cut it but not the re-sort. Task 7 did move the bags' footer texts and search box to Text, so Window titles no longer reaches anything in a window but its title.
+
+**Shape of work:** small, but needs a design look at the layout first: an `INV:OnFontsChanged` that re-fits each open container's least width only (out of combat; a bag window can be protected, so it goes through the combat queue), with a test, and only when the title's font is what changed (its value, or a shared font it names, changed since the last run).
+
+**Resolved 2026-11-15:** `INV:OnFontsChanged` (`SaftUI-Bags/inventory.lua`) asks for a layout with `INV:QueueUpdate(true)`: one update a frame however many steps a font drag takes, which re-lays the window out to its least width (`SizeWindow`, `SectionLineSlots`) with no category rebuild or re-sort, and is held in combat as any layout is. Test: `tests/bags/views_width_test.lua`. Needs an in-game look.
+
+### 2026-11-11 — Bag categories: a Set checkbox is dead while the Equipment sets entry hides the window
+
+**What:** In the Edit view's Show in checkboxes, a `Set: <name>` checkbox unchecked while the Equipment sets entry already hides that window changes nothing. `INV:IsCategoryHidden` returns true for a `Set: ...` key as soon as the sets entry's `hide[windowId]` is set, before it looks at the set's own flag (`filters.categories[windowId]`), so the box is a dead control.
+
+**Why noticed:** The bag categories project's review of Show in (2026-11-11).
+
+**Anchors:** `SaftUI-Bags/categories.lua` (`INV:IsCategoryHidden` and `INV:SetCategoryHidden`, the "Show in" section, `IsSetKey`); the Edit view's checkbox in `SaftUI-Bags/category.lua` (~422-425).
+
+**What's been considered:** Disable or hide the set's checkbox while the entry hides the window, or let a set's own flag win. The first changes less.
+
+**Shape of work:** Small, with a test in `tests/bags/category_migration_test.lua` next to the Equipment sets entry's Show in cases.
+
+**Resolved 2026-11-15:** The Edit view's checkbox of a `Set: ...` category is disabled (still checked, with a tooltip saying why) while the Equipment sets entry hides that window (`INV:IsSetHiddenBySetsEntry`, `INV:UpdateFilterCheckbox`), the first of the entry's two options. Test: `tests/bags/category_migration_test.lua`.
+
+### 2026-11-11 — Rule editor: a level mode picked before a number is typed does nothing
+
+**What:** A new Item level or Required level block has no number, so it can't be read and catches nothing until it has one. Its mode list (at least, at most, between) moves the number typed to the bound the mode needs. With no number yet there's nothing to move, so picking "at most" or "between" on a new block changes nothing, and it still shows "at least". The user has to type a number first, then pick the mode.
+
+**Why noticed:** The fix for the bag categories final review's C-1 (2026-11-11). New level blocks used to start as `{ min = 0 }`, "at least 0", which caught every item the moment the block was added; in Grays/Auto Vendor's inner OR that sold every priced item at the next merchant. They now start as `{}`, and the mode switch no longer invents a 0 for a block with no number, so it has nothing to carry over.
+
+**Anchors:** `SaftUI-Bags/ruleeditor.lua` (`LevelMode`, `LevelFields`); `SaftUI-Bags/rules.lua` (`R.BLOCKS`' `new`, `level_block`); `tests/bags/rule_editor_test.lua` ("a new Item level, Required level, Crafting reagent or Has vendor price block shows nothing set ...").
+
+**What's been considered:**
+- Writing 0 again: that is what made a new block catch everything.
+- Keeping the picked mode in the saved block (a `mode` key, or `false` in the bound it means): new data in the profile for something only the editor shows.
+- Keeping it in the editor only, by the row's path, until a number is typed: no data change, but a row's path shifts when rows are added or moved above it, so it has to be dropped on any other edit.
+
+**Shape of work:** Small: the editor-only option in `LevelFields`, and a test.
+
+**Open questions:** Is it worth doing, or is "type the number, then pick the mode" fine?
+
+**Resolved 2026-11-15:** A mode picked on a level block with no number is kept in the editor alone (`w.levelPick` in `SaftUI-Bags/ruleeditor.lua`, no data change): the row shows it and its boxes, a number typed goes to the bound it needs (between sets both), and any other edit forgets it. Test: `tests/bags/rule_editor_test.lua`.
+
+### 2026-11-15 — Auto Vendor's second question overstates the earlier stacks that leave
+
+**What:** The second question of a visit says how many stacks sold earlier this visit will leave the buyback ("... and N stacks sold earlier this visit will leave the buyback"). Once a visit has already sold more than 12 (after a Sell them to 13 stacks, say) the number is too high: with a 14th stack the question says 2 and the true number is 1. The formula `min(earlier + in flight, earlier + in flight + its own - size)` is right while `earlier + in flight` is 12 or fewer.
+
+**Why noticed:** The re-review of Auto Vendor's fix round 1 (probe N7b, 2026-11-15). It errs on the safe side (the question warns of more than will happen), so it was left for later.
+
+**Anchors:** `SaftUI-Bags/autovendor.lua` (`QuestionText`, the `pushed` figure); `tests/bags/autovendor_sale_test.lua` ("N-2").
+
+**Shape of work:** Small. With `e = tailSold + pendingTail` and `n` the new stacks, only `min(e, size)` of the earlier stacks are still in the buyback, so the number that leave is `min(e, size) - min(min(e, size), max(0, size - n))`; or cap it at `min(n, ...)`. Add a test for a visit past 12.
+
+**Resolved 2026-11-15:** `QuestionText` now counts only the earlier stacks still in the buyback (`min(earlier, size)`) that the new ones push out, so a visit past 12 says 1 where it said 2. Test: `tests/bags/autovendor_sale_test.lua` ("N-2: past 12").
+
+### 2026-11-15 — Auto Vendor counts a fresh purchase in a just-sold slot as a refused sale
+
+**What:** `Account` (`SaftUI-Bags/autovendor.lua`) decides a stack was sold when its slot is empty or holds another item or count. A stack bought from the merchant that is the same item in the same count as one just sold, landing in the slot that stack left before the next pass (2 seconds), reads as a refused sale. `tailSold` is one short, the purchase is sold again with no question, and at a visit already at 12 one stack leaves the buyback list unasked.
+
+**Why noticed:** The re-review of Auto Vendor's fix round 1 (probe L3, "Check of fix round 2", 2026-11-15). All five conditions must hold together: a caught item the merchant sells, the same count, the first free slot being the one just emptied, inside one pass window, and a visit already at 12. The reviewer called it rare and costing one stack, and the owner accepted it for the merge.
+
+**Anchors:** `SaftUI-Bags/autovendor.lua` (`Account`, `Sell`); `tests/bags/autovendor_sale_test.lua`.
+
+**What's been considered:** A bought-back stack in the same slot is harmless to the count (its buyback entry is removed, so the list still matches) but it is sold again, which undoes the buyback. A fresh purchase removes no entry, which is why only it breaks the promise.
+
+**Shape of work:** Small. Record `C_Item.GetItemGUID(ItemLocation:CreateFromBagAndSlot(bag, slot))` in `Sell` and compare it in `Account`: a different GUID counts as sold. `GetItemGUID` is in `ItemDocumentation.lua` on both branches. A purchase has a new GUID; a bought-back stack keeps its GUID (counted as now, correct) or gets a new one (counted twice, which only asks sooner), so the count is never short. Tests need a stub GUID per item. (The optional post-hook on `BuyMerchantItem` and `BuybackItem` is its own entry now: "Auto Vendor: stop the unasked sales once the player buys or buys back".)
+
+**Resolved 2026-11-15:** `Sell` records the stack's `C_Item.GetItemGUID` (in ItemDocumentation on both clients' branches) and `Account` counts a stack in its slot with another GUID as sold, so a fresh purchase landing in a just-sold slot no longer reads as a refused sale and the tail count is never short. The part about ending the unasked sales once the player buys is its own Active entry. Test: `tests/bags/autovendor_sale_test.lua`.
+
+### 2026-11-15 — Forever: Show in > Bank does nothing for the default bank (the combined bank)
+
+**What:** On Forever the bank opens as the combined bank by default (`combinedBank` is on), and that window reads the category's `hide.combinedbank` flag. But Show in in `/sui` > Bags > Categories lists only Bags and Bank there (the warband bank and Combined bank are listed only where `INV:HasWarbandBank()`), so unticking Bank sets `hide.bank`, which the combined bank never reads: the category still shows in the bank the player sees. The flag the combined bank does read can be set only by the window's own Edit view checkbox on a category header (`category.lua`, `INV:SetCategoryHidden(id, categoryName, ...)`), or by a migrated profile.
+
+**Why noticed:** Review of the reset-every-setting Task 5 (2026-11-15). Show in's reset first covered only the listed windows, so a category hidden in the combined bank on Forever stayed "edited" with no reset; the fix there makes Show in's reset and "differs" cover every window a category is hidden in. The older bug (Show in cannot hide a category in the bank Forever actually shows) is separate and unfixed.
+
+**Anchors:** `SaftUI-Bags/categoriestab.lua` (`INV:CategoryEditorOptions`: `windows`, `sorting`), `SaftUI-Bags/categories.lua` (`INV:SetCategoryHidden`, `INV:IsCategoryHidden`, `INV:ShowCategoryEverywhere`), `SaftUI-Bags/category.lua` (the header checkbox), `SaftUI-Bags/movers.lua` (`INV:GetMoverIds`), `tests/bags/categories_editor_test.lua` (Show in's reset test).
+
+**What's been considered:** List the window the bank really is on each client: on Forever, Combined bank in place of (or beside) Bank. Or have Show in > Bank write both `bank` and `combinedbank` while the bank is combined. The reviewer preferred adding the combined bank to Show in on Forever.
+
+**Shape of work:** Small change in `INV:CategoryEditorOptions` (which windows Show in lists and what its labels say) plus a test on Forever that unticking the window the bank is in hides the category there.
+
+**Open questions:** Does Forever's Show in list Combined bank alone, or Bank and Combined bank? What does Bank mean while the bank is combined?
+
+**Resolved 2026-11-15:** Show in (`INV:CategoryEditorOptions`) now lists Combined bank on every client, between Bank and (on retail) the warband bank, so on Forever, where the combined bank is the default bank, unticking it hides the category there; Bank stays for the separate-bank layout. Test: `tests/bags/categories_editor_test.lua`.
+
+### 2026-11-14 — The options kit's keybinding widget doesn't know META or Blizzard's ignored keys
+
+**What:** The `keybinding` widget (`SaftUI-Core/Config/optionskeybinding.lua`) builds a key from `Is*KeyDown` in ALT-CTRL-SHIFT order and a short ignore list; unlike `/sui kb` (`GetConvertedKeyOrButton`, `IsKeyPressIgnoredForBinding`, `CreateKeyChordStringUsingMetaKeyState`) it has no META and doesn't use Blizzard's ignore list, so a Mac player can't bind META chords there and a key Blizzard refuses to bind is tried anyway (the game then refuses it, and the nearest button's Key row says "Can't bind ...").
+
+**Why noticed:** Review of Task 10 of the objective tracker, which uses the widget for its Key row. Pre-existing Core behaviour, out of that task's scope.
+
+**Anchors:** `SaftUI-Core/Config/optionskeybinding.lua` (`Press`, `IGNORED_KEYS`), `SaftUI-ActionBars/keybindmode.lua`, `SaftUI-Tracker/options.lua` (the `key` row).
+
+**Shape of work:** Small: build the key through Blizzard's own functions where they exist, guarded by presence; extend `tests/core/options_fields_test.lua`.
+
+**Resolved 2026-11-15:** the widget's `Press` asks `IsKeyPressIgnoredForBinding` and builds the chord with `CreateKeyChordStringUsingMetaKeyState` where the client has them (META included), keeping the short ignore list and the plain chord (plus META when `IsMetaKeyDown` exists) as the fallback. Test in `tests/core/options_fields_test.lua`; in-game check on a Mac client not possible here.
+
+### 2026-11-15 — Reset walks: the feed's, Minimap's and Micro menu's movers are registered inline, so the tests pin a copy
+
+**What:** The loot feed, the minimap and the micro menu register their movers inside their setup functions, so the walks register copies and a source check pins the key, `configPath` and `defaults` text.
+
+**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
+
+**Anchors:** `SaftUI-Loot/Feed/feed.lua` (`st:RegisterConfigMover(feed, ...)`), `SaftUI-Minimap/minimap.lua`, `SaftUI-Minimap/micromenu.lua`; `tests/loot/theme_test.lua` and `tests/minimap/theme_test.lua` (the `feedSource` and `PinnedTo` checks).
+
+**Shape of work:** Move each registration into a method (`LT:RegisterFeedMover()`, as `LT:RegisterRollMover()` and `CHT:RegisterChatMover()` are) that the world calls. Three small changes and the source checks go.
+
+**Resolved 2026-11-15:** the registrations are methods now (`LT:RegisterFeedMover`, `MM:RegisterMinimapMover`, `MicroMenu:RegisterMicroMenuMover`), called by the setup and by the walks in `tests/loot/theme_test.lua` and `tests/minimap/theme_test.lua`; the source checks are gone.
+
+### 2026-11-15 — Blizzard's tracker: the Position reset is tested on Forever only
+
+**What:** The default differs by client (`y_off` -275 or -260); the test runs on Forever. A retail run on the scratch check gave -260, which is right.
+
+**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
+
+**Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_ObjectiveTrackerPosition.lua` (`st:DefaultTrackerPosition()`), `tests/misc/objective_tracker_position_test.lua` ("Blizzard's tracker's Position resets to Blizzard's spot").
+
+**Shape of work:** Run that case for both clients, as the walk cases of Action bars and the Tracker now are.
+
+**Resolved 2026-11-15:** the case in `tests/misc/objective_tracker_position_test.lua` runs on both clients and pins each one's `y_off` (-275 Forever, -260 retail).
+
+### 2026-11-15 — Buffs and debuffs: Size and Outline keep hand defaults a derived one would replace
+
+**What:** The Duration and Stack count Font rows take their default from where they are saved; their Size and Outline rows still have hand `default` tables over `st.defaults`.
+
+**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
+
+**Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua` (`AP:GetTextOptions`, the `for _, field in ipairs({ 'size', 'outline' })` loop), `tests/misc/buff_text_font_default_test.lua` (the Size and Outline resets case).
+
+**Shape of work:** Delete the loop; the group's `saved` (`SavedIn('auras', key, kind)`) derives both, and a derived reset runs the group's `set` (`Apply`), as the hand one does. The case in `buff_text_font_default_test.lua` moves to the kit's calls.
+
+**Resolved 2026-11-15:** the hand `default` tables are gone; both rows reset from the group's `saved` (derived), through the group's `set`. `tests/misc/buff_text_font_default_test.lua`'s Size and Outline case now reads the kit's `OM.DefaultSource`, `DefaultDiffers`, `SourceState` and `DefaultReset`.
+
+### 2026-11-15 — Buffs and debuffs: Wrap's hand reset copies the General group's set
+
+**What:** Wrap's hand `reset` repeats the body of the General group's `set` instead of calling it.
+
+**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
+
+**Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua` (`default` on `args.wrap`), `tests/misc/options_pages_test.lua`.
+
+**Shape of work:** A shared local function for the write and the refresh, called by `set` and by the reset.
+
+**Resolved 2026-11-15:** the General group's `set` and Wrap's reset both call one local `SetGeneral(option, value)` (the write and the refresh).
+
+### 2026-11-15 — Buffs and debuffs: one helper for the wrap the layout keeps, so the layout and Wrap's default cannot drift
+
+**What:** `GetGeometry`, `WrapForGrow`'s last line and `DefaultWrap` each repeat the fallback (`horizontal and 'DOWN' or 'LEFT'`).
+
+**Why noticed:** Reviews of the reset-every-setting plan (Tasks 3 to 8); the plan's Task 8 left it, as small and independent of the plan.
+
+**Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua` (lines about 129, 163-170 and 203-209), `tests/misc/options_pages_test.lua` (the Wrap cases).
+
+**Shape of work:** One local `WrapInUse(grow, wrap)` used in all three; the existing Wrap and Grow cases pin it.
+
+**Resolved 2026-11-15:** `WrapInUse(grow, wrap)` in `Blizzard_BuffFramePosition.lua` is the one fallback; `GetGeometry`, `WrapForGrow` and `AP:DefaultWrap` all call it. The Wrap and Grow cases in `tests/misc/options_pages_test.lua` pin it.
+
+### 2026-11-15 — A roll result line's All passed and winner color are baked in at push
+
+**What:** A roll result's feed line (`Feed/rolls.lua`, `ResultText`) builds its right text once, at push: "All passed" in Loot > Pass, or the winner's name in their class color. A shown line, and a saved one after a reload, never follows a change to Loot > Pass or to a class color, though the Pass row's description names "All passed (on the feed line and in its roll tooltip)".
+
+**Why noticed:** Review of the live colors Task 6 (Loot). The audit and the brief didn't list this reader, so the task made the feed's item names and progress bars live and left this one. Context: the plan's goal is that every Colors page color reaches every SaftUI reader on screen as the picker is dragged.
+
+**Anchors:** `SaftUI-Loot/Feed/rolls.lua` (`ResultText`, `BuildRollEntry`), `SaftUI-Loot/Feed/feed.lua` (`LT:ColorFeed`, `LT.FeedItemName`), `docs/superpowers/plans/2026-11-15-saftui-live-colors.md` Ruling 15, `.superpowers/sdd/2026-11-15-saftui-live-colors/task-6-review.md` (m4).
+
+**What's been considered:** The same shape as the item names: the entry already keeps `rolls`, so keep it and build the right text at draw (`LT.RollResultText(info)`), and have `ColorFeed` set it again for `loot` (nil or `pass`) and `class`. A class color change then reaches only the lines with a winner.
+
+**Shape of work:** Small: one function moved out of the push, one branch in `ColorFeed`, a test beside `live_colors_test.lua`'s feed cases; saved entries already hold `rolls`, so restored lines follow too.
+
+**Open questions:** Whether the roll tooltip's lines (colored when shown) need a change: they read the color each time they open, so probably not.
+
+**Resolved 2026-11-15:** a roll result's entry keeps its `rolls` and no `rightText`; the line's right text is built as it draws (`LT.RollResultText`, `Feed/rolls.lua`), and `LT:ColorFeed` sets it again for Class and Loot > Pass (only the lines it names), so shown, new and restored lines follow. Tests in `tests/loot/live_colors_test.lua` (the cost case includes both passes).
 
 ### 2026-11-15 — Chat's Fade tabs: ChatFrameUtil.GetTabAlphas isn't in the retail source
 
@@ -3082,6 +3356,7 @@ Then, with the switch on, the spec's G1 to G12, each with the task that built it
 **Anchors:** `SaftUI-Tracker/` (`groups.lua`, `window.lua`, `rows.lua`), `docs/superpowers/specs/2026-11-14-saftui-objective-tracker-design.md`.
 
 **Resolved 2026-11-15:** SaftUI's own tracker draws a list grouped by zone (the current zone first), with Width and Max height and a scroll frame with its bar shown under the mouse; Blizzard's tracker is never put in a scroll frame. It ships on by default after the owner's in-game pass.
+
 ### 2026-11-15 — The action bars' and buffs' texts default to Small text
 
 **What:** The action bars' hotkey, stack count and macro name, and the buffs' and debuffs' duration and stack count, still ship a copy of Small text's look (Homespun 10, Monochrome outline) saved as a face name, a size and an outline. Their Font rows now list SaftUI's fonts (the fonts design, Task 8), so a player can pick Small text and follow it, but an untouched profile does not. Make Small text the default (the key `pixel`), with a conversion that writes today's copy into any text that set one of font, size or outline, so those keep their look.

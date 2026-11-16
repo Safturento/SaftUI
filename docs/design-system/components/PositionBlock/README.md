@@ -4,7 +4,7 @@ Where a frame or part sits, in one line: THIS (which point of it), TO (what it's
 
 ## When to use
 
-Every option of type `position`, always last on its page or in its menu, in a section of its own titled with what it places ("Position", "Text position", "Count position"). A frame's position is also set by dragging its mover in edit mode; the block shows the live numbers.
+Every option of type `position`, in a section of its own: a frame's is the second section of its page or tab, right after the first (decision 55), and a part's (a text's, an icon's) is last in its menu or its element's tab titled with what it places ("Position", "Text position", "Count position"). A frame's position is also set by dragging its mover in edit mode; the block shows the live numbers.
 
 ## What the consumer provides
 
@@ -37,6 +37,6 @@ The dots keep a 1px line in the Blizzard theme's Border round its Background (no
 
 ## Do and don't
 
-- Do put Position last, in its own section, every time.
+- Do put a frame's Position second on its page or tab, in its own section, every time; a part's stays last in its menu.
 - Do keep offsets whole numbers.
 - Don't draw the nudge arrows by hand: they are Lucide's `chevron-up` and `chevron-down` (`Kit.NudgePair`, shared with the number box).

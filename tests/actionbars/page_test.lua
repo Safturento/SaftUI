@@ -200,11 +200,11 @@ test('All bars: Look, Layout, Visibility, Text; no tabs', function()
 	no_errors()
 end)
 
-test('a bar: This bar, Layout, Visibility, Text, then Position last; the pet and stance bars have two texts', function()
+test('a bar: This bar, then Position, Layout, Visibility, Text; the pet and stance bars have two texts', function()
 	fresh()
 	local r = root()
 	local v = view(r, 'bar3')
-	eq(titles(v), 'This bar,Layout,Visibility,Text,Position', "Bar 3's sections, Position last")
+	eq(titles(v), 'This bar,Position,Layout,Visibility,Text', "Bar 3's sections, Position second")
 	eq(#v.tabs, 0, 'no tabs')
 	eq(keys(section(v, 'This bar')), 'enable', 'This bar holds Enable')
 	eq(section(v, 'This bar').rows[1].size, 'small', 'small')
@@ -218,7 +218,7 @@ test('a bar: This bar, Layout, Visibility, Text, then Position last; the pet and
 
 	for _, id in ipairs({ 'pet', 'stance' }) do
 		local pv = view(r, id)
-		eq(titles(pv), 'This bar,Layout,Visibility,Text,Position', id .. "'s sections")
+		eq(titles(pv), 'This bar,Position,Layout,Visibility,Text', id .. "'s sections")
 		eq(keys(section(pv, 'Text')), 'hotkey,countdown', id .. ': the hotkey and the cooldown numbers only')
 		eq(section(pv, 'Layout').rows[1].option.max, 10, id .. ': Buttons up to its 10')
 		eq(section(pv, 'Layout').rows[2].option.max, 10, id .. ': Buttons per row up to its 10')

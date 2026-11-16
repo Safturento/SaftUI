@@ -382,6 +382,85 @@ test("Equipment sets' Show in hides every Set: category; an old Set: flag still 
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+-- The game toggles a check button's check, then runs its OnClick.
+local function press(box)
+	box:SetChecked(not box:GetChecked())
+	stub.fire_script(box, 'OnClick')
+end
+
+-- The Edit view's checkbox of a set the Equipment sets entry hides does nothing:
+-- it stays checked, writes no flag, and says why on hover. It stays enabled (a
+-- disabled button gets no OnEnter without SetMotionScriptsWhileDisabled, and
+-- SaftUI's check box strips the template's disabled-checked texture, so a
+-- disabled box might draw no check), and is inert by its click.
+test("a set's Edit checkbox does nothing while the Equipment sets entry hides the window, says why on hover, and works again after", function()
+	local c = world('compact', function()
+		W.put(0, 7, W.item(701, 'Tank Helm', 'Armor', 50, { quality = 3, set = 'Tank' }))
+	end)
+	_G.GameTooltip = _G.GameTooltip or CreateFrame('GameTooltip', 'GameTooltip', UIParent)
+	local box = c.categories['Set: Tank'].filterCheckbox
+	local other = c.categories.Weapons.filterCheckbox
+	local function hover(b)
+		stub.fire_script(b, 'OnEnter')
+		return GameTooltip:IsShown() and GameTooltip:IsOwned(b) and stub.state(GameTooltip).texts[1] or nil
+	end
+	INV:ShowFilterCheckboxes(c, true)
+	eq(hover(box), nil, "no tooltip while the sets entry shows the window")
+	stub.fire_script(box, 'OnLeave')
+	INV:SetCategoryHidden('bag', 'Equipment sets', true)
+	INV:ShowFilterCheckboxes(c, true)
+	eq(box:GetChecked() and true or false, true, 'it is checked, as the set is hidden')
+	press(box)
+	eq(box:GetChecked() and true or false, true, 'a click leaves it checked')
+	eq(INV.config.filters.categories.bag['Set: Tank'], nil, 'and writes no flag')
+	local text = hover(box)
+	check(text and text:find(INV:CategoryName(INV.SETS_ENTRY), 1, true), 'hover says which entry hides it: ' .. tostring(text))
+	check(text and text:find("Show in", 1, true), 'and where to change it')
+	stub.fire_script(box, 'OnLeave')
+	check(not GameTooltip:IsShown(), 'leaving hides the tooltip')
+	INV:RenameCategory(INV.SETS_ENTRY, 'Gear sets')
+	check((hover(box) or ''):find('Gear sets', 1, true), 'the tooltip names the entry by its current name')
+	stub.fire_script(box, 'OnLeave')
+	eq(hover(other), nil, 'another category has no tooltip')
+	-- Leaving a box hides only a tooltip it owns: another frame's stays.
+	local elsewhere = CreateFrame('Frame', nil, UIParent)
+	GameTooltip:SetOwner(elsewhere, 'ANCHOR_RIGHT')
+	GameTooltip:SetText('another frame')
+	GameTooltip:Show()
+	stub.fire_script(other, 'OnLeave')
+	check(GameTooltip:IsShown() and GameTooltip:IsOwned(elsewhere), "leaving a box leaves another frame's tooltip")
+	GameTooltip:Hide()
+	press(other)
+	eq(INV:IsCategoryHidden('bag', 'Weapons'), true, 'and its checkbox works: a click hides it')
+	INV:SetCategoryHidden('bag', 'Weapons', false)
+	INV:ShowFilterCheckboxes(c, true)
+	INV:SetCategoryHidden('bag', 'Equipment sets', false)
+	INV:ShowFilterCheckboxes(c, true)
+	eq(hover(box), nil, 'no tooltip once the sets entry shows Bags')
+	press(box)
+	eq(box:GetChecked() and true or false, true, 'it works again: a click checks it')
+	press(box)
+	eq(box:GetChecked() and true or false, false, 'and unchecks it')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("a set's category made while the sets entry hides the window starts checked, and inert, with the tooltip", function()
+	local c = world('compact')
+	_G.GameTooltip = _G.GameTooltip or CreateFrame('GameTooltip', 'GameTooltip', UIParent)
+	INV:SetCategoryHidden('bag', 'Equipment sets', true)
+	INV:ShowFilterCheckboxes(c, true)
+	W.put(0, 8, W.item(702, 'Tank Plate', 'Armor', 50, { quality = 3, set = 'Tank' }))
+	update()
+	local box = c.categories['Set: Tank'].filterCheckbox
+	check(box ~= nil, 'the set category was made after the sets entry hid the window')
+	eq(box:GetChecked() and true or false, true, 'it starts checked: nothing but its own creation has set it')
+	press(box)
+	eq(box:GetChecked() and true or false, true, 'a click leaves it checked')
+	stub.fire_script(box, 'OnEnter')
+	check(GameTooltip:IsOwned(box) and GameTooltip:IsShown(), 'and its tooltip shows')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
 ------------------------------------------------------------ profile changes
 
 -- A real AceDB world over the bags: Core's real config.lua on AceDB-3.0 (as

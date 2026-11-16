@@ -53,6 +53,15 @@ return {
 	{ 'old gear over 90% of the average item level', item = { itemID = 1118, name = 'Timewalking Legs',
 		classID = 4, subclassID = 4, equipLoc = 'INVTYPE_LEGS', quality = 3, reqLevel = 30, expacID = 2, ilvl = 271 },
 		expect = 'Armor' },
+	-- A tabard or a shirt is never old gear, and so never sold through it. Today's
+	-- filter meant to say so but compared a field no item info has (equipSlot, for
+	-- equipLoc), so it never did: changed.
+	{ 'old gear: a rare tabard', item = { itemID = 1130, name = 'Old Banner Tabard', classID = 4, subclassID = 0,
+		equipLoc = 'INVTYPE_TABARD', quality = 3, reqLevel = 30, expacID = 2, ilvl = 20 }, expect = 'Armor', changed = true },
+	{ 'old gear: an epic tabard', item = { itemID = 1131, name = 'Old Epic Tabard', classID = 4, subclassID = 0,
+		equipLoc = 'INVTYPE_TABARD', quality = 4, reqLevel = 30, expacID = 2, ilvl = 20 }, expect = 'Armor', changed = true },
+	{ 'old gear: an uncommon shirt', item = { itemID = 1132, name = 'Old Green Shirt', classID = 4, subclassID = 0,
+		equipLoc = 'INVTYPE_BODY', quality = 2, reqLevel = 30, expacID = 2, ilvl = 15 }, expect = 'Armor', changed = true },
 	{ 'old gear that is legendary', item = { itemID = 1119, name = 'Old Legendary Legs', classID = 4, subclassID = 4,
 		equipLoc = 'INVTYPE_LEGS', quality = 5, reqLevel = 30, expacID = 2, ilvl = 60 }, expect = 'Armor' },
 	{ 'old gear that is common', item = { itemID = 1120, name = 'Old Common Legs', classID = 4, subclassID = 4,

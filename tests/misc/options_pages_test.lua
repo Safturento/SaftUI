@@ -5,7 +5,7 @@
 -- Blizzard's bar and bar frames left out because the tables never touch them),
 -- and the Skinning page, which needs none. (The Blizzard's tracker page is
 -- checked in objective_tracker_position_test.lua, over the tracker's fixture.) Checked for each page: every option
--- has a desc and no Ace width, Position is the last option of its group, and
+-- has a desc and no Ace width, Position is the frame's second section (the reset walk checks it), and
 -- the new options read and write their profile keys and apply the change.
 --
 -- Real: the files of the pages (tooltipposition.lua; totembar.lua,
@@ -42,11 +42,8 @@ local function check_page(name, tree)
 		for key, option in pairs(group.args) do
 			if option.type == 'position' then
 				positions = positions + 1
-				for other, sibling in pairs(group.args) do
-					if other ~= key then
-						check((sibling.order or 100) < option.order, where .. ': Position is after ' .. other)
-					end
-				end
+				-- (Where a Position sits among its siblings is the page's second-section rule,
+				-- checked by the reset walk through tests/lib/position_second.lua.)
 			end
 		end
 	end
@@ -220,13 +217,13 @@ test('Totem bar: one small color per element, read and written as the bar reads 
 	eq(got, 'button_size:normal 1, button_spacing:normal 2, timer_bar:small 1/1, timer_text:small 1/2, '
 		.. 'timer_text_position:normal 2, timer_font:normal 1, timer_bar_height:normal 2, '
 		.. 'timer_text_x:normal 1, timer_text_y:normal 2, hide:normal 1', 'the settings in pairs: Text X and Y stay a pair')
-	local colors = view.sections[2]
-	eq(colors.title, 'Element colors', 'the colors have a section')
+	local colors = view.sections[3]
+	eq(colors.title, 'Element colors', 'the colors have a section, after Position')
 	local placed = OB.LayoutRows(colors.rows)
 	eq(#placed, 4, 'four colors')
 	eq(placed[1].y == placed[2].y and placed[3].y == placed[4].y and placed[1].y ~= placed[3].y, true,
 		'two to a line (each a bar as wide as a dropdown)')
-	eq(view.sections[#view.sections].title, 'Position', 'Position is the last section')
+	eq(view.sections[2].title, 'Position', 'Position is the second section')
 
 	profile.totembar.position = nil
 	TB.holder = nil
@@ -290,6 +287,14 @@ test('Buffs: the text positions are Position options over the same keys', functi
 	check(OM.DefaultReset(aroot, wraprow), "Wrap's reset runs")
 	check(not OM.DefaultDiffers(aroot, wraprow), 'and one Wrap reset gives a fresh profile')
 	eq(profile.auras.buffs.wrap, st.defaults.auras.buffs.wrap, 'Wrap is its default')
+
+	-- A saved wrap that runs along a horizontal Grow is not kept: the layout and Wrap's default use Down.
+	profile.auras.buffs.wrap = 'RIGHT'
+	AP:Invalidate('buffs')
+	eq(AP:GetGeometry('buffs').wrap, 'DOWN', 'the horizontal fallback in the layout')
+	eq(AP:DefaultWrap('buffs'), 'DOWN', "and in Wrap's default")
+	profile.auras.buffs.wrap = st.defaults.auras.buffs.wrap
+	AP:Invalidate('buffs')
 
 	local duration = tree.args.buffs.args.text.args.duration
 	local p = duration.args.position

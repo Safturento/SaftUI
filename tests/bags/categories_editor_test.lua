@@ -115,11 +115,17 @@ test('the editor has its rows, each with a desc', function()
 	OM.Set(root, rows.show, 'bank', true)
 	eq(INV:IsCategoryHidden('bank', 'Trade Goods'), false, 'or shows it')
 
-	-- Show in: Bags and Bank on Forever, which has no warband bank.
+	-- Show in: Bags, Bank and Combined bank on Forever, which has no warband bank
+	-- but opens the combined bank by default.
 	local values = OM.Values(root, rows.show)
 	local labels = {}
 	for i, value in ipairs(values) do labels[i] = value.key .. '=' .. value.name end
-	eq(table.concat(labels, ','), 'bag=Bags,bank=Bank', 'Bags and Bank on Forever')
+	eq(table.concat(labels, ','), 'bag=Bags,bank=Bank,combinedbank=Combined bank', 'Bags, Bank and Combined bank on Forever')
+	-- Unticking the window the bank is in (the combined bank by default) hides the category there.
+	check(INV.config.combinedBank, 'the bank is combined by default')
+	OM.Set(root, rows.show, 'combinedbank', false)
+	eq(INV:IsCategoryHidden('combinedbank', 'Trade Goods'), true, 'Combined bank hides it in the bank the player sees')
+	OM.Set(root, rows.show, 'combinedbank', true)
 	eq(#take_errors(), 0, 'no errors')
 
 	-- A warband bank adds Warband bank and Combined bank.
@@ -317,7 +323,7 @@ end)
 
 test("Show in's reset covers every window the category is hidden in, one the page does not list on Forever too", function()
 	world()
-	check(not INV:HasWarbandBank(), 'Forever has no warband bank: Show in lists Bags and Bank')
+	check(not INV:HasWarbandBank(), 'Forever has no warband bank: Show in lists Bags, Bank and Combined bank')
 	INV.categoryEditor.selected = 'Toys'
 	-- Hidden in the combined bank alone (the Edit view's checkbox, or a migrated profile).
 	INV:SetCategoryHidden('combinedbank', 'Toys', true)

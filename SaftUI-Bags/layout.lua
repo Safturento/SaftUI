@@ -64,7 +64,7 @@ end
 function INV:ShowFilterCheckboxes(container, shown)
 	for categoryName, category in pairs(container.categories) do
 		category.filterCheckbox:SetShown(shown)
-		category.filterCheckbox:SetChecked(self:IsCategoryHidden(container.id, categoryName))
+		self:UpdateFilterCheckbox(category.filterCheckbox, container.id, categoryName)
 	end
 end
 

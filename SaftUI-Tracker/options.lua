@@ -140,8 +140,8 @@ function TR.ItemsTab()
 		size = generators.range(2, 'Button size', 16, 40, 2, "How big a quest item button is."),
 		cooldown = toggle(3, 'cooldown', 'Cooldown', "The item's cooldown on its button."),
 		count = toggle(4, 'count', 'Count', "The item's charges, when it has more than one."),
-		range = toggle(5, 'range', 'Out of range in red',
-			"Tints the button red while the item can't be used on what is in front of you."),
+		range = toggle(5, 'range', 'Tint out of range',
+			"Tints the button in the Danger color (Global settings > Colors > Text) while the item can't be used on what is in front of you."),
 		nearest = toggle(6, 'nearest', 'Nearest quest item button',
 			"One bigger button for the quest item you most likely want: the one whose area you're in, else your focused quest's, else the nearest. Move it in edit mode; bind a key to it below."),
 		nearest_size = generators.range(7, 'Nearest button size', 24, 64, 2, 'How big the nearest quest item button is.'),
@@ -340,7 +340,7 @@ function TR:GetConfigTable()
 	-- hangs from the holder, so the holder anchored to the tracker, or to a
 	-- frame inside it, would chase itself: refused here by name (the frames
 	-- don't exist while the switch is off) and by parent.
-	local position = generators.position(1000, true,
+	local position = generators.position(8.5, true, -- the second section: after the rows, before Text
 		function(key) return TR:GetPosition()[key] end,
 		function(key, value)
 			local current = TR:GetPosition()

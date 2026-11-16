@@ -379,6 +379,9 @@ function R.problems(root, pageKey, opts)
 	opts = opts or {}
 	local problems = {}
 	local walked = Walk(root, pageKey, opts, problems)
+	-- A frame's Position is its page's second section (lib/position_second.lua).
+	local PS = load_test_file('lib/position_second.lua')
+	for _, problem in ipairs((PS.problems(root, pageKey))) do problems[#problems + 1] = problem end
 	return problems, walked
 end
 
