@@ -126,9 +126,12 @@ test('MenuPlace: under the dots, right-aligned; flipped above near the bottom; l
 	eq(at({ left = 600, right = 616, top = 200, bottom = 176 }, 400, 300, 1920, 1080), 'BOTTOMRIGHT,TOPRIGHT,0,4', 'above, near the bottom')
 	eq(at({ left = 100, right = 116, top = 500, bottom = 476 }, 400, 300, 1920, 1080), 'TOPLEFT,BOTTOMLEFT,0,-4', 'to the right, near the left')
 	eq(at({ left = 100, right = 116, top = 200, bottom = 176 }, 400, 300, 1920, 1080), 'BOTTOMLEFT,TOPLEFT,0,4', 'both')
-	-- No room either way: the side with more of it.
-	eq(at({ left = 600, right = 616, top = 300, bottom = 276 }, 400, 300, 1920, 500), 'TOPRIGHT,BOTTOMRIGHT,0,-4', 'more room below')
-	eq(at({ left = 600, right = 616, top = 224, bottom = 200 }, 400, 300, 1920, 500), 'BOTTOMRIGHT,TOPRIGHT,0,4', 'more room above')
+	-- No room above or below: beside the dots (never over their own row), the right first.
+	eq(at({ left = 600, right = 616, top = 300, bottom = 276 }, 400, 300, 1920, 500), 'TOPLEFT,TOPRIGHT,4,0', 'beside, to the right')
+	eq(at({ left = 600, right = 616, top = 224, bottom = 200 }, 400, 300, 1920, 500), 'TOPLEFT,TOPRIGHT,4,0', 'beside, to the right')
+	eq(at({ left = 1600, right = 1616, top = 300, bottom = 276 }, 400, 300, 1920, 500), 'TOPRIGHT,TOPLEFT,-4,0', 'no room to the right: to the left')
+	-- Room above (even with none below): above, as before.
+	eq(at({ left = 600, right = 616, top = 224, bottom = 200 }, 400, 300, 1920, 600), 'BOTTOMRIGHT,TOPRIGHT,0,4', 'more room above')
 end)
 
 ------------------------------------------------------------------ opening
@@ -446,6 +449,57 @@ test('a menu from an item in the small dialog opens over it and closes with it',
 	eq(menuCell('size').widget.edit:GetText(), '13')
 	OW:CloseDialog()
 	check(not OW:IsMenuShown())
+	close_all()
+end)
+
+------------------------------------------------------------------ a color row's menu
+
+test("a color row's menu: its slot opens it as an item's dots do, titled by menuTitle; one without colorEdit makes no color edit; a row without a menu has none", function()
+	fresh()
+	local content = CreateFrame('Frame', nil, UIParent)
+	content:SetPoint('CENTER')
+	content:SetSize(774, 600)
+	local tint = { 0.2, 0.4, 0.6 }
+	local function color(order, name, extra)
+		local option = { order = order, type = 'color', name = name, desc = name .. '.',
+			get = function() return tint[1], tint[2], tint[3] end, set = function(_, r, g, b) tint = { r, g, b } end }
+		for key, value in pairs(extra or {}) do option[key] = value end
+		return option
+	end
+	local menu = { type = 'group', name = 'Tint menu', args = {
+		size = { order = 1, type = 'range', name = 'Size', desc = 'Its size.', min = 1, max = 10, step = 1,
+			get = function() return values.size end, set = function(_, v) values.size = v end },
+	} }
+	local root = { page = { type = 'group', name = 'Page', args = {
+		tinted = color(1, 'Tinted', { menu = menu, menuTitle = 'Tint options' }),
+		plain = color(2, 'Plain'),
+	} } }
+	local body = OB.New(content, root, function() end, 774)
+	body:Draw(OM.BuildView(root, 'page').sections)
+	local with, without = body.cells[1].widget, body.cells[2].widget
+	eq(with.width, 190, 'the control with a slot is 190')
+	eq(without.width, 170, 'and without one 170')
+	check(with.dots:IsShown(), 'the slot')
+	check(not (without.dots and without.dots:IsShown()), 'none on the plain row')
+	eq(OW:OpenMenu(without), false, 'a row without a menu opens none')
+	click(with.dots)
+	check(OW:IsMenuShown(with), "the slot's click opens its row's menu")
+	eq(M().title:GetText(), 'Tint options', 'titled by menuTitle')
+	eq((select(2, point(M().frame))), with.dots, 'anchored to the slot')
+	eq(menuCell('size') ~= nil, true, "drawn from the option's menu group")
+	check(not st:InColorEdit(), 'no color edit: the group does not ask for one')
+	click(with.dots)
+	check(not OW:IsMenuShown(), 'the slot again: closed')
+	with:SetDisabled(true)
+	eq(OW:OpenMenu(with), false, 'a disabled row opens none')
+	with:SetDisabled(false)
+	-- colorEdit: begun with the menu, ended with it
+	menu.colorEdit = true
+	click(with.dots)
+	check(st:InColorEdit(), 'colorEdit: a color edit while it is open')
+	OW:CloseMenu()
+	check(not st:InColorEdit(), 'ended as it closes')
+	body:Release()
 	close_all()
 end)
 

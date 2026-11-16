@@ -147,11 +147,11 @@ local function Allowed(path, allowed)
 end
 
 -- The tree and the path a row is read from: an item's menu rows are on
--- OM.MenuRoot(item) under { 'menu', ... }.
+-- OM.MenuRoot(item) under { 'menu', ... }; a color row's menu (the Accent's) the same.
 local function Resolve(root, path)
 	local group = { args = root }
 	for i, key in ipairs(path) do
-		if key == 'menu' and group.type == 'item' and type(group.menu) == 'table' then
+		if key == 'menu' and (group.type == 'item' or group.type == 'color') and type(group.menu) == 'table' then
 			local rest = { 'menu' }
 			for j = i + 1, #path do rest[#rest + 1] = path[j] end
 			return OM.MenuRoot(group), rest

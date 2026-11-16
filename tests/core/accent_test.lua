@@ -140,4 +140,8 @@ test("the Accent's description says nothing of a reload, names what it is not a 
 	eq(option.desc, "SaftUI's accent under every theme: what is on, picked or current, a field you type in, links and marks, fills that show progress, and the chat prefix. Hover, pushed and selected are made from it; the dots set how.")
 	check(not option.desc:lower():find('reload', 1, true), 'no reload')
 	eq(option.preview, 'states', 'its preview is the states kind')
+	-- "the dots set how" is true: the row has the menu (Task 10, tests/core/accent_menu_test.lua)
+	eq(type(option.menu), 'table', 'the dots: a menu of its own')
+	eq(option.menu.type, 'group'); eq(option.menuTitle, 'Accent')
+	eq(option.menu.colorEdit, true, 'it edits as the picker does')
 end)

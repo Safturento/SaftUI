@@ -580,6 +580,8 @@ function W.NumberBox(parent, opts)
 		return function() opts.set(Clamp((tonumber(opts.get()) or 0) + direction * step)) end
 	end
 	W.HoverStates(edit, function() return box.disabled end, { wire = false })
+	-- the box's own frame follows the Disabled opacity (a record with nothing drawn)
+	st:AddStates(box, 'glyph', { wire = false })
 	local pair = Kit.NudgePair(box, box, Nudge(1), Nudge(-1))
 	pair:SetPoint('TOPLEFT', edit, 'TOPRIGHT', -1, 0)
 	box.pair = pair

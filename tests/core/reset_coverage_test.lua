@@ -143,6 +143,7 @@ local PARTS = {
 	['SaftUI-Unitframes/nameplates/options.lua'] = 'unitframes/config_test.lua',
 	['SaftUI-ActionBars/textoptions.lua'] = 'actionbars/page_test.lua',
 	['SaftUI-Bags/categoriestab.lua'] = 'bags/categories_editor_test.lua',
+	['SaftUI-Core/Media/states.lua'] = 'core/accent_menu_test.lua', -- the Accent row's menu
 }
 
 -- The text of a test world: the test, the helper files it loads (load_test_file, to two levels) and
