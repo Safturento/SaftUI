@@ -39,6 +39,11 @@ local function slots_of(container)
 	return out
 end
 
+-- A view glyph piece's colour texture, as text (white vertex colour: nothing tints it).
+local function glyph(piece)
+	local c = stub.state(piece).color_texture
+	return T.text(c[1], c[2], c[3])
+end
 local function vertex(t) return T.text(t:GetVertexColor()) end
 local function state_color(name) return T.text(st:StateColor(name)) end
 local function rgb3(r, g, b) return T.text(r, g, b) end
@@ -52,11 +57,7 @@ test('every bag widget at rest is drawn as before: the glyphs in Text > Normal, 
 		local button = container.viewButtons[view]
 		local look = st:StateLook(button)
 		check(not look.hover and not look.pushed and not look.layer.shown, view .. ': no tint at rest')
-		if view ~= 'compact' then
-			for _, piece in ipairs(button.glyph) do
-				eq(rgb3(piece:GetVertexColor()), normal, view .. ': a glyph piece rests in Text > Normal')
-			end
-		end
+		for _, piece in ipairs(button.glyph) do eq(glyph(piece), normal, view .. ': a glyph piece is Text > Normal') end
 	end
 	check(#slots_of(container) > 0, 'slots exist')
 	for _, slot in ipairs(slots_of(container)) do
@@ -75,10 +76,9 @@ test('view buttons: hover tints; the current view has the accent edge and the fa
 	check(look.selected, 'the current view is selected')
 	check(look.fill.shown, 'with the fade')
 	eq(rgb3(look.edge.r, look.edge.g, look.edge.b), rgb3(st:Color('accent'):GetRGB()), 'the accent edge, exactly')
-	-- the glyph of the current one is the accent's too
-	for _, piece in ipairs(compact.glyph) do
-		eq(rgb3(piece:GetVertexColor()), rgb3(look.edge.r, look.edge.g, look.edge.b), 'its glyph is the helper\'s selected color')
-	end
+	-- the helper is given no glyph: the current view's icon is Text > Normal still
+	local normal = rgb3(st:Color('text', 'normal'):GetRGB())
+	for _, piece in ipairs(compact.glyph) do eq(glyph(piece), normal, 'the current view\'s glyph is Text > Normal') end
 	check(not st:StateLook(rows).selected, 'another view is not')
 
 	-- hover: the body tint, and the glyph in the lighter tone
@@ -86,29 +86,33 @@ test('view buttons: hover tints; the current view has the accent edge and the fa
 	local hovered = st:StateLook(rows)
 	check(hovered.hover and hovered.layer.shown, 'hover tints the body')
 	eq(rgb3(hovered.layer.r, hovered.layer.g, hovered.layer.b), rgb3(st:StateColor('hover')), 'in T+')
-	for _, piece in ipairs(rows.glyph) do
-		eq(rgb3(piece:GetVertexColor()), rgb3(st:StateColor('edgeHover')), 'the glyph takes the lighter tone')
-	end
+	for _, piece in ipairs(rows.glyph) do eq(glyph(piece), normal, 'hovered: the glyph stays Text > Normal') end
 	stub.fire_script(rows, 'OnLeave', true)
-	for _, piece in ipairs(rows.glyph) do
-		eq(rgb3(piece:GetVertexColor()), rgb3(st:Color('text', 'normal'):GetRGB()), 'and rests again')
-	end
+	for _, piece in ipairs(rows.glyph) do eq(glyph(piece), normal, 'and after the mouse leaves') end
 
 	-- a click lights the other and puts the first back
 	INV:SetView('bag', 'rows')
 	check(st:StateLook(rows).selected and not st:StateLook(compact).selected, 'the selection moves')
-	for _, piece in ipairs(compact.glyph) do
-		eq(rgb3(piece:GetVertexColor()), rgb3(st:Color('text', 'normal'):GetRGB()), 'the old one\'s glyph rests')
+	for _, view in ipairs(VIEWS) do
+		for _, piece in ipairs(container.viewButtons[view].glyph) do eq(glyph(piece), normal, view .. ': every glyph stays Text > Normal') end
 	end
 	INV:SetView('bag', 'compact')
 
-	-- Blizzard: the helper holds off, the panel button is pressed (SetButtonPressed)
+	-- every look, a button hovered as the theme switches: the helper holds off under Blizzard,
+	-- the panel button is pressed (SetButtonPressed), and no icon is ever anything but Text > Normal
+	stub.fire_script(rows, 'OnEnter', true)
 	SL.each_look(function(name)
-		local blizzard = name == 'blizzard'
 		local l = st:StateLook(container.viewButtons.compact)
-		eq(l.blizzard, blizzard, name .. ': the helper reads the look')
+		eq(l.blizzard, name == 'blizzard', name .. ': the helper reads the look')
 		check(l.selected, name .. ': selected in every look')
+		for _, view in ipairs(VIEWS) do
+			for _, piece in ipairs(container.viewButtons[view].glyph) do
+				eq(glyph(piece), normal, name .. ' ' .. view .. ': a glyph is Text > Normal')
+			end
+		end
 	end)
+	stub.fire_script(rows, 'OnLeave', true)
+	for _, piece in ipairs(rows.glyph) do eq(glyph(piece), normal, 'the mouse left: still Text > Normal') end
 	eq(#take_errors(), 0, 'no errors')
 end)
 
@@ -347,6 +351,53 @@ test('the filter check (8): edge, a 6 square mark, the fade when ticked; bare ch
 	stub.fire_script(bare, 'OnEnter', true)
 	check(st:StateLook(bare).layer.shown, 'the hover tints it')
 	stub.fire_script(bare, 'OnLeave', true)
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+------------------------------------------------------------------ rest colors after a hover
+
+test("an off row's name rests Muted after a hover; an on row's Normal; the pick paints a selected row's name", function()
+	world()
+	INV:SetCategoryEnabled('Quest', false)
+	INV.categoryEditor.selected = 'Consumables'
+	CW.open()
+	local w = CW.tab()
+	local off, on, selected = CW.row_of(w, 'Quest'), CW.row_of(w, 'Armor'), CW.row_of(w, 'Consumables')
+	local muted, normal = rgb3(st:Color('text', 'muted'):GetRGB()), rgb3(st:Color('text', 'normal'):GetRGB())
+	eq(rgb3(off.name:GetTextColor()), muted, 'off: Muted at rest')
+	stub.fire_script(off.frame, 'OnLeave', true)
+	stub.fire_script(off.frame, 'OnEnter', true)
+	eq(rgb3(off.name:GetTextColor()), normal, 'off, hovered: the pick (Normal; the strike line says off)')
+	stub.fire_script(off.frame, 'OnLeave', true)
+	eq(rgb3(off.name:GetTextColor()), muted, 'off: Muted again after the hover')
+	stub.fire_script(on.frame, 'OnEnter', true)
+	stub.fire_script(on.frame, 'OnLeave', true)
+	eq(rgb3(on.name:GetTextColor()), normal, 'on: Normal after a hover')
+	-- the pick: over the fade the name is the helper's text (a name registered with the row)
+	local look = st:StateLook(selected.frame)
+	check(look.selected and look.text ~= nil, 'the selected row registered its name')
+	eq(rgb3(look.text.r, look.text.g, look.text.b), rgb3(selected.name:GetTextColor()), 'the name is what the helper picked')
+	eq(rgb3(selected.name:GetTextColor()), normal, 'Normal over the accent fade at the defaults')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("the NOT box rests Muted after a hover when off", function()
+	world()
+	INV.categoryEditor.selected = CW.SELL
+	CW.open()
+	local editor = CW.tab():EditorCell('rule').widget
+	local box
+	for _, r in ipairs(editor.rows) do
+		if r.notBox and not r.notBox.on then box = r.notBox break end
+	end
+	check(box, 'a NOT box that is off')
+	local muted = rgb3(st:Color('text', 'muted'):GetRGB())
+	stub.fire_script(box, 'OnEnter', true)
+	stub.fire_script(box, 'OnLeave', true)
+	eq(rgb3(box.text:GetTextColor()), muted, 'Muted after a hover')
+	stub.fire_script(box, 'OnMouseDown', 'LeftButton')
+	stub.fire_script(box, 'OnMouseUp', 'LeftButton')
+	eq(rgb3(box.text:GetTextColor()), muted, 'and after a press')
 	eq(#take_errors(), 0, 'no errors')
 end)
 

@@ -158,7 +158,7 @@ test('the list: every category in order, counts from the bag window, the edited 
 	check(not row_of(w, 'Armor').strike:IsShown(), 'one that is on is not')
 	check(same_rgb({ row_of(w, 'Armor').name:GetTextColor() }, rgb('text', 'normal')), 'and its name is not grey')
 
-	-- The selected row: tinted blue with a 3px bar at its left.
+	-- The selected row: the helper's selected look (a two-line accent bar and the fade).
 	for _, row in ipairs(w.rows) do
 		eq((SaftUI:GetState(row.frame, 'selected') == true), row.id == 'Consumables', row.id .. ': tinted only when selected')
 		local barLook = st:StateLook(row.frame)

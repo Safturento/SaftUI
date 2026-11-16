@@ -22,9 +22,8 @@ local VISIBLE_GAP = 3
 	the same on both clients: a square, four squares, a dot grid and lines,
 	drawn on a 12 by 12 grid (GLYPHS: x, y, width, height of each piece) whose
 	unit is a whole number of pixels, so the pieces stay sharp at any title bar
-	height. The pieces are white colour textures and the states helper is the
-	glyph's colour (Text > Normal at rest, the accent's tones under the mouse
-	and while current). The button for the window's view is the helper's
+	height, in Text > Normal in every look and state (the states helper is
+	given no glyph). The button for the window's view is the helper's
 	selected state (st:SetButtonPressed: the accent edge and the fade; under the
 	Blizzard theme, whose panel buttons they are, it's pressed).
 	The buttons are SaftUI's own plain buttons, so lighting one is fine in
@@ -48,15 +47,11 @@ local GLYPHS = {
 	rows = { { 0, 1, 12, 2 }, { 0, 5, 12, 2 }, { 0, 9, 12, 2 } },
 }
 
--- A button's glyph rests in Colors -> Text -> Normal (the helper's glyphRest).
-local function GlyphRest() return st:Color('text', 'normal'):GetRGB() end
-
--- Puts the glyph's rest color on every piece (also under Blizzard, where the
--- helper leaves a glyph alone), then the helper's colors over it for a state.
+-- A button's glyph is drawn in Colors -> Text -> Normal.
 local function ColorGlyph(button)
-	local r, g, b = GlyphRest()
-	for _, piece in ipairs(button.glyph) do piece:SetVertexColor(r, g, b) end
-	st:PaintStates(button)
+	for _, piece in ipairs(button.glyph) do
+		piece:SetColorTexture(st:Color('text', 'normal'):GetRGB())
+	end
 end
 
 -- A button is size square (the title bar's st:HeaderButtonSize: its height
@@ -143,10 +138,9 @@ function INV:CreateViewButtons(container)
 		button:SetFrameLevel(header:GetFrameLevel() + 4)
 		button.view, button.viewLit, button.glyph = view, false, {}
 		for p = 1, #GLYPHS[view] do
-			local piece = button:CreateTexture(nil, 'OVERLAY')
-			piece:SetColorTexture(1, 1, 1)
-			button.glyph[p] = piece
+			button.glyph[p] = button:CreateTexture(nil, 'OVERLAY')
 		end
+		ColorGlyph(button)
 		SizeViewButton(button, st:HeaderButtonSize(container))
 
 		button:SetScript('OnClick', function() INV:SetView(container.id, view) end)
@@ -156,10 +150,6 @@ function INV:CreateViewButtons(container)
 			GameTooltip:Show()
 		end)
 		button:SetScript('OnLeave', st.HideGameTooltip)
-
-		-- The glyph's colors are the helper's (merged into the button's states from st:CreateButton).
-		st:AddStates(button, 'box', { glyph = button.glyph, glyphRest = GlyphRest })
-		ColorGlyph(button)
 
 		container.viewButtons[view] = button
 	end

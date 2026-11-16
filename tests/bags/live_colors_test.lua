@@ -416,10 +416,9 @@ test("Text > Normal: the view buttons' glyphs and the currencies' funnel", funct
 	st.config.profile.colors.text.normal:SetRGB(0.2, 0.6, 0.4)
 	local m = pass('text', 'normal')
 	eq(T.text(funnel.icon:GetVertexColor()), T.text(0.2, 0.6, 0.4) .. ',1.00', 'the funnel')
-	-- (Compact is the lit one, its glyph the accent's: another button shows Text > Normal)
-	for _, piece in ipairs(bag.viewButtons.onebag.glyph) do
-		local r, g, b = piece:GetVertexColor()
-		eq(T.text(r, g, b), T.text(0.2, 0.6, 0.4), 'a glyph')
+	for _, piece in ipairs(bag.viewButtons.compact.glyph) do
+		local rgba = stub.state(piece).color_texture
+		eq(T.text(rgba[1], rgba[2], rgba[3]), T.text(0.2, 0.6, 0.4), 'a glyph')
 	end
 	quiet()
 	eq(m.forbidden.total, 0, 'nothing forbidden')
