@@ -24,8 +24,12 @@ load_core_helpers()
 addon_namespace('SaftUI-Unitframes').oUF = {
 	colors = {
 		class = {}, reaction = {},
-		-- real oUF has a color for every power token the units here use
-		power = { MANA = CreateColor(0, 0, 1), RAGE = CreateColor(1, 0, 0), ENERGY = CreateColor(1, 1, 0) },
+		-- real oUF has a color for every power token the units here use, and
+		-- each power type's index is the same table as its token's
+		power = (function()
+			local mana, rage, energy = CreateColor(0, 0, 1), CreateColor(1, 0, 0), CreateColor(1, 1, 0)
+			return { MANA = mana, RAGE = rage, ENERGY = energy, [0] = mana, [1] = rage, [3] = energy }
+		end)(),
 		disconnected = CreateColor(1, 1, 1), tapped = CreateColor(1, 1, 1),
 		roles = {}, runes = {},
 	},
@@ -45,7 +49,14 @@ local missing = {}
 UnitExists = function(unit) return not missing[unit] end
 UnitClass = function(unit) return 'Class', classOf[unit] end
 UnitReaction = function(unit) return reactionOf[unit] end
-UnitPowerType = function(unit) return 0, powerOf[unit] end
+-- (power type, token, the game's own r, g, b): a unit's type is 0 (Mana) unless
+-- typeOf says otherwise, and altOf gives a color the game hands for it.
+local typeOf, altOf = {}, {}
+UnitPowerType = function(unit)
+	local alt = altOf[unit]
+	if alt then return typeOf[unit] or 0, powerOf[unit], alt[1], alt[2], alt[3] end
+	return typeOf[unit] or 0, powerOf[unit]
+end
 UnitIsPlayer = function(unit) return playerOf[unit] or false end
 UnitIsConnected = function(unit)
 	local connected = connectedOf[unit]
@@ -149,8 +160,15 @@ UF.UpdateGroupPreview = function(_, group) previews[group] = (previews[group] or
 -- source), so a pass copies into them as it does in game.
 local function seed(group, key)
 	local from = profile[group][key]
-	local color = CreateColor(from.r, from.g, from.b)
-	if group == 'status' then oUFColors[key] = color else oUFColors[group][key] = color end
+	local holder = group == 'status' and oUFColors or oUFColors[group]
+	local color = holder[key]
+	if color then
+		-- oUF's own table, kept (its type-index aliases share it)
+		color.r, color.g, color.b = from.r, from.g, from.b
+	else
+		color = CreateColor(from.r, from.g, from.b)
+		holder[key] = color
+	end
 	return color
 end
 for _, key in ipairs({ 'MAGE', 'WARRIOR', 'DRUID' }) do seed('class', key) end
@@ -568,14 +586,38 @@ test('a profile color with no value leaves the color oUF has', function()
 	oUFColors.class.ZZZ = nil
 end)
 
-test('UF.ColorReaches: a power type oUF has no color for is drawn as Mana, so a Mana pick reaches it', function()
+test('UF.ColorReaches: a power token oUF has no color for is drawn as oUF draws it: by its type, then Mana', function()
+	local function reaches(key) return UF.ColorReaches(raid[2], 'power', key) end
 	powerOf.raid2 = 'VEHICLE_POWER'
-	eq(UF.ColorReaches(raid[2], 'power', 'MANA'), true, 'a Mana pick reaches it')
-	eq(UF.ColorReaches(raid[2], 'power', 'RAGE'), false, 'a Rage pick does not')
-	eq(UF.ColorReaches(raid[2], 'power', 'VEHICLE_POWER'), false, 'a key oUF lacks is never drawn')
-	powerOf.raid2 = 'RAGE'
-	eq(UF.ColorReaches(raid[2], 'power', 'MANA'), false, 'a type oUF has a color for keeps its own')
-	powerOf.raid2 = 'MANA'
+	-- type 0 (Mana's index): Mana's color
+	eq(reaches('MANA'), true, 'type 0: a Mana pick reaches it')
+	eq(reaches('RAGE'), false, 'type 0: a Rage pick does not')
+	eq(reaches('VEHICLE_POWER'), false, 'a key oUF lacks is never drawn')
+	-- type 1 (Rage's index): Rage's color, not Mana's
+	typeOf.raid2 = 1
+	eq(reaches('RAGE'), true, 'type 1: a Rage pick reaches it')
+	eq(reaches('MANA'), false, 'type 1: a Mana pick does not')
+	-- a type oUF has no color for: Mana's
+	typeOf.raid2 = 99
+	eq(reaches('MANA'), true, 'type 99: Mana')
+	-- the game's own color wins over the type: no pick reaches it
+	altOf.raid2 = { 0.5, 0.5, 0.5 }
+	eq(reaches('MANA'), false, 'with the own color, Mana is not drawn')
+	eq(reaches('RAGE'), false, 'nor Rage')
+	altOf.raid2 = nil
+	-- a token oUF has keeps its own color, whatever the type
+	powerOf.raid2, typeOf.raid2 = 'RAGE', 0
+	eq(reaches('RAGE'), true, 'its own token')
+	eq(reaches('MANA'), false, 'not Mana')
+	-- secret answers count as reached, compared to nothing
+	powerOf.raid2 = 'VEHICLE_POWER'
+	local restore = S.install()
+	typeOf.raid2 = S.secret('type')
+	eq(reaches('RAGE'), true, 'a secret type')
+	typeOf.raid2, altOf.raid2 = 0, { S.secret('r'), 0, 0 }
+	eq(reaches('RAGE'), true, 'a secret own color')
+	restore()
+	typeOf.raid2, altOf.raid2, powerOf.raid2 = nil, nil, 'MANA'
 end)
 
 test('UF.ColorReaches: key nil reaches every frame, a group with no rule too', function()

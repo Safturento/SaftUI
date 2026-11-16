@@ -220,10 +220,21 @@ function UF:RegisterElement(name, Constructor, UpdateConfig, GetConfigTable, Val
 	}
 end
 
+-- A color object of oUF's own for a profile color oUF has none of, so it has
+-- the methods oUF's elements call (GetCurve for a gradient, GetAtlas); a copy,
+-- never the profile's table. Without oUF's maker (a stand-in), a plain copy.
+local function NewColor(from)
+	local oUF = UF.oUF
+	if oUF and oUF.CreateColor and type(from.r) == 'number' and type(from.g) == 'number' and type(from.b) == 'number' then
+		return oUF:CreateColor(from.r, from.g, from.b, from.a)
+	end
+	return st.tablecopy(from, true)
+end
+
 -- Copies one profile color into oUF's color of the same name, in place (a
 -- table already there keeps its identity and its methods, and nothing is
--- made); a color oUF has none of yet gets a copy of the profile's, never the
--- profile's own table: a later merge writes into oUF's table, and would write
+-- made); a color oUF has none of yet gets a copy of the profile's made by oUF
+-- (NewColor), never the profile's own table: a later merge writes into oUF's table, and would write
 -- the next profile's values into this profile's.
 local function CopyColor(group, key, from)
 	if from == nil then return end
@@ -232,7 +243,7 @@ local function CopyColor(group, key, from)
 		to.r, to.g, to.b = from.r, from.g, from.b
 		if from.a ~= nil then to.a = from.a end
 	elseif type(from) == 'table' then
-		group[key] = st.tablecopy(from, true)
+		group[key] = NewColor(from)
 	else
 		group[key] = from
 	end
@@ -246,7 +257,7 @@ local function MergeColors(to, from)
 		if type(value) == 'table' and type(to[key]) == 'table' then
 			MergeColors(to[key], value)
 		elseif type(value) == 'table' then
-			to[key] = st.tablecopy(value, true)
+			to[key] = NewColor(value)
 		else
 			to[key] = value
 		end
@@ -363,7 +374,8 @@ end
 -- whoever it is (a player, a party member run by the game, or an NPC with a
 -- class, which some frames color too). A secret answer (a class, a standing or a power
 -- type the game keeps from addons) counts as reached: it is never compared,
--- and the frame is updated.
+-- and the frame is updated. A power color reaches a frame whose bar oUF draws
+-- in that color, a token oUF has none of included (below).
 function UF.ColorReaches(frame, group, key)
 	if key == nil then return true end
 	local unit = frame.__unit
@@ -381,13 +393,20 @@ function UF.ColorReaches(frame, group, key)
 		return issecretvalue(reaction) or reaction == key
 	elseif group == 'power' then
 		local powerType, token, altR = UnitPowerType(unit)
-		if issecretvalue(token) then return true end
-		-- A power type oUF has no color for (a vehicle's) is drawn in Mana's
-		-- (oUF's power.lua), unless the game hands its own color (altR).
-		if altR == nil and UF.oUF.colors.power[token] == nil and UF.oUF.colors.power[powerType] == nil then
-			token = 'MANA'
+		if issecretvalue(token) or issecretvalue(powerType) or issecretvalue(altR) then return true end
+		-- The color oUF's power.lua draws the bar in: the token's own, else
+		-- the game's own color (altR, which no pick reaches), else the power
+		-- type's (oUF's index of the same table as that type's token), else
+		-- Mana's. oUF's tables keep their identity through a pass (UpdateColors
+		-- merges in place), so the tables compare.
+		local colors = UF.oUF.colors.power
+		local drawn = colors[token]
+		if drawn == nil then
+			if altR then return false end
+			drawn = colors[powerType] or colors.MANA
 		end
-		return token == key
+		local picked = colors[key]
+		return picked ~= nil and drawn == picked
 	elseif group == 'status' then
 		if key == 'disconnected' then
 			local connected = UnitIsConnected(unit)
