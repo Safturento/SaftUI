@@ -1379,11 +1379,11 @@ test("a link's click takes its tooltip away, and leaving a link puts its accent 
 			eq(rgb(parts[key].text:GetTextColor()), '1.00,1.00,1.00', key .. ' Strong at its default (white)')
 			stub.fire_script(parts[key], 'OnLeave', true)
 		end
-		-- The reset icon: Text > Muted at rest, lit in the accent under the mouse.
+		-- The reset icon: Text > Muted at rest, the lighter tone of the accent under the mouse (a glyph).
 		local textGrey = rgb(st.config.profile.colors.text.muted:GetRGB())
 		eq(rgb(parts.reset.icon:GetVertexColor()), textGrey, 'the reset icon Text > Muted at rest')
 		stub.fire_script(parts.reset, 'OnEnter', true)
-		eq(rgb(parts.reset.icon:GetVertexColor()), buttonBlue, 'the reset icon in the accent under the mouse')
+		eq(rgb(parts.reset.icon:GetVertexColor()), rgb(st:StateColor('edgeHover')), 'the reset icon in the lighter tone under the mouse')
 		stub.fire_script(parts.reset, 'OnLeave', true)
 		eq(rgb(parts.reset.icon:GetVertexColor()), textGrey, 'and grey again')
 		for _, key in ipairs({ 'all', 'multiple' }) do

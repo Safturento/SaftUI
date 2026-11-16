@@ -13,12 +13,12 @@ local cell, close_all = H.cell, H.close_all
 if not _G.GameTooltip then CreateFrame('GameTooltip', 'GameTooltip', UIParent, 'GameTooltipTemplate') end
 
 local function text(r, g, b) return string.format('%.2f,%.2f,%.2f', r, g, b) end
-local function texture_rgb(t) return text(unpack(stub.state(t).color_texture)) end
 
--- The open page's bar in the sidebar.
-local function nav_bar()
+-- The open page's look in the sidebar: a selected row (the states helper's Bar and Fill).
+local function nav_look()
 	for _, child in ipairs({ OW.GetFrames().navContent:GetChildren() }) do
-		if child.bar and child.bar:IsShown() then return child.bar end
+		local look = st:StateLook(child)
+		if look and look.bar and look.bar.shown then return look end
 	end
 end
 
@@ -26,23 +26,21 @@ test("Theme > Accent's swatch recolors the open /sui window at once, and its res
 	st.Config:Open('Fonts', 'theme')
 	local row = cell('accent')
 	check(row, 'the Accent row is drawn on the Theme tab')
-	local bar = nav_bar()
-	check(bar, 'the open page has its bar')
-	eq(texture_rgb(bar), '0.00,0.68,0.94', 'in the accent at the defaults')
+	local look = nav_look()
+	check(look, 'the open page has its bar')
+	eq(text(look.bar.r, look.bar.g, look.bar.b), '0.00,0.68,0.94', 'in the accent at the defaults')
 	row.widget:Commit(0.9, 0.1, 0.2)
 	eq(text(st:Color('accent'):GetRGB()), '0.90,0.10,0.20', 'the swatch wrote the profile accent')
-	eq(texture_rgb(nav_bar()), '0.90,0.10,0.20', "the sidebar's open page follows at once")
-	for _, child in ipairs({ OW.GetFrames().navContent:GetChildren() }) do
-		if child.bar and child.bar:IsShown() then
-			local c = stub.state(child.bg).color_texture
-			eq(text(c[1], c[2], c[3]) .. ' ' .. string.format('%.2f', c[4]), '0.90,0.10,0.20 0.25', "the open page's fill, at TINT_ROW")
-		end
-	end
+	look = nav_look()
+	eq(text(look.bar.r, look.bar.g, look.bar.b), '0.90,0.10,0.20', "the sidebar's open page follows at once")
+	check(look.fill.shown, "the open page's fill (the fade)")
+	eq(text(look.fill.r, look.fill.g, look.fill.b), '0.90,0.10,0.20', 'in the accent too')
 	local underlined = 0
 	for _, child in ipairs({ OW.GetFrames().main:GetChildren() }) do
-		if child.underline and child.underline:IsShown() then
+		local tab = st:StateLook(child)
+		if tab and tab.shape == 'tab' and tab.bar.shown then
 			underlined = underlined + 1
-			eq(texture_rgb(child.underline), '0.90,0.10,0.20', "the active tab's underline follows the accent")
+			eq(text(tab.bar.r, tab.bar.g, tab.bar.b), '0.90,0.10,0.20', "the active tab's underline follows the accent")
 		end
 	end
 	check(underlined >= 1, 'a tab is underlined')
@@ -51,7 +49,8 @@ test("Theme > Accent's swatch recolors the open /sui window at once, and its res
 	check(icon and icon:IsShown(), 'its own reset shows while it differs')
 	stub.click(icon)
 	eq(text(st:Color('accent'):GetRGB()), '0.00,0.68,0.94', 'the reset put the default back')
-	eq(texture_rgb(nav_bar()), '0.00,0.68,0.94', 'and the window followed')
+	look = nav_look()
+	eq(text(look.bar.r, look.bar.g, look.bar.b), '0.00,0.68,0.94', 'and the window followed')
 	close_all()
 	local errors = take_errors()
 	eq(#errors, 0, 'no errors: ' .. tostring(errors[1]))

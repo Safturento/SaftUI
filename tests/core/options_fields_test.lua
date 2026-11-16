@@ -383,14 +383,14 @@ test('color: the checker follows the picker, coming and going with the opacity',
 	w:Release()
 end)
 
-test('color: under the mouse its edge lights blue, as an input\'s', function()
+test('color: under the mouse its body tints, as an input\'s, and its edge stays', function()
 	theme('thick')
 	local w = color_widget()
 	stub.fire_script(w.frame, 'OnEnter', true)
-	local r, g, b = st.config.profile.theme.accent:GetRGB()
-	eq(H.rgba(w.frame:GetBackdropBorderColor()), H.rgba(r, g, b, 1), 'lit')
+	eq(H.rgba(w.frame:GetBackdropBorderColor()), H.rgba(unpack(st.BOX_COLORS.edge)), 'the edge stays')
+	check(st:StateLook(w.frame).layer.shown, 'the Layer tints the body')
 	stub.fire_script(w.frame, 'OnLeave', true)
-	eq(H.rgba(w.frame:GetBackdropBorderColor()), H.rgba(unpack(st.BOX_COLORS.edge)), 'its edge again')
+	check(not st:StateLook(w.frame).layer.shown, 'gone again')
 	w:Release()
 end)
 

@@ -10,6 +10,7 @@
 -- The world and the helpers are options_widgets_helpers.lua's.
 local H = load_test_file('core/options_widgets_helpers.lua')
 local P = load_test_file('lib/pixels.lua')
+local SL = load_test_file('lib/states_look.lua')
 local st = SaftUI
 st.config.profile.colors.text.muted:SetRGB(0.2, 0.4, 0.6) -- not the default, so a reader that draws a grey of its own fails
 local W = st.OptionsWidgets
@@ -28,6 +29,10 @@ local NORMAL = function() return color_of(colors().text.normal) end
 local function vertex(texture) return rgb(texture:GetVertexColor()) end
 local function edge_of(frame) return rgb(frame:GetBackdropBorderColor()) end
 local function edge_rgb(c) return rgb(c[1], c[2], c[3]) end
+-- The states helper's look of a control: hover tints its body (the Layer), never its edge.
+local function tone_near(texture, hex) local r, g, b = texture:GetVertexColor(); return SL.near({ r = r, g = g, b = b }, hex) end
+local function layer_shown(frame) local l = st:StateLook(frame).layer; return l and l.shown end
+local function hover_tint(frame, why) check(layer_shown(frame) and SL.near(st:StateLook(frame).layer, '5cc6ff'), why .. ': the hover Layer is the tone') end
 local function new_parent()
 	local f = CreateFrame('Frame', nil, UIParent)
 	f:SetSize(400, 200)
@@ -63,9 +68,11 @@ test("W.Button is the window's button: 26 tall, 80 at least, the field font, an 
 	check(b.backdropInfo ~= nil, 'a Box')
 	eq(edge_of(b), edge_rgb(st.BOX_COLORS.edge), 'its edge at rest')
 	stub.fire_script(b, 'OnEnter', true)
-	eq(edge_of(b), BLUE(), 'accent under the mouse')
+	eq(edge_of(b), edge_rgb(st.BOX_COLORS.edge), 'under the mouse the edge stays (the body tints)')
+	hover_tint(b, 'under the mouse')
+	check(st:StateLook(b).layer.layer == 'ARTWORK' and st:StateLook(b).layer.sublevel == -8, 'under the label')
 	stub.fire_script(b, 'OnLeave', true)
-	eq(edge_of(b), edge_rgb(st.BOX_COLORS.edge), 'and the edge again once it leaves')
+	check(not layer_shown(b), 'and the Layer is gone once it leaves')
 	local _, _, _, _, y = b.text:GetPoint(1)
 	eq(y, 0, 'the label centred')
 	stub.fire_script(b, 'OnMouseDown')
@@ -104,7 +111,8 @@ test('W.IconButton: a 26 square with its 16 icon in the middle, grey; it needs i
 	eq(lines[1].text .. '|' .. lines[1].color, 'Exit|1.00,1.00,1.00', 'the title white')
 	eq(lines[2].text .. '|' .. lines[2].color, 'Leaves edit mode.|' .. NORMAL(), 'a line in Text > Normal')
 	eq(lines[3].text .. '|' .. lines[3].color, 'Unsaved.|' .. color_of(colors().text.danger), 'a danger line in Text > Danger')
-	eq(edge_of(b), BLUE(), 'accent under the mouse')
+	hover_tint(b, 'under the mouse')
+	eq(edge_of(b), edge_rgb(st.BOX_COLORS.edge), 'the edge stays')
 	stub.fire_script(b, 'OnLeave', true)
 	check(not GameTooltip:IsShown(), 'gone when it leaves')
 	local clicks = 0
@@ -163,7 +171,7 @@ test('W.IconLink: an icon with no box on a square that takes the mouse, grey and
 	eq(vertex(link.icon), GREY(), 'grey at rest')
 	reset_lines()
 	stub.fire_script(link, 'OnEnter', true)
-	eq(vertex(link.icon), BLUE(), 'accent under the mouse')
+	check(tone_near(link.icon, '5cc6ff'), 'the lighter tone under the mouse')
 	check(GameTooltip:IsOwned(link), 'and its tip')
 	stub.fire_script(link, 'OnLeave', true)
 	eq(vertex(link.icon), GREY(), 'grey again')
@@ -184,6 +192,7 @@ test('W.SetOn: an accent edge that stays after the mouse leaves and an accent ic
 	W.SetOn(b, true)
 	eq(b.on, true, 'button.on')
 	eq(edge_of(b), BLUE(), 'on: the accent edge')
+	check(st:StateLook(b).fill.shown, 'and the fade')
 	eq(vertex(b.icon), BLUE(), 'and the accent icon')
 	stub.fire_script(b, 'OnEnter', true)
 	stub.fire_script(b, 'OnLeave', true)
@@ -200,6 +209,7 @@ test('W.SetOn: an accent edge that stays after the mouse leaves and an accent ic
 	W.SetOn(b, true)
 	eq(vertex(b.icon), BLUE(), 'on: the icon in accent')
 	check(b.icon:GetDrawLayer() == 'OVERLAY', 'the icon over the panel art')
+	check(st:StateLook(b).blizzard, 'the helper holds back under Blizzard')
 	local t = W.Button(new_parent(), 'Edit mode', function() end)
 	W.LookControl(t, true)
 	W.SetOn(t, true)
@@ -230,6 +240,7 @@ test('W.SetEnabled: a disabled control at 0.4 runs no click and still shows its 
 	stub.fire_script(b, 'OnEnter', true)
 	check(GameTooltip:IsOwned(b) and GameTooltip:IsShown(), 'its tooltip shows')
 	eq(edge_of(b), edge_rgb(st.BOX_COLORS.edge), 'no accent edge')
+	check(not layer_shown(b), 'and no hover tint')
 	stub.fire_script(b, 'OnLeave', true)
 	W.SetEnabled(b, true)
 	eq(b.disabled, false, 'enabled again')
@@ -237,7 +248,7 @@ test('W.SetEnabled: a disabled control at 0.4 runs no click and still shows its 
 	click(b)
 	eq(clicked, 1, 'a click runs')
 	stub.fire_script(b, 'OnEnter', true)
-	eq(edge_of(b), BLUE(), 'and the edge lights')
+	hover_tint(b, 'enabled again')
 	stub.fire_script(b, 'OnLeave', true)
 
 	local on = W.IconButton(new_parent(), st.icons.eye, tip)
@@ -355,9 +366,10 @@ test('W.NumberBox: typed whole numbers clamped, Esc and focus loss put the old o
 	reset_lines()
 	stub.fire_script(box.edit, 'OnEnter', true)
 	check(GameTooltip:IsOwned(box) or GameTooltip:IsOwned(box.edit), 'its tip shows')
-	eq(edge_of(box.edit), BLUE(), 'accent edge under the mouse')
+	hover_tint(box.edit, 'the edit box under the mouse')
+	eq(edge_of(box.edit), edge_rgb(st.BOX_COLORS.edge), 'its edge stays')
 	stub.fire_script(box.edit, 'OnLeave', true)
-	eq(edge_of(box.edit), edge_rgb(st.BOX_COLORS.edge), 'and gone')
+	check(not layer_shown(box.edit), 'and the tint is gone')
 	check(not GameTooltip:IsShown(), 'the tip too')
 
 	-- Disabled: the arrows change nothing, the edit box takes no focus.
@@ -427,7 +439,7 @@ test('the nudge pair draws Lucide chevrons, on whole pixels, and Blizzard steppe
 	eq(vertex(up.arrow), GREY(), 'Text > Muted')
 	eq(#P.off(pair), 0, 'on whole pixels: ' .. P.report(P.off(pair)))
 	stub.fire_script(up, 'OnEnter', true)
-	eq(vertex(up.arrow), NORMAL(), 'Text > Normal under the mouse')
+	check(tone_near(up.arrow, '5cc6ff'), 'the lighter tone under the mouse')
 	eq(owner.tips[#owner.tips], true, 'the owner shows its tip')
 	stub.fire_script(up, 'OnLeave', true)
 	eq(vertex(up.arrow), GREY(), 'grey again')
@@ -470,7 +482,7 @@ test('W.SelectFace: the dropdown face with its caret; under Blizzard the Setting
 	click(face)
 	eq(picked, 1, 'a click runs onClick')
 	stub.fire_script(face, 'OnEnter', true)
-	eq(edge_of(face), BLUE(), 'accent under the mouse')
+	hover_tint(face, 'under the mouse')
 	stub.fire_script(face, 'OnLeave', true)
 	W.SetEnabled(face, false)
 	click(face)

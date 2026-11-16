@@ -205,7 +205,7 @@ test('an item: its Show box, its name, its dots', function()
 		eq(dots.icon:GetWidth() .. 'x' .. dots.icon:GetHeight(), '16x16', 'at 16x16')
 		eq(vertex(dots.icon), color('text', 'muted'), 'Text > Muted')
 		stub.fire_script(dots, 'OnEnter', true)
-		eq(vertex(dots.icon), rgb(st:Color('accent'):GetRGB()), 'the accent under the mouse')
+		eq(vertex(dots.icon), rgb(st:StateColor('edgeHover')), 'the lighter tone under the mouse')
 		stub.fire_script(dots, 'OnLeave', true)
 		eq(vertex(dots.icon), color('text', 'muted'), 'grey again')
 

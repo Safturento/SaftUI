@@ -145,9 +145,9 @@ test("the toggle in the sidebar's foot at its right; the profile line ends 8 bef
 	-- Grey at rest, the accent under the mouse, as the arrows' icons.
 	local function vertex(t) return string.format('%.2f,%.2f,%.2f', t:GetVertexColor()) end
 	local grey = vertex(F.sideToggle.icon)
-	local blue = string.format('%.2f,%.2f,%.2f', st.config.profile.theme.accent.r, st.config.profile.theme.accent.g, st.config.profile.theme.accent.b)
+	local blue = string.format('%.2f,%.2f,%.2f', st:StateColor('edgeHover')) -- a glyph: the lighter tone
 	stub.fire_script(F.sideToggle, 'OnEnter', true)
-	eq(vertex(F.sideToggle.icon), blue, 'the icon is accent under the mouse')
+	eq(vertex(F.sideToggle.icon), blue, 'the icon is the lighter tone under the mouse')
 	stub.fire_script(F.sideToggle, 'OnLeave', true)
 	eq(vertex(F.sideToggle.icon), grey, 'and grey again')
 	eq(#take_errors(), 0, 'no errors')
@@ -418,8 +418,7 @@ test('collapsed, the footer holds the toggle, then Search, Edit mode and each co
 	-- Each tool is lifted 2 levels over the footer, and its icon is accent under the mouse.
 	for i = 1, 4 do eq(F.tools[i]:GetFrameLevel(), F.footer:GetFrameLevel() + 2, 'tool ' .. i .. "'s level") end
 	local function vertex(t) return string.format('%.2f,%.2f,%.2f', t:GetVertexColor()) end
-	local c = st.config.profile.theme.accent
-	local blue = string.format('%.2f,%.2f,%.2f', c.r, c.g, c.b)
+	local blue = string.format('%.2f,%.2f,%.2f', st:StateColor('edgeHover')) -- a glyph: the lighter tone
 	for i = 1, 4 do
 		local grey = vertex(F.tools[i].icon)
 		stub.fire_script(F.tools[i], 'OnEnter', true)
@@ -522,9 +521,11 @@ test('the title opens the page list, grouped as the sidebar is, while the sideba
 			for i, r in ipairs(list.rows) do if r:IsShown() and r.text:GetText() == label then return r, i end end
 		end
 	end
-	local blue = string.format('%.2f,%.2f,%.2f', st.config.profile.theme.accent.r, st.config.profile.theme.accent.g, st.config.profile.theme.accent.b)
+	local normal = string.format('%.2f,%.2f,%.2f', st.config.profile.colors.text.normal.r, st.config.profile.colors.text.normal.g, st.config.profile.colors.text.normal.b)
 	local function color(r) return string.format('%.2f,%.2f,%.2f', r.text:GetTextColor()) end
-	eq(color(row('Loot')), blue, 'the open page is blue')
+	local open_row = row('Loot')
+	check(st:GetState(open_row, 'selected') and st:StateLook(open_row).bar.shown, 'the open page is the selected row: a bar and the fade')
+	eq(color(open_row), normal, 'its text is Normal (by contrast over the fade), no longer blue')
 	local frames_row = row('Frames')
 	local grey = string.format('%.2f,%.2f,%.2f', st.config.profile.colors.text.muted.r, st.config.profile.colors.text.muted.g, st.config.profile.colors.text.muted.b)
 	eq(color(frames_row), grey, 'a caption is grey')
@@ -601,12 +602,11 @@ test('collapsed: the title is 24 narrower for its arrow, the arrow centred on th
 	eq(F.title:GetWidth(), shown - 24, "the title's room loses the arrow's 24")
 	eq(F.titleButton:GetTop() - F.titleArrow:GetTop(), math.floor((F.titleButton:GetHeight() - 16) / 2), 'the arrow centred on the title')
 	local function vertex(t) return string.format('%.2f,%.2f,%.2f', t:GetVertexColor()) end
-	local c = st.config.profile.theme.accent
-	local blue = string.format('%.2f,%.2f,%.2f', c.r, c.g, c.b)
+	local blue = string.format('%.2f,%.2f,%.2f', st:StateColor('edgeHover')) -- a glyph: the lighter tone
 	local grey = vertex(F.titleArrow)
 	check(grey ~= blue, 'grey at rest')
 	stub.fire_script(F.titleButton, 'OnEnter', true)
-	eq(vertex(F.titleArrow), blue, 'accent under the mouse')
+	eq(vertex(F.titleArrow), blue, 'the lighter tone under the mouse')
 	stub.fire_script(F.titleButton, 'OnLeave', true)
 	eq(vertex(F.titleArrow), grey, 'and grey again')
 	check(F.titleButton:GetScript('OnDragStart') ~= nil and F.titleButton:GetScript('OnDragStop') ~= nil, 'a drag on the title moves the window')

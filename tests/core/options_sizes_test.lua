@@ -459,7 +459,7 @@ test("the arrows: the close X's size, minimize-2 and maximize-2 at 16, grey at r
 	eq(F.shrink:GetRight(), F.close:GetLeft() - 6, '6 left of the close X')
 	eq(vertex(F.shrink.icon), color_of(st.config.profile.colors.text.muted), 'grey at rest')
 	stub.fire_script(F.shrink, 'OnEnter', true)
-	eq(vertex(F.shrink.icon), color_of(st.config.profile.theme.accent), 'accent under the mouse')
+	eq(vertex(F.shrink.icon), string.format('%.2f,%.2f,%.2f', st:StateColor('edgeHover')), 'the lighter tone under the mouse (hoverIcon)')
 	check(GameTooltip:IsOwned(F.shrink) and GameTooltip:IsShown(), 'its tooltip, owned by it')
 	eq(stub.state(GameTooltip).texts[1], 'Shrink to half', 'shown with its title')
 	eq(tip_text(F.shrink), "Shrink to half | The page in one column. The window's right edge stays.")

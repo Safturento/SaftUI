@@ -10,7 +10,7 @@ local Kit = W.Kit
 
 local floor, max, ceil = math.floor, math.max, math.ceil
 
-local Box, Edge, HoverEdge, BlizzardLook = W.Box, W.Edge, W.HoverEdge, W.BlizzardLook
+local Box, Edge, HoverStates, BlizzardLook = W.Box, W.Edge, W.HoverStates, W.BlizzardLook
 local LookButton = W.LookButton
 local FIELD_HEIGHT, LIST_STRATA = Kit.FIELD_HEIGHT, Kit.LIST_STRATA
 local FIELD_FONT_SIZE, NewText = Kit.FIELD_FONT_SIZE, Kit.NewText
@@ -82,8 +82,8 @@ local function MakeDialogButton(parent, text, yes)
 	button.text = NewText(button, 'CENTER')
 	button.text:SetAllPoints()
 	button.text:SetText(text)
-	HoverEdge(button, function() return false end)
 	button:SetScript('OnClick', function() Answer(yes) end)
+	HoverStates(button)
 	return button
 end
 
@@ -120,6 +120,7 @@ local function BuildDialog()
 	box:SetScript('OnEscapePressed', function() Answer(false) end)
 	box:SetScript('OnEditFocusGained', function(self) Edge(self, true) end)
 	box:SetScript('OnEditFocusLost', function(self) Edge(self, false) end)
+	HoverStates(box) -- a box: hover tints, focus lights the edge
 
 	-- Text measured on one line decides the height (CountLines).
 	local measure = NewText(frame, 'LEFT')

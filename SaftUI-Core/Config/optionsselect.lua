@@ -9,7 +9,7 @@ local Kit = W.Kit
 
 local max, ceil = math.max, math.ceil
 
-local Box, Edge, HoverEdge, BlizzardLook = W.Box, W.Edge, W.HoverEdge, W.BlizzardLook
+local Box, HoverStates, BlizzardLook = W.Box, W.HoverStates, W.BlizzardLook
 local DropdownStates, LookDropdown = W.DropdownStates, W.LookDropdown
 local FIELD_HEIGHT, Base, builders, define = Kit.FIELD_HEIGHT, Kit.Base, Kit.builders, Kit.define
 local FIELD_FONT_SIZE, SetFieldFont = Kit.FIELD_FONT_SIZE, Kit.SetFieldFont
@@ -229,12 +229,12 @@ builders.select = function(w)
 	w.text:SetPoint('RIGHT', button, 'RIGHT', -22, 0)
 	button.text = w.text
 	button.caret = Caret(button)
-	HoverEdge(button, function() return w.disabled end)
 	button:SetScript('OnClick', function() w:Open() end)
 	button:SetScript('OnHide', function()
 		if W.ListOwner() == button then W.CloseList() end
 	end)
 	DropdownStates(button, function() return w.disabled end)
+	HoverStates(button, function() return w.disabled end) -- after the scripts above
 	w.back = Stepper(w, button, -1)
 	w.next = Stepper(w, button, 1)
 	-- The choices' labels are measured on this (StepsFit), never shown.
@@ -390,12 +390,17 @@ local function MultiRow(w, i)
 	row.label:SetPoint('LEFT', row.box, 'RIGHT', 8, 0)
 	row.label:SetPoint('RIGHT', row, 'RIGHT', 0, 0)
 	LookRow(row, w.blizzard or false)
+	-- the row's hover is its box's (the box takes no mouse of its own)
 	row:SetScript('OnEnter', function(self)
-		Edge(self.box, true)
+		st:SetState(self.box, 'hover', true)
 		if self.blizzard then self.hover:Show() end
 	end)
 	row:SetScript('OnLeave', function(self)
-		Edge(self.box, false)
+		st:SetState(self.box, 'hover', false)
+		if self.hover then self.hover:Hide() end
+	end)
+	row:HookScript('OnHide', function(self)
+		st:SetState(self.box, 'hover', false)
 		if self.hover then self.hover:Hide() end
 	end)
 	row:SetScript('OnClick', function(self)

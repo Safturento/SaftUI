@@ -896,19 +896,14 @@ function OB.New(content, root, onChanged, width, opts)
 		end),
 		result = Pool(function()
 			local button = CreateFrame('Button', nil, content)
-			button.hover = button:CreateTexture(nil, 'BACKGROUND')
-			button.hover:SetAllPoints(button)
-			button.hover:Hide()
 			button.text = Text(button, 'label')
 			button.text:SetPoint('LEFT', button, 'LEFT', 8, 0)
-			button:SetScript('OnEnter', function(self)
-				self.hover:SetColorTexture(st:ColorRGBA('accent', nil, st.TINT_ROW))
-				self.hover:Show()
-			end)
-			button:SetScript('OnLeave', function(self) self.hover:Hide() end)
 			button:SetScript('OnClick', function(self)
 				if self.onPick then self.onPick(self.row) end
 			end)
+			-- A row: hover and pushed tint it (the helper's, wired once for the button's life;
+			-- a result is Acquired again by every search: ResultCell starts it at rest).
+			st:AddStates(button, 'row', { text = button.text, body = st.BOX_COLORS.bg, inset = 0 })
 			return button
 		end),
 		line = Pool(function() return Line(content) end),
@@ -1103,6 +1098,7 @@ end
 -- A search result: a button with the row's name.
 function Body:ResultCell(row, onPick)
 	local button = Acquire(self.pools.result)
+	W.ClearStates(button) -- a pooled result starts at rest
 	button.row, button.onPick = row, onPick
 	button.text:SetText(row.name)
 	local cell = {

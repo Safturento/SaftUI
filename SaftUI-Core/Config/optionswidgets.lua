@@ -118,9 +118,16 @@ function Base:SetPoint(...) self.frame:SetPoint(...) end
 
 function Base:IsDisabled() return self.disabled end
 
+-- Disabled dims the widget to the Disabled opacity (st:StateAlpha), and a state
+-- frame's hover and pushed stop (the helper); a frame with no record is dimmed here.
 function Base:SetDisabled(disabled)
 	self.disabled = disabled and true or false
-	self.frame:SetAlpha(self.disabled and 0.4 or 1)
+	local frame = self.frame
+	if st:GetState(frame, 'disabled') ~= nil then
+		st:SetState(frame, 'disabled', self.disabled)
+	else
+		frame:SetAlpha(self.disabled and st:StateAlpha() or 1)
+	end
 	if self.OnDisabled then self:OnDisabled(self.disabled) end
 end
 
@@ -170,6 +177,18 @@ function Base:Commit(...)
 	end
 end
 
+-- The frames of a widget that are state frames besides its own frame (a range's
+-- knob's slider and value box, an item's box): builders list them with Kit.Track.
+local STATE_KEYS = { 'hover', 'pushed', 'selected', 'focus', 'disabled' }
+
+-- Puts every state of frame back to off, as a pooled frame acquired again starts:
+-- never RemoveStates on a pool, the frame is wired once in its life.
+local function ClearStates(frame)
+	for i = 1, #STATE_KEYS do
+		if st:GetState(frame, STATE_KEYS[i]) then st:SetState(frame, STATE_KEYS[i], false) end
+	end
+end
+
 function Base:Release()
 	if self.released then return end
 	self.released = true
@@ -197,6 +216,10 @@ function W.Create(parent, rowType)
 		build(widget)
 	end
 	widget.released = false
+	ClearStates(widget.frame)
+	if widget.states then
+		for i = 1, #widget.states do ClearStates(widget.states[i]) end
+	end
 	widget.frame:SetParent(parent)
 	widget.frame:SetFrameLevel(parent:GetFrameLevel() + 1)
 	widget.frame:Show()
@@ -299,3 +322,10 @@ end
 Kit.FIELD_HEIGHT, Kit.LIST_STRATA, Kit.Base, Kit.builders = FIELD_HEIGHT, LIST_STRATA, Base, builders
 W.FIELD_HEIGHT = FIELD_HEIGHT -- the window's files take it from here too
 Kit.define, Kit.BUILT_IN = define, BUILT_IN
+Kit.ClearStates, W.ClearStates = ClearStates, ClearStates
+-- Lists frame as one of w's state frames, besides w.frame (cleared at every acquire).
+function Kit.Track(w, frame)
+	w.states = w.states or {}
+	w.states[#w.states + 1] = frame
+	return frame
+end

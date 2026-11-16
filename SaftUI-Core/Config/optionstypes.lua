@@ -11,7 +11,7 @@ local Kit = W.Kit
 local floor, max, min, ceil = math.floor, math.max, math.min, math.ceil
 local format = string.format
 
-local Box, Edge, HoverEdge, BlizzardLook = W.Box, W.Edge, W.HoverEdge, W.BlizzardLook
+local Box, Edge, HoverStates, BlizzardLook = W.Box, W.Edge, W.HoverStates, W.BlizzardLook
 local FIELD_HEIGHT, Base, builders, define = Kit.FIELD_HEIGHT, Kit.Base, Kit.builders, Kit.define
 local BG, FIELD_FONT_SIZE, SetFieldFont = Kit.BG, Kit.FIELD_FONT_SIZE, Kit.SetFieldFont
 local NewText, Art, Changes, Piece, HidePieces = Kit.NewText, Kit.Art, Kit.Changes, Kit.Piece, Kit.HidePieces
@@ -24,7 +24,6 @@ local CountLines = Kit.CountLines
 builders.toggle = function(w)
 	local box = CheckBox(UIParent, 18)
 	w.frame = box
-	HoverEdge(box, function() return w.disabled end)
 	box:SetScript('OnClick', function()
 		if w.disabled then return end
 		w:Commit(not w.value)
@@ -62,7 +61,6 @@ builders.input = function(w)
 	edit:SetTextInsets(8, 8, 0, 0)
 	edit:SetAutoFocus(false)
 	w.frame = edit
-	HoverEdge(edit, function() return w.disabled or edit:HasFocus() end)
 	edit:SetScript('OnEnterPressed', function(self)
 		if not w.row then return end
 		local text = self:GetText()
@@ -78,6 +76,7 @@ builders.input = function(w)
 		Edge(self, false)
 		w:Refresh()
 	end)
+	HoverStates(edit, function() return w.disabled end)
 end
 
 define('input', {
@@ -216,7 +215,6 @@ end
 -- (Blizzard's art under Blizzard) on the field, with its own click and tooltip.
 local function MakeCheck(w)
 	local box = CheckBox(w.frame, CHECK_SIZE)
-	HoverEdge(box, function() return w.disabled end)
 	box:SetScript('OnClick', function()
 		if w.disabled or not w.row or not w.toggle then return end
 		w:CommitToggle(not w.toggle.on)
@@ -229,6 +227,7 @@ local function MakeCheck(w)
 		W.ShowTip(self, w.row.name, { line }, 'ANCHOR_TOPLEFT')
 	end)
 	box:HookScript('OnLeave', function(self) W.HideTip(self) end)
+	Kit.Track(w, box)
 	return box
 end
 
@@ -281,7 +280,6 @@ builders.color = function(w)
 	w.line:SetColorTexture(unpack(Kit.EDGE))
 	w.text = NewText(button, 'LEFT')
 	w.text:SetWordWrap(false)
-	HoverEdge(button, function() return w.disabled end)
 	-- Under Blizzard the face follows the mouse as a select's does.
 	W.DropdownStates(button, function() return w.disabled end)
 	-- A field with a toggle that's off ticks it, and opens no picker.
@@ -295,6 +293,8 @@ builders.color = function(w)
 	end)
 	-- Box's look until the first look change (LookColor).
 	PlaceParts(w, false)
+	-- the states last, after the scripts: the code's color is the field's own, never recolored
+	HoverStates(button, function() return w.disabled end)
 end
 
 -- The checker under a see-through color (shown), else none: the dark grey
@@ -459,15 +459,15 @@ builders.execute = function(w)
 	w.frame = button
 	w.text = NewText(button, 'CENTER')
 	w.text:SetPoint('CENTER', button, 'CENTER', 0, 0)
-	HoverEdge(button, function() return w.disabled end)
 	-- The button covers the row's whole mouse area bar its empty sides (it has
-	-- no label), so it shows the row's tooltip itself (w:Tip, set by the
-	-- body). Hooked after HoverEdge's scripts, so the edge is unchanged.
+	-- no label), so it shows the row's tooltip itself (w:Tip, set by the body).
 	button:HookScript('OnEnter', function() w:Tip(true) end)
 	button:HookScript('OnLeave', function() w:Tip(false) end)
+	-- held: the label one line down (the Layer is the helper's, from its own hook)
 	button:SetScript('OnMouseDown', function() w.text:SetPoint('CENTER', button, 'CENTER', 0, -1) end)
 	button:SetScript('OnMouseUp', function() w.text:SetPoint('CENTER', button, 'CENTER', 0, 0) end)
 	button:SetScript('OnClick', function() w:Run() end)
+	HoverStates(button, function() return w.disabled end)
 end
 
 -- The execute button's look, when it changed: the window's own (Box), or
@@ -478,6 +478,7 @@ local function LookExecute(w, blizzard)
 	if (w.blizzard or false) == blizzard then return end
 	w.blizzard = blizzard
 	local button = w.frame
+	button.blizzard = blizzard -- what W.WearsBlizzard reads
 	if blizzard then
 		button:SetBackdrop(nil)
 		button.outline:Hide()
@@ -487,6 +488,7 @@ local function LookExecute(w, blizzard)
 	end
 	w.showsDisabled = w.showsDisabled or function() return w.disabled end
 	st:ShowPanelButton(button, blizzard, nil, w.showsDisabled)
+	st:RestyleStates(button)
 end
 
 define('execute', {

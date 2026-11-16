@@ -33,7 +33,7 @@ test('a description is Text > Normal', function()
 	w:Release()
 end)
 
-test("a select's entry is Text > Normal, the picked one the accent", function()
+test("a select's entry is Text > Normal, the picked one too (by contrast over its fade: no longer the accent)", function()
 	theme('thick')
 	local w = bind('select', 'pick', opt('select', 'Pick', {
 		values = { a = 'A', b = 'B' }, get = function() return 'a' end, set = function() end,
@@ -47,7 +47,7 @@ test("a select's entry is Text > Normal, the picked one the accent", function()
 		if label then seen[label] = text(row.text:GetTextColor()) end
 	end
 	eq(seen.B, ODD, 'an entry not picked')
-	check(seen.A ~= ODD, 'the picked one is not Normal')
+	eq(seen.A, ODD, 'the picked one is Normal over its bar and fade, not the accent')
 	W.CloseList()
 	w:Release()
 end)
@@ -72,7 +72,7 @@ test("a range's knob is Text > Normal after the look goes Blizzard and back", fu
 	w:Release()
 end)
 
-test("a position block's axis label and a hovered dot are Text > Normal", function()
+test("a position block's axis label is Text > Normal and a hovered dot the lighter tone", function()
 	theme('thick')
 	local store = { point = 'TOPRIGHT', rel_point = 'BOTTOMRIGHT', x_off = 0, y_off = -8, frame = 'Minimap' }
 	local w = bind('position', 'pos', opt('position', 'Position', {
@@ -86,8 +86,9 @@ test("a position block's axis label and a hovered dot are Text > Normal", functi
 	check(button and button.dot, 'a dot')
 	if button and button.dot then
 		stub.fire_script(button, 'OnEnter', true)
-		local c = stub.state(button.dot).color_texture
-		eq(text(c[1], c[2], c[3]), ODD, 'a hovered dot')
+		local r, g, b = button.dot:GetVertexColor()
+		local tr, tg, tb = st:StateColor('edgeHover')
+		eq(text(r, g, b), text(tr, tg, tb), 'a hovered dot is the lighter tone of the accent (a glyph), not Text')
 		stub.fire_script(button, 'OnLeave', true)
 	end
 	w:Release()

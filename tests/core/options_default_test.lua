@@ -254,10 +254,10 @@ test("the icon's tooltip says what it does and names the default by the row's ty
 			item = "Hotkey's Show goes back to its default: on.",
 			position = 'Position goes back to its default: the middle.',
 		}
-		-- Text > Muted at rest; under the mouse it lights, in the accent (Theme > Accent).
+		-- Text > Muted at rest; under the mouse it lights, in the lighter tone of the accent (a glyph, the states helper's).
 		local function rgb(icon) return string.format('%.2f,%.2f,%.2f', icon.icon:GetVertexColor()) end
 		local grey = string.format('%.2f,%.2f,%.2f', st.config.profile.colors.text.muted:GetRGB())
-		local blue = string.format('%.2f,%.2f,%.2f', st.config.profile.theme.accent:GetRGB())
+		local blue = string.format('%.2f,%.2f,%.2f', st:StateColor('edgeHover'))
 		check(grey ~= blue, 'two colors')
 		for key, line in pairs(want) do
 			local icon = icon_of(by[key])
@@ -265,7 +265,7 @@ test("the icon's tooltip says what it does and names the default by the row's ty
 			stub.fire_script(icon, 'OnEnter', true)
 			eq(tip.lines[1], 'Reset', key .. ': titled Reset')
 			eq(tip.lines[2], line, key)
-			eq(rgb(icon), blue, key .. ': the accent under the mouse')
+			eq(rgb(icon), blue, key .. ': the lighter tone under the mouse')
 			stub.fire_script(icon, 'OnLeave', true)
 			eq(tip.owner, nil, key .. ': its tooltip goes')
 			eq(rgb(icon), grey, key .. ': grey again')
@@ -657,7 +657,7 @@ test("Global settings' Colors and Theme: no Reset buttons; a changed color's own
 		colorCell('text', 'muted').widget:Commit(0.3, 0.6, 0.9) -- drawn again
 		eq(rgb(icon_of(cell('MAGE'))), '0.30,0.60,0.90', 'still grey at rest')
 		stub.fire_script(icon_of(cell('MAGE')), 'OnEnter', true)
-		eq(rgb(icon_of(cell('MAGE'))), '0.90,0.10,0.20', 'the new accent under the mouse')
+		eq(rgb(icon_of(cell('MAGE'))), string.format('%.2f,%.2f,%.2f', st:StateColor('edgeHover')), 'the new accent\'s lighter tone under the mouse')
 		stub.fire_script(icon_of(cell('MAGE')), 'OnLeave', true)
 		stub.click(icon_of(colorCell('text', 'muted')))
 		accent:SetRGB(0, 0.68, 0.94)

@@ -43,9 +43,9 @@ local function caption_texts(w)
 end
 
 local function rgb_text(r, g, b) return string.format('%.3f,%.3f,%.3f', r, g, b) end
+-- A dot is a glyph (Widgets/states.lua): a white texture whose vertex color is the dot's color.
 local function dot_color(button)
-	local c = stub.state(button.dot).color_texture
-	return rgb_text(c[1], c[2], c[3])
+	return rgb_text(button.dot:GetVertexColor())
 end
 
 local function picked(dots)
@@ -143,8 +143,13 @@ test('position: the picked dots show the stored points; clicking a dot sets that
 	eq(store.rel_point, 'CENTER', 'stored')
 
 	stub.fire_script(w.this[7], 'OnEnter')
-	local tr, tg, tb = st.config.profile.colors.text.normal:GetRGB()
-	eq(dot_color(w.this[7]), rgb_text(tr, tg, tb), 'a hovered dot is in the text color')
+	local tr, tg, tb = st:StateColor('edgeHover')
+	eq(dot_color(w.this[7]), rgb_text(tr, tg, tb), 'a hovered dot is the lighter tone of the accent')
+	eq(w.this[7].dot:GetWidth(), 4, 'still 4 square: it does not grow')
+	stub.fire_script(w.this[2], 'OnEnter')
+	eq(dot_color(w.this[2]), rgb_text(tr, tg, tb), 'the picked dot under the mouse: the lighter tone too')
+	eq(w.this[2].dot:GetWidth(), 8, 'and still 8')
+	stub.fire_script(w.this[2], 'OnLeave')
 	stub.fire_script(w.this[7], 'OnLeave')
 	eq(dot_color(w.this[7]), rgb_text(0.333, 0.333, 0.333), 'and grey again after')
 	w:Release()

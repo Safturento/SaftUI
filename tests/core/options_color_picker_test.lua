@@ -827,14 +827,15 @@ test('a drag takes a box\'s typed text first, so it cannot override the drag lat
 	reset()
 end)
 
-test('a number box lights its edge under the mouse, as the kit\'s input does', function()
+test('a number box tints its body under the mouse, as the kit\'s input does (its edge stays)', function()
 	reset()
 	local _, F = open()
 	stub.fire_script(F.red, 'OnEnter', true)
-	local blue = st.config.profile.theme.accent
 	local r = F.red:GetBackdropBorderColor()
-	eq(r, blue.r, 'blue edge')
+	eq(r, st.BOX_COLORS.edge[1], 'the edge stays')
+	check(st:StateLook(F.red).layer.shown, 'the body tints')
 	stub.fire_script(F.red, 'OnLeave', true)
+	check(not st:StateLook(F.red).layer.shown, 'and goes out')
 	reset()
 end)
 

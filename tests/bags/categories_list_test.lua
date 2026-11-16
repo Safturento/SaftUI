@@ -271,7 +271,7 @@ test("the order's reset: shown once a shipped category moves, it puts SaftUI's o
 	stub.fire_script(w.resetOrder, 'OnEnter')
 	eq(tip.owner, w.resetOrder, 'it has a tooltip')
 	eq(table.concat(tip.lines, ' | '), "Reset | Order goes back to its default: SaftUI's order, with your own categories where they are.", 'its words')
-	check(same_rgb({ w.resetOrder.icon:GetVertexColor() }, rgb('accent')), 'the accent under the mouse')
+	check(same_rgb({ w.resetOrder.icon:GetVertexColor() }, { st:StateColor('edgeHover') }), 'the lighter tone of the accent under the mouse (a glyph)')
 	stub.fire_script(w.resetOrder, 'OnLeave')
 	_G.GameTooltip = saved
 	eq(tip.owner, nil, 'the tooltip goes')

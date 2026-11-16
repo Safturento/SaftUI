@@ -94,7 +94,9 @@ test("/sui's execute button and toggle take Blizzard's art under Blizzard, their
 	for name, box in pairs(boxes()) do
 		eq(atlases_of(box), '', name .. ': no Blizzard art')
 		eq(rgba(box:GetBackdropColor()), FIELD, name .. ': its own box again')
-		eq(rgba(box:GetBackdropBorderColor()), EDGE, name .. ': its own edge')
+		-- a ticked box (the toggle, row A) is selected: its edge is the accent; the unticked one keeps its own
+		local ticked = name ~= 'rowB'
+		eq(rgba(box:GetBackdropBorderColor()), ticked and rgba(st:StateColor('edge')) or EDGE, name .. (ticked and ': the ticked box has the accent edge' or ': its own edge'))
 		check(box.outline:IsShown(), name .. ': its dark line')
 	end
 	check(t.frame.mark:IsShown(), 'the checked toggle shows its blue mark')
@@ -112,6 +114,7 @@ test("/sui under Blizzard: a disabled execute button is -Disabled, and a multise
 	e:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
 	m:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -90)
 	local function rebind(w) w:Bind(w.root, w.row, w.onChanged) end
+	local EDGE_GREY = rgba(unpack(st.BOX_COLORS.edge))
 	-- What the row draws over its box while the mouse is on the row, as
 	-- 'atlas blend', '' for nothing: a texture of the box's own, in its
 	-- OVERLAY layer, which the row's OnEnter shows (the row takes the mouse,
@@ -146,8 +149,10 @@ test("/sui under Blizzard: a disabled execute button is -Disabled, and a multise
 	e:SetDisabled(false)
 	eq(row_highlight(m.rows[1]), '', 'Thick: the row draws no hover art')
 	stub.fire_script(m.rows[1], 'OnEnter')
-	eq(rgba(m.rows[1].box:GetBackdropBorderColor()), rgba(st.config.profile.theme.accent.r, st.config.profile.theme.accent.g, st.config.profile.theme.accent.b, 1), 'Thick: hovering the row lights the box blue')
+	check(st:StateLook(m.rows[1].box).layer.shown, 'Thick: hovering the row tints the box (its own hover)')
+	eq(rgba(m.rows[1].box:GetBackdropBorderColor()), EDGE_GREY, 'Thick: and the box keeps its edge')
 	stub.fire_script(m.rows[1], 'OnLeave')
+	check(not st:StateLook(m.rows[1].box).layer.shown, 'Thick: gone when the mouse leaves')
 
 	st.config.profile.theme.name = 'blizzard'
 	rebind(e)

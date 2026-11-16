@@ -132,11 +132,13 @@ end
 
 -- The reset icon, which a shared row's hover line (Reset) and a setting's
 -- own reset (OB.PlaceDefault) both draw: a 14x14 button holding Lucide's
--- rotate-ccw (st.icons.rotateCcw), Text > Muted at rest, lit in the accent
--- (the accent) under the mouse; each read as it's painted, so a color
--- change shows on its next place or hover. tip(self) shows its tooltip; a
--- click hides that, then runs onClick(self).
-local function ResetAtRest(button) button.icon:SetVertexColor(Muted()) end
+-- rotate-ccw (st.icons.rotateCcw): a glyph (Widgets/states.lua), Text > Muted at
+-- rest and the lighter tone of the accent under the mouse, a color pass follows.
+-- tip(self) shows its tooltip; a click hides that, then runs onClick(self).
+local function ResetAtRest(button)
+	if st:GetState(button, 'hover') then st:SetState(button, 'hover', false) end
+	button.icon:SetVertexColor(Muted())
+end
 local function ResetIcon(parent, tip, onClick)
 	local button = CreateFrame('Button', nil, parent)
 	button:SetSize(RESET_SIZE, RESET_SIZE)
@@ -145,18 +147,14 @@ local function ResetIcon(parent, tip, onClick)
 	button.icon:SetAllPoints(button)
 	button.icon:SetTexture(st.icons.rotateCcw)
 	ResetAtRest(button)
-	button:SetScript('OnEnter', function(self)
-		tip(self)
-		self.icon:SetVertexColor(st:Color('accent'):GetRGB())
-	end)
-	button:SetScript('OnLeave', function(self)
-		Untip(self)
-		ResetAtRest(self)
-	end)
+	button:SetScript('OnEnter', function(self) tip(self) end)
+	button:SetScript('OnLeave', function(self) Untip(self) end)
 	button:SetScript('OnClick', function(self)
 		Untip(self)
 		onClick(self)
 	end)
+	-- after the scripts above
+	st:AddStates(button, 'glyph', { glyph = button.icon, glyphRest = Muted })
 	return button
 end
 OB.ResetIcon = ResetIcon -- the Categories list's order icon draws the same one
@@ -265,12 +263,8 @@ local function Piece(host, line, key, frameType)
 	piece:SetScript('OnEnter', function(self)
 		local state = host.shareState
 		Tip(self, TIPS[key](state, SettingName(state, host.shareCell.row.name), host.share))
-		if self.text and self.lit then self.text:SetTextColor(st:Color('text', 'strong'):GetRGB()) end
 	end)
-	piece:SetScript('OnLeave', function(self)
-		Untip(self)
-		if self.text and self.lit then self.text:SetTextColor(OB.Accent()) end
-	end)
+	piece:SetScript('OnLeave', function(self) Untip(self) end)
 	return piece
 end
 
@@ -285,6 +279,11 @@ local function Link(host, line, key, label, onClick)
 		Untip(self)
 		onClick(self)
 	end)
+	-- a link is a glyph: the Accent at rest, Text > Strong under the mouse (as it was), after the scripts above
+	st:AddStates(link, 'glyph', {
+		glyph = link.text, glyphRest = OB.Accent,
+		glyphHover = function() return st:Color('text', 'strong'):GetRGB() end,
+	})
 	return link
 end
 

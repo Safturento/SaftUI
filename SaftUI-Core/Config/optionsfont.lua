@@ -120,6 +120,7 @@ builders.font = function(w)
 
 	w.face = W.SelectFace(frame, W.WIDTH.select, function() w:Open() end)
 	w.face:SetPoint('LEFT', frame, 'LEFT', 0, 0)
+	Kit.Track(w, w.face) -- a box state frame: cleared at every acquire
 
 	local dots = NewSlot(frame, st.icons.link)
 	dots:SetPoint('RIGHT', frame, 'RIGHT', 0, 0)

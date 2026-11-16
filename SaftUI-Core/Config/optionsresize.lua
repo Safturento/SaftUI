@@ -114,12 +114,6 @@ local function EndResize(_, button)
 	if button == 'LeftButton' then StopResize() end
 end
 
--- The corner's highlight and pushed textures follow Buttons > Hover at once
--- (st:FollowColor); under Blizzard's art (white) a pass leaves them.
-local function PaintGrip(texture)
-	if not S.blizzard then texture:SetVertexColor(st:ColorRGBA('button', 'hover')) end
-end
-
 -- The grip and the edge, at the window's bottom, over its frames. The grip's
 -- textures are dressed for the look by LookGrip.
 local function BuildResize(window)
@@ -135,8 +129,6 @@ local function BuildResize(window)
 	grip:SetNormalTexture(grip.normal)
 	grip:SetHighlightTexture(grip.highlight)
 	grip:SetPushedTexture(grip.pushed)
-	st:FollowColor(grip.highlight, 'button', 'hover', PaintGrip)
-	st:FollowColor(grip.pushed, 'button', 'hover', PaintGrip)
 
 	local sizer = CreateFrame('Frame', nil, window)
 	sizer:SetPoint('BOTTOMLEFT', window, 'BOTTOMLEFT', 0, 0)
@@ -150,11 +142,17 @@ local function BuildResize(window)
 		handle:SetScript('OnMouseUp', EndResize)
 	end
 	F.grip, F.sizer = grip, sizer
+	-- A glyph (after the scripts above): the corner is white, the lighter tone of the accent under
+	-- the mouse or held; under Blizzard the game's own highlight and pushed art.
+	st:AddStates(grip, 'glyph', {
+		glyph = grip.normal, glyphRest = function() return 1, 1, 1 end,
+		blizzard = function() return S.blizzard == true end,
+	})
 end
 
 -- The grip in the look: Blizzard's PanelResizeButtonTemplate
--- (st.ThemeArt.Control('resizegrip')), or st:EnableResizing's corner, its
--- highlight and pushed tinted the buttons' hover color at its opacity, the highlight blended.
+-- (st.ThemeArt.Control('resizegrip')), or st:EnableResizing's corner, whose own tint under the
+-- mouse is the states helper's (its highlight and pushed textures stay clear).
 local function LookGrip()
 	local grip = F.grip
 	local look = S.blizzard and st.ThemeArt.Control('resizegrip')
@@ -167,14 +165,17 @@ local function LookGrip()
 		grip.highlight:SetVertexColor(1, 1, 1, 1)
 		grip.pushed:SetVertexColor(1, 1, 1, 1)
 		grip.highlight:SetBlendMode(look.highlightBlend)
+		grip.highlight:SetAlpha(1)
+		grip.pushed:SetAlpha(1)
 	else
-		local r, g, b, a = st:ColorRGBA('button', 'hover')
 		grip:SetSize(GRIP_SIZE, GRIP_SIZE)
 		for _, texture in ipairs({ grip.normal, grip.highlight, grip.pushed }) do texture:SetTexture(st.textures.cornerbr) end
-		grip.highlight:SetVertexColor(r, g, b, a)
-		grip.pushed:SetVertexColor(r, g, b, a)
 		grip.highlight:SetBlendMode('BLEND')
+		grip.highlight:SetAlpha(0)
+		grip.pushed:SetAlpha(0)
 	end
+	st:RestyleStates(grip)
+	st:PaintStates(grip) -- the rest color back on the corner
 end
 
 ------------------------------------------------------------------ for optionswindow.lua

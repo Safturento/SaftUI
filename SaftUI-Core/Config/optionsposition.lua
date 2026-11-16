@@ -10,7 +10,7 @@ local Kit = W.Kit
 
 local floor = math.floor
 
-local Box, Edge, BlizzardLook, DropdownStates = W.Box, W.Edge, W.BlizzardLook, W.DropdownStates
+local Box, HoverStates, BlizzardLook, DropdownStates = W.Box, W.HoverStates, W.BlizzardLook, W.DropdownStates
 local LookDropdown = W.LookDropdown
 local Base, builders, define, BUILT_IN = Kit.Base, Kit.builders, Kit.define, Kit.BUILT_IN
 local SetFieldFont, NewText = Kit.SetFieldFont, Kit.NewText
@@ -33,20 +33,17 @@ local POS_NAME_WIDTH, POS_SELECT_WIDTH, POS_NAME_HEIGHT = 120, 140, 24
 local POS_OFFSET_WIDTH = POS_AXIS + POS_AXIS_GAP + 46 + POS_NUDGE - 1
 local DOT_GREY = { 0.333, 0.333, 0.333 }
 
--- The dot's look: 4x4 grey, or 8x8 in the accent when it is the picked one; the text
--- color while the mouse is on it.
+local function DotRest() return DOT_GREY[1], DOT_GREY[2], DOT_GREY[3] end
+
+-- The dot's look, a glyph (Widgets/states.lua): 4x4 grey, the lighter tone under the mouse; 8x8
+-- in the accent when it is the picked one, the lighter tone when it is picked and under the mouse.
+-- The dot says which states hold; the colors are the helper's.
 local function PaintDot(dot)
-	local r, g, b
-	if dot.hovered then
-		r, g, b = st:Color('text', 'normal'):GetRGB()
-	elseif dot.picked then
-		r, g, b = st:Color('accent'):GetRGB()
-	else
-		r, g, b = unpack(DOT_GREY)
-	end
-	local size = dot.picked and 8 or 4
+	local hovered, picked = dot.hovered and true or false, dot.picked and true or false
+	local size = picked and 8 or 4
 	dot.dot:SetSize(size, size)
-	dot.dot:SetColorTexture(r, g, b)
+	if st:GetState(dot, 'selected') ~= picked then st:SetState(dot, 'selected', picked) end
+	if st:GetState(dot, 'hover') ~= hovered then st:SetState(dot, 'hover', hovered) end
 end
 
 -- A 48x48 square of nine dot buttons; onPick(point) on a click.
@@ -61,6 +58,7 @@ local function DotSquare(w, parent, onPick)
 		button:SetPoint('TOPLEFT', square, 'TOPLEFT', POS_DOT_MARGIN + col * POS_DOT_CELL, -(POS_DOT_MARGIN + line * POS_DOT_CELL))
 		button.dot = button:CreateTexture(nil, 'OVERLAY')
 		button.dot:SetPoint('CENTER', button, 'CENTER', 0, 0)
+		button.dot:SetColorTexture(1, 1, 1, 1) -- white: the glyph's vertex color is the dot's color
 		button.point = point
 		button:SetScript('OnClick', function()
 			if w.disabled then return end
@@ -75,6 +73,10 @@ local function DotSquare(w, parent, onPick)
 			PaintDot(self)
 			w:Tip(false)
 		end)
+		-- the scripts above are the dot's own (the owner's disabled stops the hover): no wiring
+		st:AddStates(button, 'glyph', { glyph = button.dot, glyphRest = DotRest, wire = false })
+		st:PaintStates(button) -- its rest color
+		Kit.Track(w, button)
 		PaintDot(button)
 		square.dots[i] = button
 	end
@@ -88,14 +90,8 @@ local function PositionEdit(w, parent, justify, onEnter)
 	edit:SetJustifyH(justify)
 	edit:SetTextInsets(justify == 'CENTER' and 2 or 8, justify == 'CENTER' and 2 or 8, 0, 0)
 	edit:SetAutoFocus(false)
-	edit:SetScript('OnEnter', function(self)
-		if not (w.disabled or self:HasFocus()) then Edge(self, true) end
-		w:Tip(true)
-	end)
-	edit:SetScript('OnLeave', function(self)
-		if not self:HasFocus() then Edge(self, false) end
-		w:Tip(false)
-	end)
+	edit:SetScript('OnEnter', function() w:Tip(true) end)
+	edit:SetScript('OnLeave', function() w:Tip(false) end)
 	edit:SetScript('OnEnterPressed', function(self)
 		if not w.row or w.disabled then return end
 		local text = self:GetText()
@@ -106,11 +102,13 @@ local function PositionEdit(w, parent, justify, onEnter)
 		w:Refresh()
 		self:ClearFocus()
 	end)
-	edit:SetScript('OnEditFocusGained', function(self) Edge(self, true) end)
+	edit:SetScript('OnEditFocusGained', function(self) W.Edge(self, true) end)
 	edit:SetScript('OnEditFocusLost', function(self)
-		Edge(self, false)
+		W.Edge(self, false)
 		w:Refresh()
 	end)
+	HoverStates(edit, function() return w.disabled end) -- after the scripts above
+	Kit.Track(w, edit)
 	return edit
 end
 
@@ -133,15 +131,14 @@ builders.position = function(w)
 	w.select.text:SetPoint('RIGHT', w.select, 'RIGHT', -22, 0)
 	w.select.caret = Caret(w.select)
 	w.select:SetScript('OnClick', function() w:Open() end)
-	w.select:SetScript('OnEnter', function(self)
-		if not w.disabled then Edge(self, true) end
-		w:Tip(true)
-	end)
-	w.select:SetScript('OnLeave', function(self) Edge(self, false); w:Tip(false) end)
+	w.select:SetScript('OnEnter', function() w:Tip(true) end)
+	w.select:SetScript('OnLeave', function() w:Tip(false) end)
 	w.select:SetScript('OnHide', function(self)
 		if W.ListOwner() == self then W.CloseList() end
 	end)
 	DropdownStates(w.select, function() return w.disabled end)
+	HoverStates(w.select, function() return w.disabled end) -- after the scripts above
+	Kit.Track(w, w.select)
 
 	-- X and Y: label, box, then the nudge pair, overlapping the box's right edge by 1.
 	local function Axis(label, part, errName)

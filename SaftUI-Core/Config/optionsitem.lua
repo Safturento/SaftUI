@@ -41,7 +41,7 @@ local Kit = W.Kit
 	row (optionsfont.lua) uses too, for its link, so the two look alike.
 ]]
 
-local BlizzardLook, HoverEdge = W.BlizzardLook, W.HoverEdge
+local BlizzardLook = W.BlizzardLook
 local Base, builders, define = Kit.Base, Kit.builders, Kit.define
 local CheckBox, LookCheckBox, SetCheck = Kit.CheckBox, Kit.LookCheckBox, Kit.SetCheck
 
@@ -50,17 +50,19 @@ local BOX_ROW = 22 -- the Blizzard check box's art is drawn for a row this tall 
 local LABEL_X = 26 -- the name after the box: its 18 and 8
 local DOTS_WIDTH, DOTS_HEIGHT, DOTS_ICON = 16, 24, 16
 
--- A slot's color: Text > Muted, or under the mouse the accent (white under
--- Blizzard, as its Settings panel lights what's under the mouse). The slot is
--- the item's dots and the font row's link: one look, so they change together.
+-- A slot's color: Text > Muted, or under the mouse the lighter tone of the accent
+-- (white under Blizzard, as its Settings panel lights what's under the mouse). The
+-- slot is the item's dots and the font row's link: one look, so they change together.
+-- A slot is a glyph state frame (its icon): the tone is the helper's, hover set here.
+local function SlotRest() return st:Color('text', 'muted'):GetRGB() end
 local function PaintSlot(button, over)
-	local icon = button.icon
-	if not over then
-		icon:SetVertexColor(st:Color('text', 'muted'):GetRGB())
-	elseif button.blizzard then
-		icon:SetVertexColor(1, 1, 1)
+	over = over and true or false
+	if button.blizzard then
+		if over then button.icon:SetVertexColor(1, 1, 1) else button.icon:SetVertexColor(SlotRest()) end
+		if st:GetState(button, 'hover') then st:SetState(button, 'hover', false) end
 	else
-		icon:SetVertexColor(st:Color('accent'):GetRGB())
+		if st:GetState(button, 'hover') ~= over then st:SetState(button, 'hover', over) end
+		if not over then button.icon:SetVertexColor(SlotRest()) end
 	end
 end
 
@@ -84,6 +86,7 @@ local function NewSlot(parent, icon)
 	button.icon:SetSize(DOTS_ICON, DOTS_ICON)
 	button.icon:SetPoint('CENTER', button, 'CENTER', 0, 0)
 	button.icon:SetTexture(icon)
+	st:AddStates(button, 'glyph', { glyph = button.icon, glyphRest = SlotRest, blizzard = function(b) return b.blizzard == true end, wire = false })
 	PaintSlot(button, false)
 	button:SetScript('OnEnter', function(self)
 		PaintSlot(self, true)
@@ -111,7 +114,7 @@ builders.item = function(w)
 
 	local box = CheckBox(frame, BOX_SIZE)
 	box:SetPoint('LEFT', frame, 'LEFT', 0, 0)
-	HoverEdge(box, function() return w.disabled end)
+	Kit.Track(w, box)
 	box:SetScript('OnClick', function()
 		if w.disabled or not (w.row and w.hasBox) then return end
 		w:Commit(not w.value)

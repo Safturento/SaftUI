@@ -20,10 +20,14 @@ local Kit = W.Kit
 	disabled guard. W.IconButton and W.IconLink take no click argument; set
 	control.onClick.
 	A disabled control keeps the mouse, so its tooltip shows (an icon with no
-	label must say why it does nothing); it is drawn at alpha 0.4, with no
-	hover look. Its look is painted by one function (Paint) from those
-	fields and the look it wears (kit art, optionslook.lua), so an order of
-	calls can't leave it wrong.
+	label must say why it does nothing); it is drawn at the Disabled opacity,
+	with no hover look. Every control is a state frame (Widgets/states.lua): a
+	button, an icon button, a select face and a number box's edit box are 'box'
+	frames (hover and pushed tint the body, on lights the edge and a fade, the
+	label and the icon follow), a link is a 'glyph' (its icon Muted, T+ under
+	the mouse, the Accent while on), a nudge's arrow is a 'glyph'. Paint
+	(one function) says which states hold from the fields above, so an order of
+	calls can't leave it wrong; the drawing is the helper's.
 
 	The scripts the controls set take (self) only: the game gives OnEnter
 	and OnLeave a second argument, motion, which a function with an optional
@@ -46,7 +50,6 @@ local Caret = Kit.Caret
 
 local BUTTON_HEIGHT, MIN_WIDTH, PAD = 26, 80, 28
 local ICON, ICON_GAP = 16, 6
-local DISABLED_ALPHA = 0.4
 local NUDGE_WIDTH, NUDGE_BOX, CHEVRON = 14, 22, 12
 
 ------------------------------------------------------------------ the tooltip
@@ -90,22 +93,56 @@ local function Blizzard(control)
 	return (arts[control] and arts[control].blizzard) or false
 end
 
--- Paints control from its state: alpha; under Thick and Thin the edge (accent
--- when on, or under the mouse while enabled); the icon (accent when on, or
--- for a link, or a button with hoverIcon, under the mouse while enabled, else
--- Muted); under Blizzard a text
--- button's label (accent when on).
+-- The icon's color for the states that hold, for a boxed button's glyph: Text > Muted at
+-- rest; the Accent while on (the edge's color), the lighter one while on and under the
+-- mouse; under the mouse (or held) a button's icon stays Muted unless it has hoverIcon.
+local function IconHover(control)
+	local lit = control.on or control.hoverIcon
+	if not lit then return st:Color('text', 'muted'):GetRGB() end
+	local r, g, b = st:StateColor(control.on and not control.hoverIcon and 'edge' or 'edgeHover')
+	return r, g, b
+end
+
+local function IconRest(control) return st:Color('text', 'muted'):GetRGB() end
+
+-- Registers control with the helper once its scripts are set: a box, or for a link a glyph.
+local function Register(control)
+	if control.link then
+		st:AddStates(control, 'glyph', {
+			glyph = control.icon, glyphRest = IconRest,
+			blizzard = W.WearsBlizzard,
+		})
+	else
+		-- No text: a label keeps the color it has (a caller's own, or the font object's, which follows Text)
+		W.HoverStates(control, nil, { glyph = control.icon, glyphRest = IconRest, glyphHover = IconHover })
+	end
+end
+
+-- Says which states hold now, from control's fields: disabled (the Disabled opacity, hover and
+-- pushed off), hover (under the mouse and enabled) and selected (on). A state set again only
+-- when it changed. Under Blizzard a text button's label is in the Accent while on, as the
+-- panel button art asks.
 local function Paint(control)
 	local blizzard = Blizzard(control)
-	local on, disabled, hovered = control.on, control.disabled, control.hovered and not control.disabled
-	control:SetAlpha(disabled and DISABLED_ALPHA or 1)
-	if control.boxed and not blizzard then
-		Edge(control, on or hovered)
+	local on, disabled, hovered = control.on and true or false, control.disabled and true or false, control.hovered and not control.disabled
+	if st:GetState(control, 'disabled') == nil then
+		-- not a state frame (a number box's own frame: its edit box is one): dimmed here
+		control:SetAlpha(disabled and st:StateAlpha() or 1)
+	else
+		if st:GetState(control, 'disabled') ~= disabled then st:SetState(control, 'disabled', disabled) end
+		hovered = hovered and true or false
+		if st:GetState(control, 'hover') ~= hovered then st:SetState(control, 'hover', hovered) end
+		if st:GetState(control, 'selected') ~= on then st:SetState(control, 'selected', on) end
 	end
-	if control.icon then
+	-- Under Blizzard the helper leaves the icon alone (the panel button's art draws the states): it
+	-- is the Accent while on, the lighter tone under the mouse where it takes one, else Muted.
+	if blizzard and control.icon then
 		local lit = on or ((control.link or control.hoverIcon) and hovered)
-		local color = lit and st:Color('accent') or st:Color('text', 'muted')
-		control.icon:SetVertexColor(color:GetRGB())
+		if lit then
+			control.icon:SetVertexColor(st:StateColor(on and 'edge' or 'edgeHover'))
+		else
+			control.icon:SetVertexColor(st:Color('text', 'muted'):GetRGB())
+		end
 	end
 	-- A label's colour is written only to light it (a button with no icon
 	-- showing) and to take the light off, putting back what it was: a caller's
@@ -115,7 +152,7 @@ local function Paint(control)
 		local lit = (blizzard and on and textOnly) and true or false
 		if lit then
 			if not control.labelLit then control.labelWas = { control.text:GetTextColor() } end
-			control.text:SetTextColor(st:Color('accent'):GetRGB())
+			control.text:SetTextColor(st:StateColor('edge'))
 		elseif control.labelLit then
 			control.text:SetTextColor(unpack(control.labelWas))
 		end
@@ -144,6 +181,8 @@ local function Wire(control)
 		self.hovered = false
 		Paint(self)
 	end)
+	-- after the scripts above: a SetScript would drop the helper's hooks
+	Register(control)
 end
 
 -- Sets control.on: lit while on. See Paint.
@@ -171,6 +210,8 @@ end
 function W.LookControl(control, blizzard)
 	if control.boxed then LookButton(control, blizzard, BG) end
 	Paint(control)
+	-- the icon's rest color again (Text > Muted may have changed: a color pass looks again)
+	if control.icon then st:PaintStates(control) end
 end
 
 ------------------------------------------------------------------ buttons
@@ -380,16 +421,19 @@ local function NudgeButton(owner, parent, up, onClick)
 	arrow:SetPoint('TOP', button, 'TOP', 0, 1)
 	arrow:SetVertexColor(st:Color('text', 'muted'):GetRGB())
 	button.arrow = arrow
+	-- a glyph: Muted, the lighter tone under the mouse; the owner's disabled stops it, so it is
+	-- set here and not by the helper's own scripts
+	st:AddStates(button, 'glyph', { glyph = arrow, glyphRest = IconRest, blizzard = W.WearsBlizzard, wire = false })
 	button:SetScript('OnClick', function()
 		if owner.disabled then return end
 		onClick()
 	end)
 	button:SetScript('OnEnter', function(self)
-		if not owner.disabled then self.arrow:SetVertexColor(st:Color('text', 'normal'):GetRGB()) end
+		if not owner.disabled then st:SetState(self, 'hover', true) end
 		owner:Tip(true)
 	end)
 	button:SetScript('OnLeave', function(self)
-		self.arrow:SetVertexColor(st:Color('text', 'muted'):GetRGB())
+		st:SetState(self, 'hover', false)
 		owner:Tip(false)
 	end)
 	-- Under Blizzard its stepper art follows the mouse (PaintNudge).
@@ -404,8 +448,9 @@ local function NudgeButton(owner, parent, up, onClick)
 	Hook('OnLeave', 'over', false)
 	Hook('OnMouseDown', 'down', true)
 	Hook('OnMouseUp', 'down', false)
-	button:HookScript('OnHide', function()
+	button:HookScript('OnHide', function(self)
 		art.over, art.down = false, false
+		st:SetState(self, 'hover', false)
 	end)
 	return button
 end
@@ -441,6 +486,7 @@ function Kit.LookNudges(pairs_, blizzard)
 				local art = Art(button)
 				art.blizzard = blizzard
 				button.arrow:SetShown(not blizzard)
+				st:RestyleStates(button)
 				if blizzard then
 					local piece = Piece(art, button, 'Arrow', 'ARTWORK')
 					piece:ClearAllPoints()
@@ -493,14 +539,16 @@ function W.NumberBox(parent, opts)
 		if on then ShowOwnTip(self) else W.HideTip(self) end
 	end
 
+	-- hover tints the body unless the box is disabled (the helper's own scripts are off for that)
 	edit:SetScript('OnEnter', function(self)
-		if not (box.disabled or self:HasFocus()) then Edge(self, true) end
+		if not box.disabled then st:SetState(self, 'hover', true) end
 		box:Tip(true)
 	end)
 	edit:SetScript('OnLeave', function(self)
-		if not self:HasFocus() then Edge(self, false) end
+		st:SetState(self, 'hover', false)
 		box:Tip(false)
 	end)
+	edit:HookScript('OnHide', function(self) st:SetState(self, 'hover', false) end)
 	edit:SetScript('OnEnterPressed', function(self)
 		if box.disabled then return end
 		local n = tonumber(strtrim(self:GetText()))
@@ -526,6 +574,7 @@ function W.NumberBox(parent, opts)
 	local function Nudge(direction)
 		return function() opts.set(Clamp((tonumber(opts.get()) or 0) + direction * step)) end
 	end
+	W.HoverStates(edit, function() return box.disabled end, { wire = false })
 	local pair = Kit.NudgePair(box, box, Nudge(1), Nudge(-1))
 	pair:SetPoint('TOPLEFT', edit, 'TOPRIGHT', -1, 0)
 	box.pair = pair

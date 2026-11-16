@@ -13,7 +13,7 @@ local Kit = W.Kit
 
 local floor, max, min = math.floor, math.max, math.min
 
-local Box, BlizzardLook, HoverEdge, LookButton = W.Box, W.BlizzardLook, W.HoverEdge, W.LookButton
+local Box, BlizzardLook, HoverStates, LookButton = W.Box, W.BlizzardLook, W.HoverStates, W.LookButton
 local LIST_STRATA, FIELD_HEIGHT = Kit.LIST_STRATA, Kit.FIELD_HEIGHT
 local BG, EDGE, FIELD_FONT_SIZE = Kit.BG, Kit.EDGE, Kit.FIELD_FONT_SIZE
 local SetFieldFont, NewText, Art, Changes = Kit.SetFieldFont, Kit.NewText, Kit.Art, Kit.Changes
@@ -22,7 +22,6 @@ local SetCheck, CatchKeys = Kit.SetCheck, Kit.CatchKeys
 
 local LIST_ROW_HEIGHT, LIST_MAX_ROWS = 22, 12
 local LIST_WHEEL_ROWS = 3 -- a turn of the wheel over the list, or over its scroll bar
-local DISABLED_ALPHA = 0.4 -- a disabled entry, as a disabled control (optionscontrols.lua)
 
 -- The Apply list's button: 80 wide (W.Confirm's buttons), 6 under the rows.
 -- Under Blizzard it also keeps 6 above the menu's bottom inset; under Thick
@@ -73,16 +72,21 @@ local function ListFill()
 				SetFieldFont(row.text)
 			end
 			row.text:SetText(entry.label)
-			-- A caption is Text > Muted; the picked entry the accent; the rest normal.
+			-- A caption is Text > Muted, the rest normal. The picked entry is a selected row (a bar and
+			-- the fade, its text by contrast over them: the helper's); set every fill, which colors the
+			-- text the state says.
 			if entry.caption then
 				row.text:SetTextColor(st:Color('text', 'muted'):GetRGB())
-			elseif entry.key == list.selected then
-				row.text:SetTextColor(st:Color('accent'):GetRGB())
 			else
 				row.text:SetTextColor(st:Color('text', 'normal'):GetRGB())
 			end
-			if entry.caption or entry.disabled then row.hover:Hide() end -- a scroll can put one under the mouse
-			row:SetAlpha(entry.disabled and DISABLED_ALPHA or 1)
+			if entry.caption or entry.disabled then -- a scroll can put one under the mouse
+				row.hover:Hide()
+				st:SetState(row, 'hover', false)
+				st:SetState(row, 'pushed', false)
+			end
+			st:SetState(row, 'selected', not entry.caption and entry.key ~= nil and entry.key == list.selected)
+			st:SetState(row, 'disabled', entry.disabled and true or false)
 			LayCheckRow(row, entry)
 			row:Show()
 		else
@@ -151,7 +155,7 @@ local function PlaceListRow(row, i)
 end
 
 -- The list in SaftUI's theme now, when it changed. Box, the rows inside its
--- edge (LIST_INSETS), a row under the mouse lit in the accent at st.TINT_ROW (0.25). Or under
+-- edge (LIST_INSETS), a row under the mouse tinted by the states helper. Or under
 -- Blizzard the Settings menu's (st.ThemeArt.Control('dropdown')): no Box;
 -- c-bg, the menu's own border and shadow, on list.skin, a plain frame of
 -- SaftUI's just under the list (the theme draws nothing on it, so there's no
@@ -181,13 +185,14 @@ local function LookList()
 	end
 	list.baseInsets = blizzard and look.listInsets or LIST_INSETS
 	for i, row in ipairs(list.rows) do
+		-- Blizzard's row highlight is its own art; SaftUI's is the helper's Layer
 		if blizzard then
 			row.hover:SetAtlas(look.rowHover)
 			row.hover:SetAlpha(1)
 		else
-			row.hover:SetColorTexture(st:Color('accent'):GetRGB())
-			row.hover:SetAlpha(st.TINT_ROW)
+			row.hover:Hide()
 		end
+		st:RestyleStates(row)
 	end
 end
 
@@ -217,10 +222,9 @@ local function BuildList()
 		row:SetHeight(LIST_ROW_HEIGHT)
 		PlaceListRow(row, i)
 		row:SetFrameLevel(frame:GetFrameLevel() + 1)
+		-- Blizzard's row highlight (LookList), never shown under Thick and Thin
 		row.hover = row:CreateTexture(nil, 'BACKGROUND')
 		row.hover:SetAllPoints()
-		row.hover:SetColorTexture(st:Color('accent'):GetRGB())
-		row.hover:SetAlpha(st.TINT_ROW)
 		row.hover:Hide()
 		-- One line, cut at the row. A font string wraps unless told not to, so a
 		-- name wider than the list ran onto a second line over the next entry;
@@ -243,7 +247,12 @@ local function BuildList()
 		-- the list stays open.
 		row:SetScript('OnEnter', function(self)
 			local entry = self.entry
-			if not (entry and (entry.caption or entry.disabled)) then self.hover:Show() end
+			if not (entry and (entry.caption or entry.disabled)) then
+				if list.blizzard then self.hover:Show() end
+				st:SetState(self, 'hover', true)
+				-- a check list's box takes its row's hover
+				if self.box and list.isChecked then st:SetState(self.box, 'hover', true) end
+			end
 			-- A name cut to the row shows whole in a tooltip. Asked on the hover
 			-- only (IsTruncated is the game's own answer for the text as drawn):
 			-- nothing is measured while the list fills or scrolls.
@@ -254,6 +263,8 @@ local function BuildList()
 		end)
 		row:SetScript('OnLeave', function(self)
 			self.hover:Hide()
+			st:SetState(self, 'hover', false)
+			if self.box then st:SetState(self.box, 'hover', false) end
 			if self.tipShown then
 				self.tipShown = nil
 				W.HideTip(self)
@@ -266,6 +277,29 @@ local function BuildList()
 			W.CloseList()
 			if entry and onPick then onPick(entry.key) end
 		end)
+		-- Pressed: the pushed layer, on a row that can be picked. Wired by hand: a caption and a
+		-- disabled entry are not lit. One set of states for the row's life (the rows are pooled).
+		row:HookScript('OnMouseDown', function(self, button)
+			local entry = self.entry
+			if (button == nil or button == 'LeftButton') and not (entry and (entry.caption or entry.disabled)) then
+				st:SetState(self, 'pushed', true)
+			end
+		end)
+		row:HookScript('OnMouseUp', function(self) st:SetState(self, 'pushed', false) end)
+		row:HookScript('OnHide', function(self)
+			st:SetState(self, 'hover', false)
+			st:SetState(self, 'pushed', false)
+			if self.box then st:SetState(self.box, 'hover', false) end
+		end)
+		st:AddStates(row, 'row', {
+			text = row.text, body = BG, inset = 0, wire = false,
+			textRest = function(self)
+				local entry = self.entry
+				local color = st:Color('text', entry and entry.caption and 'muted' or 'normal')
+				return color:GetRGB()
+			end,
+			blizzard = function() return list.blizzard == true end,
+		})
 		list.rows[i] = row
 	end
 
@@ -300,6 +334,12 @@ local function OpenList(owner, entries, selected, onPick, kind, buttons)
 	W.CloseList()
 	if #entries == 0 then return end
 	list.owner, list.entries, list.selected, list.onPick = owner, entries, selected, onPick
+	-- The rows are the same frames for every list (wired once): each opening starts them at rest.
+	for _, row in ipairs(list.rows) do
+		if st:GetState(row, 'hover') then st:SetState(row, 'hover', false) end
+		if st:GetState(row, 'pushed') then st:SetState(row, 'pushed', false) end
+		if row.box and st:GetState(row.box, 'hover') then st:SetState(row.box, 'hover', false) end
+	end
 	LookList()
 	SetListInsets(kind ~= nil)
 
@@ -375,7 +415,7 @@ end
 function LayCheckRow(row, entry)
 	local checking = list.isChecked ~= nil
 	if checking and not row.box then
-		row.box = CheckBox(row, 18)
+		row.box = CheckBox(row, 18) -- a state frame of its own, for the row's life: its hover is its row's
 		row.box:SetPoint('LEFT', row, 'LEFT', 6, 0)
 		row.box:EnableMouse(false)
 	end
@@ -416,7 +456,7 @@ local function NewListButton()
 	button:SetFrameLevel(list.frame:GetFrameLevel() + 1)
 	button.text = NewText(button, 'CENTER')
 	button.text:SetAllPoints()
-	HoverEdge(button, function() return false end)
+	HoverStates(button)
 	button:Hide()
 	return button
 end

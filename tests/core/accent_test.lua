@@ -10,6 +10,7 @@
 -- scripts.
 local H = load_test_file('core/options_widgets_helpers.lua')
 load_editmode_bar()
+local SL = load_test_file('lib/states_look.lua')
 local st = SaftUI
 local W, OB, EM = st.OptionsWidgets, st.OptionsBody, st.EditModeFrames
 local bind, opt, theme, click, range = H.bind, H.opt, H.theme, H.click, H.range
@@ -40,12 +41,13 @@ test('the kit draws the accent where it drew Buttons > Blue and Text > Blue: sam
 	eq(texture_rgb(slider.fill), DEFAULT, 'a slider fill')
 	slider:Release()
 	local toggle = bind('toggle', 'on', opt('toggle', 'On', { get = function() return true end, set = function() end }))
-	eq(texture_rgb(toggle.frame.mark), DEFAULT, 'a check mark')
+	eq(SL.rgb(st:StateLook(toggle.frame).mark), DEFAULT, 'a check mark (the states helper draws it in the accent)')
 	toggle:Release()
 	local button = W.Button(CreateFrame('Frame', nil, UIParent), 'Go', function() end)
 	stub.fire_script(button, 'OnEnter', true)
 	local r, g, b = button:GetBackdropBorderColor()
-	eq(text(r, g, b), DEFAULT, 'a button under the mouse')
+	eq(text(r, g, b), text(unpack(st.BOX_COLORS.edge)), 'a button under the mouse keeps its edge: the body tints')
+	check(SL.near(st:StateLook(button).layer, '5cc6ff'), 'and the Layer is the lighter tone of the accent')
 	stub.fire_script(button, 'OnLeave', true)
 end)
 
@@ -56,37 +58,31 @@ test('a changed accent reaches each of them after the window draws again, and Ro
 		eq(texture_rgb(slider.fill), '0.90,0.10,0.20', 'a slider fill')
 		slider:Release()
 		local toggle = bind('toggle', 'on', opt('toggle', 'On', { get = function() return true end, set = function() end }))
-		eq(texture_rgb(toggle.frame.mark), '0.90,0.10,0.20', 'a check mark')
+		eq(SL.rgb(st:StateLook(toggle.frame).mark), '0.90,0.10,0.20', 'a check mark')
 		toggle:Release()
 		eq(T(st:Color('roles', 'TANK')), DEFAULT, 'Tank keeps its own color')
 		eq(T(st:Color('factions', 'Alliance')), DEFAULT, 'and Alliance')
 	end)
 end)
 
-test('a list row under the mouse is the accent at 0.25 (the own marks at OB.OWN_STRENGTH are options_share_test.lua\'s)', function()
+test("a list row under the mouse is the lighter tone at the hover strength, the picked one a bar and the fade (the own marks at OB.OWN_STRENGTH are options_share_test.lua's)", function()
 	theme('thick')
 	local values = { a = 'Alpha', b = 'Beta' }
 	local w = bind('select', 'pick', opt('select', 'Pick', { values = values, get = function() return 'a' end, set = function() end }))
 	click(w.frame)
 	local list = W.GetListFrames()
-	stub.fire_script(list.rows[1], 'OnEnter')
-	local hover = list.rows[1].hover
-	eq(texture_rgb(hover), DEFAULT, 'the row hover'); eq(string.format('%.2f', hover:GetAlpha()), '0.25')
-	local picked = list.rows[1].text
-	eq(text(picked:GetTextColor()), DEFAULT, 'the picked entry in the accent')
-	stub.fire_script(list.rows[1], 'OnLeave')
+	local picked = st:StateLook(list.rows[1])
+	check(picked.selected and picked.bar.shown and picked.fill.shown, 'the picked entry is selected: the bar and the fade')
+	eq(SL.rgb(picked.bar), DEFAULT, 'the bar in the accent')
+	local plain = list.rows[2]
+	stub.fire_script(plain, 'OnEnter')
+	local look = st:StateLook(plain)
+	check(look.layer.shown and SL.near(look.layer, '5cc6ff'), 'the row under the mouse is tinted in the lighter tone')
+	eq(string.format('%.2f', look.layer.a), string.format('%.2f', select(4, st:StateColor('hover'))), 'at the hover strength')
+	stub.fire_script(plain, 'OnLeave')
+	check(not st:StateLook(plain).layer.shown, 'and not once it leaves')
 	W.CloseList()
-	do -- at the row tint, by its name, not a number of its own (the list is drawn again when its look changes)
-		local keep = st.TINT_ROW
-		st.TINT_ROW = 0.4
-		theme('blizzard'); click(w.frame); W.CloseList()
-		theme('thick'); click(w.frame)
-		eq(string.format('%.2f', W.GetListFrames().rows[1].hover:GetAlpha()), '0.40', 'at st.TINT_ROW')
-		st.TINT_ROW = keep
-		W.CloseList()
-	end
 	w:Release()
-
 end)
 
 -- Edit mode.
