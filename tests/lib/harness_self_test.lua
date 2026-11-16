@@ -1388,3 +1388,30 @@ test('stub.change_display: with and without engine_resets_scale; scale_fires_eve
 	eq(#stub.blocked, 0, 'unblocked')
 	stub.in_combat = false
 end)
+
+test('a disabled button gets no OnEnter or OnLeave unless it set SetMotionScriptsWhileDisabled(true)', function()
+	local button = CreateFrame('Button', nil, UIParent)
+	local entered, left = 0, 0
+	button:SetScript('OnEnter', function() entered = entered + 1 end)
+	button:HookScript('OnLeave', function() left = left + 1 end)
+	stub.fire_script(button, 'OnEnter')
+	eq(entered, 1, 'an enabled button is entered')
+	button:Disable()
+	eq(stub.fire_script(button, 'OnEnter'), false, 'a disabled one runs nothing')
+	stub.fire_script(button, 'OnLeave')
+	eq(entered + left, 1, 'neither OnEnter nor OnLeave ran')
+	eq(button:GetMotionScriptsWhileDisabled(), false, 'it did not ask for them')
+	button:SetMotionScriptsWhileDisabled(true)
+	stub.fire_script(button, 'OnEnter')
+	stub.fire_script(button, 'OnLeave')
+	eq(entered, 2, 'with the motion scripts on, a disabled button is entered')
+	eq(left, 1, 'and left')
+	button:SetMotionScriptsWhileDisabled(false)
+	stub.fire_script(button, 'OnEnter')
+	eq(entered, 2, 'and not again once they are off')
+	-- Other scripts are not motion scripts: a disabled button's OnShow still runs.
+	local shown = 0
+	button:SetScript('OnShow', function() shown = shown + 1 end)
+	stub.fire_script(button, 'OnShow')
+	eq(shown, 1, "OnShow is no motion script")
+end)
