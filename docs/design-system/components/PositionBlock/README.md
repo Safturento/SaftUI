@@ -17,9 +17,9 @@ Every option of type `position`, in a section of its own: a frame's is the secon
 | Block | 65 tall: caption 13, gap 4, band 48; 200 wide, 332 with a name target, 351 with a select | `pos-caption-gap`, `pos-band` |
 | Parts | 12 apart | `pos-gap` |
 | Captions | `caption` (Heading's face, 11) in `text-muted`, centred | `caption`, `text-muted` |
-| Dot grid | a 48 Box: nine 14 cells inside a margin of 3; dots 4 x 4 in `dot-grey`, the picked one 8 x 8 in `accent`, a dot under the mouse in `text` | `pos-dot-cell`, `pos-dot-margin`, `pos-dot`, `pos-dot-picked`, `dot-grey` |
+| Dot grid | a 48 Box: nine 14 cells inside a margin of 3; dots 4 x 4 in `dot-grey`, the picked one 8 x 8 in `accent`, a dot under the mouse in the lighter tone (`accent-light`) | `pos-dot-cell`, `pos-dot-margin`, `pos-dot`, `pos-dot-picked`, `dot-grey` |
 | TO | a `Select` 140 wide, or a name box 120 x 24 | `pos-select`, `pos-name` |
-| Offset | X and Y (12 wide, 8 gap) each with a 46 x 22 box and a 14 x 22 nudge pair sharing its right edge; up and down split by a `kit-edge` line, each one Lucide chevron (`chevron-up`, `chevron-down`), 12 x 12 in `text-muted`, `text` under the mouse | `range-value`, `pos-box`, `pos-nudge`, `pos-axis-gap` |
+| Offset | X and Y (12 wide, 8 gap) each with a 46 x 22 box and a 14 x 22 nudge pair sharing its right edge; up and down split by a `kit-edge` line, each one Lucide chevron (`chevron-up`, `chevron-down`), 12 x 12 in `text-muted`, the lighter tone under the mouse | `range-value`, `pos-box`, `pos-nudge`, `pos-axis-gap` |
 
 ## States
 

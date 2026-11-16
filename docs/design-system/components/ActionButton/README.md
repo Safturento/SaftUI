@@ -26,11 +26,11 @@ The bar's effective config (`AB:GetBarConfig(id)`): size, spacing, and each text
 
 | State | Look | Tokens |
 | --- | --- | --- |
-| Under the mouse | a white square at 15%, added over the icon (faint, so the icon stays readable) | white (`text-strong`'s value, hardcoded) at 0.15 |
-| Pressed | black at 10% | `pressed-fill` |
-| Checked (an active ability) | white at 30%, added | `checked-fill` |
+| Under the mouse | the lighter tone of the Accent at `state-hover`, over the icon (the button's own highlight texture, BLEND, so the icon stays readable) | `state-hover`, `accent-light` |
+| Pressed | the darker tone at `state-pushed`, over the icon | `state-pushed`, `accent-dark` |
+| Checked (an active ability) | the `accent` edge, and the fade over the icon (the button's own checked texture) | `accent`, `state-selected` |
 | Flash | Buttons > Danger at 40% (times its opacity, 100% by default) | `flash-fill` |
-| Equipped item | the border in the accent (Theme > Accent) | `accent` |
+| Equipped item | the border in the accent (Theme > Accent): the same edge as a checked button, told apart by the fade | `accent` |
 | Unusable | the icon darkened to 0.4 | `alpha-disabled` |
 | Faded bar | the whole bar at `alpha-fade` until moused over | `alpha-fade` |
 
@@ -40,7 +40,7 @@ The action ring and Blizzard's state art; an own colour (equipped) shows as `UI-
 
 ## Known gaps
 
-The states are written three times (action, totem, `st:SkinActionButton` for slots) with the same literals, and the countdown size rule three times; one icon-button state skin is proposed under Code changes. The texts copy Pixel's face at load, so a Fonts tab change doesn't reach them (Discrepancies).
+The states are one set of helpers' (`st:AddStates`, decision 63: action, totem, micro and slot buttons all draw them the same); the countdown size rule is still written three times. The texts copy Pixel's face at load, so a Fonts tab change doesn't reach them (Discrepancies).
 
 ## Do and don't
 

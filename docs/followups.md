@@ -7,6 +7,13 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-16 — The tracker's whole pixels at other scales](#2026-11-16--the-trackers-whole-pixels-at-other-scales)
+  - [2026-11-16 — `optionsOf` keeps every page root alive: the reset walk's options table holds its own key](#2026-11-16--optionsof-keeps-every-page-root-alive-the-reset-walks-options-table-holds-its-own-key)
+  - [2026-11-16 — The full-UI Accent pass is about 2,500 setters, and the bag slots are 1,400 of them](#2026-11-16--the-full-ui-accent-pass-is-about-2500-setters-and-the-bag-slots-are-1400-of-them)
+  - [2026-11-16 — The Hue shift setting reads "20", not "20 degrees"](#2026-11-16--the-hue-shift-setting-reads-20-not-20-degrees)
+  - [2026-11-16 — The keybind field's "Press a key" in the Accent on the selected look is 2.9 to 4.3:1](#2026-11-16--the-keybind-fields-press-a-key-in-the-accent-on-the-selected-look-is-29-to-431)
+  - [2026-11-16 — With the History list open, a Theme recolor restyles its twelve rows](#2026-11-16--with-the-history-list-open-a-theme-recolor-restyles-its-twelve-rows)
+  - [2026-11-16 — The `/sui` color picker is laid out in units, not whole pixels, at 0.75 and 1.25](#2026-11-16--the-sui-color-picker-is-laid-out-in-units-not-whole-pixels-at-075-and-125)
   - [2026-11-15 — Auto Vendor: stop the unasked sales once the player buys or buys back](#2026-11-15--auto-vendor-stop-the-unasked-sales-once-the-player-buys-or-buys-back)
   - [2026-11-15 — UI scale phase 2: the options kit and SaftUI's windows](#2026-11-15--ui-scale-phase-2-the-options-kit-and-saftuis-windows)
   - [2026-11-15 — UI scale phase 3: edit mode](#2026-11-15--ui-scale-phase-3-edit-mode)
@@ -227,6 +234,100 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-16 — The tracker's whole pixels at other scales
+
+**What:** SaftUI's tracker is off whole pixels at 0.75, 1.25 and 1.55: in the test world its window had 30 off edges before the interaction states plan and 32 after at 0.75. The two new ones are the hover Layer's left and right edges, at half pixels, because a row's Layer reaches `L.HOVER_PAD` (2 units) past the row on every side and 2 units is 1.5 pixels at 0.75; the Layer's top was already off vertically. The sides do not show (the rows are exactly as wide as the scroll frame, which clips its child), so the overhang at the sides is never drawn.
+
+**Why noticed:** the interaction states plan's review of the tracker's states (Task 8, L5), with a probe that put a hovered row on the window at each scale. No file in `tests/tracker` or `tests/misc` has a `scaled_test` case, so `tests/run --scales=all` runs nothing scaled there.
+
+**Anchors:** `SaftUI-Tracker/layout.lua` (`HOVER_PAD`), `SaftUI-Tracker/rows.lua` (the row records, `inset = -L.HOVER_PAD`), `SaftUI-Tracker/window.lua`, `SaftUI-Core/Widgets/states.lua` (the Layer's `Place`); the UI scale entries below (phase 4, each addon); `.superpowers/sdd/2026-11-15-saftui-interaction-states/task-8-review.md` (L5).
+
+**What's been considered:** pixel-snapping `HOVER_PAD` (2 units rounded to whole pixels at the frame's scale, as the other sizes are), or padding only vertically, which needs the states helper to take per-side insets.
+
+**Shape of work:** small, with the tracker's phase of the UI scale work: snap the pad, and add `scaled_test` cases that put a hovered row, a selected row and the window on whole pixels at 0.75, 1.25 and 1.55.
+
+**Open questions:** whether the pad stays at 2 units or becomes 2 pixels.
+
+### 2026-11-16 — `optionsOf` keeps every page root alive: the reset walk's options table holds its own key
+
+**What:** `SaftUI-Core/Config/optionsdefault.lua` keeps `optionsOf`, a weak-keyed table from a page's root (the options tree a `/sui` render was built from) to a wrapper `{ type = 'group', args = root }`, so the reset's default lookup walks a row's path without making a table per row. The wrapper's `args` is its own key, and Lua 5.1 does not free a weak-keyed entry whose value refers to its key, so no root is ever freed. `OM.ForgetRoot(root)` lets one go, and `optionsmodel.lua` calls it for a menu's root when the menu's cache is freed, but nothing calls it for a page root. Config:Open builds a new tree each time (`Config:GetOptionsTable`), so every open of `/sui` that asks the reset about a row leaves a whole option tree (every module's config table and its closures) alive for the session.
+
+**Why noticed:** reading `optionsdefault.lua` while folding the interaction states docs (Task 11), after the menu's cache fix (`bf9b4a6a`) found the same pattern for a menu's root. Not measured in game.
+
+**Anchors:** `SaftUI-Core/Config/optionsdefault.lua` (`optionsOf`, `OptionsFor`, `OM.ForgetRoot`), `SaftUI-Core/Config/optionsmodel.lua` (the menu cache that calls `ForgetRoot`), `SaftUI-Core/Config/config.lua` (`Config:Open`, `RegisterOptions`), `SaftUI-Core/Config/optionswindow.lua` (`Open`, `Draw`).
+
+**What's been considered:** calling `OM.ForgetRoot(root)` when the window opens on a new root and when it closes (the old root is the one `pageBody:SetRoot` replaces); or keying the wrapper by a weak proxy so the value no longer holds the key; or building the wrapper only for the walk's duration (a table per walk, not per row).
+
+**Shape of work:** small: one call at `/sui`'s open and close, a case that opens the window twice and counts live roots (`collectgarbage` and a weak sentinel), in `tests/core/options_default_test.lua`.
+
+### 2026-11-16 — The full-UI Accent pass is about 2,500 setters, and the bag slots are 1,400 of them
+
+**What:** one pass of the Accent paints every state frame on screen. Over the full UI (bags and bank open, the action bars, the micro menu, the tracker, `/sui`) Task 5 measured about 2,495 setters a pass against the 2,500 the spec budgets for 2 ms, and with the Accent row's dots menu open about 2,505. The bag slots are 1,400 of it (a hover and a pushed setter on each slot), painted whether or not their window shows. The helper does not skip a hidden host (that needs an `OnShow` repaint on every record, which a `SetScript` would drop), so a closed bank's slots are painted by every pass.
+
+**Why noticed:** the interaction states plan's Bags review and fix round (Task 5, the budget), and Task 10's review of the menu (G11, the owner's in-game `/sui debug` pass time). The in-game number decides whether this is needed: the owner reads each line's slowest pass; over 2 ms is this entry's trigger.
+
+**Anchors:** `SaftUI-Core/Widgets/states.lua` (`PaintRecord`, `Colors`), `SaftUI-Bags/containers/bag.lua` and `slot.lua` (the slots' `'icon'` records), `SaftUI-Core/Media/colors.lua` (`CO.PASS_BUDGET_MS`, `EditStats`), `tests/lib/color_cost.lua`, `tests/bags/live_colors_test.lua` (the slot pass), `.agents/architecture.md` (the states engine's guarantees: "A pass does not skip a hidden frame").
+
+**What's been considered:** painting a window's slots only while it shows: a window's `OnShow` repaints them from the cache (`st:PaintStates` per slot, or one call that walks a container's records), and the pass skips a record whose host is hidden (`IsVisible`), so the helper keeps no `OnShow` hook of its own; the bag windows' own `OnShow` is the place for a container whose frames the module owns. Dropping the pushed texture's paint for a slot until it is pressed (a pushed piece is painted only while pushed) saves half of it.
+
+**Shape of work:** one engine task: a hidden-host skip with a repaint on show, tests for each (a hidden slot costs a pass nothing, shown it is painted at once, a pass while hidden and a show gives the new color), and the bags' windows calling it from their show. Medium.
+
+**Open questions:** what `/sui debug` reads in game (G11). If every line is under 2 ms, close this as measured.
+
+### 2026-11-16 — The Hue shift setting reads "20", not "20 degrees"
+
+**What:** in the Accent row's dots menu the Hue shift slider and its typed box show a bare number (20), where the mockup shows "20°" (and the Chroma change, a percent, shows "10%"). The description says "in degrees", so it reads, but a unit beside the value is the mockup's and clearer.
+
+**Why noticed:** Task 10's review (the menu) and its fix round: the nit was left because the range widget has no unit suffix.
+
+**Anchors:** `SaftUI-Core/Media/states.lua` (`ST.MenuGroup()`, the `shift` setting), `SaftUI-Core/Config/optionsrange.lua` (the value box, its typed-value parse and `isPercent`), `SaftUI-Core/Config/optionsmodel.lua` (the Ace validation list of an option's fields), `docs/design-system/tokens.json` (`state-shift`).
+
+**What's been considered:** a new option field (`unit = '°'` or `unitText = ' degrees'`) read by the range's value box: shown after the number, stripped when a value is typed, listed with the model's known fields so the options validator accepts it; `isPercent` is the model for it.
+
+**Shape of work:** small: one field in the range widget and the model's validation list, the `shift` setting using it, and tests for the shown text, a typed "30°" and "30", and the search and reset walks. Needs no design call.
+
+**Open questions:** "°" or " degrees" (Colus and Agency may not have the glyph; the options kit avoids glyphs for that reason: say "degrees").
+
+### 2026-11-16 — The keybind field's "Press a key" in the Accent on the selected look is 2.9 to 4.3:1
+
+**What:** a keybinding button waiting for a key is selected (the Accent edge and the fade), and its "Press a key" prompt stays in the Accent, as the spec's mapping (A1) says. Over the fill the Accent text is 4.33:1 at the fade's start at the default Accent and about 5.1 a quarter across; right after the click that starts the wait the mouse is still on the button, and under the hover tint it is 2.87 at the start, 3.4 a quarter across and 4.1 at the middle; with the violet preset 2.1 to 3.6. Before the interaction states plan the prompt was 6.5:1 over the plain body.
+
+**Why noticed:** Task 3's review (the options kit, L1), which called it the owner's call (G-K in the checklist: click a keybinding button and say whether the prompt reads).
+
+**Anchors:** `SaftUI-Core/Config/optionskeybinding.lua` (the waiting state and its text), `SaftUI-Core/Widgets/states.lua` (the text pick, `textKeep`), `tests/core/kit_states_test.lua` (the keybinding case), `docs/superpowers/plans/2026-11-15-saftui-interaction-states-in-game-checklist.md`.
+
+**What's been considered:** keep the prompt in the Accent only at rest and draw it in Text > Strong (white) while the button is selected, or hand the label to the helper (`textKeep`, which already picks the dark text where the light does not read) and give the prompt the Accent only where it passes 4.5:1. Both are one line.
+
+**Shape of work:** small, after the owner has looked at it in game.
+
+**Open questions:** whether it reads well enough in game to leave it.
+
+### 2026-11-16 — With the History list open, a Theme recolor restyles its twelve rows
+
+**What:** the edit mode bar's History list has twelve pooled rows, each a state frame (`'row'`), and a Theme recolor restyles each of them while the list is open (`LookList` and `RecolorList`), the same pattern as the movers' fill and fade that Task 4's review (I1) found at 365 layout calls a pass. After the engine's small task (a restyle of an unchanged frame makes no table and moves no piece) it is cheap, but it still does the work: the rows' looks do not change on a Theme recolor, only their kept colors.
+
+**Why noticed:** Task 4's fix round (the movers), carried in the interaction states ledger when the History list was found to do the same.
+
+**Anchors:** `SaftUI-Core/EditMode/Bar/historylist.lua` (`LookList`, `RecolorList`), `tests/core/editmode_states_test.lua` and `tests/core/editmode_colors_test.lua` (the cost cases with the History list open), and the entry "Edit mode: a Theme pass with edit mode on still does the full look and list refresh" below, whose pass this is part of.
+
+**What's been considered:** `RecolorList` painting only the rows' own colors (`st:PaintStates`) and leaving the look to a redraw, as the movers' Theme pass now does.
+
+**Shape of work:** small, with the entry above: measure the pass with the list open first; the cost cases already pin the setters.
+
+**Open questions:** none.
+
+### 2026-11-16 — The `/sui` color picker is laid out in units, not whole pixels, at 0.75 and 1.25
+
+**What:** at 0.75 and 1.25 the color picker as a whole (every preview kind, the text kind that was there before the interaction states plan included) is laid out in units, not whole pixels: its right edge lands at 442.5. It predates the states plan, which added the `states` and `danger` kinds on the same layout.
+
+**Why noticed:** Task 9's review (the previews). No `scaled_test` covers the picker's previews, and Task 10's fix round found the same for a plain Colors row of the options window at 0.75 and 1.25 (119 edges off), so the menu's whole-pixel case stayed a plain `test`.
+
+**Anchors:** `SaftUI-Core/Config/optionscolorpicker.lua`, `SaftUI-Core/Config/optionspreview.lua`, `tests/core/options_color_preview_test.lua`, `tests/core/accent_menu_test.lua` (the menu's layout at the scales); the UI scale entries below (phase 2, the options kit and SaftUI's windows, and "the kit's buttons and labels are off whole pixels on every screen that is not 1440p").
+
+**What's been considered:** nothing separate: it goes with the kit's whole-pixel phase.
+
+**Shape of work:** part of UI scale phase 2: round the picker's placements to the pixel as the kit's, and add `scaled_test` cases for each preview kind (the strip's tiles, the held states, the menu).
 
 ### 2026-11-15 — Auto Vendor: stop the unasked sales once the player buys or buys back
 
@@ -511,13 +612,13 @@ What's left needs evidence from the game. In the order they'd be checked:
 
 ### 2026-11-15 — The color picker's preview copies other widgets' geometry
 
-**What:** `SaftUI-Core/Config/optionspreview.lua` draws some tiles by copying another widget's geometry, since the kit exports no builder for them: the range's outline, edge, field and fill (`optionsrange.lua`), the sidebar row's tint and 2 wide bar (`optionsnav.lua`'s `item.bar:SetWidth(2)`), the own mark's inset (`optionsshare.lua`), and the edit mode grid's centre-line alpha and faint line color (`EditMode/grid.lua`'s `CENTER_ALPHA` and `LINE_COLOR`). The knob size and the own mark's width are read from the kit (`Kit.KNOB_WIDTH`, `Kit.KNOB_HEIGHT`, `OB.MARK_WIDTH`). The `bar` and `border` kinds copy other addons' defaults the same way, since Core cannot read them (Unitframes, Misc and Loot load after it): the role corner's size 16 and offset 2 (`SaftUI-Unitframes/config/default.lua`'s `grouproleindicator`), the class power points' spacing 7 (`config/units/player.lua`'s `classpower`), the nameplate's 200 by 20 and the threat text's 6 above the bar (`config/units/nameplate.lua`), the experience bar's height 13 (`SaftUI-Misc/config.lua`), the loot feed entry's height 32 (`SaftUI-Loot/config.lua`'s `item_height`), the icon texture stand-in and the unit frame bar's, raid frame's and tooltip's sizes (200 by 28, 80 by 40, 74 by 44, the spec's). The bars are the experience bar's kind (`bar`), not a unit frame's `unitframe` box with Blizzard's tinted fill art (`UF.BlizzardFill`), which Core cannot call.
+**What:** `SaftUI-Core/Config/optionspreview.lua`'s `bar` and `border` kinds draw tiles by copying other addons' defaults, since Core cannot read them (the `accent` kind that copied the kit's widgets' geometry is gone: the `states` kind that replaced it uses the kit's own buttons, held in each state by `st:SetState`) (Unitframes, Misc and Loot load after it): the role corner's size 16 and offset 2 (`SaftUI-Unitframes/config/default.lua`'s `grouproleindicator`), the class power points' spacing 7 (`config/units/player.lua`'s `classpower`), the nameplate's 200 by 20 and the threat text's 6 above the bar (`config/units/nameplate.lua`), the experience bar's height 13 (`SaftUI-Misc/config.lua`), the loot feed entry's height 32 (`SaftUI-Loot/config.lua`'s `item_height`), the icon texture stand-in and the unit frame bar's, raid frame's and tooltip's sizes (200 by 28, 80 by 40, 74 by 44, the spec's). The bars are the experience bar's kind (`bar`), not a unit frame's `unitframe` box with Blizzard's tinted fill art (`UF.BlizzardFill`), which Core cannot call.
 
-**Why noticed:** Task 10 of the live colors plan (review M3). The UI scaling plan makes the engine's borders whole pixels of the frame; the kit's hand-drawn 1-unit lines (the range's track, the sidebar's bar, the own mark, the preview's copies) stay 1 unit, and the preview will drift from the real widgets unless it changes with them.
+**Why noticed:** Task 10 of the live colors plan (review M3). The copies drift from the real defaults unless they are changed with them. (The interaction states plan, 2026-11-15, replaced the `accent` kind, which copied the range's, the sidebar row's, the own mark's and the grid's geometry, with the `states` kind: that half of this entry is closed.)
 
-**Anchors:** `SaftUI-Core/Config/optionspreview.lua` (the `accent` kind), `SaftUI-Core/Config/optionsrange.lua`, `optionsnav.lua`, `optionsshare.lua`, `SaftUI-Core/EditMode/grid.lua`; the UI scaling plan (`sc-task3`).
+**Anchors:** `SaftUI-Core/Config/optionspreview.lua` (the `bar` and `border` kinds); the UI scaling plan (`sc-task3`).
 
-**Shape of work:** for the UI scaling plan's later phase (the kit's 1-unit lines): add `optionspreview.lua` to the files it converts, or export the widgets' builders so the preview calls them. Small.
+**Shape of work:** small: read the defaults where Core can, or export a size from each addon that the preview calls.
 
 ### 2026-11-15 — UI scale: a frame drawn parentless and parented later into a frame with a scale of its own keeps UIParent's line
 
@@ -1915,7 +2016,7 @@ What the plan's list doesn't cover:
 **What:** Three retail-only issues in the bank windows (they use retail's `BankFrame.BankPanel` and the warband bank):
 - **The combined bank's category selector** (Bank / Warband, `st:CreateRadioGroup` in `INV:InitializeBankCategorySelection`, `SaftUI-Bags/containers/combinedbank.lua:~28`) takes the Bags Theme and Background once, when it's made. A later change to the Bags Theme override reaches it only after a reload. A change to SaftUI's own theme does reach it, since its buttons are recorded and redrawn with the arguments they were made with.
 - **The selected bank window's blue border** (`INV:SelectBankCategory`, `SaftUI-Bags/inventory.lua:~84-86`, for the separate bank and warband windows) is a plain `SetBackdropBorderColor`. No `OnColorsChanged('theme')` or `st:KeepOwnColors` puts it back, so a recolor or redraw turns it into the theme's border, and every Bags `UpdateConfig` resets it too.
-- **The radio group's `ColorPicked`** (`SaftUI-Core/Widgets/radiogroup.lua:~19-21`) indexes `button.backdrop`, which a group drawn with a Theme of None (a Bags Theme of None) doesn't have, so clicking a selector button errors. The old `none` template did the same.
+- ~~**The radio group's `ColorPicked`** (`SaftUI-Core/Widgets/radiogroup.lua:~19-21`) indexes `button.backdrop`, which a group drawn with a Theme of None (a Bags Theme of None) doesn't have, so clicking a selector button errors. The old `none` template did the same.~~ **Fixed 2026-11-15 (interaction states plan, Task 2):** a radio group's pick is `st:SetState(button, 'selected', picked)`, and nothing indexes `button.backdrop` any more, so a None group has no error (`tests/core/widget_states_test.lua`).
 
 **Why noticed:** The Themes project's reviews (2026-11-10). Task 5 (Bags) found all three and deferred them: the selector as minor, the blue border and the None error as already so before Themes. All three are retail-only, and the user plays Forever, so none could be checked in game during the project.
 
@@ -1926,7 +2027,7 @@ What the plan's list doesn't cover:
 - The blue border: register it with `st:KeepOwnColors` on the selected window (forgetting the others), as the radio group does for its pick, or color it again in a Bags `OnColorsChanged('theme')`. This depends on how the "two ways of keeping colors" followup is unified.
 - `ColorPicked`: guard `button.backdrop`.
 
-**Shape of work:** Small, three pieces, with tests where the stubs reach (the radio group is tested; the bank windows need retail's `BankFrame`), and a retail in-game check.
+**Shape of work:** Small, two pieces left (the radio group's None error is fixed), with tests where the stubs reach (the bank windows need retail's `BankFrame`), and a retail in-game check.
 
 ### 2026-11-10 — Themes: in-game checks for what was only compile-checked
 

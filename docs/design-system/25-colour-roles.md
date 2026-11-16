@@ -2,6 +2,8 @@
 
 Built by `docs/superpowers/specs/2026-11-14-saftui-color-roles-design.md` (2026-11-14); this page is the audit it started from.
 
+**Since decision 63 (2026-11-15), one Accent and every state derived from it.** Buttons holds Danger alone: Normal, Hover, Pushed and Checked are gone (migration step 8), and the Accent is also what hover, pushed, selected, focus and disabled are made from, by rule (`st:StateColor`, the Accent row's dots menu), never a color a widget reads. The audit below describes the colors as they were; each place it speaks of a state color says so.
+
 The Colors page lets the player change colours that are named after a hue (Blue, Red, Green and so on), which can then stop being that hue. This page lists every use of each one and proposes names that say what the colour is for.
 
 ## Questions for the owner
@@ -275,12 +277,14 @@ Format: `file:line` and a few words. Sites that go through the wrappers are expa
   - Bags loading bar `SaftUI-Bags/container.lua:85`.
   - Loot roll timer fill `roll.lua:225`, `rollbar.lua:195`.
   - Chosen roll's border `rollbar.lua:99` and label `:120`.
+- **Since decision 63:** every hover, selection and focus above that is a state (the sidebar's, the list rows', the field borders, the picked dot, the lit view button, the selected mover, the picked radio, the hover highlights on skinned, bag, action, totem and tracker buttons, the chosen roll's border) is drawn by the states helpers from the Accent by rule. What stays the Accent itself is not a state: the slider and progress fills, links, the own mark and reset icons, the rule editor's AND, the insertion line, the roll's label and timer, the selected bank window's edge and the keybind marker.
 
 ### `button.normal`, `button.hover`, `button.pushed`. Named by state, but the state is misdescribed.
 - `button.normal` is the **hover highlight** on SaftUI buttons: `SaftUI-Core/Widgets/button.lua:253`, `checkbutton.lua:115`, `micromenuitems.lua:37`. It is also the **scroll bar thumb at rest** (`scrollbar.lua:6`). It is never the resting fill of a button.
 - `button.hover` is a **checked check box fill** (`checkbutton.lua:109`), a **hovered scroll thumb** (`scrollbar.lua:6`), and the hover on minimap buttons (`micromenuitems.lua:97`, `expansionbutton.lua:51`, `queuebutton.lua:44`, `microbuttons.lua:181`). It also colours **resize handles** (`SaftUI-Core/skinning.lua:443,446`, `optionsresize.lua:174`).
 - `button.pushed` is a pressed button, scroll thumb, or micro button (`button.lua:263`, `micromenuitems.lua:43`, `microbuttons.lua:123`, `scrollbar.lua:6`).
-- **Since 2026-11-15 (decision 54):** the two names are made true. `button.hover` is the highlight under the mouse of buttons, check boxes, bar items, scroll thumbs, micro and minimap buttons and resize corners (the highlights of a button, a check box and a bar item at 0.4 times its opacity, the rest at 1), `button.normal` is the scroll thumb at rest alone, and a checked check box's fill is a new `button.checked` (default Hover's; migration step 6 copies a changed Hover into it). The paragraphs above describe the audit as it was.
+- **Since 2026-11-15 (decision 63):** all four (`button.normal`, `hover`, `pushed` and `checked`) are gone, migration step 8 drops them from every profile, and the states they stood for are derived from the Accent: a button's, a check box's, a scroll thumb's, a resize corner's and a micro or minimap button's hover is the rule's Hover tint, a checked check box is Selected, a thumb rests at #4d4d4d. The next bullet is decision 54's, which decision 63 supersedes.
+- **Since 2026-11-15 (decision 54, superseded by 63):** the two names are made true. `button.hover` is the highlight under the mouse of buttons, check boxes, bar items, scroll thumbs, micro and minimap buttons and resize corners (the highlights of a button, a check box and a bar item at 0.4 times its opacity, the rest at 1), `button.normal` is the scroll thumb at rest alone, and a checked check box's fill is a new `button.checked` (default Hover's; migration step 6 copies a changed Hover into it). The paragraphs above describe the audit as it was.
 
 ### `button.red`. 3 sites.
 - Locked bank slot tint `containers/bank.lua:56`.
@@ -376,7 +380,7 @@ Existing violations of "on is the accent, never green": `SaftUI-Core/EditMode/se
 ## 6. Proposed role names
 
 ### Principles
-- **Accent is a theme colour.** It lives in the Theme section, not in `colors.text` or `colors.button`. `text.blue` and `button.blue` both fold into it; the 0.25 and 0.15 fills (`accent-fill`, `accent-tint`) stay derived in code.
+- **Accent is a theme colour.** It lives in the Theme section, not in `colors.text` or `colors.button`. `text.blue` and `button.blue` both fold into it; the states made from it (hover, pushed, selected, focus, disabled) are derived by rule in code (decision 63); the 0.25 and 0.15 fills (`accent-fill`, `accent-tint`) are gone with the tint constants.
 - **"On" is the accent.** `text.green`'s two on/active uses (`EditMode/settings.lua:22`, `optionsnav.lua:52`) move to accent.
 - **State colours stay a small set.** Keep one ladder of status roles for game data too, so the level tag, the stats gradient and the hostile/neutral names reuse it.
 - **Identity sets get their own small groups,** so changing the state palette doesn't recolour tank/healer/DPS or Alliance/Horde. Roles and a loot-choice group are the natural ones; roles are already a planned Colors tab section (`docs/followups.md`, "Colors tab: role and rune colors").
@@ -402,7 +406,7 @@ Existing violations of "on is the accent, never green": `SaftUI-Core/EditMode/se
 - `faction`: `alliance`, `horde`, `neutral`. Replaces `ZoneText.lua:57`.
 - `roles` (already planned): `tank`, `healer`, `damage`. Replaces `indicators.lua:61-65`, `grouppreview.lua:293-297`.
 
-**Buttons (`colors.button`).**
+**Buttons (`colors.button`)** (as proposed; decision 63 then dropped Normal, Hover, Pushed and Checked, so Buttons holds `danger` alone).
 - `normal` -> **`fill`** (what it actually is: the overlay or thumb at rest).
 - `hover` -> **`hover`** and a new **`checked`** (the check box fill is the one real split in this group).
 - `pushed` -> **`pressed`**.

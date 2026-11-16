@@ -16,13 +16,13 @@ The owner frame (the list opens under it), the entries (key and name), `isChecke
 | --- | --- | --- |
 | List | the dropdown list's frame: a Box in `kit-bg` with 1px insets, under its owner | `kit-bg`, `kit-edge`, `kit-alt` |
 | Row | 22 tall; an 18 check box 6 in, the label 8 after it in `field` | `list-row`, `toggle-size`, `action-gap`, `list-text` |
-| Row under the mouse | `accent-fill` | `accent-fill` |
+| Row under the mouse | the lighter tone at `state-hover` over the row (its check box takes the row's hover) | `state-hover`, `accent-light` |
 | Buttons (All, None) | 80 x 24 in the raised fill like the Apply list's, 6 apart, centred, 6 under the rows; the list at least as wide as they are in a row plus its insets | `execute-min`, `field-height`, `kit-bg` |
 | Long lists | 12 rows, then the kit's 3px scroll bar | `scrollbar-width` |
 
 ## States
 
-Checked rows show the accent mark; a click anywhere on the row toggles it; a button runs its function, draws the marks again and leaves the list open; Esc or a click outside closes the list.
+Checked rows show the accent mark in a box with the `accent` edge and the fade; a click anywhere on the row toggles it; a button runs its function, draws the marks again and leaves the list open; Esc or a click outside closes the list.
 
 ## Blizzard theme
 

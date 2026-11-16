@@ -12,7 +12,8 @@
   .grid i.v { top: 0; bottom: 0; width: var(--line-width); }
   .grid i.centre { background: var(--grid-centre); }
   .mover { position: absolute; border: var(--line-width) solid var(--text-strong); background: var(--mover-fill); display: flex; align-items: center; justify-content: center; color: var(--text-strong); }
-  .mover.is-selected { border-color: var(--accent); background: var(--accent-tint); color: var(--accent); }
+  .mover.is-hover { background-image: linear-gradient(color-mix(in srgb, var(--accent-light) calc(var(--state-hover) * 100%), transparent), color-mix(in srgb, var(--accent-light) calc(var(--state-hover) * 100%), transparent)); }
+  .mover.is-selected { border-color: var(--accent); background-image: linear-gradient(90deg, color-mix(in srgb, var(--accent) calc(var(--state-selected) * 100%), transparent), transparent calc(var(--state-fade) * 100%)); color: var(--accent); }
   .mover.is-dim { opacity: var(--alpha-disabled); }
   .picker { position: absolute; padding: var(--title-gap); color: var(--text-strong); line-height: 1.4; }
   .picker .cur { color: var(--accent); }

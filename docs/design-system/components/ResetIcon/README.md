@@ -1,6 +1,6 @@
 # ResetIcon
 
-Lucide's `rotate-ccw` in `text-muted`, turning `accent` under the mouse, beside a control whose value differs from its default (or, on a member page, in its hover line), that puts that one setting back; it shows only while there is something to reset.
+Lucide's `rotate-ccw` in `text-muted`, turning the lighter tone of the Accent under the mouse (the glyph rule), beside a control whose value differs from its default (or, on a member page, in its hover line), that puts that one setting back; it shows only while there is something to reset.
 
 ## When to use
 
@@ -21,11 +21,11 @@ Where the setting is saved, or a hand default, or why it has none. A group says 
 
 ## States
 
-Hidden at the default; shown in `text-muted` once the value differs; `accent` under the mouse; a click resets and the icon goes.
+Hidden at the default; shown in `text-muted` once the value differs; the lighter tone of the Accent under the mouse; a click resets and the icon goes.
 
 ## The History list's revert
 
-A relative of this icon: a row of the edit mode bar's History list ends in a 14px `rotate-ccw` that puts that one step's change back on its own, as a new step. It is grey at rest and `accent` under the mouse (the icon's usual hover is `text-strong`; here the accent matches the list's row fill), and it is dim and disabled, with its reason in red in the tooltip, when a later step touched the same frame ("Changed again later: go back to this point instead.") or the step was a bulk copy. It shows only for a step that is applied. It is the same per-change idea as a setting's reset, not a section Reset.
+A relative of this icon: a row of the edit mode bar's History list ends in a 14px `rotate-ccw` that puts that one step's change back on its own, as a new step. It is grey at rest and the lighter tone of the Accent under the mouse, as the icon's usual hover is, and it is dim and disabled, with its reason in red in the tooltip, when a later step touched the same frame ("Changed again later: go back to this point instead.") or the step was a bulk copy. It shows only for a step that is applied. It is the same per-change idea as a setting's reset, not a section Reset.
 
 ## Status
 

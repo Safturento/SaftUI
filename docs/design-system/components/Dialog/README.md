@@ -29,7 +29,7 @@ Two dialogs float over the `/sui` window (a third, the Keep prompt, is its own c
 
 - The small dialog's status line (a failed validate) shows at its foot in `text-danger`, and the foot grows to 30.
 - Esc, the close X, closing the window and entering combat close the small dialog; it refuses to open in combat.
-- A confirm button under the mouse takes the `accent` edge.
+- A confirm button under the mouse tints its body in the lighter tone (`state-hover`) and darker while pressed (`state-pushed`); the edge stays.
 
 ## Blizzard theme
 

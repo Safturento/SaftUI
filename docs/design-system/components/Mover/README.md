@@ -17,7 +17,8 @@ The frame (or holder) with a real size, a `label` (the frame's name as the sideb
 | Outline | 1px white (`text-strong`'s value, hardcoded), outside the frame's rect by the theme's inset (2 under Thick, between the dark lines; 1 under Thin) | `text-strong`, `line-width` |
 | Fill | black at 30% | `mover-fill` |
 | Label | `pixel`, white, centred | `pixel` |
-| Selected | outline `accent`, fill `accent-tint` (accent at 15%), label `accent` | `accent`, `accent-tint` |
+| Hover | the lighter tone over the overlay's body (`state-hover`); a drag draws as hover | `state-hover` |
+| Selected | outline `accent`, a fill fading out from the left (`state-selected`), label `accent`; under the mouse the lighter tone | `accent`, `state-selected`, `state-fade` |
 | Others under the picker | at 0.4 | `alpha-disabled` |
 | Picker list | by the cursor where movers overlap: `tooltip` kind, `pixel`, 6 in; the one a click gets as "> name" in the accent (Theme > Accent), "Alt: next" in Text > Muted | `accent`, `text-muted` |
 | Grid | 1px white at 12% every grid size (32 by default), two centre lines in accent at 90%, at `strata-grid` | `grid-line`, `grid-centre`, `grid-size` |

@@ -20,7 +20,7 @@ The slot's item info (quality, count, class, item level, bound state, bag), read
 | Item level (armour and weapons) | `pixel` beside the count, on a black 80% backing to the icon's corner; `text-strong`, `text-success` if bind on equip, `text-shared` if warbound | `ilvl-backing`, `text-strong`, `text-success`, `text-shared` |
 | Auto-vendor item | Blizzard's junk coin (`bags-junkcoin`) at the icon's top left | |
 | Reagent bag | a 14px `text-success` wedge in the icon's top right (the `cornerbr` texture, flipped) | `reagent-wedge`, `text-success` |
-| States | hover, pressed and disabled as `ActionButton`'s (`st:SkinActionButton`) | `accent`, `pressed-fill` |
+| States | hover, pressed and disabled as `ActionButton`'s (`st:SkinActionButton`) | `state-hover`, `state-pushed` |
 
 ## Blizzard theme
 

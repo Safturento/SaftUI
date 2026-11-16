@@ -23,10 +23,10 @@ An action (Ace `execute`): Copy from, Place..., New, Delete, Reload UI, Close. S
 
 ## States
 
-- Under the mouse: the edge turns `accent`.
-- Pressed: the label moves down 1px (`line-width`).
+- Under the mouse: the body tints in the Accent's lighter tone (`state-hover`, a Layer under the label); the edge stays.
+- Pressed: the body tints darker (`state-pushed`) and the label moves down 1px (`line-width`).
 - Disabled: the button at `alpha-disabled`, its label `text-muted`; it takes no mouse, so the row's tooltip says why.
-- "On" (a button that stays lit, as the bag window's current view): an `accent` edge.
+- "On" or selected (a button that stays lit, as the bag window's current view): an `accent` edge and a fill that fades out from the left (`state-selected`, `state-fade`); under the mouse the edge and fill take the lighter tone.
 
 ## Blizzard theme
 
@@ -34,14 +34,14 @@ Blizzard's panel button (`st:ShowPanelButton`), with its own pressed and disable
 
 ## Icon button
 
-`W.IconButton`: a 26 x 26 button with only its 16 x 16 icon in the middle (edges at 5 and 21) in `text-muted`, in the same raised fill, edge and `accent` hover as the labelled one; the icon moves down 1px while pressed. It needs a tooltip, since an icon says nothing alone (the edit mode bar's buttons). `W.IconButton(parent, icon, tip, size, iconSize)` takes optional sizes, `(size - iconSize) / 2` whole: the `/sui` header's arrows are the close X's 24 with a 20 chevron, and the icon turns `accent` under the mouse with the edge. `W.IconLink` is the same icon with no box, `text-muted` at rest and `accent` under the mouse. A labelled button given an icon (`W.Button`'s `opts.icon`, `iconWithLabel`) draws it 16 before the label, 6 apart, the pair centred, 80 wide at least (icon + 6 + text + 28); `W.SetCompact` turns it into the icon alone, 26 square, for a narrow bar.
+`W.IconButton`: a 26 x 26 button with only its 16 x 16 icon in the middle (edges at 5 and 21) in `text-muted`, in the same raised fill, edge and hover tint as the labelled one; the icon moves down 1px while pressed. It needs a tooltip, since an icon says nothing alone (the edit mode bar's buttons). `W.IconButton(parent, icon, tip, size, iconSize)` takes optional sizes, `(size - iconSize) / 2` whole: the `/sui` header's arrows are the close X's 24 with a 20 chevron, and the icon turns `accent` under the mouse with the edge. `W.IconLink` is the same icon with no box, `text-muted` at rest and `accent` under the mouse. A labelled button given an icon (`W.Button`'s `opts.icon`, `iconWithLabel`) draws it 16 before the label, 6 apart, the pair centred, 80 wide at least (icon + 6 + text + 28); `W.SetCompact` turns it into the icon alone, 26 square, for a narrow bar.
 
-- "On" (the bar's lit buttons): the `accent` edge, kept when the mouse leaves, and the icon in `accent`. Under Blizzard's panel button the icon, or a text button's label, is `accent`, since it has no lit state.
-- Disabled on the bar: the button at `alpha-disabled`, no hover edge, a click that does nothing, and the mouse kept so its tooltip says why.
+- "On" (the bar's lit buttons): the `accent` edge and the fade, kept when the mouse leaves, and the icon in `accent`. Under Blizzard's panel button the icon, or a text button's label, is `accent`, since it has no lit state.
+- Disabled on the bar: the button at `alpha-disabled`, no hover tint, a click that does nothing, and the mouse kept so its tooltip says why.
 
 ## Other buttons in the code (not the standard)
 
-Six kinds and five heights today: Core's `st:CreateButton`/`st:SkinButton` (drawn `control` in the theme, Pixel 10, `button-hover` highlight at 40%, `button-pushed` when held, each at its opacity (100% by default), black 40% when disabled) used by keybind mode's Done (60 x 16), the loot feed's F and V (20 x 20), the bag header's buttons (23). (Edit mode's footer buttons, 22 tall with `text-success` text when on, were of this kind until the edit mode bar replaced them with the kit's icon buttons.) The code changes propose one button component with two or three sizes; until then, build kit buttons with this look.
+Six kinds and five heights today: Core's `st:CreateButton`/`st:SkinButton` (drawn `control` in the theme, Pixel 10, the derived hover and pushed tints, `alpha-disabled` when disabled) used by keybind mode's Done (60 x 16), the loot feed's F and V (20 x 20), the bag header's buttons (23). (Edit mode's footer buttons, 22 tall with `text-success` text when on, were of this kind until the edit mode bar replaced them with the kit's icon buttons.) The code changes propose one button component with two or three sizes; until then, build kit buttons with this look.
 
 ## Do and don't
 

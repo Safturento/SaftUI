@@ -29,7 +29,13 @@ svg { display: block; }
 /* the options kit's Box: field fill, 1px edge, a dark line outside it (fixed palette) */
 .sui-box { background: var(--kit-field); border: var(--line-width) solid var(--kit-edge); box-shadow: 0 0 0 var(--line-width) var(--kit-alt); color: var(--text); border-radius: var(--radius); }
 .sui-box.is-raised { background: var(--kit-bg); }
-.sui-box.is-hover, .sui-box.is-focus { border-color: var(--accent); }
+/* states (decision 63): every state is made from the Accent by rule. Hover tints the body in the lighter tone, the edge unchanged; pressed the darker tone, stronger; selected is the Accent edge and a fill that fades out from the left; selected + hover composes (the edge and fill in the lighter tone); focus is the Accent edge. Disabled is below. */
+.is-hover { --tint: color-mix(in srgb, var(--accent-light) calc(var(--state-hover) * 100%), transparent); }
+.is-pressed { --tint: color-mix(in srgb, var(--accent-dark) calc(var(--state-pushed) * 100%), transparent); }
+.is-selected, .is-current, .is-on { --fade: linear-gradient(90deg, color-mix(in srgb, var(--accent) calc(var(--state-selected) * 100%), transparent), transparent calc(var(--state-fade) * 100%)); --edge: var(--accent); }
+.is-selected.is-hover, .is-current.is-hover, .is-on.is-hover { --fade: linear-gradient(90deg, color-mix(in srgb, var(--accent-light) calc(var(--state-selected) * 100%), transparent), transparent calc(var(--state-fade) * 100%)); --edge: var(--accent-light); }
+.sui-box.is-hover, .sui-box.is-pressed, .sui-box.is-selected, .sui-colorbar.is-hover, .sui-check.is-on { background-image: linear-gradient(var(--tint, transparent), var(--tint, transparent)), var(--fade, linear-gradient(transparent, transparent)); }
+.sui-box.is-focus, .sui-box.is-selected, .sui-check.is-on { border-color: var(--edge, var(--accent)); }
 .sui-field { height: var(--field-height); width: var(--control-width); display: flex; align-items: center; padding: 0 var(--list-text); position: relative; white-space: nowrap; overflow: hidden; }
 .sui-field.is-small { width: var(--input-small); }
 .is-disabled { opacity: var(--alpha-disabled); }
@@ -60,7 +66,7 @@ svg { display: block; }
 .sui-track { position: relative; width: var(--range-track); height: var(--range-track-height); background: var(--kit-field); border: var(--line-width) solid var(--kit-edge); box-shadow: 0 0 0 var(--line-width) var(--kit-alt); flex: none; }
 .sui-track > i { position: absolute; left: 0; top: 0; bottom: 0; width: var(--p); background: var(--accent); }
 .sui-track > b { position: absolute; left: var(--p); top: 50%; width: var(--knob-width); height: var(--knob-height); margin: calc(var(--knob-height) / -2) 0 0 calc(var(--knob-width) / -2); background: var(--text); }
-.sui-track.is-hover > b { background: var(--text-strong); }
+.sui-track.is-hover > b { background: var(--accent-light); }
 .sui-value { width: var(--range-value); height: var(--field-height); display: flex; align-items: center; justify-content: center; }
 
 /* color field: as wide as a dropdown, drawn as an input (Box): a swatch at its left, then the hex code in text */
@@ -68,7 +74,6 @@ svg { display: block; }
 .sui-colorbar { width: var(--control-width); height: var(--field-height); background: var(--kit-field); border: var(--line-width) solid var(--kit-edge); box-shadow: 0 0 0 var(--line-width) var(--kit-alt); display: flex; align-items: center; color: var(--text); white-space: nowrap; overflow: hidden; }
 .sui-colorbar::before { content: ''; flex: none; align-self: stretch; width: calc(40px + var(--line-width)); margin-right: var(--list-text); border-right: var(--line-width) solid var(--kit-edge); box-shadow: inset 0 0 0 var(--line-width) var(--text-outline); background: linear-gradient(var(--swatch), var(--swatch)); }
 .sui-colorbar.is-see::before { background: linear-gradient(var(--swatch), var(--swatch)), repeating-conic-gradient(#8a8a8a 0% 25%, #5a5a5a 0% 50%) var(--line-width) var(--line-width) / 8px 8px; }
-.sui-colorbar.is-hover { border-color: var(--accent); }
 
 /* buttons */
 .sui-btn { height: var(--button-height); min-width: var(--execute-min); padding: 0 calc(var(--execute-pad) / 2); display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; }
@@ -106,8 +111,9 @@ svg { display: block; }
 /* lists (an open dropdown, the check list, the Apply list) */
 .sui-list { width: var(--control-width); padding: var(--line-width); }
 .sui-list-row { height: var(--list-row); display: flex; align-items: center; gap: var(--diff-gap); padding: 0 var(--list-text); white-space: nowrap; }
-.sui-list-row.is-hover { background: var(--accent-fill); }
-.sui-list-row.is-current { color: var(--accent); }
+.sui-list-row { position: relative; }
+.sui-list-row.is-hover, .sui-list-row.is-pressed, .sui-list-row.is-current { background-image: linear-gradient(var(--tint, transparent), var(--tint, transparent)), var(--fade, linear-gradient(transparent, transparent)); }
+.sui-list-row.is-current::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: var(--mark-width); background: var(--edge); }
 /* a check list row: an 18 box 6 in, its label 8 after it */
 .sui-list-row.is-check { padding-left: var(--action-gap); gap: var(--list-text); }
 

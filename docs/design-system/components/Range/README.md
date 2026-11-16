@@ -17,7 +17,7 @@ Any number with a sensible range (Ace `range`): sizes, counts, spacing, opacity.
 | Whole | 168 x 24: track, 6 gap, value box | `range-width`, `range-gap` |
 | Track | 116 x 6: a 1px `kit-edge` round a 4px `kit-field`, a `kit-alt` line outside (8 tall) | `range-track`, `range-track-height` |
 | Fill | `accent`, inside the edge, from the left to the value | `accent` |
-| Knob | 6 x 14 in `text`, `text-strong` under the mouse | `knob-width`, `knob-height`, `text`, `text-strong` |
+| Knob | 6 x 14 in `text`; under the mouse and while dragged a solid in the lighter tone of the Accent | `knob-width`, `knob-height`, `text`, `accent-light` |
 | Value box | 46 x 24 Box, the number centred in `field`; typing a value sets it | `range-value` |
 
 ## States

@@ -27,10 +27,10 @@ SaftUI replaces World of Warcraft's interface with flat, dark frames that sit qu
 
 - **Surfaces.** In-world frames take `backdrop` at `alpha-theme` (0.9) with a `border` line; Thick adds `border-alt` lines outside and inside it. The options window draws `backdrop` solid, its sidebar `sidebar`, and each section's rows sit on `panel-fill` with `hairline` lines between them. Controls are Boxes: `kit-field` inside a `kit-edge` line with a `kit-alt` line outside; buttons and open lists fill with `kit-bg`.
 - **Text.** `text` for labels, values, titles and the tab you are on; `text-muted` for section titles, notes, captions, other tabs, carets and anything dimmed; `text-strong` for a tooltip's title and the colour bar's hex code; `text-danger` for errors and why something is disabled. `text-muted` passes 4.5:1 on both themes (8.0:1 on Thick's `backdrop`, 6.1:1 on Thin's, 7.4:1 on `panel-fill`); under Thin `text-danger` misses it on `backdrop` (3.6:1) and is still short on `panel-fill` (4.4:1).
-- **Accent.** `accent` is the only accent: the check mark, slider fill, picked dot, the selected sidebar entry's bar and the tab underline, a hovered or focused control's edge, links, the own mark, a selected mover. `accent-fill` (25%) sits behind a selected or hovered row. Never use a second blue for these.
+- **Accent.** `accent` is the only accent, and the one setting every interaction state is made from. Used as itself, not as a state: links, the own mark, slider and progress fills, markers (a roll's label and timer, the nameplate's target border) and the chat prefix. The states (hover, pushed, selected, focus, disabled) are derived from it by rule (decision 63; `st:StateColor`, `state-*` tokens): see States below. Its dots menu sets how: Derivation (Layers, Tones or Hue-shifted tones), the strengths, the Tones' step and the Hue shift. Never use a second blue, and never read a color for a state.
 - **Shared settings.** The `accent` marks a member's own value (the bar and the label); the diff icon, in `text-muted`, marks a setting some member changed. Use them for nothing else on these rows.
 - **Data colours.** `class-*`, `reaction-*`, `power-*`, `quality-*` (through `st:QualityColor`), `threat-*` and `status-offline` colour bars, names and borders by what they show. They are profile settings: never hard-code them, never use them as decoration.
-- **Profile Buttons colours.** `button-hover` is the highlight under the mouse (a button's, a check box's and a micro menu bar item's highlight at 0.4, a scroll bar thumb or resize corner at 1), `button-normal` a scroll bar thumb at rest, `button-checked` a checked Core check box's fill (decision 54). Each is drawn at its reader's strength times its opacity, and the defaults are 100%, so `button-*` read as the solid colors above and a lower opacity fades what draws them. New work uses the kit's states below instead.
+- **Profile Buttons colours.** Buttons holds one color, `button-danger`: locked bank slots and the flash on an action bar or totem button, drawn at its reader's strength times its opacity (100% by default, so it reads as the solid color above). The old `button-normal`, `button-hover`, `button-pushed` and `button-checked` are gone (migration step 8, decision 63): every state is the Accent's, derived, never a profile color.
 
 ### Type
 
@@ -65,19 +65,21 @@ All lines are `line-width` (one line: 1 pixel, 2 from k 1.5); marks and underlin
 
 ### States
 
-| State | Standard (the kit's) | Tokens |
+One Accent, and every state made from it by rule (decision 63). The numbers are the defaults of the Accent's dots menu (`state-hover` 0.16, `state-pushed` 0.32, `state-selected` 0.24, `state-fade` 0.70, `alpha-disabled` 0.40; Tones step 0.08, Hue shift 20, Chroma 0.10); `T+` is the Accent's lighter tone and `T-` its darker one, and what each is called in code is `st:StateColor(name)`.
+
+| State | Standard (every widget) | Tokens |
 | --- | --- | --- |
-| Hover | a control's edge turns accent; a row fills | `kit-edge` to `accent`; `accent-fill` |
-| Pressed | the text or icon moves down 1px | `line-width` |
-| Focus | the box's edge stays accent | `accent` |
-| On | an accent square inside the check box | `accent`, `check-inset` |
-| Selected | accent fill with an accent bar (sidebar), accent underline (tab) | `accent-fill`, `mark-width` |
-| Disabled | the control at 40%, its label `text-muted`; the tooltip says why | `alpha-disabled`, `text-muted`, `text-danger` |
-| Own | 2px accent bar, label in the accent | `accent` |
+| Hover | the body tints: a Layer in `T+` at `state-hover` under the text, the edge unchanged; a row, tab or box alike. A bare glyph turns the lighter tone; a thumb or knob its solid | `state-hover`, `accent-light` |
+| Pressed | the body tints darker: a Layer in `T-` at `state-pushed`; the label or icon moves down 1px where it did | `state-pushed`, `accent-dark`, `line-width` |
+| Selected (on, checked, current, picked) | the Accent edge, and a fill that fades across the widget from the left (`state-selected`, fading over `state-fade`); a row's edge is a left bar, a tab's an underline; a check box has an Accent mark | `accent`, `state-selected`, `state-fade`, `mark-width`, `check-inset` |
+| Selected and hovered | both: the hover Layer, with the edge and fill in `T+` | `state-hover`, `state-selected` |
+| Focus | the box's edge turns Accent; the body is unchanged | `accent` |
+| Disabled | the widget at 40% (`alpha-disabled`, the Disabled setting), no hover or pressed; its tooltip says why | `alpha-disabled`, `text-muted`, `text-danger` |
+| Own | 2px accent bar, label in the accent (not a state: a mark) | `accent` |
 | Differs | the diff icon after the label, in `text-muted` | `text-muted` |
 | Error | the status line or tooltip line in red | `text-danger` |
 
-State is always visible; hover only offers actions. In-world icon buttons keep their own set: hover `accent` added, pressed `pressed-fill`, checked `checked-fill`, flash `flash-fill`, equipped `accent` border.
+Text on a tinted widget is the light text or the dark text (`#111111`), whichever has the higher contrast over what is under it; at the defaults it stays light, and the dark appears only at strong settings with a pale Accent. State is always visible; hover only offers actions. In-world icon buttons (action, totem and micro buttons, slots) wear the same rule on their own highlight, pushed and checked textures: hover and pushed over the icon, a checked button or an equipped item the Accent edge (the checked one with the fade). What keeps its own color and is not a state: a close button's hover (`text-danger`), the flash on an action or totem button (`button-danger` at 0.4, `flash-fill`), an unbought bank slot's tint, a micro button's alert pulse, a search's non-match fade. Under the Blizzard theme, Blizzard's art draws the states and SaftUI draws none over it.
 
 ### Layering
 
@@ -111,3 +113,4 @@ Every page whose frames SaftUI draws offers Theme and Background, with "Use Saft
 9. **A frame's Position is the second section** of its page or tab (`PositionBlock`), right after the first section, in a section of its own (decision 55). A part's Position in an item's menu stays last in the menu.
 10. **Whole pixels** everywhere. **Corners are square** (`radius` 0).
 11. **Three themes**: Thick, Thin, Blizzard. Build for Thick and Thin with tokens, and say what keeps Blizzard's art.
+12. **One accent.** Hover, pushed, selected, focus and disabled are derived from it; never read a color for a state, and never draw one by hand (`st:AddStates`, `st:SetState`).

@@ -1,6 +1,6 @@
 # Input
 
-A one-line text box: a 170 x 24 Box with its text 8 in, its edge in accent while it has focus or the mouse.
+A one-line text box: a 170 x 24 Box with its text 8 in, its edge in accent while it has focus, and its body tinted under the mouse.
 
 ## When to use
 
@@ -20,7 +20,7 @@ Free text (a name, a frame to anchor to) and numbers with no sensible range (wid
 
 ## States
 
-- Under the mouse and while focused: the edge turns `accent`. Enter commits, Esc reverts; both clear focus.
+- Under the mouse: the body tints in the lighter tone (`state-hover`); the edge stays. While focused: the edge turns `accent`. Enter commits, Esc reverts; both clear focus.
 - A value `validate` refuses shows its message in the window's status line, `text-danger`.
 - Disabled: `alpha-disabled`; it loses focus.
 
@@ -30,7 +30,7 @@ Free text (a name, a frame to anchor to) and numbers with no sensible range (wid
 
 ## Other text boxes in the code (not the standard)
 
-Core's `st:CreateEditBox` (the bag window's search, the chat edit box) is drawn as `control` in the theme, 20 tall, with a white focus border, and the bag search takes the bag title font. The bags' rule editor fields are 22 tall. See Discrepancies.
+Core's `st:CreateEditBox` (the bag window's search, the chat edit box) is drawn as `control` in the theme, 20 tall, with an `accent` focus border (it was white), and the bag search takes the bag title font. The bags' rule editor fields are 22 tall. See Discrepancies.
 
 ## Do and don't
 
