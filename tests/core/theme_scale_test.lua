@@ -773,6 +773,17 @@ test("M23: a Blizzard backdrop on a frame with a scale of its own is inset in it
 	check(close_to(f.backdropInfo.insets.left, 2.5, 1e-9), 'inset ' .. tostring(f.backdropInfo.insets.left))
 	check(close_to(f.backdropInfo.insets.top, 2.5, 1e-9), 'top ' .. tostring(f.backdropInfo.insets.top))
 	eq(f.backdropInfo.insets.left, st:DrawnInset(f), 'from the record')
+
+	-- r7 (Task 3's re-review, mutant F7): a `small` frame's line is a line of the
+	-- frame's own pixels, 1.25 units at this scale, not UIParent's line (1 unit).
+	local small = st:CreateFrame('Frame', nil, UIParent)
+	small:SetSize(36, 36)
+	small:SetPoint('CENTER')
+	small:SetScale(0.8)
+	st:SetTemplate(small, 'theme', 'theme', 'small')
+	check(close_to(small.backdropInfo.edgeSize, st:GetLineSize(small), 1e-9), 'small: the edge is the frame\'s own line ' .. tostring(small.backdropInfo.edgeSize))
+	check(close_to(small.backdropInfo.edgeSize, 1.25, 1e-9), 'which is 1.25 units, not UIParent\'s ' .. tostring(st.line))
+	check(close_to(small.backdropInfo.insets.left, st:GetLineSize(small), 1e-9), 'and its inset is that line')
 end)
 
 test("M19: a length is at least one pixel on a frame so small a scale that it would round to none", function()

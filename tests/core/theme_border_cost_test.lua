@@ -64,6 +64,52 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 	end
 end
 
+-- r3 (Task 3's re-review): the same pass with the stub making Blizzard's backdrop
+-- pieces (the nine textures SetupPieceVisuals makes). A color pass colors the
+-- backdrop through its setter and leaves the pieces alone: no piece is made,
+-- textured, placed or recolored by hand.
+local PIECES = { 'TopLeftCorner', 'TopRightCorner', 'BottomLeftCorner', 'BottomRightCorner',
+	'TopEdge', 'BottomEdge', 'LeftEdge', 'RightEdge', 'Center' }
+
+local function piece_colors(list)
+	local out = {}
+	for i, frame in ipairs(list) do
+		for _, name in ipairs(PIECES) do
+			local texture = frame[name]
+			if texture then
+				local r, g, b, a = texture:GetVertexColor()
+				out[#out + 1] = ('%d.%s=%s,%s,%s,%s'):format(i, name, tostring(r), tostring(g), tostring(b), tostring(a))
+			end
+		end
+	end
+	return table.concat(out, ';')
+end
+
+for _, client in ipairs({ 'forever', 'retail' }) do
+	for _, theme in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		test(('%s, %s: with the backdrop pieces made, a color pass leaves them alone'):format(client, theme), function()
+			local st = T.client(client)
+			stub.backdrop_pieces = true
+			st.config.profile.theme.name = theme
+			local list = borders(st, theme)
+			local pieces = 0
+			for _, frame in ipairs(list) do
+				for _, name in ipairs(PIECES) do if frame[name] then pieces = pieces + 1 end end
+			end
+			check(pieces > 0, 'the stub made pieces: ' .. pieces)
+			local before = piece_colors(list)
+			local m = C.measure(function()
+				for i = 1, 40 do st:SetBorderColor(list[i], 0.4, 0.5, 0.6, 1) end
+			end, 100)
+			eq(m.made, 0, 'nothing made')
+			eq(m.forbidden.total, 0, 'nothing placed, textured or reparented')
+			check(m.kb < 4, 'garbage over 100 passes: ' .. m.kb .. ' KB')
+			eq(piece_colors(list), before, 'no piece was recolored by hand')
+			stub.backdrop_pieces = nil
+		end)
+	end
+end
+
 -- The own-color piece of a frame drawn as kind under Blizzard.
 local function piece(st, f)
 	local art = st.ThemeArt.Get(f)

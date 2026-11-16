@@ -36,6 +36,9 @@
 	  TEST_SCALE              set in a scaled run: the shell then builds every world at use_scale(TEST_SCALE)
 	  use_scale(k)            puts the world on k's screen at the scale the model gives it
 	                          (0.75, 1, 1.25 or 1.55); nothing is reset; returns UIScale.Resolve's table
+	  start_uiscale(choice)   the scale at login: saves choice (when given) in st.config.global.uiScale,
+	                          then runs st.UIScale:Start() (the shell never does: it would set back the
+	                          scales a test sets); the events it registers then run the check
 ]]
 
 local function pack(...)
@@ -631,6 +634,15 @@ function use_scale(k)
 	UIParent:SetScale(resolved.uiScale)
 	st.UIScale:SetTokens()
 	return resolved
+end
+
+-- Starts the runtime scale, as SaftUI:OnEnable does after the AceDB is made:
+-- choice, when given, is saved as the player's (st.config.global.uiScale), and
+-- UIScale:Start sets UIParent's scale from it on the screen and registers the
+-- screen events. A test opts in with this; the old ones stay pixel for pixel.
+function start_uiscale(choice)
+	if choice ~= nil then st.config.global.uiScale = choice end
+	st.UIScale:Start()
 end
 
 -- In a scaled run (TEST_SCALE, which runner.py sets) every world is built at

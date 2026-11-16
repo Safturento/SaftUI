@@ -10,12 +10,16 @@ SaftUI:SetDefaultModuleLibraries('AceEvent-3.0', 'AceHook-3.0')
 SaftUI.StringFormat = LibStub('LibStringFormat-1.0')
 
 function SaftUI:OnEnable()
-	st.UIScale:Start()
+	-- The AceDB first (the player's UI scale is in its global table), then the
+	-- scale, then the rest: AceAddon enables the modules only after this returns,
+	-- so every one builds at the final scale and reads the final tokens. In
+	-- xpcall, so an error in the scale still lets the rest run.
+	self:GetModule('Config'):InitializeAceConfig()
+	xpcall(st.UIScale.Start, geterrorhandler(), st.UIScale)
+
 	SetCVar('autoLootDefault', 1)
 	--SetCVar('chatStyle', 'classic')
 	--SetCVar('whisperMode', 'inline')
-
-	self:GetModule('Config'):InitializeAceConfig()
 
 	if not self.config.realm.summary then self.config.realm.summary = {} end
 	if not self.config.realm.summary[self.my_name] then self.config.realm.summary[self.my_name] = {} end

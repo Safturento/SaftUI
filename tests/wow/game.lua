@@ -40,6 +40,7 @@ stub = {
 	-- C_Timer.After's pending callbacks, { due, fn } in the order made.
 	-- stub.run_timers() runs the ones due by stub.time.
 	timers = {},
+	timers_wait_a_frame = false, -- a timer made by a timer's callback waits for the next run_timers
 	-- The game's frame (tick) number. stub.run_timers() starts a new frame
 	-- before it runs the timers due, as C_Timer.After(0) callbacks run on the
 	-- next frame. Only what the game allows once per tick reads it (a
@@ -106,6 +107,57 @@ end
 
 function GetLocale() return 'enUS' end
 function GetPhysicalScreenSize() return stub.screen_width, stub.screen_height end
+--[[
+	The scale the engine sets on UIParent (E3, in game on WoW Forever):
+	  stub.default_scale: GetDefaultScale(), the scale the game takes for the
+	    screen while Use UI Scale is off (E1: 0.64 on 2560 x 1440). A test sets
+	    GetDefaultScale = nil to play a client without it.
+	  stub.engine_resets_scale: whether a display change makes the engine set
+	    UIParent to the game's own scale over an addon's (E3 saw it do). Off
+	    by default, so a test that opts in says so.
+	  stub.scale_fires_event: whether an addon's own UIParent:SetScale fires
+	    UI_SCALE_CHANGED (widgets.lua). E3 saw it fire neither screen event, so
+	    it is off; a test turns it on to prove nothing loops if it did.
+	  stub.engine_set_scale(scale): the engine sets UIParent's scale, as it does
+	    when the UI Scale slider moves (E3): both screen events fire in pairs at
+	    one timestamp, the first pair with UIParent still at 1.
+	  stub.change_display(width, height): a resolution or window change: the
+	    screen is set, UIParent is set to the game's own scale (the slider's
+	    while Use UI Scale is on, else the default) while
+	    stub.engine_resets_scale, and the events fire in pairs, as E3 saw them:
+	    DISPLAY_SIZE_CHANGED, and UI_SCALE_CHANGED when the scale was reset.
+]]
+stub.default_scale = 1
+stub.engine_resets_scale = false
+stub.scale_fires_event = false
+function GetDefaultScale() return stub.default_scale end
+
+-- The pair of events, in the order the game fires them. The first pair reads
+-- UIParent at 1 and the second at the final scale (E3), so set_scale is run
+-- between them.
+local function fire_pairs(scale_event, set_scale)
+	for pair = 1, 2 do
+		if pair == 2 and set_scale then set_scale() end
+		stub.fire_event('DISPLAY_SIZE_CHANGED')
+		if scale_event then stub.fire_event('UI_SCALE_CHANGED') end
+	end
+end
+
+function stub.engine_set_scale(scale)
+	UIParent:SetScale(1)
+	fire_pairs(true, function() UIParent:SetScale(scale) end)
+end
+
+function stub.change_display(width, height)
+	stub.screen_width, stub.screen_height = width, height
+	if stub.engine_resets_scale then
+		local game = stub.cvars.useUiScale == '1' and tonumber(stub.cvars.uiScale) or stub.default_scale
+		UIParent:SetScale(1)
+		fire_pairs(true, function() UIParent:SetScale(game) end)
+	else
+		fire_pairs(false)
+	end
+end
 function InCombatLockdown() return stub.in_combat end
 function IsMouseButtonDown(button) return stub.mouse_buttons[button or 'LeftButton'] == true end
 function GetCursorPosition() return stub.cursor_x, stub.cursor_y end
@@ -141,17 +193,24 @@ C_Timer = {
 }
 -- Starts the game's next frame (stub.tick), then runs, in the order they were
 -- made, the timers due by stub.time (callbacks they make that are due run
--- too). Returns how many ran.
+-- too, unless stub.timers_wait_a_frame). Returns how many ran.
 function stub.run_timers()
 	stub.tick = stub.tick + 1
 	local ran = 0
 	local i = 1
-	while i <= #stub.timers do
+	-- With stub.timers_wait_a_frame, only the timers there are now run: one a
+	-- callback makes waits for the next run (the game's next frame), so a test can
+	-- show what loops once a frame. Off by default: tests of retry chains count
+	-- on a due callback made by a callback running in the same call.
+	local waiting = stub.timers_wait_a_frame and #stub.timers or math.huge
+	while i <= waiting and i <= #stub.timers do
 		local timer = stub.timers[i]
 		if timer.cancelled then
+			waiting = waiting - 1
 			table.remove(stub.timers, i)
 		elseif timer.due <= stub.time then
 			table.remove(stub.timers, i)
+			waiting = waiting - 1
 			ran = ran + 1
 			if timer.interval then
 				-- A ticker goes on from now (once per call, however late), unless it
@@ -943,6 +1002,10 @@ end
 stub.cvars = {
 	nameplateShowFriendlyPlayers = '0',
 	nameplateShowFriendlyNpcs = '0',
+	-- Blizzard's UI Scale (Options > Graphics): the check box and the slider
+	-- (E1 read '0' and '1' on a fresh profile).
+	useUiScale = '0',
+	uiScale = '1',
 }
 
 stub.cvar_defaults = {

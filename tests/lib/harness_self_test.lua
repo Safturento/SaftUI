@@ -1297,3 +1297,94 @@ test('scaled_test refuses a name test() took, and a bad call, naming this file a
 	eq(ok, false, 'scaled_test inside a case errors')
 	check(tostring(err):find('top level', 1, true), tostring(err))
 end)
+
+-- UIParent and the engine's scale (E3, E4): tests/wow/widgets.lua and game.lua.
+local function from_saftui_file(code)
+	-- A chunk named as a SaftUI file's is, so the stubs see addon code calling.
+	return assert(loadstring(code, '@SaftUI-Test/caller.lua'))()
+end
+
+test("UIParent's SetScale: refused in combat from a SaftUI file, set by a test's own call; protected in combat", function()
+	reset_world()
+	local before = UIParent:GetScale()
+	eq(UIParent:IsProtected(), false, 'not protected out of combat')
+	from_saftui_file('UIParent:SetScale(0.5)')
+	eq(UIParent:GetScale(), 0.5, 'out of combat a SaftUI file sets it')
+	eq(#stub.blocked, 0, 'nothing blocked out of combat')
+
+	stub.in_combat = true
+	eq(UIParent:IsProtected(), true, 'protected in combat')
+	from_saftui_file('UIParent:SetScale(0.7)')
+	eq(UIParent:GetScale(), 0.5, "a SaftUI file's SetScale does nothing in combat")
+	eq(#stub.blocked, 1, 'and is noted')
+	check(stub.blocked[1][1] == UIParent and stub.blocked[1][2] == 'SetScale', 'as { UIParent, SetScale }')
+	UIParent:SetScale(0.6)
+	eq(UIParent:GetScale(), 0.6, "a test's own call still sets it (the engine's)")
+	eq(#stub.blocked, 1, 'and is not noted')
+	from_saftui_file('UIParent:GetScale()')
+	eq(#stub.blocked, 1, 'a read is free')
+	stub.in_combat = false
+	eq(UIParent:IsProtected(), false, 'and not after combat')
+	UIParent:SetScale(before)
+end)
+
+test('UIParent SetScale fires UI_SCALE_CHANGED at once only while stub.scale_fires_event', function()
+	reset_world()
+	local fired = 0
+	local frame = CreateFrame('Frame')
+	frame:RegisterEvent('UI_SCALE_CHANGED')
+	frame:SetScript('OnEvent', function() fired = fired + 1 end)
+	UIParent:SetScale(0.6)
+	eq(fired, 0, "off: an addon's own SetScale fires nothing (E3)")
+	stub.scale_fires_event = true
+	UIParent:SetScale(0.7)
+	eq(fired, 1, 'on: once, before it returns')
+	WorldFrame:SetScale(0.9)
+	eq(fired, 1, "only UIParent's")
+end)
+
+test('stub.change_display: with and without engine_resets_scale; scale_fires_event; GetDefaultScale', function()
+	reset_world()
+	eq(GetDefaultScale(), 1, 'the default scale is 1 until a test sets it')
+	eq(stub.cvars.useUiScale, '0', 'Use UI Scale is off')
+	eq(stub.cvars.uiScale, '1', "and the slider's 1")
+	local events, scales = {}, {}
+	local frame = CreateFrame('Frame')
+	frame:RegisterEvent('UI_SCALE_CHANGED')
+	frame:RegisterEvent('DISPLAY_SIZE_CHANGED')
+	frame:SetScript('OnEvent', function(_, event)
+		events[#events + 1] = event
+		scales[#scales + 1] = UIParent:GetScale()
+	end)
+	UIParent:SetScale(0.4)
+
+	stub.change_display(2560, 1440)
+	local w, h = GetPhysicalScreenSize()
+	check(w == 2560 and h == 1440, 'the screen is set')
+	eq(table.concat(events, ','), 'DISPLAY_SIZE_CHANGED,DISPLAY_SIZE_CHANGED', 'two display events, as E3 saw')
+	eq(UIParent:GetScale(), 0.4, "the scale is left: the engine didn't reset it")
+
+	events, scales = {}, {}
+	stub.engine_resets_scale = true
+	stub.default_scale = 0.64
+	stub.change_display(1920, 1080)
+	eq(table.concat(events, ','), 'DISPLAY_SIZE_CHANGED,UI_SCALE_CHANGED,DISPLAY_SIZE_CHANGED,UI_SCALE_CHANGED', 'both, in pairs')
+	eq(scales[1], 1, 'the first pair reads 1')
+	eq(scales[3], 0.64, "the second the game's default")
+	eq(UIParent:GetScale(), 0.64, 'and it stays')
+
+	stub.cvars.useUiScale, stub.cvars.uiScale = '1', '0.9'
+	stub.change_display(2560, 1440)
+	eq(UIParent:GetScale(), 0.9, "Use UI Scale on: the slider's")
+
+	events = {}
+	stub.engine_set_scale(0.8)
+	eq(table.concat(events, ','), 'DISPLAY_SIZE_CHANGED,UI_SCALE_CHANGED,DISPLAY_SIZE_CHANGED,UI_SCALE_CHANGED', 'the slider fires both in pairs')
+	eq(UIParent:GetScale(), 0.8, 'at its value')
+	eq(#stub.blocked, 0, 'in combat too the stub is the engine, not addon code')
+	stub.in_combat = true
+	stub.engine_set_scale(0.7)
+	eq(UIParent:GetScale(), 0.7, 'the engine sets it in combat')
+	eq(#stub.blocked, 0, 'unblocked')
+	stub.in_combat = false
+end)
