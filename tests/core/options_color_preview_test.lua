@@ -1347,16 +1347,67 @@ test('bar role: a raid frame 80 by 40 with st.textures.cornerbr, 16, at its bott
 	reset()
 end)
 
-test('bar reputation: the reputation bar 170 by 13 and an NPC health bar 120 by 28, 70% in the color with the label', function()
+test('bar reputation: the reputation bar 150 by 13, an NPC health bar 100 by 28 and an NPC tooltip, in the color with the label', function()
 	T.theme('thick')
 	local F, p = open_bar({ style = 'reputation', label = 'Friendly' })
-	eq(size(p.repXp.bar), '170,13', 'the experience bar')
-	eq(size(p.repNpc.bar), '120,28', 'the NPC bar')
+	eq(size(p.repXp.bar), '150,13', 'the experience bar')
+	eq(size(p.repNpc.bar), '100,28', 'the NPC bar')
+	eq(size(p.repTip.tip), '74,44', 'the NPC tooltip')
+	eq(drawn(p.repTip.tip), 'theme,solid,tooltip', 'a tooltip panel')
+	eq(border_color(p.repTip.tip), PICKED, "its border in the standing's color")
+	eq(rgb3(p.repTip.label:GetTextColor()) .. ' ' .. p.repTip.label:GetText(), PICKED .. ' Friendly', 'its name')
+	for _, key in ipairs({ 'repXp', 'repNpc', 'repTip' }) do check(p.cells[key].holder:IsShown(), key .. ' shows') end
+	-- 150 + 100 + 74 and two gaps of 8 is 340: 15 in.
+	eq(at(F, p.repXp.bar), 20 + 15, 'centered')
 	eq(drawn(p.repXp.bar) .. ' ' .. drawn(p.repNpc.bar), 'theme,solid,bar theme,solid,bar', 'both bars')
 	eq(bar_color(p.repXp.bar) .. ' ' .. bar_color(p.repNpc.bar), PICKED .. ' ' .. PICKED, 'both in the color')
 	eq(p.repXp.bar:GetValue() .. ',' .. p.repNpc.bar:GetValue(), '70,70', '70%')
 	eq(p.repXp.label:GetText() .. ',' .. p.repNpc.label:GetText(), 'Friendly,Friendly', 'the label on both')
-	eq(p.cells.repXp.caption:GetText() .. ',' .. p.cells.repNpc.caption:GetText(), 'Reputation bar,NPC health', 'captions')
+	eq(p.cells.repXp.caption:GetText() .. ',' .. p.cells.repNpc.caption:GetText() .. ',' .. p.cells.repTip.caption:GetText(), 'Reputation bar,NPC health,Tooltip', 'captions')
+	reset()
+end)
+
+test('bar reputation for Renown (npc = false, tooltip = false): the experience bar alone, centered; no NPC bar or tooltip takes Renown', function()
+	T.theme('thick')
+	local F, p = open_bar({ style = 'reputation', label = 'Renown', npc = false, tooltip = false })
+	check(p.cells.repXp.holder:IsShown(), 'the experience bar shows')
+	check(not p.cells.repNpc.holder:IsShown() and not p.cells.repNpc.caption:IsShown(), 'no NPC health bar')
+	check(not p.cells.repTip.holder:IsShown() and not p.cells.repTip.caption:IsShown(), 'no tooltip')
+	eq(bar_color(p.repXp.bar), PICKED, 'the experience bar in the color')
+	eq(at(F, p.repXp.bar), 20 + 110, '150 centered in 370')
+	-- npc = false alone leaves the tooltip.
+	F, p = open_bar({ style = 'reputation', label = 'Hated', npc = false })
+	check(not p.cells.repNpc.holder:IsShown() and p.cells.repTip.holder:IsShown(), 'npc = false leaves only the bar out')
+	reset()
+end)
+
+test('every label in a tile has a width and is cut at its end: none runs past its bar or tile in a wide face', function()
+	T.theme('thick')
+	local F, p = open_bar({ style = 'unit', label = 'Demon Hunter' })
+	local function bounded(fs, limit, what)
+		eq(fs:CanWordWrap(), false, what .. ': no word wrap')
+		local w = fs:GetWidth()
+		check(w > 0 and w <= limit, what .. (': a width of its own, within %d (got %s)'):format(limit, tostring(w)))
+	end
+	bounded(p.unitBar.label, 200 - 12 - 40, 'unit label')
+	bounded(p.unitBar.percent, 40, 'percent')
+	bounded(p.unitRaid.label, 80, 'raid frame label')
+	bounded(p.unitTip.label, 74 - 14, 'tooltip name')
+	bounded(p.unitTip.level, 74 - 14, 'tooltip level')
+	check(p.unitBar.label:GetWidth() + p.unitBar.percent:GetWidth() <= 200 - 12, 'the label and percent fit the bar together')
+	F, p = open_bar({ style = 'role', name = 'Healer' })
+	bounded(p.roleRaid.label, 80, 'role label')
+	F, p = open_bar({ style = 'plate', threat = true })
+	bounded(p.plate.name, 200, 'plate name'); bounded(p.plate.threat, 40, 'threat percent')
+	for _, style in ipairs({ 'reputation', 'power' }) do
+		F, p = open_bar({ style = style, label = 'Demon Hunter' })
+		for _, key in ipairs({ 'repXp', 'repNpc', 'powerBars' }) do
+			if p[key].label then
+				eq(p[key].label:CanWordWrap(), false, key .. ' label: no word wrap')
+				eq(p[key].label:IsTruncated() or true, true, key)
+			end
+		end
+	end
 	reset()
 end)
 
@@ -1619,6 +1670,36 @@ test('a style no kind has shows nothing and errors nothing', function()
 	end
 end)
 
+test('a bar and a border row with an opacity (402 wide): the cells centered, whole, inside the strip', function()
+	local HAIR = 2 ^ -14
+	for _, case in ipairs(BAR_CASES) do
+		for _, look in ipairs({ 'thick', 'blizzard' }) do
+			T.theme(look)
+			stub.size_noise = HAIR
+			reset()
+			stub.size_noise = HAIR
+			local where = case.kind .. ' ' .. case.style .. ' ' .. look .. ' 402: '
+			local _, F = open({ preview = case, name = 'Row', hasAlpha = true, a = 0.5 })
+			check(math.abs(F.preview:GetWidth() - 402) < 0.01, where .. 'the strip is 402 wide')
+			local off = P.off(F.frame)
+			eq(#off, 0, where .. P.report(off))
+			local first, last
+			for _, cell in pairs(F.previewPieces[case.kind].cells) do
+				if cell.holder:IsShown() then
+					check(cell.holder:GetLeft() + 0.001 >= F.preview:GetLeft() and cell.holder:GetRight() <= F.preview:GetRight() + 0.001, where .. 'inside the strip')
+					first = math.min(first or 1e9, cell.holder:GetLeft() - F.preview:GetLeft())
+					last = math.min(last or 1e9, F.preview:GetRight() - cell.holder:GetRight())
+				end
+			end
+			local gap = math.abs(first - last)
+			check(gap <= 1, where .. ('centered (left room %s, smallest right room %s)'):format(first, last))
+			reset()
+		end
+	end
+	stub.size_noise = 0
+	T.theme('thick')
+end)
+
 ------------------------------------------------------------------ the rows
 
 local function walk_rows()
@@ -1655,7 +1736,7 @@ end)
 test("the rows carry the previews the spec's table gives", function()
 	local CO = st:GetModule('Colors')
 	local args = CO:GetConfigTable().args
-	local function view(p) return type(p) == 'table' and (p.kind .. ',' .. tostring(p.style) .. ',' .. tostring(p.label) .. ',' .. tostring(p.threat) .. ',' .. tostring(p.tooltip)) or tostring(p) end
+	local function view(p) return type(p) == 'table' and (p.kind .. ',' .. tostring(p.style) .. ',' .. tostring(p.label) .. ',' .. tostring(p.threat) .. ',' .. tostring(p.tooltip) .. (p.npc == nil and '' or ',npc=' .. tostring(p.npc))) or tostring(p) end
 	for key, color in pairs(args.class.args) do
 		eq(view(color.preview), 'bar,unit,' .. color.name .. ',nil,nil', 'Class > ' .. key .. ': the unit frame, labeled with the class')
 	end
@@ -1665,7 +1746,7 @@ test("the rows carry the previews the spec's table gives", function()
 		local o = args.reaction.args[tostring(i)]
 		eq(view(o.preview), 'bar,reputation,' .. o.name .. ',nil,nil', 'Reputation > ' .. o.name)
 	end
-	eq(view(args.reaction.args.renown.preview), 'bar,reputation,Renown,nil,nil', 'Renown')
+	eq(view(args.reaction.args.renown.preview), 'bar,reputation,Renown,nil,false,npc=false', 'Renown: the experience bar only')
 	for _, key in ipairs({ 'COMBO_POINTS', 'CHI', 'HOLY_POWER', 'SOUL_SHARDS', 'ARCANE_CHARGES' }) do
 		eq(view(args.power.args[key].preview), 'bar,points,nil,nil,nil', 'Power > ' .. key .. ' is the points')
 	end

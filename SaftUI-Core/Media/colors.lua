@@ -129,11 +129,32 @@ local function PaintList(list, key)
 	end
 end
 
+-- With /sui debug on, the timed passes of an edit also say which reader took
+-- longest: each module's handler, and the followers of the pass as one. Only
+-- while `measuring` (RunDue sets it around one pass, with debug on): a pass
+-- with debug off reads no clock here.
+local measuring = false
+local readerName, readerMs = nil, -1
+
+local function NoteReader(name, ms)
+	if ms > readerMs then readerName, readerMs = name, ms end
+end
+
+local function NameOf(module)
+	return module.moduleName or (module.GetName and module:GetName()) or '?'
+end
+
 local function RunModules(group, key)
 	for _, module in pairs(st.modules) do
 		if module.OnColorsChanged then
 			moduleObject, moduleGroup, moduleKey = module, group, key
-			xpcall(CallModule, geterrorhandler())
+			if measuring then
+				local start = debugprofilestop()
+				xpcall(CallModule, geterrorhandler())
+				NoteReader(NameOf(module), debugprofilestop() - start)
+			else
+				xpcall(CallModule, geterrorhandler())
+			end
 		end
 	end
 end
@@ -143,8 +164,10 @@ local function RunPass(group, key)
 	pass = pass + 1
 	local byGroup = followers[group]
 	if byGroup then
+		local start = measuring and debugprofilestop()
 		if key ~= nil and byGroup[key] then PaintList(byGroup[key], key) end
 		if byGroup[ALL] then PaintList(byGroup[ALL], key) end
+		if start then NoteReader('followers', debugprofilestop() - start) end
 	end
 	RunModules(group, key)
 	pass = pass - 1
@@ -176,14 +199,16 @@ local editing = false
 local editSerial = 0 -- which edit: RunDue tells an edit ended and another begun inside one pass
 
 -- The edit's numbers, one table reset in place at st:BeginColorEdit.
-local stats = { passes = 0, total = 0, slowest = 0, slowestGroup = nil, slowestKey = nil, waited = 0 }
+local stats = { passes = 0, total = 0, slowest = 0, slowestGroup = nil, slowestKey = nil, slowestReader = nil, slowestReaderMs = nil, waited = 0 }
 function CO.EditStats() return stats end
 
-local function Record(group, key, ms)
+-- reader and readerMs, with debug on, name the slowest reader of the pass.
+local function Record(group, key, ms, reader, readerTime)
 	stats.passes = stats.passes + 1
 	stats.total = stats.total + ms
 	if ms > stats.slowest or stats.slowestGroup == nil then
 		stats.slowest, stats.slowestGroup, stats.slowestKey = ms, group, key
+		stats.slowestReader, stats.slowestReaderMs = reader, readerTime
 	end
 end
 
@@ -213,10 +238,13 @@ local function RunDue()
 		if serial ~= editSerial or not editing then return end
 		local group, key = markGroup[i], markKey[i]
 		markSet[group][key == nil and ALL or key] = nil
+		measuring = st.DEBUG and true or false
+		readerName, readerMs = nil, -1
 		local start = debugprofilestop()
 		RunPass(group, key)
+		measuring = false
 		if serial ~= editSerial or not editing then return end
-		Record(group, key, debugprofilestop() - start)
+		Record(group, key, debugprofilestop() - start, readerName, readerName and readerMs or nil)
 	end
 	local rest = marked - n
 	for j = 1, rest do
@@ -248,6 +276,7 @@ function st:BeginColorEdit()
 	editing = true
 	editSerial = editSerial + 1
 	stats.passes, stats.total, stats.slowest, stats.slowestGroup, stats.slowestKey, stats.waited = 0, 0, 0, nil, nil, 0
+	stats.slowestReader, stats.slowestReaderMs = nil, nil
 	CO.wait = 0
 end
 
@@ -309,6 +338,9 @@ function st:EndColorEdit()
 	endTop = base
 	if st.DEBUG and stats.passes > 0 then
 		local name = stats.slowestKey == nil and stats.slowestGroup or (stats.slowestGroup .. ' ' .. tostring(stats.slowestKey))
+		if stats.slowestReader then
+			name = ('%s, slowest reader %s %.1f ms'):format(name, stats.slowestReader, stats.slowestReaderMs)
+		end
 		st:Debug('Colors', ('%d passes, slowest %.1f ms (%s), mean %.1f ms, %d frames waited.'):format(
 			stats.passes, stats.slowest, name, stats.total / stats.passes, stats.waited))
 	end
@@ -827,8 +859,12 @@ local function PreviewOf(color)
 		return Kept(color, function() return { kind = 'bar', style = 'unit', label = color.name } end)
 	end
 	if group == 'roles' then return ROLES_PREVIEW end
-	if group == 'reaction' or group == 'renown' then
+	if group == 'reaction' then
 		return Kept(color, function() return { kind = 'bar', style = 'reputation', label = color.name } end)
+	end
+	if group == 'renown' then
+		-- Only the experience bar (and the feed's renown line) wears Renown: no NPC bar or tooltip.
+		return Kept(color, function() return { kind = 'bar', style = 'reputation', label = color.name, npc = false, tooltip = false } end)
 	end
 	if group == 'power' then
 		if POINT_POWERS[color.key] then return POINTS_PREVIEW end

@@ -114,7 +114,7 @@ These are not bugs. Note them only if they differ.
 
 This is the only way to know the real cost in a 40-player raid, and the spec's target is 2 ms a pass (L7), with a guard that waits a frame for each 8 ms over, three at most.
 
-1. Turn on `/sui debug`. In a raid (or Test mode with Raid 40) with every bag and the bank open, SaftUI's tracker on and edit mode off, drag Class > (your class), Text > Danger, Item quality > Epic, Buttons > Danger and the Accent for a few seconds each, then press Okay: the `<DEBUG:Colors>` line gives the passes, the slowest and its color, the mean and the frames waited. Note any slowest pass over 2 ms, and every line with frames waited over 0.
+1. Turn on `/sui debug`. In a raid (or Test mode with Raid 40) with every bag and the bank open, SaftUI's tracker on and edit mode off, drag Class > (your class), Text > Danger, Item quality > Epic, Buttons > Danger and the Accent for a few seconds each, then press Okay: the `<DEBUG:Colors>` line gives the passes, the slowest and its color with the slowest reader of that pass (a module, or `followers`), the mean and the frames waited. Send the line for Buttons > Hover and Pushed with the micro menu hidden and then shown. Note any slowest pass over 2 ms, and every line with frames waited over 0.
 2. Drag a color on the Theme tab (its Border or Background) and press Okay: the line names `theme`. If `theme` is over 8 ms, say so: it is the followup "The Theme tab's color drag recolors every drawn frame" in `docs/followups.md`.
 3. Repeat with edit mode on and the History list open, and with Raid 40 in Test mode (the heaviest case for the unit frames).
 
@@ -130,18 +130,20 @@ The strip under the picker's square, with a "Preview" caption. Every color on th
    - Roles: a raid frame with the role corner at its bottom right in the color.
    - Reputation (each standing) and Renown: the experience bar's reputation bar and an NPC's health bar.
    - Power > Mana, Rage, Energy and the rest: a health bar with the power bar under it in the color. Combo points, Chi (and on retail Holy power, Soul shards, Arcane charges): five points, three lit. Under Blizzard they are drawn Thick with "Shown as Thick: under Blizzard, class power points wear Blizzard's art."
-   - Threat > Warning and Bad: a nameplate 200 by 20 with its name and the percent above its right end, both in the color.
+   - Threat > Warning and Bad: a nameplate 200 by 20 with its name (in Text > Danger, a hostile's) and the percent above its right end; the bar and the percent are in the color.
 4. **P4, borders and the Accent.**
    - Item quality (any): a bag slot with its border in the color and an icon inside the border, and a loot feed line with the item's name in the color.
    - Loot > Mount: a feed entry with its border, its icon's border and its fill (at 60%) in the color. Compare with a real mount line in the feed.
    - Theme > Accent: four tiles (Field edge, Check box, Slider, Sidebar row) in the accent as you drag; under Blizzard Link, Picked entry, Own mark and Grid centre.
 5. **Look at the pieces.** Do the thumbs read as scroll bar thumbs, is the 12 check box too small, should the Flash slots hold an icon, do the bars read as the unit frame's, raid frame's and nameplate's? Under Blizzard the bars here are the experience bar's kind, not the unit frames' bronze box with Blizzard's fill art: say if that misleads.
-6. **A long sample in a wide font.** Choose a wide Text font (Colus, for example): the captions ("Options windows", "Sidebar row", "Health and power", "Reputation bar") are cut at their end, never wrapped, and the Blizzard notes are cut at theirs; a long label ("Death Knight", "Demon Hunter", "Disconnected") stays inside the raid frame and tooltip.
+6. **A long sample in a wide font.** Choose a wide Text font (Colus, for example): the captions ("Options windows", "Sidebar row", "Health and power", "Reputation bar") are cut at their end, never wrapped, and the Blizzard notes are cut at theirs; a long label (Class > Demon Hunter or Death Knight; Status' labels are Offline and Tapped) is cut at its end inside the raid frame, the bar and the tooltip, never past them.
 7. **The Blizzard notes.** Buttons (any key) and Power > Combo points under Blizzard: the note at the right of "Preview". Under Thick or Thin none. Class, Item quality and the rest have no note under Blizzard.
 8. **An opacity.** Buttons colors have an opacity: the strip is 402 wide and the tiles stay whole; the other rows have none and the strip is 370.
 9. **Cancel.** Drag any row's color, press Cancel, open it again: the preview shows the saved color; open another row: its pieces show their own saved colors.
-10. **A theme flip with the picker open.** With a picker open on Power > Combo points, Buttons > Hover or the Accent, switch the theme on the Theme tab if you can reach it (or open the Colors page from a tab beside it): the pieces and the note change at once, and no tile moves off the strip.
+10. **A theme flip with the picker open.** Only the Accent's picker can be flipped from the window: open Global settings > Theme > Accent, and with its picker open change the Theme select above it between Thick and Blizzard: the four tiles switch to the other set at once. The Colors page's pickers (Buttons, Power > Combo points and the rest) sit on another tab, so there is no way to change the theme with one open: do not look for one (the tests cover the flip for every kind).
 11. **Near the screen's bottom.** Open the picker from a Colors row near the bottom of the window: the 436-tall picker stays on screen and its Last used chips still fill and click.
 12. **Nothing is clickable.** The slot, the feed line, the bars and the tooltip in a preview take no mouse: hovering them shows no tooltip and clicking does nothing.
 13. **P5, a unit's Custom color** (outside the Colors page): today's picker, no preview, 342 tall.
-14. **Placement.** If the strip under the square feels wrong in use, say so: B is Ruling 18.
+14. **Renown and Reputation.** Renown shows the experience bar's renown fill and no NPC bar (no NPC takes Renown); Reputation shows the reputation bar, an NPC's health bar and a tooltip with the NPC's name and border in the standing's color. Compare with a real NPC's tooltip.
+15. **Under Blizzard, do the bars look like the real ones?** The preview's bars are the experience bar's kind, not the raid frames' tinted `RaidFrame-Hp-Fill` art: the same RGB on another texture. Say if a pick looks darker or brighter on your real health bar than on the preview.
+16. **Placement.** If the strip under the square feels wrong in use, say so: B is Ruling 18.

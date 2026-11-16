@@ -550,15 +550,19 @@ kinds.accent = accent
 	laid out and shown by Layout (spec.fields.style), and painted by Paint for
 	the style shown only.
 
-	bar (fields: style, label, threat, tooltip):
+	bar (fields: style, label, threat, tooltip, npc):
 	  unit        a unit frame's health bar 200 by 28 (label at its left, 70% at its
 	              right), a raid frame 80 by 40 (the label), a unit tooltip 74 by 44
 	              with the label as its name and its border in the color; tooltip =
 	              false leaves the tooltip out (Status colors only color health);
 	  role        a raid frame 80 by 40 with the role corner (st.textures.cornerbr,
 	              16, at the bar's bottom right corner, 2 out, as the Roles default);
-	  reputation  the experience bar's reputation bar (170 by 13) and an NPC's
-	              health bar (120 by 28), each with the label;
+	  reputation  the experience bar's reputation bar (150 by 13), an NPC's
+	              health bar (100 by 28) and an NPC's tooltip (74 by 44, its name
+	              and border in the color), each with the label; npc = false
+	              leaves the health bar out and tooltip = false the tooltip (Renown:
+	              only the experience bar and the feed's renown line take it, and
+	              the feed line is not drawn);
 	  power       a health bar 200 by 24 with the power bar 200 by 12 under it, the
 	              power bar in the color and the label on it;
 	  points      five class power points 34 by 20, 7 apart, three lit; under
@@ -611,15 +615,38 @@ local function NewBar(parent, width, height, max)
 	bar:SetMinMaxValues(0, max or 100)
 	bar:SetValue(max and 0 or BAR_FILL)
 	bar:EnableMouse(false)
+	bar.text:SetWordWrap(false) -- its label is cut at its end, never wrapped
 	return bar
 end
 
--- A text on bar in the unit frames' own face, at point of it.
-local function BarText(bar, point, x, text)
+-- A text on bar in the unit frames' own face, at point of it, width wide
+-- (every label has one, so a wide face cuts it at its end and never runs it
+-- past its bar) and justified to the side it sits on.
+local function BarText(bar, point, x, text, width)
 	local fs = st:CreateFontString(bar, 'pixel', text)
 	fs:SetPoint(point, bar, point, x, 0)
+	fs:SetWidth(width)
 	fs:SetWordWrap(false)
+	fs:SetJustifyH(point)
 	return fs
+end
+
+-- A unit tooltip 74 by 44 (a tooltip panel) with a name line, whose room is the
+-- panel less its padding (cut at its end), and a level line.
+local function NewTip(cell, p)
+	p.tip = Bare(st:CreateFrame('Frame', nil, cell.holder))
+	p.tip:SetSize(74, PV.TILE_HEIGHT)
+	st:SetTemplate(p.tip, 'theme', 'solid', 'tooltip')
+	Put(p.tip, cell.holder, 0, 0)
+	p.label = TextFont(Kit.NewText(p.tip, 'LEFT'))
+	p.label:SetPoint('TOPLEFT', p.tip, 'TOPLEFT', TOOLTIP_PAD, -5)
+	p.label:SetWidth(74 - 2 * TOOLTIP_PAD)
+	p.label:SetWordWrap(false)
+	p.level = TextFont(Kit.NewText(p.tip, 'LEFT'))
+	p.level:SetPoint('TOPLEFT', p.tip, 'TOPLEFT', TOOLTIP_PAD, -22)
+	p.level:SetWidth(74 - 2 * TOOLTIP_PAD)
+	p.level:SetWordWrap(false)
+	p.level:SetText('Level 70')
 end
 
 -- A cell: the holder, with its caption under it. The caption is on the area
@@ -642,7 +669,7 @@ end
 
 -- Shows the cells of a style, side by side 8 apart and centered in width, and
 -- hides the others. The active list is what Paint walks.
-local function LayoutCells(pieces, width, order, skip)
+local function LayoutCells(pieces, width, order, fields)
 	for _, cell in pairs(pieces.cells) do
 		cell.holder:Hide()
 		cell.caption:Hide()
@@ -652,7 +679,7 @@ local function LayoutCells(pieces, width, order, skip)
 	local total = 0
 	for _, key in ipairs(order or {}) do
 		local cell = pieces.cells[key]
-		if not (cell.optional and skip == cell.optional) then
+		if not (cell.optional and fields and fields[cell.optional] == false) then
 			active[#active + 1] = cell
 			total = total + cell.width
 		end
@@ -685,7 +712,7 @@ local bar = {}
 local BAR_STYLES = {
 	unit = { 'unitBar', 'unitRaid', 'unitTip' },
 	role = { 'roleRaid' },
-	reputation = { 'repXp', 'repNpc' },
+	reputation = { 'repXp', 'repNpc', 'repTip' },
 	power = { 'powerBars' },
 	points = { 'pointsRow' },
 	plate = { 'plate' },
@@ -704,48 +731,39 @@ function bar.Build(area)
 	local cell, p = NewCell(pieces, 'unitBar', 200, 'Unit frame')
 	p.bar = NewBar(cell.holder, 200, 28)
 	Put(p.bar, cell.holder, 0, 8)
-	p.label = BarText(p.bar, 'LEFT', 6)
-	p.percent = BarText(p.bar, 'RIGHT', -6, '70%')
+	p.label = BarText(p.bar, 'LEFT', 6, nil, 140)
+	p.percent = BarText(p.bar, 'RIGHT', -6, '70%', 40)
 
 	cell, p = NewCell(pieces, 'unitRaid', 80, 'Raid frame')
 	p.bar = NewBar(cell.holder, 80, 40)
 	Put(p.bar, cell.holder, 0, 2)
-	p.label = BarText(p.bar, 'CENTER', 0)
+	p.label = BarText(p.bar, 'CENTER', 0, nil, 72)
 
 	cell, p = NewCell(pieces, 'unitTip', 74, 'Tooltip', 'tooltip')
-	p.tip = Bare(st:CreateFrame('Frame', nil, cell.holder))
-	p.tip:SetSize(74, PV.TILE_HEIGHT)
-	st:SetTemplate(p.tip, 'theme', 'solid', 'tooltip')
-	Put(p.tip, cell.holder, 0, 0)
-	p.label = TextFont(Kit.NewText(p.tip, 'LEFT'))
-	p.label:SetPoint('TOPLEFT', p.tip, 'TOPLEFT', TOOLTIP_PAD, -5)
-	p.label:SetWidth(74 - 2 * TOOLTIP_PAD)
-	p.label:SetWordWrap(false)
-	p.level = TextFont(Kit.NewText(p.tip, 'LEFT'))
-	p.level:SetPoint('TOPLEFT', p.tip, 'TOPLEFT', TOOLTIP_PAD, -22)
-	p.level:SetWidth(74 - 2 * TOOLTIP_PAD)
-	p.level:SetWordWrap(false)
-	p.level:SetText('Level 70')
+	NewTip(cell, p)
 
 	-- role: a raid frame with the role corner.
 	cell, p = NewCell(pieces, 'roleRaid', 80, 'Raid frame')
 	p.bar = NewBar(cell.holder, 80, 40)
 	Put(p.bar, cell.holder, 0, 2)
-	p.label = BarText(p.bar, 'CENTER', 0)
+	p.label = BarText(p.bar, 'CENTER', 0, nil, 72)
 	p.corner = p.bar:CreateTexture(nil, 'OVERLAY')
 	p.corner:SetTexture(st.textures.cornerbr)
 	p.corner:SetSize(ROLE_SIZE, ROLE_SIZE)
 	p.corner:SetPoint('BOTTOMRIGHT', p.bar, 'BOTTOMRIGHT', ROLE_OFFSET, -ROLE_OFFSET)
 
 	-- reputation: the experience bar's reputation bar and an NPC's health bar.
-	cell, p = NewCell(pieces, 'repXp', 170, 'Reputation bar')
-	p.bar = NewBar(cell.holder, 170, 13)
+	cell, p = NewCell(pieces, 'repXp', 150, 'Reputation bar')
+	p.bar = NewBar(cell.holder, 150, 13)
 	Put(p.bar, cell.holder, 0, floor((PV.TILE_HEIGHT - 13) / 2))
 	p.label = p.bar.text
-	cell, p = NewCell(pieces, 'repNpc', 120, 'NPC health')
-	p.bar = NewBar(cell.holder, 120, 28)
+	cell, p = NewCell(pieces, 'repNpc', 100, 'NPC health', 'npc')
+	p.bar = NewBar(cell.holder, 100, 28)
 	Put(p.bar, cell.holder, 0, 8)
 	p.label = p.bar.text
+	-- An NPC's tooltip takes the standing's color too (SaftUI-Misc's tooltip.lua).
+	cell, p = NewCell(pieces, 'repTip', 74, 'Tooltip', 'tooltip')
+	NewTip(cell, p)
 
 	-- power: the health bar and the power bar under it.
 	cell, p = NewCell(pieces, 'powerBars', 200, 'Health and power')
@@ -772,9 +790,12 @@ function bar.Build(area)
 	cell, p = NewCell(pieces, 'plate', 200, 'Nameplate')
 	p.bar = NewBar(cell.holder, 200, 20)
 	Put(p.bar, cell.holder, 0, 20)
-	p.name = BarText(p.bar, 'LEFT', 6, 'Wolf')
+	p.name = BarText(p.bar, 'LEFT', 6, 'Wolf', 150)
 	p.threat = st:CreateFontString(cell.holder, 'pixel', '85%')
 	p.threat:SetPoint('BOTTOMRIGHT', p.bar, 'TOPRIGHT', 0, 6) -- the nameplate's default (threat.position)
+	p.threat:SetWidth(40)
+	p.threat:SetWordWrap(false)
+	p.threat:SetJustifyH('RIGHT')
 	return pieces
 end
 
@@ -782,7 +803,7 @@ function bar.Layout(pieces, width, _, spec)
 	local fields = spec.fields
 	local style = fields.style
 	pieces.style = BAR_STYLES[style] and style or nil
-	LayoutCells(pieces, width, BAR_STYLES[style], fields.tooltip == false and 'tooltip' or nil)
+	LayoutCells(pieces, width, BAR_STYLES[style], fields)
 	local label = LabelOf(spec)
 	pieces.unitBar.label:SetText(label)
 	pieces.unitRaid.label:SetText(label)
@@ -790,6 +811,7 @@ function bar.Layout(pieces, width, _, spec)
 	pieces.roleRaid.label:SetText(label)
 	pieces.repXp.label:SetText(label)
 	pieces.repNpc.label:SetText(label)
+	pieces.repTip.label:SetText(label)
 	pieces.powerBars.label:SetText(label)
 	local points = pieces.pointsRow
 	local look = PointLook()
@@ -825,6 +847,10 @@ end
 
 function PAINT.reputation(p, r, g, b)
 	local nr, ng, nb = st:Color('text', 'normal'):GetRGB()
+	local tip = p.repTip
+	tip.label:SetTextColor(r, g, b)
+	tip.level:SetTextColor(nr, ng, nb)
+	st:SetBorderColor(tip.tip, r, g, b)
 	p.repXp.bar:SetStatusBarColor(r, g, b)
 	p.repXp.label:SetTextColor(nr, ng, nb)
 	p.repNpc.bar:SetStatusBarColor(r, g, b)
