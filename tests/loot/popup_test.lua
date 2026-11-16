@@ -4,8 +4,8 @@
 --   - with Enable on and a Thick or Thin look: SaftUI's panel behind the window,
 --     Blizzard's border and background faded, the title in the Window titles
 --     font, the close button's art faded and a cross of SaftUI's over it; each row
---     a card of SaftUI's (its Blizzard card and click art faded, its border the
---     accent while the mouse is over the row) and its icon in a slot of SaftUI's
+--     a card of SaftUI's (its Blizzard card and click art faded, tinted by the
+--     states' hover while the mouse is over the row, its border the theme's) and its icon in a slot of SaftUI's
 --     whose border is the item's quality color, cropped by Icon zoom with its round
 --     mask off; the texts in the Loot window's font; a changed slot recolors;
 --   - under Blizzard, under None and with Enable off, Blizzard's own art, fonts,
@@ -321,18 +321,22 @@ test('a row handed out while Enable is off is not hooked, and no row is hooked t
 	clean()
 end)
 
-test('the mouse over a row turns its card\'s border to the accent', function()
+test('the mouse over a row tints its card, and its border stays the theme\'s', function()
 	world('forever')
 	open()
 	local row = rows()[1]
-	local card = drawn_child(row).backdrop
+	local holder = drawn_child(row)
+	local card = holder.backdrop
 	local before = T.edge_rgb(card)
 	LF.fire(row.Item, 'OnEnter')
-	local accent = st:Color('accent')
-	eq(T.edge_rgb(card), T.text(accent.r, accent.g, accent.b), 'the accent under the mouse')
+	eq(st:GetState(holder, 'hover'), true, 'the card is hovered')
+	check(st:StateLook(holder).layer.shown, 'its tint shows')
+	eq(T.edge_rgb(card), before, 'the border is the theme\'s, not the accent')
 	eq(row.HighlightNameFrame:GetAlpha(), 0, 'Blizzard\'s hover stroke stays faded (it shows, at no alpha)')
 	LF.fire(row.Item, 'OnLeave')
-	eq(T.edge_rgb(card), before, 'the theme\'s own border again')
+	eq(st:GetState(holder, 'hover'), false, 'the card is let go')
+	check(not st:StateLook(holder).layer.shown, 'its tint is gone')
+	eq(T.edge_rgb(card), before, 'the theme\'s own border')
 	clean()
 end)
 
@@ -463,8 +467,7 @@ test('a color change reaches the slots, and a recolor does not leave them on the
 	local first = rows()[1]
 	LF.fire(first.Item, 'OnEnter')
 	st:RecolorThemed()
-	local accent = st:Color('accent')
-	eq(T.edge_rgb(drawn_child(first).backdrop), T.text(accent.r, accent.g, accent.b), 'a card under the mouse keeps the accent')
+	eq(st:GetState(drawn_child(first), 'hover'), true, 'a card under the mouse keeps its hover through a recolor')
 	clean()
 end)
 
