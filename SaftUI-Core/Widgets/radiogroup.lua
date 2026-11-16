@@ -16,22 +16,11 @@ local st = SaftUI
         ]
     }
 ]]--
--- The buttons draw as controls. Under the Blizzard theme they're Blizzard's
--- top tabs (st:SetButtonTab), the picked one active, with no border of
--- SaftUI's to color; under Thick and Thin, SaftUI's buttons, the picked one
--- with an accent border.
-
--- The picked button's accent border. Kept through a theme recolor; a control's
--- border under Blizzard is left alone (st:SetBorderColor).
-local function ColorPicked(button)
-    st:SetBorderColor(button.backdrop, st:Color('accent'):GetRGB())
-end
-
--- The Accent reaches the picked button at once (st:FollowColor); the others
--- keep the theme's border.
-local function PaintPicked(button)
-    if button.picked then ColorPicked(button) end
-end
+-- The buttons are st:SkinButton's (a control each). Under the Blizzard theme
+-- they're Blizzard's top tabs (st:SetButtonTab), the picked one active; under
+-- Thick and Thin, SaftUI's buttons, the picked one selected
+-- (st:SetState(button, 'selected', picked): the accent border and the fade).
+-- A group drawn with None has no backdrop, and nothing here indexes one.
 
 function st:CreateRadioGroup(name, parent, options)
     -- The group has no backdrop of its own; its buttons have theirs.
@@ -48,17 +37,14 @@ function st:CreateRadioGroup(name, parent, options)
         button:SetSize(options.buttonWidth, options.buttonHeight)
         st:SetButtonTab(button, false)
         button.config = item --store button config for use in callbacks
-        st:FollowColor(button, 'accent', nil, PaintPicked)
         button:SetScript('OnClick', function(self, mouseButton, down)
             for _, _button in pairs(radioGroup.buttons) do
-				st:SetBackdrop(_button, options.theme or 'theme', options.background or 'solid', 'control')
-				st:KeepOwnColors(_button, nil)
 				_button.picked = false
+				st:SetState(_button, 'selected', false)
 				st:SetButtonTab(_button, false)
 			end
-			ColorPicked(self)
 			self.picked = true
-			st:KeepOwnColors(self, ColorPicked)
+			st:SetState(self, 'selected', true)
 			st:SetButtonTab(self, true)
 
             -- global click handler

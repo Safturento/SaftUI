@@ -125,6 +125,17 @@ test('a button draws its icon from plain textures and its border in the theme as
 	check(container ~= nil, 'the bag window exists')
 end)
 
+test("every view button hovers right after the window is made, before a click (a module's SetScript keeps hover)", function()
+	local container = world()
+	for _, view in ipairs(VIEWS) do
+		local button = container.viewButtons[view]
+		stub.fire_script(button, 'OnEnter', true)
+		eq(SaftUI:GetState(button, 'hover'), true, view .. ': hover')
+		stub.fire_script(button, 'OnLeave', true)
+		eq(SaftUI:GetState(button, 'hover'), false, view .. ': and it ends')
+	end
+end)
+
 test('the tooltip names the view', function()
 	local container = world()
 	for _, view in ipairs(VIEWS) do
