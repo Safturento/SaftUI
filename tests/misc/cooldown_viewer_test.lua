@@ -493,3 +493,31 @@ test("a Fonts tab size change reaches a bar item's count height (the Cooldown Ma
 	profile.skinning.font = 'pixel'
 	eq(#take_errors(), 0, 'no errors')
 end)
+
+-- Blizzard scales the items by the Edit Mode Icon size (iconScale). The border
+-- is drawn in the item's own pixels (whole at k = 1: two lines are 2 / scale
+-- units), so the icon sits that far in, as flush against its inside as the base
+-- drew it with 2 units on a scale of 1 and at any other scale.
+test('an item at an Icon size of 80%, 125% and 150%: the icon meets its border flush', function()
+	for _, client in ipairs({ 'forever', 'retail' }) do
+		for _, scale in ipairs({ 1, 0.8, 1.25, 1.5 }) do
+			world(client)
+			CV.Utility.iconScale = scale
+			local items = CV.Utility:RefreshLayout(2)
+			for _, item in ipairs(items) do
+				local backdrop = backdrop_of(item)
+				check(backdrop ~= nil, 'a backdrop')
+				local drawnInset = st:DrawnInset(backdrop)
+				local want = 2 * st:GetPixelSize(item)
+				check(near(drawnInset, want), ('scale %s: the border is two of its pixels: %s'):format(scale, tostring(drawnInset)))
+				local _, _, _, x, y = item.Icon:GetPoint(1)
+				check(near(x, ITEM_INSET + drawnInset) and near(y, -(ITEM_INSET + drawnInset)),
+					('%s scale %s: the icon sits %s in, the border reaches %s'):format(client, scale, tostring(x), tostring(ITEM_INSET + drawnInset)))
+			end
+			if scale == 1 then
+				local _, _, _, x = items[1].Icon:GetPoint(1)
+				check(rawequal(x, 4), 'at 100% it is the base number: 4')
+			end
+		end
+	end
+end)

@@ -30,8 +30,12 @@ end
 -- token built from it would carry that noise. Within 1e-6 (relative) of a
 -- whole k the pixel is exactly 1 / k.
 function st:GetPixelSize(frame)
+	return st:PixelFromScale((frame or UIParent):GetEffectiveScale())
+end
+
+-- st:GetPixelSize for an effective scale already read (a draw reads it once).
+function st:PixelFromScale(scale)
 	local physicalHeight = select(2, GetPhysicalScreenSize())
-	local scale = (frame or UIParent):GetEffectiveScale()
 	if not physicalHeight or physicalHeight == 0 or not scale or scale == 0 then
 		return nil
 	end

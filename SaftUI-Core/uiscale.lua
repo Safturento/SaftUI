@@ -135,13 +135,22 @@ function UIScale.Resolve(choice, screen, gameScale)
 end
 
 -- Reads the tokens back from UIParent, so they are what is drawn (never what
--- was chosen: a set can wait for combat). Left as they are with no screen.
+-- was chosen: a set can wait for combat), and puts one line on st.BACKDROP
+-- (Core's backdrop table, which stays a table: its edge and its four insets).
+-- Left as they are with no screen.
 function UIScale:SetTokens()
 	local pixel = st:GetPixelSize(UIParent)
 	if not pixel then return st.pixel, st.lineWeight, st.line end
 	st.pixel = pixel
 	st.lineWeight = UIScale.LineWeight(1 / pixel)
 	st.line = st.lineWeight * pixel
+	-- The table the bags' loading overlay (and anything else that takes it whole)
+	-- draws with: one line, as every border is.
+	local backdrop = st.BACKDROP
+	if backdrop then
+		backdrop.edgeSize = st.line
+		for _, side in ipairs({ 'left', 'right', 'top', 'bottom' }) do backdrop.insets[side] = st.line end
+	end
 	return st.pixel, st.lineWeight, st.line
 end
 
