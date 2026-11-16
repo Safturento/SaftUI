@@ -560,10 +560,12 @@ function CHT:FCFDock_UpdateTabs(dock, forceUpdate)
 	for index, frame in ipairs(dock.DOCKED_CHAT_FRAMES) do
 		local tab = TabOf(frame)
 		if tab then
+			-- Blizzard's layout just gave this tab an anchor of its own (LEFT of the one
+			-- before it, or on the dock): cleared, so the tab keeps only this one.
+			tab:ClearAllPoints()
 			if prev then
 				tab:SetPoint('BOTTOMLEFT', prev, 'BOTTOMRIGHT', 0, 0)
 			else
-				tab:ClearAllPoints()
 				tab:SetPoint('BOTTOMLEFT', frame, 'TOPLEFT', 0, 10)
 			end
 			prev = tab

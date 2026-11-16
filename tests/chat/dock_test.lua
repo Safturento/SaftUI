@@ -46,6 +46,21 @@ end
 -- Blizzard's FCFDock_UpdateTabs, then SaftUI's post-hook with the same arguments.
 local function update(dock, forceUpdate)
 	if dock.isDirty or forceUpdate then
+		-- Blizzard's layout: every tab cleared, then each docked one after the one before it
+		-- with one anchor (the first on the dock's scroll child).
+		local last
+		for index in ipairs(dock.DOCKED_CHAT_FRAMES) do
+			local tab = tab_of(dock, index)
+			if tab then
+				tab:ClearAllPoints()
+				if last then
+					tab:SetPoint('LEFT', last, 'RIGHT', 1, 0)
+				else
+					tab:SetPoint('BOTTOMLEFT', UIParent, 'BOTTOMLEFT', 5, 5)
+				end
+				last = tab
+			end
+		end
 		dock.isDirty = false -- the end of Blizzard's function
 	end
 	CHT:FCFDock_UpdateTabs(dock, forceUpdate)
@@ -81,6 +96,9 @@ end)
 test('a forced update anchors each later tab to the tab before it', function()
 	local dock = dock_of(4)
 	update(dock, true)
+	for i = 1, 4 do
+		eq(tab_of(dock, i):GetNumPoints(), 1, 'tab ' .. i .. ' has the one anchor, not Blizzard\'s and SaftUI\'s')
+	end
 	for i = 2, 4 do
 		local point, relative, relPoint = tab_of(dock, i):GetPoint(1)
 		eq(relative, tab_of(dock, i - 1), 'tab ' .. i .. ' is anchored to tab ' .. (i - 1))

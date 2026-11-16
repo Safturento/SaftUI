@@ -42,7 +42,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-15 — Chat's Fade tabs: ChatFrameUtil.GetTabAlphas isn't in the retail source](#2026-11-15--chats-fade-tabs-chatframeutilgettabalphas-isnt-in-the-retail-source)
   - [2026-11-15 — With IM chat style the tab row is always hidden, and the dock's overflow button still fades](#2026-11-15--with-im-chat-style-the-tab-row-is-always-hidden-and-the-docks-overflow-button-still-fades)
   - [2026-11-15 — Temporary chat windows (whispers, pet battle log) are never skinned](#2026-11-15--temporary-chat-windows-whispers-pet-battle-log-are-never-skinned)
-  - [2026-11-15 — Chat: the dock hook adds a second anchor to docked tabs 2 to n, and the dock test can't see it](#2026-11-15--chat-the-dock-hook-adds-a-second-anchor-to-docked-tabs-2-to-n-and-the-dock-test-cant-see-it)
   - [2026-11-15 — A font Size drag restyles too much on the action bars, unit frames and tracker](#2026-11-15--a-font-size-drag-restyles-too-much-on-the-action-bars-unit-frames-and-tracker)
   - [2026-11-15 — Hide full with a secret health: lift the limit with a Step curve into the text's alpha](#2026-11-15--hide-full-with-a-secret-health-lift-the-limit-with-a-step-curve-into-the-texts-alpha)
   - [2026-11-15 — Option descriptions that say "red" or "yellow" for what Danger and Caution color](#2026-11-15--option-descriptions-that-say-red-or-yellow-for-what-danger-and-caution-color)
@@ -135,6 +134,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-15 — Chat: the dock hook adds a second anchor to docked tabs 2 to n, and the dock test can't see it](#2026-11-15--chat-the-dock-hook-adds-a-second-anchor-to-docked-tabs-2-to-n-and-the-dock-test-cant-see-it)
   - [2026-11-15 — Chat's edit box can sit off the top of the screen when the chat Theme is None](#2026-11-15--chats-edit-box-can-sit-off-the-top-of-the-screen-when-the-chat-theme-is-none)
   - [2026-11-15 — Two Misc readers break "a pass only colors"](#2026-11-15--two-misc-readers-break-a-pass-only-colors)
   - [2026-11-11 — UIParent's scale is set once, at login, so plates leave whole pixels after a UI scale or display change](#2026-11-11--uiparents-scale-is-set-once-at-login-so-plates-leave-whole-pixels-after-a-ui-scale-or-display-change)
@@ -630,16 +630,6 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 **Shape of work:** A design pass: skin on a post-hook of `FCF_OpenTemporaryWindow`, or leave Blizzard's look on purpose.
 
 **Open questions:** Should a whisper window look like SaftUI's chat or like Blizzard's?
-
-### 2026-11-15 — Chat: the dock hook adds a second anchor to docked tabs 2 to n, and the dock test can't see it
-
-**What:** `CHT:FCFDock_UpdateTabs` (`SaftUI-Chat/chatframe.lua`) calls `tab:SetPoint('BOTTOMLEFT', prev, 'BOTTOMRIGHT', 0, 0)` on tabs 2 to n without `ClearAllPoints`, after Blizzard's own `ClearAllPoints` and `SetPoint('LEFT', prev, 'RIGHT', 1, 0)` on a forced update, so those tabs carry two anchors. It predates the chat work.
-
-**Why noticed:** The fu-p11 review. `tests/chat/dock_test.lua` now runs a stand-in of Blizzard's `FCFDock_UpdateTabs` before the hook, but the stand-in sets no anchors, so the test cannot see the second one. The owner found the tabs right in game on 2026-11-13, so it looks harmless.
-
-**Anchors:** `chatframe.lua` `CHT:FCFDock_UpdateTabs`; Blizzard's `FloatingChatFrame.lua` `FCFDock_UpdateTabs` (Forever about 2342-2368); `tests/chat/dock_test.lua`.
-
-**Shape of work:** Small: make the test's stand-in set Blizzard's anchors and assert `GetNumPoints()`; if two anchors matter, `tab:ClearAllPoints()` for every tab in the hook.
 
 ### 2026-11-15 — A font Size drag restyles too much on the action bars, unit frames and tracker
 
@@ -2466,6 +2456,18 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-15 — Chat: the dock hook adds a second anchor to docked tabs 2 to n, and the dock test can't see it
+
+**What:** `CHT:FCFDock_UpdateTabs` (`SaftUI-Chat/chatframe.lua`) calls `tab:SetPoint('BOTTOMLEFT', prev, 'BOTTOMRIGHT', 0, 0)` on tabs 2 to n without `ClearAllPoints`, after Blizzard's own `ClearAllPoints` and `SetPoint('LEFT', prev, 'RIGHT', 1, 0)` on a forced update, so those tabs carry two anchors. It predates the chat work.
+
+**Why noticed:** The fu-p11 review. `tests/chat/dock_test.lua` now runs a stand-in of Blizzard's `FCFDock_UpdateTabs` before the hook, but the stand-in sets no anchors, so the test cannot see the second one. The owner found the tabs right in game on 2026-11-13, so it looks harmless.
+
+**Anchors:** `chatframe.lua` `CHT:FCFDock_UpdateTabs`; Blizzard's `FloatingChatFrame.lua` `FCFDock_UpdateTabs` (Forever about 2342-2368); `tests/chat/dock_test.lua`.
+
+**Shape of work:** Small: make the test's stand-in set Blizzard's anchors and assert `GetNumPoints()`; if two anchors matter, `tab:ClearAllPoints()` for every tab in the hook.
+
+**Resolved 2026-11-15:** `CHT:FCFDock_UpdateTabs` clears every tab's points before its own anchor, so a docked tab has the one anchor instead of Blizzard's `LEFT` one and SaftUI's `BOTTOMLEFT`; `tests/chat/dock_test.lua`'s stand-in now sets Blizzard's anchors and the cases assert `GetNumPoints() == 1`. Not yet seen in game: the gap between tabs is the hook's 0, where Blizzard's anchor had 1.
 
 ### 2026-11-15 — Chat's edit box can sit off the top of the screen when the chat Theme is None
 
