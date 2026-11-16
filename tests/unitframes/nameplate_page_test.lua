@@ -591,6 +591,22 @@ test('another nameplate addon loaded: the page says which, and its options are d
 			check(tab.disabled, client .. ': ' .. tab.key .. ' is disabled')
 		end
 
+		-- The Auras tab carried over from another unit, no sub tab chosen: Buffs opens, its rows dimmed (as the
+		-- Buffs tab did when it was a tab), not an empty page.
+		local carried = SaftUI.OptionsModel.BuildView(root, 'Unitframes', { pick = 'nameplate', tab = 'Auras' })
+		eq(carried.tab, 'Auras', client .. ': the carried tab opens')
+		eq(carried.subtab, 'Buffs', client .. ': and its first sub tab')
+		local dimmed = 0
+		for _, section in ipairs(carried.sections) do
+			for _, row in ipairs(section.rows) do
+				if row.type ~= 'description' then
+					dimmed = dimmed + 1
+					check(row.disabled, client .. ': ' .. row.key .. ' is dimmed')
+				end
+			end
+		end
+		check(dimmed > 5, client .. ': Buffs rows shown: ' .. dimmed)
+
 		-- On General: the line, then every row dimmed.
 		root, view = page(UF)
 		local list = rows(view)

@@ -483,7 +483,7 @@ end
 -- disabled tab named by key opens only while no tab is enabled (a page
 -- standing down), so a tab carried over from another pick can't open one
 -- the user can't use.
-local function Choose(list, key, skipDisabled)
+local function Choose(list, key, skipDisabled, firstIfAllOff)
 	local named
 	if key ~= nil then
 		for _, entry in ipairs(list) do
@@ -494,7 +494,9 @@ local function Choose(list, key, skipDisabled)
 	for _, entry in ipairs(list) do
 		if not (skipDisabled and entry.disabled) then return entry end
 	end
-	return named
+	-- A second row with every sub tab disabled (a page standing down) opens its first, dimmed, as
+	-- the tab it holds did when it was a tab of the page's own.
+	return named or (firstIfAllOff and list[1]) or nil
 end
 
 -- The entries of a level a selection can open (Choose): every pick, and the
@@ -652,7 +654,7 @@ function OM.BuildView(root, pageKey, selection)
 		footer = type(page.footer) == 'table' and page.footer or nil,
 	}
 	local levels = Levels(options, page, pagePath, function(slot, list)
-		return Choose(list, selection[slot], slot ~= 'pick')
+		return Choose(list, selection[slot], slot ~= 'pick', slot == 'subtab')
 	end)
 
 	local sections = {}
@@ -1405,6 +1407,8 @@ function OM.Search(root, text)
 		for _, name in ipairs(tabNames) do
 			if matches(name) then tabMatch = true end
 		end
+		-- A tab group's own searchText (more words for the tab) matches like its name.
+		if type(group) == 'table' and not tabMatch and matches(rawget(group, 'searchText')) then tabMatch = true end
 		local tabName = #tabNames > 0 and tconcat(tabNames, ' > ') or nil
 		local sections = {}
 		Feed(sections, within or options, group, path, deep)

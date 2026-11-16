@@ -113,6 +113,6 @@ function UF:AddGroupOptions(unit, config_table)
 
 	-- Either raid group being on hides Blizzard's raid frames (blizzardraid.lua).
 	if self.groups and self.groups[unit] and unit ~= 'party' then
-		config_table.args.general.args.frame.args.enable.desc ="While either raid group is on, Blizzard's raid frames are hidden. Blizzard's raid manager tab at the left edge of the screen stays. Turning both raid groups off brings Blizzard's raid frames back. In a raid, hiding them waits until you leave the raid, and bringing them back waits until you leave it or /reload."
+		config_table.args.general.args.frame.args.enable.desc = "While either raid group is on, Blizzard's raid frames are hidden. Blizzard's raid manager tab at the left edge of the screen stays. Turning both raid groups off brings Blizzard's raid frames back. In a raid, hiding them waits until you leave the raid, and bringing them back waits until you leave it or /reload."
 	end
 end

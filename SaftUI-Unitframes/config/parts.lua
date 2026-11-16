@@ -213,6 +213,29 @@ function UF.PartRow(unit, part, group, order)
 	return item
 end
 
+--[[
+	STOPGAP until the plates' task (nameplates/options.lua's PLATE_PAGES.keptParts, Ruling 31 of the
+	unit frames' parts plan, replaces this): while a plate page's box is checked ("Use friendly
+	nameplates' settings", "Use enemy nameplates' settings") its own settings are set aside, as
+	the page's tabs were before the parts were rows: its Parts rows are hidden (so not drawn and
+	not searched), but Threat on the Enemy page, which stays usable because threat is always the
+	Enemy page's. On the Friendly page the whole Parts section goes. UF:GetConfigTable calls it
+	after UF.DisablePlatePageTabs; other units are left alone.
+]]
+local PLATE_BOX = { nameplate = 'use_friendly', friendlynameplate = 'use_enemy' }
+local PLATE_KEPT = { nameplate = { threat = true }, friendlynameplate = {} }
+function UF.HidePlateParts(unit, config_table)
+	local box = PLATE_BOX[unit]
+	local parts = box and config_table.args.general and config_table.args.general.args.parts
+	if not parts then return end
+	local function Checked() return UF:GetProfileConfig()[unit][box] and true or false end
+	local kept = false
+	for key, row in pairs(parts.args) do
+		if PLATE_KEPT[unit][key] then kept = true else row.hidden = Checked end
+	end
+	if not kept then parts.hidden = Checked end
+end
+
 -- A part as a tab: its group as it is, its Enable first, named for the part.
 function UF.PartTab(unit, part, group)
 	group.inline = false
@@ -275,7 +298,11 @@ function UF.PlaceElements(unit, config_table, built)
 	-- its settings as its first child.
 	for _, entry in ipairs(nested) do
 		local under = args[entry.part.under]
-		if under then
+		if not under then
+			-- Not dropped: its settings stay reachable as a tab of their own, and the declaration is reported.
+			args[entry.part.element] = entry.tab
+			geterrorhandler()(("UF.PARTS: %s is declared under %s, which unit %s has no tab for"):format(entry.part.key, tostring(entry.part.under), unit))
+		else
 			local bar = {}
 			for key, value in pairs(under) do bar[key] = value end
 			bar.name = entry.part.under .. ' bar'

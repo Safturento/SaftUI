@@ -222,7 +222,7 @@ define('position', {
 		if target == 'name' then
 			toWidth = POS_NAME_WIDTH
 		elseif target == 'select' then
-			toWidth = POS_SELECT_WIDTH
+			toWidth = OM.Member(root, row, 'selectWidth') or POS_SELECT_WIDTH
 			local key = self:Value('relative_to')
 			local values = OM.Member(root, row, 'values')
 			local label = ''
@@ -234,7 +234,7 @@ define('position', {
 		self.select:SetShown(target == 'select')
 		if showName then self.name:SetText(tostring(self:Value('frame') or '')) end
 		self.name:SetShown(showName)
-		self.name:SetSize(target == 'select' and POS_SELECT_WIDTH or POS_NAME_WIDTH,
+		self.name:SetSize(target == 'select' and toWidth or POS_NAME_WIDTH,
 			target == 'select' and POS_BOX or POS_NAME_HEIGHT)
 
 		-- Left to right, 12 apart.

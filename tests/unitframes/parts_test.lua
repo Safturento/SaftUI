@@ -115,6 +115,30 @@ test('a second row draws one sub tab at a time: the selected one only, not both 
 	eq(more.sections[1].rows[1].path[4], 'AdditionalPower', 'Additional power')
 end)
 
+-- The bars' tabs: the size line (Width, Relative, Height, Relative: an untitled group) stays in the bar's first
+-- section, and Position is the next panel, after it (spec section 1).
+test("Health, Power bar and Additional power: Position comes after the bar's settings and the size line", function()
+	local root = tree()
+	for _, case in ipairs({ { 'target', 'Health' }, { 'player', 'Health' }, { 'target', 'Power' }, { 'player', 'Power', 'bar' },
+			{ 'player', 'Power', 'AdditionalPower' }, { 'nameplate', 'Health' } }) do
+		local view = view_of(root, case[1], case[2], case[3])
+		local where = table.concat(case, '.')
+		local at, sawWidth, sawFill
+		for i, section in ipairs(view.sections) do
+			for _, row in ipairs(section.rows) do
+				if row.key == 'width' then sawWidth = i end
+				if row.key == 'reverse_fill' or row.key == 'enable' then sawFill = sawFill or i end
+				if row.type == 'position' and not at then at = i end
+			end
+		end
+		check(at ~= nil and sawWidth ~= nil, where .. ': has a Position and a size line')
+		check(sawWidth < at, where .. ': the size line (section ' .. tostring(sawWidth) .. ') is before Position (' .. tostring(at) .. ')')
+		eq(sawFill, 1, where .. ': the bar rows are the first section')
+		-- Position is the second panel: only untitled sections (the size line) stand between.
+		for i = 2, at - 1 do eq(view.sections[i].title, nil, where .. ': section ' .. i .. ' before Position is an untitled continuation') end
+	end
+end)
+
 ------------------------------------------------------------------ the Parts rows
 
 local PARTS = {
@@ -436,6 +460,10 @@ test("the summary names the anchor, and its tip the whole position", function()
 	local word, tip = summary('player', 'healthtext')
 	eq(word, 'Health', "player's Health text: the anchor")
 	eq(tip, 'Right of Health: -7, -1', 'and the full position in its tip')
+	-- The tip names an element as the page does (L16): "Cast bar", not the key Castbar.
+	config.player.name.position = { point = 'LEFT', rel_point = 'RIGHT', element = 'Castbar', x_off = 2, y_off = 3 }
+	local _, castTip = summary('player', 'name')
+	eq(castTip, 'Left to right of Cast bar: 2, 3', "the tip's namer is UF.ELEMENT_NAMES")
 	eq((summary('player', 'classpower')), 'Screen', "player's Class power sits on the screen")
 	eq((summary('party', 'name')), 'Health', "party's Name is on the Health bar")
 	eq((summary('player', 'raidtarget')), 'Unit frame', "Raid target sits in the unit frame")
@@ -461,6 +489,16 @@ test("the summary names the anchor, and its tip the whole position", function()
 	local before = raw_count(config.player.questindicator.position)
 	summary('player', 'quest')
 	eq(raw_count(config.player.questindicator.position), before, 'reads only')
+end)
+
+test('search still finds the Cast bar tab by its old word, Castbar', function()
+	local hits = OM.Search(tree(), 'Castbar')
+	local rows = 0
+	for _, hit in ipairs(hits) do
+		if hit.path[2] == 'player' and hit.path[3] == 'Castbar' then rows = rows + 1 end
+	end
+	check(rows > 5, "'Castbar' finds the Cast bar tab's rows: " .. rows)
+	check(#OM.Search(tree(), 'Cast bar') > 0, 'and its new name')
 end)
 
 ------------------------------------------------------------------ the menus' size
@@ -586,6 +624,24 @@ test("declaring a part a tab moves it and nothing else: the tables are the same,
 	eq(keys_of(view_of(tree(), 'player').tabs), 'general,Health,Power,Castbar,Auras', 'a row again')
 end)
 
+test("a part declared under a tab the unit does not have is reported once and kept as a tab of its own, not dropped", function()
+	local part = UF.PartFor('additionalpower')
+	local was = part.under
+	part.under = 'NoSuchTab'
+	local handler, reports = geterrorhandler(), {}
+	seterrorhandler(function(message) reports[#reports + 1] = tostring(message) end)
+	local ok, err = pcall(function()
+		local root = tree()
+		eq(keys_of(view_of(root, 'player').tabs):find('AdditionalPower', 1, true) ~= nil, true, 'its settings are a tab of their own')
+		eq(keys_of(view_of(root, 'target').tabs):find('AdditionalPower', 1, true), nil, 'other units have no such part')
+	end)
+	seterrorhandler(handler)
+	part.under = was
+	if not ok then error(err, 0) end
+	eq(#reports, 1, 'reported once: ' .. table.concat(reports, ' | '))
+	check(reports[1] and reports[1]:find('NoSuchTab', 1, true), 'naming the missing tab')
+end)
+
 ------------------------------------------------------------------ whole pixels
 
 test('whole pixels: Player General and its Name menu under Thick, Thin and Blizzard, at full size and half', function()
@@ -627,12 +683,18 @@ test("the Position block of a part's menu fits the cell under Thick, Thin and Bl
 				if cell.row.type == 'position' then block = cell end
 			end
 			if check(block ~= nil, look .. ': the Position block is drawn') then
-				local right = block.frame:GetRight()
-				local limit = menuBody.content:GetRight()
-				check(right <= limit, ('%s: the block ends at %s, past the menu body at %s'):format(look, tostring(right), tostring(limit)))
-				for _, piece in ipairs({ block.widget.frame }) do
-					check(piece:GetRight() <= limit, look .. ': inside the body')
+				-- The block's own widgets (its X and Y steppers sit at its right), not the row's frame.
+				local cellRight = block.frame:GetRight()
+				local widgetRight = block.widget.frame:GetRight()
+				local function deepest(frame, right)
+					for _, child in ipairs({ frame:GetChildren() }) do
+						if child:IsShown() and child:GetRight() then right = math.max(right, child:GetRight()) end
+						right = deepest(child, right)
+					end
+					return right
 				end
+				local right = deepest(block.widget.frame, widgetRight)
+				check(right <= cellRight + 0.01, ('%s: the block ends at %s, past its cell at %s'):format(look, tostring(right), tostring(cellRight)))
 			end
 			OW:CloseMenu()
 			body:Release()

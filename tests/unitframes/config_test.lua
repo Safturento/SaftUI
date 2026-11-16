@@ -1439,7 +1439,8 @@ test("Health's first section: the toggles four to a line, then the settings two 
 		'enable:small 1/1, reverse_fill:small 1/2, vertical_fill:small 2/1, Smooth:small 2/2, '
 		.. 'theme:normal 1, background:normal 2, texture:normal 1, alpha:normal 2, framelevel:normal 1',
 		"Health's first section")
-	eq(view.sections[2].title, 'Position', "Position is the second section: after the bar's own settings")
+	eq(view.sections[2].title, nil, "the size line follows the bar's rows, untitled")
+	eq(view.sections[3].title, 'Position', "Position is the second panel: after the bar's own settings and its size line")
 end)
 
 -- 'key:size col[/quarter]' for each row of a unit's tab's first section, in

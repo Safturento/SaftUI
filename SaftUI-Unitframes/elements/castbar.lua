@@ -180,6 +180,8 @@ local function GetConfigTable(unit)
 		order = 6,
 		type = 'group',
 		name = 'Cast bar',
+		-- The word the tab had: a search for Castbar still finds it.
+		searchText = 'Castbar',
 		saved = UF.SavedIn(unit, 'castbar'),
 		get = function(info) return Config()[info[#info]] end,
 		set = function(info, value)

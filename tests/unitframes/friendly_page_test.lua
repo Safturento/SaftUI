@@ -34,8 +34,8 @@ local PLAYERS, NPCS = 'nameplateShowFriendlyPlayers', 'nameplateShowFriendlyNpcs
 -- texts and icons are rows of General's Parts (Threat on the Enemy page only).
 local ENEMY_TABS = 'general,Health,Castbar,Auras'
 local FRIENDLY_TABS = 'general,Health,Castbar,Auras'
--- General's Parts rows after its own rows. While a box is checked they stay (Task 5 of the
--- unit frames' parts plan hides them, but for the Enemy page's Threat).
+-- General's Parts rows after its own rows. While a box is checked they are hidden (UF.HidePlateParts,
+-- the plates' task's keptParts later), but for the Enemy page's Threat, which stays.
 local ENEMY_PARTS = ',name,subtext,healthtext,threat,raidtarget,quest'
 local FRIENDLY_PARTS = ',name,subtext,healthtext,raidtarget,quest'
 local ENEMY_BOX, FRIENDLY_BOX = "Use friendly nameplates' settings", "Use enemy nameplates' settings"
@@ -284,7 +284,7 @@ test("checking a box: the page's tabs stay where they are, disabled but General 
 		check(set(UF, 'friendlynameplate', 'use_enemy', true), client .. ': the Friendly box checked')
 		eq(UF:GetProfileConfig().friendlynameplate.use_enemy, true, client .. ': saved')
 		local root, view = page(UF, 'friendlynameplate')
-		eq(keys(view), 'friendly,use_enemy,sourced' .. FRIENDLY_PARTS, client .. ': Friendly plates, the box, and one line in place of the rest')
+		eq(keys(view), 'friendly,use_enemy,sourced', client .. ': Friendly plates, the box, and one line in place of the rest')
 		local line = row_for(view, 'sourced')
 		eq(line.type, 'description', client .. ': a description')
 		eq(line.name, FRIENDLY_SOURCED, client .. ': saying where the settings come from')
@@ -303,19 +303,18 @@ test("checking a box: the page's tabs stay where they are, disabled but General 
 		-- hidden; the stored selection is kept.
 		root, view = page(UF, 'friendlynameplate', 'Health')
 		eq(view.tab, 'general', client .. ': the chosen Health tab disabled: General')
-		eq(keys(view), 'friendly,use_enemy,sourced' .. FRIENDLY_PARTS, client .. ': with the line')
+		eq(keys(view), 'friendly,use_enemy,sourced', client .. ': with the line')
 		local chosen = { pick = 'friendlynameplate', tab = 'Health' }
 		eq(view_of(UF, chosen).tab, 'general', client .. ': from the stored selection too')
 		eq(chosen.tab, 'Health', client .. ': which keeps Health')
 		-- Search finds neither the disabled tabs' settings (a selection can't open
 		-- them) nor General's hidden ones; other units' still.
 		for _, result in ipairs(OM.Search(root, 'Max width')) do
-			-- (The Parts rows of General are Task 5's to hide: they are found for now.)
-			check(result.path[2] ~= 'friendlynameplate' or result.path[4] == 'parts', client .. ': no disabled tab setting found: ' .. table.concat(result.path, '.'))
+			check(result.path[2] ~= 'friendlynameplate', client .. ': no disabled tab or hidden part setting found: ' .. table.concat(result.path, '.'))
 		end
 		check(#OM.Search(root, 'Max width') > 0, client .. ": other units' still are")
 		for _, result in ipairs(OM.Search(root, 'Width')) do
-			check(not (result.path[2] == 'friendlynameplate' and result.path[3] == 'general' and result.path[4] ~= 'parts'),
+			check(not (result.path[2] == 'friendlynameplate' and result.path[3] == 'general'),
 				client .. ": General's hidden Width isn't found")
 		end
 
@@ -333,12 +332,15 @@ test("checking a box: the page's tabs stay where they are, disabled but General 
 		check(set(UF, 'nameplate', 'use_friendly', true), client .. ': the Enemy box checked')
 		eq(UF:GetProfileConfig().nameplate.use_friendly, true, client .. ': saved')
 		root, view = page(UF, 'nameplate')
-		eq(keys(view), 'enable,threat_solo,use_friendly,sourced' .. ENEMY_PARTS, client .. ': Nameplates, Threat when solo, the box and the line')
+		eq(keys(view), 'enable,threat_solo,use_friendly,sourced,threat', client .. ': Nameplates, Threat when solo, the box and the line')
 		eq(row_for(view, 'sourced').name, ENEMY_SOURCED, client .. ': saying where the settings come from')
 		eq(tabs(view), ENEMY_TABS, client .. ': every tab still there')
 		eq(disabled_tabs(view), ENEMY_OFF_TABS, client .. ': all but General and Threat disabled')
 		-- Threat is a row of the Enemy page's Parts now, beside the others.
 		check(row_for(view, 'threat') ~= nil, client .. ': the Threat row is in General')
+		for _, key in ipairs({ 'name', 'subtext', 'healthtext', 'raidtarget', 'quest' }) do
+			eq(row_for(view, key), nil, client .. ': the ' .. key .. ' row is set aside while the box is checked, as its tab was disabled')
+		end
 		eq(row_for(view, 'threat').disabled, false, client .. ': and enabled')
 		local enemyChosen = { pick = 'nameplate', tab = 'Castbar' }
 		eq(view_of(UF, enemyChosen).tab, 'general', client .. ': the chosen Castbar tab disabled: General')
@@ -570,7 +572,10 @@ test("General's toggles keep their panel while the box is checked: only the cent
 				if p:IsShown() then panels[#panels + 1] = p end
 			end
 			local label = name .. ' ' .. tostring(checked)
-			eq(#panels, 2, label .. ': the toggles panel, and the Parts section')
+			-- Unchecked: the toggles' panel and the Parts'. Checked: the Parts are hidden (the Friendly page has no
+			-- Parts section then; the Enemy page keeps Threat's).
+			local want = (not checked or (name == 'nameplate')) and 2 or 1
+			eq(#panels, want, label .. ': the toggles panel, and the Parts section unless set aside')
 			local _, _, _, _, top = panels[1]:GetPoint(1)
 			eq(-top, first.y, label .. ': from the first row')
 			if checked then

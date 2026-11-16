@@ -443,6 +443,23 @@ test('the Subtext part on both plate pages: a row of General\'s Parts with no bo
 		eq(P.nameplate.subtext.npc, false, client .. ': the enemy config untouched')
 		check(frame.__updates > updates, client .. ': the plate updated, which runs the tag again')
 		eq(line(UF, frame), '', client .. ': the title cleared')
+
+		-- The box sets the Subtext row aside with the rest of the page's (hidden: not drawn, not searched).
+		local function subtext_found(unit)
+			local tree = { Unitframes = UF:GetConfigTable() }
+			local view = OM.BuildView(tree, 'Unitframes', { pick = unit, tab = 'general' })
+			for _, section in ipairs(view.sections) do
+				for _, r in ipairs(section.rows) do if r.key == 'subtext' then return true end end
+			end
+			return false
+		end
+		eq(subtext_found('friendlynameplate'), true, client .. ': drawn while the box is unchecked')
+		P.friendlynameplate.use_enemy = true
+		eq(subtext_found('friendlynameplate'), false, client .. ': set aside while the Friendly box is checked')
+		P.friendlynameplate.use_enemy = false
+		P.nameplate.use_friendly = true
+		eq(subtext_found('nameplate'), false, client .. ': and while the Enemy box is checked')
+		P.nameplate.use_friendly = false
 		eq(#take_errors(), 0, client .. ': no error')
 	end
 end)

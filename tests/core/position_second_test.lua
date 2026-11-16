@@ -51,6 +51,15 @@ test('the checker: second passes; last of three, and first of two, fail; a lone 
 	eq(#problems({ position = position(1000) }), 0, 'a page that is only a Position has nothing before it')
 end)
 
+test('the checker: an untitled section after the first joins it, so Position after a size line is second', function()
+	walk_model()
+	local function problems(args) return (PS.problems(tree(args), 'Page')) end
+	local rows = { enable = { type = 'toggle', name = 'Enable', order = 1 } }
+	local size = { type = 'group', inline = true, order = 2, name = '', args = { w = { type = 'toggle', name = 'W', order = 1 } } }
+	eq(#problems({ enable = rows.enable, size = size, position = position(3), text = inline(4, 'Text') }), 0, 'rows, size line, Position, Text')
+	eq(#problems({ enable = rows.enable, size = size, text = inline(3, 'Text'), position = position(4) }), 1, 'a titled section between: third')
+end)
+
 test('the checker: a part\'s Position is skipped and named, not checked', function()
 	walk_model()
 	local rows = { enable = { type = 'toggle', name = 'Enable', order = 1 } }

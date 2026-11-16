@@ -38,8 +38,9 @@ end
 -- Titles of a part's Position (a text drawn on each icon), on a General tab or
 -- not: Auras' Duration and Stack count (Blizzard_BuffFramePosition.lua), the unit
 -- frames' texts and icons inside a bar's tab.
-PS.PART_TITLES = {
-	['Duration position'] = true, ['Stack count position'] = true,
+PS.PART_TITLES = { ['Duration position'] = true, ['Stack count position'] = true }
+-- The unit frames' texts and icons inside a bar's tab: a part's on the Unit frames page only.
+PS.UNITFRAME_PART_TITLES = {
 	['Text position'] = true, ['Spell name position'] = true, ['Time position'] = true,
 	['Icon position'] = true, ['Count position'] = true, ['Timer position'] = true,
 }
@@ -87,7 +88,7 @@ end
 -- Whether a Position section is a part's, not the frame's: a part's title, or
 -- a tab other than General on a page whose tabs are elements' (elementPage).
 function PS.IsPart(entry, section, elementPage)
-	if PS.PART_TITLES[section.title] then return true end
+	if PS.PART_TITLES[section.title] or (elementPage and PS.UNITFRAME_PART_TITLES[section.title]) then return true end
 	if not elementPage then return false end
 	for _, key in ipairs({ entry.tab, entry.subtab }) do
 		if key ~= nil and not PS.FRAME_TABS[key] then return true end
@@ -110,9 +111,15 @@ function PS.problems(root, pageKey, opts)
 					entry.subtab and ('/' .. entry.subtab) or '', tostring(section.title))
 			elseif #section.rows == 1 and row.type == 'position' then
 				found = found + 1
-				if i ~= 2 and not (i == #view.sections and #view.sections == 1) then
+				-- An untitled section after another joins the panel above it (the options body's
+				-- layout draws it there): the bar's size line belongs to the bar's first section.
+				local place = 0
+				for j = 1, i do
+					if j == 1 or view.sections[j].title ~= nil then place = place + 1 end
+				end
+				if place ~= 2 and not (i == #view.sections and #view.sections == 1) then
 					problems[#problems + 1] = ('%s [pick %s, tab %s, sub tab %s]: Position is section %d of %d, not the second (%s)')
-						:format(pageKey, tostring(entry.pick), tostring(entry.tab), tostring(entry.subtab), i, #view.sections, Titles(view))
+						:format(pageKey, tostring(entry.pick), tostring(entry.tab), tostring(entry.subtab), place, #view.sections, Titles(view))
 				end
 			end
 		end
