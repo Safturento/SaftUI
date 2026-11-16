@@ -1,5 +1,7 @@
 # Unit frames: small parts on General, and settings shared across units
 
+> **Superseded by the controller's rulings** (`.superpowers/sdd/2026-11-15-saftui-unitframes-parts-and-sharing/progress.md` and `preflight.md`): F2 and ruling 2 replace K2, K3, 2.4 and 4.7 (a part row's reset and share cover its own Show box only; each setting in its menu has its own, and there are no group resets); ruling 3 replaces 4.11 and decision 17 (Copy from stays, and what it copies is written as the unit's own); F4 replaces the 156 owned settings with 155 (Raid 10 owns 24, not 25); ruling 5 says only part rows keep still on hover. Where this text and those rulings disagree, the rulings hold.
+
 Design, 2026-11-15. It comes from the brainstorm with the owner that day (the decisions and his words are in
 `.superpowers/brainstorm/unitframes-decisions.md`; the mockup is `.superpowers/brainstorm/unitframes-v2.html`,
 panel 2 the Parts as half rows, 2b full rows with the Name menu open, 3 B "All units", 4 what moves where). It
