@@ -81,7 +81,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-12 — Nameplates: a box toggled in combat leaves shown plates on the old config until combat ends](#2026-11-12--nameplates-a-box-toggled-in-combat-leaves-shown-plates-on-the-old-config-until-combat-ends)
   - [2026-11-12 — Nameplates: friendly players and friendly NPCs configured apart](#2026-11-12--nameplates-friendly-players-and-friendly-npcs-configured-apart)
   - [2026-11-11 — Nameplates: in-game checks](#2026-11-11--nameplates-in-game-checks)
-  - [2026-11-11 — UIParent's scale is set once, at login, so plates leave whole pixels after a UI scale or display change](#2026-11-11--uiparents-scale-is-set-once-at-login-so-plates-leave-whole-pixels-after-a-ui-scale-or-display-change)
   - [2026-11-11 — Nameplates: a plate that turns widgets-only, or back, without a new add](#2026-11-11--nameplates-a-plate-that-turns-widgets-only-or-back-without-a-new-add)
   - [2026-11-11 — Nameplates: small items left after the build](#2026-11-11--nameplates-small-items-left-after-the-build)
   - [2026-11-11 — Purge filters: in-game checks](#2026-11-11--purge-filters-in-game-checks)
@@ -137,6 +136,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
   - [2026-11-15 — Two Misc readers break "a pass only colors"](#2026-11-15--two-misc-readers-break-a-pass-only-colors)
+  - [2026-11-11 — UIParent's scale is set once, at login, so plates leave whole pixels after a UI scale or display change](#2026-11-11--uiparents-scale-is-set-once-at-login-so-plates-leave-whole-pixels-after-a-ui-scale-or-display-change)
   - [2026-11-15 — A reset on every font row](#2026-11-15--a-reset-on-every-font-row)
   - [2026-11-14 — Categories tab at full size: a long "Reset <name> to default" overlaps Delete](#2026-11-14--categories-tab-at-full-size-a-long-reset-name-to-default-overlaps-delete)
   - [2026-11-11 — Grays/Auto Vendor: a finished edit that broadens its rule sells at the next merchant](#2026-11-11--graysauto-vendor-a-finished-edit-that-broadens-its-rule-sells-at-the-next-merchant)
@@ -1352,20 +1352,6 @@ What's left needs evidence from the game. In the order they'd be checked:
 
 **Open questions:** Are the friendly plate settings kept per account (step 15)? If the borders still shimmer after a reload (step 2), are borders built from SaftUI's own textures worth it? Does a targeted name-only plate need a mark (step 26)? Does the game's click area follow the frame, or take a snapshot (step 32)? Is under the castbar's row the right default place for an enemy's subtext (step 40)? Does a plate widget overlap the subtext (step 42)?
 
-### 2026-11-11 — UIParent's scale is set once, at login, so plates leave whole pixels after a UI scale or display change
-
-**What:** Core works out `st.scale` once, as 768 over the screen's physical height when `SaftUI-Core/constants.lua` loads (`GetPhysicalScreenSize`), and sets it on UIParent once, in `SaftUI:OnEnable` (`SaftUI-Core/init.lua`), so that one UIParent unit is one pixel. Nothing sets it again. After Blizzard's UI scale setting changes, or the display does (a resolution or window size change), UIParent may no longer be at 768 over the screen's height. The nameplates pin each plate's frame to UIParent's effective scale, and pin every plate again on `UI_SCALE_CHANGED` and `DISPLAY_SIZE_CHANGED` (`SaftUI-Unitframes/nameplates/pixels.lua`), so they follow UIParent; but then a plate isn't a whole number of pixels wide or tall, and its right and bottom edges can flicker by a pixel either way as it moves, until a `/reload` sets SaftUI's scale again. Everything else of SaftUI's, laid out with one unit to a pixel, is off the grid the same way until then, so the README's "ignores Blizzard's UI Scale setting" holds only from one login to the next.
-
-**Why noticed:** The review of Task 11 of the nameplates plan (whole-pixel plates, branch `np-11`). Its test for a UI scale change re-pins the plates, which keeps them on UIParent's scale, but whole pixels need UIParent itself at 768 over the screen's height.
-
-**Anchors:** `SaftUI-Core/constants.lua` (`st.screenWidth`, `st.screenHeight`, `st.scale`), `SaftUI-Core/init.lua` (`SaftUI:OnEnable`), `SaftUI-Unitframes/nameplates/pixels.lua` (`UF:PinPlateScale` and its event frame), `UF.PlateDriverSize` (`SaftUI-Unitframes/nameplates/nameplates.lua`), `tests/unitframes/nameplate_pixel_test.lua` ("a UI scale change re-pins every plate and re-applies the size"), the README's Installation section.
-
-**What's been considered:** Re-pinning the plates can't fix it alone: they follow UIParent, whatever its scale. The fix belongs in Core: on `UI_SCALE_CHANGED` and `DISPLAY_SIZE_CHANGED`, work `st.scale` out again from `GetPhysicalScreenSize()` and set it on UIParent, then pin the plates again after it. Two frames' handlers for one event run in no set order, so the plates must be pinned after Core's handler (Core could call `UF:PinPlateScale` through the unit frames, or the plates could pin on the next frame). Whether Blizzard's own handling of its UI scale setting sets UIParent's scale after SaftUI's, and whether `UIParent:SetScale` is allowed in combat, decide the details.
-
-**Shape of work:** Small, in Core: one event frame that re-applies `st.scale` on `UI_SCALE_CHANGED` and `DISPLAY_SIZE_CHANGED` (waiting out combat if it must), the plates pinned after it, a test with the stubbed screen size, and an in-game check (step 14 of "Nameplates: in-game checks").
-
-**Open questions:** Does a change to Blizzard's UI scale setting set UIParent's scale over SaftUI's, on each client? Is `UIParent:SetScale` refused in combat?
-
 ### 2026-11-11 — Nameplates: a plate that turns widgets-only, or back, without a new add
 
 **What:** oUF hides SaftUI's frame on a plate and pauses its elements only at an add, for a unit whose plate shows only widgets (`UnitNameplateShowsWidgetsOnly`) or a game object. When the game's friendly NPC plates setting changes (SaftUI's Friendly plates sets it), Blizzard runs `UpdateWidgetsOnlyMode` again on the plates already up, so a plate may switch to showing only widgets, or back, with no remove and add. oUF then leaves SaftUI's frame shown over a plate that shows only widgets, or hidden on one that's whole again, until the plate's next add; `UF:RefreshPlateWidgets`, which now also runs on the frame after anyone changes that setting, only places the widgets again and puts SaftUI's click area back on the plates SaftUI still shows (so a plate turned widgets-only in place takes clicks over SaftUI's frame, which still shows, where Blizzard's would take none). Separately, a config update while a plate shows only widgets runs each aura area's `SetEnabled(UF:ElementWanted(...))` on its paused container with the previous unit's kind (`frame.friendly`). That frame is hidden and the next add sets it right, and it was so before the nameplates too (it was `config.enable`).
@@ -2494,6 +2480,21 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 
 **Resolved 2026-11-15:** live colors Task 11's fix round. `XP:OnColorsChanged` recolors the shown reputation bar only (it keeps the group and standing the bar wears: no `Show`, range or value, nothing made); `ZT:RecolorZoneLine` (Text and Factions passes) sets the line's color and makes the faction text again only when its color changed, and never calls `SetPoint`. Cost cases in `tests/misc/experience_test.lua` and `tests/misc/zone_text_test.lua` (nothing forbidden, nothing made, under 4 KB over 100 passes).
 
+### 2026-11-11 — UIParent's scale is set once, at login, so plates leave whole pixels after a UI scale or display change
+
+**What:** Core works out `st.scale` once, as 768 over the screen's physical height when `SaftUI-Core/constants.lua` loads (`GetPhysicalScreenSize`), and sets it on UIParent once, in `SaftUI:OnEnable` (`SaftUI-Core/init.lua`), so that one UIParent unit is one pixel. Nothing sets it again. After Blizzard's UI scale setting changes, or the display does (a resolution or window size change), UIParent may no longer be at 768 over the screen's height. The nameplates pin each plate's frame to UIParent's effective scale, and pin every plate again on `UI_SCALE_CHANGED` and `DISPLAY_SIZE_CHANGED` (`SaftUI-Unitframes/nameplates/pixels.lua`), so they follow UIParent; but then a plate isn't a whole number of pixels wide or tall, and its right and bottom edges can flicker by a pixel either way as it moves, until a `/reload` sets SaftUI's scale again. Everything else of SaftUI's, laid out with one unit to a pixel, is off the grid the same way until then, so the README's "ignores Blizzard's UI Scale setting" holds only from one login to the next.
+
+**Why noticed:** The review of Task 11 of the nameplates plan (whole-pixel plates, branch `np-11`). Its test for a UI scale change re-pins the plates, which keeps them on UIParent's scale, but whole pixels need UIParent itself at 768 over the screen's height.
+
+**Anchors:** `SaftUI-Core/constants.lua` (`st.screenWidth`, `st.screenHeight`, `st.scale`), `SaftUI-Core/init.lua` (`SaftUI:OnEnable`), `SaftUI-Unitframes/nameplates/pixels.lua` (`UF:PinPlateScale` and its event frame), `UF.PlateDriverSize` (`SaftUI-Unitframes/nameplates/nameplates.lua`), `tests/unitframes/nameplate_pixel_test.lua` ("a UI scale change re-pins every plate and re-applies the size"), the README's Installation section.
+
+**What's been considered:** Re-pinning the plates can't fix it alone: they follow UIParent, whatever its scale. The fix belongs in Core: on `UI_SCALE_CHANGED` and `DISPLAY_SIZE_CHANGED`, work `st.scale` out again from `GetPhysicalScreenSize()` and set it on UIParent, then pin the plates again after it. Two frames' handlers for one event run in no set order, so the plates must be pinned after Core's handler (Core could call `UF:PinPlateScale` through the unit frames, or the plates could pin on the next frame). Whether Blizzard's own handling of its UI scale setting sets UIParent's scale after SaftUI's, and whether `UIParent:SetScale` is allowed in combat, decide the details.
+
+**Shape of work:** Small, in Core: one event frame that re-applies `st.scale` on `UI_SCALE_CHANGED` and `DISPLAY_SIZE_CHANGED` (waiting out combat if it must), the plates pinned after it, a test with the stubbed screen size, and an in-game check (step 14 of "Nameplates: in-game checks").
+
+**Open questions:** Does a change to Blizzard's UI scale setting set UIParent's scale over SaftUI's, on each client? Is `UIParent:SetScale` refused in combat?
+
+**Resolved 2026-11-15:** the scaling design's phase 1, Task 4. UIParent's scale is set again on every change, and the plates pin after it, from `UIScale:OnChanged`.
 
 ### 2026-11-15 — A reset on every font row
 

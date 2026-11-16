@@ -516,6 +516,9 @@ end
 -- SimpleFrameAPIDocumentation, so it isn't refused here; the tracker still builds
 -- every region of a secure button when the button is made, out of combat.
 function ScriptRegion.IsProtected(self, s)
+	-- UIParent is the parent of every secure frame: protected in combat (inferred,
+	-- .agents/taint.md rule 6, the E4 experiment), never out of it.
+	if s.is_uiparent then return stub.in_combat == true, stub.in_combat == true end
 	local protected = s.protected == true
 	if not protected and not s.groups.Frame and s.parent then
 		protected = states[s.parent].protected == true
@@ -632,7 +635,13 @@ function Region.GetEffectiveAlpha(self, s)
 	end
 	return alpha
 end
-function Region.SetScale(self, s, scale) s.scale = number_arg(s, scale, 'scale') end
+-- UIParent's SetScale fires UI_SCALE_CHANGED at once while stub.scale_fires_event
+-- (off: the game fires neither screen event for an addon's own SetScale, E3).
+local function set_scale(s, scale)
+	s.scale = number_arg(s, scale, 'scale')
+	if s.is_uiparent and stub.scale_fires_event then stub.fire_event('UI_SCALE_CHANGED') end
+end
+function Region.SetScale(self, s, scale) set_scale(s, scale) end
 function Region.GetScale(self, s) return s.scale end
 function Region.GetEffectiveScale(self, s) return effective_scale(s) end
 -- Ignoring the parent's scale, as a frame's (Frame.SetIgnoreParentScale).
@@ -1047,7 +1056,7 @@ function Frame.GetEffectiveAlpha(self, s)
 	end
 	return alpha
 end
-function Frame.SetScale(self, s, scale) s.scale = number_arg(s, scale, 'scale') end
+function Frame.SetScale(self, s, scale) set_scale(s, scale) end
 function Frame.GetScale(self, s) return s.scale end
 function Frame.GetEffectiveScale(self, s) return effective_scale(s) end
 -- Ignoring the parent's scale (SetIgnoreParentScale, SimpleFrameAPIDocumentation.lua
@@ -1669,6 +1678,20 @@ local function refuse_measure(s, name)
 	end
 end
 
+-- Whether the code that called the stub method (the first caller outside this
+-- file) is a SaftUI file, as refuse_measure finds it.
+local function called_from_saftui()
+	local level = 2
+	while true do
+		local info = debug.getinfo(level, 'S')
+		if not info then return false end
+		if info.source ~= THIS_FILE and info.what ~= 'tail' then
+			return info.source:sub(1, #'@SaftUI-') == '@SaftUI-'
+		end
+		level = level + 1
+	end
+end
+
 -- Wraps a method so it checks its self, then gets the widget's state.
 local function method(group, name, impl)
 	local guarded = PROTECTED_IN_COMBAT[name]
@@ -1680,8 +1703,13 @@ local function method(group, name, impl)
 		end
 		if measures then refuse_measure(s, name) end
 		if guarded and stub.in_combat and (s.groups.Frame or REGION_PROTECTED[name]) and self:IsProtected() then
-			stub.blocked[#stub.blocked + 1] = { self, name }
-			return
+			-- UIParent: only its SetScale is modelled, and only addon code (a
+			-- SaftUI file) is refused; a test's own call, or the stubs' own (the
+			-- game's), still goes through.
+			if not s.is_uiparent or (name == 'SetScale' and called_from_saftui()) then
+				stub.blocked[#stub.blocked + 1] = { self, name }
+				return
+			end
 		end
 		return impl(self, s, ...)
 	end
@@ -1892,6 +1920,7 @@ WorldFrame = CreateFrame('Frame', 'WorldFrame')
 states[WorldFrame].fills_screen = true
 UIParent = CreateFrame('Frame', 'UIParent')
 states[UIParent].fills_screen = true
+states[UIParent].is_uiparent = true
 
 -- The screen's size in UIParent's units, as the game gives it.
 function GetScreenWidth() return UIParent:GetWidth() end

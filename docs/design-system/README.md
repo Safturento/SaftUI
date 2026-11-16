@@ -1,6 +1,6 @@
 SaftUI replaces World of Warcraft's interface with flat, dark frames that sit quietly over the game world: 1px lines, square corners, one blue accent, and every edge on a whole pixel. It is a set of Lua addons (unit frames, action bars, bags, chat, minimap, loot, skins) sharing one core, with its own options window (`/sui`) and its own edit mode. Use this system when you build any frame, control or option page for it.
 
-**Why it looks this way.** The game world behind the UI is busy and colourful, so SaftUI's frames recede: near-black fills, grey lines, no gradients, shadows or rounded corners. Colour is spent on information (class, quality, power, threat) and on one accent that means "this is the active thing". SaftUI sets the UI scale so one unit is one physical pixel; a 1px line is only crisp on a whole pixel, so every size and offset is whole.
+**Why it looks this way.** The game world behind the UI is busy and colourful, so SaftUI's frames recede: near-black fills, grey lines, no gradients, shadows or rounded corners. Colour is spent on information (class, quality, power, threat) and on one accent that means "this is the active thing". One unit is a pixel of a 1440p screen, and SaftUI scales it to the screen (`st.UIScale`); a line is only crisp on a whole pixel, so every line is a whole number of pixels and every size and offset is whole.
 
 ## Reading this system
 

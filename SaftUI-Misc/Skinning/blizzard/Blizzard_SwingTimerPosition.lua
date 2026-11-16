@@ -26,7 +26,8 @@ local STP = st:NewModule('SwingTimer')
 	bar's StatusBar covers the holder exactly, and post-hooks on the bar's ClearAllPoints
 	and SetPoint put it back whenever Blizzard lays it out again (st:HoldFrame). With two
 	opposite corners anchored, Blizzard's SetWidth/SetHeight no longer change the bar's
-	size, and its Scale setting only scales the bar's insides (text, pip, backdrop edge).
+	size, and its Scale setting only scales the bar's insides (text, pip). The border isn't
+	scaled: the theme engine draws it in whole pixels of the bar's own.
 
 	The bar keeps whatever parent Blizzard gives it. Reparenting it would take it out of
 	the managed stack, but every show would then bounce it between Blizzard's container
@@ -55,7 +56,8 @@ local STP = st:NewModule('SwingTimer')
 	    field or those methods, which taints. A saved "Hidden" is only detected (a read of
 	    bar.visibility) and noted on the bar's edit mode outline.
 	  - Scale isn't replaced: width and height cover size. Blizzard's Scale setting now
-	    only scales the bar's text, pip and border.
+	    only scales the bar's text and pip; the border is whole pixels of the bar (Core's
+	    theme engine), whatever the Scale.
 ]]
 
 local BARS = {
