@@ -28,8 +28,8 @@ st.defaults.unitframes.profiles["**"].arena = {
         position = {
             point = "BOTTOMRIGHT",
             rel_point = "TOPRIGHT",
-            x_off = "0",
-            y_off = "3",
+            x_off = 0,
+            y_off = 3,
         },
         filter = {
             friend = {

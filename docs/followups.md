@@ -32,7 +32,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-15 — Nameplates: Blizzard's friendly plates key binding and the next login](#2026-11-15--nameplates-blizzards-friendly-plates-key-binding-and-the-next-login)
   - [2026-11-15 — Two lines of the profile switch fix that no test pins](#2026-11-15--two-lines-of-the-profile-switch-fix-that-no-test-pins)
   - [2026-11-15 — getHealthPercentText's floor branch is never used](#2026-11-15--gethealthpercenttexts-floor-branch-is-never-used)
-  - [2026-11-15 — Unit frame defaults: string offsets left outside the castbars](#2026-11-15--unit-frame-defaults-string-offsets-left-outside-the-castbars)
   - [2026-11-15 — Bag search box: the magnifier and the clear button](#2026-11-15--bag-search-box-the-magnifier-and-the-clear-button)
   - [2026-11-15 — Tracker: an Edit Mode anchor to a frame other than UIParent gives the default spot](#2026-11-15--tracker-an-edit-mode-anchor-to-a-frame-other-than-uiparent-gives-the-default-spot)
   - [2026-11-15 — The bag bar and Hekili: what still writes onto Blizzard's frames](#2026-11-15--the-bag-bar-and-hekili-what-still-writes-onto-blizzards-frames)
@@ -133,6 +132,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-15 — Unit frame defaults: string offsets left outside the castbars](#2026-11-15--unit-frame-defaults-string-offsets-left-outside-the-castbars)
   - [2026-11-15 — Unit frames: a part switched off in the new profile keeps its old points](#2026-11-15--unit-frames-a-part-switched-off-in-the-new-profile-keeps-its-old-points)
   - [2026-11-15 — Unit frames: a vehicle power type with no oUF color falls back to Mana](#2026-11-15--unit-frames-a-vehicle-power-type-with-no-ouf-color-falls-back-to-mana)
   - [2026-11-15 — Unit frames: a color oUF lacks is set to the profile's own table](#2026-11-15--unit-frames-a-color-ouf-lacks-is-set-to-the-profiles-own-table)
@@ -502,16 +502,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 **Anchors:** `SaftUI-Unitframes/elements/health.lua`.
 
 **Shape of work:** A one-line cleanup: drop the branch, or make the function the one place both percent paths round through.
-
-### 2026-11-15 — Unit frame defaults: string offsets left outside the castbars
-
-**What:** The castbar defaults' text offsets are numbers now (merge fu-p3), but other defaults still have string offsets, which the game accepts and the strict stubbed `SetPoint` refuses: the portrait and the additional power position in `SaftUI-Unitframes/config/default.lua`, and buffs in `config/units/arena.lua` (boss's are numbers now: the resets task). A profile that saved the string form keeps it.
-
-**Why noticed:** The fu-p3 report, finishing item 2 of [Nameplates: small items left after the build](#2026-11-11--nameplates-small-items-left-after-the-build) for the castbars only (the brief named only those).
-
-**Anchors:** `SaftUI-Unitframes/config/default.lua`, `config/units/arena.lua`; `tests/unitframes/unit_defaults_test.lua` (checks every unit's castbar offsets are numbers).
-
-**Shape of work:** Small: make them numbers and extend the test over every position in the defaults.
 
 ### 2026-11-15 — Bag search box: the magnifier and the clear button
 
@@ -2436,6 +2426,18 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-15 — Unit frame defaults: string offsets left outside the castbars
+
+**What:** The castbar defaults' text offsets are numbers now (merge fu-p3), but other defaults still have string offsets, which the game accepts and the strict stubbed `SetPoint` refuses: the portrait and the additional power position in `SaftUI-Unitframes/config/default.lua`, and buffs in `config/units/arena.lua` (boss's are numbers now: the resets task). A profile that saved the string form keeps it.
+
+**Why noticed:** The fu-p3 report, finishing item 2 of [Nameplates: small items left after the build](#2026-11-11--nameplates-small-items-left-after-the-build) for the castbars only (the brief named only those).
+
+**Anchors:** `SaftUI-Unitframes/config/default.lua`, `config/units/arena.lua`; `tests/unitframes/unit_defaults_test.lua` (checks every unit's castbar offsets are numbers).
+
+**Shape of work:** Small: make them numbers and extend the test over every position in the defaults.
+
+**Resolved 2026-11-15:** the portrait's and additional power's positions in `config/default.lua` and arena's buffs are numbers; `unit_defaults_test.lua` now checks every position offset in every unit's defaults.
 
 ### 2026-11-15 — Unit frames: a part switched off in the new profile keeps its old points
 
