@@ -362,3 +362,36 @@ test("a subzone crossed after a banner cleared the zone name brings back neither
 	eq(ZT.DifficultyTextString:GetText(), '', 'nor does the difficulty line')
 	eq(#take_errors(), 0, 'nothing written onto the locked frames')
 end)
+
+test('a Text or Factions pass on the zone line only colors: nothing placed, shown or made, under 4 KB over 100 passes', function()
+	local C = load_test_file('lib/color_cost.lua')
+	place(1429, 'friendly', 'Alliance')
+	H.enter('Elwynn Forest')
+	local before = ZT.ZoneLineString:GetText()
+	check(before ~= nil and before ~= '', 'a line is on screen')
+	for _, case in ipairs({ { 'text', 'normal' }, { 'text', 'danger' }, { 'factions', 'Alliance' } }) do
+		st:ColorChanged(case[1], case[2]) -- the first pass makes what a widget makes once
+		local m = C.measure(function() st:ColorChanged(case[1], case[2]) end, 100)
+		eq(m.forbidden.total, 0, case[1] .. ' ' .. case[2] .. ': nothing forbidden (no SetPoint on the subzone text)')
+		eq(m.made, 0, case[1] .. ': nothing made')
+		check(m.kb < 4, case[1] .. ' ' .. case[2] .. (': under 4 KB, got %.2f'):format(m.kb))
+	end
+	eq(ZT.ZoneLineString:GetText(), before, 'the line is as it was')
+	-- A real change still shows, in the same call set.
+	local c = st.config.profile.colors.factions.Alliance
+	local keep = { c.r, c.g, c.b }
+	c:SetRGB(0, 0, 1)
+	local m = C.measure(function() st:ColorChanged('factions', 'Alliance') end, 1)
+	eq(m.forbidden.total, 0, 'a changed color: nothing forbidden')
+	check(ZT.ZoneLineString:GetText():find('|cff0000ffAlliance|r', 1, true), 'the new color shows')
+	c:SetRGB(unpack(keep))
+	st:ColorChanged('factions', 'Alliance')
+end)
+
+test('a Text pass with the zone line cleared by a banner puts nothing back', function()
+	place(1429, 'friendly', 'Alliance')
+	H.enter('Elwynn Forest')
+	ZT.ZoneLineString:SetText('')
+	st:ColorChanged('factions', 'Alliance')
+	eq(ZT.ZoneLineString:GetText(), '', 'still empty')
+end)

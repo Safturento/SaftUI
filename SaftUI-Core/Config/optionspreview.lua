@@ -539,6 +539,445 @@ end
 
 kinds.accent = accent
 
+------------------------------------------------------------------ the bar and border kinds
+
+--[[
+	Cells of the pieces a color reaches, drawn by the engine as the UI draws
+	them, filled to 70% where there is a fill. A cell is a holder (the cell's
+	width by TILE_HEIGHT, nothing drawn on it) with its caption under it in
+	Text > Muted; a style shows its cells side by side, 8 apart, centered in the
+	strip, and hides the rest. Cells are built once for every style of the kind,
+	laid out and shown by Layout (spec.fields.style), and painted by Paint for
+	the style shown only.
+
+	bar (fields: style, label, threat, tooltip, npc):
+	  unit        a unit frame's health bar 200 by 28 (label at its left, 70% at its
+	              right), a raid frame 80 by 40 (the label), a unit tooltip 74 by 44
+	              with the label as its name and its border in the color; tooltip =
+	              false leaves the tooltip out (Status colors only color health);
+	  role        a raid frame 80 by 40 with the role corner (st.textures.cornerbr,
+	              16, at the bar's bottom right corner, 2 out, as the Roles default);
+	  reputation  the experience bar's reputation bar (150 by 13), an NPC's
+	              health bar (100 by 28) and an NPC's tooltip (74 by 44, its name
+	              and border in the color), each with the label; npc = false
+	              leaves the health bar out and tooltip = false the tooltip (Renown:
+	              only the experience bar and the feed's renown line take it, and
+	              the feed line is not drawn);
+	  power       a health bar 200 by 24 with the power bar 200 by 12 under it, the
+	              power bar in the color and the label on it;
+	  points      five class power points 34 by 20, 7 apart, three lit; under
+	              Blizzard they wear Blizzard's art (no color), so they are drawn as
+	              Thick, with a note;
+	  plate       a nameplate 200 by 20 with its name; with threat, the percent
+	              above its right end in the color (the bar is in it too).
+	border (fields: style):
+	  slot        a bag slot 36 by 36 (the Slot theme's, an icon inside its
+	              border) with its border in the color, and a loot feed line 200 by
+	              32 with the item's name in the color;
+	  entry       a loot feed entry 250 by 32: its border, its fill at 60% and its
+	              icon's border in the color (a fresh mount's).
+	The picker's color is the whole of what is edited (none of these colors has
+	an opacity): the rest of a cell is the profile's. Bars are st:CreateStatusBar
+	(kind bar); a unit frame's own bar is drawn as a unit frame and wears
+	Blizzard's tinted fill art, which is Unitframes' and not drawn here. Nothing
+	here takes the mouse.
+]]
+local BAR_FILL = 70 -- every bar is filled to 70%
+local GAP_X = 8 -- between cells
+local ROLE_SIZE, ROLE_OFFSET = 16, 2 -- the Roles default (config/default.lua)
+local FEED_HEIGHT = 32 -- the loot feed's entry (Loot's item_height)
+local SLOT_SIZE = 36
+local POINT_WIDTH, POINT_HEIGHT, POINT_GAP, POINTS, LIT_POINTS = 34, 20, 7, 5, 3 -- classpower's default spacing
+local TOOLTIP_PAD = 7
+local STAND_IN_ICON = [[Interface\Icons\INV_Misc_QuestionMark]]
+
+local function Bare(frame) frame:EnableMouse(false); return frame end
+
+-- The class color the unit frames in styles that show another color are in.
+local function ClassColor()
+	local key = st.my_class
+	if not (key and st.config.profile.colors.class[key]) then key = 'MAGE' end
+	return st:Color('class', key):GetRGB()
+end
+
+-- The label a style shows: the field's, else the option's name.
+local function LabelOf(spec)
+	local label = spec.fields.label
+	if type(label) ~= 'string' then label = spec.name end
+	if type(label) ~= 'string' then label = '' end
+	return label
+end
+
+-- A status bar of SaftUI's, filled to 70%, its own text blank.
+local function NewBar(parent, width, height, max)
+	local bar = st:CreateStatusBar(nil, parent, '', 'theme', 'solid')
+	bar:SetSize(width, height)
+	bar:SetMinMaxValues(0, max or 100)
+	bar:SetValue(max and 0 or BAR_FILL)
+	bar:EnableMouse(false)
+	bar.text:SetWordWrap(false) -- its label is cut at its end, never wrapped
+	return bar
+end
+
+-- A text on bar in the unit frames' own face, at point of it, width wide
+-- (every label has one, so a wide face cuts it at its end and never runs it
+-- past its bar) and justified to the side it sits on.
+local function BarText(bar, point, x, text, width)
+	local fs = st:CreateFontString(bar, 'pixel', text)
+	fs:SetPoint(point, bar, point, x, 0)
+	fs:SetWidth(width)
+	fs:SetWordWrap(false)
+	fs:SetJustifyH(point)
+	return fs
+end
+
+-- A unit tooltip 74 by 44 (a tooltip panel) with a name line, whose room is the
+-- panel less its padding (cut at its end), and a level line.
+local function NewTip(cell, p)
+	p.tip = Bare(st:CreateFrame('Frame', nil, cell.holder))
+	p.tip:SetSize(74, PV.TILE_HEIGHT)
+	st:SetTemplate(p.tip, 'theme', 'solid', 'tooltip')
+	Put(p.tip, cell.holder, 0, 0)
+	p.label = TextFont(Kit.NewText(p.tip, 'LEFT'))
+	p.label:SetPoint('TOPLEFT', p.tip, 'TOPLEFT', TOOLTIP_PAD, -5)
+	p.label:SetWidth(74 - 2 * TOOLTIP_PAD)
+	p.label:SetWordWrap(false)
+	p.level = TextFont(Kit.NewText(p.tip, 'LEFT'))
+	p.level:SetPoint('TOPLEFT', p.tip, 'TOPLEFT', TOOLTIP_PAD, -22)
+	p.level:SetWidth(74 - 2 * TOOLTIP_PAD)
+	p.level:SetWordWrap(false)
+	p.level:SetText('Level 70')
+end
+
+-- A cell: the holder, with its caption under it. The caption is on the area
+-- (it hides with the cell in Layout), centered under the cell.
+local function NewCell(pieces, key, width, caption, optional)
+	local holder = Bare(st:CreateFrame('Frame', nil, pieces.area))
+	holder:SetSize(width, PV.TILE_HEIGHT)
+	local label = TextFont(Kit.NewText(pieces.area, 'CENTER'))
+	label:SetPoint('TOP', holder, 'BOTTOM', 0, -PV.CAPTION_GAP)
+	label:SetWidth(width)
+	label:SetWordWrap(false) -- as every tile caption
+	label:SetText(caption)
+	holder:Hide()
+	label:Hide()
+	local cell = { holder = holder, caption = label, width = width, optional = optional }
+	pieces.cells[key] = cell
+	pieces[key] = {}
+	return cell, pieces[key]
+end
+
+-- Shows the cells of a style, side by side 8 apart and centered in width, and
+-- hides the others. The active list is what Paint walks.
+local function LayoutCells(pieces, width, order, fields)
+	for _, cell in pairs(pieces.cells) do
+		cell.holder:Hide()
+		cell.caption:Hide()
+	end
+	local active = pieces.active
+	for i = #active, 1, -1 do active[i] = nil end
+	local total = 0
+	for _, key in ipairs(order or {}) do
+		local cell = pieces.cells[key]
+		if not (cell.optional and fields and fields[cell.optional] == false) then
+			active[#active + 1] = cell
+			total = total + cell.width
+		end
+	end
+	if #active == 0 then return end
+	total = total + GAP_X * (#active - 1)
+	local x = floor((width - total) / 2)
+	for _, cell in ipairs(active) do
+		Put(cell.holder, pieces.area, x, 0)
+		cell.holder:Show()
+		cell.caption:Show()
+		x = x + cell.width + GAP_X
+	end
+end
+
+local function PaintCaptions(pieces)
+	local mr, mg, mb = st:Color('text', 'muted'):GetRGB()
+	for _, cell in ipairs(pieces.active) do cell.caption:SetTextColor(mr, mg, mb) end
+end
+
+-- The Thick a piece wears under Blizzard when Blizzard's art draws no color of
+-- its own for it, else the theme in use.
+local PointLook = ButtonLook
+
+------------------------------------------------------------------ the bar kind
+
+local bar = {}
+
+-- Style -> the cells it shows, in order.
+local BAR_STYLES = {
+	unit = { 'unitBar', 'unitRaid', 'unitTip' },
+	role = { 'roleRaid' },
+	reputation = { 'repXp', 'repNpc', 'repTip' },
+	power = { 'powerBars' },
+	points = { 'pointsRow' },
+	plate = { 'plate' },
+}
+
+bar.note = function(blizzard, spec)
+	if blizzard and spec.fields.style == 'points' then
+		return "Shown as Thick: under Blizzard, class power points wear Blizzard's art."
+	end
+end
+
+function bar.Build(area)
+	local pieces = { area = area, cells = {}, active = {} }
+
+	-- unit: the health bar with its label and percent, the raid frame, the tooltip.
+	local cell, p = NewCell(pieces, 'unitBar', 200, 'Unit frame')
+	p.bar = NewBar(cell.holder, 200, 28)
+	Put(p.bar, cell.holder, 0, 8)
+	p.label = BarText(p.bar, 'LEFT', 6, nil, 140)
+	p.percent = BarText(p.bar, 'RIGHT', -6, '70%', 40)
+
+	cell, p = NewCell(pieces, 'unitRaid', 80, 'Raid frame')
+	p.bar = NewBar(cell.holder, 80, 40)
+	Put(p.bar, cell.holder, 0, 2)
+	p.label = BarText(p.bar, 'CENTER', 0, nil, 72)
+
+	cell, p = NewCell(pieces, 'unitTip', 74, 'Tooltip', 'tooltip')
+	NewTip(cell, p)
+
+	-- role: a raid frame with the role corner.
+	cell, p = NewCell(pieces, 'roleRaid', 80, 'Raid frame')
+	p.bar = NewBar(cell.holder, 80, 40)
+	Put(p.bar, cell.holder, 0, 2)
+	p.label = BarText(p.bar, 'CENTER', 0, nil, 72)
+	p.corner = p.bar:CreateTexture(nil, 'OVERLAY')
+	p.corner:SetTexture(st.textures.cornerbr)
+	p.corner:SetSize(ROLE_SIZE, ROLE_SIZE)
+	p.corner:SetPoint('BOTTOMRIGHT', p.bar, 'BOTTOMRIGHT', ROLE_OFFSET, -ROLE_OFFSET)
+
+	-- reputation: the experience bar's reputation bar and an NPC's health bar.
+	cell, p = NewCell(pieces, 'repXp', 150, 'Reputation bar')
+	p.bar = NewBar(cell.holder, 150, 13)
+	Put(p.bar, cell.holder, 0, floor((PV.TILE_HEIGHT - 13) / 2))
+	p.label = p.bar.text
+	cell, p = NewCell(pieces, 'repNpc', 100, 'NPC health', 'npc')
+	p.bar = NewBar(cell.holder, 100, 28)
+	Put(p.bar, cell.holder, 0, 8)
+	p.label = p.bar.text
+	-- An NPC's tooltip takes the standing's color too (SaftUI-Misc's tooltip.lua).
+	cell, p = NewCell(pieces, 'repTip', 74, 'Tooltip', 'tooltip')
+	NewTip(cell, p)
+
+	-- power: the health bar and the power bar under it.
+	cell, p = NewCell(pieces, 'powerBars', 200, 'Health and power')
+	p.health = NewBar(cell.holder, 200, 24)
+	Put(p.health, cell.holder, 0, 2)
+	p.power = NewBar(cell.holder, 200, 12)
+	Put(p.power, cell.holder, 0, 30)
+	p.label = p.power.text
+
+	-- points: five class power points, three lit.
+	local row = POINTS * POINT_WIDTH + (POINTS - 1) * POINT_GAP
+	cell, p = NewCell(pieces, 'pointsRow', row, 'Class power')
+	p.look = PointLook()
+	p.points = {}
+	for i = 1, POINTS do
+		local point = NewBar(cell.holder, POINT_WIDTH, POINT_HEIGHT, 1)
+		st:SetBackdrop(point, p.look, 'solid', 'control')
+		point:SetValue(i <= LIT_POINTS and 1 or 0)
+		Put(point, cell.holder, (i - 1) * (POINT_WIDTH + POINT_GAP), 12)
+		p.points[i] = point
+	end
+
+	-- plate: a nameplate and the threat text above its right end.
+	cell, p = NewCell(pieces, 'plate', 200, 'Nameplate')
+	p.bar = NewBar(cell.holder, 200, 20)
+	Put(p.bar, cell.holder, 0, 20)
+	p.name = BarText(p.bar, 'LEFT', 6, 'Wolf', 150)
+	p.threat = st:CreateFontString(cell.holder, 'pixel', '85%')
+	p.threat:SetPoint('BOTTOMRIGHT', p.bar, 'TOPRIGHT', 0, 6) -- the nameplate's default (threat.position)
+	p.threat:SetWidth(40)
+	p.threat:SetWordWrap(false)
+	p.threat:SetJustifyH('RIGHT')
+	return pieces
+end
+
+function bar.Layout(pieces, width, _, spec)
+	local fields = spec.fields
+	local style = fields.style
+	pieces.style = BAR_STYLES[style] and style or nil
+	LayoutCells(pieces, width, BAR_STYLES[style], fields)
+	local label = LabelOf(spec)
+	pieces.unitBar.label:SetText(label)
+	pieces.unitRaid.label:SetText(label)
+	pieces.unitTip.label:SetText(label)
+	pieces.roleRaid.label:SetText(label)
+	pieces.repXp.label:SetText(label)
+	pieces.repNpc.label:SetText(label)
+	pieces.repTip.label:SetText(label)
+	pieces.powerBars.label:SetText(label)
+	local points = pieces.pointsRow
+	local look = PointLook()
+	if points.look ~= look then
+		points.look = look
+		for _, point in ipairs(points.points) do st:SetBackdrop(point, look, 'solid', 'control') end
+	end
+	pieces.plate.threat:SetShown(fields.threat and true or false)
+end
+
+local PAINT = {}
+
+function PAINT.unit(p, r, g, b)
+	local nr, ng, nb = st:Color('text', 'normal'):GetRGB()
+	p.unitBar.bar:SetStatusBarColor(r, g, b)
+	p.unitBar.label:SetTextColor(nr, ng, nb)
+	p.unitBar.percent:SetTextColor(nr, ng, nb)
+	p.unitRaid.bar:SetStatusBarColor(r, g, b)
+	p.unitRaid.label:SetTextColor(nr, ng, nb)
+	local tip = p.unitTip
+	tip.label:SetTextColor(r, g, b)
+	tip.level:SetTextColor(nr, ng, nb)
+	st:SetBorderColor(tip.tip, r, g, b)
+end
+
+function PAINT.role(p, r, g, b)
+	local nr, ng, nb = st:Color('text', 'normal'):GetRGB()
+	local raid = p.roleRaid
+	raid.bar:SetStatusBarColor(ClassColor())
+	raid.label:SetTextColor(nr, ng, nb)
+	raid.corner:SetVertexColor(r, g, b)
+end
+
+function PAINT.reputation(p, r, g, b)
+	local nr, ng, nb = st:Color('text', 'normal'):GetRGB()
+	local tip = p.repTip
+	tip.label:SetTextColor(r, g, b)
+	tip.level:SetTextColor(nr, ng, nb)
+	st:SetBorderColor(tip.tip, r, g, b)
+	p.repXp.bar:SetStatusBarColor(r, g, b)
+	p.repXp.label:SetTextColor(nr, ng, nb)
+	p.repNpc.bar:SetStatusBarColor(r, g, b)
+	p.repNpc.label:SetTextColor(nr, ng, nb)
+end
+
+function PAINT.power(p, r, g, b)
+	local nr, ng, nb = st:Color('text', 'normal'):GetRGB()
+	local bars = p.powerBars
+	bars.health:SetStatusBarColor(ClassColor())
+	bars.power:SetStatusBarColor(r, g, b)
+	bars.label:SetTextColor(nr, ng, nb)
+end
+
+function PAINT.points(p, r, g, b)
+	local points = p.pointsRow.points
+	for i = 1, LIT_POINTS do points[i]:SetStatusBarColor(r, g, b) end
+end
+
+function PAINT.plate(p, r, g, b)
+	local plate = p.plate
+	plate.bar:SetStatusBarColor(r, g, b)
+	plate.name:SetTextColor(st:Color('text', 'danger'):GetRGB())
+	plate.threat:SetTextColor(r, g, b)
+end
+
+function bar.Paint(pieces, r, g, b)
+	local paint = pieces.style and PAINT[pieces.style]
+	if not paint then return end
+	PaintCaptions(pieces)
+	paint(pieces, r, g, b)
+end
+
+kinds.bar = bar
+
+------------------------------------------------------------------ the border kind
+
+local border = {}
+
+local BORDER_STYLES = {
+	slot = { 'slotSlot', 'slotLine' },
+	entry = { 'entryLine' },
+}
+
+-- A loot feed line (a panel with its icon, a slot, at its left and a name),
+-- as Loot's feed draws an entry.
+local function NewFeedLine(cell, p, width, text)
+	p.line = Bare(st:CreateFrame('Frame', nil, cell.holder))
+	p.line:SetSize(width, FEED_HEIGHT)
+	st:SetBackdrop(p.line, 'theme', 'solid', 'panel')
+	Put(p.line, cell.holder, 0, floor((PV.TILE_HEIGHT - FEED_HEIGHT) / 2))
+	p.icon = Bare(st:CreateFrame('Frame', nil, p.line))
+	p.icon:SetSize(FEED_HEIGHT, FEED_HEIGHT)
+	st:SetBackdrop(p.icon, 'theme', 'solid', 'slot')
+	p.icon:SetPoint('LEFT', p.line, 'LEFT', 0, 0)
+	local texture = p.icon:CreateTexture(nil, 'ARTWORK')
+	texture:SetTexture(STAND_IN_ICON)
+	st:SkinIcon(texture, nil, p.icon) -- fills its frame, trimmed as the profile trims icons
+	p.name = TextFont(Kit.NewText(p.line, 'LEFT'))
+	p.name:SetPoint('LEFT', p.icon, 'RIGHT', 10, 0)
+	p.name:SetPoint('RIGHT', p.line, 'RIGHT', -10, 0)
+	p.name:SetWordWrap(false)
+	p.name:SetText(text)
+end
+
+function border.Build(area)
+	local pieces = { area = area, cells = {}, active = {} }
+
+	local cell, p = NewCell(pieces, 'slotSlot', SLOT_SIZE, 'Slot')
+	p.slot = Bare(st:CreateFrame('Frame', nil, cell.holder))
+	p.slot:SetSize(SLOT_SIZE, SLOT_SIZE)
+	st:SetBackdrop(p.slot, 'theme', 'solid', 'slot')
+	if p.slot.backdrop then -- as a bag slot's (trueSize): the border inside, the icon inside it
+		p.slot.backdrop:ClearAllPoints()
+		p.slot.backdrop:SetAllPoints(p.slot)
+	end
+	Put(p.slot, cell.holder, 0, floor((PV.TILE_HEIGHT - SLOT_SIZE) / 2))
+	p.icon = p.slot:CreateTexture(nil, 'ARTWORK')
+	p.icon:SetTexture(STAND_IN_ICON)
+	st:SkinIcon(p.icon)
+
+	cell, p = NewCell(pieces, 'slotLine', 200, 'Feed line')
+	NewFeedLine(cell, p, 200, 'Item name')
+
+	cell, p = NewCell(pieces, 'entryLine', 250, 'Feed entry')
+	NewFeedLine(cell, p, 250, 'Mount name')
+	return pieces
+end
+
+function border.Layout(pieces, width, _, spec)
+	local style = spec.fields.style
+	pieces.style = BORDER_STYLES[style] and style or nil
+	LayoutCells(pieces, width, BORDER_STYLES[style])
+	-- The icon sits inside the slot's border, which is as wide as the theme in use draws it.
+	local slot = pieces.slotSlot
+	slot.icon:ClearAllPoints()
+	st:SetInside(slot.icon, st:DrawnInset(slot.slot) or 0)
+end
+
+local PAINT_BORDER = {}
+
+function PAINT_BORDER.slot(p, r, g, b)
+	local slot = p.slotSlot.slot
+	if slot.backdrop then st:SetBorderColor(slot.backdrop, r, g, b) end
+	p.slotLine.name:SetTextColor(r, g, b)
+end
+
+function PAINT_BORDER.entry(p, r, g, b)
+	local entry = p.entryLine
+	-- A mount's entry in its color (Loot's ColorMount): border and fill at 60%, and its icon's border.
+	if entry.line.backdrop then
+		st:SetBorderColor(entry.line.backdrop, r, g, b, 1)
+		entry.line.backdrop:SetBackdropColor(r, g, b, 0.6)
+	end
+	if entry.icon.backdrop then st:SetBorderColor(entry.icon.backdrop, r, g, b, 1) end
+	entry.name:SetTextColor(st:Color('text', 'normal'):GetRGB())
+end
+
+function border.Paint(pieces, r, g, b)
+	local paint = pieces.style and PAINT_BORDER[pieces.style]
+	if not paint then return end
+	PaintCaptions(pieces)
+	paint(pieces, r, g, b)
+end
+
+kinds.border = border
+
 ------------------------------------------------------------------ the built-in kinds
 
 -- Last: the kinds above are the built-in ones. Tasks that add a kind add it here

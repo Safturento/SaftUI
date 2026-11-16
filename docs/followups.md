@@ -17,8 +17,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-15 — Unit frames: what a color pass's real element updates cost](#2026-11-15--unit-frames-what-a-color-passs-real-element-updates-cost)
   - [2026-11-15 — Unit frames: a color oUF lacks is set to the profile's own table](#2026-11-15--unit-frames-a-color-ouf-lacks-is-set-to-the-profiles-own-table)
   - [2026-11-15 — Unit frames: a vehicle power type with no oUF color falls back to Mana](#2026-11-15--unit-frames-a-vehicle-power-type-with-no-ouf-color-falls-back-to-mana)
-
-  - [2026-11-15 — Two Misc readers break "a pass only colors"](#2026-11-15--two-misc-readers-break-a-pass-only-colors)
   - [2026-11-15 — A roll result line's All passed and winner color are baked in at push](#2026-11-15--a-roll-result-lines-all-passed-and-winner-color-are-baked-in-at-push)
   - [2026-11-15 — A Position reset runs a unit frame's update once for every part it writes](#2026-11-15--a-position-reset-runs-a-unit-frames-update-once-for-every-part-it-writes)
   - [2026-11-15 — After a UI scale change, a reset half-pixel Position can show its icon again](#2026-11-15--after-a-ui-scale-change-a-reset-half-pixel-position-can-show-its-icon-again)
@@ -138,6 +136,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-15 — Two Misc readers break "a pass only colors"](#2026-11-15--two-misc-readers-break-a-pass-only-colors)
   - [2026-11-15 — A reset on every font row](#2026-11-15--a-reset-on-every-font-row)
   - [2026-11-14 — Categories tab at full size: a long "Reset <name> to default" overlaps Delete](#2026-11-14--categories-tab-at-full-size-a-long-reset-name-to-default-overlaps-delete)
   - [2026-11-11 — Grays/Auto Vendor: a finished edit that broadens its rule sells at the next merchant](#2026-11-11--graysauto-vendor-a-finished-edit-that-broadens-its-rule-sells-at-the-next-merchant)
@@ -210,7 +209,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 ### 2026-11-15 — The color picker's preview copies other widgets' geometry
 
-**What:** `SaftUI-Core/Config/optionspreview.lua` draws some tiles by copying another widget's geometry, since the kit exports no builder for them: the range's outline, edge, field and fill (`optionsrange.lua`), the sidebar row's tint and 2 wide bar (`optionsnav.lua`'s `item.bar:SetWidth(2)`), the own mark's inset (`optionsshare.lua`), and the edit mode grid's centre-line alpha and faint line color (`EditMode/grid.lua`'s `CENTER_ALPHA` and `LINE_COLOR`). The knob size and the own mark's width are read from the kit (`Kit.KNOB_WIDTH`, `Kit.KNOB_HEIGHT`, `OB.MARK_WIDTH`).
+**What:** `SaftUI-Core/Config/optionspreview.lua` draws some tiles by copying another widget's geometry, since the kit exports no builder for them: the range's outline, edge, field and fill (`optionsrange.lua`), the sidebar row's tint and 2 wide bar (`optionsnav.lua`'s `item.bar:SetWidth(2)`), the own mark's inset (`optionsshare.lua`), and the edit mode grid's centre-line alpha and faint line color (`EditMode/grid.lua`'s `CENTER_ALPHA` and `LINE_COLOR`). The knob size and the own mark's width are read from the kit (`Kit.KNOB_WIDTH`, `Kit.KNOB_HEIGHT`, `OB.MARK_WIDTH`). The `bar` and `border` kinds copy other addons' defaults the same way, since Core cannot read them (Unitframes, Misc and Loot load after it): the role corner's size 16 and offset 2 (`SaftUI-Unitframes/config/default.lua`'s `grouproleindicator`), the class power points' spacing 7 (`config/units/player.lua`'s `classpower`), the nameplate's 200 by 20 and the threat text's 6 above the bar (`config/units/nameplate.lua`), the experience bar's height 13 (`SaftUI-Misc/config.lua`), the loot feed entry's height 32 (`SaftUI-Loot/config.lua`'s `item_height`), the icon texture stand-in and the unit frame bar's, raid frame's and tooltip's sizes (200 by 28, 80 by 40, 74 by 44, the spec's). The bars are the experience bar's kind (`bar`), not a unit frame's `unitframe` box with Blizzard's tinted fill art (`UF.BlizzardFill`), which Core cannot call.
 
 **Why noticed:** Task 10 of the live colors plan (review M3). The UI scaling plan makes the engine's borders whole pixels of the frame; the kit's hand-drawn 1-unit lines (the range's track, the sidebar's bar, the own mark, the preview's copies) stay 1 unit, and the preview will drift from the real widgets unless it changes with them.
 
@@ -337,20 +336,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 **Shape of work:** one line in `UF.ColorReaches` and a test.
 
 **Open questions:** none.
-
-### 2026-11-15 — Two Misc readers break "a pass only colors"
-
-**What:** the zone text's color handler calls `SetPoint` on Blizzard's `SubZoneTextString` and makes about 1 KB a pass; the experience bar's Reputation handler calls `Show` and makes about 1.1 KB a pass. Both break the live colors spec's rule that a pass only colors, and no task owns either file.
-
-**Why noticed:** the review of live colors Task 7 (Misc's skins, the tooltip and SaftUI's tracker) probed every Misc reader with the cost helper (`tests/lib/color_cost.lua`). The spec calls both readers "as today", so neither task 7 nor any other task of that plan changed them.
-
-**Anchors:** `ZT:OnColorsChanged` in `SaftUI-Misc/Skinning/blizzard/ZoneText.lua` (on any Text key or Factions, while the zone text shows, it runs `UpdateZoneLine`: a `SetPoint` on `SubZoneTextString`, a `SetText`, about 1.07 KB a pass, `SetPoint` 100 times over 100 passes); `XP:OnColorsChanged` in `SaftUI-Misc/experience.lua` (on Reputation it runs `UpdateReputation`: `Show`, `SetMinMaxValues`, `SetValue`, about 1.1 KB a pass, `Show` 100 times over 100 passes); `.agents/taint.md` rule 1 on Blizzard frames; the plan `docs/superpowers/plans/2026-11-15-saftui-live-colors.md` ("A pass only colors").
-
-**What's been considered:** neither frame is secure or tainting, so nothing is broken in the game today; the cost is the point. A zone line that only needs its color could set the font string's color (the color is the only thing a Factions or Text pass changes) instead of laying the line out again, and the reputation bar's pass could set the bar's color without `Show` or its range.
-
-**Shape of work:** small: two handlers cut down to color setters, each with a cost case (`C.measure`, forbidden 0, `kb < 4`) in `tests/misc/zone_text_test.lua` and `tests/misc/experience_test.lua`.
-
-**Open questions:** whether the zone line's color is held apart from its text (it may be one `SetText` with an escape), which would decide if the pass can color alone.
 
 ### 2026-11-15 — A roll result line's All passed and winner color are baked in at push
 
@@ -2492,6 +2477,23 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-15 — Two Misc readers break "a pass only colors"
+
+**What:** the zone text's color handler calls `SetPoint` on Blizzard's `SubZoneTextString` and makes about 1 KB a pass; the experience bar's Reputation handler calls `Show` and makes about 1.1 KB a pass. Both break the live colors spec's rule that a pass only colors, and no task owns either file.
+
+**Why noticed:** the review of live colors Task 7 (Misc's skins, the tooltip and SaftUI's tracker) probed every Misc reader with the cost helper (`tests/lib/color_cost.lua`). The spec calls both readers "as today", so neither task 7 nor any other task of that plan changed them.
+
+**Anchors:** `ZT:OnColorsChanged` in `SaftUI-Misc/Skinning/blizzard/ZoneText.lua` (on any Text key or Factions, while the zone text shows, it runs `UpdateZoneLine`: a `SetPoint` on `SubZoneTextString`, a `SetText`, about 1.07 KB a pass, `SetPoint` 100 times over 100 passes); `XP:OnColorsChanged` in `SaftUI-Misc/experience.lua` (on Reputation it runs `UpdateReputation`: `Show`, `SetMinMaxValues`, `SetValue`, about 1.1 KB a pass, `Show` 100 times over 100 passes); `.agents/taint.md` rule 1 on Blizzard frames; the plan `docs/superpowers/plans/2026-11-15-saftui-live-colors.md` ("A pass only colors").
+
+**What's been considered:** neither frame is secure or tainting, so nothing is broken in the game today; the cost is the point. A zone line that only needs its color could set the font string's color (the color is the only thing a Factions or Text pass changes) instead of laying the line out again, and the reputation bar's pass could set the bar's color without `Show` or its range.
+
+**Shape of work:** small: two handlers cut down to color setters, each with a cost case (`C.measure`, forbidden 0, `kb < 4`) in `tests/misc/zone_text_test.lua` and `tests/misc/experience_test.lua`.
+
+**Open questions:** whether the zone line's color is held apart from its text (it may be one `SetText` with an escape), which would decide if the pass can color alone.
+
+**Resolved 2026-11-15:** live colors Task 11's fix round. `XP:OnColorsChanged` recolors the shown reputation bar only (it keeps the group and standing the bar wears: no `Show`, range or value, nothing made); `ZT:RecolorZoneLine` (Text and Factions passes) sets the line's color and makes the faction text again only when its color changed, and never calls `SetPoint`. Cost cases in `tests/misc/experience_test.lua` and `tests/misc/zone_text_test.lua` (nothing forbidden, nothing made, under 4 KB over 100 passes).
+
 
 ### 2026-11-15 — A reset on every font row
 

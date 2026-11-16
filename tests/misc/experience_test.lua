@@ -166,3 +166,46 @@ test("the mover's default position is a copy of the profile defaults'; it is hid
 	for _, bar in pairs(XP.bars) do bar:Hide() end
 	eq(EM:IsMoverHidden(mover), true, 'hidden while none does')
 end)
+
+test('a reputation or renown pass only colors: no Show, range or value, nothing made, under 4 KB over 100 passes', function()
+	local C = load_test_file('lib/color_cost.lua')
+	C_GossipInfo = { GetFriendshipReputation = function() end }
+	C_Reputation.IsMajorFaction = function() return false end
+	C_Reputation.GetWatchedFactionData = function()
+		return { name = 'Stormwind', reaction = 5, factionID = 72, currentReactionThreshold = 0,
+			nextReactionThreshold = 100, currentStanding = 40 }
+	end
+	XP:UpdateReputation()
+	local bar = XP.bars.reputation
+	local before = { bar:GetValue(), select(2, bar:GetMinMaxValues()) }
+	st:ColorChanged('reaction', 5) -- the first pass makes what a widget makes once
+	local shows, ranges = 0, 0
+	local show, set = bar.Show, bar.SetMinMaxValues
+	bar.Show = function(...) shows = shows + 1; return show(...) end
+	bar.SetMinMaxValues = function(...) ranges = ranges + 1; return set(...) end
+	local m = C.measure(function() st:ColorChanged('reaction', 5) end, 100)
+	bar.Show, bar.SetMinMaxValues = nil, nil
+	eq(shows, 0, 'no Show')
+	eq(ranges, 0, 'no range set')
+	eq(m.forbidden.total, 0, 'nothing forbidden')
+	eq(m.made, 0, 'nothing made')
+	check(m.kb < 4, ('under 4 KB, got %.2f'):format(m.kb))
+	eq(bar:GetValue() .. ',' .. select(2, bar:GetMinMaxValues()), before[1] .. ',' .. before[2], 'the bar is as it was')
+	-- Renown, and a pass for the other color, and a hidden bar.
+	C_Reputation.IsMajorFaction = function() return true end
+	C_MajorFactions = { GetMajorFactionData = function() return { name = 'A', renownLevel = 3, renownReputationEarned = 5, renownLevelThreshold = 10 } end }
+	XP:UpdateReputation()
+	profile.colors.renown:SetRGB(0.3, 0.6, 0.9)
+	st:ColorChanged('reaction', 5)
+	local r = XP.bars.reputation:GetStatusBarColor()
+	check(math.abs(r - 0.3) > 0.001, 'renown on screen: a standing pass leaves it')
+	st:ColorChanged('renown')
+	r = XP.bars.reputation:GetStatusBarColor()
+	check(math.abs(r - 0.3) < 0.001, 'a renown pass colors it')
+	C_Reputation.IsMajorFaction = function() return false end
+	C_Reputation.GetWatchedFactionData = function() return nil end
+	XP:UpdateReputation()
+	XP.bars.reputation:SetStatusBarColor(1, 1, 1)
+	st:ColorChanged('reaction', 5)
+	eq(select(1, XP.bars.reputation:GetStatusBarColor()), 1, 'a hidden bar is left alone')
+end)
