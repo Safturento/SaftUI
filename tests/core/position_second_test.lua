@@ -74,40 +74,29 @@ test('the checker: a part\'s Position is skipped and named, not checked', functi
 	eq(#p3, 1, 'on a page that is not the unit frames, the castbar tab is checked')
 end)
 
--- The Positions this test leaves where their own section has them: a part's
--- inside a unit frame's element tab (the element's own place on the frame, a
--- text's or an icon's within it), built by generators.uf_element_position.
--- Those pages are to be redesigned, so they stay as they are. 'Unitframes:<tab>:<title>',
--- every one found on the page for either client. A new element tab with a
--- Position fails the match below: add it here, if it is a part's.
+-- The Positions this test leaves where their own section has them: a text's or an
+-- icon's within a unit frame's bar tab (Health's and Power's Text position, the cast
+-- bar's Spell name, Time and Icon, the auras' Timer and Count), built by
+-- generators.uf_element_position. The bars' own Position (Health, Power, Power bar,
+-- Additional power, Cast bar, Buffs, Debuffs) and General's are walked as the
+-- frame's: the second section. The other parts are rows of General's Parts, whose
+-- menus are no page. 'Unitframes:<tab>[/<sub tab>]:<title>', every one found on the
+-- page for either client. A new text with a Position fails the match below: add it
+-- here, and to PART_TITLES in lib/position_second.lua, if it is a part's.
 -- (Auras' Duration and Stack count text positions, also left, are named by
 -- PART_TITLES in lib/position_second.lua and walked in misc/options_pages_test.lua.)
 local PART_POSITIONS = {
-	'Unitframes:AdditionalPower:Position',
-	'Unitframes:AdditionalPower:Text position',
-	'Unitframes:Buffs:Count position',
-	'Unitframes:Buffs:Position',
-	'Unitframes:Buffs:Timer position',
+	'Unitframes:Auras/Buffs:Count position',
+	'Unitframes:Auras/Buffs:Timer position',
+	'Unitframes:Auras/Debuffs:Count position',
+	'Unitframes:Auras/Debuffs:Timer position',
 	'Unitframes:Castbar:Icon position',
-	'Unitframes:Castbar:Position',
 	'Unitframes:Castbar:Spell name position',
 	'Unitframes:Castbar:Time position',
-	'Unitframes:ClassPower:Position',
-	'Unitframes:Debuffs:Count position',
-	'Unitframes:Debuffs:Position',
-	'Unitframes:Debuffs:Timer position',
-	'Unitframes:GroupRoleIndicator:Position',
-	'Unitframes:Health:Position',
 	'Unitframes:Health:Text position',
-	'Unitframes:Name:Position',
-	'Unitframes:Power:Position',
+	'Unitframes:Power/AdditionalPower:Text position',
+	'Unitframes:Power/bar:Text position',
 	'Unitframes:Power:Text position',
-	'Unitframes:QuestIndicator:Position',
-	'Unitframes:RaidRoleIndicator:Position',
-	'Unitframes:RaidTargetIndicator:Position',
-	'Unitframes:ReadyCheckIndicator:Position',
-	'Unitframes:Subtext:Position',
-	'Unitframes:Threat:Position',
 }
 
 local function check_page(name, root, expect)
@@ -198,6 +187,7 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		function UF:GetMoverFrame(unit) return self.holders[unit] or self.units[unit] end
 		load_saftui('SaftUI-Unitframes/config/profiles.lua')
 		load_saftui('SaftUI-Unitframes/config/groupoptions.lua')
+		load_saftui('SaftUI-Unitframes/config/parts.lua')
 		load_saftui('SaftUI-Unitframes/config/config.lua')
 		load_saftui('SaftUI-Unitframes/updaters.lua')
 		load_saftui('SaftUI-Unitframes/nameplates/nameplates.lua')

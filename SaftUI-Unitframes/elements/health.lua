@@ -224,8 +224,8 @@ local function GetConfigTable(unit)
 					alpha = G.alpha(2, 'How solid the background is, from see-through to opaque.'),
 				},
 			},
-			-- Last in the tab, after Text and Bar background.
-			position = G.uf_element_position(1000,
+			-- The tab's second section: after the bar's own settings, before its size line, Colors, Text and Bar background.
+			position = G.uf_element_position(7.5,
 				function(index)
 					return UnitConfig().health.position[index]
 				end,

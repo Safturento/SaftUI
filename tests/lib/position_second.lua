@@ -27,9 +27,22 @@ local PS = {}
 -- the part's within the unit frame (generators.uf_element_position). The
 -- nameplate pages and group pages keep the same tabs. 'general' is the frame's.
 PS.FRAME_TABS = { general = true }
+-- The unit frames' bar tabs (Health, Power and its Power bar and Additional power,
+-- Cast bar, Auras' Buffs and Debuffs) are about a frame of their own, so their own
+-- Position is the second section too: only the texts' and icons' inside them are a
+-- part's (PART_TITLES). Every other element is a row of General's Parts, whose
+-- menu is no page.
+for _, tab in ipairs({ 'Health', 'Power', 'bar', 'AdditionalPower', 'Castbar', 'Auras', 'Buffs', 'Debuffs' }) do
+	PS.FRAME_TABS[tab] = true
+end
 -- Titles of a part's Position (a text drawn on each icon), on a General tab or
--- not: Auras' Duration and Stack count (Blizzard_BuffFramePosition.lua).
-PS.PART_TITLES = { ['Duration position'] = true, ['Stack count position'] = true }
+-- not: Auras' Duration and Stack count (Blizzard_BuffFramePosition.lua), the unit
+-- frames' texts and icons inside a bar's tab.
+PS.PART_TITLES = {
+	['Duration position'] = true, ['Stack count position'] = true,
+	['Text position'] = true, ['Spell name position'] = true, ['Time position'] = true,
+	['Icon position'] = true, ['Count position'] = true, ['Timer position'] = true,
+}
 
 local function OM() return SaftUI.OptionsModel end
 

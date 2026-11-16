@@ -41,68 +41,10 @@
 --
 -- AceConfigRegistry validates ace_ready (tests/lib/options_walk.lua) of the
 -- table: a copy without SaftUI's own fields and Position options.
-load_core_helpers()
-load_saftui('SaftUI-Unitframes/config/position.lua') -- config/load.xml's order: first
-load_saftui('SaftUI-Unitframes/config/default.lua')
--- Every unit's own defaults, as config/load.xml lists them (the nameplates'
--- are enable, friendly, threat_solo, the threat text, width, height).
-for _, file in ipairs({ 'player', 'target', 'targettarget', 'focus', 'focustarget', 'pet', 'pettarget', 'boss',
-	'arena', 'party', 'raid10', 'raid40', 'nameplate', 'friendlynameplate' }) do
-	load_saftui('SaftUI-Unitframes/config/units/' .. file .. '.lua')
-end
-apply_defaults()
-load_saftui('SaftUI-Core/Libraries/Ace3/AceConfig-3.0/AceConfigRegistry-3.0/AceConfigRegistry-3.0.lua')
-load_saftui('SaftUI-Core/Config/optionsmodel.lua')
-load_options_widgets()
-load_saftui('SaftUI-Core/Config/optionsbody.lua')
-load_options_window()
-load_test_file('lib/options_walk.lua')
-local T = load_test_file('lib/theme_helpers.lua')
-
-local st = SaftUI
-local OM, OW, W = st.OptionsModel, st.OptionsWindow, st.OptionsWidgets
-local AceConfigRegistry = LibStub('AceConfigRegistry-3.0')
--- The module by hand, UF:RegisterElement as unitframes.lua's table store
--- (uf_world.lua's UW.module).
-local UF = load_test_file('unitframes/uf_world.lua').module()
+local PW = load_test_file('unitframes/page_world.lua').world()
+local T, st, OM, OW, W, UF, AceConfigRegistry, OF = PW.T, PW.st, PW.OM, PW.OW, PW.W, PW.UF, PW.AceConfigRegistry, PW.OF
 local updates = 0
 function UF:UpdateConfig() updates = updates + 1 end
-
-UF.units, UF.groups, UF.holders = {}, {}, {}
-for _, unit in ipairs({ 'boss', 'focustarget', 'player', 'pettarget', 'target', 'pet', 'targettarget', 'focus' }) do
-	UF.units[unit] = CreateFrame('Frame', nil, UIParent)
-end
-for _, group in ipairs({ 'raid40', 'party', 'raid10' }) do
-	UF.groups[group] = CreateFrame('Frame', nil, UIParent)
-	UF.holders[group] = CreateFrame('Frame', nil, UIParent)
-end
-UF.unit_strings = {
-	player = 'Player', target = 'Target', targettarget = 'TargetTarget', focus = 'Focus',
-	focustarget = 'FocusTarget', pet = 'Pet', pettarget = 'PetTarget', boss = 'Boss', -- arena's is commented out
-}
-UF.group_strings = { party = 'Party', raid10 = 'Raid 10', raid40 = 'Raid 40' }
-UF.PLATE_UNITS = { nameplate = true, friendlynameplate = true }
-function UF.IsPlateUnit(unit) return UF.PLATE_UNITS[unit] == true end
-function UF:GetMoverFrame(unit) return self.holders[unit] or self.units[unit] end
-
-load_saftui('SaftUI-Unitframes/config/profiles.lua')
-load_saftui('SaftUI-Unitframes/config/groupoptions.lua')
-load_saftui('SaftUI-Unitframes/config/config.lua')
-load_saftui('SaftUI-Unitframes/updaters.lua')
-load_saftui('SaftUI-Unitframes/nameplates/nameplates.lua')
-load_saftui('SaftUI-Unitframes/nameplates/threat.lua')
-load_saftui('SaftUI-Unitframes/nameplates/options.lua')
--- Every element file the TOC loads that defines options (lib/options_files.lua's rule), in the TOC's
--- order: a new element cannot be missed by the walk. (aurawatch.lua and portrait.lua register nothing.)
-local OF = load_test_file('lib/options_files.lua')
-for _, path in ipairs(OF.Files('SaftUI-Unitframes/elements/')) do load_saftui(path) end
--- The name tag (tags.lua), with LibStringFormat-1.0, which init.lua makes
--- st.StringFormat.
-UF.oUF = { Tags = { Events = {}, Methods = {} }, colors = { class = st.config.profile.colors.class } }
-load_string_format()
-load_saftui('SaftUI-Unitframes/tags.lua')
--- The Subtext element (registers a tag on UF.oUF, so after tags.lua): the plate pages' Subtext tab.
-load_saftui('SaftUI-Unitframes/nameplates/subtext.lua')
 
 local click = stub.click
 
@@ -195,7 +137,7 @@ end)
 
 test("the player's Power position resets though its default X is half a pixel", function()
 	local root = { Unitframes = UF:GetConfigTable() }
-	local row = RowAt(root, { 'Unitframes', 'player', 'Power', 'position' })
+	local row = RowAt(root, { 'Unitframes', 'player', 'Power', 'bar', 'position' })
 	local position = UF:GetProfileConfig().player.power.position
 	-- (The walk before has already rounded the profile's own to a whole pixel.)
 	eq(select(2, st:DefaultAt('unitframes', 'profiles', UF:GetProfile(), 'player', 'power', 'position', 'x_off')), 0.5, 'the default is the half pixel')
@@ -213,7 +155,7 @@ test("a part's position resets to the merged default: the castbar's Text and Tim
 	for _, case in ipairs({
 		{ { 'Unitframes', 'player', 'Castbar', 'text', 'position' }, function() return P.player.castbar.text.position end, 'Castbar', nil },
 		{ { 'Unitframes', 'player', 'Castbar', 'time', 'position' }, function() return P.player.castbar.time.position end, 'Castbar', nil },
-		{ { 'Unitframes', 'target', 'Buffs', 'layout', 'position' }, function() return P.target.buffs.position end, nil, 7 },
+		{ { 'Unitframes', 'target', 'Auras', 'Buffs', 'position' }, function() return P.target.buffs.position end, nil, 7 },
 	}) do
 		local path, position, element, y = case[1], case[2], case[3], case[4]
 		local row = RowAt(root, path)
@@ -239,7 +181,7 @@ test("the aura borders are saved once per hostility: their reset puts each hosti
 	local P = UF:GetProfileConfig()
 	for _, case in ipairs({ { 'Buffs', 'buffs', 'colorStealable', 'enemy' }, { 'Debuffs', 'debuffs', 'colorTypes', 'friend' } }) do
 		local tab, key, flag, on = case[1], case[2], case[3], case[4]
-		local row = RowAt(root, { 'Unitframes', 'target', tab, 'buttons', 'border' })
+		local row = RowAt(root, { 'Unitframes', 'target', 'Auras', tab, 'buttons', 'border' })
 		local config = P.target[key]
 		check(config[on][flag], tab .. ': ' .. on .. ' has it on by default')
 		check(not OM.DefaultDiffers(root, row), tab .. ': at its default')
@@ -350,7 +292,7 @@ end)
 -- names (Aura watch, Portrait), one of its own.
 local COPY_LABELS = {
 	additionalpower = 'Additional power', aurawatch = 'Aura watch', background = 'Background', buffs = 'Buffs',
-	castbar = 'Castbar', classpower = 'Class power', columnSpacing = 'Column spacing', debuffs = 'Debuffs',
+	castbar = 'Cast bar', classpower = 'Class power', columnSpacing = 'Column spacing', debuffs = 'Debuffs',
 	enable = 'Enable', growthDirection = 'Growth', grouproleindicator = 'Group role', health = 'Health',
 	height = 'Height', initialAnchor = 'Column growth', maxColumns = 'Max columns', name = 'Name',
 	portrait = 'Portrait', position = 'Position', power = 'Power', questindicator = 'Quest',
@@ -731,6 +673,47 @@ local function sorted_keys(t)
 	return table.concat(keys, ',')
 end
 
+-- The page as it was before the parts were rows: each element a tab of its own
+-- key, so the tests of the elements' option tables (their descs, sizes, resets
+-- and saved paths, which are the same tables now) read them where they always
+-- did. A part drawn as a row becomes its tab again: the row's menu with the
+-- Enable the row's box is; Auras' children and Power's bar and Additional power
+-- are lifted to the tabs they were. The real page's shape is parts_test.lua's.
+local function legacy_config()
+	local tree = UF:GetConfigTable()
+	for _, page in pairs(tree.args) do
+		local args = {}
+		for key, option in pairs(page.args) do
+			if key == 'Auras' then
+				for child, group in pairs(option.args) do args[child] = group end
+			elseif key == 'Power' and option.args.bar then
+				args.Power = option.args.bar
+				args.AdditionalPower = option.args.AdditionalPower
+			else
+				args[key] = option
+			end
+		end
+		local parts = page.args.general.args.parts
+		for partKey, item in pairs(parts and parts.args or {}) do
+			local part = UF.PartFor(partKey)
+			if not part.sub then
+				local group = {}
+				for k, v in pairs(item.menu) do group[k] = v end
+				group.args = {}
+				for k, v in pairs(item.menu.args) do group.args[k] = v end
+				group.order = part.element == 'Name' and 5 or 9
+				if item.get ~= false then
+					group.args.enable = { type = 'toggle', name = 'Enable', desc = item.desc, order = 0, size = 'small',
+						get = item.get, set = item.set, saved = item.saved }
+				end
+				args[part.element] = group
+			end
+		end
+		page.args = args
+	end
+	return tree
+end
+
 -- The option at keys under a unit's tab, and the row OM.Get and OM.Set take for
 -- it: they find the get and set it inherits, as the window does.
 local function option_at(config, unit, tab, ...)
@@ -815,7 +798,7 @@ local FLAG_UNITS = {
 local MOB_UNITS = any_and('boss', 'nameplate')
 
 test('each unit has a tab for each element it has', function()
-	local config = UF:GetConfigTable()
+	local config = legacy_config()
 	local everywhere = 'Buffs,Debuffs,GroupRoleIndicator,Health,Name,Power,QuestIndicator,RaidRoleIndicator,RaidTargetIndicator'
 	eq(sorted_keys(element_tabs(config, 'player')),
 		'AdditionalPower,Buffs,Castbar,ClassPower,Debuffs,GroupRoleIndicator,Health,Name,Power,QuestIndicator,RaidRoleIndicator,RaidTargetIndicator',
@@ -833,7 +816,7 @@ test('each unit has a tab for each element it has', function()
 end)
 
 test('every element tab: a tooltip on every option, no Ace width, and each Position a block last in its group', function()
-	local config = UF:GetConfigTable()
+	local config = legacy_config()
 	local positions = 0
 	local function position_last(group, where)
 		for key, option in pairs(group.args) do
@@ -846,9 +829,13 @@ test('every element tab: a tooltip on every option, no Ace width, and each Posit
 			end
 		end
 	end
+	-- A bar's own Position is its tab's second section (the owner's rule, walked by
+	-- position_second_test.lua), so these tabs' is not last; a part's menu has its
+	-- Position last, and so has every text and section inside a tab.
+	local BAR_TABS = { Health = true, Power = true, AdditionalPower = true, Castbar = true, Buffs = true, Debuffs = true }
 	for _, unit in ipairs(UNITS) do
 		for tab, group in pairs(element_tabs(config, unit)) do
-			position_last(group, unit .. '.' .. tab)
+			if not BAR_TABS[tab] then position_last(group, unit .. '.' .. tab) end
 			each_option(group, function(option, path)
 				local where = unit .. '.' .. tab .. '.' .. table.concat(path, '.')
 				eq(option.width, nil, where .. ' has no width')
@@ -871,7 +858,7 @@ test('every element tab: a tooltip on every option, no Ace width, and each Posit
 end)
 
 test('no element tab has two sections with the same title: a part\'s Position says what it places', function()
-	local config = UF:GetConfigTable()
+	local config = legacy_config()
 	local checked, named = 0, {}
 	for _, unit in ipairs(UNITS) do
 		for tab in pairs(element_tabs(config, unit)) do
@@ -894,7 +881,7 @@ test('no element tab has two sections with the same title: a part\'s Position sa
 end)
 
 test('Health and Power: the color toggles, small, in a Colors section, in the order oUF checks them, on the units they can color', function()
-	local config = UF:GetConfigTable()
+	local config = legacy_config()
 	local P = UF:GetProfileConfig()
 	local FLAGS = {
 		Health = { 'colorDisconnected', 'colorTapping', 'colorClass', 'colorClassNPC', 'colorClassPet', 'colorReaction', 'colorSmooth', 'colorHealth' },
@@ -945,7 +932,7 @@ test('Health and Power: the color toggles, small, in a Colors section, in the or
 end)
 
 test('Health, Power and Additional power: Custom and its color are one row, its toggle the saved colorCustom, kept in the shape the profile holds it', function()
-	local config = UF:GetConfigTable()
+	local config = legacy_config()
 	local P = UF:GetProfileConfig()
 	local root = { Unitframes = config }
 	for _, case in ipairs({ { 'target', 'Health' }, { 'party', 'Health' }, { 'player', 'Power' }, { 'boss', 'Power' }, { 'player', 'AdditionalPower' } }) do
@@ -997,7 +984,7 @@ end)
 
 -- The tabs' Custom rows and the text colors.
 local function row_of(unit, tab, ...)
-	local config = UF:GetConfigTable()
+	local config = legacy_config()
 	local option, row = option_at(config, unit, tab, ...)
 	return option, row, { Unitframes = config }
 end
@@ -1005,7 +992,7 @@ end
 local function plain_info(unit, tab, ...) return { 'Unitframes', unit, tab, ... } end
 
 test('no Custom check box is left on its own: every Custom is one color row with a toggle, and the unticked word says what the bar falls back to', function()
-	local config = UF:GetConfigTable()
+	local config = legacy_config()
 	local P = UF:GetProfileConfig()
 	for _, unit in ipairs(UNITS) do
 		for _, tab in ipairs({ 'Health', 'Power', 'AdditionalPower' }) do
@@ -1027,7 +1014,7 @@ test('no Custom check box is left on its own: every Custom is one color row with
 	end
 	-- With a flag on, the first that fits the unit is the word: oUF checks them in this order.
 	local function word(unit, tab)
-		local option = option_at(UF:GetConfigTable(), unit, tab, 'colors', 'custom', 'customColor')
+		local option = option_at(legacy_config(), unit, tab, 'colors', 'custom', 'customColor')
 		return option.toggle.offText(plain_info(unit, tab))
 	end
 	local h = P.target.health
@@ -1089,7 +1076,7 @@ test('the unticked word names the colors the bar can really take for that kind o
 		local saved = {}
 		for key, value in pairs(store) do if type(value) == 'boolean' and key:find('^color') then saved[key] = value; store[key] = false end end
 		for _, key in ipairs(on) do store[key] = true end
-		local option = option_at(UF:GetConfigTable(), unit, tab, 'colors', 'custom', 'customColor')
+		local option = option_at(legacy_config(), unit, tab, 'colors', 'custom', 'customColor')
 		local out = option.toggle.offText(plain_info(unit, tab))
 		for key, value in pairs(saved) do store[key] = value end
 		for _, key in ipairs(on) do if saved[key] == nil then store[key] = nil end end
@@ -1158,7 +1145,7 @@ test("UF.DefaultFor: a unit's own default wins over the shared one", function()
 end)
 
 test('Custom rows are found by search: by custom and by the color', function()
-	local config = UF:GetConfigTable()
+	local config = legacy_config()
 	local root = { Unitframes = config }
 	for _, needle in ipairs({ 'custom', 'Custom color' }) do
 		local hits = 0
@@ -1170,7 +1157,7 @@ test('Custom rows are found by search: by custom and by the color', function()
 end)
 
 test("every element's alpha has an option, 0 to 1, on the element's config", function()
-	local config = UF:GetConfigTable()
+	local config = legacy_config()
 	local P = UF:GetProfileConfig()
 	-- Where each tab keeps it, when not at its top.
 	local AT = { Castbar = { 'bar', 'alpha' }, Buffs = { 'buttons', 'alpha' }, Debuffs = { 'buttons', 'alpha' } }
@@ -1193,7 +1180,7 @@ test("every element's alpha has an option, 0 to 1, on the element's config", fun
 end)
 
 test('Health: Texture on every unit, its text options, and Boss percent only where a skull-level unit can show', function()
-	local config = UF:GetConfigTable()
+	local config = legacy_config()
 	local P = UF:GetProfileConfig()
 	for _, unit in ipairs(UNITS) do
 		local health = P[unit].health
@@ -1219,7 +1206,7 @@ test('Health: Texture on every unit, its text options, and Boss percent only whe
 end)
 
 test("Power and Additional power: Short is a small toggle after Percent, as Health's is, and is off by default", function()
-	local config = UF:GetConfigTable()
+	local config = legacy_config()
 	local P = UF:GetProfileConfig()
 	for _, unit in ipairs(UNITS) do
 		for _, case in ipairs({ { 'Power', 'power' }, { 'AdditionalPower', 'additionalpower' } }) do
@@ -1240,7 +1227,7 @@ test("Power and Additional power: Short is a small toggle after Percent, as Heal
 end)
 
 test("Health, Power and Additional power texts: Text color is one color row with its toggle, white when unticked, in the text's own keys", function()
-	local config = UF:GetConfigTable()
+	local config = legacy_config()
 	local P = UF:GetProfileConfig()
 	for _, unit in ipairs(UNITS) do
 		for _, case in ipairs({ { 'Health', 'health' }, { 'Power', 'power' }, { 'AdditionalPower', 'additionalpower' } }) do
@@ -1304,7 +1291,7 @@ test("Copy from carries a text's color with its element: the whole health or pow
 end)
 
 test('Name: Classification where rare and elite units can show, Class color where players can', function()
-	local config = UF:GetConfigTable()
+	local config = legacy_config()
 	local P = UF:GetProfileConfig()
 	for _, unit in ipairs(UNITS) do
 		local name = P[unit].name
@@ -1328,7 +1315,7 @@ end)
 -- threat text have none: they're texts.
 local TEXTS = { Name = true, Subtext = true, Threat = true }
 local function themed_parts(config, P, unit)
-	local parts = { { 'general', {}, P[unit] } }
+	local parts = { { 'general', UF.IsPlateUnit(unit) and {} or { 'frame' }, P[unit] } }
 	for tab in pairs(element_tabs(config, unit)) do
 		local store = P[unit][string.lower(tab)]
 		if tab == 'Castbar' then
@@ -1351,7 +1338,7 @@ local function listed(config, row)
 end
 
 test('each element tab offers Theme and Background, with descs, and no template', function()
-	local config = UF:GetConfigTable()
+	local config = legacy_config()
 	local P = UF:GetProfileConfig()
 	local generic = st.Config.generators.theme(1).desc
 	local seen = 0
@@ -1407,7 +1394,7 @@ end)
 -- The castbar's Bar and Icon sections each have their own Theme and
 -- Background, so a section, not a tab, has one Background at most.
 test('no element tab shows two settings named Background: the bar\'s own empty-part fill is Bar background', function()
-	local config = UF:GetConfigTable()
+	local config = legacy_config()
 	local bars = 0
 	for _, unit in ipairs(UNITS) do
 		for tab, group in pairs(element_tabs(config, unit)) do
@@ -1437,7 +1424,7 @@ test('no element tab shows two settings named Background: the bar\'s own empty-p
 end)
 
 test("Health's first section: the toggles four to a line, then the settings two to a line", function()
-	local config = UF:GetConfigTable()
+	local config = legacy_config()
 	local view = OM.BuildView({ Unitframes = config }, 'Unitframes', { pick = 'target', tab = 'Health' })
 	-- The tab's own first section.
 	local first
@@ -1452,13 +1439,13 @@ test("Health's first section: the toggles four to a line, then the settings two 
 		'enable:small 1/1, reverse_fill:small 1/2, vertical_fill:small 2/1, Smooth:small 2/2, '
 		.. 'theme:normal 1, background:normal 2, texture:normal 1, alpha:normal 2, framelevel:normal 1',
 		"Health's first section")
-	eq(view.sections[#view.sections].title, 'Position', 'Position is the last section')
+	eq(view.sections[2].title, 'Position', "Position is the second section: after the bar's own settings")
 end)
 
 -- 'key:size col[/quarter]' for each row of a unit's tab's first section, in
 -- the lines the window packs them in, a line to an entry.
 local function first_lines(unit, tab)
-	local view = OM.BuildView({ Unitframes = UF:GetConfigTable() }, 'Unitframes', { pick = unit, tab = tab })
+	local view = OM.BuildView({ Unitframes = legacy_config() }, 'Unitframes', { pick = unit, tab = tab })
 	local lines, byY = {}, {}
 	for _, p in ipairs(st.OptionsBody.LayoutRows(view.sections[1].rows)) do
 		local line = byY[p.y]
@@ -1477,8 +1464,8 @@ test("a unit's General starts with Enable and Theme, a half each; Background fol
 		eq(lines[3], 'height:normal 1', unit .. ': third line')
 		eq(#lines, 3, unit .. ': nothing more in its first section')
 		-- The unit's page holds General and the element tabs; Copy from is beside the picker.
-		eq(UF:GetConfigTable().args[unit].args.copy, nil, unit .. ': no Copy from above the tabs')
-		eq(UF:GetConfigTable().args[unit].args.general.args.copy, nil, unit .. ': nor in General')
+		eq(legacy_config().args[unit].args.copy, nil, unit .. ': no Copy from above the tabs')
+		eq(legacy_config().args[unit].args.general.args.copy, nil, unit .. ': nor in General')
 	end
 end)
 
@@ -1486,7 +1473,7 @@ test("Copy from is beside the Unit dropdown, on every unit's page but the namepl
 	local opened
 	local real = UF.OpenCopyTable
 	function UF:OpenCopyTable(unit) opened = unit end
-	local config = UF:GetConfigTable()
+	local config = legacy_config()
 	for _, unit in ipairs({ 'player', 'target', 'targettarget', 'focus', 'focustarget', 'pet', 'pettarget', 'boss', 'party', 'raid10', 'raid40' }) do
 		-- The pick's control (Core's pickerControl field), from every tab.
 		local control = config.args[unit].pickerControl
@@ -1522,10 +1509,12 @@ test("the nameplate pages' General keeps its own first lines, with no Copy from"
 	eq(friendly[1], 'friendly:small 1/1, use_enemy:normal 2', 'Friendly: its toggle and the box')
 end)
 
--- Every section of the player's Class power tab, as the window packs it: a
+-- Every section of the player's Class power menu (a part row of General's Parts: its
+-- Enable is the row's box, so the menu starts at Theme), as the window packs it: a
 -- line to an entry, and whether it shares the panel above.
-test("Class power: Enable and Theme across one line, no gap beside Enable; Width, Relative, Height and its Relative as four quarters on one line", function()
-	local view = OM.BuildView({ Unitframes = UF:GetConfigTable() }, 'Unitframes', { pick = 'player', tab = 'ClassPower' })
+test("Class power: its menu's Theme, Background and the rest in lines; Width, Relative, Height and its Relative as four quarters on one line", function()
+	local item = UF:GetConfigTable().args.player.args.general.args.parts.args.classpower
+	local view = OM.BuildView(OM.MenuRoot(item), OM.MENU_KEY)
 	local got = {}
 	for i, section in ipairs(view.sections) do
 		got[i] = {}
@@ -1534,13 +1523,14 @@ test("Class power: Enable and Theme across one line, no gap beside Enable; Width
 		end
 		got[i] = table.concat(got[i], ', ')
 	end
-	eq(got[1], 'enable:normal 1 y0, theme:normal 2 y0, background:normal 1 y34, alpha:normal 2 y34, framelevel:normal 1 y68, spacing:normal 2 y68',
-		'six rows in three full lines')
+	eq(got[1], 'theme:normal 1 y0, background:normal 2 y0, alpha:normal 1 y34, framelevel:normal 2 y34, spacing:normal 1 y68',
+		'five rows in three lines: the box took Enable out')
 	eq(got[2], 'width:small 1/1 y0, relative_width:small 1/2 y0, height:small 2/1 y0, relative_height:small 2/2 y0',
-		"Width and its Relative in the left half, Height and its Relative the right")
-	eq(got[3], 'position:wide full y0', 'Position last')
+		"Width and its Relative in the left half, Height and its Relative the right: an untitled line of its own")
+	eq(got[3], 'position:wide full y0', 'Position after it: the menu holds the size line as the tab did, so Position is its third section')
 	eq(#got, 3)
-	eq(view.sections[2].title, nil, "the size row continues the panel above, untitled")
+	eq(view.sections[2].title, nil, 'the size row is untitled')
+	eq(view.sections[3].title, 'Position', 'then the Position block')
 end)
 
 test("the name tag marks rare (R), rare elite (R+), elite (+) and world boss (B) units with Classification on", function()
@@ -1607,7 +1597,7 @@ test("at half: the Health and Power tabs' note wraps to the body, clear of the r
 	local OB = st.OptionsBody
 	local P = load_test_file('lib/pixels.lua')
 	local N = load_test_file('lib/halfnotes.lua')
-	local config, seen = UF:GetConfigTable(), 0
+	local config, seen = legacy_config(), 0
 	for _, look in ipairs({ 'thick', 'thin', 'blizzard' }) do
 		st.config.profile.theme.name = look
 		local width = look == 'blizzard' and 368 or 388

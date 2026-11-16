@@ -69,7 +69,7 @@ UW.ELEMENTS = { 'auras', 'power', 'additionalpower', 'health', 'castbar', 'class
 -- unitframes.lua and the group files).
 UW.MODULE_FILES = {
 	'unitframes', 'grouplayout', 'groups', 'blizzardraid', 'grouppreview',
-	'config/profiles', 'config/groupoptions', 'config/config', 'constructors', 'updaters',
+	'config/profiles', 'config/groupoptions', 'config/parts', 'config/config', 'constructors', 'updaters',
 }
 
 -- oUF as far as unitframes.lua and the previews use it: its colors table,

@@ -404,12 +404,15 @@ end
 History()
 
 -- What Copy from calls each setting of a unit, and so which it lists: the
--- name the unit's own /sui page shows for that part. An element's tab by its
--- key in lower case (the config's key for it), and General's options, sections
--- and the options in them by their keys (Layout's settings, the Range section).
--- A key the page names nothing for isn't listed: the config holds it but
--- nothing reads it for this unit (Aura watch and Portrait have no element, a
--- single unit has no Range section), so ticking it would copy nothing.
+-- name the unit's own /sui page shows for that part. An element by its key in
+-- lower case (the config's key for it) and its name (UF.ELEMENT_NAMES), read
+-- from the elements the unit has, not from where the page puts them (a tab, a
+-- row of General's Parts, a tab under another); and General's options, sections
+-- and the options in them by their keys (Layout's settings, the Range section;
+-- not its Frame and Parts sections, which hold no key of their own). A key the
+-- page names nothing for isn't listed: the config holds it but nothing reads it
+-- for this unit (Aura watch and Portrait have no element, a single unit has no
+-- Range section), so ticking it would copy nothing.
 local function CopyNames(self, unit, tree)
 	local names = {}
 	local function Add(key, name)
@@ -419,13 +422,23 @@ local function CopyNames(self, unit, tree)
 	end
 	local function AddGeneral(args)
 		for key, option in pairs(args) do
-			Add(key, option.name)
-			if option.type == 'group' and type(option.args) == 'table' then AddGeneral(option.args) end
+			if key ~= 'parts' then
+				if option.type == 'group' and type(option.args) == 'table' then
+					if key ~= 'frame' then Add(key, option.name) end
+					AddGeneral(option.args)
+				else
+					Add(key, option.name)
+				end
+			end
 		end
 	end
 	local page = (tree or self:GetConfigTable()).args[unit]
-	for tabKey, tab in pairs(page and page.args or {}) do
-		if tabKey == 'general' then AddGeneral(tab.args or {}) else Add(tabKey:lower(), tab.name) end
+	local general = page and page.args.general
+	if general then AddGeneral(general.args or {}) end
+	for element, registered in pairs(UF.elements) do
+		if registered.GetConfigTable and (not registered.ValidUnit or registered.ValidUnit(unit)) then
+			Add(element:lower(), UF.ELEMENT_NAMES[element])
+		end
 	end
 	return names
 end
@@ -724,19 +737,29 @@ function UF:GetConfigTable()
 						UF:UpdateConfig(unit)
 					end,
 					args = {
-						-- A half, so Theme sits beside it with no empty quarter
-						-- between (as Class power's).
-						enable = st.Config.generators.enable(0, 'Shows this unit frame. When off, the unit frame is hidden.'),
-						theme = st.Config.generators.theme(1, "How this unit frame's border and background are drawn."),
-						background = st.Config.generators.background(1.5),
-						width = st.Config.generators.width(2, "The unit frame's width."),
-						height = st.Config.generators.height(3, "The unit frame's height."),
+						-- General's sections, in order: Frame, Position, then a group's
+						-- Layout (6) and Range (500), then the Parts (2000, parts.lua).
+						frame = {
+							order = 1,
+							name = 'Frame',
+							type = 'group',
+							inline = true,
+							args = {
+								-- A half, so Theme sits beside it with no empty quarter
+								-- between (as Class power's).
+								enable = st.Config.generators.enable(0, 'Shows this unit frame. When off, the unit frame is hidden.'),
+								theme = st.Config.generators.theme(1, "How this unit frame's border and background are drawn."),
+								background = st.Config.generators.background(1.5),
+								width = st.Config.generators.width(2, "The unit frame's width."),
+								height = st.Config.generators.height(3, "The unit frame's height."),
+							},
+						},
 						-- Every SetPoint parameter, the relative frame included.
 						-- Passing the mover's frame makes a typed frame go through
 						-- st:ValidateAnchor, which rejects the frame itself and
 						-- anything anchored back to it (e.g. Pet for Player).
-						-- The second section of General: after these rows, before a group's Layout (order 6) and Range (500).
-						position = st.Config.generators.position(4, true, frame_position_get, frame_position_set,
+						-- The second section of General.
+						position = st.Config.generators.position(2, true, frame_position_get, frame_position_set,
 							self:GetMoverFrame(unit), nil, nil, UF.SavedAt(unit, 'position')),
 					}
 				}
@@ -752,13 +775,16 @@ function UF:GetConfigTable()
 		-- nameplate addon draws the plates.
 		UF.SetUpPlatePage(unit, config_table)
 
-		-- One tab per element the unit has (ValidUnit, as in UF.ConstructUnit).
+		-- The groups of the elements the unit has (ValidUnit, as in UF.ConstructUnit),
+		-- placed by UF.PARTS (parts.lua): a part as a row of General's Parts or as a
+		-- tab, Buffs and Debuffs under Auras, every other element a tab.
+		local built = {}
 		for element_name, element in pairs(UF.elements) do
 			if element.GetConfigTable and (not element.ValidUnit or element.ValidUnit(unit)) then
-				config_table.args[element_name] =
-					element.GetConfigTable(unit)
+				built[element_name] = element.GetConfigTable(unit)
 			end
 		end
+		UF.PlaceElements(unit, config_table, built)
 
 		-- A nameplate page's tabs are disabled while its box is checked, but
 		-- those it keeps.

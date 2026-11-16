@@ -149,7 +149,7 @@ test('the Enemy nameplates page follows Raid 40; General has Nameplates, Threat 
 		local keys = {}
 		for key in pairs(general.args) do keys[#keys + 1] = key end
 		table.sort(keys)
-		eq(table.concat(keys, ','), 'background,enable,height,sourced,theme,threat_solo,use_friendly,width', client .. ": General's rows")
+		eq(table.concat(keys, ','), 'background,enable,height,parts,sourced,theme,threat_solo,use_friendly,width', client .. ": General's rows, and its Parts")
 		for key, name in pairs({ enable = 'Nameplates', threat_solo = 'Threat when solo', use_friendly = "Use friendly nameplates' settings",
 				theme = 'Theme', background = 'Background', width = 'Width', height = 'Height' }) do
 			eq(general.args[key].name, name, client .. ': ' .. key .. ' is ' .. name)
@@ -166,7 +166,8 @@ test('the Enemy nameplates page follows Raid 40; General has Nameplates, Threat 
 		-- is checked.
 		local drawn = {}
 		for i, row in ipairs(rows(view)) do drawn[i] = row.key end
-		eq(table.concat(drawn, ','), 'enable,threat_solo,use_friendly,theme,background,width,height', client .. ': in order')
+		eq(table.concat(drawn, ','), 'enable,threat_solo,use_friendly,theme,background,width,height,name,subtext,healthtext,threat,raidtarget,quest',
+			client .. ': in order, then the Parts: the name, subtext, health text, threat, raid target and quest rows (the texts and icons that were tabs)')
 		for _, row in ipairs(rows(view)) do
 			check(not row.disabled, client .. ': ' .. row.key .. ' is enabled with no other nameplate addon')
 		end
@@ -183,7 +184,7 @@ test('the Enemy nameplates page follows Raid 40; General has Nameplates, Threat 
 			if key ~= 'general' and option.type == 'group' then tabs[#tabs + 1] = key end
 		end
 		table.sort(tabs)
-		eq(table.concat(tabs, ','), 'Buffs,Castbar,Debuffs,Health,Name,QuestIndicator,RaidTargetIndicator,Subtext,Threat', client .. ': its element tabs')
+		eq(table.concat(tabs, ','), 'Auras,Castbar,Health', client .. ': its element tabs: the rest are rows of General')
 
 		-- A plate shows any unit but an offline player, so Health's colors
 		-- have every flag but Disconnected.
@@ -597,7 +598,7 @@ test('another nameplate addon loaded: the page says which, and its options are d
 		for i = 2, #list do
 			check(list[i].disabled, client .. ': ' .. list[i].key .. ' is disabled')
 		end
-		eq(#list, 8, client .. ': the line and General\'s seven rows')
+		eq(#list, 14, client .. ': the line, General\'s seven rows and the six parts')
 
 		-- ElvUI's name, while its nameplates are on.
 		st, UF = world(client)

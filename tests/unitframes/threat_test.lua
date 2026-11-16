@@ -717,19 +717,23 @@ test('a secret percent is handed to the game to write, with no error', function(
 	restore()
 end)
 
-test("the Threat tab: Enable, Font, Alpha and Position, on the plates only; small, above the bar's right end", function()
+test("the Threat part: Enable (its box), Font, Alpha and Position, on the plates only; small, above the bar's right end", function()
 	local st, UF, P = world()
-	local tab = UF:GetConfigTable().args.nameplate.args.Threat
-	check(tab ~= nil, 'the Enemy nameplates page has a Threat tab')
+	local tree = UF:GetConfigTable()
+	eq(tree.args.nameplate.args.Threat, nil, 'no tab of its own now')
+	eq(tree.args.friendlynameplate.args.general.args.parts.args.threat, nil, 'and no row on the Friendly page')
+	local tab = tree.args.nameplate.args.general.args.parts.args.threat
+	check(tab ~= nil, 'the Enemy nameplates page has a Threat row')
 	if not tab then return end
 	eq(tab.name, 'Threat', 'its name')
 	local keys = {}
-	for key in pairs(tab.args) do keys[#keys + 1] = key end
+	for key in pairs(tab.menu.args) do keys[#keys + 1] = key end
 	table.sort(keys)
-	eq(table.concat(keys, ','), 'alpha,enable,font,position', 'its options')
-	for key, option in pairs(tab.args) do
+	eq(table.concat(keys, ','), 'alpha,font,position', "its menu's options: Enable is the row's box")
+	check(type(tab.desc) == 'string' and tab.desc ~= '', 'the box has a desc')
+	for key, option in pairs(tab.menu.args) do
 		check(type(option.desc) == 'string' and option.desc ~= '', key .. ' has a desc')
-		check(key == 'position' or option.order < tab.args.position.order, 'Position after ' .. key)
+		check(key == 'position' or option.order < tab.menu.args.position.order, 'Position after ' .. key)
 	end
 	for _, unit in ipairs({ 'player', 'target', 'party', 'raid40', 'boss' }) do
 		eq(UF.elements.Threat.ValidUnit(unit), false, unit .. ' has none')
@@ -745,10 +749,11 @@ test("the Threat tab: Enable, Font, Alpha and Position, on the plates only; smal
 	eq(x, 0, 'no x offset')
 	eq(y, 6, '6 above, level with the debuffs')
 
-	tab.set({ 'Unitframes', 'nameplate', 'Threat', 'enable' }, false)
+	tab.set({}, false)
 	eq(P.threat.enable, false, 'Enable saved')
 	eq(frame.Threat:IsShown(), false, 'and the text hidden at once')
-	tab.set({ 'Unitframes', 'nameplate', 'Threat', 'enable' }, true)
+	tab.set({}, true)
 	eq(frame.Threat:IsShown(), true, 'shown again')
-	eq(tab.get({ 'Unitframes', 'nameplate', 'Threat', 'font' }), 'pixel', 'Font read')
+	eq(tab.menu.get({ 'Unitframes', 'nameplate', 'general', 'parts', 'threat', 'font' }), 'pixel', 'Font read')
+	eq(tab.get(), true, 'the box reads Enable')
 end)
