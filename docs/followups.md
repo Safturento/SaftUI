@@ -7,6 +7,20 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-15 — UI scale phase 2: the options kit and SaftUI's windows](#2026-11-15--ui-scale-phase-2-the-options-kit-and-saftuis-windows)
+  - [2026-11-15 — UI scale phase 3: edit mode](#2026-11-15--ui-scale-phase-3-edit-mode)
+  - [2026-11-15 — UI scale phase 4: each addon, 4a to 4g](#2026-11-15--ui-scale-phase-4-each-addon-4a-to-4g)
+  - [2026-11-15 — UI scale phase 5: crispness on dense screens](#2026-11-15--ui-scale-phase-5-crispness-on-dense-screens)
+  - [2026-11-15 — UI scale: the docked edit mode bar is off whole pixels away from k = 1](#2026-11-15--ui-scale-the-docked-edit-mode-bar-is-off-whole-pixels-away-from-k--1)
+  - [2026-11-15 — UI scale: a nameplate's inner parts are not yet even in pixels](#2026-11-15--ui-scale-a-nameplates-inner-parts-are-not-yet-even-in-pixels)
+  - [2026-11-15 — UI scale: EvenIfCentred and st:EvenPixels disagree for negative counts](#2026-11-15--ui-scale-evenifcentred-and-stevenpixels-disagree-for-negative-counts)
+  - [2026-11-15 — UI scale: the Blizzard theme's art is not on whole pixels in a scaled frame](#2026-11-15--ui-scale-the-blizzard-themes-art-is-not-on-whole-pixels-in-a-scaled-frame)
+  - [2026-11-15 — UI scale: E4, SetScale in combat, still to run](#2026-11-15--ui-scale-e4-setscale-in-combat-still-to-run)
+  - [2026-11-15 — UI scale: E0, the friends' check of the default UI size and its range](#2026-11-15--ui-scale-e0-the-friends-check-of-the-default-ui-size-and-its-range)
+  - [2026-11-15 — UI scale: E6 and deleting the font demo](#2026-11-15--ui-scale-e6-and-deleting-the-font-demo)
+  - [2026-11-15 — UI scale: E1 on the friends' screens](#2026-11-15--ui-scale-e1-on-the-friends-screens)
+  - [2026-11-15 — UI scale: the owner's standing calls](#2026-11-15--ui-scale-the-owners-standing-calls)
+  - [2026-11-15 — UI scale: the Keep prompt's line weight at 150% and the Esc order](#2026-11-15--ui-scale-the-keep-prompts-line-weight-at-150-and-the-esc-order)
   - [2026-11-15 — The options kit's keybinding widget commits mouse buttons 6 to 31 raw](#2026-11-15--the-options-kits-keybinding-widget-commits-mouse-buttons-6-to-31-raw)
   - [2026-11-13 — Loot rolls: the roll bar doesn't hold after a choice](#2026-11-13--loot-rolls-the-roll-bar-doesnt-hold-after-a-choice)
   - [2026-11-15 — UI scale: the kit's buttons and labels are off whole pixels on every screen that is not 1440p](#2026-11-15--ui-scale-the-kits-buttons-and-labels-are-off-whole-pixels-on-every-screen-that-is-not-1440p)
@@ -213,6 +227,188 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 ## Active
 
+### 2026-11-15 — UI scale phase 2: the options kit and SaftUI's windows
+
+**What:** The second of the scaling work's five phases: the options kit (`SaftUI-Core/Config`) and SaftUI's own windows put on whole pixels at any scale, so a kit control on a 1080p or Mac screen is no longer a fraction of a pixel off. Phase 1 made every line the theme engine draws whole and put the scale under the game's; this makes the controls drawn on top of those lines whole too.
+
+**Why noticed:** The spec's Phasing section (`docs/superpowers/specs/2026-11-14-saftui-ui-scaling-design.md`) cuts it from phase 1, and the phase 1 reviews (Tasks 3, 5, 6 and 7) each found the same thing from the other side: the Keep prompt's buttons and the UI scale section's boxes are the first pages a friend sees, and they are off whole pixels on every screen but 1440p. The existing entry [the kit's buttons and labels](#2026-11-15--ui-scale-the-kits-buttons-and-labels-are-off-whole-pixels-on-every-screen-that-is-not-1440p) is this phase's first symptom.
+
+**Anchors:** `docs/superpowers/specs/2026-11-14-saftui-ui-scaling-design.md` ("Phasing", "The audit" A4, A5, A6, A9, A12), `docs/superpowers/plans/2026-11-15-saftui-ui-scaling-phase-1.md` (the notes on what phase 1 leaves), `SaftUI-Core/Config/optionslook.lua` (`Box`, `LINE`), `optionscontrols.lua` (`W.Button`, `Layout`), `optionsbody.lua` (hairlines, dividers), `optionscolorpicker.lua` (the rings), `optionswidgets.lua` (lists and menus, `LIST_STRATA`), `SaftUI-Core/EditMode/Bar/`, `tests/lib/pixels.lua` (`P.off`), `tests/core/general_tab_test.lua` (the section's whole-pixel case, the model for the others).
+
+**What's been considered:** E5 and E5b (the owner, 2026-11-15) showed a line a whole number of pixels wide is drawn whole at a fractional scale wherever it sits once its textures are unsnapped, and that the game's layout rounding is a nicety, not a need. So the kit needs its one-unit lines to be `st:GetLineSize(frame)` and its sizes and offsets to go through `st:RoundToPixel`, and probably not `SetRoundLayoutToNearestPixel` over the whole window. The spec's list: the kit's boxes (`Box`, `LookLine`), the color picker's rings, every hairline and divider, the one-unit offsets, the kit's pure layouts on the grid, icons in even pixels (the Lucide files stay 32 pixels), lists and menus with their own scale. Also named for this phase: `OW.MaxHeight` should win over the window's least height when the screen is shorter (the body scrolls), for The game's UI scale at 1.15 on a short screen (668 units); `TitleHeight`'s unrounded readers in `panels.lua`; `OW.MaxWidth` and the margin's reach on `/sui`. Nothing the friends have reported yet: E0, E1 and E6 are not run (see the entries for them).
+
+**Shape of work:** One plan, after the friends have looked at phase 1. A pass over `optionslook.lua`, `optionscontrols.lua`, `optionsbody.lua`, the dialogs and `EditMode/Bar/` with `scaled_test` cases that run `P.off` over the open window at 0.75, 1.25 and 1.55, and the scan in `theme_kinds_test.lua` extended to `SetHeight(1)` and `SetWidth(1)` in the finished areas (the spec's test 3).
+
+**Open questions:** Whether text height is rounded to pixels too, or left to the game; whether the layout rounding is worth adding after all if a friend's screen shows a gap.
+
+### 2026-11-15 — UI scale phase 3: edit mode
+
+**What:** The third phase of the scaling work: edit mode's grid lines and snap guides at one line, snapping's border rule with `line`, the outline, the Position editor's boxes showing one decimal at most, and the picker's list. Arrow-key nudges stay one pixel, Shift ten.
+
+**Why noticed:** The spec's Phasing section (`docs/superpowers/specs/2026-11-14-saftui-ui-scaling-design.md`, "Phase 3: edit mode"; audit A7). Phase 1 moved edit mode's bar, floating window, grid and Coordinates label onto the scale change's callback and made placement round to whole pixels, but left the grid's and the guides' own one-unit lines, and two gaps its reviews named (the entries for [the docked bar](#2026-11-15--ui-scale-the-docked-edit-mode-bar-is-off-whole-pixels-away-from-k--1) and the Coordinates label below).
+
+**Anchors:** `docs/superpowers/specs/2026-11-14-saftui-ui-scaling-design.md` ("Phasing", A7), `SaftUI-Core/EditMode/grid.lua` (`EM.GridLinePositions`, `EM:GetGridCenter`), `snap.lua` (`EM.SNAP_REACH`, the outline's border rule), `coordinates.lua` (`EM.CoordinatesText`, which prints the stored position, in stored units), `picker.lua`, `Bar/`, `.agents/edit-mode.md`, `tests/core/editmode_*`.
+
+**What's been considered:** The Coordinates label shows stored units, so at a scale other than 1 a frame dragged to "120" shows 120 while it sits on a position that is a whole number of pixels and not 120 of them. Showing pixels instead changes a number the owner reads; showing units rounded keeps it. Not decided.
+
+**Shape of work:** One plan after phase 2 (the bar's controls are the kit's). The grid and guides to `st.line`, the snap rule onto it, the Position editor's boxes to one decimal, the Coordinates label decided, with the edit mode tests under the scale parameter.
+
+**Open questions:** What the Coordinates label should say at a scale other than 1 (stored units, or pixels).
+
+### 2026-11-15 — UI scale phase 4: each addon, 4a to 4g
+
+**What:** The fourth phase of the scaling work, one plan per addon, in the order the friends look at them (the spec's call 26): 4a unit frames and nameplates (the plates' even pixels, the auras' inner line), 4b action bars and their extras (onto `st:EvenPixels`), 4c bags (the Categories tab's and rule editor's lines, the loading overlay), 4d Misc (experience bars, tooltip, totem bar, durability) and the skins (the buff frame's `+ 1`, the objective tracker's line), 4e loot (the timer lines, the feed's progress line), 4f minimap and micro menu, 4g chat and SaftUI's tracker. Each: its one-unit lines to one line (`st:GetLineSize`), its sizes and offsets that meet a border onto the grid, its centred frames even, and its layout tests under the scale parameter. The spec's scan (`tests/core/theme_kinds_test.lua`) bans a literal `edgeSize = 1` outside an allow-list that shrinks as each plan lands, and from phase 2 `SetHeight(1)` and `SetWidth(1)` in finished areas.
+
+**Why noticed:** The spec's Phasing section (`docs/superpowers/specs/2026-11-14-saftui-ui-scaling-design.md`) and the audit; the phase 1 plan (`docs/superpowers/plans/2026-11-15-saftui-ui-scaling-phase-1.md`) lists what each addon still has. Until each lands, that addon's one-unit lines are `1` unit (a fraction of a pixel away from 1440p) wherever the theme engine doesn't draw them.
+
+**Anchors:** `docs/superpowers/specs/2026-11-14-saftui-ui-scaling-design.md` ("Phasing", "The audit"), the entries for the leftovers that belong here: [a nameplate's inner parts](#2026-11-15--ui-scale-a-nameplates-inner-parts-are-not-yet-even-in-pixels), [EvenIfCentred](#2026-11-15--ui-scale-evenifcentred-and-stevenpixels-disagree-for-negative-counts), [the bags' loading overlay](#2026-11-15--ui-scale-the-bags-loading-overlay-holds-stbackdrop-and-needs-setbackdropnil-to-take-a-new-line) and [the parentless frame and the two `st:ThemeInset` readers](#2026-11-15--ui-scale-a-frame-drawn-parentless-and-parented-later-into-a-frame-with-a-scale-of-its-own-keeps-uiparents-line) (`SaftUI-Misc/totemskin.lua`, `SaftUI-Bags/categoriestab.lua`).
+
+**What's been considered:** E5's outcome sizes this: a whole-width line is whole wherever it sits, so an addon's work is the widths and the grid-meeting offsets, not the game's layout rounding. Nothing the friends have reported yet. The scaling followup ("Scale SaftUI across resolutions and stay pixel perfect") stays Active until 4g ends.
+
+**Shape of work:** Seven plans (4a to 4g), each a small audit-and-convert like phase 1's Task 3 on one addon, each with its in-game check at the friends' scales. 4a first: the plates are what a friend sees most.
+
+**Open questions:** Whether the order should change once a friend says which addon looks worst.
+
+### 2026-11-15 — UI scale phase 5: crispness on dense screens
+
+**What:** The fifth phase of the scaling work, done only if the in-game checks ask for it: a rule for Homespun at the Mac's scale (from E6 and the Mac friend's G3), a second size of the Lucide icons (they are 32 pixel files drawn at even whole pixels, so at 1.55 they scale up softly), and anything else the Mac friend reports.
+
+**Why noticed:** The spec's Phasing section (`docs/superpowers/specs/2026-11-14-saftui-ui-scaling-design.md`, "Phase 5"; calls 8 and 22). Phase 1 takes the spec's default font call, fonts follow the scale unrounded, and awaits E6; the friends' checks of both are not in.
+
+**Anchors:** `docs/superpowers/specs/2026-11-14-saftui-ui-scaling-design.md` ("Fonts", "Icons, textures and Blizzard's art", calls 8 and 22), `SaftUI-Core/Media/fonts.lua`, `tools/lucide-to-tga.cjs`, [E6 and deleting the font demo](#2026-11-15--ui-scale-e6-and-deleting-the-font-demo), `docs/superpowers/plans/2026-11-15-saftui-ui-scaling-phase-1-in-game-checklist.md`.
+
+**What's been considered:** If Homespun is rough at 15.5 (10 at 1.55), a rule rounds its size to whole pixels or to a multiple it was drawn for. If the Lucide icons are soft, a 64 pixel set drawn at the scale's nearest size. If neither is, this phase is closed unwritten.
+
+**Shape of work:** Decided by the Mac friend's answer: a rule in `Media/fonts.lua`, and `tools/lucide-to-tga.cjs` run for a second size with `st.icons` choosing by k; or nothing.
+
+**Open questions:** All of it, until E6 and G3 are in.
+
+### 2026-11-15 — UI scale: the docked edit mode bar is off whole pixels away from k = 1
+
+**What:** The docked edit mode bar is centred in units by `floor`, so away from k = 1 its left edge is a fraction of a pixel off the grid (756.75 pixels at 0.75, 1307.82 on the Mac's screen in the probe). Its border is whole (the theme engine unsnaps it), but its contents may not be.
+
+**Why noticed:** The Task 5 review (`sc-task5`, n2) of the scale's placement work, from a probe at 0.75 and on the Mac's screen. Cut from phase 1 by the spec: it is edit mode's ground.
+
+**Anchors:** `SaftUI-Core/EditMode/Bar/` (the docked bar's placement and `EM.BarLayout`), `.agents/edit-mode.md`, `tests/core/editmode_bar_test.lua`.
+
+**Shape of work:** Phase 3 (see [UI scale phase 3: edit mode](#2026-11-15--ui-scale-phase-3-edit-mode)): place the bar through `st:RoundToPixel` with an even width, and a `scaled_test` that runs `P.off` over the open bar.
+
+**Open questions:** None.
+
+### 2026-11-15 — UI scale: a nameplate's inner parts are not yet even in pixels
+
+**What:** Phase 1 makes a plate's driver size a whole, even number of pixels, so a plate's centred parts land on whole pixels at the owner's scale and at every other. The parts inside a plate (the name and health texts, the castbar and its icon, the auras' rows, the threat text and the raid mark) still take sizes and offsets from their configs in units, so away from k = 1 an odd one is a fraction of a pixel off.
+
+**Why noticed:** The Task 5 review (`sc-task5`), which listed it with the leftovers that already had owners.
+
+**Anchors:** `SaftUI-Unitframes/nameplates/pixels.lua` (`UF.PlateDriverSize`, `UF.RoundLayout`), `SaftUI-Unitframes/elements/auras.lua`, `SaftUI-Unitframes/config/units/nameplate.lua`, `tests/unitframes/nameplate_pixel_test.lua`.
+
+**Shape of work:** Phase 4a ([UI scale phase 4](#2026-11-15--ui-scale-phase-4-each-addon-4a-to-4g)): each inner part's size and offset through `st:RoundToPixel`, centred ones even, with the plate's in-game check at the friends' scales.
+
+**Open questions:** None.
+
+### 2026-11-15 — UI scale: EvenIfCentred and st:EvenPixels disagree for negative counts
+
+**What:** `EvenIfCentred` in `SaftUI-ActionBars/bars.lua` and `st:EvenPixels` in `SaftUI-Core/api.lua` both make a centred frame an even number of pixels long, but an odd negative count goes toward zero in the first and away from it in the second (-45 pixels gives -44 and -46). Phase 4b moves the action bars, and the totem bar's `EvenPixels`, onto `st:EvenPixels`, and that move changes a result for a negative input.
+
+**Why noticed:** Phase 1 Task 1's review (`sc-task1`, n4 and r4): `st:EvenPixels` rounds away from zero on purpose, and a comment at it says the two must not be assumed to agree. Negative lengths are rare (an offset, not a size), so no current setting is known to hit it.
+
+**Anchors:** `SaftUI-Core/api.lua` (`st:EvenPixels`, the comment on negative counts), `SaftUI-ActionBars/bars.lua` (`EvenIfCentred`, `AB:PlaceFrame`), `SaftUI-Misc/totemlayout.lua` (`EvenPixels`), `.agents/architecture.md` ("Half pixels from centred anchors").
+
+**Shape of work:** Phase 4b ([UI scale phase 4](#2026-11-15--ui-scale-phase-4-each-addon-4a-to-4g)): move both onto `st:EvenPixels` with a case for a negative odd count, or pick which direction is right for an offset first.
+
+**Open questions:** Which direction a negative odd count should go.
+
+### 2026-11-15 — UI scale: the Blizzard theme's art is not on whole pixels in a scaled frame
+
+**What:** Under the Blizzard theme the atlas corners and edges, the ring and slot art, and the like scale with k as Blizzard's own UI does, and are not placed on whole pixels in a frame that carries a scale. The plan's Ruling 11 allows it: only the lines SaftUI draws itself are whole.
+
+**Why noticed:** Phase 1's design (call 21: "the Blizzard theme's art scales with k like Blizzard's own UI, its offsets rounded, with no line weight") and the Task 3 review (`sc-task3`). Whether it looks wrong is the owner's eye, not a measurement.
+
+**Anchors:** `SaftUI-Core/themeart.lua` and `themeart_data.lua` (`ThemeArt.WholeInset`, `WholeTop`, `LayBorder`), `.agents/architecture.md` ("Borders are whole pixels"), `docs/superpowers/plans/2026-11-15-saftui-ui-scaling-phase-1.md` (Ruling 11).
+
+**What's been considered:** Setting `SetSnapToPixelGrid(false)` on the art as for the lines (it would only unsnap, not make the art whole); drawing the art at a whole multiple of its own size, which is not what an atlas is for.
+
+**Shape of work:** Look at it at 0.75, 1.25 and 1.55 under Blizzard (the checklist asks); only if a friend or the owner finds a seam, a pass over `ThemeArt` placing each piece on whole pixels.
+
+**Open questions:** Whether it looks wrong at all.
+
+### 2026-11-15 — UI scale: E4, SetScale in combat, still to run
+
+**What:** Experiment E4: is `UIParent:SetScale` refused in combat? It is inferred to be (`SetScale` is a protected function and UIParent is protected in combat, since protection spreads to a secure frame's parents), so SaftUI builds as if it were: a scale change in combat waits for the end of the fight (`.agents/taint.md`, rule 6; `.agents/clients.md`, F8, "inferred"). E4 was not run.
+
+**Why noticed:** The scaling design's experiments; the owner ran E1 to E3, E5 and E5b on 2026-11-15 and said to go on without E4.
+
+**Anchors:** `.agents/clients.md` ("Screen and UI scale", F8), `.agents/taint.md` rule 6, `SaftUI-Core/uiscale.lua` (`UIScale:Check`, `st:QueueAfterCombat('UIScale', ...)`), `docs/superpowers/plans/2026-11-15-saftui-ui-scaling-phase-1-in-game-checklist.md` (the check, first).
+
+**What's been considered:** What each outcome changes: nothing unsafe either way. If `SetScale` in combat is blocked (an "Interface action failed" or `ADDON_ACTION_BLOCKED`, UIParent's scale unchanged), F8 is confirmed and the docs drop "inferred". If it is allowed, the wait could in principle go, but the pass still cannot run in combat (it moves protected frames), so the scale would change in a fight with SaftUI's frames at the old line until the end of it: the wait stays and only the docs change.
+
+**Shape of work:** The owner's two commands in a fight on a dummy (the checklist has them), then update F8 and rule 6 from "inferred" to "confirmed" with the result.
+
+**Open questions:** The result, on Forever and, if possible, on retail.
+
+### 2026-11-15 — UI scale: E0, the friends' check of the default UI size and its range
+
+**What:** Experiment E0: each friend looks at SaftUI's automatic size on their own screen and says whether 100% is right and whether 70% to 150% is the right range. It was not run: the owner said to finish phase 1 without it ("if it's just fine tuning that would change we can get feedback from him later"), so the spec's defaults ship: Automatic at 100%, a UI size of 70% to 150% in 5% steps.
+
+**Why noticed:** The phase 1 plan placed E0 before Task 7; the owner's ruling (the plan's ledger, 2026-11-15) shipped Task 7 without it.
+
+**Anchors:** `SaftUI-Core/uiscale.lua` (`UIScale.DEFAULT`, `UIScale.SIZE` with its `min`, `max` and `step`), `SaftUI-Core/Config/general.lua` (the UI size row), `.agents/clients.md`, `docs/superpowers/specs/2026-11-14-saftui-ui-scaling-design.md` ("The default and the choice", call 4), `docs/superpowers/plans/2026-11-15-saftui-ui-scaling-phase-1-in-game-checklist.md`.
+
+**What's been considered:** The change is one line if a friend wants another default or range: `UIScale.DEFAULT.size` (1) for the default and `UIScale.SIZE` for the range, with the tests that pin 70% and 150% (`tests/core/uiscale_test.lua`, `general_tab_test.lua`) and the row's description. A default other than 100% makes every screen a size other than the design's, so it would change the owner's own screen only if the owner moved it too.
+
+**Shape of work:** Ask each friend (the checklist's questions); retune if they say so.
+
+**Open questions:** The friends' answers.
+
+### 2026-11-15 — UI scale: E6 and deleting the font demo
+
+**What:** Experiment E6: the Mac friend looks at Homespun at the Mac's scale in the font demo (`/suifonts`) and says whether it is crisp. Not run: phase 1 takes the spec's default (fonts follow the scale, unrounded) and leaves the font demo in place so the Mac friend can still run E6. Once E6 is in, delete the demo, and if Homespun is rough at 1.55 open phase 5's font rule ([UI scale phase 5](#2026-11-15--ui-scale-phase-5-crispness-on-dense-screens)). Homespun stays either way (design-system decision 41).
+
+**Why noticed:** The phase 1 plan's Task 8 deleted the demo; the owner's ruling (2026-11-15) kept it for E6.
+
+**Anchors:** `SaftUI-Core/Dev/fontdemo.lua` (its header lists what goes), `docs/design-system/05-decisions.md` (decisions 41 and 59), `docs/superpowers/plans/2026-11-15-saftui-ui-scaling-phase-1-in-game-checklist.md`.
+
+**Shape of work:** Small, once E6 is in. By the demo's own five steps (its header): (1) delete `SaftUI-Core/Dev/fontdemo.lua`, `SaftUI-Core/Dev/load.xml` and the `Dev` folder; (2) the `Dev\load.xml` line in `SaftUI-Core/SaftUI-Core_Forever.toc` and `SaftUI-Core_Mainline.toc`; (3) the folder `SaftUI-Core/Media/Fonts/Candidates/` (every candidate and its `OFL.txt`; none is kept, Homespun stays); (4) the LibSharedMedia registrations (the loop over `CANDIDATES` in `fontdemo.lua`, which go with step 1; Global settings > Fonts then lists no "Candidate:" faces); (5) `tests/core/fontdemo_test.lua`, the demo's sentence in `AGENTS.md`'s Core row, the `/suifonts` line in `README.md`, the mention in `.agents/testing.md`, the demo's exception in `tests/core/setfont_scan_test.lua` (line 31) and its entry in the allow-list of `tests/core/theme_kinds_test.lua` (line 371). Then run `tests/run`, `tests/run --scales=all` and `tests/run --self-check`; `git grep -n -e "Candidate: " -e "fontdemo" -e "suifonts" -- 'SaftUI-*' tests/ AGENTS.md README.md` and `git grep -n "Dev" -- 'SaftUI-Core/*.toc'` print nothing (the tracker's own `Candidates` don't match).
+
+**Open questions:** The Mac friend's answer.
+
+### 2026-11-15 — UI scale: E1 on the friends' screens
+
+**What:** Experiment E1 (what the game reports: `GetPhysicalScreenSize()`, the default scale, render scale, the scales read back) was run on the owner's 2560 x 1440 screen only. The two friends' screens (1080p and the Mac's 3456 x 2234) are not run: F2 (the physical size on a Retina display is device pixels) and F4 (render scale does not change it) stay inferred, and nothing says yet whether either screen has an odd notch in Automatic's size (a size whose line weight or pixel jumps where a friend's window or resolution puts it).
+
+**Why noticed:** The phase 1 plan's experiments and the owner's results (`experiments-results.md`, E1).
+
+**Anchors:** `.agents/clients.md` (F2, F4, F5), `SaftUI-Core/uiscale.lua` (`UIScale.ReadScreen`, `Resolve`, the snap band), `docs/superpowers/plans/2026-11-15-saftui-ui-scaling-phase-1-in-game-checklist.md` (the command to ask each friend to run).
+
+**What's been considered:** If a friend's E1 shows an odd notch (a size that falls between lines, or a physical size that is not what Automatic assumed), the fix is half pixels from it: a snap or a line weight chosen from that reading, in `Resolve`.
+
+**Shape of work:** Each friend runs the command and pastes the line; update F2 and F4 from "inferred" to "confirmed", or open the half pixel work.
+
+**Open questions:** The friends' lines.
+
+### 2026-11-15 — UI scale: the owner's standing calls
+
+**What:** Two calls the owner made while phase 1 was built, kept here so a later reader does not reopen them by accident. (1) One-pixel lines stay one pixel on frames Blizzard scales (the Cooldown Manager and buffs at an Edit Mode Icon size other than 100%, the swing timers at a Scale other than 100%): their lines are now exact, where they used to be as thick as the frame's scale made them; the alternative, weighting a line by the frame's own scale, needs a spec ruling and the owner declined it (2026-11-15). (2) An odd nameplate Width or Height is one pixel larger at the owner's scale (201 by 21 becomes 202 by 22), because a plate is a whole, even number of pixels so its centred parts land on whole pixels; the default 200 by 20 is unchanged. The owner was told; no objection is recorded.
+
+**Why noticed:** The phase 1 ledger (the Task 3 and Task 5 reviews).
+
+**Anchors:** `SaftUI-Core/theme.lua` (`st:GetLineSize`, `st:DrawingFrame`), `SaftUI-Unitframes/nameplates/pixels.lua` (`UF.PlateDriverSize`), `docs/design-system/05-decisions.md` (decisions 57 and 60), `docs/superpowers/plans/2026-11-15-saftui-ui-scaling-phase-1-in-game-checklist.md`.
+
+**Shape of work:** None unless the owner changes a call. The checklist asks the owner to look at both once.
+
+### 2026-11-15 — UI scale: the Keep prompt's line weight at 150% and the Esc order
+
+**What:** Two small open points on the Keep prompt, both only visible in the game. (1) A 150% preview on a 1440p screen gives the prompt 2 pixel lines (Thick 6), since a line is `st.lineWeight` pixels of UIParent's scale and the prompt ignores its parent's scale only for size: whole, but the weight jumps at the preview. The owner's line-weight call (one pixel lines stay on frames the game scales) stands, so this is a note, not a bug. (2) With `/sui` and the prompt both up, Esc should go back and leave `/sui` open, and a second Esc closes `/sui`. That order is inferred from WoW's top-down keyboard order and no test can show it; if the game gives `/sui`'s catcher the key first, one Esc closes `/sui` and leaves the prompt, which still goes back at 0, so nothing keeps by accident.
+
+**Why noticed:** The Task 6 review (`sc-task6`, concern 1 and m2) and the Task 7 review.
+
+**Anchors:** `SaftUI-Core/Config/uiscaleprompt.lua` (`Build`'s `OnKeyDown`, `Fit`), `docs/design-system/components/KeepPrompt/README.md` ("Known gaps"), `docs/superpowers/plans/2026-11-15-saftui-ui-scaling-phase-1-in-game-checklist.md` (the Esc check).
+
+**Shape of work:** The owner's check settles (2); if one Esc closes `/sui` first, raise the prompt's catcher or have `/sui`'s Esc handler skip while the prompt shows. Close this entry on the owner's word.
+
+**Open questions:** The Esc order, in the game.
+
 ### 2026-11-15 — The options kit's keybinding widget commits mouse buttons 6 to 31 raw
 
 **What:** The `keybinding` widget (`SaftUI-Core/Config/optionskeybinding.lua`) converts only `MiddleButton`, `Button4` and `Button5` (its `MOUSE_BUTTONS` table). Mouse buttons 6 to 31 reach `Press` as `Button6` and so on and are committed raw, where the game's binding names are `BUTTON6`. `/sui kb` converts every button with `GetConvertedKeyOrButton` (`SaftUI-ActionBars/keybindmode.lua`).
@@ -261,7 +457,7 @@ What's left needs evidence from the game. In the order they'd be checked:
 
 **What:** The kit's buttons, text boxes, hairlines and labels (`W.Button`, `Box`, the dialogs' text) are sized in whole UIParent units, so on any screen where a unit is not a whole number of pixels (1080p at 0.75, the Mac at 1.55, any window) their edges and text fall between pixels. Only their borders are whole (Task 3's unsnapping). The Keep prompt is the visible case: it draws at the automatic size of every screen but 1440p, not only while previewing, so on 1080p its buttons are 19.5 pixels tall.
 
-**Why noticed:** The Task 6 review of the Keep prompt (`sc-task6`, `454d3fcf`): the prompt's own frame is whole pixels (placed and sized by `st:RoundToPixel`), its `W.Button`s are not. The plan names this as phases 2 to 4 ("the options kit's boxes, hairlines and dividers (the Keep prompt's buttons among them)").
+**Why noticed:** The Task 6 review of the Keep prompt (`sc-task6`, `454d3fcf`): the prompt's own frame is whole pixels (placed and sized by `st:RoundToPixel`), its `W.Button`s are not. The plan names this as phases 2 to 4 ("the options kit's boxes, hairlines and dividers (the Keep prompt's buttons among them)"). The UI scale section (Global settings > General, Task 7) is the first page a friend sees it on: its Scale box, UI size box and the reset icons are kit boxes, so ask each friend to look at them for blur (the checklist does). The phase entry is [UI scale phase 2](#2026-11-15--ui-scale-phase-2-the-options-kit-and-saftuis-windows).
 
 **Anchors:** `SaftUI-Core/Config/optionscontrols.lua` (`W.Button`, `Layout`), `optionslook.lua` (`Box`, `LINE`), `optionsdialog.lua`, `SaftUI-Core/Config/uiscaleprompt.lua` (`Fit`), `docs/superpowers/plans/2026-11-15-saftui-ui-scaling-phase-1.md` ("What an existing install sees at upgrade"), `docs/design-system/components/KeepPrompt/README.md`.
 
@@ -929,6 +1125,8 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 
 ### 2026-11-13 — Scale SaftUI across resolutions and stay pixel perfect
 
+**Taken up by** `docs/superpowers/specs/2026-11-14-saftui-ui-scaling-design.md`. Phase 1 (`docs/superpowers/plans/2026-11-15-saftui-ui-scaling-phase-1.md`) shipped on 2026-11-15: the scale is set at login and after every change, every line the theme engine draws is whole pixels, and `/sui` has the UI scale section and `/sui scale`. It stays Active until phase 4 ends; what is left is the entries for [phase 2](#2026-11-15--ui-scale-phase-2-the-options-kit-and-saftuis-windows), [phase 3](#2026-11-15--ui-scale-phase-3-edit-mode), [phase 4](#2026-11-15--ui-scale-phase-4-each-addon-4a-to-4g) and [phase 5](#2026-11-15--ui-scale-phase-5-crispness-on-dense-screens), and the friends' checks (E0, E1, E6) and E4.
+
 **What:** SaftUI sets UIParent's scale to 768 over the screen's physical height, so one unit is one physical pixel on every display. Sizes are therefore in pixels: a 45 button is 45 pixels whether the screen is 1080, 1440 or 2160 tall. The user tuned their sizes on a 1440p monitor, so the UI is large on 1080p and tiny on 4K and Retina displays. Wanted: the UI scales with the display and stays pixel perfect.
 
 **Why noticed:** The user, 2026-11-13: "Another thing I'd like to look at is being able to scale saft UI to work well across different resolutions and maintain pixel perfection. since I've configured the sizing to make sense on a 1440p monitor things look blown up on a 1080 monitor and tiny on higher resolution monitors like mac retina displays or 4k monitors".
@@ -1213,7 +1411,7 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 
 *The plan's ten, with what the tasks added to each*
 1. Both clients. With a plate up, `/dump NamePlate1:GetParent()==WorldFrame, NamePlate1:GetEffectiveScale(), UIParent:GetEffectiveScale()`: true, WorldFrame's scale, then 768 over your screen's height. Then `/dump SaftUI_NamePlate1:GetParent()==NamePlate1, SaftUI_NamePlate1:GetEffectiveScale()`: true, and UIParent's scale. With the default 200 by 20, a screenshot of a plate's health bar measures 200 by 20 pixels. Clicking just inside the bar's edges targets the unit; clicking just outside doesn't. Then `/reload` standing next to a pack, and as soon as the plates are up click near the edges of plates that sit close together: each click targets the plate under the cursor, never its neighbour (Blizzard's own click area, which SaftUI puts back to the bar after Blizzard sets it, reaches past the bar and up to where its name would be).
-2. Both clients. Strafe and turn past a pack under Thick, Thin and Blizzard: the 1px borders round the health bar, the castbar and its icon, and the debuff and purge buttons stay whole, with no shimmer or doubling, and the name and health text don't jitter against the bar. Under Thick, a debuff's dark inner line stays whole, exactly 1px inside its border, while the plate moves. If Blizzard's UI scale setting or the window's size changed this session, `/reload` first: after a UI scale change the plates may only be fully sharp once you reload (the followup "UIParent's scale is set once, at login, so plates leave whole pixels after a UI scale or display change").
+2. Both clients. Strafe and turn past a pack under Thick, Thin and Blizzard: the 1px borders round the health bar, the castbar and its icon, and the debuff and purge buttons stay whole, with no shimmer or doubling, and the name and health text don't jitter against the bar. Under Thick, a debuff's dark inner line stays whole, exactly 1px inside its border, while the plate moves. Make the same check at the friends' scales (1080p, and the Mac's screen), where a line is one pixel at 1080p and two on the Mac and the plates' borders must be whole there too; a UI scale or display change needs no `/reload` now, since SaftUI sets its scale again and pins the plates after it (see step 14).
 3. Change Blizzard's Interface → Nameplates size or style with plates up: SaftUI's size comes back at once. Then, in a pack, click near the edges of plates that sit close together, after each of these: a change of a Blizzard nameplate option (size, style, class colors); a resize of the game's window; toggling `/sui` → Unitframes → Friendly nameplates → General → Friendly plates off and on; toggling friendly plates with Blizzard's key binding (or Interface → Nameplates' friendly options); and, with friendly players' plates up, toggling Interface → Nameplates' option to show only friendly players' names. Each time the click targets the plate under the cursor. Do each in combat too: Blizzard's size shows until combat ends, then SaftUI's; the click area is SaftUI's at once after an option change or a resize, and after a friendly plate or show-only-names toggle once combat ends; and none of these, done in combat, gives an ADDON_ACTION_BLOCKED or a Lua error. `/sui` → Unitframes → Enemy nameplates → General → Width and Height resize every plate and an enemy's click area (a friend's name box is Friendly nameplates' Width and Height: step 26).
 4. In a dungeon pull, `/run print(C_Secrets.ShouldUnitThreatStateBeSecret('player','nameplate1'))`, on retail too. As damage or healing: under the tank's threat the bar keeps its color and the percent above its right end is in the normal text color; near pulling both go orange; when the mob attacks you, red. As a tank with the tank role: a mob on you, no tint and 100%; tanking with someone else higher, orange; a mob taken from you, red; a mob another tank in the group holds, no tint (on a boss with two tanks, the off-tank sees no red on the boss the main tank holds); a mob that goes to the healer before you've touched it, red with no percent. On your own there's no tint or percent until Enemy nameplates → General → Threat when solo is on. Friendly plates never show either, and a mob that turns friendly mid-fight loses both at once. Global Settings → Colors → Threat: dragging Bad's picker recolors tinted plates and their percent live, and Reset puts them back. On Forever without a role, a warrior in Defensive Stance or a druid in Bear Form counts as a tank, and so does a party member in one holding the mob; changing stance or form changes the tint at once (`UPDATE_SHAPESHIFT_FORM`). `/dump PlayerUtil.IsPlayerEffectivelyTank()` with no role assigned, in a tank spec: the stubs take it that Forever never falls back to a spec's role. On retail in restricted content (Mythic+ or a raid): no Lua errors; where the threat state is secret, no tint or percent; where only the values are, the percent still shows. Through a long pull the percent keeps following your threat (it's written only when it, its tint or its color changes), and as a raid's tank, idle hostile plates around you stay untinted (their mobs aren't in combat, so the raid isn't read for them).
 5. Purge, on enemy plates (their purge row is on by default): a shaman or priest sees an enemy's magic buff right of the bar, and a Forever hunter with Tranquilizing Shot (or a retail druid with Soothe) an enrage. On Forever, on a mob with a Frenzy, `/dump C_UnitAuras.GetAuraDataByIndex('target', 1, 'HELPFUL').dispelName` (the buff's index in place of 1): `""`, `nil` or `"Enrage"`? As a retail character who isn't a mage, see which buffs `isStealable` picks out; a retail mage with only Spellsteal sees only stealable buffs. On Target → Buffs → Buttons, Only buffs I can purge sits after Only mine with no reload note in its tooltip; on, as a warrior with no purge, the target's buffs go, and off they come back without a reload; Only mine on Target → Debuffs applies at once. The rest is the entry "Purge filters: in-game checks".
@@ -1227,7 +1425,7 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 11. `/reload` in the middle of a fight with plates up: no "Interface action failed" or ADDON_ACTION_BLOCKED (oUF sets the plates' size and their click area's insets itself when it makes its driver, without waiting for the end of combat as SaftUI's own size call does), and the friendly and scale settings change once the fight ends.
 12. Pull a pack so new plates appear in combat: no ADDON_ACTION_BLOCKED for `SetIgnoreParentScale`, `SetScale` or `SetRoundLayoutToNearestPixel`, and the new plates are sharp at once. No `theme.lua` "forbidden object" error from the plates' aura buttons and no threat.lua "Font not set" (both seen 2026-11-11 and fixed: the aura buttons were styled again while aura data was secret, which stopped the plate's first update); the new plates' debuffs show in SaftUI's style, and their threat percent shows. Same for a party or raid member joining in combat.
 13. Both clients. A boss's or an elite's plate, and the target's, are the same size as any other, near and far, and `/dump NamePlate1:GetScale()` is 1. With SaftUI's plates on, Interface → Nameplates shows no simplified types ticked. `/dump C_CVar.GetCVar('nameplateSimplifiedTypes')` before turning Nameplates on, and again after turning it off and reloading, shows the same text.
-14. With plates up, change Blizzard's UI scale setting (or the window's size): the plates keep their size and their click area matches it. In combat they're pinned to the new scale at once and their size settles once combat ends. Their right and bottom edges may flicker by a pixel until a `/reload` (the UIParent scale followup).
+14. With plates up, change Blizzard's UI scale setting (or the window's size): SaftUI puts its scale back on the next frame and pins the plates after it, so they keep their size, their borders stay whole and their click area matches. In combat nothing changes until the fight ends, and then the scale is put back, the plates pinned and their size set once (`.agents/architecture.md`, "The UI scale"). No `/reload` is needed.
 15. `/dump C_CVar.GetCVarInfo('nameplateShowFriendlyPlayers')`, and the same for `'nameplateShowFriendlyNpcs'`: report the 3rd to 6th returns (isStoredServerAccount, isStoredServerCharacter, isLockedFromUser, isSecure). If they're kept per account, a second character that logs in while SaftUI's plates are on records SaftUI's values as its own, and turning Nameplates off there puts back SaftUI's values, not yours. Check both settings exist on both clients (neither `/dump C_CVar.GetCVar(...)` is nil), and whether Blizzard sets them again by itself at login, or on entering or leaving an instance (Friendly plates and the game would then disagree until the next toggle).
 16. With Interface → Nameplates → Personal Resource Display on (on Forever, if the game allows it), `/dump C_NamePlate.GetNamePlateForUnit('player')` prints nil (ruling N5: the display is `PersonalResourceDisplayFrame`, not a plate), the display shows as usual with SaftUI's plates on, and targeting yourself adds nothing. If it finds a plate, the personal display needs looking at again.
 17. `/dump SaftUI_NamePlate1Auras1:GetObjectType(), SaftUI_NamePlate1Auras1:IsObjectType('AuraContainer')`, and the same for `SaftUI_NamePlate1Auras2` (a plate's two aura rows, buffs and debuffs in either order): note what the game says. The rounding walk skips SaftUI's own containers by identity, so this only says whether its `IsObjectType` fallback would work.
