@@ -31,4 +31,5 @@
 	<!-- The reset's defaults, derived from where a setting is saved: after the model and the generators it reads. -->
 	<Script file="optionsdefault.lua"/>
 	<Script file="general.lua"/>
+	<Script file="uiscaleprompt.lua"/>
 </Ui>

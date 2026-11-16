@@ -1,6 +1,6 @@
 # Dialog
 
-Two dialogs float over the `/sui` window: the small dialog, a titled panel of rows for a task of its own (Unit frame profiles, Copy from), and the confirm, a sentence with Yes and No (or a prompt with a text box).
+Two dialogs float over the `/sui` window (a third, the Keep prompt, is its own component: `KeepPrompt`): the small dialog, a titled panel of rows for a task of its own (Unit frame profiles, Copy from), and the confirm, a sentence with Yes and No (or a prompt with a text box).
 
 ## When to use
 
