@@ -43,3 +43,7 @@ Rows 34 tall in two columns 40 apart, quarters 24 apart, no panel or padding; ea
 - Do align the control right in its cell, check boxes and colour bars too.
 - Don't put a check box straight after its label: that layout was replaced.
 - Don't use Ace's `width`.
+
+## A part row, and a row that never moves (decisions 64, 69)
+
+A `MenuItem` drawn as a part row is a half row: a check box, a name and a summary in the cell, a dots button at its end. It is the exception to "a row has no state of its own" above: it takes the body tint (a Layer in the Accent's lighter tone at `state-hover`) under the mouse, taken from anywhere on the row, its box, dots or summary. A row never changes height and never moves a neighbour on hover. A part row's hover line takes the summary's place on the row's middle instead of lifting the label, so a shared part row shows Own, the reset arrow and Apply to without growing. Only a row in a menu, or a plain shared row, lifts its label for the hover line (14 under the label) as above. A click on a part row opens its menu.

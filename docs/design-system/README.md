@@ -75,7 +75,7 @@ One Accent, and every state made from it by rule (decision 63). The numbers are 
 | Selected and hovered | both: the hover Layer, with the edge and fill in `T+` | `state-hover`, `state-selected` |
 | Focus | the box's edge turns Accent; the body is unchanged | `accent` |
 | Disabled | the widget at 40% (`alpha-disabled`, the Disabled setting), no hover or pressed; its tooltip says why | `alpha-disabled`, `text-muted`, `text-danger` |
-| Own | 2px accent bar, label in the accent (not a state: a mark) | `accent` |
+| Own | 2px accent bar, label in the accent (not a state: a mark); a part row is marked when its Show or any setting in its menu is the unit's own | `accent` |
 | Differs | the diff icon after the label, in `text-muted` | `text-muted` |
 | Error | the status line or tooltip line in red | `text-danger` |
 
@@ -104,8 +104,8 @@ Every page whose frames SaftUI draws offers Theme and Background, with "Use Saft
 
 1. **Lucide icons** wherever an icon fits (see `Icons`). An icon that replaces a word has a tooltip saying what it does.
 2. **Reset per setting.** A `ResetIcon` (rotate-ccw, `icon-reset`, `text-muted` at rest, `accent` under the mouse) sits beside a control, shown only while its value differs from its default, or from the shared value on a member page. No section or page Reset buttons.
-3. **Menus for parts.** A part with three or more settings, or settings that only apply sometimes, is a one-line `MenuItem` (Show box, name, `ellipsis-vertical`) with its settings in a menu titled with the part's name, `menu-width` (400) wide. Play it by ear where a page feels crowded.
-4. **Shared settings.** An "All" entry first in the picker, which every member follows. A member's own setting is marked with `OwnMark` (`accent` bar and label) and a hover line: Own, the reset icon, Apply to: All | Multiple (`ApplyList`). The All page shows an orange `DiffIcon` whose tooltip lists who differs and with what. State is always visible; hover only offers actions.
+3. **Menus for parts.** A part with three or more settings, or settings that only apply sometimes, is a one-line `MenuItem` (Show box, name, `ellipsis-vertical`) with its settings in a menu titled with the part's name, `menu-width` (400) wide. Play it by ear where a page feels crowded. On the unit frame pages a part is a half row, the **part row** (decision 64): Show box, name, a summary (the anchor of the part's position, decision 70) and the dots, with a click on the row opening the menu; the hover line takes the summary's place and nothing moves (decision 69); its dots rest in `text` while any setting inside differs, and its reset is its Show box's. **The too-big rule** (decision 67): a part's menu, laid out under Thick at full size, is at most `menu-max-height` (700, the options window's least height); a part over it is a tab (Additional power).
+4. **Shared settings.** An "All" entry first in the picker (All bars, All units: decision 68), which every member follows. A member's own setting is marked with `OwnMark` (`accent` bar and label) and a hover line: Own, the reset icon, Apply to: All | Multiple (`ApplyList`). The All page shows an orange `DiffIcon` whose tooltip lists who differs and with what. State is always visible; hover only offers actions.
 5. **Sections on panels.** Under Thick and Thin a `Section`'s rows sit on `panel-fill` with a `hairline` column divider and hairlines between lines. The Blizzard theme keeps Blizzard's art and flat layout.
 6. **Buttons float.** A line that holds only buttons has no panel behind it. A section's or dialog's closing buttons float under the panel with `float-gap` (24) above and below.
 7. **The color field** (`ColorBar`) is as wide as a dropdown (`control-width`): a swatch at its left (a see-through color over a checker), its hex code beside it in `text`, with `· NN%` when its opacity is under 100%.

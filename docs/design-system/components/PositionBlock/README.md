@@ -40,3 +40,7 @@ The dots keep a 1px line in the Blizzard theme's Border round its Background (no
 - Do put a frame's Position second on its page or tab, in its own section, every time; a part's stays last in its menu.
 - Do keep offsets whole numbers.
 - Don't draw the nudge arrows by hand: they are Lucide's `chevron-up` and `chevron-down` (`Kit.NudgePair`, shared with the number box).
+
+## In a two-column menu (decisions 64, 67)
+
+A part's Position is the last thing in its menu, in a line of its own. The menu's body is 376 wide; a unit frame block's TO select is 136 wide (`selectWidth`, a field the block reads: 140 where it has none) so the block, 347 wide, fits the menu's cell. The name box under a TO select is as wide as the select (`pos-name` is for blocks with no select), the gap after it is 12 (`pos-gap`), and AT and the offsets follow. The longest names a TO list can hold are the parts' own keys ("ReadyCheckIndicator"): check them against the 136.
