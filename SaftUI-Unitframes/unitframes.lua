@@ -220,17 +220,47 @@ function UF:RegisterElement(name, Constructor, UpdateConfig, GetConfigTable, Val
 	}
 end
 
+-- A color object of oUF's own for a profile color oUF has none of, so it has
+-- the methods oUF's elements call (GetCurve for a gradient, GetAtlas); a copy,
+-- never the profile's table. Without oUF's maker (a stand-in), a plain copy.
+local function NewColor(from)
+	local oUF = UF.oUF
+	if oUF and oUF.CreateColor and type(from.r) == 'number' and type(from.g) == 'number' and type(from.b) == 'number' then
+		return oUF:CreateColor(from.r, from.g, from.b, from.a)
+	end
+	return st.tablecopy(from, true)
+end
+
 -- Copies one profile color into oUF's color of the same name, in place (a
 -- table already there keeps its identity and its methods, and nothing is
--- made); a color oUF has none of yet is put there.
+-- made); a color oUF has none of yet gets a copy of the profile's made by oUF
+-- (NewColor), never the profile's own table: a later merge writes into oUF's table, and would write
+-- the next profile's values into this profile's.
 local function CopyColor(group, key, from)
 	if from == nil then return end
 	local to = group[key]
 	if type(to) == 'table' and type(from) == 'table' then
 		to.r, to.g, to.b = from.r, from.g, from.b
 		if from.a ~= nil then to.a = from.a end
+	elseif type(from) == 'table' then
+		group[key] = NewColor(from)
 	else
 		group[key] = from
+	end
+end
+
+-- st.tablemerge(to, from, true) for a group of colors, but a color or a table
+-- of colors that `to` has none of is copied in, not put there as `from`'s own.
+local function MergeColors(to, from)
+	if not from then return end
+	for key, value in pairs(from) do
+		if type(value) == 'table' and type(to[key]) == 'table' then
+			MergeColors(to[key], value)
+		elseif type(value) == 'table' then
+			to[key] = NewColor(value)
+		else
+			to[key] = value
+		end
 	end
 end
 
@@ -250,17 +280,17 @@ function UF:UpdateColors(group, key)
 		return
 	end
 	if group == nil or group == 'status' then
-		st.tablemerge(oUFColors.disconnected, profile.status.disconnected, true)
-		st.tablemerge(oUFColors.tapped, profile.status.tapped, true)
+		MergeColors(oUFColors.disconnected, profile.status.disconnected)
+		MergeColors(oUFColors.tapped, profile.status.tapped)
 	end
 	if group == nil or group == 'reaction' then
-		st.tablemerge(oUFColors.reaction, profile.reaction, true)
+		MergeColors(oUFColors.reaction, profile.reaction)
 	end
 	if group == nil or group == 'power' then
-		st.tablemerge(oUFColors.power, profile.power, true)
+		MergeColors(oUFColors.power, profile.power)
 	end
 	if group == nil or group == 'class' then
-		st.tablemerge(oUFColors.class, profile.class, true)
+		MergeColors(oUFColors.class, profile.class)
 	end
 	-- The profile has no runes colors by default; use oUF's then instead of
 	-- wiping them. Set every time, so a profile without them doesn't keep the
@@ -344,7 +374,8 @@ end
 -- whoever it is (a player, a party member run by the game, or an NPC with a
 -- class, which some frames color too). A secret answer (a class, a standing or a power
 -- type the game keeps from addons) counts as reached: it is never compared,
--- and the frame is updated.
+-- and the frame is updated. A power color reaches a frame whose bar oUF draws
+-- in that color, a token oUF has none of included (below).
 function UF.ColorReaches(frame, group, key)
 	if key == nil then return true end
 	local unit = frame.__unit
@@ -361,8 +392,21 @@ function UF.ColorReaches(frame, group, key)
 		local reaction = UnitReaction(unit, 'player')
 		return issecretvalue(reaction) or reaction == key
 	elseif group == 'power' then
-		local _, token = UnitPowerType(unit)
-		return issecretvalue(token) or token == key
+		local powerType, token, altR = UnitPowerType(unit)
+		if issecretvalue(token) or issecretvalue(powerType) or issecretvalue(altR) then return true end
+		-- The color oUF's power.lua draws the bar in: the token's own, else
+		-- the game's own color (altR, which no pick reaches), else the power
+		-- type's (oUF's index of the same table as that type's token), else
+		-- Mana's. oUF's tables keep their identity through a pass (UpdateColors
+		-- merges in place), so the tables compare.
+		local colors = UF.oUF.colors.power
+		local drawn = colors[token]
+		if drawn == nil then
+			if altR then return false end
+			drawn = colors[powerType] or colors.MANA
+		end
+		local picked = colors[key]
+		return picked ~= nil and drawn == picked
 	elseif group == 'status' then
 		if key == 'disconnected' then
 			local connected = UnitIsConnected(unit)
@@ -716,23 +760,28 @@ local function ClearUnitFramePoints(self)
 	return previous
 end
 
--- Clears the points of the parts a full update of frame places: each element
--- its new config has on, and that element's texts and icons that are on (the
--- rule of ClearPlacedPoints in nameplates/nameplates.lua, which clears a
--- plate's before a switch of its config). Read from the profile now, not from
--- the configs the parts cache, which still belong to the profile switched
--- away from. Two parts anchored each way round across two profiles would
--- otherwise close an anchor loop as they're placed one by one in pairs()
--- order. A part whose update then fails is left with no points. Unit frames
--- are secure: out of combat only.
-local function ClearPartPoints(frame)
+-- Clears the points of the parts a full update of frame places: each element,
+-- and the texts and icons of the ones its new config has on that are on. The
+-- one rule for unit frames (UF:ApplyConfig) and plates (UF:ApplyPlateConfig,
+-- and a plate that keeps its config unit on a switch): every element is
+-- placed again by UF:UpdateElement, a switched-off one too, so none keeps the
+-- old profile's points. Read from the profile now (GetConfig), not from the
+-- configs the parts cache, which still belong to the profile switched away
+-- from. Two parts anchored each way round across two profiles would otherwise
+-- close an anchor loop as they're placed one by one in pairs() order. A part
+-- whose update then fails is left with no points. Unit frames are secure: out
+-- of combat only; a plate's parts aren't, so in combat too.
+function UF.ClearPartPoints(frame)
 	local function On(part)
 		local config = part.GetConfig and part:GetConfig()
 		return config and config.enable
 	end
 	for _, element in pairs(frame.elements or {}) do
+		-- Every element, off or on: UF:UpdateElement places a switched-off
+		-- one by its config too (parts hang from it), so none keeps the old
+		-- profile's points.
+		element:ClearAllPoints()
 		if On(element) then
-			element:ClearAllPoints()
 			for _, text in pairs(element.textElements or {}) do
 				if On(text) then text:ClearAllPoints() end
 			end
@@ -749,16 +798,16 @@ local function ClearAllPartPoints(self)
 	for unit, frame in pairs(self.units) do
 		if unit == 'boss' or unit == 'arena' then
 			for _, numbered in pairs(frame) do
-				ClearPartPoints(numbered)
+				UF.ClearPartPoints(numbered)
 			end
 		else
-			ClearPartPoints(frame)
+			UF.ClearPartPoints(frame)
 		end
 	end
 	for _, header in pairs(self.groups or {}) do
 		for i = 1, header:GetNumChildren() do
 			local frame = select(i, header:GetChildren())
-			if frame and frame.Health then ClearPartPoints(frame) end
+			if frame and frame.Health then UF.ClearPartPoints(frame) end
 		end
 	end
 end
@@ -879,7 +928,7 @@ function UF:ApplyConfig(unit, element_name)
 					if not element_name then
 						xpcall(function()
 							self:RefreshFrameConfig(frame)
-							UF.ClearPlacedPoints(frame)
+							UF.ClearPartPoints(frame)
 						end, geterrorhandler())
 					end
 					SafeUpdateUnitFrame(frame, element_name)

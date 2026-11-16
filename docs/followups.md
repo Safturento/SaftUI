@@ -16,8 +16,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-15 — Edit mode: a Theme pass with edit mode on still does the full look and list refresh](#2026-11-15--edit-mode-a-theme-pass-with-edit-mode-on-still-does-the-full-look-and-list-refresh)
   - [2026-11-15 — Unit frames: a Warrior class pick updates every Warrior NPC plate](#2026-11-15--unit-frames-a-warrior-class-pick-updates-every-warrior-npc-plate)
   - [2026-11-15 — Unit frames: what a color pass's real element updates cost](#2026-11-15--unit-frames-what-a-color-passs-real-element-updates-cost)
-  - [2026-11-15 — Unit frames: a color oUF lacks is set to the profile's own table](#2026-11-15--unit-frames-a-color-ouf-lacks-is-set-to-the-profiles-own-table)
-  - [2026-11-15 — Unit frames: a vehicle power type with no oUF color falls back to Mana](#2026-11-15--unit-frames-a-vehicle-power-type-with-no-ouf-color-falls-back-to-mana)
   - [2026-11-15 — A roll result line's All passed and winner color are baked in at push](#2026-11-15--a-roll-result-lines-all-passed-and-winner-color-are-baked-in-at-push)
   - [2026-11-15 — A Position reset runs a unit frame's update once for every part it writes](#2026-11-15--a-position-reset-runs-a-unit-frames-update-once-for-every-part-it-writes)
   - [2026-11-15 — After a UI scale change, a reset half-pixel Position can show its icon again](#2026-11-15--after-a-ui-scale-change-a-reset-half-pixel-position-can-show-its-icon-again)
@@ -32,10 +30,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-15 — Auto Vendor counts a fresh purchase in a just-sold slot as a refused sale](#2026-11-15--auto-vendor-counts-a-fresh-purchase-in-a-just-sold-slot-as-a-refused-sale)
   - [2026-11-15 — Auto Vendor's second question overstates the earlier stacks that leave](#2026-11-15--auto-vendors-second-question-overstates-the-earlier-stacks-that-leave)
   - [2026-11-15 — Nameplates: Blizzard's friendly plates key binding and the next login](#2026-11-15--nameplates-blizzards-friendly-plates-key-binding-and-the-next-login)
-  - [2026-11-15 — Unit frames: a part switched off in the new profile keeps its old points](#2026-11-15--unit-frames-a-part-switched-off-in-the-new-profile-keeps-its-old-points)
-  - [2026-11-15 — Two lines of the profile switch fix that no test pins](#2026-11-15--two-lines-of-the-profile-switch-fix-that-no-test-pins)
-  - [2026-11-15 — getHealthPercentText's floor branch is never used](#2026-11-15--gethealthpercenttexts-floor-branch-is-never-used)
-  - [2026-11-15 — Unit frame defaults: string offsets left outside the castbars](#2026-11-15--unit-frame-defaults-string-offsets-left-outside-the-castbars)
   - [2026-11-15 — Bag search box: the magnifier and the clear button](#2026-11-15--bag-search-box-the-magnifier-and-the-clear-button)
   - [2026-11-15 — Tracker: an Edit Mode anchor to a frame other than UIParent gives the default spot](#2026-11-15--tracker-an-edit-mode-anchor-to-a-frame-other-than-uiparent-gives-the-default-spot)
   - [2026-11-15 — The bag bar and Hekili: what still writes onto Blizzard's frames](#2026-11-15--the-bag-bar-and-hekili-what-still-writes-onto-blizzards-frames)
@@ -138,6 +132,12 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-15 — Chat's Fade tabs: ChatFrameUtil.GetTabAlphas isn't in the retail source](#2026-11-15--chats-fade-tabs-chatframeutilgettabalphas-isnt-in-the-retail-source)
   - [2026-11-15 — Chat: the dock hook adds a second anchor to docked tabs 2 to n, and the dock test can't see it](#2026-11-15--chat-the-dock-hook-adds-a-second-anchor-to-docked-tabs-2-to-n-and-the-dock-test-cant-see-it)
   - [2026-11-15 — Chat's edit box can sit off the top of the screen when the chat Theme is None](#2026-11-15--chats-edit-box-can-sit-off-the-top-of-the-screen-when-the-chat-theme-is-none)
+  - [2026-11-15 — getHealthPercentText's floor branch is never used](#2026-11-15--gethealthpercenttexts-floor-branch-is-never-used)
+  - [2026-11-15 — Two lines of the profile switch fix that no test pins](#2026-11-15--two-lines-of-the-profile-switch-fix-that-no-test-pins)
+  - [2026-11-15 — Unit frame defaults: string offsets left outside the castbars](#2026-11-15--unit-frame-defaults-string-offsets-left-outside-the-castbars)
+  - [2026-11-15 — Unit frames: a part switched off in the new profile keeps its old points](#2026-11-15--unit-frames-a-part-switched-off-in-the-new-profile-keeps-its-old-points)
+  - [2026-11-15 — Unit frames: a vehicle power type with no oUF color falls back to Mana](#2026-11-15--unit-frames-a-vehicle-power-type-with-no-ouf-color-falls-back-to-mana)
+  - [2026-11-15 — Unit frames: a color oUF lacks is set to the profile's own table](#2026-11-15--unit-frames-a-color-ouf-lacks-is-set-to-the-profiles-own-table)
   - [2026-11-15 — Two Misc readers break "a pass only colors"](#2026-11-15--two-misc-readers-break-a-pass-only-colors)
   - [2026-11-11 — UIParent's scale is set once, at login, so plates leave whole pixels after a UI scale or display change](#2026-11-11--uiparents-scale-is-set-once-at-login-so-plates-leave-whole-pixels-after-a-ui-scale-or-display-change)
   - [2026-11-15 — A reset on every font row](#2026-11-15--a-reset-on-every-font-row)
@@ -326,34 +326,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **Open questions:** the slowest pass the owner sees in game.
 
-### 2026-11-15 — Unit frames: a color oUF lacks is set to the profile's own table
-
-**What:** `CopyColor` (`SaftUI-Unitframes/unitframes.lua`) sets a color oUF has none of to the profile's own table, as `st.tablemerge` did. A later profile switch's merge then writes the new profile's values into the table of the old profile. It matters only if oUF lacks a SaftUI color key in game (the test world lacks every key); which keys, if any, is unchecked.
-
-**Why noticed:** Review of the live colors Task 3, `.superpowers/sdd/2026-11-15-saftui-live-colors/task-3-review.md`, n3. The behavior is older than the task; the commit kept it.
-
-**Anchors:** `UF:UpdateColors`, `CopyColor`, oUF's `Libraries/oUF/colors.lua` (read only), `st.config.profile.colors`.
-
-**What's been considered:** Copying into a new color object (`UF.oUF:CreateColor`) instead of aliasing would make it safe.
-
-**Shape of work:** list the keys SaftUI's Colors page has that oUF's table lacks, and make the fallback a copy.
-
-**Open questions:** whether any key is missing in game.
-
-### 2026-11-15 — Unit frames: a vehicle power type with no oUF color falls back to Mana
-
-**What:** Power reaches a frame by its unit's power token. A unit whose token oUF has no color for (a vehicle's power type) falls back to Mana's color in oUF's `power.lua`, so a Mana pick misses that frame. Rare; the edit's whole pass covers it.
-
-**Why noticed:** Review of the live colors Task 3, `.superpowers/sdd/2026-11-15-saftui-live-colors/task-3-review.md`, n4.
-
-**Anchors:** `UF.ColorReaches` (the `power` branch), oUF's `Libraries/oUF/elements/power.lua` (read only).
-
-**What's been considered:** Treat a token with no oUF color as `MANA`.
-
-**Shape of work:** one line in `UF.ColorReaches` and a test.
-
-**Open questions:** none.
-
 ### 2026-11-15 — A roll result line's All passed and winner color are baked in at push
 
 **What:** A roll result's feed line (`Feed/rolls.lua`, `ResultText`) builds its right text once, at push: "All passed" in Loot > Pass, or the winner's name in their class color. A shown line, and a saved one after a reload, never follows a change to Loot > Pass or to a class color, though the Pass row's description names "All passed (on the feed line and in its roll tooltip)".
@@ -512,50 +484,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 **Shape of work:** Small if left; a listener and a test if Friendly plates follows the game.
 
 **Open questions:** Should Blizzard's friendly plates key binding change SaftUI's Friendly plates, or be undone at the next login?
-
-### 2026-11-15 — Unit frames: a part switched off in the new profile keeps its old points
-
-**What:** A part switched off in the new profile keeps its old points on a unit frame and can still close an anchor loop (profile A: Power on, under Health; profile B: Power off, Health hung from Power: Health's `SetPoint` errors and it is left with no points). Pre-existing. Test mode's previews have the opposite edge: `StylePreviewFrame` clears every preview element and all its texts, but a preview places only the parts that are on, so a preview part hung from a switched-off part is left anchored to a region with no points and won't draw (inferred: the stubs don't model the rect), while the real boss frame keeps the old points and shows that part. Test mode only, and it needs a part hung from a switched-off one.
-
-**Why noticed:** The fu-p2 review (finding m1, and N1 of its re-review), after the fix that clears each frame's enabled parts before a profile switch places them. The comment at `grouppreview.lua:160` ("as for the real frames") doesn't hold for it.
-
-**Anchors:** `SaftUI-Unitframes/unitframes.lua` (`ClearPartPoints`, `ClearAllPartPoints`), `SaftUI-Unitframes/updaters.lua` (`UF:UpdateElement`, the `unitframe.isNamePlate` condition), `SaftUI-Unitframes/nameplates/nameplates.lua` (`ClearPlacedPoints`), `SaftUI-Unitframes/grouppreview.lua` (`StylePreviewFrame`), `tests/unitframes/profile_switch_test.lua`, `tests/unitframes/boss_preview_test.lua`.
-
-**What's been considered:** Place a disabled named part by its config on unit frames too (drop the `unitframe.isNamePlate` condition in `UF:UpdateElement`) and clear every element, as `ClearPlacedPoints` does for plates. For the previews, use the real frames' rule: clear an element only when `element:GetConfig().enable` is true, and its texts only when theirs is (export `ClearPartPoints` and call it on the preview frame, whose elements would need to be `previewElements`); or only note the case here.
-
-**Shape of work:** Small: one rule for which parts a clear touches, shared by frames and previews, and a test with a part hung from a switched-off one.
-
-**Open questions:** Whether a disabled part should be placed at all, or the clear should skip it as the real frames do.
-
-### 2026-11-15 — Two lines of the profile switch fix that no test pins
-
-**What:** Two lines of the fu-p2 fix round pass every test when removed. (1) `RestoreNameplateCVars` clearing `UF.appliedFriendly` (`SaftUI-Unitframes/nameplates/cvars.lua`): the case it guards is Nameplates turned off with the reload declined (the user's values go back), then a switch to a profile with Nameplates on and the same Friendly plates; SaftUI's settings should be set again, and without the line they stay the user's while SaftUI's plates are up. (2) `RefreshFrameConfig` before `UF.ClearPlacedPoints` in the plate loop of `UF:ApplyConfig` (`SaftUI-Unitframes/unitframes.lua`): without it the clear reads the old profile's cached Enable for a text or icon, which matters only for a loop through a text or icon (typed by frame name), so it is low value.
-
-**Why noticed:** The fu-p2 re-review of the fix round (its N2). The code is right in both cases; only the tests are missing.
-
-**Anchors:** `tests/unitframes/profile_switch_test.lua`, `tests/unitframes/nameplate_page_test.lua`, `tests/unitframes/friendly_plate_test.lua`, `tests/unitframes/friendly_plate_size_test.lua`.
-
-**Shape of work:** Small: the Nameplates off then on case in `profile_switch_test.lua`, and a case where a text is on in one profile and off in the other.
-
-### 2026-11-15 — getHealthPercentText's floor branch is never used
-
-**What:** `getHealthPercentText(perc, precision)` in `SaftUI-Unitframes/elements/health.lua` has a branch for no precision that floors the value, but its only caller passes precision 1 (Boss percent). Since Percent on a plain health now rounds with `'%.0f'` to agree with the secret path, nothing floors anywhere.
-
-**Why noticed:** The fu-p1 review (merge fu-p1).
-
-**Anchors:** `SaftUI-Unitframes/elements/health.lua`.
-
-**Shape of work:** A one-line cleanup: drop the branch, or make the function the one place both percent paths round through.
-
-### 2026-11-15 — Unit frame defaults: string offsets left outside the castbars
-
-**What:** The castbar defaults' text offsets are numbers now (merge fu-p3), but other defaults still have string offsets, which the game accepts and the strict stubbed `SetPoint` refuses: the portrait and the additional power position in `SaftUI-Unitframes/config/default.lua`, and buffs in `config/units/arena.lua` (boss's are numbers now: the resets task). A profile that saved the string form keeps it.
-
-**Why noticed:** The fu-p3 report, finishing item 2 of [Nameplates: small items left after the build](#2026-11-11--nameplates-small-items-left-after-the-build) for the castbars only (the brief named only those).
-
-**Anchors:** `SaftUI-Unitframes/config/default.lua`, `config/units/arena.lua`; `tests/unitframes/unit_defaults_test.lua` (checks every unit's castbar offsets are numbers).
-
-**Shape of work:** Small: make them numbers and extend the test over every position in the defaults.
 
 ### 2026-11-15 — Bag search box: the magnifier and the clear button
 
@@ -1280,6 +1208,8 @@ What's left needs evidence from the game. In the order they'd be checked:
 **Shape of work:** Small, if a path to it ever appears: a few lines and an in-combat case in `friendly_plate_size_test.lua`'s box test.
 
 **Open questions:** None until something can change a box in combat.
+
+**Checked 2026-11-15:** by design for now, and still latent: nothing can change a box in combat. `/sui` closes as combat starts and won't open in it, and a profile switch by an addon or a macro in combat waits for the end of combat like every unit frame switch (the cached configs point at the new profile at once and the full update follows). Revisit if a path to a box in combat appears.
 
 ### 2026-11-12 — Nameplates: friendly players and friendly NPCs configured apart
 
@@ -2522,6 +2452,90 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Needs an in-game look first: chat Theme None, `/reload`, where is the box?
 
 **Resolved 2026-11-15:** `CHT:UpdateChatFrameDisplay` now anchors the edit box and the scroll bar, to the backdrop when a look is drawn and to the chat window under None (`SkinChatFrame` no longer does, with a nil relative frame), so every theme change places them; `tests/chat/theme_test.lua`, whose fixture now parents the edit box to UIParent as Blizzard does. Not yet seen in game.
+
+### 2026-11-15 — getHealthPercentText's floor branch is never used
+
+**What:** `getHealthPercentText(perc, precision)` in `SaftUI-Unitframes/elements/health.lua` has a branch for no precision that floors the value, but its only caller passes precision 1 (Boss percent). Since Percent on a plain health now rounds with `'%.0f'` to agree with the secret path, nothing floors anywhere.
+
+**Why noticed:** The fu-p1 review (merge fu-p1).
+
+**Anchors:** `SaftUI-Unitframes/elements/health.lua`.
+
+**Shape of work:** A one-line cleanup: drop the branch, or make the function the one place both percent paths round through.
+
+**Resolved 2026-11-15:** the function is gone: its one caller (Boss percent) formats the value with one decimal in place; no behavior change.
+
+### 2026-11-15 — Two lines of the profile switch fix that no test pins
+
+**What:** Two lines of the fu-p2 fix round pass every test when removed. (1) `RestoreNameplateCVars` clearing `UF.appliedFriendly` (`SaftUI-Unitframes/nameplates/cvars.lua`): the case it guards is Nameplates turned off with the reload declined (the user's values go back), then a switch to a profile with Nameplates on and the same Friendly plates; SaftUI's settings should be set again, and without the line they stay the user's while SaftUI's plates are up. (2) `RefreshFrameConfig` before `UF.ClearPlacedPoints` in the plate loop of `UF:ApplyConfig` (`SaftUI-Unitframes/unitframes.lua`): without it the clear reads the old profile's cached Enable for a text or icon, which matters only for a loop through a text or icon (typed by frame name), so it is low value.
+
+**Why noticed:** The fu-p2 re-review of the fix round (its N2). The code is right in both cases; only the tests are missing.
+
+**Anchors:** `tests/unitframes/profile_switch_test.lua`, `tests/unitframes/nameplate_page_test.lua`, `tests/unitframes/friendly_plate_test.lua`, `tests/unitframes/friendly_plate_size_test.lua`.
+
+**Shape of work:** Small: the Nameplates off then on case in `profile_switch_test.lua`, and a case where a text is on in one profile and off in the other.
+
+**Resolved 2026-11-15:** `profile_switch_test.lua` pins both: the Nameplates off then on case (the restore forgetting `UF.appliedFriendly`) and a text switched on by a switch that replaces the bar's config table (the refresh before `UF.ClearPlacedPoints`); each fails with its line removed.
+
+### 2026-11-15 — Unit frame defaults: string offsets left outside the castbars
+
+**What:** The castbar defaults' text offsets are numbers now (merge fu-p3), but other defaults still have string offsets, which the game accepts and the strict stubbed `SetPoint` refuses: the portrait and the additional power position in `SaftUI-Unitframes/config/default.lua`, and buffs in `config/units/arena.lua` (boss's are numbers now: the resets task). A profile that saved the string form keeps it.
+
+**Why noticed:** The fu-p3 report, finishing item 2 of [Nameplates: small items left after the build](#2026-11-11--nameplates-small-items-left-after-the-build) for the castbars only (the brief named only those).
+
+**Anchors:** `SaftUI-Unitframes/config/default.lua`, `config/units/arena.lua`; `tests/unitframes/unit_defaults_test.lua` (checks every unit's castbar offsets are numbers).
+
+**Shape of work:** Small: make them numbers and extend the test over every position in the defaults.
+
+**Resolved 2026-11-15:** the portrait's and additional power's positions in `config/default.lua` and arena's buffs are numbers; `unit_defaults_test.lua` now checks every position offset in every unit's defaults.
+
+### 2026-11-15 — Unit frames: a part switched off in the new profile keeps its old points
+
+**What:** A part switched off in the new profile keeps its old points on a unit frame and can still close an anchor loop (profile A: Power on, under Health; profile B: Power off, Health hung from Power: Health's `SetPoint` errors and it is left with no points). Pre-existing. Test mode's previews have the opposite edge: `StylePreviewFrame` clears every preview element and all its texts, but a preview places only the parts that are on, so a preview part hung from a switched-off part is left anchored to a region with no points and won't draw (inferred: the stubs don't model the rect), while the real boss frame keeps the old points and shows that part. Test mode only, and it needs a part hung from a switched-off one.
+
+**Why noticed:** The fu-p2 review (finding m1, and N1 of its re-review), after the fix that clears each frame's enabled parts before a profile switch places them. The comment at `grouppreview.lua:160` ("as for the real frames") doesn't hold for it.
+
+**Anchors:** `SaftUI-Unitframes/unitframes.lua` (`ClearPartPoints`, `ClearAllPartPoints`), `SaftUI-Unitframes/updaters.lua` (`UF:UpdateElement`, the `unitframe.isNamePlate` condition), `SaftUI-Unitframes/nameplates/nameplates.lua` (`ClearPlacedPoints`), `SaftUI-Unitframes/grouppreview.lua` (`StylePreviewFrame`), `tests/unitframes/profile_switch_test.lua`, `tests/unitframes/boss_preview_test.lua`.
+
+**What's been considered:** Place a disabled named part by its config on unit frames too (drop the `unitframe.isNamePlate` condition in `UF:UpdateElement`) and clear every element, as `ClearPlacedPoints` does for plates. For the previews, use the real frames' rule: clear an element only when `element:GetConfig().enable` is true, and its texts only when theirs is (export `ClearPartPoints` and call it on the preview frame, whose elements would need to be `previewElements`); or only note the case here.
+
+**Shape of work:** Small: one rule for which parts a clear touches, shared by frames and previews, and a test with a part hung from a switched-off one.
+
+**Open questions:** Whether a disabled part should be placed at all, or the clear should skip it as the real frames do.
+
+**Resolved 2026-11-15:** `UF:UpdateElement` now sizes and places a switched-off named part by its config on unit frames and previews as on plates, and `ClearPartPoints` clears every element, so no part keeps the old profile's points; pinned in `profile_switch_test.lua` and `boss_preview_test.lua`. The owner's open question is answered as the entry recommended (place it).
+
+### 2026-11-15 — Unit frames: a vehicle power type with no oUF color falls back to Mana
+
+**What:** Power reaches a frame by its unit's power token. A unit whose token oUF has no color for (a vehicle's power type) falls back to Mana's color in oUF's `power.lua`, so a Mana pick misses that frame. Rare; the edit's whole pass covers it.
+
+**Why noticed:** Review of the live colors Task 3, `.superpowers/sdd/2026-11-15-saftui-live-colors/task-3-review.md`, n4.
+
+**Anchors:** `UF.ColorReaches` (the `power` branch), oUF's `Libraries/oUF/elements/power.lua` (read only).
+
+**What's been considered:** Treat a token with no oUF color as `MANA`.
+
+**Shape of work:** one line in `UF.ColorReaches` and a test.
+
+**Open questions:** none.
+
+**Resolved 2026-11-15:** `UF.ColorReaches`' power branch reads a token oUF has no color for (and no game color) as `MANA`; `tests/unitframes/color_cost_test.lua` pins it (its stand-in oUF now holds the colors and oUF's power-type aliases for the tokens it uses). Fix round 1: it follows oUF's whole order (the token's color, the game's own color, the power type's, Mana's) by comparing oUF's tables, guarded against secret values.
+
+### 2026-11-15 — Unit frames: a color oUF lacks is set to the profile's own table
+
+**What:** `CopyColor` (`SaftUI-Unitframes/unitframes.lua`) sets a color oUF has none of to the profile's own table, as `st.tablemerge` did. A later profile switch's merge then writes the new profile's values into the table of the old profile. It matters only if oUF lacks a SaftUI color key in game (the test world lacks every key); which keys, if any, is unchecked.
+
+**Why noticed:** Review of the live colors Task 3, `.superpowers/sdd/2026-11-15-saftui-live-colors/task-3-review.md`, n3. The behavior is older than the task; the commit kept it.
+
+**Anchors:** `UF:UpdateColors`, `CopyColor`, oUF's `Libraries/oUF/colors.lua` (read only), `st.config.profile.colors`.
+
+**What's been considered:** Copying into a new color object (`UF.oUF:CreateColor`) instead of aliasing would make it safe.
+
+**Shape of work:** list the keys SaftUI's Colors page has that oUF's table lacks, and make the fallback a copy.
+
+**Open questions:** whether any key is missing in game.
+
+**Resolved 2026-11-15:** `UF:UpdateColors` (the whole pass's merge and `CopyColor`) now copies a color oUF lacks instead of aliasing the profile's table; `tests/unitframes/colors_test.lua` pins both paths and the old profile staying untouched after a switch. The copy is made by `oUF:CreateColor` (it has oUF's methods, so a Gradient on a token oUF lacks, such as Steam, Pyrite or Alt power, doesn't error), and the whole pass is pinned to merge in place. Left: the by-key `CopyColor` assumes a color-shaped (r, g, b) profile table, which AceDB always fills and every default is; a list-shaped one would write nils.
 
 ### 2026-11-15 — Two Misc readers break "a pass only colors"
 

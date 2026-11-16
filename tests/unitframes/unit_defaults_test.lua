@@ -1,5 +1,6 @@
 -- Leftovers in the unit frames' defaults (config/default.lua, config/units/*):
--- every unit's castbar places its parts by numbers, not text ("0", "-3"); the
+-- every position in every unit's defaults, both plate configs too, places its
+-- parts by numbers, not text ("0", "-3"); the
 -- player's class power has no show_empty (oUF shows every point up to the max,
 -- and nothing reads the key); the raid target marker names no Portrait element
 -- (none is registered) and sits on the unit frame, as it always did.
@@ -20,19 +21,21 @@ local function offsets(t, path, out)
 end
 
 for _, client in ipairs({ 'forever', 'retail' }) do
-	test(client .. ": every unit's castbar offsets are numbers", function()
-		local st, UF, P = UW.world({ client = client, elements = {} })
+	test(client .. ": every position's offsets in every unit's defaults are numbers", function()
+		local units = { 'nameplate', 'friendlynameplate' }
+		for _, unit in ipairs(UW.UNITS) do units[#units + 1] = unit end
+		local st, UF, P = UW.world({ client = client, elements = {}, units = units })
 		local seen = 0
-		for _, unit in ipairs(UW.UNITS) do
-			local castbar = P[unit].castbar
-			if type(castbar) == 'table' then
-				for _, pair in ipairs(offsets(castbar, unit .. '.castbar', {})) do
+		for _, unit in ipairs(units) do
+			check(type(P[unit]) == 'table', unit .. ' has defaults')
+			if type(P[unit]) == 'table' then
+				for _, pair in ipairs(offsets(P[unit], unit, {})) do
 					seen = seen + 1
 					eq(type(pair[2]), 'number', pair[1] .. ' is a number')
 				end
 			end
 		end
-		eq(seen > 0, true, 'some offsets were checked')
+		eq(seen > 100, true, 'many offsets were checked: ' .. seen)
 	end)
 
 	test(client .. ": the player's class power has no show_empty", function()

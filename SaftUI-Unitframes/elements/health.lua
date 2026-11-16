@@ -1,14 +1,6 @@
 local st = SaftUI
 local UF = st:GetModule('Unitframes')
 
-local function getHealthPercentText(perc, precision)
-	if precision and precision > 0 then
-		return ('%0.' .. (precision) .. 'f'):format(perc)
-	end
-
-	return floor(perc)
-end
-
 -- A secret health (enemy nameplates in restricted content) can't be
 -- subtracted, divided or compared here: the game works out what the text
 -- shows, and only the text that's shown is worked out.
@@ -51,7 +43,7 @@ local function PostUpdateHealth(health, unit, current, max)
 					health.text:SetFormattedText('%s | %.1f', text, UnitHealthPercent(unit, true, CurveConstants.ScaleTo100))
 					text = nil
 				else
-					text = ("%s | %s"):format(text, getHealthPercentText(current / max * 100, 1))
+					text = ("%s | %s"):format(text, ('%.1f'):format(current / max * 100))
 				end
 			end
 
