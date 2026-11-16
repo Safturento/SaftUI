@@ -2230,6 +2230,8 @@ The one route left is to work out the button order without reading the buttons. 
 
 **Shape of work:** Measure first: check `SaftUI_DB.lua`'s size after a raid night. Shrink the saved roll format only if it's large.
 
+**Measured 2026-11-15:** the owner's whole saved file (`SaftUI-Core.lua`, which holds `SaftUI_DB`) is 173 KB; the busiest character's `feed` is 500 entries and 125 KB (about 250 bytes an entry), and only one saved entry holds a roll list so far, so a raid night's cost is still unmeasured. The estimate above (about 3 KB for a 20-player roll result, so 1.5 MB a character at 500) stands untested. Left open on purpose: shrinking changes the saved format (a compact Pass string, a cap on roll lists), which wants a number from a real raid night first. Measure again after one: if the file passes about 1 MB, shrink; the cheapest first step is one compact string for Pass names.
+
 ### 2026-11-08 — Confirm the totem bar's protection and secret-value claims in game, then document the duration-object pattern
 
 **What:** Two things in the totem bar work (`SaftUI-Misc/totemskin.lua`, `totemtimers.lua`) rest on reading Blizzard's source and API docs, not on the game:
