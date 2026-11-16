@@ -460,7 +460,7 @@ local ALLOWED = {
 		ConfirmDeleteProfile = { 'SharedReady', 'SharedState' },
 	},
 	['SaftUI-Unitframes/config/config.lua'] = {
-		['UF:CopySettings'] = { 'SharedReady', 'HasShared', 'SameShared', 'OwnShared' },
+		['UF:CopySettings'] = { 'CanMarkOwn', 'HasShared', 'SameShared', 'OwnShared' },
 		['UF:GetConfigTable'] = { 'SharedReady' },
 	},
 	['SaftUI-Unitframes/config/sharedoptions.lua'] = {

@@ -783,3 +783,47 @@ test('N7: the backup leaves no empty table in the saved file', function()
 	eq(UF:RestoreShared(profile), true)
 	shows_the_same(snap, profile, 'a fresh profile restores to what it was')
 end)
+
+------------------------------------------------------------------ the final fix round: Copy from while sharing is paused
+
+-- Copy Target's Name onto Player while sharing is paused, and resume: the copied typeface is Player's own, so
+-- no sync (at once, or at the next login) puts All units' font back over it.
+local function copy_while_paused(pause, resume)
+	local db = converted_world()
+	local profile = profile_of(db)
+	eq(UF:IsOwn('player', 'name.font'), false, 'Player follows All units\' font to begin with')
+	pause(profile)
+	check(UF:SharedState(profile) ~= 'ready', 'sharing is paused')
+	UF:CopySettings('player', 'target', { 'name' })
+	eq(profile.player.name.font.font_name, 'Homespun', 'copied')
+	eq(UF:IsOwn('player', 'name.font'), true, 'the copy is marked as Player\'s own although syncs are refused')
+	resume(profile)
+	UF:UpdateConfig()
+	eq(profile.player.name.font.font_name, 'Homespun', 'the sync that follows keeps the copy')
+	db = SW.relog(db)
+	SW.enable()
+	eq(profile_of(db).player.name.font.font_name, 'Homespun', 'and so does the next login')
+end
+
+test('Copy from while an element is missing (sharing paused) keeps the copy through the sync that follows', function()
+	local castbar
+	copy_while_paused(function(profile)
+		castbar = UF.elements.Castbar
+		UF.elements.Castbar = nil
+		UF:UpdateConfig()
+		eq(UF:SharedState(profile), 'missing')
+	end, function()
+		UF.elements.Castbar = castbar
+	end)
+end)
+
+test('Copy from after a sync failed (sharing paused for the session) keeps the copy at the next login', function()
+	local real = UF.SyncShared
+	copy_while_paused(function(profile)
+		UF.SyncShared = function() error('boom', 0) end
+		UF:UpdateConfig()
+		UF.SyncShared = real
+		take_errors()
+		eq(UF:SharedState(profile), 'failed')
+	end, function() end)
+end)
