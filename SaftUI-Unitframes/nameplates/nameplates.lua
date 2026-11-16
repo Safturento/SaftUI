@@ -185,38 +185,6 @@ local function EnablePlateParts(frame)
 	return enabled
 end
 
--- Clears the points of everything a plate's full update places again
--- (UF:UpdateElement), so the update anchors each from scratch: every part,
--- one its config has off too (on a plate that's still placed, updaters.lua),
--- and the texts and icons that are on in a part that's on. Reads the configs
--- the frame has cached, so it runs after UF:RefreshFrameConfig. The update
--- places the parts one by one in pairs() order, each against the others
--- where they are then, so on a switch to the other config a part placed
--- against one still where the old config put it can close a loop, which the
--- game refuses ("Cannot anchor to a region dependent on it"): the Friendly
--- page hanging the health bar under the name while the Enemy page puts the
--- name on the bar, or the Enemy page putting the name beside a raid mark
--- the Friendly page hangs over the name. A text or an icon is never a
--- part's anchor through UF:GetFrame, but can be by its frame name, typed
--- into a Position. As ClearUnitFramePoints does for the unit frames
--- (unitframes.lua), and in combat too, since a plate's parts aren't secure.
-local function ClearPlacedPoints(frame)
-	for _, element in pairs(frame.elements) do
-		element:ClearAllPoints()
-		if element.config.enable then
-			for _, text in pairs(element.textElements or {}) do
-				if text.config and text.config.enable then text:ClearAllPoints() end
-			end
-			for _, icon in pairs(element.icons or {}) do
-				if icon.config and icon.config.enable then icon:ClearAllPoints() end
-			end
-		end
-	end
-end
--- Shared with UF:ApplyConfig (unitframes.lua), which clears the plates that
--- keep their config unit before a full update on a profile switch.
-UF.ClearPlacedPoints = ClearPlacedPoints
-
 -- Points a plate's frame at the config unit its kind draws from
 -- (UF.PlateConfigKey of frame.friendly) through its base_unit, which the
 -- frame's GetConfig and every element's read when called. When that changed,
@@ -225,7 +193,8 @@ UF.ClearPlacedPoints = ClearPlacedPoints
 -- name's tag. Every cached config is pointed at the new config first
 -- (UF:RefreshFrameConfig): the update re-points a part's own, but stops at a
 -- part that's off (UF:UpdateElement) before its texts and icons. Then what
--- the update places loses its old points (ClearPlacedPoints), so the parts
+-- the update places loses its old points (UF.ClearPartPoints, unitframes.lua:
+-- the same rule as for unit frames), so the parts
 -- can be placed in any order. An update that errors is reported, so the
 -- caller still goes on. Returns whether it changed. A plate's frame isn't
 -- secure, so in combat too.
@@ -235,7 +204,7 @@ function UF:ApplyPlateConfig(frame)
 	frame.base_unit = key
 	xpcall(function()
 		self:RefreshFrameConfig(frame)
-		ClearPlacedPoints(frame)
+		UF.ClearPartPoints(frame)
 		self:UpdateUnitFrame(frame)
 	end, geterrorhandler())
 	return true

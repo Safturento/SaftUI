@@ -761,15 +761,17 @@ local function ClearUnitFramePoints(self)
 end
 
 -- Clears the points of the parts a full update of frame places: each element,
--- and the texts and icons of the ones its new config has on that are on (the
--- rule of ClearPlacedPoints in nameplates/nameplates.lua, which clears a
--- plate's before a switch of its config). Read from the profile now, not from
--- the configs the parts cache, which still belong to the profile switched
--- away from. Two parts anchored each way round across two profiles would
--- otherwise close an anchor loop as they're placed one by one in pairs()
--- order. A part whose update then fails is left with no points. Unit frames
--- are secure: out of combat only.
-local function ClearPartPoints(frame)
+-- and the texts and icons of the ones its new config has on that are on. The
+-- one rule for unit frames (UF:ApplyConfig) and plates (UF:ApplyPlateConfig,
+-- and a plate that keeps its config unit on a switch): every element is
+-- placed again by UF:UpdateElement, a switched-off one too, so none keeps the
+-- old profile's points. Read from the profile now (GetConfig), not from the
+-- configs the parts cache, which still belong to the profile switched away
+-- from. Two parts anchored each way round across two profiles would otherwise
+-- close an anchor loop as they're placed one by one in pairs() order. A part
+-- whose update then fails is left with no points. Unit frames are secure: out
+-- of combat only; a plate's parts aren't, so in combat too.
+function UF.ClearPartPoints(frame)
 	local function On(part)
 		local config = part.GetConfig and part:GetConfig()
 		return config and config.enable
@@ -796,16 +798,16 @@ local function ClearAllPartPoints(self)
 	for unit, frame in pairs(self.units) do
 		if unit == 'boss' or unit == 'arena' then
 			for _, numbered in pairs(frame) do
-				ClearPartPoints(numbered)
+				UF.ClearPartPoints(numbered)
 			end
 		else
-			ClearPartPoints(frame)
+			UF.ClearPartPoints(frame)
 		end
 	end
 	for _, header in pairs(self.groups or {}) do
 		for i = 1, header:GetNumChildren() do
 			local frame = select(i, header:GetChildren())
-			if frame and frame.Health then ClearPartPoints(frame) end
+			if frame and frame.Health then UF.ClearPartPoints(frame) end
 		end
 	end
 end
@@ -926,7 +928,7 @@ function UF:ApplyConfig(unit, element_name)
 					if not element_name then
 						xpcall(function()
 							self:RefreshFrameConfig(frame)
-							UF.ClearPlacedPoints(frame)
+							UF.ClearPartPoints(frame)
 						end, geterrorhandler())
 					end
 					SafeUpdateUnitFrame(frame, element_name)

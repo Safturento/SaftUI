@@ -323,15 +323,15 @@ test("a switch clears a plate's points by the new profile's Enable for each text
 
 		-- Profile B: another table for the bar, its text on.
 		local seen
-		local clear = UF.ClearPlacedPoints
-		UF.ClearPlacedPoints = function(plate)
+		local clear = UF.ClearPartPoints
+		UF.ClearPartPoints = function(plate)
 			if plate == frame then seen = text.config.enable end
 			return clear(plate)
 		end
 		P.nameplate.health = st.tablecopy(P.nameplate.health, true)
 		P.nameplate.health.text.enable = true
 		UF:UpdateConfig()
-		UF.ClearPlacedPoints = clear
+		UF.ClearPartPoints = clear
 		eq(seen, true, client .. ": the clear read profile B's Enable")
 		eq(#take_errors(), 0, client .. ': no error')
 	end
