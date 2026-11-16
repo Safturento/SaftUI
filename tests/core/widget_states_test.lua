@@ -122,7 +122,7 @@ test('a skinned button: hover and pushed tint its body under the label; disabled
 	near_hex('pushed is T-', look.layer, MINUS); eq(look.layer.a, 0.32)
 	fire(b, 'OnMouseUp', 'LeftButton'); fire(b, 'OnLeave', true)
 	check(not st:StateLook(b).layer.shown, 'at rest again')
-	eq(T.text(b.text:GetTextColor()), T.text(n.r, n.g, n.b, 1), 'the label is back')
+	eq(T.text(b.text:GetTextColor()), REST_TEXT, 'the label is back to the color it had at rest (the font object\'s white), not Text > Normal')
 	b:Disable()
 	eq(b:GetAlpha(), 0.4, 'disabled dims')
 	eq(st:GetState(b, 'disabled'), true)
@@ -174,6 +174,7 @@ test("a Blizzard panel button st:SkinButton skins keeps the game's disabled art 
 	b.Left, b.Middle, b.Right = b:CreateTexture(), b:CreateTexture(), b:CreateTexture()
 	b:SetSize(100, 22)
 	st:SkinButton(b)
+	T.theme('blizzard')
 	b:Disable()
 	eq(b:GetAlpha(), 1, 'its alpha stays')
 	eq(st:GetState(b, 'disabled'), false, 'no disabled state')
@@ -183,31 +184,146 @@ test("a Blizzard panel button st:SkinButton skins keeps the game's disabled art 
 	eq(st:GetState(b, 'hover'), true)
 end)
 
-test("a SetScript after skinning loses hover until the skinner's look function runs again", function()
+test("a module's SetScript on a skinned button keeps hover (a button, a check box, the funnel style)", function()
 	world()
 	local b = button()
 	b:SetScript('OnEnter', function() end)
+	b:SetScript('OnLeave', function() end)
 	b:SetScript('OnMouseDown', function() end)
-	-- a theme change draws it again (the skinner's look function), which hooks the states again
-	T.theme('thin')
 	fire(b, 'OnEnter', true)
-	eq(st:GetState(b, 'hover'), true, 'hover after a redraw')
+	eq(st:GetState(b, 'hover'), true, 'a button: hover right after the SetScript, no redraw between')
 	fire(b, 'OnMouseDown', 'LeftButton')
 	eq(st:GetState(b, 'pushed'), true)
-	fire(b, 'OnLeave', true); fire(b, 'OnMouseUp', 'LeftButton')
-	-- skinning it again does too
-	local c = button()
-	c:SetScript('OnEnter', function() end)
-	st:SkinButton(c)
-	fire(c, 'OnEnter', true)
-	eq(st:GetState(c, 'hover'), true, 'hover after a re-skin')
-	-- and a state set
-	local d = button()
-	d:SetScript('OnEnter', function() end)
-	st:SetButtonPressed(d, true)
-	fire(d, 'OnEnter', true)
-	eq(st:GetState(d, 'hover'), true, 'hover after SetButtonPressed')
+	fire(b, 'OnLeave', true)
+	eq(st:GetState(b, 'hover'), false)
+	for _, style in ipairs({ false, 'button', 'bare' }) do
+		local c = checkbox(style or nil)
+		c:SetScript('OnEnter', function() end)
+		c:SetScript('OnLeave', function() end)
+		fire(c, 'OnEnter', true)
+		eq(st:GetState(c, 'hover'), true, 'a check box (' .. tostring(style) .. ')')
+		fire(c, 'OnLeave', true)
+		eq(st:GetState(c, 'hover'), false)
+	end
+	-- once per set: a second SetScript does not stack hooks
+	local sets = 0
+	local real = st.SetState
+	st.SetState = function(...) sets = sets + 1 return real(...) end
+	for _ = 1, 10 do b:SetScript('OnEnter', function() end) end
+	fire(b, 'OnEnter', true)
+	st.SetState = real
+	eq(sets, 1, 'one hover set after ten SetScripts')
+	-- a script that is not a state script is left alone
+	b:SetScript('OnClick', function() end)
+	-- never on a Blizzard panel button (skin.own): no SetScript hook there
+	local own = CreateFrame('Button', nil, UIParent)
+	own.Left, own.Middle, own.Right = own:CreateTexture(), own:CreateTexture(), own:CreateTexture()
+	own:SetSize(100, 22)
+	st:SkinButton(own)
+	check(rawget(own, 'SetScript') == nil, 'no SetScript hook on a Blizzard panel button')
+end)
+
+test('a label keeps the color it had at rest through a hover, and a module that colors its own label keeps that (Bank Buy)', function()
+	world()
+	local b = button()
+	fire(b, 'OnEnter', true); fire(b, 'OnLeave', true)
+	eq(T.text(b.text:GetTextColor()), REST_TEXT, 'white at rest after the first hover')
+	-- a module colors its label (Text > Danger) while at rest
+	local danger = st:Color('text', 'danger')
+	b.text:SetTextColor(danger.r, danger.g, danger.b)
+	fire(b, 'OnEnter', true)
+	fire(b, 'OnLeave', true)
+	eq(T.rgb(b.text:GetTextColor()), T.rgb(danger.r, danger.g, danger.b), 'the red survives a hover')
+	fire(b, 'OnMouseDown', 'LeftButton'); fire(b, 'OnMouseUp', 'LeftButton')
+	eq(T.rgb(b.text:GetTextColor()), T.rgb(danger.r, danger.g, danger.b), 'and a press')
+	-- recolored again at rest
+	b.text:SetTextColor(0.2, 0.4, 0.6)
+	fire(b, 'OnEnter', true); fire(b, 'OnLeave', true)
+	eq(T.rgb(b.text:GetTextColor()), '0.20,0.40,0.60')
+end)
+
+test('under the Blizzard look a SaftUI button on the panel art shows only the -Disabled art: no 40% alpha; Thick dims', function()
+	world()
+	T.theme('blizzard')
+	local b = button()
+	b:Disable()
+	eq(b:GetAlpha(), 1, 'Blizzard: the art alone')
+	eq(st:GetState(b, 'disabled'), false)
 	T.theme('thick')
+	eq(b:GetAlpha(), 0.4, 'switched to Thick while disabled: dimmed')
+	T.theme('blizzard')
+	eq(b:GetAlpha(), 1, 'and back: undimmed')
+	b:Enable()
+	T.theme('thick')
+	eq(b:GetAlpha(), 1)
+	b:Disable()
+	eq(b:GetAlpha(), 0.4, 'a SaftUI button on SaftUI\'s own look still dims to 40%')
+end)
+
+test("retail's deposit button (a Blizzard panel button) is dimmed when disabled under Thick, and left alone under Blizzard", function()
+	world()
+	local own = CreateFrame('Button', nil, UIParent)
+	own.Left, own.Middle, own.Right = own:CreateTexture(), own:CreateTexture(), own:CreateTexture()
+	own:SetSize(100, 22)
+	st:SkinButton(own)
+	own:Disable()
+	eq(own:GetAlpha(), 0.4, 'Thick: a disabled deposit button looks disabled')
+	own:Enable()
+	eq(own:GetAlpha(), 1)
+	T.theme('blizzard')
+	own:Disable()
+	eq(own:GetAlpha(), 1, "Blizzard: the game's -Disabled art and alpha")
+	T.theme('thick')
+	eq(own:GetAlpha(), 0.4, 'Thick again, still disabled')
+	-- nothing written onto it, no SetScript
+	check(rawget(own, 'SetScript') == nil and rawget(own, 'Disable') == nil, 'no field or method hook on the Blizzard button')
+end)
+
+test("st:SkinButton clears a Blizzard template's own highlight, pushed and disabled textures (none left drawing, none made)", function()
+	world()
+	local b = CreateFrame('Button', nil, UIParent)
+	b:SetSize(100, 22)
+	b:SetHighlightTexture([[Interface\Buttons\UI-Panel-Button-Highlight]])
+	b:SetPushedTexture([[Interface\Buttons\UI-Panel-Button-Down]])
+	b:SetDisabledTexture([[Interface\Buttons\UI-Panel-Button-Disabled]])
+	st:SkinButton(b)
+	for _, state in ipairs({ 'Highlight', 'Pushed', 'Disabled' }) do
+		local t = b['Get' .. state .. 'Texture'](b)
+		check(t == nil or not t:GetTexture() or t:GetTexture() == '', state .. ' texture cleared')
+	end
+end)
+
+test("the 'button' style check registers its label for the text pick; a check box takes the disabled state", function()
+	world()
+	local c = CreateFrame('CheckButton', nil, UIParent)
+	c.Text = c:CreateFontString(nil, 'OVERLAY')
+	st:SkinCheckButton(c, 'button')
+	check(st:StateLook(c).text ~= nil, "the label is the box's text: the pick colors it over the Fill")
+	local d = checkbox()
+	d:Disable()
+	eq(d:GetAlpha(), 0.4, 'a disabled check box dims')
+	eq(st:GetState(d, 'disabled'), true)
+	d:Enable()
+	eq(d:GetAlpha(), 1)
+	d:SetEnabled(false)
+	eq(d:GetAlpha(), 0.4)
+	d:SetEnabled(true)
+	local e = checkbox('button')
+	e:Disable()
+	eq(e:GetAlpha(), 0.4, "the 'button' style too")
+end)
+
+test("a slot skinned once keeps the look of its last skin when the theme changes (no tint on Blizzard's art)", function()
+	world()
+	T.theme('blizzard')
+	local b = slot('action')
+	eq(st:StateLook(b).blizzard, true)
+	T.theme('thick')
+	-- not re-skinned: the textures still wear Blizzard's art, so the helper still leaves them alone
+	st:RestyleStates(b) -- any later restyle or state set reads the look again
+	eq(st:StateLook(b).blizzard, true, 'the record follows the look the textures wear, not the live theme')
+	st:SkinActionButton(b, nil, 'action')
+	eq(st:StateLook(b).blizzard, false, 'a re-skin brings the SaftUI look')
 end)
 
 ------------------------------------------------------------------ check boxes
@@ -534,36 +650,6 @@ test('under Blizzard: panel art, Settings check art, MinimalScrollBar art, the s
 	end)
 end)
 
-test("a module's SetScript on a skinned check box or thumb drops the hooks until its look function runs again (H1)", function()
-	world()
-	local c = checkbox()
-	c:SetScript('OnEnter', function() end)
-	T.theme('thin')
-	fire(c, 'OnEnter', true)
-	eq(st:GetState(c, 'hover'), true, 'a check box: hover after a redraw')
-	fire(c, 'OnLeave', true)
-	local bare = checkbox('bare')
-	bare:SetScript('OnEnter', function() end)
-	T.theme('thick')
-	fire(bare, 'OnEnter', true)
-	eq(st:GetState(bare, 'hover'), true, 'a bare one too')
-	local bar = scrollBar()
-	st:SkinNewScrollBar(bar)
-	local thumb = bar:GetThumb()
-	thumb:SetScript('OnEnter', function() end)
-	T.theme('thin')
-	fire(thumb, 'OnEnter', true)
-	eq(st:GetState(thumb, 'hover'), true, 'a thumb')
-	-- the helper hooks once per changed handler: no second set
-	local sets = 0
-	local real = st.SetState
-	st.SetState = function(...) sets = sets + 1 return real(...) end
-	fire(thumb, 'OnLeave', true)
-	st.SetState = real
-	eq(sets, 1, 'one state set a script, not one per redraw')
-	T.theme('thick')
-end)
-
 ------------------------------------------------------------------ cost
 
 test('a pass over 200 Core widgets and 700 slots: under 1,500 calls, nothing made or forbidden, under 4 KB', function()
@@ -580,4 +666,24 @@ test('a pass over 200 Core widgets and 700 slots: under 1,500 calls, nothing mad
 	check(per <= 700 * 2 + 50, 'calls per pass ' .. per)
 	eq(per, 700 * 2, 'the slots color two pieces each; the 200 widgets at rest cost no setter')
 	C.print('core widgets', m)
+end)
+
+test('a theme recolor lays nothing out: 100 buttons, 50 check boxes, 50 thumbs, RecolorThemed x100', function()
+	world()
+	for _ = 1, 100 do button() end
+	for _ = 1, 50 do checkbox() end
+	for _ = 1, 50 do st:SkinNewScrollBar(scrollBar()) end
+	st:RecolorThemed()
+	local m = C.measure(function() st:RecolorThemed() end, 100)
+	eq(m.forbidden.total, 0, 'nothing forbidden (no ClearAllPoints or SetPoint): ' .. tostring(next(m.forbidden.by)))
+	eq(m.made, 0, 'nothing made')
+	check(m.calls.total / 100 <= 1250, 'setters per pass at the base count: ' .. m.calls.total / 100)
+	-- a look flip (Blizzard and back) still restyles: the states follow
+	local b = button()
+	fire(b, 'OnEnter', true)
+	T.theme('blizzard')
+	eq(st:StateLook(b).layer.alpha, 0, 'Blizzard: held')
+	T.theme('thick')
+	eq(st:StateLook(b).layer.alpha, 1, 'Thick again: back')
+	C.print('recolor', m)
 end)

@@ -11,6 +11,8 @@ local st = SaftUI
 -- thumb -> the layers of its scroll bar that hold MinimalScrollBar's own art,
 -- { frame, layer } each: the thumb's, the track's and the steppers'.
 local barLayers = setmetatable({}, { __mode = 'k' })
+-- thumb -> whether it was drawn Blizzard's last time (a restyle is only for a flip).
+local lastLook = setmetatable({}, { __mode = 'k' })
 
 -- Turns MinimalScrollBar's own art on under the Blizzard theme
 -- (EnableDrawLayer) and off under the others, as the thumb is drawn, then
@@ -26,7 +28,11 @@ local function DrawScrollBar(thumb)
             entry[1]:DisableDrawLayer(entry[2])
         end
     end
-    st:RestyleStates(thumb)
+    -- laid out again only when the look flipped; the recolor reset the backdrop's color, so that is painted every time
+    if lastLook[thumb] ~= blizzard then
+        lastLook[thumb] = blizzard
+        st:RestyleStates(thumb)
+    end
     st:PaintStates(thumb)
 end
 

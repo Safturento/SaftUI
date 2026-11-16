@@ -43,44 +43,59 @@ local function Outside(texture, button)
 	texture:SetPoint('BOTTOMRIGHT', button, 'BOTTOMRIGHT', BOX_OUT, -BOX_OUT)
 end
 
--- Puts a check button's look on, when its Theme and Background
--- (st:IsBlizzardLook) changed between Blizzard and the rest, then its states
--- drawn again (st:RestyleStates, last: the Mark is placed or left to the art,
--- and the mouse hooked again where a module's own SetScript dropped them).
--- Runs after every recolor and redraw (st:KeepOwnColors).
+-- Enable, Disable and SetEnabled set the disabled state (Alpha d on the box and its
+-- label), except under Blizzard's art, which draws its own.
+local function SetDisabledState(button)
+	local skin = skins[button]
+	if not skin then return end
+	local want = not button:IsEnabled() and not st:IsBlizzardLook(skin.theme, skin.background)
+	if st:GetState(button, 'disabled') ~= want then st:SetState(button, 'disabled', want) end
+end
+
+-- A module's SetScript on a state script drops the helpers' mouse hooks: hooked again.
+local WIRED = { OnEnter = true, OnLeave = true, OnMouseDown = true, OnMouseUp = true, OnHide = true }
+local function Rehook(button, script)
+	if WIRED[script] then st:RestyleStates(button) end
+end
+
+-- Puts a check button's look on when its Theme and Background (st:IsBlizzardLook)
+-- changed between Blizzard and the rest, then its states drawn again for it
+-- (st:RestyleStates, last: the Mark is placed or left to the art) and the disabled
+-- state, which Blizzard's art draws itself. Runs after every recolor and redraw
+-- (st:KeepOwnColors) and lays nothing out unless the look flipped.
 local function Draw(skin)
 	local button = skin.button
 	local blizzard = st:IsBlizzardLook(skin.theme, skin.background)
-	if blizzard ~= skin.blizzard then
-		skin.blizzard = blizzard
+	if blizzard == skin.blizzard then return end
+	skin.blizzard = blizzard
 
-		if skin.style == 'button' then
-			st:ShowPanelButton(button, blizzard, Checked)
-		elseif blizzard then
-			local look = st.ThemeArt.Control('checkbox')
-			skin.box = skin.box or button:CreateTexture(nil, 'ARTWORK')
-			skin.box:SetAtlas(look.normal)
-			Outside(skin.box, button)
-			skin.box:Show()
-			skin.checked:SetAtlas(look.checked)
-			skin.checked:SetVertexColor(1, 1, 1, 1)
-			Outside(skin.checked, button)
-			skin.hover:SetAlpha(1)
-			skin.hover:SetAtlas(look.highlight)
-			skin.hover:SetVertexColor(1, 1, 1, 1)
-			skin.hover:SetBlendMode(look.highlightBlend)
-			Outside(skin.hover, button)
-		else
-			if skin.box then skin.box:Hide() end
-			-- the Mark again: flat, the helper places and colors it
-			skin.checked:SetTexture(st.BLANK_TEX)
-			skin.checked:SetTexCoord(0, 1, 0, 1)
-			skin.checked:SetVertexColor(1, 1, 1, 1)
-			-- the highlight is Blizzard's art alone: the Layer is SaftUI's hover
-			skin.hover:SetAlpha(0)
-		end
+	if skin.style == 'button' then
+		st:ShowPanelButton(button, blizzard, Checked)
+	elseif blizzard then
+		local look = st.ThemeArt.Control('checkbox')
+		skin.box = skin.box or button:CreateTexture(nil, 'ARTWORK')
+		skin.box:SetAtlas(look.normal)
+		Outside(skin.box, button)
+		skin.box:Show()
+		skin.checked:SetAtlas(look.checked)
+		skin.checked:SetVertexColor(1, 1, 1, 1)
+		Outside(skin.checked, button)
+		skin.hover:SetAlpha(1)
+		skin.hover:SetAtlas(look.highlight)
+		skin.hover:SetVertexColor(1, 1, 1, 1)
+		skin.hover:SetBlendMode(look.highlightBlend)
+		Outside(skin.hover, button)
+	else
+		if skin.box then skin.box:Hide() end
+		-- the Mark again: flat, the helper places and colors it
+		skin.checked:SetTexture(st.BLANK_TEX)
+		skin.checked:SetTexCoord(0, 1, 0, 1)
+		skin.checked:SetVertexColor(1, 1, 1, 1)
+		-- the highlight is Blizzard's art alone: the Layer is SaftUI's hover
+		skin.hover:SetAlpha(0)
 	end
 	st:RestyleStates(button)
+	if skin.hooked then SetDisabledState(button) end
 end
 
 -- The panel button's pressed look follows the check: set by code, or by a
@@ -136,6 +151,11 @@ function st:SkinCheckButton(button, style)
 		skins[button] = skin
 		st:AddStates(button, 'box', { edge = false, blizzard = function() return false end })
 		st:KeepOwnColors(skin, Draw)
+		skin.hooked = true
+		for _, method in ipairs({ 'Enable', 'Disable', 'SetEnabled' }) do
+			if button[method] then hooksecurefunc(button, method, SetDisabledState) end
+		end
+		hooksecurefunc(button, 'SetScript', Rehook)
 		return
 	end
 
@@ -167,12 +187,18 @@ function st:SkinCheckButton(button, style)
 	st:AddStates(button, style == 'button' and 'box' or 'check', {
 		edge = 'theme',
 		mark = checked,
+		text = style == 'button' and button.text or nil,
 		blizzard = function() return st:IsBlizzardLook(skin.theme, skin.background) end,
 	})
 	hooksecurefunc(button, 'SetChecked', Repaint)
 	button:HookScript('PostClick', Repaint)
+	for _, method in ipairs({ 'Enable', 'Disable', 'SetEnabled' }) do
+		if button[method] then hooksecurefunc(button, method, SetDisabledState) end
+	end
+	hooksecurefunc(button, 'SetScript', Rehook)
 	st:KeepOwnColors(skin, Draw)
 	skin.blizzard = nil
+	skin.hooked = true
 	Draw(skin)
 	if button:GetChecked() then st:SetState(button, 'selected', true) end
 end

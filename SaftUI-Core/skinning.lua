@@ -161,6 +161,9 @@ end
 -- game = true): SaftUI's look is a tint over the icon, T+ and T- of the Accent,
 -- both BLEND; under Blizzard they are Blizzard's state art, which the helper
 -- leaves alone.
+-- button -> whether the textures st:SkinActionButton last made wear Blizzard's state art.
+local artLooks = setmetatable({}, { __mode = 'k' })
+
 function st:SkinActionButton(button, config, kind)
 	-- With no config the button wears Core's own button settings, and its texts
 	-- follow their font (Button text, Global settings > Fonts). A config of a
@@ -320,9 +323,11 @@ function st:SkinActionButton(button, config, kind)
 	-- Last: the states, over the two textures above (adopted, never made twice).
 	-- The Blizzard look is the one the textures wear now.
 	if button.hover or button.pushed then
+		-- the look the textures wear now (a slot skinned once keeps it until it is skinned again)
+		artLooks[button] = state ~= nil
 		st:AddStates(button, 'icon', {
 			game = true,
-			blizzard = function() return st:IsBlizzardLook(config.theme, config.background) and st.ThemeArt.State(kind) ~= nil end,
+			blizzard = function() return artLooks[button] end,
 		})
 	end
 end
