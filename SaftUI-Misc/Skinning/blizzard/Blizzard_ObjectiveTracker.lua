@@ -19,8 +19,8 @@ local OT = SK:NewModule('Blizzard_ObjectiveTracker')
 	    the theme's border color.
 	  - Collapse buttons (each header's MinimizeButton): Blizzard's art faded,
 	    a small box of SaftUI's (kind control) and a chevron, up while the
-	    header's contents show and down while they're collapsed, white under
-	    the mouse.
+	    header's contents show and down while they're collapsed, in Text > Muted
+	    and the lighter tone of the Accent under the mouse (the states' glyph).
 	  - Quest titles and objectives (each block's HeaderText, each line's Dash
 	    and Text) in the font, in Blizzard's colors. The font goes on the
 	    moment Blizzard hands a block or line out (post-hooks on each module's
@@ -116,7 +116,7 @@ local weak = { __mode = 'k' }
 local texts = setmetatable({}, weak)     -- font string -> its kind (BLIZZARD_FONTS)
 local colored = setmetatable({}, weak)   -- a line's Text -> true while SaftUI's status color is on it
 local headers = setmetatable({}, weak)   -- header -> { line = texture }
-local collapses = setmetatable({}, weak) -- MinimizeButton -> { box, icon, hover, header }
+local collapses = setmetatable({}, weak) -- MinimizeButton -> { box, icon, header, button }
 local bars = setmetatable({}, weak)      -- StatusBar -> { faded, hidden, label }
 local items = setmetatable({}, weak)     -- item button -> { box, hover }
 local cropped = setmetatable({}, weak)   -- an item button's icon -> true once its SetTexCoord is hooked
@@ -185,9 +185,22 @@ local function LineColor()
 	return r, g, b, LINE_ALPHA
 end
 
+-- Text > Muted at rest; under the mouse the lighter tone of the Accent (edgeHover),
+-- as SaftUI's own tracker's chevrons: a bare glyph's states (st:AddStates, 'glyph') on
+-- the chevron texture of SaftUI's, said by post-hooks on Blizzard's button. Under
+-- Blizzard's look the record leaves it alone.
+local function MutedRest()
+	local c = st:Color('text', 'muted')
+	return c.r, c.g, c.b
+end
+
 local function ColorCollapse(entry)
-	entry.icon:SetVertexColor(st:Color('text', 'muted'):GetRGB())
-	entry.hover:SetVertexColor(st:Color('text', 'strong'):GetRGB()) -- the chevron under the mouse (Text > Strong; its states are not drawn by the helper)
+	st:PaintStates(entry.button)
+end
+
+local function HookCollapse(button)
+	button:HookScript('OnEnter', function(self) if collapses[self] then st:SetState(self, 'hover', Active()) end end)
+	button:HookScript('OnLeave', function(self) if collapses[self] then st:SetState(self, 'hover', false) end end)
 end
 
 ------------------------------------------------------------------ headers
@@ -197,7 +210,6 @@ end
 local function SetChevron(entry, collapsed)
 	local icon = collapsed and st.icons.chevronDown or st.icons.chevronUp
 	entry.icon:SetTexture(icon)
-	entry.hover:SetTexture(icon)
 end
 
 local function Collapsed(header)
@@ -210,19 +222,19 @@ local function StyleCollapse(button, header, active)
 	local entry = collapses[button]
 	if not entry then
 		if not active then return end
-		entry = { header = header }
+		entry = { header = header, button = button }
 		local box = st:CreateFrame('Frame', nil, button)
 		local level = button:GetFrameLevel()
 		if not issecretvalue(level) then box:SetFrameLevel(math.max(0, level - 1)) end
 		box:SetAllPoints(button)
 		entry.box = box
 		entry.icon = button:CreateTexture(nil, 'OVERLAY')
-		entry.hover = button:CreateTexture(nil, 'HIGHLIGHT')
-		for _, texture in ipairs({ entry.icon, entry.hover }) do
-			texture:SetSize(CHEVRON_SIZE, CHEVRON_SIZE)
-			texture:SetPoint('CENTER')
-		end
+		entry.icon:SetSize(CHEVRON_SIZE, CHEVRON_SIZE)
+		entry.icon:SetPoint('CENTER')
 		collapses[button] = entry
+		st:AddStates(button, 'glyph', { glyph = entry.icon, glyphRest = MutedRest, wire = false,
+			blizzard = function() return not Active() end })
+		HookCollapse(button)
 	end
 
 	for _, texture in ipairs({ button:GetNormalTexture(), button:GetPushedTexture(), button:GetHighlightTexture() }) do
@@ -232,8 +244,9 @@ local function StyleCollapse(button, header, active)
 	st:SetTemplate(entry.box, active and theme or 'none', background, 'control')
 	entry.box:SetShown(active)
 	entry.icon:SetShown(active)
-	entry.hover:SetShown(active)
 	SetChevron(entry, Collapsed(header))
+	st:RestyleStates(button)
+	if not active and st:GetState(button, 'hover') then st:SetState(button, 'hover', false) end
 	ColorCollapse(entry)
 end
 

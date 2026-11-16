@@ -75,8 +75,22 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 			eq(look.edge.r .. look.edge.g .. look.edge.b, edge.r .. edge.g .. edge.b, key .. ': the edge is not the hover (the body changes)')
 			check(look.pieces.layer:GetParent() == box, key .. ': the Layer is on SaftUI\'s box, under the label')
 			check(box:GetFrameLevel() < button:GetFrameLevel(), key .. ': the box is below the button, so its label is over the tint')
+			-- pushed: darker while the left button is held (the boxes are boxes: hover and pushed)
+			stub.fire_script(button, 'OnMouseDown', 'LeftButton')
+			look = st:StateLook(box)
+			local p = { st:StateColor('pushed') }
+			eq(SL.bytes(look.layer), SL.bytes({ r = p[1], g = p[2], b = p[3] }), key .. ': the pushed tone while held')
+			stub.fire_script(button, 'OnMouseUp', 'LeftButton')
+			eq(SL.bytes(st:StateLook(box).layer), hover_bytes(st), key .. ': hover again after the release')
+			stub.fire_script(button, 'OnMouseDown', 'RightButton')
+			check(not st:GetState(box, 'pushed'), key .. ': a right press does not push')
+			stub.fire_script(button, 'OnMouseUp', 'RightButton')
 			stub.fire_script(button, 'OnLeave', true)
 			check(not st:StateLook(box).layer.shown, key .. ': gone on leave')
+			-- the Layer sits inside the edge the theme drew (the restyle after SetTemplate)
+			local _, _, _, x, y = look.pieces.layer:GetPoint(1)
+			eq(x, st:DrawnInset(box), key .. ': the Layer is inside the drawn border')
+			eq(y, -st:DrawnInset(box), key .. ': on every side')
 		end
 		-- the hex box: focus is the Accent edge
 		local hex = CP.frame.Content.HexBox
@@ -101,6 +115,9 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		stub.fire_script(button, 'OnEnter', true)
 		check(not st:StateLook(boxes_of(button)[1]).layer.shown, 'Blizzard theme: no tint on the hidden box')
 		stub.fire_script(button, 'OnLeave', true)
+		stub.fire_script(button, 'OnMouseDown', 'LeftButton')
+		check(not st:GetState(boxes_of(button)[1], 'pushed'), 'Blizzard theme: no push on the hidden box')
+		stub.fire_script(button, 'OnMouseUp', 'LeftButton')
 		hex:SetFocus()
 		stub.fire_script(hex, 'OnEditFocusGained')
 		check(not st:GetState(backdrop, 'focus'), 'Blizzard theme: no focus on the hidden backdrop')
@@ -145,11 +162,28 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		eq(('%.2f'):format(select(4, hover:GetVertexColor())), '0.16', 'at 0.16')
 		eq(SL.bytes(look.hover_piece), hover_bytes(st), 'the derived hover')
 		check(item:GetHighlightTexture() ~= hover, 'never handed to SetHighlightTexture')
+		-- the collapse chevron: a glyph tint, drawn on SaftUI's own texture, left alone under Blizzard
+		local header = OT.modules.QuestObjectiveTracker.Header
+		local collapse = header.MinimizeButton
+		local chevron
+		for _, region in ipairs({ collapse:GetRegions() }) do
+			if not OT.is_blizzard(region) then chevron = region end
+		end
+		eq(st:StateLook(collapse).shape, 'glyph', 'the collapse chevron is a glyph record')
+		stub.fire_script(collapse, 'OnEnter')
+		local r, g, b = chevron:GetVertexColor()
+		eq(SL.bytes({ r = r, g = g, b = b }), SL.bytes({ r = select(1, st:StateColor('edgeHover')), g = select(2, st:StateColor('edgeHover')), b = select(3, st:StateColor('edgeHover')) }), 'the lighter tone under the mouse')
+		stub.fire_script(collapse, 'OnLeave')
 		-- the Blizzard theme: Blizzard's look back, the hover hidden
 		T.theme('blizzard', function() SK:UpdateConfig() st:ColorsChanged('theme') end)
 		check(not hover:IsShown(), 'Blizzard theme: the tint is hidden')
 		T.theme('thick', function() SK:UpdateConfig() st:ColorsChanged('theme') end)
 		check(hover:IsShown(), 'and back')
+		T.theme('blizzard', function() SK:UpdateConfig() st:ColorsChanged('theme') end)
+		stub.fire_script(collapse, 'OnEnter')
+		check(not st:GetState(collapse, 'hover'), 'Blizzard theme: the chevron takes no hover')
+		stub.fire_script(collapse, 'OnLeave')
+		T.theme('thick', function() SK:UpdateConfig() st:ColorsChanged('theme') end)
 		eq(hover:GetBlendMode(), 'BLEND', 'BLEND after a round trip')
 		eq(#take_errors(), 0, 'no errors')
 		eq(table.concat(OT.stray, ','), '', "SaftUI ran none of the tracker's state-writing methods")
@@ -191,6 +225,18 @@ test("RestedXP's steps: the hover tint in the tone, shown by RestedXP's own SetB
 	eq(SL.bytes(s:StateLook(f).layer), hover_bytes(s), 'follows the Accent')
 	accent:SetRGB(0, 0.68, 0.94)
 	s:ColorsChanged('accent')
+	-- wire = false: the step's scripts are RestedXP's (replaced on every guide load), so the
+	-- helper hooks none; the hover is said only by RestedXP's own SetBackdropColor (with the
+	-- IsHovered guard). With the cursor off, an OnEnter shows nothing.
+	H.cursor_off()
+	stub.fire_script(f, 'OnLeave')
+	stub.fire_script(f, 'OnEnter')
+	check(not s:StateLook(f).layer.shown, 'not wired: OnEnter with the mouse elsewhere shows no tint')
+	-- the Layer's geometry: the whole step, behind its text, flat BLEND
+	local lp = { s:StateLook(f).pieces.layer:GetPoint(1) }
+	eq(lp[2], f, 'the Layer is on the step')
+	eq(lp[4] == 0 and lp[5] == 0, true, 'at its corner (no inset)')
+	eq(s:StateLook(f).layer.layer .. s:StateLook(f).layer.sublevel, 'ARTWORK-8', 'ARTWORK -8, under the step\'s text')
 	-- a reload makes no second record or Layer
 	local regions = #{ f:GetRegions() }
 	R.LoadGuide(5)

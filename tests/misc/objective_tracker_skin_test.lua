@@ -143,14 +143,20 @@ local function check_header(header, where)
 		eq(box:GetFrameLevel(), button:GetFrameLevel() - 1, where .. ': one level under it')
 	end
 	local icons = own_regions(button)
-	eq(#icons, 2, where .. ': a chevron and its hover')
+	eq(#icons, 1, where .. ': a chevron (its hover is the glyph tint of the states, no copy)')
 	for _, icon in ipairs(icons) do
 		eq(icon:GetTexture(), st.icons.chevronUp, where .. ': the chevron points up while the header is open')
 	end
 	local tints = {}
 	for _, icon in ipairs(icons) do tints[T.rgb(icon:GetVertexColor())] = true end
 	check(tints['0.20,0.40,0.60'], where .. ': the chevron at rest is Text > Muted')
-	check(tints['0.80,0.30,0.60'], where .. ': and its hover is Text > Strong')
+	eq(st:StateLook(button).shape, 'glyph', where .. ': a glyph record (in a weak table)')
+	stub.fire_script(button, 'OnEnter')
+	local r, g, b = icons[1]:GetVertexColor()
+	eq(T.rgb(r, g, b), T.rgb(st:StateColor('edgeHover')), where .. ': under the mouse the lighter tone, not Text > Strong')
+	stub.fire_script(button, 'OnLeave')
+	r, g, b = icons[1]:GetVertexColor()
+	eq(T.rgb(r, g, b), '0.20,0.40,0.60', where .. ': Muted again')
 end
 
 local function check_header_blizzard(header, where)

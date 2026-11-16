@@ -357,6 +357,11 @@ local function MakeZoneRow(self)
 	count:SetJustifyH('RIGHT')
 	count:SetPoint('RIGHT', row, 'RIGHT', 0, 0)
 	row.count = count
+	-- a zone header is clickable, so it is a row: the same states, once for the pooled
+	-- frame. The chevron takes the mouse from the row, so it says the row's hover too.
+	st:AddStates(row, 'row', { inset = -L.HOVER_PAD })
+	chevron:HookScript('OnEnter', function() TR:HoverRow(row, true) end)
+	chevron:HookScript('OnLeave', function() TR:HoverRow(row, false) end)
 	return row
 end
 
@@ -391,6 +396,9 @@ local function MakeQuestRow(self)
 		TR:HoverRow(row, false)
 		if GameTooltip:IsOwned(self) then GameTooltip:Hide() end
 	end)
+	-- its clicks are the row's, so a press on it shows the row pushed
+	slot:SetScript('OnMouseDown', function(_, button) if button == 'LeftButton' then TR:PushRow(row, true) end end)
+	slot:SetScript('OnMouseUp', function() TR:PushRow(row, false) end)
 	row.slot = slot
 
 	-- The column's number, at the end of the title (TR:SetTag). Plain text, so it
@@ -415,6 +423,8 @@ local function MakeQuestRow(self)
 		TR:HoverRow(row, false)
 		if GameTooltip:IsOwned(self) then GameTooltip:Hide() end
 	end)
+	iconButton:SetScript('OnMouseDown', function(_, button) if button == 'LeftButton' then TR:PushRow(row, true) end end)
+	iconButton:SetScript('OnMouseUp', function() TR:PushRow(row, false) end)
 	row.iconButton = iconButton
 
 	-- Both mouse buttons, on release, as Blizzard's blocks take them. The game
@@ -597,6 +607,12 @@ end
 -- the mouse from it.
 function TR:HoverRow(row, hovered)
 	st:SetState(row, 'hover', hovered)
+end
+
+-- A press on a button over the row (its item slot, its quest icon) shows the row pushed.
+-- Not the secure item button: its press would need a hook on a secure frame.
+function TR:PushRow(row, pushed)
+	st:SetState(row, 'pushed', pushed)
 end
 
 -- A row going back to its pool is at rest: no hover, no push. The frame keeps its

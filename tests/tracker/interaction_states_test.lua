@@ -94,21 +94,61 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		eq(st:GetState(again, 'hover'), false, 'once, and leaves')
 	end)
 
-	case('popup rows take the row states too', function()
+	case('popup rows take the row states too: tint, push and release', function()
 		local st, TR = world(client, 1)
-		Q.set({ Q.header('A'), Q.quest(1, { objectives = { { text = 'x', type = 'monster' } } }) }, { 1 }, { popups = { { id = 9, kind = 'OFFER' } } })
+		Q.set({ Q.header('A'), Q.quest(1, { objectives = { { text = 'x', type = 'monster' } } }) }, { 1 },
+			{ popups = { { id = 9, kind = 'OFFER' } }, titles = { [9] = 'An offer' } })
 		TR:Refresh()
 		local rows = RW.rows(TR, 'popup')
-		if #rows == 0 then return end
+		eq(#rows, 1, 'a popup row is drawn')
 		local row = rows[1]
-		eq(st:StateLook(row).shape, 'row', 'a popup row is a row')
+		local look = st:StateLook(row)
+		eq(look.shape, 'row', 'a popup row is a row')
+		check(not look.layer.shown, 'no tint at rest')
 		stub.fire_script(row, 'OnEnter', true)
-		check(st:StateLook(row).layer.shown, 'tinted under the mouse')
+		look = st:StateLook(row)
+		check(look.layer.shown, 'tinted under the mouse')
+		eq(look.layer.layer .. look.layer.sublevel, 'ARTWORK-8', 'under the popup bar')
+		eq(look.pieces.layer:GetTop(), row:GetTop() + 2, '2 past the row')
+		eq(SL.bytes(look.layer), SL.bytes({ r = st:StateColor('hover') and select(1, st:StateColor('hover')), g = select(2, st:StateColor('hover')), b = select(3, st:StateColor('hover')) }), 'the hover tone')
+		stub.fire_script(row, 'OnMouseDown', 'LeftButton')
+		look = st:StateLook(row)
+		eq(SL.bytes(look.layer), SL.bytes({ r = select(1, st:StateColor('pushed')), g = select(2, st:StateColor('pushed')), b = select(3, st:StateColor('pushed')) }), 'the pushed tone while held')
+		stub.fire_script(row, 'OnMouseUp', 'LeftButton')
 		stub.fire_script(row, 'OnLeave', true)
-		check(not st:StateLook(row).layer.shown, 'and back')
+		check(not st:StateLook(row).layer.shown, 'released: back')
 		local bar = { row.bar:GetVertexColor() }
+		local c = stub.state(row.bar).color_texture or bar
 		local accent = st.config.profile.theme.accent
-		check(same(bar, { accent.r, accent.g, accent.b, 1 }), 'the popup bar keeps the Accent (a marker)')
+		eq(SL.bytes({ r = c[1], g = c[2], b = c[3] }), SL.bytes(accent), 'the popup bar keeps the Accent (a marker)')
+	end)
+
+	case('zone header rows are rows: hover, and the chevron keeps the row hovered; a press on the slot or icon pushes the row', function()
+		local st, TR = world(client, 2, true)
+		local zone = RW.rows(TR, 'zone')[1]
+		eq(st:StateLook(zone).shape, 'row', 'a zone header is a row')
+		stub.fire_script(zone, 'OnEnter', true)
+		check(st:StateLook(zone).layer.shown, 'tinted under the mouse')
+		stub.fire_script(zone, 'OnLeave', true)
+		check(not st:StateLook(zone).layer.shown, 'and back')
+		stub.fire_script(zone.chevron, 'OnEnter', true)
+		check(st:GetState(zone, 'hover'), 'the chevron takes the mouse: the header stays hovered')
+		stub.fire_script(zone.chevron, 'OnLeave', true)
+		check(not st:GetState(zone, 'hover'), 'and clears on leave')
+		-- a quest row's slot and icon button: a left press shows the row pushed
+		local row = RW.quest(TR, 1)
+		for _, key in ipairs({ 'slot', 'iconButton' }) do
+			local part = row[key]
+			stub.fire_script(part, 'OnMouseDown', 'LeftButton')
+			check(st:GetState(row, 'pushed'), key .. ': the row is pushed while held')
+			stub.fire_script(part, 'OnMouseUp', 'LeftButton')
+			check(not st:GetState(row, 'pushed'), key .. ': released')
+			stub.fire_script(part, 'OnMouseDown', 'RightButton')
+			check(not st:GetState(row, 'pushed'), key .. ': a right press does not')
+		end
+		-- the secure item button has no hook for it
+		local b = TR:GetItemButton(1)
+		eq(#{ b:GetScript('OnMouseDown') and 1 or nil }, 0, 'the secure item button has no OnMouseDown')
 	end)
 
 	case('quest item buttons: a BLEND hover; the combat dim and the in-area edge unchanged', function()
@@ -141,6 +181,18 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		local b = TR:GetItemButton(1)
 		check(same({ b.hover:GetVertexColor() }, { st:StateColor('hover') }), 'the item hover is still tinted (never the white of an uncolored texture)')
 		eq(b.hover:GetBlendMode(), 'BLEND', 'BLEND')
+		-- a restyle under the Blizzard theme: without blizzard = false the helper would
+		-- leave the hover texture bare (no texture, so no hover at all)
+		st:RestyleStates(b)
+		eq(b.hover:GetTexture(), st.BLANK_TEX, 'after a restyle the hover still has its flat texture')
+		check(same({ b.hover:GetVertexColor() }, { st:StateColor('hover') }), 'and its tint')
+		-- the record is not Blizzard's: a pass still colors it (it would skip a Blizzard record)
+		local accent = st.config.profile.theme.accent
+		accent:SetRGB(0.9, 0.2, 0.4)
+		st:ColorsChanged('accent')
+		check(same({ b.hover:GetVertexColor() }, { st:StateColor('hover') }), 'an Accent pass under the Blizzard theme still tints it')
+		accent:SetRGB(0, 0.68, 0.94)
+		st:ColorsChanged('accent')
 		local row = RW.quest(TR, 1)
 		stub.fire_script(row, 'OnEnter', true)
 		check(st:StateLook(row).layer.shown and not st:StateLook(row).blizzard, 'and a row tints')

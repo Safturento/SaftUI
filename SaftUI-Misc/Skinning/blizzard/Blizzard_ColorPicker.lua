@@ -41,9 +41,9 @@ local CP = SK:NewModule('Blizzard_ColorPicker')
 	    wheel and the hex box are 23 in from the sides; the buttons are 11.5 in
 	    at 331 wide and 40 at 388, and a box stays inside its button), placed
 	    again by post-hooks on the picker's OnShow and OnSizeChanged when Blizzard
-	    changes its width, whose edge turns the
-	    the hover tint under the mouse (the interaction states' hover, a Layer
-	    inside the box, under the label, as the kit's buttons do), and the text in
+	    changes its width, which tint under the mouse and darker while held (the
+	    interaction states' hover and pushed, a Layer inside the box, under the
+	    label, as the kit's buttons do; the edge is left as it is), and the text in
 	    the Skinning font (the button's three state fonts). The label stays
 	    Blizzard's, uncovered.
 	  - .Content.HexBox (InputBoxInstructionsTemplate): its Left, Middle and Right
@@ -340,6 +340,12 @@ local function SetHover(button)
 	st:SetState(entry.box, 'hover', Active() and hovered[button] or false)
 end
 
+local function SetPushed(button, on)
+	local entry = buttons[button]
+	if not entry or st:GetState(entry.box, 'pushed') == nil then return end
+	st:SetState(entry.box, 'pushed', on and Active() or false)
+end
+
 local function HookButton(button)
 	if hooked[button] or not button.HookScript then return end
 	hooked[button] = true
@@ -347,6 +353,11 @@ local function HookButton(button)
 	-- argument (motion) to OnEnter and OnLeave, which they don't use.
 	button:HookScript('OnEnter', function(self) hovered[self] = true; SetHover(self) end)
 	button:HookScript('OnLeave', function(self) hovered[self] = nil; SetHover(self) end)
+	-- the press, as the kit's buttons show it (the left button only, as the helper's)
+	button:HookScript('OnMouseDown', function(self, mouse)
+		if mouse == nil or mouse == 'LeftButton' then SetPushed(self, true) end
+	end)
+	button:HookScript('OnMouseUp', function(self) SetPushed(self, false) end)
 end
 
 -- How far in from its button's outer end a button's box starts, so the row of
@@ -414,6 +425,7 @@ local function StyleButton(frame, key, active)
 		HookButton(button)
 	end
 	hovered[button] = hovered[button] and active or nil
+	if not active then SetPushed(button, false) end
 	-- after the theme drew the box: the states read its look again
 	st:RestyleStates(entry.box)
 	SetHover(button)
