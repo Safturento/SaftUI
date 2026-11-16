@@ -414,25 +414,34 @@ RW.both('no scroll into view while the mouse is over the tracker or the player s
 	eq(TR:GetScroll(), 0, 'tracked under the mouse: no scroll')
 end)
 
-RW.both('hover fills a quest row with the accent at TINT_ROW, 2 beyond it above and below', function(st, TR)
+RW.both('hover tints a quest row at the derived hover, 2 beyond it on every side (the states row Layer)', function(st, TR)
 	Q.set({ Q.header('A'), Q.quest(1, { objectives = { { text = 'x', type = 'monster' } } }) }, { 1 })
 	TR:Refresh()
 	local row = RW.quest(TR, 1)
 	check(row:IsMouseEnabled(), 'a quest row takes the mouse')
-	check(not row.hover:IsShown(), 'no fill at rest')
+	local layer = st:StateLook(row).pieces.layer
+	check(not layer:IsShown(), 'no tint at rest')
 	stub.fire_script(row, 'OnEnter', true)
-	check(row.hover:IsShown(), 'a fill under the mouse')
-	local c = stub.state(row.hover).color_texture
-	local blue = st.config.profile.theme.accent
-	eq(c[1] .. ' ' .. c[2] .. ' ' .. c[3] .. ' ' .. c[4], blue.r .. ' ' .. blue.g .. ' ' .. blue.b .. ' ' .. st.TINT_ROW, 'the accent at TINT_ROW')
-	eq(row.hover:GetTop(), row:GetTop() + 2, '2 above')
-	eq(row.hover:GetBottom(), row:GetBottom() - 2, '2 below')
+	check(layer:IsShown(), 'a tint under the mouse')
+	local want = { st:StateColor('hover') }
+	local r, g, b, a = layer:GetVertexColor()
+	eq(('%.3f %.3f %.3f %.3f'):format(r, g, b, a), ('%.3f %.3f %.3f %.3f'):format(want[1], want[2], want[3], want[4]), 'the derived hover')
+	eq(layer:GetBlendMode(), 'BLEND', 'BLEND')
+	eq(layer:GetTop(), row:GetTop() + 2, '2 above')
+	eq(layer:GetBottom(), row:GetBottom() - 2, '2 below')
 	stub.fire_script(row, 'OnLeave', true)
-	check(not row.hover:IsShown(), 'gone on leave')
+	check(not layer:IsShown(), 'gone on leave')
+	-- held down: the pushed tone, stronger
+	stub.fire_script(row, 'OnEnter', true)
+	stub.fire_script(row, 'OnMouseDown', 'LeftButton')
+	local pushed = { st:StateColor('pushed') }
+	r, g, b, a = layer:GetVertexColor()
+	eq(('%.3f %.3f %.3f %.3f'):format(r, g, b, a), ('%.3f %.3f %.3f %.3f'):format(pushed[1], pushed[2], pushed[3], pushed[4]), 'pushed')
+	stub.fire_script(row, 'OnMouseUp', 'LeftButton')
 	stub.fire_script(row, 'OnEnter', true)
 	Q.set({ Q.header('A') }, {})
 	TR:Refresh()
-	check(not row.hover:IsShown(), 'a row that went does not keep its fill')
+	check(not st:GetState(row, 'hover') and not layer:IsShown(), 'a row that went does not keep its tint')
 	local src = read_saftui_source('SaftUI-Tracker/rows.lua')
 	check(not src:find("SetScript%('On%a+', function%(self, motion", 1), 'no script takes the motion argument')
 end)
@@ -518,7 +527,7 @@ RW.both('empty: hidden with Hide when empty, else the header and "No tracked que
 	end
 end)
 
-RW.both('a Colors tab change recolors the status lines (objectives) and Theme > Accent the accent pieces: the focus bar, row hover, current-zone pin and popup bar follow st:ColorsChanged(accent), with no new frame, text or measure', function(st, TR)
+RW.both('a Colors tab change recolors the status lines (objectives) and Theme > Accent the accent pieces: the focus bar, current-zone pin and popup bar, and the rows hover tone follow st:ColorsChanged(accent), with no new frame, text or measure', function(st, TR)
 	stub.real_zone_text = 'A'
 	Q.set({
 		Q.header('A'),
@@ -539,9 +548,14 @@ RW.both('a Colors tab change recolors the status lines (objectives) and Theme > 
 	eq(RW.color(RW.quest(TR, 3).title), '0.40 0.50 0.60', 'a failed quest\'s title in the new Failed')
 	st.config.profile.theme.accent:SetRGB(0.7, 0.8, 0.9)
 	TR:OnColorsChanged('accent') -- the module's one handler: every part of the tracker repaints on it
+	st:ColorsChanged('accent') -- and the states follow the group themselves (the row's hover)
 	local function rgb(t) local c = stub.state(t).color_texture; return ('%.2f %.2f %.2f'):format(c[1], c[2], c[3]) end
 	eq(rgb(TR.focusBar), '0.70 0.80 0.90', 'the focus bar')
-	eq(rgb(row.hover), '0.70 0.80 0.90', 'the hover')
+	do
+		local r, g, b = st:StateLook(row).pieces.layer:GetVertexColor()
+		local want = { st:StateColor('hover') }
+		eq(('%.3f %.3f %.3f'):format(r, g, b), ('%.3f %.3f %.3f'):format(want[1], want[2], want[3]), 'the hover (derived, in the tone)')
+	end
 	do
 		local r, g, b = RW.zone(TR, 'A').pin:GetVertexColor()
 		eq(('%.2f %.2f %.2f'):format(r, g, b), '0.70 0.80 0.90', 'the pin')
@@ -558,6 +572,58 @@ RW.both('a Colors tab change recolors the status lines (objectives) and Theme > 
 	-- Shown rows drawn after the change use the new color too.
 	TR:Refresh()
 	eq(RW.color(row.parts[1].fs), '0.10 0.20 0.30', 'a later draw reads it too')
+end)
+
+-- The tracker's whole Accent pass with 40 rows and their item buttons: the item buttons' hover
+-- (a game piece, one SetVertexColor each; 40 where the log holds 40, 35 on retail's), plus the
+-- tags', texts' and item borders' paints the tracker did before the states.
+local ACCENT_PASS = { forever = 166, retail = 146 }
+
+RW.both('an Accent pass with 40 rows and their item buttons: the states cost one setter per item button, the call count is pinned, nothing forbidden or made, under 4 KB over 100 passes, in combat too', function(st, TR, client)
+	local C = load_test_file('lib/color_cost.lua')
+	local entries, ids = { Q.header('A') }, {}
+	for id = 1, 40 do
+		entries[#entries + 1] = Q.quest(id, { item = { link = 'item:' .. (1000 + id), texture = 134400 + id }, objectives = { { text = '1/2 Wolves', type = 'monster' } } })
+		ids[id] = id
+	end
+	Q.set(entries, ids)
+	stub.real_zone_text = 'A'
+	TR:Refresh()
+	local rows, buttons = #RW.rows(TR, 'quest'), 0
+	for id = 1, 40 do if TR:GetItemButton(id) then buttons = buttons + 1 end end
+	check(rows >= 30, 'the rows are drawn: ' .. rows)
+	check(buttons >= 30, 'and their item buttons: ' .. buttons)
+	local modules = st.modules
+	for _, combat in ipairs({ false, true }) do
+		RW.TW.combat(combat)
+		stub.blocked = {}
+		local where = combat and 'in combat' or 'out of combat'
+		local ok, err = pcall(function()
+			-- the states alone: the Tracker's own handlers left out, so only the followers run.
+			-- Rows and chevrons at rest cost no setter.
+			st.modules = {}
+			st:ColorChanged('accent')
+			local own = C.measure(function() st:ColorChanged('accent') end, 100)
+			eq(own.calls.total / 100, buttons, where .. ': the states cost one setter per item button, none per row or chevron')
+			eq(own.calls.by.SetVertexColor, buttons * 100, where .. ': a SetVertexColor each')
+			eq(own.forbidden.total, 0, where .. ': nothing forbidden')
+			eq(own.made, 0, where .. ': nothing made')
+			check(own.kb < 4, where .. ': no garbage: ' .. own.kb)
+			-- the tracker alone, as the case above does: other modules' handlers paint on this
+			-- group too, which isn't the tracker's cost.
+			st.modules = { Tracker = TR }
+			st:ColorChanged('accent')
+			local all = C.measure(function() st:ColorChanged('accent') end, 100)
+			eq(all.forbidden.total, 0, where .. ': the whole pass: nothing forbidden')
+			eq(all.made, 0, where .. ': nothing made')
+			check(all.kb < 4, where .. ': no garbage: ' .. all.kb)
+			eq(all.calls.total / 100, ACCENT_PASS[client], where .. ': the whole pass, calls')
+		end)
+		st.modules = modules
+		eq(#stub.blocked, 0, where .. ': nothing blocked')
+		RW.TW.combat(false)
+		if not ok then error(err, 0) end
+	end
 end)
 
 RW.both('a button in the row leaves its room and height; no frame of it is made', function(st, TR)

@@ -58,8 +58,10 @@ test('hidden_step_divider_fades', function()
 	check(d:GetEffectiveAlpha() == 0, 'hidden_step_divider_fades: fades with the step')
 end)
 
+-- The step's hover is the states' row Layer (a texture of SaftUI's).
 local function highlightOf(f)
-	return colored(f, 0.3, 0.3, 0.4 * 0 + 0.3, 0.4)[1]
+	local look = SaftUI:StateLook(f)
+	return look and look.pieces.layer
 end
 
 test('hover_highlight', function()
@@ -68,7 +70,7 @@ test('hover_highlight', function()
 	local f = pool(R)[2]
 	local h = highlightOf(f)
 	check(h ~= nil, 'hover_highlight: highlight texture exists')
-	check(h and h:GetDrawLayer() == 'BACKGROUND', 'hover_highlight: BACKGROUND layer')
+	check(h and h:GetDrawLayer() == 'ARTWORK', 'hover_highlight: the Layer, behind the step\'s text')
 	check(h and not h:IsShown(), 'hover_highlight: hidden at rest')
 	H.cursor_on(f)
 	stub.fire_script(f, 'OnEnter')
@@ -135,15 +137,12 @@ test('config_recolours', function()
 	local R = setup()
 	R.LoadGuide(3)
 	local RX = H.get_rx()
-	-- The highlight is SaftUI's header strip: the theme's border color, faint.
 	-- The divider is the chat panel's border color, here Thin's.
 	local templates = SaftUI.config.profile.templates
 	templates.thick.bordercolor = { 0.1, 0.2, 0.3, 1 }
 	templates.thin.bordercolor = { 0.5, 0.2, 0.2, 1 }
 	SaftUI.config.profile.chat.theme = 'thin'
 	RX:UpdateConfig()
-	local h = colored(pool(R)[2], 0.1, 0.2, 0.3, 0.4)[1]
-	check(h ~= nil, 'config_recolours: highlight follows profile')
 	check(#colored(pool(R)[2], 0.5, 0.2, 0.2, 0.5) == 1, "config_recolours: list divider follows chat's Theme")
 end)
 
@@ -151,11 +150,9 @@ test('theme_recolour', function()
 	local R = setup()
 	R.LoadGuide(3)
 	-- A border color changed on the Theme tab: st:RecolorThemed recolors the
-	-- panels, and the highlight and dividers, which take the theme's border
-	-- color, follow it.
+	-- panels, and the dividers, which take the theme's border color, follow it.
 	SaftUI.config.profile.templates.thick.bordercolor = { 0.1, 0.2, 0.3, 1 }
 	SaftUI:RecolorThemed()
-	check(colored(pool(R)[2], 0.1, 0.2, 0.3, 0.4)[1] ~= nil, 'theme_recolour: highlight follows the theme')
 	check(#colored(pool(R)[2], 0.1, 0.2, 0.3, 0.5) == 1, 'theme_recolour: list divider follows the theme')
 	local panel = H.panels_of(R)
 	local r, g, b = panel.backdrop:GetBackdropBorderColor()
