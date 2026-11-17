@@ -126,7 +126,7 @@ local COLOR_FLAGS = {
 	colorClassPet = { name = 'Pet class', shows = 'pets', covers = { pets = true },
 		desc = "Pets and other units players control, in their class color." },
 	colorReaction = { name = 'Reaction',
-		desc = 'By how the unit stands with you: red when hostile, yellow when neutral, green when friendly.' },
+		desc = 'By how the unit stands with you, in the Reputation colors for hostile, neutral and friendly (Global settings > Colors).' },
 	colorSmooth = { name = 'Gradient',
 		desc = 'From red at low health through yellow to green at full health.' },
 	colorHealth = { name = 'Health color',

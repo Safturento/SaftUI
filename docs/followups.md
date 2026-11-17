@@ -69,7 +69,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-15 — Chat's dock hook leaves Blizzard's tab layout after a resize, an overflow-list pick or an undock](#2026-11-15--chats-dock-hook-leaves-blizzards-tab-layout-after-a-resize-an-overflow-list-pick-or-an-undock)
   - [2026-11-15 — A font Size drag restyles too much on the action bars, unit frames and tracker](#2026-11-15--a-font-size-drag-restyles-too-much-on-the-action-bars-unit-frames-and-tracker)
   - [2026-11-15 — Hide full with a secret health: lift the limit with a Step curve into the text's alpha](#2026-11-15--hide-full-with-a-secret-health-lift-the-limit-with-a-step-curve-into-the-texts-alpha)
-  - [2026-11-15 — Option descriptions that say "red" or "yellow" for what Danger and Caution color](#2026-11-15--option-descriptions-that-say-red-or-yellow-for-what-danger-and-caution-color)
   - [2026-11-15 — Check box labels: no font setting until a SaftUI check box has a visible label](#2026-11-15--check-box-labels-no-font-setting-until-a-saftui-check-box-has-a-visible-label)
   - [2026-11-15 — A window title font per theme](#2026-11-15--a-window-title-font-per-theme)
   - [2026-11-15 — The tooltip lines take SaftUI's shadow and spacing](#2026-11-15--the-tooltip-lines-take-saftuis-shadow-and-spacing)
@@ -151,6 +150,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-15 — Option descriptions that say "red" or "yellow" for what Danger and Caution color](#2026-11-15--option-descriptions-that-say-red-or-yellow-for-what-danger-and-caution-color)
   - [2026-11-16 — `optionsOf` keeps every page root alive: the reset walk's options table holds its own key](#2026-11-16--optionsof-keeps-every-page-root-alive-the-reset-walks-options-table-holds-its-own-key)
   - [2026-11-11 — /sui: no resize cursor on the grip and the bottom edge](#2026-11-11--sui-no-resize-cursor-on-the-grip-and-the-bottom-edge)
   - [2026-11-15 — The options kit's keybinding widget commits mouse buttons 6 to 31 raw](#2026-11-15--the-options-kits-keybinding-widget-commits-mouse-buttons-6-to-31-raw)
@@ -1136,16 +1136,6 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 **Shape of work:** Small: one curve at load, one `SetAlpha` call per update, and `SetAlpha(1)` on the other branches, with a test in `secret_texts_test.lua`.
 
 **Open questions:** How Step behaves at exactly 1.0 (check in game), and whether the game rounds a near-full health to 1.
-
-### 2026-11-15 — Option descriptions that say "red" or "yellow" for what Danger and Caution color
-
-**What:** Two unit frame descriptions still name a hue for a color that is now a role the player can change, so they can stop being true: "Color hostile" ("names of hostile units red, and of unfriendly and neutral ones yellow", `SaftUI-Unitframes/elements/name.lua:71`) and the Color by reaction description ("red when hostile, yellow when neutral, green when friendly", `SaftUI-Unitframes/config/config.lua:125`). They could say "in the Danger color" and "in the Caution color" (Global settings > Colors > Text). The totem bar's two timer descriptions, the tracker's out of range row (now named "Tint out of range") and the README's totem line were reworded 2026-11-15 and are done.
-
-**Why noticed:** Color roles Task 4 moved those readers to Text > Danger and Text > Caution (the hue-named keys went), and its rule for the Colors page's own descriptions is that they name what a color colors, never its hue. These option descriptions sit outside that page, so the task left them.
-
-**Anchors:** `SaftUI-Unitframes/elements/name.lua:71`; `SaftUI-Unitframes/config/config.lua:125` (the Color by reaction description names the Reputation colors for neutral and friendly, which are not roles, so only the hostile part is a role: check which of the three the reader uses before rewording); `docs/design-system/25-colour-roles.md`.
-
-**Shape of work:** a wording pass over two strings in Unitframes (left because another package was editing that addon); the tests that pin a description's text change with them. The power color's "blue for mana, red for rage" and the health gradient's "red through yellow to green" describe resource and health colors, not roles: they stay.
 
 ### 2026-11-15 — Check box labels: no font setting until a SaftUI check box has a visible label
 
@@ -2833,6 +2823,19 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-15 — Option descriptions that say "red" or "yellow" for what Danger and Caution color
+
+**What:** Two unit frame descriptions still name a hue for a color that is now a role the player can change, so they can stop being true: "Color hostile" ("names of hostile units red, and of unfriendly and neutral ones yellow", `SaftUI-Unitframes/elements/name.lua:71`) and the Color by reaction description ("red when hostile, yellow when neutral, green when friendly", `SaftUI-Unitframes/config/config.lua:125`). They could say "in the Danger color" and "in the Caution color" (Global settings > Colors > Text). The totem bar's two timer descriptions, the tracker's out of range row (now named "Tint out of range") and the README's totem line were reworded 2026-11-15 and are done.
+
+**Why noticed:** Color roles Task 4 moved those readers to Text > Danger and Text > Caution (the hue-named keys went), and its rule for the Colors page's own descriptions is that they name what a color colors, never its hue. These option descriptions sit outside that page, so the task left them.
+
+**Anchors:** `SaftUI-Unitframes/elements/name.lua:71`; `SaftUI-Unitframes/config/config.lua:125` (the Color by reaction description names the Reputation colors for neutral and friendly, which are not roles, so only the hostile part is a role: check which of the three the reader uses before rewording); `docs/design-system/25-colour-roles.md`.
+
+**Shape of work:** a wording pass over two strings in Unitframes (left because another package was editing that addon); the tests that pin a description's text change with them. The power color's "blue for mana, red for rage" and the health gradient's "red through yellow to green" describe resource and health colors, not roles: they stay.
+
+**Resolved 2026-11-17:** Color hostile now says the Danger and Caution colors (`name.lua`); Color by reaction says the Reputation colors, since its health and power bars read `oUF.colors.reaction` (the Reputation colors), not a role (`config.lua`). Pinned in `tests/unitframes/name_color_test.lua`.
+
 
 ### 2026-11-16 — `optionsOf` keeps every page root alive: the reset walk's options table holds its own key
 

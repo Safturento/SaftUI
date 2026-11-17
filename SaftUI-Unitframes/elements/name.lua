@@ -68,7 +68,7 @@ local function GetConfigTable(unit)
 		showLevel = G.toggle(3, 'Show level', 'Shows the level before the name, colored by how hard the unit is for you.', 'small'),
 		showSameLevel = G.toggle(4, 'Show same level', 'Shows the level even when it is the same as yours. Needs Show level.', 'small'),
 		showMaxLevel = G.toggle(5, 'Show max level', 'Shows the level even when it is the highest level there is. Needs Show level.', 'small'),
-		color_hostile = G.toggle(8, 'Color hostile', 'Colors the names of hostile units red, and of unfriendly and neutral ones yellow.', 'small'),
+		color_hostile = G.toggle(8, 'Color hostile', 'Colors the names of hostile units in the Danger color, and of unfriendly and neutral ones in the Caution color (Global settings > Colors > Text).', 'small'),
 		maxLength = G.range(9, 'Max length', 1, 100, 1, 'Cuts the name to this many letters.'),
 		max_width = G.range(9.5, 'Max width', 0, 600, 1, "Cuts the name at this many pixels, so it can't run under the health text. 0: no limit."),
 		alpha = G.alpha(10, 'How solid the name is, from see-through to opaque.'),
