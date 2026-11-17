@@ -142,7 +142,7 @@ local function MakeNavItem()
 	end)
 	-- A row on the sidebar's fill. After the scripts above (a SetScript drops the helper's hooks).
 	st:AddStates(item, 'row', {
-		text = item.text, textRest = Normal, body = S.SIDEBAR_BG, inset = 0,
+		text = item.text, textRest = Normal, inset = 0,
 		blizzard = function(self) return self.blizzard == true end,
 	})
 	return item

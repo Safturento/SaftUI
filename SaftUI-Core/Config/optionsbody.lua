@@ -951,7 +951,7 @@ function OB.New(content, root, onChanged, width, opts)
 			end)
 			-- A row: hover and pushed tint it (the helper's, wired once for the button's life;
 			-- a result is Acquired again by every search: ResultCell starts it at rest).
-			st:AddStates(button, 'row', { text = button.text, body = st.BOX_COLORS.bg, inset = 0 })
+			st:AddStates(button, 'row', { text = button.text, inset = 0 })
 			return button
 		end),
 		line = Pool(function() return Line(content) end),

@@ -525,7 +525,7 @@ test('the title opens the page list, grouped as the sidebar is, while the sideba
 	local function color(r) return string.format('%.2f,%.2f,%.2f', r.text:GetTextColor()) end
 	local open_row = row('Loot')
 	check(st:GetState(open_row, 'selected') and st:StateLook(open_row).bar.shown, 'the open page is the selected row: a bar and the fade')
-	eq(color(open_row), normal, 'its text is Normal (by contrast over the fade), no longer blue')
+	eq(color(open_row), normal, 'its text is Normal (over the fade too), no longer blue')
 	local frames_row = row('Frames')
 	local grey = string.format('%.2f,%.2f,%.2f', st.config.profile.colors.text.muted.r, st.config.profile.colors.text.muted.g, st.config.profile.colors.text.muted.b)
 	eq(color(frames_row), grey, 'a caption is grey')

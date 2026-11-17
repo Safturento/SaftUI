@@ -134,18 +134,18 @@ end)
 
 -- The composites at the defaults over the kit's button fill (0.12): the hover
 -- layer, the pushed layer, the Fill's start, and selected + hover's start,
--- with the light text's contrast. The spec's table.
+-- (the spec's table, less its contrast columns: the text no longer flips).
 local BODY = 0.12
 local COMPOSITES = {
-	{ BLUE, 'layers', '1a3540', 10.1, '154c62', 7.3, '174151', 8.6, '14526a', 6.7 },
-	{ BLUE, 'tones', '283943', 9.3, '154456', 8.3, '174151', 8.6, '355b70', 5.7 },
-	{ BLUE, 'hue', '1e3b40', 9.4, '27405f', 8.3, '174151', 8.6, '1e5e6a', 5.7 },
-	{ VIOLET, 'layers', '302841', 10.9, '413263', 8.8, '382d52', 9.9, '45356c', 8.3 },
-	{ VIOLET, 'tones', '332e43', 10.2, '3a2a5a', 10.0, '382d52', 9.9, '4d4170', 7.1 },
-	{ VIOLET, 'hue', '392b40', 10.3, '322b61', 10.0, '382d52', 9.9, '5a3b6a', 7.3 },
-	{ GOLD, 'layers', '3f3a26', 9.0, '5e552c', 5.9, '4e4729', 7.3, '675c2e', 5.3 },
-	{ GOLD, 'tones', '433e2c', 8.4, '564d22', 6.7, '4e4729', 7.3, '70653c', 4.5 },
-	{ GOLD, 'hue', '413e2d', 8.4, '5f4815', 6.8, '4e4729', 7.3, '6d663f', 4.5 },
+	{ BLUE, 'layers', '1a3540', '154c62', '174151', '14526a' },
+	{ BLUE, 'tones', '283943', '154456', '174151', '355b70' },
+	{ BLUE, 'hue', '1e3b40', '27405f', '174151', '1e5e6a' },
+	{ VIOLET, 'layers', '302841', '413263', '382d52', '45356c' },
+	{ VIOLET, 'tones', '332e43', '3a2a5a', '382d52', '4d4170' },
+	{ VIOLET, 'hue', '392b40', '322b61', '382d52', '5a3b6a' },
+	{ GOLD, 'layers', '3f3a26', '5e552c', '4e4729', '675c2e' },
+	{ GOLD, 'tones', '433e2c', '564d22', '4e4729', '70653c' },
+	{ GOLD, 'hue', '413e2d', '5f4815', '4e4729', '6d663f' },
 }
 
 local function composites(accent, mode)
@@ -158,21 +158,13 @@ local function composites(accent, mode)
 	return d, { { hr, hg, hb }, { pr, pg, pb }, { fr, fg, fb }, { sr, sg, sb } }
 end
 
-test('the composites and the text pick at the defaults', function()
-	local normal = st:Color('text', 'normal')
+test('the composites at the defaults', function()
 	for _, row in ipairs(COMPOSITES) do
 		local accent, mode = row[1], row[2]
 		local d, c = composites(accent, mode)
 		for i = 1, 4 do
 			local label = ('#%s %s %s'):format(accent, mode, ({ 'hover', 'pushed', 'fill', 'fill + hover' })[i])
-			within(label, hex(c[i][1], c[i][2], c[i][3]), row[1 + i * 2])
-			local ratio = ST.Contrast(normal.r, normal.g, normal.b, c[i][1], c[i][2], c[i][3])
-			check(math.abs(ratio - row[2 + i * 2]) < 0.05, ('%s: contrast %.2f ~ %.1f'):format(label, ratio, row[2 + i * 2]))
-		end
-		-- the pick is Text > Normal for every cell
-		for _, name in ipairs({ 'rest', 'hover', 'pushed', 'fill', 'fillHover' }) do
-			local r, g, b = st:StateText(name, BODY, BODY, BODY, d)
-			check(r == normal.r and g == normal.g and b == normal.b, ('#%s %s %s: Text > Normal'):format(accent, mode, name))
+			within(label, hex(c[i][1], c[i][2], c[i][3]), row[2 + i])
 		end
 	end
 	-- over the kit's field fill (0.078) the Tones hovers
@@ -181,30 +173,6 @@ test('the composites and the text pick at the defaults', function()
 		local d = derive(accent, TONES)
 		local h = d.hover
 		within('field hover #' .. accent, hex(ST.Mix(0.078, 0.078, 0.078, h[1], h[2], h[3], h[4])), w)
-	end
-end)
-
-test('the text pick turns dark where the vectors say', function()
-	local function over(accent, mode, key, strength)
-		local d = derive(accent, settings(mode, { [key] = strength }))
-		local c = d[key == 'hover' and 'hover' or 'pushed']
-		local r, g, b = ST.Mix(BODY, BODY, BODY, c[1], c[2], c[3], c[4])
-		local tr, tg, tb = st:StateText(key, BODY, BODY, BODY, d)
-		local dark = ST.DARK_TEXT
-		return hex(r, g, b), tr == dark[1] and tg == dark[2] and tb == dark[3]
-	end
-	local cases = {
-		{ BLUE, 'tones', 'hover', 0.6, '4383a5', true }, { BLUE, 'layers', 'hover', 0.6, '0c749c', false },
-		{ GOLD, 'tones', 'hover', 0.6, 'a5944f', true }, { GOLD, 'layers', 'hover', 0.6, '968439', true },
-		{ GOLD, 'hue', 'hover', 0.6, 'a19655', true }, { VIOLET, 'tones', 'hover', 0.6, '6c58a5', false },
-		{ BLUE, 'tones', 'pushed', 0.8, '067caa', true }, { BLUE, 'layers', 'pushed', 0.8, '0691c6', true },
-		{ GOLD, 'tones', 'pushed', 0.8, 'a99126', true },
-	}
-	for _, c in ipairs(cases) do
-		local composite, isDark = over(c[1], c[2], c[3], c[4])
-		local label = ('#%s %s %s %.1f'):format(c[1], c[2], c[3], c[4])
-		within(label, composite, c[5])
-		eq(isDark, c[6], label .. ' dark')
 	end
 end)
 
@@ -318,7 +286,7 @@ test('the cache computes once per change and makes nothing', function()
 	collectgarbage(); collectgarbage('stop')
 	local before = collectgarbage('count')
 	for _ = 1, 1000 do
-		st:StateColor('hover'); st:StateSolid('hover', 0.3, 0.3, 0.3); st:StateText('fill', 0.1, 0.1, 0.1)
+		st:StateColor('hover'); st:StateSolid('hover', 0.3, 0.3, 0.3)
 		st:StateFade(); st:StateAlpha()
 	end
 	local grew = collectgarbage('count') - before
@@ -339,8 +307,6 @@ test('the readers at the defaults', function()
 	eq(st:StateAlpha(), 0.4)
 	local ok, err = pcall(function() local r = st:StateColor('nope') return r end) -- not a tail call: the caller's line is named
 	check(not ok and tostring(err):find('nope', 1, true) and tostring(err):find('states_derive_test', 1, true), 'an unknown name errors at the caller: ' .. tostring(err))
-	ok = pcall(function() return st:StateText('nope', 0, 0, 0) end)
-	check(not ok, 'an unknown text name errors')
 end)
 
 test('the fade texture', function()
@@ -363,18 +329,6 @@ test('the fade texture', function()
 		end
 	end
 	check(true, 'every pixel is white with its column alpha')
-end)
-
-test('L3: StateText fillHover composites the hover layer too', function()
-	-- gold, Layers, Hover 60%: the hover layer makes the body pale (dark text); the fill alone leaves it dark (light text)
-	local s = settings('layers', { hover = 0.6 })
-	local d = derive(GOLD, s)
-	local dark = ST.DARK_TEXT
-	local r, g, b = st:StateText('fillHover', BODY, BODY, BODY, d)
-	check(r == dark[1] and g == dark[2] and b == dark[3], 'fillHover goes dark over the hover layer')
-	local n = st:Color('text', 'normal')
-	r, g, b = st:StateText('fill', BODY, BODY, BODY, d)
-	check(r == n.r and g == n.g and b == n.b, 'the fill alone stays light')
 end)
 
 test('L7: a NaN Accent channel reads as 0 and does not recompute on every read', function()
