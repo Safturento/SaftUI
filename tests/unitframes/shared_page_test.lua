@@ -404,6 +404,22 @@ test("an All units Position offers only the elements every unit with the part ha
 	eq(OM.Validate(mroot, row, 'relative_to', '__global'), true, 'a global frame is allowed')
 end)
 
+test("an All units Position already on an element some units lack keeps it in the list, marked, and does not offer it again", function()
+	convert(false)
+	UF:GetProfileConfig().all.name.position.element = 'Castbar'
+	local root = tree()
+	local mroot, row = menu_row(root, 'all', 'name', 'position')
+	eq(row.option.get(nil, 'relative_to'), 'Castbar', 'the box reads the saved element')
+	local listed = {}
+	for _, entry in ipairs(OM.Values(mroot, row)) do listed[entry.key] = entry.name end
+	eq(listed.Castbar, 'Cast bar (not every unit)', 'kept and marked, so the box is not blank')
+	check(OM.Validate(mroot, row, 'relative_to', 'Castbar') ~= true, 'but a new pick of it is still refused')
+	UF:GetProfileConfig().all.name.position.element = 'Health'
+	listed = {}
+	for _, entry in ipairs(OM.Values(mroot, row)) do listed[entry.key] = entry.name end
+	eq(listed.Castbar, nil, 'once the saved element is another, it is gone')
+end)
+
 ------------------------------------------------------------------ the invariant, and where a leaf is wrapped
 
 -- A value for the row different from what it holds, by its type.

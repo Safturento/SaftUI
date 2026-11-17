@@ -580,7 +580,12 @@ test("General's toggles keep their panel while the box is checked: the link to t
 			if checked then
 				check(sourced ~= nil, label .. ': the centred line')
 				-- The link is a button (it sits as any button does), below the toggles.
-				check(sourced.y > first.y, label .. ': the link is below the first row')
+				local _, _, _, sx = sourced.frame:GetPoint(1)
+				local _, _, _, _, ptop = panels[#panels]:GetPoint(1)
+				-- Directly under the last panel (the Parts' on the Enemy page, the toggles' on the Friendly page), one
+				-- section gap (24) below it, the button's own width, at the body's left edge.
+				eq(sourced.y, -ptop + panels[#panels]:GetHeight() + 24, label .. ': the link directly under the last panel')
+				eq(sx .. '+' .. sourced.frame:GetWidth(), '0+387', label .. ': at the left edge, a half-width button')
 				local _, _, _, fx = first.frame:GetPoint(1)
 				eq(fx, 14, label .. ': the toggles padded')
 			else

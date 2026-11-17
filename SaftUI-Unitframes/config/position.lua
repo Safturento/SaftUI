@@ -128,6 +128,19 @@ function generators.uf_element_position(order, get, set, target, desc, name, sav
 		return names
 	end
 
+	-- On All units, the element the saved position already names when some members lack it: kept in the list,
+	-- marked, so the box is not blank, but never offered to a new pick (validate refuses it).
+	local function KeptElement(listed)
+		if not AllSpec() then return nil end
+		local element = get('element')
+		if not element then return nil end
+		for _, name in ipairs(listed) do
+			if name == element then return nil end
+		end
+		if not (UF.elements and UF.elements[element]) then return nil end
+		return element
+	end
+
 	-- Which element (and its text or icon) the position places, for an All units row's check against
 	-- each follower's own frame (sharedoptions.lua): a weak side table, so the option gains no field.
 	if UF and UF.targetSpecs and type(target) == 'function' and UF.targetSpecs[target] then
@@ -150,13 +163,18 @@ function generators.uf_element_position(order, get, set, target, desc, name, sav
 		for _, name in ipairs(GetElementNames()) do
 			values[name] = ElementLabel(name)
 		end
+		local kept = KeptElement(GetElementNames())
+		if kept then values[kept] = ElementLabel(kept) .. ' (not every unit)' end
 		return values
 	end
 	option.sorting = function()
 		local sorting = { UNIT_FRAME }
-		for _, name in ipairs(GetElementNames()) do
+		local names = GetElementNames()
+		for _, name in ipairs(names) do
 			tinsert(sorting, name)
 		end
+		local kept = KeptElement(names)
+		if kept then tinsert(sorting, kept) end
 		tinsert(sorting, GLOBAL_FRAME)
 		return sorting
 	end

@@ -93,6 +93,7 @@ end)
 
 test('unit frame position: the dropdown names an element as the pages do and keeps the key it saves', function()
 	local UF = SaftUI:GetModule('Unitframes', true) or SaftUI:NewModule('Unitframes')
+	local realNames = UF.ELEMENT_NAMES
 	UF.ELEMENT_NAMES = { Castbar = 'Cast bar', ReadyCheckIndicator = 'Ready check', Health = 'Health' }
 	local unitframe = CreateFrame('Frame', 'GeneratorsNamesUnit', UIParent)
 	for _, name in ipairs({ 'Name', 'Castbar', 'ReadyCheckIndicator', 'Health', 'Portrait' }) do
@@ -114,4 +115,5 @@ test('unit frame position: the dropdown names an element as the pages do and kee
 		'__unitframe=Unit frame,Castbar=Cast bar,Health=Health,Portrait=Portrait,ReadyCheckIndicator=Ready check,__global=Global frame')
 	o.set(info, 'relative_to', 'ReadyCheckIndicator')
 	eq(store.element, 'ReadyCheckIndicator', 'the saved key is the element key, not its name')
+	UF.ELEMENT_NAMES = realNames
 end)

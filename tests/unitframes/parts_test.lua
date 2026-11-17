@@ -901,3 +901,12 @@ test("S1: on a customized profile each changed part setting resets to its defaul
 		eq(found, nil, where .. ': nothing but the setting changed: ' .. tostring(found))
 	end
 end)
+
+test('every registered element that has options has a name in UF.ELEMENT_NAMES', function()
+	local missing = {}
+	for key, element in pairs(PW.UF.elements) do
+		if element.GetConfigTable and not PW.UF.ELEMENT_NAMES[key] then missing[#missing + 1] = key end
+	end
+	table.sort(missing)
+	eq(table.concat(missing, ','), '', 'elements the TO dropdown would show by key')
+end)
