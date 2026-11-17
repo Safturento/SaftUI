@@ -53,9 +53,6 @@ local KEYS = { hover = true, pushed = true, selected = true, focus = true, disab
 local records = setmetatable({}, { __mode = 'k' })
 local made = setmetatable({}, { __mode = 'k' })
 local hooked = setmetatable({}, { __mode = 'k' })
--- the records with a label that followed a font object (st:RepaintKeptText walks only these)
-local followers = setmetatable({}, { __mode = 'k' })
-
 local function ST() return st.States end
 
 -- (a font string has SetVertexColor too: it is colored with SetTextColor)
@@ -120,27 +117,10 @@ local function TintGlyphs(rec, r, g, b)
 	for i = 1, #glyphs do Tint(glyphs[i], r, g, b) end
 end
 
--- What a label sits on under the states that show: the body, the Layer, then the Fill at its
--- strongest.
-local function Composite(rec, d, layer, fill)
-	local r, g, b = rec.bodyR, rec.bodyG, rec.bodyB
-	local c
-	if layer then
-		c = d[layer]
-		r, g, b = ST().Mix(r, g, b, c[1], c[2], c[3], c[4])
-	end
-	if fill then
-		c = d[fill]
-		r, g, b = ST().Mix(r, g, b, c[1], c[2], c[3], c[4])
-	end
-	return r, g, b
-end
-
--- What the label takes over its body: Text > Normal or the dark text by contrast.
-local function PickText(rec, d, layer, fill)
-	local r, g, b = Composite(rec, d, layer, fill)
+-- What the label takes under a state: Text > Normal (never a dark text; the black outline carries it).
+local function PickText()
 	local n = st:Color('text', 'normal')
-	return ST().PickText(n.r, n.g, n.b, r, g, b)
+	return n.r, n.g, n.b
 end
 
 local function TextRest(rec)
@@ -194,145 +174,6 @@ local function RestText(rec)
 			texts[i]:SetTextColor(own[at - 3], own[at - 2], own[at - 1])
 		else
 			texts[i]:SetTextColor(rr, rg, rb)
-		end
-	end
-end
-
--- textKeep: a label (a kit box's) keeps the color it has, whoever gave it (its owner's, or the
--- font object's, which follows Text > Normal live), and is written only when the dark text
--- reads better over what is under it than its own color does. The color it had is kept while
--- the dark text is on, and put back when that is no longer so or nothing is under the label;
--- a color its owner sets meanwhile is its owner's and is not put back over. Nothing is
--- written (and no table made after the first) while its own color reads.
-local function PlainColor(label)
-	local r, g, b = label:GetTextColor()
-	return st.PlainNumber(r), st.PlainNumber(g), st.PlainNumber(b)
-end
-
-local function IsDark(r, g, b)
-	local dark = ST().DARK_TEXT
-	return math.abs(r - dark[1]) <= TOL and math.abs(g - dark[2]) <= TOL and math.abs(b - dark[3]) <= TOL
-end
-
--- A label that followed a font object (kit labels do: W.ColorFonts recolors the object when
--- Text > Normal changes) loses that the moment anything calls SetTextColor on it, and the game
--- has no call that gives it back that is the same on every client (SetFontObject is not relied
--- on). So the helper notes that it followed (rec.follows[i] = the object) when it first writes the
--- dark text, gives the label the object's CURRENT color when the dark goes (also when Text >
--- Normal changed while it was on), and repaints it on every Text pass while it holds that record
--- (rec.fpaint[...] is what it painted last: a label that no longer has it was recolored by its
--- owner, which is then left alone).
-local function Close(r1, g1, b1, r2, g2, b2)
-	return math.abs(r1 - r2) <= TOL and math.abs(g1 - g2) <= TOL and math.abs(b1 - b2) <= TOL
-end
-
-local function FollowText(rec) -- (a named function: the registry holds no closure)
-	local follows, fpaint, keep = rec.follows, rec.fpaint, rec.keep
-	if not follows then return end
-	for i = 1, #rec.texts do
-		local object, at = follows[i], i * 4
-		if object and not (keep and keep[at]) then
-			local r, g, b = PlainColor(rec.texts[i])
-			local fr, fg, fb = PlainColor(object)
-			if r and g and b and fr and fg and fb then
-				if Close(r, g, b, fpaint[at - 3], fpaint[at - 2], fpaint[at - 1]) then
-					if not Close(r, g, b, fr, fg, fb) then rec.texts[i]:SetTextColor(fr, fg, fb) end
-					fpaint[at - 3], fpaint[at - 2], fpaint[at - 1] = fr, fg, fb
-				else
-					follows[i] = false -- its owner recolored it
-				end
-			end
-		end
-	end
-end
-
--- Notes that label i followed its font object, when it did (its color is the object's).
-local function NoteFollow(rec, i, label, r, g, b)
-	local follows = rec.follows
-	if follows and follows[i] then return end
-	local object = label.GetFontObject and label:GetFontObject()
-	if not (object and object.GetTextColor) then return end
-	local fr, fg, fb = PlainColor(object)
-	if not (fr and fg and fb and Close(r, g, b, fr, fg, fb)) then return end
-	if not follows then
-		follows = {}
-		rec.follows, rec.fpaint = follows, {}
-	end
-	followers[rec] = true -- the few records st:RepaintKeptText walks
-	follows[i] = object
-	local at = i * 4
-	rec.fpaint[at - 3], rec.fpaint[at - 2], rec.fpaint[at - 1] = fr, fg, fb
-	if not rec.textFollowed then
-		rec.textFollowed = true
-		st:FollowColor(rec, 'text', nil, FollowText)
-	end
-end
-
-local function KeepText(rec, d, layer, fill)
-	local texts, keep = rec.texts, rec.keep
-	if not keep then
-		keep = {}
-		rec.keep = keep
-	end
-	local cr, cg, cb = Composite(rec, d, layer, fill)
-	local dark = ST().DARK_TEXT
-	for i = 1, #texts do
-		local at = i * 4
-		local label = texts[i]
-		local r, g, b = PlainColor(label)
-		if r and g and b then
-			-- the dark text on, and its owner has recolored it since: that color is the label's own
-			if keep[at] and not IsDark(r, g, b) then
-				keep[at] = false
-				if rec.follows then rec.follows[i] = false end
-			end
-			local lr, lg, lb = r, g, b
-			if keep[at] then lr, lg, lb = keep[at - 3], keep[at - 2], keep[at - 1] end
-			local pr, pg, pb = ST().PickText(lr, lg, lb, cr, cg, cb)
-			if pr == dark[1] and pg == dark[2] and pb == dark[3] and not (lr == pr and lg == pg and lb == pb) then
-				if not keep[at] then
-					NoteFollow(rec, i, label, r, g, b)
-					keep[at - 3], keep[at - 2], keep[at - 1], keep[at] = r, g, b, true
-					label:SetTextColor(pr, pg, pb)
-				end
-			elseif keep[at] then
-				keep[at] = false
-				local object = rec.follows and rec.follows[i]
-				if object then
-					local fr, fg, fb = PlainColor(object)
-					if fr and fg and fb then lr, lg, lb = fr, fg, fb end
-				end
-				label:SetTextColor(lr, lg, lb)
-				if object then rec.fpaint[at - 3], rec.fpaint[at - 2], rec.fpaint[at - 1] = lr, lg, lb end
-			end
-		end
-	end
-end
-
-local function KeepRest(rec)
-	local texts, keep = rec.texts, rec.keep
-	if not keep then return end
-	for i = 1, #texts do
-		local at = i * 4
-		if keep[at] then
-			keep[at] = false
-			local r, g, b = PlainColor(texts[i])
-			-- still the dark text we wrote: its own color is back (a font object's current one if it
-			-- followed); anything else is its owner's
-			if r and g and b and IsDark(r, g, b) then
-				local pr, pg, pb = keep[at - 3], keep[at - 2], keep[at - 1]
-				local object = rec.follows and rec.follows[i]
-				if object then
-					local fr, fg, fb = PlainColor(object)
-					if fr and fg and fb then
-						pr, pg, pb = fr, fg, fb
-						rec.fpaint[at - 3], rec.fpaint[at - 2], rec.fpaint[at - 1] = fr, fg, fb
-					end
-				end
-				texts[i]:SetTextColor(pr, pg, pb)
-			elseif rec.follows then
-				rec.follows[i] = false
-			end
 		end
 	end
 end
@@ -412,7 +253,7 @@ local function Colors(rec, d, explicit)
 		if rec.edgeKind then PutEdge(rec, c[1], c[2], c[3]) end
 	end
 	if #rec.texts > 0 and (layer or fill) then
-		if rec.opts.textKeep then KeepText(rec, d, layer, fill) else PaintText(rec, PickText(rec, d, layer, fill)) end
+		if not rec.opts.textKeep then PaintText(rec, PickText()) end
 	end
 	if rec.glyphObject and (layer or rec.selected) then
 		if (rec.hover or rec.pushed) and rec.opts.glyphHover then
@@ -520,7 +361,7 @@ local function Refresh(rec)
 			rec.textLit = true
 		elseif rec.textLit then
 			rec.textLit = false
-			if rec.opts.textKeep then KeepRest(rec) else RestText(rec) end
+			if not rec.opts.textKeep then RestText(rec) end
 		end
 	end
 	if rec.glyphObject then
@@ -550,26 +391,6 @@ local function IsBlizzard(rec)
 	return st:DrawnTheme(rec.frame) == 'blizzard'
 end
 
--- What the label sits on, for the text pick (Ruling 8, 11): the caller's body, else the
--- fill the theme drew behind it, else the kit's button fill.
-local function ReadBody(rec)
-	local body = rec.opts.body
-	if type(body) == 'function' then
-		rec.bodyR, rec.bodyG, rec.bodyB = body(rec.frame)
-	elseif type(body) == 'table' then
-		rec.bodyR, rec.bodyG, rec.bodyB = body[1], body[2], body[3]
-	else
-		local drawn = rec.drawn or st:DrawnFrame(rec.frame)
-		local r, g, b
-		if drawn and drawn.GetBackdropColor then r, g, b = drawn:GetBackdropColor() end
-		if type(r) ~= 'number' then
-			local bg = st.BOX_COLORS.bg
-			r, g, b = bg[1], bg[2], bg[3]
-		end
-		rec.bodyR, rec.bodyG, rec.bodyB = r, g, b
-	end
-end
-
 -- Fills list (kept in the record, so a restyle makes no table) from what a caller gave:
 -- one object, a list of them, or nothing.
 local function Fill(list, given)
@@ -588,14 +409,10 @@ local function Fill(list, given)
 end
 
 -- The slots of a label that is no longer in the list (a merge that gave fewer labels): its
--- owner's color, its kept color and its font object are forgotten, so a later merge that gives
--- more labels starts them clean.
+-- owner's color is forgotten, so a later merge that gives more labels starts them clean.
 local function DropSlots(rec, n)
-	local own, keep, follows, fpaint = rec.own, rec.keep, rec.follows, rec.fpaint
+	local own = rec.own
 	for k in pairs(own) do if k > n * 4 then own[k] = nil end end
-	if keep then for k in pairs(keep) do if k > n * 4 then keep[k] = nil end end end
-	if follows then for k in pairs(follows) do if k > n then follows[k] = nil end end end
-	if fpaint then for k in pairs(fpaint) do if k > n * 4 then fpaint[k] = nil end end end
 end
 
 local function Texts(rec)
@@ -730,7 +547,7 @@ local function Rewire(rec)
 end
 
 -- After a theme recolor or redraw (st:KeepOwnColors): the look may have changed
--- (Blizzard or not, the edge's inset, the body), so what changed is read again,
+-- (Blizzard or not, the edge's inset), so what changed is read again,
 -- and the edge the theme just reset is put back. No point is moved unless the
 -- inset did.
 local Restyle, StyleGame
@@ -745,7 +562,6 @@ local function Kept(rec)
 		Restyle(rec)
 		return
 	end
-	ReadBody(rec)
 	Colors(rec, nil)
 end
 
@@ -821,7 +637,6 @@ function Restyle(rec)
 	local glyphs = Fill(rec.glyphs or {}, opts.glyph)
 	rec.glyphs, rec.glyphObject, rec.glyphRest = glyphs, glyphs[1], opts.glyphRest
 	Texts(rec)
-	ReadBody(rec)
 	MakePieces(rec)
 	-- Under Blizzard the scripted pieces SaftUI made are held at alpha 0. The game pieces
 	-- (an icon button's highlight, pushed and checked textures, and opts.pieces) and a
@@ -886,9 +701,8 @@ end
 --              (r nil: the rest edge back), or false
 --   bar        'left' | 'bottom' (a row's, a tab's by default)
 --   text       a font string or a list of them; textRest = function(frame) -> r, g, b (Text > Normal if nil)
---   textKeep   true: the labels keep the color they have (their owner's, or the font object's) and take the dark text only
---              where it reads better than their own color does; textRest is not used
---   body       { r, g, b } or function(frame) -> r, g, b: what the text sits on, for the pick
+--   textKeep   true: the labels keep the color they have (their owner's, or the font object's) under every state; textRest is not used
+--              (a label under a state is Text > Normal, never a dark text, whatever the fill)
 --   mark       the check's square (a texture; one is made when the shape is a check)
 --   glyphHover function(frame) -> r, g, b: a glyph's color under hover and pushed instead of edgeHover (a link's Text > Strong)
 --   barLines   the Bar's offset in lines (st:GetLineSize), which follows a UI scale change; barOffset of exactly one line is the same
@@ -986,13 +800,6 @@ function st:PaintStates(frame, derived)
 end
 
 -- After a look change (Blizzard or not, a new inset): out of a pass.
--- The labels that followed a font object, painted again from it. A pass paints followers before
--- modules, and the kit's field font is recolored by a module (Config:OnColorsChanged), so the
--- FollowText follower reads its old color: Config calls this once that font is recolored.
-function st:RepaintKeptText()
-	for rec in pairs(followers) do FollowText(rec) end
-end
-
 function st:RestyleStates(frame)
 	local rec = records[frame]
 	if rec then Restyle(rec) end
@@ -1007,7 +814,6 @@ function st:RemoveStates(frame)
 	Refresh(rec)
 	if rec.disabled then rec.host:SetAlpha(rec.restAlpha or 1) end
 	st:FollowColor(rec, 'accent', nil, nil)
-	followers[rec] = nil
 	records[frame] = nil
 end
 
@@ -1051,7 +857,7 @@ function st:StateLook(frame)
 		local r, g, b = rec.texts[1]:GetTextColor()
 		look.text = { r = r, g = g, b = b }
 	end
-	look.followsFont, look.ownMade = followers[rec] == true, rec.own ~= nil
+	look.ownMade = rec.own ~= nil
 	if rec.glyphObject then
 		local r, g, b
 		local g1 = rec.glyphObject

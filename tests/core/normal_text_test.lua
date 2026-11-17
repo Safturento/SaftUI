@@ -33,7 +33,7 @@ test('a description is Text > Normal', function()
 	w:Release()
 end)
 
-test("a select's entry is Text > Normal, the picked one too (by contrast over its fade: no longer the accent)", function()
+test("a select's entry is Text > Normal, the picked one too (over its fade too: no longer the accent)", function()
 	theme('thick')
 	local w = bind('select', 'pick', opt('select', 'Pick', {
 		values = { a = 'A', b = 'B' }, get = function() return 'a' end, set = function() end,

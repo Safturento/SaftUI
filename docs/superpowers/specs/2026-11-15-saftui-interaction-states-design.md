@@ -1,5 +1,7 @@
 # One accent, every state
 
+> **Superseded 2026-11-16 (lines 53, 125, 158 and "The text pick" in section 2):** text on a state's fill no longer flips to a dark text by contrast. It keeps its own color (Text > Normal, or what the state gives it); the black outline carries it (the owner, after in-game check 14; decision 63 in `docs/design-system/05-decisions.md`). `ST.DARK_TEXT`, `ST.Contrast`, `ST.PickText` and `st:StateText` are gone.
+
 Design, 2026-11-15. A draft for the owner to approve. Every decision he didn't make is marked **call** and
 listed again at the end, under "Calls made while writing this". Checked against SaftUI's code on `modular`
 at `e592f835`; the audit it builds on (`scratchpad/feedback/states-audit.md`, read-only, 79 Accent reader

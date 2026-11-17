@@ -293,12 +293,12 @@ test("st:SkinButton clears a Blizzard template's own highlight, pushed and disab
 	end
 end)
 
-test("the 'button' style check registers its label for the text pick; a check box takes the disabled state", function()
+test("the 'button' style check registers its label as the box's text; a check box takes the disabled state", function()
 	world()
 	local c = CreateFrame('CheckButton', nil, UIParent)
 	c.Text = c:CreateFontString(nil, 'OVERLAY')
 	st:SkinCheckButton(c, 'button')
-	check(st:StateLook(c).text ~= nil, "the label is the box's text: the pick colors it over the Fill")
+	check(st:StateLook(c).text ~= nil, "the label is the box's text: Text > Normal over the Fill")
 	local d = checkbox()
 	d:Disable()
 	eq(d:GetAlpha(), 0.4, 'a disabled check box dims')

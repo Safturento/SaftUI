@@ -306,7 +306,7 @@ builders.color = function(w)
 	-- Box's look until the first look change (LookColor).
 	PlaceParts(w, false)
 	-- the states last, after the scripts: the code's color is the field's own (Refresh); the helper
-	-- keeps it and turns it dark only where the dark reads better (textKeep)
+	-- keeps it under every state (textKeep)
 	HoverStates(button, { text = w.text, textKeep = true })
 end
 

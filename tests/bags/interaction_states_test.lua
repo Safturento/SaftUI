@@ -259,7 +259,7 @@ end)
 
 ------------------------------------------------------------------ the rule editor
 
-test('the rule editor: NOT on has the edge and fade, its label by the pick; links Strong under the mouse; Caught now Warning 25%', function()
+test('the rule editor: NOT on has the edge and fade, its label Text > Normal; links Strong under the mouse; Caught now Warning 25%', function()
 	world()
 	INV.categoryEditor.selected = CW.SELL
 	CW.open()
@@ -286,7 +286,7 @@ test('the rule editor: NOT on has the edge and fade, its label by the pick; link
 	check(box.on and look.selected, 'NOT on is selected')
 	check(look.fill.shown, 'with the fade')
 	eq(rgb3(look.edge.r, look.edge.g, look.edge.b), rgb3(st:Color('accent'):GetRGB()), 'and the accent edge')
-	check(rgb3(box.text:GetTextColor()) ~= rgb3(st:Color('accent'):GetRGB()), 'its label is no longer the accent (it is the pick)')
+	check(rgb3(box.text:GetTextColor()) ~= rgb3(st:Color('accent'):GetRGB()), 'its label is no longer the accent (it is Text > Normal)')
 
 	-- links: + Block and + Group
 	local add
@@ -356,7 +356,7 @@ end)
 
 ------------------------------------------------------------------ rest colors after a hover
 
-test("an off row's name rests Muted after a hover; an on row's Normal; the pick paints a selected row's name", function()
+test("an off row's name rests Muted after a hover; an on row's Normal; a selected row's name is Normal", function()
 	world()
 	INV:SetCategoryEnabled('Quest', false)
 	INV.categoryEditor.selected = 'Consumables'
@@ -367,7 +367,7 @@ test("an off row's name rests Muted after a hover; an on row's Normal; the pick 
 	eq(rgb3(off.name:GetTextColor()), muted, 'off: Muted at rest')
 	stub.fire_script(off.frame, 'OnLeave', true)
 	stub.fire_script(off.frame, 'OnEnter', true)
-	eq(rgb3(off.name:GetTextColor()), normal, 'off, hovered: the pick (Normal; the strike line says off)')
+	eq(rgb3(off.name:GetTextColor()), normal, 'off, hovered: Normal (the strike line says off)')
 	stub.fire_script(off.frame, 'OnLeave', true)
 	eq(rgb3(off.name:GetTextColor()), muted, 'off: Muted again after the hover')
 	stub.fire_script(on.frame, 'OnEnter', true)

@@ -8,6 +8,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 - [Active](#active)
   - [2026-11-16 — The loot window's opaque hover on the first open: nothing found that writes it](#2026-11-16--the-loot-windows-opaque-hover-on-the-first-open-nothing-found-that-writes-it)
+  - [2026-11-16 — The /sui slider's knob shows no hover or held state in the game: cause not found](#2026-11-16--the-sui-sliders-knob-shows-no-hover-or-held-state-in-the-game-cause-not-found)
   - [2026-11-16 — Redesign the loot window](#2026-11-16--redesign-the-loot-window)
   - [2026-11-16 — The tracker's wrapped text, one line short: the cause is inferred, not seen in the game](#2026-11-16--the-trackers-wrapped-text-one-line-short-the-cause-is-inferred-not-seen-in-the-game)
   - [2026-11-16 — All units' Position offers anchors some units lack (pre-flight ruling L7 was never built)](#2026-11-16--all-units-position-offers-anchors-some-units-lack-pre-flight-ruling-l7-was-never-built)
@@ -261,6 +262,18 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **Open questions:** whether it happens on a later open whose rows are new (a corpse with more items than any before); whether it happens with SpeedyAutoLoot off.
 
+### 2026-11-16 — The /sui slider's knob shows no hover or held state in the game: cause not found
+
+**What:** in the game on the flat theme the owner sees no hover and no held state on a `/sui` range's knob (in-game check 6: expected light blue under the mouse, darker while dragged, the fill staying blue), while the scroll bar's thumb shows its states. Every test passes, in the stubs and in the real window with the mouse played, so the cause is a difference between the stubs and the client that nothing here shows.
+
+**Why noticed:** the owner's round 2 in-game check of the interaction states, 2026-11-16. The fix round (branch `r2-slider`) read the code and ran it in the stubs without finding the cause.
+
+**Anchors:** `SaftUI-Core/Config/optionsrange.lua` (`st:AddStates(slider, 'knob', ...)`, `LookRange`), `SaftUI-Core/Widgets/states.lua` (`Rewire`, `Colors`, `PutSolid`), `tests/core/kit_states_test.lua` ("the range: the fill stays the accent..."), `tests/core/options_range_mouse_test.lua`.
+
+**What's been considered:** ruled out in the stubs: the helper's hooks after the slider's own scripts, a later `SetScript` dropping them, the 'knob' paint (rest, hover and pushed differ in Thick and Thin), the real window with the mouse moved row then slider, a covering frame (the slider and the value box are the mouse focus at their centres once a reparent moves the children above their parent). Not ruled out, needs the game: the client's Slider not firing OnEnter, OnLeave, OnMouseDown or OnMouseUp to hooks, or the client drawing the thumb without its vertex color. Under Blizzard the knob has no hover art by design.
+
+**Shape of work:** the owner pastes the `/run` line from `r2-slider-report.md` while holding the mouse over a knob; its numbers decide between the two.
+
 ### 2026-11-16 — Redesign the loot window
 
 **What:** the owner wants the loot window (Blizzard's scroll box `LootFrame`, skinned by `SaftUI-Loot/popup.lua`) redesigned. Today it is Blizzard's layout in SaftUI's theme: a small titled panel ("Items", a close cross) with one row per item (icon, name, the quality word at the right).
@@ -482,6 +495,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 **Shape of work:** small, after the owner has looked at it in game.
 
 **Open questions:** whether it reads well enough in game to leave it.
+
+*Update 2026-11-16:* the text pick (`textKeep` writing the dark text) is gone; a label never flips to dark, so the "dark text where the light does not read" option above no longer exists, and `ST.Contrast` is gone too, so the 4.5:1 option needs it back.
 
 ### 2026-11-16 — With the History list open, a Theme recolor restyles its twelve rows
 

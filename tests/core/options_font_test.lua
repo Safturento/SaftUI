@@ -302,7 +302,7 @@ test('the list: SaftUI fonts, the six in order each in its face, Typefaces, then
 	end)
 end)
 
-test('the picked entry is a selected row (a bar and the fade, its text Normal by contrast): the shared font, or the typeface by its face', function()
+test('the picked entry is a selected row (a bar and the fade, its text Normal): the shared font, or the typeface by its face', function()
 	in_look('thick', function()
 		local w = row_widget('header', 'heading')
 		local list = open(w)
@@ -1608,18 +1608,25 @@ test("the menu's frame is off any old anchor when its rows are drawn (M8: Draw's
 		stub.click(dots_of('header'))
 		local M = OW.GetMenuFrames()
 		OW:CloseMenu()
-		-- A stale anchor, as a menu left on a pooled widget would hold.
-		M.frame:SetPoint('TOPLEFT', dots_of('tip'), 'BOTTOMLEFT', 0, 0)
-		local at
+		-- A stale anchor, as Anchor leaves it on a pooled widget's dots (a TOPLEFT one would be replaced by
+		-- Draw's own provisional point, hiding a missing clear).
+		M.frame:SetPoint('TOPRIGHT', dots_of('tip'), 'BOTTOMRIGHT', 0, -4)
+		local points, strays
 		local body = M.body
 		local draw = body.Draw
 		body.Draw = function(self, ...)
-			at = M.frame:GetNumPoints()
+			-- only the screen's provisional point (Draw's, for the rows' measuring), never the old anchor
+			points, strays = M.frame:GetNumPoints(), 0
+			for i = 1, points do
+				local _, relative = M.frame:GetPoint(i)
+				if relative ~= UIParent then strays = strays + 1 end
+			end
 			return draw(self, ...)
 		end
 		stub.click(dots_of('chat'))
 		body.Draw = draw
-		eq(at, 0, 'no point on the frame when the rows are drawn')
+		eq(points, 1, 'one point on the frame when the rows are drawn')
+		eq(strays, 0, 'and it is the screen')
 		close_dots()
 	end)
 end)
