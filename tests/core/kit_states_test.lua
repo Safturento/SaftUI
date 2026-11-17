@@ -336,7 +336,7 @@ test('tabs: hover tints and the text goes Normal; the active one has the underli
 	close_all()
 end)
 
-test('a dropdown list: rows tint under the mouse; the picked row has the bar and fade and its text by the pick', function()
+test('a dropdown list: rows tint under the mouse; the picked row has the bar and fade and its text Normal', function()
 	theme('thick')
 	local w = widget('select', { values = { a = 'Alpha', b = 'Beta' }, value = 'a' })
 	click(w.frame)
@@ -344,7 +344,7 @@ test('a dropdown list: rows tint under the mouse; the picked row has the bar and
 	local picked, plain = list.rows[1], list.rows[2]
 	check(st:GetState(picked, 'selected'), 'the picked row is selected')
 	check(lit(look(picked).bar) and lit(look(picked).fill), 'a bar and the fade')
-	eq(rgb(picked.text:GetTextColor()), rgb(st:Color('text', 'normal'):GetRGB()), 'its text is Normal by contrast, no longer the accent')
+	eq(rgb(picked.text:GetTextColor()), rgb(st:Color('text', 'normal'):GetRGB()), 'its text is Normal, no longer the accent')
 	check(not st:GetState(plain, 'selected'), 'the other is not')
 	enter(plain)
 	check(lit(look(plain).layer), 'a row tints under the mouse')

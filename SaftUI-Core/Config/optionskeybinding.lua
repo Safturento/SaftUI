@@ -148,8 +148,8 @@ builders.keybinding = function(w)
 		PaintBinding(w)
 	end)
 	button:HookScript('OnHide', function() art.down = false end)
-	-- after the scripts above. The label's color is its own (Paint): the helper keeps it and turns it
-	-- dark only where the dark reads better (textKeep).
+	-- after the scripts above. The label's color is its own (Paint): the helper keeps it
+	-- under every state (textKeep).
 	HoverStates(button, { text = w.text, textKeep = true })
 end
 

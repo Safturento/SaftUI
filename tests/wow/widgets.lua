@@ -431,6 +431,17 @@ function ScriptRegion.SetParent(self, s, parent)
 		end
 		if s.groups.Frame then
 			s.level = parent and states[parent].level + 1 or 0
+			-- The game moves the frame's children back above it with it (SaftUI's range
+			-- widget saw its track drawn over by a child frame after a reparent), so each
+			-- descendant is one level above its parent. SetFrameLevel alone moves no child
+			-- here: whether the game's does is not established.
+			local function above(frame_state)
+				for _, child in ipairs(frame_state.children or {}) do
+					states[child].level = frame_state.level + 1
+					above(states[child])
+				end
+			end
+			above(s)
 		end
 	end)
 end

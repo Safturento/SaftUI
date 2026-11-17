@@ -73,7 +73,7 @@ local function ListFill()
 			end
 			row.text:SetText(entry.label)
 			-- A caption is Text > Muted, the rest normal. The picked entry is a selected row (a bar and
-			-- the fade, its text by contrast over them: the helper's); set every fill, which colors the
+			-- the fade, its text Text > Normal: the helper's); set every fill, which colors the
 			-- text the state says.
 			if entry.caption then
 				row.text:SetTextColor(st:Color('text', 'muted'):GetRGB())
@@ -295,7 +295,7 @@ local function BuildList()
 			if self.box then st:SetState(self.box, 'hover', false) end
 		end)
 		st:AddStates(row, 'row', {
-			text = row.text, body = BG, inset = 0, wire = false,
+			text = row.text, inset = 0, wire = false,
 			textRest = function(self)
 				local entry = self.entry
 				local color = st:Color('text', entry and entry.caption and 'muted' or 'normal')

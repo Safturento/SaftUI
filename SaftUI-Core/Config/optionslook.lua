@@ -174,14 +174,6 @@ local function WearsBlizzard(frame)
 end
 W.WearsBlizzard = WearsBlizzard
 
--- The fill under a box's text, for the text pick: its backdrop's color, else
--- the field's (a box under Blizzard has no backdrop).
-local function BodyOf(frame)
-	local r, g, b = frame:GetBackdropColor()
-	if type(r) ~= 'number' then r, g, b = FIELD[1], FIELD[2], FIELD[3] end
-	return r, g, b
-end
-
 --[[
 	A kit box (a field, a button, a face, a check box) as a state frame: hover
 	and pushed tint its body, selected and focus light its edge, disabled dims
@@ -190,22 +182,21 @@ end
 	built, and asking once dimmed the rule editor's fields for good), after which
 	the box shows neither hover nor pushed. extra, optional,
 	adds to the helper's options (shape, text, glyph, mark, solid...); a box's label is given
-	to the helper as text with textKeep (it keeps the color it has, and turns dark only where
-	the dark reads better: Hover at 60% on a pale Accent). The
+	to the helper as text with textKeep (it keeps the color it has under every state, never a dark one). The
 	Layer, Fill and Bar sit inside the box's own 1 unit edge. Call it after the
 	widget's own SetScript of OnEnter, OnLeave, OnMouseDown, OnMouseUp and OnHide
 	(a SetScript drops the helper's hooks until its next call).
 ]]
 function W.HoverStates(frame, extra)
-	local opts = { edge = 'backdrop', inset = 1, body = BodyOf, blizzard = WearsBlizzard }
-	-- The box's label (its .text, or an edit box's own text) takes the readable-text pick
-	-- and keeps the color it has otherwise (textKeep: its owner's, or the font object's).
+	local opts = { edge = 'backdrop', inset = 1, blizzard = WearsBlizzard }
+	-- The box's label (its .text, or an edit box's own text) keeps the color it has under every
+	-- state (textKeep: its owner's, or the font object's).
 	local label = frame.text
 	if type(label) ~= 'table' or type(label.SetTextColor) ~= 'function' then
 		label = frame.GetObjectType and frame:GetObjectType() == 'EditBox' and frame or nil
 	end
-	-- (a caller that gives its own text, as the rule editor's NOT box does, gets the helper's own pick
-	-- with its textRest, unless it also says textKeep)
+	-- (a caller that gives its own text, as the rule editor's NOT box does, gets Text > Normal under
+	-- a state and its textRest at rest, unless it also says textKeep)
 	if label and not (extra and extra.text) then opts.text, opts.textKeep = label, true end
 	local shape = 'box'
 	for key, value in pairs(extra or {}) do
