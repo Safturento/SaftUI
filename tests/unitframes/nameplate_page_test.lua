@@ -797,7 +797,7 @@ test('building and drawing both plate pages, with either box checked or a plate 
 					-- Rows are read on General only: the Auras tab's border rows read through AceDB, which
 					-- makes the empty friend and enemy tables on a read (as before this task).
 					for _, row in ipairs(tab == 'general' and rows(view) or {}) do
-						if row.type ~= 'description' then SaftUI.OptionsModel.Get(root, row) end
+						if row.type ~= 'description' and row.type ~= 'execute' then SaftUI.OptionsModel.Get(root, row) end
 						if row.type == 'item' then SaftUI.OptionsModel.MenuOffers(root, row) end
 					end
 				end

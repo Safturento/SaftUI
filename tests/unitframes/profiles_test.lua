@@ -43,7 +43,8 @@ function st.Config:Import(text)
 	return false
 end
 
-load_saftui('SaftUI-Unitframes/config/shared.lua') -- UF.CopyProfileData: New, Copy and Export use it
+load_saftui('SaftUI-Unitframes/config/shared.lua')
+load_saftui('SaftUI-Unitframes/config/sharedsetup.lua') -- UF.CopyProfileData: New, Copy and Export use it
 load_saftui('SaftUI-Unitframes/config/profiles.lua')
 load_saftui('SaftUI-Unitframes/config/groupoptions.lua')
 load_saftui('SaftUI-Unitframes/config/parts.lua')

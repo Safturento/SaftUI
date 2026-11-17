@@ -50,7 +50,7 @@ function UF:ConfigTarget(unit, element, key)
 	end
 	-- What it was made for, so All units' Position can ask each follower's own frame (sharedoptions.lua).
 	self.targetSpecs = self.targetSpecs or setmetatable({}, { __mode = 'k' })
-	self.targetSpecs[target] = { element = element, key = key }
+	self.targetSpecs[target] = { element = element, key = key, unit = unit }
 	return target
 end
 
@@ -347,11 +347,6 @@ function UF.SavedAt(unit, ...)
 	return st.Config.SavedAt('unitframes', 'profiles', ProfileName, unit, ...)
 end
 
--- A unit's name, as its page in /sui is named.
-local function UnitName(unit)
-	return UF.unit_strings[unit] or UF.group_strings[unit] or unit
-end
-
 ------------------------------------------------------------------ history
 
 -- Copy from as a step of edit mode's history (SaftUI-Core/EditMode/history.lua).
@@ -498,7 +493,7 @@ function UF:PositionCopyProblem(unit, from)
 	if not frame or not relative or relative == '' then return nil end
 	local resolved = st:ResolveFrame(relative)
 	if resolved ~= nil and resolved == frame then
-		return UnitName(from) .. ' is anchored to ' .. UnitName(unit) .. '.'
+		return UF.UnitPageName(from) .. ' is anchored to ' .. UF.UnitPageName(unit) .. '.'
 	end
 	local ok, why = st:ValidateAnchor(frame, relative)
 	if ok then return nil end
@@ -572,7 +567,7 @@ function UF:CopySettings(unit, from, keys)
 	if ownChange and #changes > 0 then changes[#changes + 1] = ownChange end
 	if not history or #changes == 0 then return nil, skipped end
 	return history:Push({
-		kind = 'bulk', label = 'Copied ' .. UnitName(from) .. ' to ' .. UnitName(unit), changes = changes,
+		kind = 'bulk', label = 'Copied ' .. UF.UnitPageName(from) .. ' to ' .. UF.UnitPageName(unit), changes = changes,
 	}), skipped
 end
 
@@ -649,7 +644,7 @@ function UF:OpenCopyTable(unit)
 						-- Only the units that have a page (arena has none)
 						if key ~= unit and not UF.IsPlateUnit(key)
 							and (UF.unit_strings[key] or UF.group_strings[key]) then
-							units[key] = UnitName(key)
+							units[key] = UF.UnitPageName(key)
 						end
 					end
 					return units
@@ -690,8 +685,8 @@ function UF:OpenCopyTable(unit)
 				type = 'execute',
 				disabled = function() return not copy.from end,
 				confirm = function()
-					return 'Are you sure you want to copy the ticked settings to ' .. UnitName(unit)
-						.. ' from ' .. UnitName(copy.from) .. '?'
+					return 'Are you sure you want to copy the ticked settings to ' .. UF.UnitPageName(unit)
+						.. ' from ' .. UF.UnitPageName(copy.from) .. '?'
 				end,
 				func = function()
 					local keys = {}
@@ -718,7 +713,7 @@ function UF:OpenCopyTable(unit)
 	}
 
 	st.OptionsWindow:OpenDialog(function()
-		return 'Copy to ' .. UnitName(unit) .. ' from' .. (copy.from and (' ' .. UnitName(copy.from)) or '')
+		return 'Copy to ' .. UF.UnitPageName(unit) .. ' from' .. (copy.from and (' ' .. UF.UnitPageName(copy.from)) or '')
 	end, options)
 end
 
@@ -819,12 +814,13 @@ function UF:GetConfigTable()
 			order = UNIT_ORDER[unit],
 			type = 'group',
 			inline = false,
-			-- Elements (General, Health, Name, Power, ...) as tabs, not a dropdown.
+			-- General and the elements drawn as tabs (Health, Power, Cast bar, auras; the texts and icons are
+			-- rows of General's Parts), not a dropdown.
 			childGroups = 'tab',
 			-- Copy from, the unit frame profile and Manage, on the picker's line
 			-- right of the Unit dropdown, so they're there from every tab (Core's
-			-- pickerControl field; config/profiles.lua). A nameplate page has
-			-- no Copy from (UF.SetUpPlatePage).
+			-- pickerControl field; config/profiles.lua). A nameplate page and All
+			-- units have no Copy from (UF.SetUpPlatePage; pickerArgs.copy above).
 			pickerControl = {
 				type = 'group',
 				name = '',

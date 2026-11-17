@@ -13,13 +13,10 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-16 — The /sui slider's knob shows no hover or held state in the game: cause not found](#2026-11-16--the-sui-sliders-knob-shows-no-hover-or-held-state-in-the-game-cause-not-found)
   - [2026-11-16 — Redesign the loot window](#2026-11-16--redesign-the-loot-window)
   - [2026-11-16 — The tracker's wrapped text, one line short: the cause is inferred, not seen in the game](#2026-11-16--the-trackers-wrapped-text-one-line-short-the-cause-is-inferred-not-seen-in-the-game)
-  - [2026-11-16 — All units' Position offers anchors some units lack (pre-flight ruling L7 was never built)](#2026-11-16--all-units-position-offers-anchors-some-units-lack-pre-flight-ruling-l7-was-never-built)
   - [2026-11-16 — Unit frames shared settings: dead code, stale comments, names with two meanings, and shared.lua at 1293 lines](#2026-11-16--unit-frames-shared-settings-dead-code-stale-comments-names-with-two-meanings-and-sharedlua-at-1293-lines)
   - [2026-11-16 — Search stops at 100 results, so a part's name cuts the last pages](#2026-11-16--search-stops-at-100-results-so-a-parts-name-cuts-the-last-pages)
   - [2026-11-16 — All units: small rules left open](#2026-11-16--all-units-small-rules-left-open)
   - [2026-11-16 — Nameplates and All units](#2026-11-16--nameplates-and-all-units)
-  - [2026-11-16 — The Sourced-from line on a plate page could link to the other page](#2026-11-16--the-sourced-from-line-on-a-plate-page-could-link-to-the-other-page)
-  - [2026-11-16 — The TO dropdown names parts by key](#2026-11-16--the-to-dropdown-names-parts-by-key)
   - [2026-11-16 — The states scan misses hand-rolled states it should catch](#2026-11-16--the-states-scan-misses-hand-rolled-states-it-should-catch)
   - [2026-11-16 — A Buttons color saved by an older build after a downgrade stays as an orphan key](#2026-11-16--a-buttons-color-saved-by-an-older-build-after-a-downgrade-stays-as-an-orphan-key)
   - [2026-11-16 — The tracker's whole pixels at other scales](#2026-11-16--the-trackers-whole-pixels-at-other-scales)
@@ -154,6 +151,9 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — /sui: no resize cursor on the grip and the bottom edge](#2026-11-11--sui-no-resize-cursor-on-the-grip-and-the-bottom-edge)
   - [2026-11-15 — The options kit's keybinding widget commits mouse buttons 6 to 31 raw](#2026-11-15--the-options-kits-keybinding-widget-commits-mouse-buttons-6-to-31-raw)
   - [2026-11-15 — An addon's direct RollOnLoot on a roll with no confirmation is not held](#2026-11-15--an-addons-direct-rollonloot-on-a-roll-with-no-confirmation-is-not-held)
+  - [2026-11-16 — The Sourced-from line on a plate page could link to the other page](#2026-11-16--the-sourced-from-line-on-a-plate-page-could-link-to-the-other-page)
+  - [2026-11-16 — The TO dropdown names parts by key](#2026-11-16--the-to-dropdown-names-parts-by-key)
+  - [2026-11-16 — All units' Position offers anchors some units lack (pre-flight ruling L7 was never built)](#2026-11-16--all-units-position-offers-anchors-some-units-lack-pre-flight-ruling-l7-was-never-built)
   - [2026-11-13 — Unit frames: shared settings across units, and small parts as menu items](#2026-11-13--unit-frames-shared-settings-across-units-and-small-parts-as-menu-items)
   - [2026-11-11 — Old gear's tabard and shirt exclusion never matched](#2026-11-11--old-gears-tabard-and-shirt-exclusion-never-matched)
   - [2026-11-15 — A bag window's least width ignores a Window titles change](#2026-11-15--a-bag-windows-least-width-ignores-a-window-titles-change)
@@ -342,16 +342,6 @@ It prints, for each shown row: the card's hover state, whether the Layer shows, 
 
 **Shape of work:** the owner pastes the `/run` line from the report on a wrong row; if the numbers show the string height is 3 lines and the layout used 2 at the same scale as the last draw, the cause is another one (then measure by `GetNumLines` and `GetLineHeight`).
 
-### 2026-11-16 — All units' Position offers anchors some units lack (pre-flight ruling L7 was never built)
-
-**What:** Ruling L7, adopted in the pre-flight, says that on All units a Position's TO list is the elements every member having the part has, and that validate refuses another element. It was never built: no brief carried it and no test pins it. On All units the TO list is every registered element, and `CheckFollowers` only checks for loops.
-
-**Why noticed:** The final review of the plan "unit frames: parts and sharing" (`.superpowers/sdd/2026-11-15-saftui-unitframes-parts-and-sharing/final-review.md`, Minor 1). What the player would see: All units > Name's Position offers Threat, Subtext, ClassPower, AdditionalPower and ReadyCheckIndicator. Picking Cast bar places TargetTarget's, FocusTarget's and PetTarget's names against their unit frame instead, silently (`UF:GetFrame` falls back), and their summaries say "Unit frame".
-
-**Anchors:** `SaftUI-Unitframes/config/position.lua:79-114` (with no unit frame for `'all'` the TO list is every registered element); `SaftUI-Unitframes/config/sharedoptions.lua:261-285` (`CheckFollowers`, loops only); `preflight.md` L7 in the plan's folder under `.superpowers/sdd/2026-11-15-saftui-unitframes-parts-and-sharing/`; `UF.SHARE_MEMBERS`.
-
-**Shape of work:** small. On `'all'`, build the TO list from `UF.SHARE_MEMBERS` that have the part (the intersection of their elements), and in `validate` refuse another element with "TargetTarget, FocusTarget and PetTarget have no Cast bar." A test for each.
-
 ### 2026-11-16 — Unit frames shared settings: dead code, stale comments, names with two meanings, and shared.lua at 1293 lines
 
 **What:** A cleanup of the shared settings code that the final review found and left: stale comments, code no source path calls, a duplicate, names that mean two things, and one file holding six concerns.
@@ -366,6 +356,10 @@ It prints, for each shown row: the card's hover state, whether the Layer shows, 
 - Size: `shared.lua` is 1293 lines holding six concerns (the entries, compare and copy, the API, the ticker, the conversion, backup, restore and state).
 
 **Shape of work:** remove or rename the above; move `shared.lua:918-1293` (backup, restore, states, `PrepareShared`, `EnableShared`) to `SaftUI-Unitframes/config/sharedsetup.lua`, and let the file allowlist in `tests/unitframes/shared_guard_test.lua` follow (and `config/load.xml`, and `.agents/architecture.md`).
+
+**Done 2026-11-17, left open:** `shared.lua`'s second half (backup, restore, the conversion, states, `PrepareShared`, `EnableShared`) is `config/sharedsetup.lua` (it reads the locals it needs through `UF.sharedLocals`); the three stale comments are fixed; `config.lua`'s `UnitName` is `UF.UnitPageName`; the local `PARTS` is `POSITION_FIELDS`; `UF.PartShare` is gone. Left for the owner:
+- `UF.PartFor` and `UF.UnitParts` (`config/parts.lua`) are called by tests only (`parts_test.lua`, `config_test.lua`: they are the oracle of what each page shows). Options: A, remove them and move the same two functions into `tests/unitframes/page_world.lua` as test helpers (about ten call sites change); B, keep them in `parts.lua` (now commented as test-only). Recommendation: B, since a test needs a list of parts per unit that does not go through the pages it checks, and the cost of keeping is two small functions.
+- `part` means a position field or `'toggle'`/`'color'` in `SetShared` and `WriteValue` (shared.lua), but a unit frame part in `entry.part`. The entry names no target. Options: A, rename the parameter to `field` in both (the signature in `.agents/architecture.md` follows; no caller changes, as it is positional); B, leave. Recommendation: A, a mechanical rename.
 
 ### 2026-11-16 — Search stops at 100 results, so a part's name cuts the last pages
 
@@ -386,7 +380,7 @@ It prints, for each shown row: the card's hover state, whether the Layer shows, 
 **What:** Four small rules of the All units wiring that the owner has not decided or that no test pins:
 - A slider dragged away from the value a unit follows and back to it ends the drag as the unit's own setting, because the first step away made it own. A single set to the value it already shows keeps it following.
 - A Custom color picked while its box is unticked keeps the unit following, and the unit's hidden color is replaced if All units later ticks its box (0.9 became 0.3 in the review). Ticking the unit's own box first keeps it.
-- The rule that an owner stays an owner when it sets All units' value (the spec says an owner counts as differing even when equal) has no test: a mutant that makes it follow survives.
+- ~~The rule that an owner stays an owner when it sets All units' value (the spec says an owner counts as differing even when equal) has no test: a mutant that makes it follow survives.~~ *Pinned 2026-11-17 (`tests/unitframes/shared_test.lua`, "an owner stays an owner when All units is set to the value it holds").*
 - From the second login AceDB's wildcard leaves empty tables under the saved `backup` (`debuffs`, `grouproleindicator`, `questindicator`, `raidroleindicator`, `raidtargetindicator`, `range_alpha`). No value, harmless; storing the backup out of the wildcard's reach would avoid it.
 - ~~The paused notice's wording, "a Reset there follows All units when sharing resumes": the paused Reset writes All units' value at once.~~ *Said truly now (the in-game checklist, section H).*
 
@@ -399,6 +393,11 @@ It prints, for each shown row: the card's hover state, whether the Layer shows, 
 **Shape of work:** One small round: a test for the owner rule, the wording of the notice, then the two behaviors if the owner wants them changed. The backup's empty tables are optional.
 
 **Open questions:** Whether a slider dragged back to the followed value should follow again; whether a Custom color should be kept when its box is later ticked on All units.
+
+**Left 2026-11-17 (the owner's calls, with a recommendation):**
+- *Slider dragged back to the followed value.* A: leave it (a drag that left the value made the unit own it; honest to what the owner did). B: decide at the end of a drag by comparing, through the kit's `applyOnRelease`, so a drag that ends on the followed value keeps following. Recommendation: B, one small change in the slider's apply path, and it matches what a click that sets the shown value already does.
+- *A Custom color's hidden value when All units later ticks its box.* A: leave (the unit's hidden color is replaced). B: keep the hidden color apart from its box so the unit's own pick survives. Recommendation: A unless the owner has lost a color this way in use; B needs a second stored value per color.
+- *The backup's empty tables after the second login.* Harmless; storing the backup out of AceDB's wildcard's reach is optional. Recommendation: leave.
 
 ### 2026-11-16 — Nameplates and All units
 
@@ -413,34 +412,6 @@ It prints, for each shown row: the card's hover state, whether the Layer shows, 
 **Shape of work:** A design pass first: which settings the plates share with the frames and what a plate's own default should read as. Then a members' list change, the plate pages' decorator (plate pages are built in `nameplates/options.lua`, not `GetUnitConfig`) and the conversion's tests over the plate profiles.
 
 **Open questions:** Whether the owner wants plates in All units at all; if yes, as one member or two.
-
-### 2026-11-16 — The Sourced-from line on a plate page could link to the other page
-
-**What:** With "Use friendly nameplates' settings" checked, the Enemy page shows a centred "Sourced from friendly nameplates" line (and the Friendly page the same for the enemy's). The line is text; it could be a link that opens the other plate page.
-
-**Why noticed:** An owner question from Task 5's review (`task-5-review.md`, "Left for the owner").
-
-**Anchors:** `SaftUI-Unitframes/nameplates/options.lua` (`sourced`, the line at order 2001); `SaftUI-Core/Config/optionsmodel.lua` (a way to reveal a path: `OW:Reveal`).
-
-**What's been considered:** The line's option is a description today; a link needs a row type or a `desc` with a click that selects the other pick through the window (`OW:Reveal` takes a path and opens the unit's page).
-
-**Shape of work:** Small: the line becomes a link row that reveals `Unitframes.friendlynameplate.general` (or the enemy's). A test that the click lands on the right pick.
-
-**Open questions:** Whether a link is wanted, or the line is enough.
-
-### 2026-11-16 — The TO dropdown names parts by key
-
-**What:** A Position block's TO dropdown on a unit frame lists the unit's parts by their element key ("ReadyCheckIndicator", "RaidTargetIndicator", "AdditionalPower"), not by the names the pages use ("Ready check", "Raid target", "Additional power"). The dropdown is now 136 wide (`selectWidth`), 4 less than it was, so a long key may be cut.
-
-**Why noticed:** An owner question from Task 5's review, with the in-game check "is AdditionalPower cut in the TO dropdown" (checklist section I, step 14).
-
-**Anchors:** `SaftUI-Core/Config/optionsposition.lua` (`toWidth`, `selectWidth`); `SaftUI-Unitframes/config/position.lua` (the anchor choices); `UF.ELEMENT_NAMES` in `SaftUI-Unitframes/config/parts.lua` (the page names); `tests/unitframes/parts_test.lua` (N1: select 136, name box the same, gap 12).
-
-**What's been considered:** Naming the list by `UF.ELEMENT_NAMES` while keeping the saved key (what the part summaries and tooltips already do, "Right of Cast bar: 2, 3"); the name box for a global frame is typed and unchanged.
-
-**Shape of work:** Small: the anchor list's display names, with the keys saved as before, plus a test that every key has a name.
-
-**Open questions:** Whether the owner saw a name cut in game; if not, the keys can stay until someone asks.
 
 ### 2026-11-16 — The states scan misses hand-rolled states it should catch
 
@@ -2883,6 +2854,52 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** whether addons that roll for you (auto-roll addons) are common enough among the owner's setups to matter; a plain call cancelling inside is inferred from the debug order, not read from C code: confirm with the next real roll's debug lines first.
 
 **Resolved 2026-11-17:** `OnBarHide` now keeps a snapshot when a bar hides with no choice known (the item it showed, its stack index, the timer read at the hide) until the next frame, and the `RollOnLoot` post-hook holds the roll from it when it names that roll, with the choice it names; a bar that ended on its own is never claimed. `LT:HoldRoll` takes the saved `shown` and `index`, and puts the held bar in the roll's place only if the stack still has the old roll's entry there. Still inferred, not read from C code: that the client cancels inside a direct call as it does inside a click's (see the in-game check in the report). Test: `tests/loot/roll_held_test.lua`.
+### 2026-11-16 — The Sourced-from line on a plate page could link to the other page
+
+**What:** With "Use friendly nameplates' settings" checked, the Enemy page shows a centred "Sourced from friendly nameplates" line (and the Friendly page the same for the enemy's). The line is text; it could be a link that opens the other plate page.
+
+**Why noticed:** An owner question from Task 5's review (`task-5-review.md`, "Left for the owner").
+
+**Anchors:** `SaftUI-Unitframes/nameplates/options.lua` (`sourced`, the line at order 2001); `SaftUI-Core/Config/optionsmodel.lua` (a way to reveal a path: `OW:Reveal`).
+
+**What's been considered:** The line's option is a description today; a link needs a row type or a `desc` with a click that selects the other pick through the window (`OW:Reveal` takes a path and opens the unit's page).
+
+**Shape of work:** Small: the line becomes a link row that reveals `Unitframes.friendlynameplate.general` (or the enemy's). A test that the click lands on the right pick.
+
+**Open questions:** Whether a link is wanted, or the line is enough.
+
+**Resolved 2026-11-17:** the line is an `execute` button (same key `sourced`, text, order and hidden rule) whose click calls `OW:Reveal` on the other plate page's own box (Enemy to `friendlynameplate.general.use_enemy`, Friendly to `nameplate.general.use_friendly`). Pinned in `tests/unitframes/friendly_page_test.lua`. It is now a button in General's toggles' panel, no longer a centred fill line: how it looks is the owner's check.
+
+
+### 2026-11-16 — The TO dropdown names parts by key
+
+**What:** A Position block's TO dropdown on a unit frame lists the unit's parts by their element key ("ReadyCheckIndicator", "RaidTargetIndicator", "AdditionalPower"), not by the names the pages use ("Ready check", "Raid target", "Additional power"). The dropdown is now 136 wide (`selectWidth`), 4 less than it was, so a long key may be cut.
+
+**Why noticed:** An owner question from Task 5's review, with the in-game check "is AdditionalPower cut in the TO dropdown" (checklist section I, step 14).
+
+**Anchors:** `SaftUI-Core/Config/optionsposition.lua` (`toWidth`, `selectWidth`); `SaftUI-Unitframes/config/position.lua` (the anchor choices); `UF.ELEMENT_NAMES` in `SaftUI-Unitframes/config/parts.lua` (the page names); `tests/unitframes/parts_test.lua` (N1: select 136, name box the same, gap 12).
+
+**What's been considered:** Naming the list by `UF.ELEMENT_NAMES` while keeping the saved key (what the part summaries and tooltips already do, "Right of Cast bar: 2, 3"); the name box for a global frame is typed and unchanged.
+
+**Shape of work:** Small: the anchor list's display names, with the keys saved as before, plus a test that every key has a name.
+
+**Open questions:** Whether the owner saw a name cut in game; if not, the keys can stay until someone asks.
+
+**Resolved 2026-11-17:** the dropdown lists an element by `UF.ELEMENT_NAMES` (an element with no name there shows its key) and sorts by the name shown; the saved key is unchanged. Pinned in `tests/unitframes/uf_element_position_test.lua`. The in-game check that "Additional power" fits the 136-wide dropdown is the owner's.
+
+
+### 2026-11-16 — All units' Position offers anchors some units lack (pre-flight ruling L7 was never built)
+
+**What:** Ruling L7, adopted in the pre-flight, says that on All units a Position's TO list is the elements every member having the part has, and that validate refuses another element. It was never built: no brief carried it and no test pins it. On All units the TO list is every registered element, and `CheckFollowers` only checks for loops.
+
+**Why noticed:** The final review of the plan "unit frames: parts and sharing" (`.superpowers/sdd/2026-11-15-saftui-unitframes-parts-and-sharing/final-review.md`, Minor 1). What the player would see: All units > Name's Position offers Threat, Subtext, ClassPower, AdditionalPower and ReadyCheckIndicator. Picking Cast bar places TargetTarget's, FocusTarget's and PetTarget's names against their unit frame instead, silently (`UF:GetFrame` falls back), and their summaries say "Unit frame".
+
+**Anchors:** `SaftUI-Unitframes/config/position.lua:79-114` (with no unit frame for `'all'` the TO list is every registered element); `SaftUI-Unitframes/config/sharedoptions.lua:261-285` (`CheckFollowers`, loops only); `preflight.md` L7 in the plan's folder under `.superpowers/sdd/2026-11-15-saftui-unitframes-parts-and-sharing/`; `UF.SHARE_MEMBERS`.
+
+**Shape of work:** small. On `'all'`, build the TO list from `UF.SHARE_MEMBERS` that have the part (the intersection of their elements), and in `validate` refuse another element with "TargetTarget, FocusTarget and PetTarget have no Cast bar." A test for each.
+
+**Resolved 2026-11-17:** built (ruling L7): on All units a Position's TO list is the elements every member having the part has (`UF.MembersWith` in `config/sharedoptions.lua`, read by `config/position.lua`), and validate refuses another element naming the units that lack it. Pinned in `tests/unitframes/shared_page_test.lua`.
+
 
 ### 2026-11-13 — Unit frames: shared settings across units, and small parts as menu items
 

@@ -1,4 +1,4 @@
--- SaftUI-Unitframes/config/shared.lua: the settings the unit frames share (All units): the list of
+-- SaftUI-Unitframes/config/shared.lua and sharedsetup.lua: the settings the unit frames share (All units): the list of
 -- them against the member pages, who has and who owns a setting, the conversion and its numbers on a
 -- fresh profile, every write of the API, the sync, the once-a-frame update, a conversion that fails,
 -- the backup and its restore, an imported profile that has no All units, and that every call is table
@@ -228,6 +228,20 @@ test('SetShared on All units writes every follower and skips an owner', function
 	-- A member that lacks the setting is never written.
 	same_list(UF:SetShared('targettarget', 'castbar.enable', true), {})
 	eq(UF:IsOwn('targettarget', 'castbar.enable'), false)
+	check(everything_follows())
+end)
+
+test('an owner stays an owner when All units is set to the value it holds', function()
+	world()
+	UF:ConvertShared(P)
+	UF:SetShared('target', 'name.font', 'normal')
+	eq(UF:IsOwn('target', 'name.font'), true, 'target owns it')
+	-- All units takes the very value target shows: target counts as differing all the same.
+	UF:SetShared('all', 'name.font', 'normal')
+	eq(UF:IsOwn('target', 'name.font'), true, 'still the owner after All units is set to its value')
+	same_list(UF:OwnersOf('name.font'), { 'target' }, 'and listed as an owner')
+	UF:SetShared('all', 'name.font', 'pixel')
+	eq(P.target.name.font, 'normal', 'so a later change of All units does not reach it')
 	check(everything_follows())
 end)
 
@@ -696,8 +710,10 @@ test('the backup is small: the shared values, not the profile', function()
 end)
 
 test('the interface is table writes: no function of the file touches a frame but the ticker', function()
-	local source = read_saftui_source('SaftUI-Unitframes/config/shared.lua')
-	for _, word in ipairs({ 'SetPoint', 'ClearAllPoints', 'SetSize', 'SetWidth', 'SetHeight', 'SetAttribute', 'SetParent', 'RegisterEvent' }) do
-		check(not source:find(word, 1, true), 'shared.lua never calls ' .. word)
+	for _, path in ipairs({ 'SaftUI-Unitframes/config/shared.lua', 'SaftUI-Unitframes/config/sharedsetup.lua' }) do
+		local source = read_saftui_source(path)
+		for _, word in ipairs({ 'SetPoint', 'ClearAllPoints', 'SetSize', 'SetWidth', 'SetHeight', 'SetAttribute', 'SetParent', 'RegisterEvent' }) do
+			check(not source:find(word, 1, true), path .. ' never calls ' .. word)
+		end
 	end
 end)

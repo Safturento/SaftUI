@@ -44,7 +44,8 @@ UF.units, UF.groups, UF.holders, UF.elements = { player = CreateFrame('Frame', n
 UF.unit_strings, UF.group_strings = { player = 'Player' }, { party = 'Party' }
 function UF:GetMoverFrame(unit) return self.holders[unit] or self.units[unit] end
 
-load_saftui('SaftUI-Unitframes/config/shared.lua') -- UF.CopyProfileData: New, Copy and Export use it
+load_saftui('SaftUI-Unitframes/config/shared.lua')
+load_saftui('SaftUI-Unitframes/config/sharedsetup.lua') -- UF.CopyProfileData: New, Copy and Export use it
 load_saftui('SaftUI-Unitframes/config/profiles.lua')
 load_saftui('SaftUI-Unitframes/config/groupoptions.lua')
 load_saftui('SaftUI-Unitframes/config/parts.lua')

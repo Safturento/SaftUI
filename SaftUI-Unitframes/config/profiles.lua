@@ -8,7 +8,7 @@ local UF = st:GetModule('Unitframes')
 	Unit dropdown's line (UF.GenerateProfileControl: UF:GetConfigTable in
 	config.lua and UF.SetUpPlatePage in nameplates/options.lua put its two
 	options in each unit's pickerControl, after Copy from, so the line reads
-	Unit, Copy from, Profile, Manage; the nameplate pages have no Copy from),
+	Unit, Copy from, Profile, Manage; the nameplate pages and All units have no Copy from),
 	a dropdown that picks one and Manage, which opens
 	the Unit frame profiles dialog (UF:OpenProfileDialog, over
 	UF.GenerateProfileConfigGroup): the same dropdown, and the buttons that

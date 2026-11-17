@@ -109,6 +109,17 @@ function UF.SharesElement(element)
 	return false
 end
 
+-- The members whose frames can have the element (its ValidUnit passes), in the members' order: who a
+-- Position on All units places a part of (position.lua).
+function UF.MembersWith(element)
+	local registered = UF.elements and UF.elements[element]
+	local list = {}
+	for _, unit in ipairs(UF.SHARE_MEMBERS) do
+		if registered and (not registered.ValidUnit or registered.ValidUnit(unit)) then list[#list + 1] = unit end
+	end
+	return list
+end
+
 ------------------------------------------------------------------ the shares
 
 -- After a share action: the units whose stored value changed are updated once on the next frame.
@@ -176,13 +187,6 @@ function UF.SettingShare(unit, entry, option)
 		share.targets = Targets(entry, unit)
 	end
 	return share
-end
-
--- A part row's share: its Enable's, which is the setting its check box is. nil for a part with no Enable.
-function UF.PartShare(unit, part)
-	local key = part.config .. (part.sub and ('.' .. part.sub) or '') .. '.enable'
-	local entry = UF.SHARED_BY_KEY[key]
-	return entry and UF.SettingShare(unit, entry) or nil
 end
 
 ------------------------------------------------------------------ decorating a page

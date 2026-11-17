@@ -384,6 +384,42 @@ test("an All units Position that would put a follower's part on itself through t
 	eq(OM.Validate(mroot, row, 'frame', 'SaftUIPageTestHung'), true, 'an owner is skipped')
 end)
 
+test("an All units Position offers only the elements every unit with the part has, and refuses another", function()
+	convert(false)
+	local root = tree()
+	local mroot, row = menu_row(root, 'all', 'name', 'position')
+	local listed = {}
+	for _, entry in ipairs(OM.Values(mroot, row)) do listed[entry.key] = entry.name end
+	check(listed.Health ~= nil, 'Health: every member has it')
+	check(listed.Castbar == nil, 'no Cast bar: Target of target, Focus target and Pet target have none')
+	check(listed.AdditionalPower == nil, 'no Additional power: the player only')
+	check(listed.ClassPower == nil, 'no Class power: the player only')
+	check(listed.Name == nil, 'the part is not offered to itself')
+	check(listed.__unitframe ~= nil and listed.__global ~= nil, 'Unit frame and Global frame stay')
+	-- What the list leaves out is refused, naming the units that lack it.
+	local ok, why = OM.Validate(mroot, row, 'relative_to', 'Castbar')
+	check(ok ~= true, 'Cast bar refused')
+	eq(why, UF.UnitPageName('targettarget') .. ', ' .. UF.UnitPageName('focustarget') .. ' and ' .. UF.UnitPageName('pettarget') .. ' have no Cast bar.', 'naming the units')
+	eq(OM.Validate(mroot, row, 'relative_to', 'Health'), true, 'Health is allowed')
+	eq(OM.Validate(mroot, row, 'relative_to', '__global'), true, 'a global frame is allowed')
+end)
+
+test("an All units Position already on an element some units lack keeps it in the list, marked, and does not offer it again", function()
+	convert(false)
+	UF:GetProfileConfig().all.name.position.element = 'Castbar'
+	local root = tree()
+	local mroot, row = menu_row(root, 'all', 'name', 'position')
+	eq(row.option.get(nil, 'relative_to'), 'Castbar', 'the box reads the saved element')
+	local listed = {}
+	for _, entry in ipairs(OM.Values(mroot, row)) do listed[entry.key] = entry.name end
+	eq(listed.Castbar, 'Cast bar (not every unit)', 'kept and marked, so the box is not blank')
+	check(OM.Validate(mroot, row, 'relative_to', 'Castbar') ~= true, 'but a new pick of it is still refused')
+	UF:GetProfileConfig().all.name.position.element = 'Health'
+	listed = {}
+	for _, entry in ipairs(OM.Values(mroot, row)) do listed[entry.key] = entry.name end
+	eq(listed.Castbar, nil, 'once the saved element is another, it is gone')
+end)
+
 ------------------------------------------------------------------ the invariant, and where a leaf is wrapped
 
 -- A value for the row different from what it holds, by its type.
