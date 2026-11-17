@@ -672,6 +672,12 @@ function ThemeArt.Color(frame, look, kind)
 	for _, set in ipairs({ art.pieces, art.over }) do
 		for _, piece in pairs(set) do piece:SetVertexColor(1, 1, 1, 1) end
 	end
+	-- The box shows plain bronze again (SetBorder desaturated it for a colour).
+	-- Only when it is: a recolor makes no call it didn't (theme_scale_test m1).
+	if art.desaturated then
+		art.desaturated = false
+		for _, piece in pairs(art.pieces) do piece:SetDesaturated(false) end
+	end
 	for _, key in ipairs(BEHIND) do
 		if art.pieces[key] then art.pieces[key]:SetAlpha(look.alpha) end
 	end
@@ -680,7 +686,8 @@ function ThemeArt.Color(frame, look, kind)
 end
 
 -- Puts a frame's own border color on a Blizzard look drawn on frame as kind
--- (st:SetBorderColor): a border's or a cut's pieces are tinted; a button's or
+-- (st:SetBorderColor): a border's or a cut's pieces are tinted (the box's too,
+-- desaturated, so the colour shows as itself); a button's or
 -- an aura's own-color piece (its equipped or quality border, white art) is
 -- shown in the color, over the icon's edge, on host as the ring is (Paint); a
 -- small frame's line takes it. No color puts the theme's back: white pieces,
@@ -707,7 +714,13 @@ function ThemeArt.SetBorder(frame, look, kind, host, r, g, b, a)
 	local style = blizzard.art and ThemeArt.ART[blizzard.art]
 	if not style then return end
 	if blizzard.art == 'box' or style.TopLeftCorner or IsCut(style) then
+		-- The box's bronze would tint muddy, so a colour goes on it grey: the
+		-- colour shows as itself. No colour is the bronze.
+		local grey = blizzard.art == 'box' and r ~= nil
+		local change = blizzard.art == 'box' and (art.desaturated or false) ~= grey
+		if change then art.desaturated = grey end
 		for _, piece in pairs(art.pieces) do
+			if change then piece:SetDesaturated(grey) end
 			if r then piece:SetVertexColor(r, g, b, a) else piece:SetVertexColor(1, 1, 1, 1) end
 		end
 	elseif style.border then

@@ -317,3 +317,63 @@ test('nothing moves: the insets and CalculateSpacing are what they were', functi
 		end
 	end
 end)
+
+-- A piece's vertex colour as 'r,g,b,a', to 2 places.
+local function vertex(piece)
+	local r, g, b, a = piece:GetVertexColor()
+	return ('%.2f,%.2f,%.2f,%.2f'):format(r, g, b, a)
+end
+
+-- Every piece of f's box: its key, desaturated, vertex colour.
+local function each_piece(st, f, fn)
+	local n = 0
+	for key, p in pairs(st.ThemeArt.Get(f.backdrop).pieces) do
+		fn(key, p)
+		n = n + 1
+	end
+	eq(n, 8, 'eight pieces')
+end
+
+test('an own colour shows on a desaturated box', function()
+	for _, client in ipairs(CLIENTS) do
+		for _, kind in ipairs(BOX_KINDS) do
+			local st = blizzard(client)
+			local f = frame(st)
+			st:SetBackdrop(f, 'theme', 'theme', kind)
+			st:SetBorderColor(f.backdrop, 0.64, 0.21, 0.93)
+			each_piece(st, f, function(key, p)
+				local where = client .. ' ' .. kind .. ' ' .. key
+				eq(p:IsDesaturated(), true, where .. ': desaturated')
+				eq(vertex(p), '0.64,0.21,0.93,1.00', where .. ': the colour')
+			end)
+		end
+	end
+end)
+
+test('clearing the own colour gives plain bronze back', function()
+	for _, client in ipairs(CLIENTS) do
+		local st = blizzard(client)
+		local f = frame(st)
+		st:SetBackdrop(f, 'theme', 'theme', 'panel')
+		st:SetBorderColor(f.backdrop, 0.64, 0.21, 0.93)
+		st:SetBorderColor(f.backdrop)
+		each_piece(st, f, function(key, p)
+			eq(p:IsDesaturated(), false, client .. ' ' .. key .. ': not desaturated')
+			eq(vertex(p), '1.00,1.00,1.00,1.00', client .. ' ' .. key .. ': white')
+		end)
+	end
+end)
+
+test('a recolour pass leaves the box plain', function()
+	for _, client in ipairs(CLIENTS) do
+		local st = blizzard(client)
+		local f = frame(st)
+		st:SetBackdrop(f, 'theme', 'theme', 'panel')
+		st:SetBorderColor(f.backdrop, 0.64, 0.21, 0.93)
+		st:RecolorThemed()
+		each_piece(st, f, function(key, p)
+			eq(p:IsDesaturated(), false, client .. ' ' .. key .. ': not desaturated')
+			eq(vertex(p), '1.00,1.00,1.00,1.00', client .. ' ' .. key .. ': white')
+		end)
+	end
+end)
