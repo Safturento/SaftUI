@@ -328,6 +328,17 @@ function CHT:UpdateChatFrameDisplay(frame)
 	end
 end
 
+-- Post-hook on Blizzard's FCF_UpdateScrollbarAnchors, which clears the scroll bar's points
+-- and puts it on the window's own edge at every dock, lock and uninteractable change
+-- (FCF_SetLocked, FCF_DockFrame, FCF_UpdateResizeButton): a window SkinChatFrame skinned
+-- gets SaftUI's anchors back (UpdateChatFrameDisplay, which also re-places the box). A
+-- temporary window, which SaftUI never skinned, keeps Blizzard's.
+function CHT:FCF_UpdateScrollbarAnchors(frame)
+	if frame and pieces[frame] then
+		self:UpdateChatFrameDisplay(frame)
+	end
+end
+
 -- Applies the profile's font, theme, padding and edit box height to a chat
 -- frame SkinChatFrame already skinned.
 function CHT:ApplyChatFrameConfig(frame)
@@ -669,4 +680,5 @@ function CHT:OnEnable()
 	-- self:SecureHook('ChatEdit_UpdateHeader')
 	self:SecureHook('FloatingChatFrame_UpdateBackgroundAnchors', 'UpdateChatFrameDisplay')
 	self:SecureHook('FCFDock_UpdateTabs')
+	self:SecureHook('FCF_UpdateScrollbarAnchors')
 end

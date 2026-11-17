@@ -383,6 +383,41 @@ test("under None the edit box and scroll bar anchor to the chat window, and a th
 	profile.chat.theme = 'theme'
 end)
 
+-- Blizzard's FCF_UpdateScrollbarAnchors (FloatingChatFrame.lua, both clients) clears the bar's
+-- points and puts it on the window's own edge; FCF_SetLocked (via FCF_UpdateResizeButton),
+-- FCF_DockFrame and the uninteractable toggle reach it, so SaftUI's anchor has to go back after.
+local function blizzard_scrollbar_anchors(frame)
+	frame.ScrollBar:ClearAllPoints()
+	frame.ScrollBar:SetPoint('TOPLEFT', frame, 'TOPRIGHT', 0, 0)
+	frame.ScrollBar:SetPoint('BOTTOMLEFT', frame, 'BOTTOMRIGHT', 0, 0)
+end
+
+test("a dock or lock change that Blizzard re-anchors the scroll bar for leaves it on SaftUI's backdrop again", function()
+	local frame = CW.build(21)
+	CHT:SkinChatFrame(frame)
+	local backdrop = st:DrawnFrame(frame)
+	local _, relative, relPoint, x = frame.ScrollBar:GetPoint(1)
+	eq(relative, backdrop, 'skinned: on the backdrop')
+	eq(x, 5, 'with the gap of 5')
+
+	blizzard_scrollbar_anchors(frame)
+	eq(select(2, frame.ScrollBar:GetPoint(1)), frame, "Blizzard's own anchor, on the window")
+	CHT:FCF_UpdateScrollbarAnchors(frame) -- the post-hook, after Blizzard's call
+	for i = 1, 2 do
+		local _, rel, _, dx = frame.ScrollBar:GetPoint(i)
+		eq(rel, backdrop, 'the bar is back on the backdrop, anchor ' .. i)
+		eq(dx, 5, 'with the gap of 5, anchor ' .. i)
+	end
+	eq(frame.ScrollBar:GetNumPoints(), 2, 'two anchors, none left over')
+end)
+
+test("the scroll bar hook leaves a window SaftUI never skinned alone", function()
+	local frame = CW.build(22) -- built, not skinned: a temporary window
+	blizzard_scrollbar_anchors(frame)
+	CHT:FCF_UpdateScrollbarAnchors(frame)
+	eq(select(2, frame.ScrollBar:GetPoint(1)), frame, "Blizzard's anchor stays")
+end)
+
 -- The dock's overflow button (the tabs that don't fit) is part of the tab row: it fades with
 -- the tabs (FCF_FadeInChatFrame and FCF_FadeOutChatFrame fade it through its SetAlpha to
 -- the selected tab's alphas), so Fade tabs off holds it at 1 too, and on gives it back.

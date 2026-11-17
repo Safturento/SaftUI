@@ -66,7 +66,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-15 — Tracker: an Edit Mode anchor to a frame other than UIParent gives the default spot](#2026-11-15--tracker-an-edit-mode-anchor-to-a-frame-other-than-uiparent-gives-the-default-spot)
   - [2026-11-15 — The bag bar and Hekili: what still writes onto Blizzard's frames](#2026-11-15--the-bag-bar-and-hekili-what-still-writes-onto-blizzards-frames)
   - [2026-11-15 — Temporary chat windows (whispers, pet battle log) are never skinned](#2026-11-15--temporary-chat-windows-whispers-pet-battle-log-are-never-skinned)
-  - [2026-11-15 — Chat's scroll bar loses SaftUI's anchor at every dock or lock change](#2026-11-15--chats-scroll-bar-loses-saftuis-anchor-at-every-dock-or-lock-change)
   - [2026-11-15 — Chat's dock hook leaves Blizzard's tab layout after a resize, an overflow-list pick or an undock](#2026-11-15--chats-dock-hook-leaves-blizzards-tab-layout-after-a-resize-an-overflow-list-pick-or-an-undock)
   - [2026-11-15 — A font Size drag restyles too much on the action bars, unit frames and tracker](#2026-11-15--a-font-size-drag-restyles-too-much-on-the-action-bars-unit-frames-and-tracker)
   - [2026-11-15 — Hide full with a secret health: lift the limit with a Step curve into the text's alpha](#2026-11-15--hide-full-with-a-secret-health-lift-the-limit-with-a-step-curve-into-the-texts-alpha)
@@ -153,6 +152,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-15 — Chat's scroll bar loses SaftUI's anchor at every dock or lock change](#2026-11-15--chats-scroll-bar-loses-saftuis-anchor-at-every-dock-or-lock-change)
   - [2026-11-15 — With IM chat style the tab row is always hidden](#2026-11-15--with-im-chat-style-the-tab-row-is-always-hidden)
   - [2026-11-13 — Unit frames: shared settings across units, and small parts as menu items](#2026-11-13--unit-frames-shared-settings-across-units-and-small-parts-as-menu-items)
   - [2026-11-11 — Old gear's tabard and shirt exclusion never matched](#2026-11-11--old-gears-tabard-and-shirt-exclusion-never-matched)
@@ -1084,18 +1084,6 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 **Review of fu-chat (2026-11-15):** `FCF_OpenTemporaryWindow` reuses closed temporary windows (it picks one that is "not inUse and not isDocked"), so a post-hook skin must be idempotent (`SkinChatFrame` already guards its hooks with `hooked`). `FCF_CopyChatSettings` gives them ChatFrame1's Blizzard-saved size and the template's face, and docked, their edit boxes sit under the chat while ChatFrame1's sits above it.
 
 **Open questions:** Should a whisper window look like SaftUI's chat or like Blizzard's?
-
-### 2026-11-15 — Chat's scroll bar loses SaftUI's anchor at every dock or lock change
-
-**What:** SaftUI anchors each skinned chat window's scroll bar to the backdrop (or the window under None) in `CHT:UpdateChatFrameDisplay`. Blizzard's `FCF_UpdateScrollbarAnchors` puts the bar back on its own anchors at every dock, lock or uninteractable change (it is reached from `FCF_DockFrame` and `FCF_SetLocked`), possibly at login too. ChatFrame3 and up then stay on Blizzard's anchors until the next theme or profile change, and so does ChatFrame1 if `UPDATE_CHAT_WINDOWS` arrives after `OnEnable`.
-
-**Why noticed:** The review of the fu-chat package (2026-11-15). Older than that package: the anchor always came only from `SkinChatFrame`.
-
-**Anchors:** `SaftUI-Chat/chatframe.lua` (`CHT:UpdateChatFrameDisplay`, the `pieces` table); Blizzard's `FloatingChatFrame.lua` `FCF_UpdateScrollbarAnchors`, `FCF_DockFrame`, `FCF_SetLocked`; `tests/chat/fixtures/chat_window.lua`.
-
-**Shape of work:** Small: a `hooksecurefunc('FCF_UpdateScrollbarAnchors', ...)` that re-anchors a skinned window (`pieces[frame]`), testable with the fixture.
-
-**Open questions:** In game, after a `/reload`, scroll up in a docked window other than General: is the bar 5 outside SaftUI's border, or on the window's edge inside it?
 
 ### 2026-11-15 — Chat's dock hook leaves Blizzard's tab layout after a resize, an overflow-list pick or an undock
 
@@ -2851,6 +2839,20 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-15 — Chat's scroll bar loses SaftUI's anchor at every dock or lock change
+
+**What:** SaftUI anchors each skinned chat window's scroll bar to the backdrop (or the window under None) in `CHT:UpdateChatFrameDisplay`. Blizzard's `FCF_UpdateScrollbarAnchors` puts the bar back on its own anchors at every dock, lock or uninteractable change (it is reached from `FCF_DockFrame` and `FCF_SetLocked`), possibly at login too. ChatFrame3 and up then stay on Blizzard's anchors until the next theme or profile change, and so does ChatFrame1 if `UPDATE_CHAT_WINDOWS` arrives after `OnEnable`.
+
+**Why noticed:** The review of the fu-chat package (2026-11-15). Older than that package: the anchor always came only from `SkinChatFrame`.
+
+**Anchors:** `SaftUI-Chat/chatframe.lua` (`CHT:UpdateChatFrameDisplay`, the `pieces` table); Blizzard's `FloatingChatFrame.lua` `FCF_UpdateScrollbarAnchors`, `FCF_DockFrame`, `FCF_SetLocked`; `tests/chat/fixtures/chat_window.lua`.
+
+**Shape of work:** Small: a `hooksecurefunc('FCF_UpdateScrollbarAnchors', ...)` that re-anchors a skinned window (`pieces[frame]`), testable with the fixture.
+
+**Open questions:** In game, after a `/reload`, scroll up in a docked window other than General: is the bar 5 outside SaftUI's border, or on the window's edge inside it?
+
+**Resolved 2026-11-17:** `CHT:FCF_UpdateScrollbarAnchors` (`SaftUI-Chat/chatframe.lua`), a `SecureHook` on Blizzard's `FCF_UpdateScrollbarAnchors` (`FloatingChatFrame.lua`, both clients), puts a skinned window's scroll bar back on SaftUI's backdrop (`UpdateChatFrameDisplay`) after every dock, lock or uninteractable change; a window never skinned keeps Blizzard's anchors (`tests/chat/theme_test.lua`). Not yet seen in game: scroll up in a docked window other than General after a `/reload`: the bar should be 5 outside SaftUI's border.
 
 ### 2026-11-15 — With IM chat style the tab row is always hidden
 
