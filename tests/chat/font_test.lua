@@ -333,6 +333,15 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 	end)
 end
 
+test('CHT:OnEnable hooks Blizzard\'s scroll bar anchors and dock layout', function()
+	local L = load_test_file('lib/source_lex.lua')
+	local code = select(1, L.Lex(read_saftui_source('SaftUI-Chat/chatframe.lua')))
+	local body = code:match('function CHT:OnEnable%(%).-\nend')
+	check(body ~= nil, 'found OnEnable')
+	check(body:find("self:SecureHook('FCF_UpdateScrollbarAnchors')", 1, true), 'the scroll bar post-hook is registered')
+	check(body:find("self:SecureHook('FCFDock_UpdateTabs')", 1, true), 'the dock post-hook is registered')
+end)
+
 -- CHT:OnEnable reads chat's profile after the conversion has run, before any window
 -- is skinned (a stand-in for running OnEnable, which needs Blizzard's whole chat):
 -- ConvertFonts follows st:BindModuleConfig and comes before SkinChatFrame.

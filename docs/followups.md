@@ -65,10 +65,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-15 — Bag search box: the magnifier and the clear button](#2026-11-15--bag-search-box-the-magnifier-and-the-clear-button)
   - [2026-11-15 — Tracker: an Edit Mode anchor to a frame other than UIParent gives the default spot](#2026-11-15--tracker-an-edit-mode-anchor-to-a-frame-other-than-uiparent-gives-the-default-spot)
   - [2026-11-15 — The bag bar and Hekili: what still writes onto Blizzard's frames](#2026-11-15--the-bag-bar-and-hekili-what-still-writes-onto-blizzards-frames)
-  - [2026-11-15 — With IM chat style the tab row is always hidden](#2026-11-15--with-im-chat-style-the-tab-row-is-always-hidden)
   - [2026-11-15 — Temporary chat windows (whispers, pet battle log) are never skinned](#2026-11-15--temporary-chat-windows-whispers-pet-battle-log-are-never-skinned)
-  - [2026-11-15 — Chat's scroll bar loses SaftUI's anchor at every dock or lock change](#2026-11-15--chats-scroll-bar-loses-saftuis-anchor-at-every-dock-or-lock-change)
-  - [2026-11-15 — Chat's dock hook leaves Blizzard's tab layout after a resize, an overflow-list pick or an undock](#2026-11-15--chats-dock-hook-leaves-blizzards-tab-layout-after-a-resize-an-overflow-list-pick-or-an-undock)
   - [2026-11-15 — A font Size drag restyles too much on the action bars, unit frames and tracker](#2026-11-15--a-font-size-drag-restyles-too-much-on-the-action-bars-unit-frames-and-tracker)
   - [2026-11-15 — Hide full with a secret health: lift the limit with a Step curve into the text's alpha](#2026-11-15--hide-full-with-a-secret-health-lift-the-limit-with-a-step-curve-into-the-texts-alpha)
   - [2026-11-15 — Option descriptions that say "red" or "yellow" for what Danger and Caution color](#2026-11-15--option-descriptions-that-say-red-or-yellow-for-what-danger-and-caution-color)
@@ -154,6 +151,9 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-15 — Chat's dock hook leaves Blizzard's tab layout after a resize, an overflow-list pick or an undock](#2026-11-15--chats-dock-hook-leaves-blizzards-tab-layout-after-a-resize-an-overflow-list-pick-or-an-undock)
+  - [2026-11-15 — Chat's scroll bar loses SaftUI's anchor at every dock or lock change](#2026-11-15--chats-scroll-bar-loses-saftuis-anchor-at-every-dock-or-lock-change)
+  - [2026-11-15 — With IM chat style the tab row is always hidden](#2026-11-15--with-im-chat-style-the-tab-row-is-always-hidden)
   - [2026-11-13 — Unit frames: shared settings across units, and small parts as menu items](#2026-11-13--unit-frames-shared-settings-across-units-and-small-parts-as-menu-items)
   - [2026-11-11 — Old gear's tabard and shirt exclusion never matched](#2026-11-11--old-gears-tabard-and-shirt-exclusion-never-matched)
   - [2026-11-15 — A bag window's least width ignores a Window titles change](#2026-11-15--a-bag-windows-least-width-ignores-a-window-titles-change)
@@ -1071,22 +1071,6 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 
 **Shape of work:** Small each. Could fold into the `st:Kill` entry's own fix, since `st:Kill` is Core's helper.
 
-### 2026-11-15 — With IM chat style the tab row is always hidden
-
-**What:** In `chatStyle` "im" Blizzard keeps the last active edit box shown at alpha 0.35 (`ChatFrameUtil.SetLastActiveWindow`: `editBox:Show()` then `Deactivate()`, both clients), so SaftUI's `OnShow` hook on the edit box, which hides `GeneralDockManager` (the tab row) while the box shows, keeps the tab row hidden all the time. The hook is there because SaftUI anchors the box right above the chat's backdrop, where the tab row sits, so the two overlap while a box shows; in the classic style the box shows only while typing, but in IM style it is always there. Predates the chat work.
-
-**Why noticed:** The fu-p11 review (its P3 point). The dock overflow button's fade, its other half, was fixed 2026-11-15 (`CHT:HoldOverflowAlpha`).
-
-**Anchors:** `SaftUI-Chat/chatframe.lua` (`CHT:SkinChatFrame`, the edit box's `HookScript('OnShow')` and `OnHide`); Blizzard's `ChatFrameUtil.lua` `SetLastActiveWindow` and `Deactivate`, `ChatFrameEditBox.lua` `OnShow`.
-
-**What's been considered:** (a) hide the tab row only while the box is active (typing: `editbox:HasFocus()`), leaving the tab row shown with an inactive box over it, which overlaps in IM style; (b) in IM style anchor the box elsewhere (below the chat, or over the chat's bottom), so both show, a layout change; (c) leave it, as now: IM style users lose the tab row. Not chosen: needs the owner's call on whether IM style is supported at all and what it should look like.
-
-**Shape of work:** Small for (a) and (c), a layout pass for (b).
-
-**Review of fu-chat (2026-11-15):** option (c) costs more than a look: IM players then have no tab row at all (no clicking a tab, no whisper flash), and so does classic style while a voice transcription window is selected (`IsVoiceTranscription` in `SetLastActiveWindow`). Whether `chatStyle` can default to "im" for new accounts is not in the Lua source and is unverified (`/dump C_CVar.GetCVarDefault("chatStyle")` on both clients); if it does, every player on default settings hits this and it should not wait. Recommend (a) with `OnEditFocusGained` and `OnEditFocusLost` hooks instead of `OnShow` and `OnHide`: in classic, show and focus come together (`ShouldDeactivateChatOnEditFocusLost` hides the box), so classic is unchanged, and in IM the row hides only while typing. Check in game that the tabs stay clickable over the dimmed, inactive box.
-
-**Open questions:** Does the owner use IM style, and which of (a), (b) and (c) should it be?
-
 ### 2026-11-15 — Temporary chat windows (whispers, pet battle log) are never skinned
 
 **What:** Windows made by `FCF_OpenTemporaryWindow` (ChatFrame11 and up) never go through `SkinChatFrame` or `ApplyAppearance`. They keep Blizzard's art and tab, their tabs fade whatever Fade tabs says, and their backdrop comes only from the `FloatingChatFrame_UpdateBackgroundAnchors` hook during their `OnLoad`. Older than the chat work.
@@ -1100,32 +1084,6 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 **Review of fu-chat (2026-11-15):** `FCF_OpenTemporaryWindow` reuses closed temporary windows (it picks one that is "not inUse and not isDocked"), so a post-hook skin must be idempotent (`SkinChatFrame` already guards its hooks with `hooked`). `FCF_CopyChatSettings` gives them ChatFrame1's Blizzard-saved size and the template's face, and docked, their edit boxes sit under the chat while ChatFrame1's sits above it.
 
 **Open questions:** Should a whisper window look like SaftUI's chat or like Blizzard's?
-
-### 2026-11-15 — Chat's scroll bar loses SaftUI's anchor at every dock or lock change
-
-**What:** SaftUI anchors each skinned chat window's scroll bar to the backdrop (or the window under None) in `CHT:UpdateChatFrameDisplay`. Blizzard's `FCF_UpdateScrollbarAnchors` puts the bar back on its own anchors at every dock, lock or uninteractable change (it is reached from `FCF_DockFrame` and `FCF_SetLocked`), possibly at login too. ChatFrame3 and up then stay on Blizzard's anchors until the next theme or profile change, and so does ChatFrame1 if `UPDATE_CHAT_WINDOWS` arrives after `OnEnable`.
-
-**Why noticed:** The review of the fu-chat package (2026-11-15). Older than that package: the anchor always came only from `SkinChatFrame`.
-
-**Anchors:** `SaftUI-Chat/chatframe.lua` (`CHT:UpdateChatFrameDisplay`, the `pieces` table); Blizzard's `FloatingChatFrame.lua` `FCF_UpdateScrollbarAnchors`, `FCF_DockFrame`, `FCF_SetLocked`; `tests/chat/fixtures/chat_window.lua`.
-
-**Shape of work:** Small: a `hooksecurefunc('FCF_UpdateScrollbarAnchors', ...)` that re-anchors a skinned window (`pieces[frame]`), testable with the fixture.
-
-**Open questions:** In game, after a `/reload`, scroll up in a docked window other than General: is the bar 5 outside SaftUI's border, or on the window's edge inside it?
-
-### 2026-11-15 — Chat's dock hook leaves Blizzard's tab layout after a resize, an overflow-list pick or an undock
-
-**What:** `CHT:FCFDock_UpdateTabs` returns when `not (dock.isDirty or forceUpdate)`, but it is a post-hook, so Blizzard has already cleared `isDirty`: it acts only on forced updates (`FCF_DockUpdate`: a tab click, docking). After a resize of ChatFrame1 (`/sui` Width or Height, a profile switch: `FCFDock_OnPrimarySizeChanged`), after a pick from the overflow list (`FCFDockOverflowListButton_OnClick`) or after an undock (`FCFDock_RemoveChatFrame`), the tab row stays on Blizzard's layout (about 7 lower and 2 left, because the dock hangs on ChatFrame1's `Background`, which `st:Kill` leaves anchored at -2, +3, and 1px gaps) until the next forced update.
-
-**Why noticed:** The review of the fu-chat package (2026-11-15). Older than the package; `tests/chat/dock_test.lua`'s "a plain update leaves the tabs where Blizzard put them" pins today's behavior.
-
-**Anchors:** `SaftUI-Chat/chatframe.lua` (`CHT:FCFDock_UpdateTabs`); Blizzard's `FloatingChatFrame.lua` `FCFDock_UpdateTabs`, `FCFDock_OnPrimarySizeChanged`, `FCFDock_OnUpdate`; `tests/chat/dock_test.lua`.
-
-**What's been considered:** Re-anchoring on every call is idempotent and cheap (a few `ClearAllPoints` and `SetPoint` on tabs), so the guard can go. The catch is the owner's: the test above would flip.
-
-**Shape of work:** Small: drop the guard, change the test, a case for each unforced path.
-
-**Open questions:** In game, change chat's Width in `/sui` or switch profiles: do the tabs drop about 7 and shift 2 left until a tab is clicked? Drop the guard if so.
 
 ### 2026-11-15 — A font Size drag restyles too much on the action bars, unit frames and tracker
 
@@ -2867,6 +2825,54 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-15 — Chat's dock hook leaves Blizzard's tab layout after a resize, an overflow-list pick or an undock
+
+**What:** `CHT:FCFDock_UpdateTabs` returns when `not (dock.isDirty or forceUpdate)`, but it is a post-hook, so Blizzard has already cleared `isDirty`: it acts only on forced updates (`FCF_DockUpdate`: a tab click, docking). After a resize of ChatFrame1 (`/sui` Width or Height, a profile switch: `FCFDock_OnPrimarySizeChanged`), after a pick from the overflow list (`FCFDockOverflowListButton_OnClick`) or after an undock (`FCFDock_RemoveChatFrame`), the tab row stays on Blizzard's layout (about 7 lower and 2 left, because the dock hangs on ChatFrame1's `Background`, which `st:Kill` leaves anchored at -2, +3, and 1px gaps) until the next forced update.
+
+**Why noticed:** The review of the fu-chat package (2026-11-15). Older than the package; `tests/chat/dock_test.lua`'s "a plain update leaves the tabs where Blizzard put them" pins today's behavior.
+
+**Anchors:** `SaftUI-Chat/chatframe.lua` (`CHT:FCFDock_UpdateTabs`); Blizzard's `FloatingChatFrame.lua` `FCFDock_UpdateTabs`, `FCFDock_OnPrimarySizeChanged`, `FCFDock_OnUpdate`; `tests/chat/dock_test.lua`.
+
+**What's been considered:** Re-anchoring on every call is idempotent and cheap (a few `ClearAllPoints` and `SetPoint` on tabs), so the guard can go. The catch is the owner's: the test above would flip.
+
+**Shape of work:** Small: drop the guard, change the test, a case for each unforced path.
+
+**Open questions:** In game, change chat's Width in `/sui` or switch profiles: do the tabs drop about 7 and shift 2 left until a tab is clicked? Drop the guard if so.
+
+**Resolved 2026-11-17:** the guard is gone: `CHT:FCFDock_UpdateTabs` (`SaftUI-Chat/chatframe.lua`) lays the row out on every call, since Blizzard has cleared `isDirty` before a post-hook runs and a dirty update cannot be told from an idle call. `tests/chat/dock_test.lua` pins the resize, the overflow-list pick and the undock, and that an idle call changes nothing. Same cause as the Resolved entry "Chat's dock hook runs only on forced updates" (2026-11-13), whose test-only fix left this behaviour; the second-anchor entry (2026-11-15) stays fixed. Not yet seen in game: change chat's Width in `/sui`, tabs should not drop 7 or shift 2 left.
+
+### 2026-11-15 — Chat's scroll bar loses SaftUI's anchor at every dock or lock change
+
+**What:** SaftUI anchors each skinned chat window's scroll bar to the backdrop (or the window under None) in `CHT:UpdateChatFrameDisplay`. Blizzard's `FCF_UpdateScrollbarAnchors` puts the bar back on its own anchors at every dock, lock or uninteractable change (it is reached from `FCF_DockFrame` and `FCF_SetLocked`), possibly at login too. ChatFrame3 and up then stay on Blizzard's anchors until the next theme or profile change, and so does ChatFrame1 if `UPDATE_CHAT_WINDOWS` arrives after `OnEnable`.
+
+**Why noticed:** The review of the fu-chat package (2026-11-15). Older than that package: the anchor always came only from `SkinChatFrame`.
+
+**Anchors:** `SaftUI-Chat/chatframe.lua` (`CHT:UpdateChatFrameDisplay`, the `pieces` table); Blizzard's `FloatingChatFrame.lua` `FCF_UpdateScrollbarAnchors`, `FCF_DockFrame`, `FCF_SetLocked`; `tests/chat/fixtures/chat_window.lua`.
+
+**Shape of work:** Small: a `hooksecurefunc('FCF_UpdateScrollbarAnchors', ...)` that re-anchors a skinned window (`pieces[frame]`), testable with the fixture.
+
+**Open questions:** In game, after a `/reload`, scroll up in a docked window other than General: is the bar 5 outside SaftUI's border, or on the window's edge inside it?
+
+**Resolved 2026-11-17:** `CHT:FCF_UpdateScrollbarAnchors` (`SaftUI-Chat/chatframe.lua`), a `SecureHook` on Blizzard's `FCF_UpdateScrollbarAnchors` (`FloatingChatFrame.lua`, both clients), puts a skinned window's scroll bar back on SaftUI's backdrop (`UpdateChatFrameDisplay`) after every dock, lock or uninteractable change; a window never skinned keeps Blizzard's anchors (`tests/chat/theme_test.lua`). Not yet seen in game: scroll up in a docked window other than General after a `/reload`: the bar should be 5 outside SaftUI's border.
+
+### 2026-11-15 — With IM chat style the tab row is always hidden
+
+**What:** In `chatStyle` "im" Blizzard keeps the last active edit box shown at alpha 0.35 (`ChatFrameUtil.SetLastActiveWindow`: `editBox:Show()` then `Deactivate()`, both clients), so SaftUI's `OnShow` hook on the edit box, which hides `GeneralDockManager` (the tab row) while the box shows, keeps the tab row hidden all the time. The hook is there because SaftUI anchors the box right above the chat's backdrop, where the tab row sits, so the two overlap while a box shows; in the classic style the box shows only while typing, but in IM style it is always there. Predates the chat work.
+
+**Why noticed:** The fu-p11 review (its P3 point). The dock overflow button's fade, its other half, was fixed 2026-11-15 (`CHT:HoldOverflowAlpha`).
+
+**Anchors:** `SaftUI-Chat/chatframe.lua` (`CHT:SkinChatFrame`, the edit box's `HookScript('OnShow')` and `OnHide`); Blizzard's `ChatFrameUtil.lua` `SetLastActiveWindow` and `Deactivate`, `ChatFrameEditBox.lua` `OnShow`.
+
+**What's been considered:** (a) hide the tab row only while the box is active (typing: `editbox:HasFocus()`), leaving the tab row shown with an inactive box over it, which overlaps in IM style; (b) in IM style anchor the box elsewhere (below the chat, or over the chat's bottom), so both show, a layout change; (c) leave it, as now: IM style users lose the tab row. Not chosen: needs the owner's call on whether IM style is supported at all and what it should look like.
+
+**Shape of work:** Small for (a) and (c), a layout pass for (b).
+
+**Review of fu-chat (2026-11-15):** option (c) costs more than a look: IM players then have no tab row at all (no clicking a tab, no whisper flash), and so does classic style while a voice transcription window is selected (`IsVoiceTranscription` in `SetLastActiveWindow`). Whether `chatStyle` can default to "im" for new accounts is not in the Lua source and is unverified (`/dump C_CVar.GetCVarDefault("chatStyle")` on both clients); if it does, every player on default settings hits this and it should not wait. Recommend (a) with `OnEditFocusGained` and `OnEditFocusLost` hooks instead of `OnShow` and `OnHide`: in classic, show and focus come together (`ShouldDeactivateChatOnEditFocusLost` hides the box), so classic is unchanged, and in IM the row hides only while typing. Check in game that the tabs stay clickable over the dimmed, inactive box.
+
+**Open questions:** Does the owner use IM style, and which of (a), (b) and (c) should it be?
+
+**Resolved 2026-11-17:** `CHT:SyncDock` (`SaftUI-Chat/chatframe.lua`) replaces the edit box's `OnShow` and `OnHide` hooks with ones on show, hide, `OnEditFocusGained` and `OnEditFocusLost`: the tab row hides only while Blizzard has a window active (`ChatFrameUtil.GetActiveWindow`) and its box shows, so in IM style the idle, dimmed box leaves the row up and classic style is unchanged (`tests/chat/theme_test.lua`). Chosen by the fu-chat review's recommendation (a); not yet seen in game: check the tabs stay clickable over the dimmed box.
 
 ### 2026-11-13 — Unit frames: shared settings across units, and small parts as menu items
 

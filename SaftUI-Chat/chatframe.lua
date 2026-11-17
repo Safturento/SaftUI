@@ -207,6 +207,30 @@ function CHT:ApplyTabFading()
 	self:HoldOverflowAlpha()
 end
 
+-- The tab row (GeneralDockManager) sits where an edit box shows, so it hides while a box is
+-- in use: Blizzard has a window active and its box shows (ChatFrameUtil.GetActiveWindow, set by
+-- ActivateChat and cleared by DeactivateChat), which stays so while a box keeps its text
+-- after losing focus. In chatStyle "im" (and a voice transcription window) Blizzard keeps
+-- the last active box shown but deactivated, dimmed, and the row stays up over it; in
+-- classic a box shows only while in use, so the row behaves as it did. Called after
+-- Blizzard's own scripts on the box's show, hide, focus gained and focus lost.
+function CHT:SyncDock(editbox)
+	local util = ChatFrameUtil
+	local inUse
+	if util and util.GetActiveWindow then
+		local active = util.GetActiveWindow()
+		inUse = active and active:IsShown()
+	else
+		-- A guard for a client without ChatFrameUtil.GetActiveWindow: focus stands in for use.
+		inUse = editbox:IsShown() and editbox:HasFocus()
+	end
+	if inUse then
+		GeneralDockManager:Hide()
+	else
+		GeneralDockManager:Show()
+	end
+end
+
 function CHT:SkinChatFrame(frame)
 	local name = frame:GetName()
 	st:StripTextures(frame)
@@ -241,12 +265,14 @@ function CHT:SkinChatFrame(frame)
 	editbox:SetFrameLevel(frame:GetFrameLevel()+2)
 	editbox:SetAltArrowKeyMode(false)
 	st:SkinEditBox(editbox, self.config.theme, self.config.background, self.config.font)
-	-- Added to Blizzard's own OnShow and OnHide (ChatFrameEditBoxMixin), which run first and
-	-- stay: they reset the chat type, deactivate the box and pick the last active window.
+	-- Added to Blizzard's own scripts (ChatFrameEditBoxMixin), which run first and stay: they
+	-- reset the chat type, deactivate the box and pick the last active window.
 	if not hooked[editbox] then
 		hooked[editbox] = true
-		editbox:HookScript('OnShow', function() GeneralDockManager:Hide() end)
-		editbox:HookScript('OnHide', function() GeneralDockManager:Show() end)
+		local function SyncDock() CHT:SyncDock(editbox) end
+		for _, script in ipairs({ 'OnShow', 'OnHide', 'OnEditFocusGained', 'OnEditFocusLost' }) do
+			editbox:HookScript(script, SyncDock)
+		end
 	end
 
 	st:Kill(_G[name..'ButtonFrame'])
@@ -300,6 +326,17 @@ function CHT:UpdateChatFrameDisplay(frame)
 
 	if frame == ChatFrame1 then
 		self:UpdateFootprint()
+	end
+end
+
+-- Post-hook on Blizzard's FCF_UpdateScrollbarAnchors, which clears the scroll bar's points
+-- and puts it on the window's own edge at every dock, lock and uninteractable change
+-- (FCF_SetLocked, FCF_DockFrame, FCF_UpdateResizeButton): a window SkinChatFrame skinned
+-- gets SaftUI's anchors back (UpdateChatFrameDisplay, which also re-places the box). A
+-- temporary window, which SaftUI never skinned, keeps Blizzard's.
+function CHT:FCF_UpdateScrollbarAnchors(frame)
+	if frame and pieces[frame] then
+		self:UpdateChatFrameDisplay(frame)
 	end
 end
 
@@ -587,9 +624,11 @@ function CHT:RegisterChatMover()
 	self:UpdateFootprint()
 end
 
-function CHT:FCFDock_UpdateTabs(dock, forceUpdate)
-	if not (dock.isDirty or forceUpdate) then return end
-
+-- A post-hook on Blizzard's FCFDock_UpdateTabs, which clears dock.isDirty at its end, so
+-- by now a plain dirty update (a resize of ChatFrame1, a pick from the overflow list, an
+-- undock) looks the same as an idle call: this lays the row out on every call. It is a few
+-- ClearAllPoints and SetPoint on the tabs, and gives the same anchors each time.
+function CHT:FCFDock_UpdateTabs(dock)
 	-- The dock scrolls an overflowing row by moving its scroll child, so a tab that
 	-- Blizzard anchors to the scroll child (the first one that isn't static docked, from
 	-- ChatFrame3 up) keeps that anchor, and the tabs after it follow it and scroll with it.
@@ -644,4 +683,5 @@ function CHT:OnEnable()
 	-- self:SecureHook('ChatEdit_UpdateHeader')
 	self:SecureHook('FloatingChatFrame_UpdateBackgroundAnchors', 'UpdateChatFrameDisplay')
 	self:SecureHook('FCFDock_UpdateTabs')
+	self:SecureHook('FCF_UpdateScrollbarAnchors')
 end
