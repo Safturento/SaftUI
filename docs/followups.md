@@ -376,7 +376,7 @@ It prints, for each shown row: the card's hover state, whether the Layer shows, 
 **What:** Four small rules of the All units wiring that the owner has not decided or that no test pins:
 - A slider dragged away from the value a unit follows and back to it ends the drag as the unit's own setting, because the first step away made it own. A single set to the value it already shows keeps it following.
 - A Custom color picked while its box is unticked keeps the unit following, and the unit's hidden color is replaced if All units later ticks its box (0.9 became 0.3 in the review). Ticking the unit's own box first keeps it.
-- The rule that an owner stays an owner when it sets All units' value (the spec says an owner counts as differing even when equal) has no test: a mutant that makes it follow survives.
+- ~~The rule that an owner stays an owner when it sets All units' value (the spec says an owner counts as differing even when equal) has no test: a mutant that makes it follow survives.~~ *Pinned 2026-11-17 (`tests/unitframes/shared_test.lua`, "an owner stays an owner when All units is set to the value it holds").*
 - From the second login AceDB's wildcard leaves empty tables under the saved `backup` (`debuffs`, `grouproleindicator`, `questindicator`, `raidroleindicator`, `raidtargetindicator`, `range_alpha`). No value, harmless; storing the backup out of the wildcard's reach would avoid it.
 - ~~The paused notice's wording, "a Reset there follows All units when sharing resumes": the paused Reset writes All units' value at once.~~ *Said truly now (the in-game checklist, section H).*
 
@@ -389,6 +389,11 @@ It prints, for each shown row: the card's hover state, whether the Layer shows, 
 **Shape of work:** One small round: a test for the owner rule, the wording of the notice, then the two behaviors if the owner wants them changed. The backup's empty tables are optional.
 
 **Open questions:** Whether a slider dragged back to the followed value should follow again; whether a Custom color should be kept when its box is later ticked on All units.
+
+**Left 2026-11-17 (the owner's calls, with a recommendation):**
+- *Slider dragged back to the followed value.* A: leave it (a drag that left the value made the unit own it; honest to what the owner did). B: decide at the end of a drag by comparing, through the kit's `applyOnRelease`, so a drag that ends on the followed value keeps following. Recommendation: B, one small change in the slider's apply path, and it matches what a click that sets the shown value already does.
+- *A Custom color's hidden value when All units later ticks its box.* A: leave (the unit's hidden color is replaced). B: keep the hidden color apart from its box so the unit's own pick survives. Recommendation: A unless the owner has lost a color this way in use; B needs a second stored value per color.
+- *The backup's empty tables after the second login.* Harmless; storing the backup out of AceDB's wildcard's reach is optional. Recommendation: leave.
 
 ### 2026-11-16 — Nameplates and All units
 

@@ -231,6 +231,20 @@ test('SetShared on All units writes every follower and skips an owner', function
 	check(everything_follows())
 end)
 
+test('an owner stays an owner when All units is set to the value it holds', function()
+	world()
+	UF:ConvertShared(P)
+	UF:SetShared('target', 'name.font', 'normal')
+	eq(UF:IsOwn('target', 'name.font'), true, 'target owns it')
+	-- All units takes the very value target shows: target counts as differing all the same.
+	UF:SetShared('all', 'name.font', 'normal')
+	eq(UF:IsOwn('target', 'name.font'), true, 'still the owner after All units is set to its value')
+	same_list(UF:OwnersOf('name.font'), { 'target' }, 'and listed as an owner')
+	UF:SetShared('all', 'name.font', 'pixel')
+	eq(P.target.name.font, 'normal', 'so a later change of All units does not reach it')
+	check(everything_follows())
+end)
+
 test('FollowAll, ApplyToAll and ApplyTo', function()
 	world()
 	UF:ConvertShared(P)
