@@ -292,6 +292,7 @@ end
 local function Refresh()
     UpdateHolders()
     MicroMenu:UpdateBlizzardButtons()
+    MicroMenu:ReapplyFade()
 end
 
 -- The bar item that takes the button's slot. The button's own panel (below)
@@ -547,6 +548,9 @@ function MicroMenu.S.ConcealMicro(holder, off)
     end
     widget.EnableMouse(button, not off)
     if skins[button] then skins[button]:SetShown(not off) end
+    -- The holder (SaftUI's) keeps its shown state but draws nothing either,
+    -- so a box laid on it under Blizzard doesn't show in the closed-up row
+    holder:SetAlpha(off and 0 or 1)
 end
 
 function MicroMenu.S.IsMicroConcealed(holder)

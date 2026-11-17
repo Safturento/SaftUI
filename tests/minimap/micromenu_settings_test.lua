@@ -225,3 +225,41 @@ test('every row of the page has a reset, each item\'s too', function()
 	MicroMenu.UpdateConfig = update
 	if not ok then error(err, 0) end
 end)
+
+test('the fade follows Blizzard\'s micro menu into a pet battle bar and back', function()
+	fresh()
+	local container = CreateFrame('Frame', 'MicroMenuContainer', UIParent)
+	local battle = CreateFrame('Frame', nil, UIParent)
+	menu:SetParent(container)
+	profile.micromenu.visibility = 'mouseover'
+	profile.micromenu.fade_alpha = 0.3
+	MicroMenu:UpdateFade()
+	eq(menu:GetAlpha(), 0.3, 'faded at home')
+	-- Blizzard moves it (OverrideMicroMenuPosition) and lays it out
+	menu:SetParent(battle)
+	menu:Layout()
+	eq(menu:GetAlpha(), 1, 'drawn whole in the battle bar')
+	menu:SetParent(container)
+	menu:Layout()
+	eq(menu:GetAlpha(), 0.3, 'faded again back home')
+	profile.micromenu.visibility = 'always'
+	MicroMenu:UpdateFade()
+	_G.MicroMenuContainer = nil
+	menu:SetParent(UIParent)
+end)
+
+test('a turned-off micro button\'s holder draws nothing, and an item keeps its own alpha', function()
+	fresh()
+	local slot = select(2, lfd:GetPoint(1))
+	profile.micromenu.show.micro_LFD = false
+	zone:SetAlpha(0.8)
+	profile.micromenu.show.zone = false
+	MicroMenu:UpdateConfig()
+	eq(slot:GetAlpha(), 0, "the group finder's holder draws nothing")
+	profile.micromenu.show.micro_LFD = nil
+	profile.micromenu.show.zone = nil
+	MicroMenu:UpdateConfig()
+	eq(slot:GetAlpha(), 1, 'and draws again')
+	eq(zone:GetAlpha(), 0.8, 'the zone gets its own alpha back')
+	zone:SetAlpha(1)
+end)

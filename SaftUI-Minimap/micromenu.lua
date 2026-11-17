@@ -318,8 +318,13 @@ end
 -- frames get nothing written onto them. Each frame's own mouse state is kept
 -- here and put back when the item shows again. A micro button's holder has no
 -- art of its own: its Blizzard button is concealed by microbuttons.lua
--- (S.ConcealMicro). Out of combat only (MicroMenu:UpdateConcealed).
-local concealed = setmetatable({}, { __mode = 'k' }) -- item -> { [frame] = its mouse was on }
+-- (S.ConcealMicro). Out of combat only (MicroMenu:UpdateConcealed). An item
+-- turned off at login is concealed before the bar's first layout, so it's
+-- never reparented into the bar and stays where Blizzard keeps it, unseen;
+-- turned on, the next layout takes it in. The mouse comes back with
+-- EnableMouse(true), clicks and motion both (no bar item takes only one).
+-- item -> { mouse = { [frame] = its mouse was on }, alpha = its alpha before }
+local concealed = setmetatable({}, { __mode = 'k' })
 
 local function Widget(frame, method, ...)
     return getmetatable(frame).__index[method](frame, ...)
@@ -343,14 +348,14 @@ function S.Conceal(button, item, off)
     end
     local kept = concealed[button]
     if off and not kept then
-        kept = {}
+        kept = { mouse = {}, alpha = button:GetAlpha() }
         concealed[button] = kept
         Widget(button, 'SetAlpha', 0)
-        TakeMouse(button, kept)
+        TakeMouse(button, kept.mouse)
     elseif not off and kept then
         concealed[button] = nil
-        Widget(button, 'SetAlpha', 1)
-        for frame in pairs(kept) do
+        Widget(button, 'SetAlpha', kept.alpha)
+        for frame in pairs(kept.mouse) do
             Widget(frame, 'EnableMouse', true)
         end
     end
@@ -392,13 +397,18 @@ end
 -- container, and the micro buttons' panels.
 local function SetBarAlpha(alpha)
     MicroMenu.Container:SetAlpha(alpha)
+    -- In a vehicle or pet battle bar the micro buttons are drawn whole
     local menu = _G.MicroMenu
-    if menu then
-        -- In a vehicle or pet battle bar it's drawn whole
-        local home = not MicroMenuContainer or menu:GetParent() == MicroMenuContainer
-        menu:SetAlpha(home and alpha or 1)
-    end
-    if S.FadeMicro then S.FadeMicro(alpha) end
+    local home = not (menu and MicroMenuContainer) or menu:GetParent() == MicroMenuContainer
+    if menu then menu:SetAlpha(home and alpha or 1) end
+    if S.FadeMicro then S.FadeMicro(home and alpha or 1) end
+end
+
+-- Blizzard moved its micro menu (into or out of a pet battle or vehicle bar:
+-- microbuttons.lua's Refresh, after its Layout): the bar's alpha again, so
+-- the buttons follow where they now are. Alpha only, so in combat too.
+function MicroMenu:ReapplyFade()
+    if self.Container then SetBarAlpha(self.Container:GetAlpha()) end
 end
 
 fader:SetScript('OnUpdate', function(_, elapsed)
