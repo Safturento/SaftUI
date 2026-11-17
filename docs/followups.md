@@ -273,7 +273,7 @@ In-game items from the reviews:
 
 4. Micro holders at the bar's least height (16) are about 13px wide against 6 + 6 corners (retail 6 + 7): the two corners nearly meet. Look at the micro buttons at 16 on both clients, and shrink the corner or widen the holder if the box reads as a blob.
 5. Empty micro boxes in a vehicle or a pet battle (as the old strip showed): Blizzard moves its buttons out of the bar but the holders stay, so their boxes show with nothing on them. Say whether that looks wrong.
-6. A party member who joins in combat can sit above the group box until the next out-of-combat draw (the group box is raised out of combat only; a member made in combat keeps the level it was given).
+6. A party member who joins in combat can sit above the group box until combat ends (the group box is raised out of combat only; a member made in combat keeps the level it was given). It is re-levelled when combat ends (`PLAYER_REGEN_ENABLED`) and on any out-of-combat roster change (`GROUP_ROSTER_UPDATE`); check that the box ends up over the new member, and over every member after a login.
 7. A box's level is set at draw time only: children re-levelled later (a bar's update, a frame that re-levels itself) aren't followed, so something can come to lie over the rim until the next draw.
 8. Per-draw allocation in `ThemeArt.LevelAbove` and `LayBox` (a table of children per scan, depth 2 on groups): measured +15% on the redraw budget in the scale test; look at a theme switch and a Theme drag on a full raid for a hitch, and pool the tables if there is one.
 9. `st:SetTemplate`'s `over` is sticky across redraws and can't be cleared: a frame drawn with `over` once keeps it until the frame is made again. Nothing clears one today; add a way if a frame ever needs to.

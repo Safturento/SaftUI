@@ -880,14 +880,16 @@ function UF:ApplyConfig(unit, element_name)
 				end
 			end
 
-			-- The group border follows the members' Theme (groups.lua). It
-			-- touches only SaftUI's own border, so in combat too.
-			xpcall(function() self:UpdateGroupBorder(unit) end, geterrorhandler())
-
 			-- After the buttons are resized, so the header measures them anew.
 			if layout then
 				xpcall(function() self:ApplyGroupLayout(unit) end, geterrorhandler())
 			end
+
+			-- The group border follows the members' Theme (groups.lua). After
+			-- the layout, which makes the header's buttons the first time (the
+			-- border is levelled over them). It touches only SaftUI's own
+			-- border, so in combat too.
+			xpcall(function() self:UpdateGroupBorder(unit) end, geterrorhandler())
 			xpcall(function() self:UpdateGroupPreview(unit) end, geterrorhandler())
 		elseif UF.IsPlateUnit(unit) then
 			-- The plates' frames (nameplates.lua), which aren't among the units:

@@ -743,6 +743,81 @@ test('a member joining in combat re-levels nothing', function()
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+-- A party header that has no members, as SaftUI's own header is when it's
+-- made; UF.ApplyGroupLayout stands in for the real one, which makes the
+-- buttons (CreateHeaderChildren) once the layout is applied: it makes `count`
+-- of them, each with a health bar and the text overlay at level 99.
+local function childless_party(count)
+	world('forever', 'blizzard')
+	UF.oUF.SpawnHeader = function(_, name)
+		local header = CreateFrame('Frame', name, UIParent)
+		header:SetPoint('CENTER')
+		header:SetSize(200, 34)
+		return header
+	end
+	UF.holders, UF.units, UF.allUnits = UF.holders or {}, {}, {}
+	-- What the group's holder is anchored to (the default position's relative frame).
+	CreateFrame('Frame', 'SaftUI_Player', UIParent):SetPoint('CENTER')
+	UF:CreateGroupHeaders()
+	local header = UF.groups.party
+	local members = {}
+	UF.ApplyGroupLayout = function(_, group)
+		if group ~= 'party' or #members > 0 then return end
+		for i = 1, count do
+			local member = make_unit_frame('SaftUI_PartyUnitButton' .. i, 'party', { 'Health' }, header)
+			member:SetFrameLevel(header:GetFrameLevel() + 1)
+			member.is_group_unit = true
+			member:SetPoint('TOP', header)
+			member.Health:SetFrameLevel(header:GetFrameLevel() + 2)
+			members[#members + 1] = member
+		end
+	end
+	return header, members
+end
+
+test('the group border sits above the members the first draw makes, in the real order', function()
+	local header, members = childless_party(2)
+	UF:ApplyConfig('party')
+	local border = UF:GroupBorder(header)
+	eq(#members, 2, 'the layout made the members')
+	check(border:IsShown(), 'shown')
+	for i, member in ipairs(members) do
+		check(border:GetFrameLevel() > member.Health:GetFrameLevel(), i .. ': over the health bar: ' .. border:GetFrameLevel() .. ' vs ' .. member.Health:GetFrameLevel())
+		check(border:GetFrameLevel() > member.TextOverlay:GetFrameLevel(), i .. ': over the text overlay: ' .. border:GetFrameLevel() .. ' vs ' .. member.TextOverlay:GetFrameLevel())
+	end
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a member joining in combat is under the border until combat ends, or the roster changes out of it', function()
+	for _, event in ipairs({ 'PLAYER_REGEN_ENABLED', 'GROUP_ROSTER_UPDATE' }) do
+		local header, members = childless_party(1)
+		UF:ApplyConfig('party')
+		local border = UF:GroupBorder(header)
+		stub.in_combat = true
+		local joined = make_unit_frame('SaftUI_PartyUnitButton9', 'party', { 'Health' }, header)
+		joined:SetFrameLevel(header:GetFrameLevel() + 1)
+		joined.Health:SetFrameLevel(border:GetFrameLevel() + 5)
+		joined.TextOverlay:SetFrameLevel(99)
+		check(border:GetFrameLevel() <= joined.Health:GetFrameLevel(), event .. ': under the joiner in combat')
+
+		-- In combat the events set no frame level.
+		local calls = {}
+		for name, frame in pairs({ border = border, joined = joined, first = members[1], header = header }) do
+			local real = frame.SetFrameLevel
+			rawset(frame, 'SetFrameLevel', function(self, ...) calls[#calls + 1] = name; return real(self, ...) end)
+		end
+		stub.fire_event(event)
+		eq(#calls, 0, event .. ': in combat sets no frame level: ' .. table.concat(calls, ','))
+		check(border:GetFrameLevel() <= joined.Health:GetFrameLevel(), event .. ': still under it in combat')
+
+		stub.in_combat = false
+		stub.fire_event(event)
+		check(border:GetFrameLevel() > joined.Health:GetFrameLevel(), event .. ': over its bar out of combat')
+		check(border:GetFrameLevel() > joined.TextOverlay:GetFrameLevel(), event .. ': over its text overlay out of combat')
+		eq(#take_errors(), 0, event .. ': no errors')
+	end
+end)
+
 test('which Theme turns the group border on', function()
 	world('forever', 'blizzard')
 	local party, raid = header_of('SaftUI_Party', 4), header_of('SaftUI_Raid10', 2)

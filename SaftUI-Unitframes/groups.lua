@@ -295,6 +295,15 @@ function UF.GroupBorderShown(config)
 	return st:IsBlizzardLook(config.theme, config.background)
 end
 
+-- Raises owner's shown border over its members and their bars (depth 2), out
+-- of combat only: in combat it keeps its last level (above). A plain
+-- SetFrameLevel on SaftUI's own border; nothing of the header's or its members'.
+local function LevelBorder(owner, border)
+	if InCombatLockdown() then return end
+	local level = st.ThemeArt.LevelAbove(owner, border, 2)
+	if level then border:SetFrameLevel(level) end
+end
+
 -- Draws and shows owner's border, or clears and hides it, by the group's config.
 local function UpdateBorder(owner, config)
 	local border = UF:GroupBorder(owner)
@@ -302,11 +311,7 @@ local function UpdateBorder(owner, config)
 		-- Out of combat only: a header's member made in combat keeps the level
 		-- it was given, and the border its last one (above).
 		AnchorBorder(border, owner)
-		if not InCombatLockdown() then
-			-- Depth 2: over the members and their bars.
-			local level = st.ThemeArt.LevelAbove(owner, border, 2)
-			if level then border:SetFrameLevel(level) end
-		end
+		LevelBorder(owner, border)
 		st.ThemeArt.PaintBox(border)
 		FitBorder(border, border:GetSize())
 		border:Show()
@@ -317,6 +322,24 @@ local function UpdateBorder(owner, config)
 end
 -- grouppreview.lua draws a preview container's border with it.
 UF.UpdateBorder = UpdateBorder
+
+-- Raises each shown group border over the members it has now, out of combat:
+-- a member that joined in combat (or the first member, which the header makes
+-- once someone is there) sits at a level the border was drawn under. Only
+-- SaftUI's own borders are touched, never the header or its members.
+function UF:LevelGroupBorders()
+	if InCombatLockdown() then return end
+	for group in pairs(GROUP_HEADERS) do
+		local owner = self.groups and self.groups[group]
+		local border = owner and groupBorders[owner]
+		if border and border:IsShown() then LevelBorder(owner, border) end
+	end
+end
+
+local levelEvents = CreateFrame('Frame')
+levelEvents:RegisterEvent('PLAYER_REGEN_ENABLED')
+levelEvents:RegisterEvent('GROUP_ROSTER_UPDATE')
+levelEvents:SetScript('OnEvent', function() UF:LevelGroupBorders() end)
 
 -- The group border of a party or raid group, on its header and on its preview
 -- container, each when it exists, from the current profile. Touches only
