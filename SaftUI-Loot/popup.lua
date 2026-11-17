@@ -98,6 +98,7 @@ local CLOSE_ICON = 20 -- Lucide's x is a 10 px cross in the middle of its 20
 local weak = { __mode = 'k' }
 local panels = setmetatable({}, weak)   -- LootFrame -> SaftUI's panel (st:SetBackdropIn)
 local cards = setmetatable({}, weak)    -- element -> the holder of its card (SaftUI's frame, drawn with st:SetBackdrop)
+LT.PopupCards = cards                     -- read-only for /run probes (docs/followups.md, the loot window's opaque hover): element -> holder
 local slots = setmetatable({}, weak)    -- .Item -> its slot's backdrop (st:SetBackdropIn)
 local closes = setmetatable({}, weak)   -- .ClosePanelButton -> { frame, icon }, SaftUI's cross
 local hooked = setmetatable({}, weak)   -- frame -> true once its hooks are on

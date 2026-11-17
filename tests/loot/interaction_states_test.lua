@@ -289,6 +289,17 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		eq(#LF.stray, 0, 'nothing of Blizzard\'s written')
 	end)
 
+	case('a row\'s card holder is reachable from /run: LT.PopupCards[row] (read-only, the owner\'s probe reads its Layer)', function()
+		window_world(client)
+		check(type(LT.PopupCards) == 'table', 'the module holds the cards')
+		for _, row in ipairs(LF.elements()) do
+			local holder = LT.PopupCards[row]
+			check(holder, 'a row has its holder')
+			eq(holder, card_of(row), 'the holder is the row\'s card')
+			check(st:StateLook(holder).layer, 'its Layer is reachable through StateLook')
+		end
+	end)
+
 	case('under Blizzard: Blizzard\'s (the window is left alone, no card tint)', function()
 		window_world(client, 'blizzard')
 		for _, row in ipairs(LF.elements()) do
