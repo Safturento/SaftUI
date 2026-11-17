@@ -10,6 +10,7 @@
 -- uiscalelock.lua.
 
 local st
+local new_row
 
 local function setting(variable)
 	return { GetVariable = function() return variable end }
@@ -35,16 +36,25 @@ local function world(choice)
 	if choice then st.config.global.uiScale = choice end
 	st.UIScale:Start()
 	if not _G.GameTooltip then CreateFrame('GameTooltip', 'GameTooltip', UIParent, 'GameTooltipTemplate') end
+	return new_row(), log
+end
+
+-- A row as the options make one, after login: the mixin's functions copied
+-- onto it when it is made (XML mixin=), a 29 tall checkbox on a 26 tall row.
+new_row = function()
 	local row = CreateFrame('Frame', nil, UIParent)
+	Mixin(row, SettingsCheckboxSliderControlMixin)
+	row:SetPoint('CENTER')
 	row:SetSize(280, 26)
 	row:SetFrameLevel(5)
 	row.Checkbox = CreateFrame('CheckButton', nil, row)
+	row.Checkbox:SetSize(30, 29)
 	row.Checkbox:SetPoint('LEFT', row, 'CENTER', -80, 0)
-	return row, log
+	return row
 end
 
 local function init(row, variable)
-	SettingsCheckboxSliderControlMixin.Init(row, initializer(variable))
+	row:Init(initializer(variable))
 end
 
 local function cover_of(row)
@@ -64,6 +74,8 @@ test('the Use UI Scale row gets a cover in Automatic, over its checkbox and slid
 	check(cover:IsShown(), 'shown')
 	check(cover:IsMouseEnabled(), 'takes the clicks')
 	check(cover:GetFrameLevel() > row.Checkbox:GetFrameLevel(), 'above the checkbox')
+	check(cover:GetTop() >= row.Checkbox:GetTop() and cover:GetBottom() <= row.Checkbox:GetBottom(),
+		'over the whole checkbox, its edges outside the row too')
 
 	stub.fire_script(cover, 'OnEnter')
 	eq(GameTooltip:GetOwner(), cover, 'the tooltip is the cover\'s')
@@ -83,10 +95,31 @@ test('another row (a pooled one, taken for another setting) gets no cover', func
 	check(not cover_of(row):IsShown(), 'off again when the pool hands it to another setting')
 end)
 
+test('the cover moves when the pool hands the setting to another row', function()
+	local first = world()
+	local second = new_row()
+	init(first, 'PROXY_USE_UI_SCALE')
+	first:Release()
+	init(second, 'PROXY_USE_UI_SCALE')
+	check(cover_of(second) and cover_of(second):IsShown(), 'on the second row')
+	check(cover_of(first) == nil, 'gone from the first')
+end)
+
+test('a row made before the hook (its functions copied unhooked) gets no cover', function()
+	use_client('forever')
+	st = SaftUI
+	SettingsCheckboxSliderControlMixin = { Init = function() end, Release = function() end }
+	local early = new_row()
+	load_saftui('SaftUI-Core/uiscalelock.lua')
+	st.UIScale:Start()
+	init(early, 'PROXY_USE_UI_SCALE')
+	check(not st.UIScale:IsLocked(), 'the hook never saw it')
+end)
+
 test('Release takes the cover off', function()
 	local row, log = world()
 	init(row, 'PROXY_USE_UI_SCALE')
-	SettingsCheckboxSliderControlMixin.Release(row)
+	row:Release()
 	eq(log.release, 1, "Blizzard's Release ran")
 	check(not st.UIScale:IsLocked(), 'not locked')
 	check(not cover_of(row):IsShown(), 'cover hidden')
@@ -111,7 +144,7 @@ test('nothing is written onto the row or its checkbox', function()
 	for k in pairs(row) do before[k] = true end
 	for k in pairs(row.Checkbox) do checkbox_before[k] = true end
 	init(row, 'PROXY_USE_UI_SCALE')
-	SettingsCheckboxSliderControlMixin.Release(row)
+	row:Release()
 	for k in pairs(row) do check(before[k], 'a field written onto the row: ' .. tostring(k)) end
 	for k in pairs(row.Checkbox) do check(checkbox_before[k], 'a field written onto the checkbox: ' .. tostring(k)) end
 end)

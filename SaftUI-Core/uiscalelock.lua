@@ -11,8 +11,9 @@ local UIScale = st.UIScale
 -- Nothing of Blizzard's is written (.agents/taint.md rules 1 to 3): the row is
 -- found by two post-hooks on its mixin's Init and Release, which only read the
 -- initializer's setting; the cover is SaftUI's frame, parented to the row so it
--- scrolls and hides with it. No method of the row, its checkbox or its slider
--- is called (no SetEnabled, no DisplayEnabled).
+-- scrolls and hides with it. Of the row only a read-only getter
+-- (GetFrameLevel) is called; nothing of its checkbox or slider is (no
+-- SetEnabled, no DisplayEnabled).
 
 -- The row's checkbox setting, the same on Forever and retail
 -- (Blizzard_SettingsDefinitions_Shared/Graphics.lua).
@@ -24,6 +25,9 @@ UIScale.LOCK_DIM = { 0, 0, 0, 0.6 }
 -- How far above the row the cover sits: over the checkbox, the slider and its
 -- steppers, which are the row's children and grandchildren.
 UIScale.LOCK_LEVELS = 20
+-- How far the cover reaches above and below the row: the checkbox is 29 tall
+-- on a 26 tall row (SettingsCheckboxTemplate), so its edges hang outside it.
+UIScale.LOCK_OVERHANG = 4
 
 local cover, row, hooked
 
@@ -81,17 +85,20 @@ function UIScale:RefreshLock()
 	local frame = Cover()
 	frame:SetParent(row)
 	frame:ClearAllPoints()
-	frame:SetAllPoints(row)
+	frame:SetPoint('TOPLEFT', row, 'TOPLEFT', 0, UIScale.LOCK_OVERHANG)
+	frame:SetPoint('BOTTOMRIGHT', row, 'BOTTOMRIGHT', 0, -UIScale.LOCK_OVERHANG)
 	frame:SetFrameLevel(row:GetFrameLevel() + UIScale.LOCK_LEVELS)
 	-- The dimming starts at the checkbox (the label stays readable) where the
 	-- row has one; the whole row otherwise.
 	frame.dim:ClearAllPoints()
 	local checkbox = row.Checkbox
 	if type(checkbox) == 'table' and checkbox.GetObjectType then
-		frame.dim:SetPoint('TOPLEFT', checkbox, 'TOPLEFT', 0, 0)
-		frame.dim:SetPoint('BOTTOMRIGHT', frame, 'BOTTOMRIGHT', 0, 0)
+		frame.dim:SetPoint('TOP', row, 'TOP')
+		frame.dim:SetPoint('BOTTOM', row, 'BOTTOM')
+		frame.dim:SetPoint('LEFT', checkbox, 'LEFT')
+		frame.dim:SetPoint('RIGHT', row, 'RIGHT')
 	else
-		frame.dim:SetAllPoints(frame)
+		frame.dim:SetAllPoints(row)
 	end
 	frame:Show()
 end
