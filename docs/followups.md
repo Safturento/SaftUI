@@ -7,6 +7,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-17 — Micro buttons' hover: one alpha a texture or two](#2026-11-17--micro-buttons-hover-one-alpha-a-texture-or-two)
+  - [2026-11-17 — Scroll bar thumbs: the same solid hover reads soft on chat and opaque on the tracker](#2026-11-17--scroll-bar-thumbs-the-same-solid-hover-reads-soft-on-chat-and-opaque-on-the-tracker)
   - [2026-11-16 — The loot window's opaque hover on the first open: nothing found that writes it](#2026-11-16--the-loot-windows-opaque-hover-on-the-first-open-nothing-found-that-writes-it)
   - [2026-11-16 — The /sui slider's knob shows no hover or held state in the game: cause not found](#2026-11-16--the-sui-sliders-knob-shows-no-hover-or-held-state-in-the-game-cause-not-found)
   - [2026-11-16 — Redesign the loot window](#2026-11-16--redesign-the-loot-window)
@@ -248,17 +250,59 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 ## Active
 
+### 2026-11-17 — Micro buttons' hover: one alpha a texture or two
+
+**What:** the micro buttons' hover was fixed (commit `6567f8c9`, branch `r2-opaque-fill`) by painting the state colors again after Blizzard's `SetNormal` and `SetPushed`, on the theory that the client keeps one alpha for a texture, so Blizzard's `highlight:SetAlpha(1)` / `SetAlpha(.5)` after the atlas swap wipes the hover's 16% vertex alpha. The order of the writes is established from Blizzard's source and the buttons' pattern (Professions to Shop broke; Character has no alpha write; the game menu button is repaired by its `OnUpdate` swap, at once under the mouse because `OnEnter` zeroes `updateInterval`). The alpha model itself is unverified: the lines below decide it. With two alphas the hook changes nothing that shows.
+
+**Why noticed:** the owner's in-game pass, 2026-11-16, flat theme, purple Accent: a hover that should be a faint 16% tint was a solid Accent block on the micro buttons from Professions to Shop.
+
+**Anchors:** `SaftUI-Minimap/microbuttons.lua` (`PaintButton`, the hooks in `SkinButton`, `StyleArt`); `tests/minimap/interaction_states_test.lua` (`one_alpha` and the case after it: this entry decides which model is real); `.agents/taint.md` rule 20; `.agents/testing.md` rule 4.
+
+**What's been considered:** the one-alpha variants: (i) one value that `SetAlpha` and an explicit vertex alpha both write, which a 3-argument `SetVertexColor` leaves alone (what `one_alpha` models, and what the repo's evidence allows: SaftUI fades the game menu's performance bar and each reused loot row's art once with `SetAlpha(0)` while Blizzard recolors them every second or every open with a 3-argument `SetVertexColor`, and they stay faded); (ii) the same but a 3-argument `SetVertexColor` resets the alpha to 1 (the documented default), which the evidence argues against; (iii) two multiplied alphas, under which the symptom cannot come from this path and the fix is a no-op.
+
+**Shape of work:** the owner pastes these in game, in order. (a), on a test texture (186 characters; a red square in the middle of the screen):
+
+`/run T=T or UIParent:CreateTexture()T:SetColorTexture(1,1,1)T:SetSize(200,200)T:SetPoint("CENTER")T:SetVertexColor(1,0,0,.16)T:SetAlpha(1)print(T:GetAlpha(),select(4,T:GetVertexColor()))`
+
+A faint red square printing `1 0.16` means two alphas (iii). A solid red square printing `1 1` means `SetAlpha` wrote the vertex alpha (one alpha). Then (b), the variant (98 characters):
+
+`/run T:SetAlpha(.5)T:SetVertexColor(1,0,0)print(T:GetAlpha(),select(4,T:GetVertexColor()))T:Hide()`
+
+`0.5 1` means two alphas. `0.5 0.5` means one value that an omitted alpha leaves (variant i, the test's model). `1 1` means an omitted alpha resets it (variant ii): then also check the loot rows' and the game menu's art for coming back after an open. Then (c), on the fixed build, with a window open and closed (132 characters):
+
+`/run local h=ProfessionMicroButton:GetHighlightTexture()print(h:GetAlpha(),h:GetVertexColor())print(h:GetBlendMode(),h:GetTexture())`
+
+`GetAlpha()` reads about 0.16 under one alpha and 1 under two; the blend should be `BLEND` and the texture the flat white one. Put the answer into `tests/minimap/interaction_states_test.lua` (~131) and `.agents/testing.md` rule 4, and drop the model that is not real. **If one alpha is confirmed**, check the other Blizzard textures SaftUI paints for a Blizzard alpha write after the paint: the tracking, queue and expansion buttons (`micromenuitems.lua:27`), the totem buttons (`totemskin.lua:461`), the Blizzard tracker skin's item button (`Blizzard_ObjectiveTracker.lua:475`), the bag slots (`bag.lua:284`), and `StyleArt`'s `highlight:SetVertexColor(1, 1, 1, 1)` on a switch to the Blizzard look (`microbuttons.lua:155-160`), which writes alpha 1 over Blizzard's 0.5 while a window is open, until the next `SetPushed`.
+
+### 2026-11-17 — Scroll bar thumbs: the same solid hover reads soft on chat and opaque on the tracker
+
+**What:** a scroll thumb's hover is the spec's solid light tone and every thumb uses the same code, but the whole bar's alpha differs: Blizzard fades chat's bar to 0.6 (`FCF_FadeInScrollbar`, `FloatingChatFrame.lua`, and out to 0 on leave), the tracker's sits at 1 (0.4 while locked, 0 when hidden: `TR:UpdateBar`, `SaftUI-Tracker/window.lua`) and the bags' sits at 1. So the same fill reads as a soft tint on chat and as an opaque block on the tracker and the bags. The owner should pick the rule: all bars faded like chat's, all at full, or the thumb's fill lighter. No code change made.
+
+**Why noticed:** the owner's in-game pass, 2026-11-16: "the slider seems to have inconsistent fade opacity", one of the three reports of the opaque-fill round (`r2-opaque-fill`). Not a bug in the thumb itself: both thumbs get the spec's solid from `st:SkinNewScrollBar` (`SaftUI-Core/Widgets/scrollbar.lua`), which chat reaches through `st:SkinScrollBar` and the tracker and the bags through `st:CreateScrollFrame`.
+
+**Anchors:** `SaftUI-Core/Widgets/scrollbar.lua` (`st:SkinNewScrollBar`, `DrawScrollBar`); `SaftUI-Tracker/window.lua` (`TR:UpdateBar`, `BAR_LINGER`); `SaftUI-Chat/` (the chat bar); Blizzard's `FCF_FadeInScrollbar`; `docs/superpowers/specs/2026-11-15-saftui-interaction-states-design.md` (the thumb's row: Solids, `hover` is T+, solid; says nothing about the bar's alpha) and `docs/design-system/README.md`.
+
+**What's been considered:** the three rules above; the spec's Layers mix the Accent in at 0.6, so a bar at 0.6 happens to match that strength on chat.
+
+**Shape of work:** one decision, then a small change in the one place that sets the bar's alpha (Core's thumb, the tracker's `UpdateBar`) and a line in the spec's thumb row and the design system.
+
+**Open questions:** which rule; whether a locked tracker's 0.4 stays.
+
 ### 2026-11-16 — The loot window's opaque hover on the first open: nothing found that writes it
 
-**What:** on the first open of the loot window after a `/reload`, a row's hover (the card's Layer, `SaftUI-Loot/popup.lua` `StyleCard`/`HoverCard`) drew as a solid block of the hover tone; later hovers were a 16% tint. The micro buttons' same symptom was fixed by repainting after Blizzard's alpha write (branch `r2-opaque-fill`), but for the loot rows no writer was found.
+**What:** on the first open of the loot window after a `/reload`, a row's hover (the card's Layer, `SaftUI-Loot/popup.lua` `StyleCard`/`HoverCard`) drew as a solid block of the hover tone; later hovers were a 16% tint. The micro buttons' same-looking symptom was fixed by repainting after Blizzard's alpha write (branch `r2-opaque-fill`), but for the loot rows no writer exists, in either alpha model (see "Micro buttons' hover: one alpha a texture or two"), so the suspects are draw order and frame levels, not a stored alpha.
 
-**Why noticed:** the owner's in-game pass of the interaction states checks on 2026-11-16 (check 28). Measured in their screenshot: the card is the hover tone (`a978ff` there) at full strength, inside the Layer's inset and over the slot's backdrop, the same color the 16% tints elsewhere carry, so it is the Layer with its alpha at 1, not another piece.
+**Why noticed:** the owner's in-game pass of the interaction states checks on 2026-11-16 (check 28). Measured in their screenshot: the card is the hover tone (`a978ff` there) at full strength, inside the Layer's inset and over the slot's backdrop, the same color the 16% tints elsewhere carry, so it is the Layer drawn solid, not another piece.
 
-**Anchors:** `SaftUI-Core/Widgets/states.lua` (`Restyle` sets the own pieces' alpha before `Refresh` paints, so the engine itself never leaves it at 1); `SaftUI-Loot/popup.lua`; `tests/loot/fixtures/loot_frame.lua` (it has no `ShowAnim`, the row's 0.1 s alpha animation Blizzard plays on every `Init`); Blizzard's `LootFrame.lua`/`.xml` (forever); SpeedyAutoLoot, which the owner runs, parents `LootFrame` to a hidden frame between loots; the report `r2-opaque-fill-report.md` of that round (its `/run` line tells one alpha a texture from two).
+**Anchors:** `SaftUI-Core/Widgets/states.lua` (`Restyle`, `Refresh`, `Colors`); `SaftUI-Loot/popup.lua` (`StyleCard`, `HoverCard`, `Sweep`, the scroll box `Update` post-hook; `LT.PopupCards`, element -> holder, read-only, for the `/run` below); `tests/loot/fixtures/loot_frame.lua` (it has neither the row's `ShowAnim` nor SpeedyAutoLoot's reparent); Blizzard's `LootFrame.lua`/`.xml` (forever); SpeedyAutoLoot, an addon the owner runs.
 
-**What's been considered:** the calls on the Layer during a first open and hover, logged in the fixture, end with `SetVertexColor(T+, 0.16)`; under a stub that keeps one alpha a texture (either way a missing alpha goes) the loot tests still pass, so nothing in the fixture's flow writes it. No Blizzard or installed addon code reaches the card (SaftUI's own frame). Not ruled out: a write the client makes (one alpha a texture, plus something around the row's first `ShowAnim` or the reparenting), or a draw quirk of a texture made while its row's alpha animation runs.
+**What's been considered:** established from the code (no writer): the card Layer is made at `AddStates`, never lazily on hover; `Restyle` sets its alpha to 1 and then `Refresh` hides it; the hover paints (`SetVertexColor(T+, 0.16)`) in the same call that shows it, so no frame is drawn between; the theme walkers skip it (`KeptAll` takes only `edgeKind == 'theme'` records and the card is `edge = false`; `RecolorThemed` and `RedrawThemed` color `holder.backdrop`, not the holder's textures); the state color cache is stamped by the Accent, the states table and a serial, so there is no first-use error; Blizzard's loot code writes only Blizzard regions and the ScrollBox only manages the row frames. So no code path writes the Layer's alpha after its paint, whether the client keeps one alpha a texture or two. What differs on the first open: (1) SaftUI builds the card's pieces (holder, `holder.backdrop`, the Layer, the slot backdrop) inside the scroll box `Update` post-hook, after Blizzard's `Init` has started the row's 0.1 s fade-in (`ShowAnim`, alpha 0 to 1); later opens skip it because the row is already styled (`styled[element] == generation`). (2) The holder and the slot's backdrop are both one level below the row (`popup.lua` `SetLevel(holder, element, -1)` and the slot's; the holder is made first), so which draws on top is the client's choice, and the owner's screenshot has the solid tone over the slot's backdrop. (3) SpeedyAutoLoot reparents `LootFrame` to UIParent at HIGH strata, raises it and re-anchors it on `LOOT_READY`, moves it back to its hidden frame on `LOOT_CLOSED`, and on Forever post-hooks `LootFrame.UpdateShownState` to do the same; that re-levels the whole tree around the first-open creation. Neither the fade-in nor the reparent is in the fixture. Not ruled out: a draw quirk of a texture made while its row's alpha animation runs.
 
-**Shape of work:** an in-game probe first: with the window just opened and a row opaque, read the card through `SaftUI:StateLook` (its Layer's `a` and `alpha`), then hover off and on and read again. If the stored alpha is 1, find the write (hook the Layer's `SetAlpha` and `SetVertexColor` with `debugstack`); if it is 0.16 while it shows opaque, it is not a stored alpha at all.
+**Shape of work:** an in-game probe first. With the window just opened after a reload and a row showing opaque, with the mouse on it, paste this (208 characters; it needs `LT.PopupCards`, in this branch):
+
+`/run for e,h in pairs(SaftUI:GetModule("Loot").PopupCards)do if e:IsShown()then local l=SaftUI:StateLook(h)local y=l.layer print(l.hover,y.shown,y.a,y.alpha,y.blend,h:GetFrameLevel()-e:GetFrameLevel())end end`
+
+It prints, for each shown row: the card's hover state, whether the Layer shows, its vertex alpha, its texture alpha, its blend mode, and the holder's frame level minus its row's (a row should print `-1`). Read it so: hover `true`, shown `true`, vertex alpha `0.16` and texture alpha `1` with a solid block on screen means the stored values are right and it is draw order or levels (compare the level with the slot backdrop's, `SaftUI:StateLook` has no slot; read `LootFrame.ScrollBox.ScrollTarget:GetChildren()` and their `.Item` children's levels); a vertex alpha or texture alpha of `1` means something wrote it (hook the Layer's `SetAlpha` and `SetVertexColor` with `debugstack`); a blend of `ADD` points at the blend mode. Then hover off and on and run it again.
 
 **Open questions:** whether it happens on a later open whose rows are new (a corpse with more items than any before); whether it happens with SpeedyAutoLoot off.
 
