@@ -67,7 +67,7 @@ ThemeArt.PER_CLIENT = PER_CLIENT
 --          4px inside them (3); a window's background starts 2px in; the
 --          action and item rings have no layout to measure them by (3); an
 --          aura has no border; a small frame is one line; a unit frame's
---          bronze box is 2, its pieces' outer 2px being the dark outline and
+--          box is 2, its pieces' outer 2px being the dark outline and
 --          the rim; a party or raid member is a bare fill; and the rest draw
 --          nothing, a control placing its own content. A kind drawn in the box
 --          keeps the inset it had, so nothing placed by it moves (the box's

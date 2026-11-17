@@ -4,7 +4,7 @@
 --   - under Thick and Thin the plate's health bar and castbar draw as unit
 --     frames, so as every other unit frame's bars (a bar's look), the cast
 --     icon as a control and the aura buttons as auras;
---   - under Blizzard the health bar and the castbar sit in the bronze box, the
+--   - under Blizzard the health bar and the castbar sit in the box, the
 --     health bar on Blizzard's raid fill and the castbar on its own texture;
 --   - the target's border (white under Thick and Thin, Blizzard's art under
 --     Blizzard) survives a theme recolour and redraw, and
@@ -177,14 +177,14 @@ end
 ------------------------------------------------------------------ Blizzard
 
 for _, client in ipairs(CLIENTS) do
-	test(client .. ": Blizzard: health and castbar in the bronze box, health on Blizzard's raid fill, the castbar on its own texture", function()
+	test(client .. ": Blizzard: health and castbar in the box, health on Blizzard's raid fill, the castbar on its own texture", function()
 		local st, UF, P, drawn = world(client, 'blizzard')
 		local frame = enemy('nameplate1', 0)
 		eq(drawn(frame.Health), 'theme,theme,unitframe', 'the health bar as a unit frame')
 		eq(drawn(frame.Castbar), 'theme,theme,unitframe', 'the castbar too')
 		for name, part in pairs({ Health = frame.Health, Castbar = frame.Castbar }) do
 			local box = st:DrawnFrame(part)
-			eq(pieces(box), BOX, name .. ': the bronze box')
+			eq(pieces(box), BOX, name .. ': the box')
 			eq(T.inset(box), 2, name .. ': at the box inset')
 			eq(T.around(box, part), '-2,2,2,-2', name .. ': 2 round the bar')
 			eq(box.backdropInfo.edgeFile, nil, name .. ': no line')
@@ -251,7 +251,7 @@ for _, theme in ipairs({ 'thick', 'thin', 'blizzard' }) do
 				local art = UF:PlateTargetArt(one).texture
 				eq(art:GetAtlas(), st.ThemeArt.Control('nameplatetarget').atlas, step[1] .. ": Blizzard's target art")
 				eq(T.art(UF.PlateBorderFrame(one)) .. ' ' .. tints(UF.PlateBorderFrame(one)), box,
-					step[1] .. ': the bronze box keeps its own colour under the art, as the other plate\'s')
+					step[1] .. ': the box keeps its own colour under the art, as the other plate\'s')
 				check(tints(UF.PlateBorderFrame(one)):find('TopEdge=1.00,1.00,1.00,1.00', 1, true) ~= nil,
 					step[1] .. ': untinted')
 			else

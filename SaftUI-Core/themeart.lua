@@ -461,7 +461,7 @@ function ThemeArt.Cut(texture, atlas, rect)
 	return true
 end
 
--- A cut (Forever's box, the unit frame's bronze box, the group border) on
+-- A cut (Forever's box) on
 -- frame, its textures kept in pieces by key: each piece
 -- cut from its atlas (ThemeArt.Cut, which hides one it can't cut), the
 -- corners size by size at frame's own corners, the edges between
@@ -776,7 +776,8 @@ end
 --
 -- A kind in the box (ART.box) has it laid on frame's box frame (BoxFrame),
 -- over the frame it borders: over, the frame a backdrop sits behind, with its
--- outer edge the kind's reach outside over (in whole pixels of over), or with
+-- outer edge the kind's reach outside over (in whole pixels of the drawn
+-- frame's pixel, or of over's when there is none), or with
 -- no over frame itself, the box on its own bounds. The box frame is one level
 -- above that frame and its children (LevelAbove), where it was made when that
 -- frame's level is secret.

@@ -191,8 +191,9 @@ return {
 		['UF-Arcane-Icon'] = { 19, 19 },
 		['UF-Essence-BG'] = { 24, 24 },
 		['UF-Essence-Icon'] = { 24, 24 },
-		-- The unit frame's bronze box (unitframe), cut from the player and
-		-- target frames' Camelot members (-c60), both in file 8036204, 1024 by 512
+		-- The player and target frames' Camelot members (-c60), both in file
+		-- 8036204, 1024 by 512: no longer drawn (the one box replaced them), kept
+		-- for the theme tests that still name them
 		['UI-HUD-UnitFrame-Player-PortraitOn'] = { 198, 71,
 			file = 8036204, coords = { 605 / 1024, 803 / 1024, 1 / 512, 72 / 512 } },
 		['UI-HUD-UnitFrame-Target-PortraitOn'] = { 194, 68,
