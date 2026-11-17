@@ -16,7 +16,6 @@ local S = MicroMenu.S
 -- items or its micro menu, whose own frame art stays faded (microbuttons.lua).
 
 -- From micromenu.lua.
-local BUTTON_SIZE = MicroMenu.BUTTON_SIZE
 local items = S.items
 
 -- The item's box under Blizzard, on its panel: on Forever one atlas, set whole
@@ -42,9 +41,10 @@ local function UpdateArt(item, microbar)
         end
         texture:SetAtlas(art.atlas)
         texture:ClearAllPoints()
-        local top = -math.floor((BUTTON_SIZE - art.height) / 2)
+        local height = MicroMenu:BarHeight()
+        local top = -math.floor((height - art.height) / 2)
         if art.width then
-            local left = math.floor(((item.width or BUTTON_SIZE) - art.width) / 2)
+            local left = math.floor((S.ItemWidth(item, height) - art.width) / 2)
             texture:SetSize(art.width, art.height)
             texture:SetPoint('TOPLEFT', panel, 'TOPLEFT', left, top)
         else

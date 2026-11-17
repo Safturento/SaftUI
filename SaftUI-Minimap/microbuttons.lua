@@ -26,11 +26,9 @@ local MicroMenu = st:GetModule('MicroMenu')
 -- turns the bar's events off too, which keeps the menu out of it
 -- (SaftUI-ActionBars/hideblizzard.lua).
 
-local BUTTON_HEIGHT = MicroMenu.BUTTON_SIZE
--- Blizzard's MainMenuBarMicroButton template is 32x40 on Forever and retail
--- (Blizzard_MicroMenu/Mainline/MainMenuBarMicroButtons.xml). The buttons keep
--- that shape at the bar's height: 20x25.
-local BUTTON_RATIO = 32 / 40
+-- The buttons keep the template's 32x40 shape at the bar's height
+-- (MicroMenu:BarHeight, MicroMenu:MicroWidth): 20x25 at the default height.
+local DEFAULT_HEIGHT = MicroMenu.BUTTON_SIZE
 -- Each button's panel follows SaftUI's theme.
 local THEME, BACKGROUND = 'theme', 'theme'
 
@@ -41,10 +39,20 @@ local THEME, BACKGROUND = 'theme', 'theme'
 -- is a little wider than the button, but only its padding hangs over. Keeping
 -- the atlas's own aspect means no texcoord crop, which Blizzard would undo
 -- every time it swaps an atlas.
+-- Those sizes are at the default height; at another, the icons, the template's
+-- art and the guild emblem scale with the bar (IconSize).
 local ICON_WIDTH, ICON_HEIGHT = 22, 28
-local ICON_TOP = math.ceil((ICON_HEIGHT - BUTTON_HEIGHT) / 2)
 -- The guild emblem sits on the tabard glyph at 12x14; scaled with the icon.
 local EMBLEM_WIDTH, EMBLEM_HEIGHT = 8, 10
+
+-- The icon's size at the bar's height, whole pixels, and how far it reaches
+-- over the button's top (its padding, centred on the button).
+local function IconSize()
+    local height = MicroMenu:BarHeight()
+    local scale = height / DEFAULT_HEIGHT
+    local w, h = math.floor(ICON_WIDTH * scale + 0.5), math.floor(ICON_HEIGHT * scale + 0.5)
+    return w, h, math.ceil((h - height) / 2), height
+end
 
 local ALERT_ALPHA = 0.5
 
@@ -68,9 +76,10 @@ end
 
 local function PlaceIcon(texture, button, width)
     if not texture then return end
+    local iconWidth, iconHeight, top = IconSize()
     texture:ClearAllPoints()
-    texture:SetPoint('TOPLEFT', button, 'TOPLEFT', math.floor((width - ICON_WIDTH) / 2 + 0.5), ICON_TOP)
-    texture:SetSize(ICON_WIDTH, ICON_HEIGHT)
+    texture:SetPoint('TOPLEFT', button, 'TOPLEFT', math.floor((width - iconWidth) / 2 + 0.5), top)
+    texture:SetSize(iconWidth, iconHeight)
 end
 
 -- Puts a button's art in the look it's drawn in: under Blizzard, the template's
@@ -83,9 +92,10 @@ end
 -- layout and so every theme switch passes it), not on every call.
 -- Centers a template region on the button at the icons' size.
 local function PlaceArt(region, button)
+    local iconWidth, iconHeight = IconSize()
     region:ClearAllPoints()
     region:SetPoint('CENTER', button, 'CENTER')
-    region:SetSize(ICON_WIDTH, ICON_HEIGHT)
+    region:SetSize(iconWidth, iconHeight)
 end
 
 local function StyleArt(button)
@@ -169,8 +179,8 @@ end
 local function StyleTextures(button)
     StyleArt(button)
     local blizzard = st:IsBlizzardLook(THEME, BACKGROUND)
-    local holder = holders[button]
-    local width = holder and holder.width or BUTTON_HEIGHT
+    local width = MicroMenu:MicroWidth()
+    local height = MicroMenu:BarHeight()
 
     PlaceIcon(button:GetNormalTexture(), button, width)
     PlaceIcon(button:GetPushedTexture(), button, width)
@@ -198,7 +208,7 @@ local function StyleTextures(button)
         portrait:ClearAllPoints()
         portrait:SetPoint('TOPLEFT', button, 'TOPLEFT', inset, -inset)
         portrait:SetPoint('BOTTOMRIGHT', button, 'BOTTOMRIGHT', -inset, inset)
-        portrait:SetTexCoord(GetPortraitCoords(width - inset * 2, BUTTON_HEIGHT - inset * 2))
+        portrait:SetTexCoord(GetPortraitCoords(width - inset * 2, height - inset * 2))
     end
 
     -- Last in the look: Blizzard's atlas swaps put its own art back on the
@@ -288,12 +298,26 @@ end
 -- draws under its art, so the holder has no backdrop and only reserves space.
 -- Under Blizzard on Forever the run of shown holders stands on the bar's strip
 -- (micromenuart.lua's UpdateStrip), as Blizzard's buttons stand on its frame art.
+local buttonOf = setmetatable({}, { __mode = 'k' }) -- holder -> its button
+
 local function CreateHolder(button)
     local holder = CreateFrame('Frame', nil, MicroMenu.Container)
-    holder.width = st:RoundToPixel(BUTTON_HEIGHT * BUTTON_RATIO, MicroMenu.Container)
     holder:SetShown(button:IsShown())
     holders[button] = holder
+    buttonOf[holder] = button
     return holder
+end
+
+-- Buttons the profile turns off (MicroMenu:IsTurnedOff): button -> the alpha
+-- Blizzard last gave it, put back when it shows again.
+local concealed = setmetatable({}, { __mode = 'k' })
+
+-- After Blizzard's OnEnable or OnDisable set the alpha: kept, and 0 again
+local function KeepConcealed(button)
+    if concealed[button] then
+        concealed[button] = button:GetAlpha()
+        getmetatable(button).__index.SetAlpha(button, 0)
+    end
 end
 
 local function IsBlizzardLook()
@@ -375,6 +399,11 @@ local function SkinButton(button)
     button:HookScript('OnShow', Refresh)
     button:HookScript('OnHide', Refresh)
 
+    -- Blizzard's OnEnable and OnDisable set the button's alpha (1, or 0.5);
+    -- a button the profile turns off stays concealed after them (ConcealMicro).
+    button:HookScript('OnEnable', KeepConcealed)
+    button:HookScript('OnDisable', KeepConcealed)
+
     StyleTextures(button)
 end
 
@@ -403,7 +432,7 @@ function MicroMenu:SkinBlizzardMicroMenu()
     for _, button in ipairs(buttons) do
         SkinButton(button)
         local holder = holders[button]
-        self:AddButton(holder, { width = holder.width, theme = 'none', micro = true })
+        self:AddButton(holder, { key = MicroMenu.MicroKey(button), theme = 'none', micro = true })
     end
 
     -- Layout re-anchors the buttons into Blizzard's grid; UpdateScale follows
@@ -440,16 +469,95 @@ function MicroMenu:UpdateBlizzardButtons()
     end
 
     -- Hidden buttons too, so one Blizzard shows later is already in its slot
+    local width, height = self:MicroWidth(), self:BarHeight()
+    local emblemScale = height / DEFAULT_HEIGHT
     for _, button in ipairs(buttons) do
         local holder = holders[button]
         if holder then
             button:SetScale(scale)
-            button:SetSize(holder.width, BUTTON_HEIGHT)
+            button:SetSize(width, height)
+            for _, emblem in pairs({ button.Emblem, button.HighlightEmblem }) do
+                emblem:SetSize(math.floor(EMBLEM_WIDTH * emblemScale + 0.5), math.floor(EMBLEM_HEIGHT * emblemScale + 0.5))
+            end
             button:ClearAllPoints()
             button:SetPoint('TOPLEFT', holder, 'TOPLEFT')
 
             UpdateSkinLevel(button)
             StyleTextures(button)
         end
+    end
+end
+
+--- Turning buttons off, the fade, and their names ----------------------------------
+
+-- The button's key in the profile's show table: 'micro_' and its global name
+-- without MicroButton (micro_Character), or its place in Blizzard's order.
+function MicroMenu.MicroKey(button)
+    local name = button:GetName()
+    name = name and name:gsub('MicroButton$', '') or ('button' .. tostring(button.layoutIndex))
+    return 'micro_' .. name
+end
+
+-- Names for the buttons whose global names say little. Any other button is
+-- named from its key, its words split (QuestLog: Quest log).
+local MICRO_NAMES = {
+    micro_LFD = 'Group finder',
+    micro_EJ = 'Adventure guide',
+    micro_MainMenu = 'Game menu',
+    micro_Store = 'Shop',
+    micro_PlayerSpells = 'Talents and spellbook',
+    micro_Profession = 'Professions',
+    micro_Achievement = 'Achievements',
+    micro_Guild = 'Guild and communities',
+}
+
+local function MicroName(key)
+    if MICRO_NAMES[key] then return MICRO_NAMES[key] end
+    local words = key:gsub('^micro_', ''):gsub('(%l)(%u)', '%1 %2')
+    return words:sub(1, 1) .. words:sub(2):lower()
+end
+
+-- The micro buttons Blizzard gave the menu, in its order: { key, name } each.
+-- For the options page.
+function MicroMenu:MicroItems()
+    local list = {}
+    for _, button in ipairs(buttons) do
+        local key = MicroMenu.MicroKey(button)
+        list[#list + 1] = { key, MicroName(key) }
+    end
+    return list
+end
+
+-- Conceals the holder's Blizzard button, or shows it again (micromenu.lua's
+-- S.Conceal): alpha 0 and no mouse through the widget methods, and its panel
+-- hidden (a frame of SaftUI's, which ignores the button's alpha). The
+-- OnEnable and OnDisable hooks keep the alpha at 0 after Blizzard's own. Shown
+-- again, it takes the alpha Blizzard last gave it (halved while disabled).
+-- Out of combat only (MicroMenu:UpdateConcealed).
+function MicroMenu.S.ConcealMicro(holder, off)
+    local button = buttonOf[holder]
+    if not button or (concealed[button] ~= nil) == off then return end
+    local widget = getmetatable(button).__index
+    if off then
+        concealed[button] = button:GetAlpha()
+        widget.SetAlpha(button, 0)
+    else
+        widget.SetAlpha(button, concealed[button])
+        concealed[button] = nil
+    end
+    widget.EnableMouse(button, not off)
+    if skins[button] then skins[button]:SetShown(not off) end
+end
+
+function MicroMenu.S.IsMicroConcealed(holder)
+    local button = buttonOf[holder]
+    return button and concealed[button] ~= nil or false
+end
+
+-- The bar's mouseover fade (micromenu.lua): the panels ignore their button's
+-- alpha, so each takes the bar's. SaftUI's frames only, so in combat too.
+function MicroMenu.S.FadeMicro(alpha)
+    for _, button in ipairs(buttons) do
+        if skins[button] then skins[button]:SetAlpha(alpha) end
     end
 end

@@ -28,15 +28,27 @@ function MicroMenu.SkinHighlight(button)
     return hover
 end
 
-function MicroMenu:SkinBarButton(button)
-    if skinned[button] then return end
-    skinned[button] = true
-
-    local font = st:GetFont('pixel')
+-- The bar's text font (MicroMenu:TextFont) on a skinned button's label.
+-- Font objects only, so in combat too.
+local function SetButtonFont(button, font)
     if button.SetNormalFontObject then
         button:SetNormalFontObject(font)
         button:SetHighlightFontObject(font)
         button:SetDisabledFontObject(font)
+    end
+end
+
+-- For micromenu.lua: every skinned button takes the font again.
+MicroMenu.S.ApplyButtonFonts = function(font)
+    for button in pairs(skinned) do SetButtonFont(button, font) end
+end
+
+function MicroMenu:SkinBarButton(button)
+    if skinned[button] then return end
+    skinned[button] = true
+
+    SetButtonFont(button, self:TextFont())
+    if button.SetPushedTextOffset then
         button:SetPushedTextOffset(0, 0)
     end
 

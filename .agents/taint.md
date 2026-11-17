@@ -1,7 +1,7 @@
 ---
 name: taint
 description: Rules for touching Blizzard frames and code without causing taint, blocked actions or crashes
-last_updated: 2026-11-16
+last_updated: 2026-11-17
 covers:
   - 'SaftUI-Core/api.lua'
   - 'SaftUI-Core/uiscale.lua'
@@ -132,6 +132,7 @@ The RestedXP skin stands down for RestedXP's v2 window because RestedXP hides th
    - the buff skin's two borders (`SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFrame.lua`: `ShowBorder`);
    - the micro buttons' `Background`, `Shadow`, `PushedShadow` and performance bar, and their highlight (`SaftUI-Minimap/microbuttons.lua`: `StyleArt`);
    - a color pass (`MicroMenu:ColorMicroButtons`) only sets the color of the alert flash, where SaftUI already set it (Thick and Thin), in combat too (the highlight and the pushed fill are the states helpers': they follow the Accent through their own records). The same holds for the totem bar's pass (`TB:OnColorsChanged`, `TB:ColorTimers`: the color of its flash, a region of Blizzard's action button, SaftUI's borders and timers) and the action buttons' (`AB:OnColorsChanged`: the template's flash region on SaftUI's buttons): a color setter on a region that exists, no field written onto a Blizzard frame.
+   - a micro menu item turned off in the profile (`SaftUI-Minimap/micromenu.lua`'s `S.Conceal`, `microbuttons.lua`'s `S.ConcealMicro`) is concealed by rule 8's recipe, never hidden or reparented: `SetAlpha(0)` and `EnableMouse(false)` on it and its mouse-enabled children through `getmetatable(frame).__index`, each frame's own mouse state kept in a weak table and put back when it's turned on again. Blizzard's micro buttons set their own alpha in `OnEnable`/`OnDisable` (`MainMenuBarMicroButtonMixin`), so `HookScript` post-hooks keep a concealed one at 0 and remember Blizzard's alpha for its return. It only changes on a profile update, which waits for the end of combat. The mouseover fade only sets alphas (the bar's Container, Blizzard's `MicroMenu`, which Blizzard never sets an alpha on, and SaftUI's panels), so it runs in combat;
    - the micro menu bar's own art is SaftUI's, not Blizzard's: each item's boxes are textures of its panel (kept in the item's entry in `micromenu.lua`'s `items`) and Forever's strip is a frame of SaftUI's (`micromenuart.lua`) in the bar's Container at the Container's level, placed through `st:SafeReposition`, so it follows the shown holders even in combat. Blizzard's `MicroMenu.BorderArt` and `BackgroundArt` stay faded and unmoved under every look (the strip replaces them), including in a vehicle or pet battle, where Blizzard moves its buttons out of the bar but the holders stay;
    - chat's edit box borders and focus textures, and an input box's `Left`, `Middle` and `Right` (`st:SkinEditBox`, `st:StyleEditBox`), and the scroll bars' own layers (`SaftUI-Core/Widgets/scrollbar.lua`);
    - the totem flyout's top and middle (`StyleFlyout`, `SaftUI-Misc/totemskin.lua`);

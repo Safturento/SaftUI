@@ -22,6 +22,26 @@ st.defaults.micromenu = {
         x_off = st.CLAMP_INSET,
         y_off = -st.CLAMP_INSET,
     },
+    -- The bar's look (micromenu.lua's UpdateButtons, micromenuoptions.lua):
+    -- every item's height, the gap between items, the text items' widths and
+    -- font, and the mouseover fade.
+    height = 25,
+    spacing = 8,
+    font = 'pixel',
+    widths = {
+        zone = 200,
+        clock = 60,
+        latency = 48,
+        fps = 48,
+    },
+    -- Item key (MicroMenu:AddButton's options.key) -> false to keep it off
+    -- the bar. Every item shows unless it's named here.
+    show = {
+        ['*'] = true,
+    },
+    -- 'always', or 'mouseover': faded to fade_alpha until the mouse is over the bar
+    visibility = 'always',
+    fade_alpha = 0.3,
 }
 
 local MM = st:GetModule('Minimap')
