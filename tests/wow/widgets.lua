@@ -1913,6 +1913,16 @@ function stub.try_click(button, mouse, down, ...)
 	return stub.fire_script(button, 'OnClick', mouse, down, ...)
 end
 
+-- The client changing a registered action button's checked state itself, with no
+-- call of the button's SetChecked method, so a hooksecurefunc post-hook on it
+-- does not run (modelled: LibActionButton registers its buttons with
+-- C_ActionBar.RegisterActionUIButton and leaves their ACTIONBAR_UPDATE_STATE to
+-- the client; whether the client's write bypasses the hook is the open
+-- question of tests/actionbars/checked_cast_test.lua).
+function stub.engine_set_checked(button, checked)
+	states[button].checked = checked and true or false
+end
+
 -- The click of the harness before it played the game's rules: OnClick runs
 -- whatever the button's state, with the arguments as given. For a test whose
 -- window or bar is never shown in the stubs' world; a new test uses stub.click.
