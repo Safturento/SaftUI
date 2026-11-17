@@ -119,7 +119,7 @@ local LINE_HEIGHT = 14 -- the hover line: the small font (13)
 local LINE_LEVEL = 4 -- the line over its row frame (it ends before the control, so it is over no part of it)
 local MARK_WIDTH, MARK_INSET = OB.MARK_WIDTH, 6
 local DIFF_SIZE, DIFF_GAP = 16, 4
-local LineEnd -- (cell, left): where a row's hover line ends; defined below, by DrawnLeft
+local LineEnd -- (cell): where a row's hover line ends; defined below, by DrawnLeft
 local RESET_SIZE, RESET_GAP = 14, 6
 local DEFAULT_GAP = 6 -- a setting's own reset icon's right edge this far left of what the control draws
 local WORD_GAP = 4 -- between the line's words and links
@@ -479,12 +479,19 @@ local function ShowSummary(cell)
 	cell.widget.summaryHit:Show()
 end
 
+-- A lifted line (not a part row's) fitted to its row's room: from the label's left to LineEnd.
+local function FitLine(cell, parts, state, shift)
+	FillLine(parts, state, LineEnd(cell) - (cell.labelX or 0) - (shift or 0))
+end
+
 -- Shows host's line (a row frame's lifts its label, a part row's takes its summary's place).
 function ShowLine(host)
 	local parts = host.share
 	if not (parts and host.shareOffers) then return end
-	parts.line:Show()
 	local cell = host.shareCell
+	-- Fitted again as it shows: the fallback for a row that had no rect at draw time (LineEnd then reckons the control from widths); the real drawn left is read now.
+	if host.shareLifts and cell and host.shareState then FitLine(cell, parts, host.shareState, host.shareShift) end
+	parts.line:Show()
 	if cell and cell.lineInline then HideSummary(cell) end
 	if host.shareLifts then
 		cell.label:ClearAllPoints()
@@ -600,7 +607,7 @@ function OB.PlaceShare(cell)
 			-- Under the label, and cut before the control (LineEnd): never in the
 			-- next cell, nor over an item's dots, nor under the control.
 			local left = (cell.labelX or 0) + shift
-			FillLine(parts, state, LineEnd(cell) - left)
+			FitLine(cell, parts, state, shift)
 			parts.line:ClearAllPoints()
 			parts.line:SetPoint('TOPLEFT', frame, 'TOPLEFT', left, -(LiftTop(cell) + OB.LABEL_HEIGHT))
 		end
@@ -620,7 +627,7 @@ function OB.FollowShare(cell)
 	if parts.diff:IsShown() then PlaceDiff(cell, parts) end
 	-- A part row's line is cut by OB.PlaceSummary, which the body's Refresh runs next.
 	if frame.shareOffers and not cell.lineInline then
-		FillLine(parts, frame.shareState, LineEnd(cell) - (cell.labelX or 0) - (frame.shareShift or 0))
+		FitLine(cell, parts, frame.shareState, frame.shareShift)
 	end
 end
 
@@ -804,8 +811,10 @@ LineEnd = function(cell)
 	local stop = cell.lineEnd or frame:GetWidth()
 	if not (widget and widget.frame and cell.row.type ~= 'item' and cell.height <= cell.rowHeight) then return stop end
 	local x0, drawn = frame:GetLeft(), DrawnLeft(widget.frame)
-	if not (x0 and drawn) then return stop end
-	return min(stop, floor(drawn - x0) - LABEL_ROOM)
+	-- A row with no rect at draw time (none in a menu now: Draw holds it on the screen; a body on a
+	-- frame not yet anchored): the control sits at the cell's right edge, as PlaceDefault reckons it.
+	local at = x0 and drawn and floor(drawn - x0) or (frame:GetWidth() - widget:GetWidth())
+	return min(stop, at - LABEL_ROOM)
 end
 
 --[[
