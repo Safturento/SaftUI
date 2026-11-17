@@ -4,7 +4,7 @@
 --     under Thick and Thin both look exactly as a bar does;
 --   - one box per edge under Blizzard: health lying exactly over its unit
 --     frame, both drawn in Blizzard's art, draws None, so only the frame's
---     bronze box shows; health that doesn't quite fill the frame (resized,
+--     box shows; health that doesn't quite fill the frame (resized,
 --     moved, anchored to another element), or a frame drawn in another look,
 --     keeps its own box (Review Focus 4);
 --   - the player's separate power bar has its own box, and a castbar whose
@@ -16,9 +16,9 @@
 --   - the test mode previews draw as their real frames do: a party member's
 --     as members, a boss's as unit frames;
 --   - the group border (groups.lua): under Blizzard each party and raid
---     header, and a party or raid test mode preview, sits in Blizzard's raid
---     group border, options_frame_child cut at 6px with no middle, on a frame
---     of SaftUI's anchored (-2, 2) and (2, -3) around it; shown when the
+--     header, and a party or raid test mode preview, sits in the box
+--     (no middle), on a frame of SaftUI's anchored 4 outside it, one level
+--     over its members (out of combat only); shown when the
 --     group's frame Theme, or its health's where the frame's is None, is
 --     Blizzard's; following a member joining in combat by its anchors alone,
 --     with nothing protected called and nothing written onto the header (a
@@ -82,7 +82,7 @@ local function pieces(frame)
 end
 local BOX = 'BottomEdge,BottomLeftCorner,BottomRightCorner,LeftEdge,RightEdge,TopEdge,TopLeftCorner,TopRightCorner'
 
--- How a Blizzard kind looks on a frame: the bronze box (its eight pieces,
+-- How a Blizzard kind looks on a frame: the box (its eight pieces,
 -- inset 2, no line) or a member
 -- (the fill, inset 0, no line, no art); 'bare' for none.
 local function blizzard(frame)
@@ -220,7 +220,7 @@ test('one box per edge', function()
 		eq(pieces(player), '', client .. ': the frame shows no Blizzard art')
 		check(looks(player):find(', outer, a line, ', 1, true) ~= nil, client .. ": the frame shows Thick's border")
 		eq(drawn(player.Health), 'theme,theme,unitframe', client .. ': health draws its own Theme')
-		eq(blizzard(player.Health), 'box', client .. ': health shows the bronze box')
+		eq(blizzard(player.Health), 'box', client .. ': health shows the box')
 
 		-- Health set to Thick under the frame's Blizzard box: both.
 		P.player.theme = 'theme'
@@ -377,6 +377,45 @@ test("the frame's box sits over its health and power bars", function()
 		P.player.health.framelevel = 150
 		UF:UpdateUnitFrame(player, 'Health')
 		check(box:GetFrameLevel() > player.Health:GetFrameLevel(), client .. ': over the health bar after its level changed')
+		eq(#take_errors(), 0, client .. ': no errors')
+	end
+end)
+
+-- The first full UF:UpdateUnitFrame, with health's frame level set before it:
+-- the frame's backdrop is drawn after its elements, so the box is levelled
+-- over the level the element's update set.
+test("the full path draws the frame's box after its elements: over a health bar levelled 150", function()
+	for _, client in ipairs(CLIENTS) do
+		world(client, 'blizzard')
+		P.player.theme = 'theme'
+		P.player.health.framelevel = 150
+		local player = make_unit_frame('P', 'player', { 'Health', 'Power' })
+		UF:UpdateUnitFrame(player)
+		local box = st.ThemeArt.BoxFrame(player.backdrop)
+		check(player.Health:GetFrameLevel() >= 150, client .. ": health is at the level its config sets: " .. player.Health:GetFrameLevel())
+		check(box:GetFrameLevel() > player.Health:GetFrameLevel(), client .. ": the box over the health bar's level")
+		eq(#take_errors(), 0, client .. ': no errors')
+	end
+end)
+
+test("a boss preview's box is drawn after its elements: over a health bar levelled 150", function()
+	for _, client in ipairs(CLIENTS) do
+		world(client, 'blizzard')
+		P.boss.theme = 'theme'
+		P.boss.health.framelevel = 150
+		UF.units = { boss = {} }
+		UF.holders.boss = CreateFrame('Frame', 'SaftUI_BossHolder', UIParent)
+		UF.holders.boss:SetPoint('CENTER')
+		for i = 1, 5 do
+			local boss = CreateFrame('Frame', nil, UIParent)
+			boss:Hide()
+			UF.units.boss[i] = boss
+		end
+		UF:SetGroupTestMode('boss', true)
+		local preview = UF.previews.boss.frames[1]
+		local box = st.ThemeArt.BoxFrame(preview.backdrop)
+		check(preview.Health:GetFrameLevel() >= 150, client .. ': its health is at 150: ' .. preview.Health:GetFrameLevel())
+		check(box:GetFrameLevel() > preview.Health:GetFrameLevel(), client .. ": the box over the health bar's level")
 		eq(#take_errors(), 0, client .. ': no errors')
 	end
 end)
@@ -538,25 +577,7 @@ local function header_of(name, members)
 	return header
 end
 
--- The group border's eight pieces: each one's rectangle of options_frame_child
--- (28 by 26, { x0, x1, y0, y1 }), and its size around a 200 by 160 header
--- (the border 204 by 165).
-local GROUP_BORDER = {
-	TopLeftCorner = { { 0, 6, 0, 6 }, '6x6' },
-	TopRightCorner = { { 22, 28, 0, 6 }, '6x6' },
-	BottomLeftCorner = { { 0, 6, 20, 26 }, '6x6' },
-	BottomRightCorner = { { 22, 28, 20, 26 }, '6x6' },
-	TopEdge = { { 6, 22, 0, 6 }, '192x6' },
-	BottomEdge = { { 6, 22, 20, 26 }, '192x6' },
-	LeftEdge = { { 0, 6, 6, 20 }, '6x153' },
-	RightEdge = { { 22, 28, 6, 20 }, '6x153' },
-}
-
--- options_frame_child's file on each client and its top left pixel there (the
--- file is 1024 by 1024): Forever's Camelot member, retail's own.
-local GROUP_BORDER_FILE = { forever = { 8086468, 901, 1 }, retail = { 1318750, 616, 24 } }
-
-test('the group border: options_frame_child cut at 6px around the group header, no middle', function()
+test('party and raid groups wear the box, 4 outside the members', function()
 	for _, client in ipairs(CLIENTS) do
 		world(client)
 		local header = header_of('SaftUI_Party', 4)
@@ -566,27 +587,12 @@ test('the group border: options_frame_child cut at 6px around the group header, 
 		check(border:GetParent() == header, client .. ": the header's child")
 		st.config.profile.theme.name = 'blizzard'; UF:UpdateGroupBorder('party')
 		check(border:IsShown(), client .. ': shown under Blizzard')
-		eq(T.around(border, header), '-2,2,2,-3', client .. ": Blizzard's offsets around the header")
-		local pieces = st.ThemeArt.Get(border).pieces
-		eq(count(pieces), 8, client .. ': no middle'); eq(size_of(pieces.TopLeftCorner), '6x6', client .. ': 6px corners')
-		eq(pieces.TopLeftCorner:GetTexture(), client == 'forever' and 8086468 or 1318750, client .. ": options_frame_child's file")
-		eq(coords(pieces.TopLeftCorner), client == 'forever' and px(901, 907, 1, 7, 1024, 1024) or px(616, 622, 24, 30, 1024, 1024),
-			client .. ': the top left corner cut from it')
-		eq(border:GetFrameLevel(), header:GetFrameLevel(), client .. ": at the header's level, under its members")
-
-		-- Every piece: its rectangle, its size, its layer, white, on the border.
-		local file, x, y = unpack(GROUP_BORDER_FILE[client])
-		for key, expected in pairs(GROUP_BORDER) do
-			local piece, rect, where = pieces[key], expected[1], client .. ', ' .. key
-			if check(piece ~= nil, where .. ': drawn') then
-				check(piece:IsShown(), where .. ': shown')
-				eq(piece:GetTexture(), file, where .. ': the file')
-				eq(coords(piece), px(x + rect[1], x + rect[2], y + rect[3], y + rect[4], 1024, 1024), where .. ': its rectangle')
-				eq(size_of(piece), expected[2], where .. ': its size')
-				eq((piece:GetDrawLayer()), 'BORDER', where .. ': in BORDER')
-				eq(T.text(piece:GetVertexColor()), '1.00,1.00,1.00,1.00', where .. ': white')
-				check(piece:GetParent() == border, where .. ": a texture of the border's")
-			end
+		eq(T.around(border, header), '-4,4,4,-4', client .. ': the box 4 outside the header, on both sides')
+		eq((T.art(border):gsub('=[^,]*', '')), BOX, client .. ': the box, its eight pieces')
+		eq(count(st.ThemeArt.Get(border).pieces), 8, client .. ': no middle')
+		for key, piece in pairs(st.ThemeArt.Get(border).pieces) do
+			check(piece:GetParent() == border, client .. ', ' .. key .. ": a texture of the border's")
+			eq(T.text(piece:GetVertexColor()), '1.00,1.00,1.00,1.00', client .. ', ' .. key .. ': white')
 		end
 
 		-- Under Thick it's hidden, its pieces too (ThemeArt.Clear); back under
@@ -610,11 +616,76 @@ test('the group border: options_frame_child cut at 6px around the group header, 
 	local header = header_of('SaftUI_Raid10', 2)
 	header:SetFrameLevel(5)
 	rawset(header, 'GetFrameLevel', function() return secret end)
+	UF.groups = { raid10 = header }
 	local ok, border = pcall(UF.GroupBorder, UF, header)
+	local ok2, err2 = pcall(UF.UpdateGroupBorder, UF, 'raid10')
 	issecretvalue = real
 	if check(ok, "the header's level secret: made: " .. tostring(border)) then
+		check(ok2, "and drawn: " .. tostring(err2))
 		eq(border:GetFrameLevel(), 6, 'left where it was made, one over the header')
 	end
+end)
+
+test('the border sits above the members', function()
+	for _, client in ipairs(CLIENTS) do
+		world(client, 'blizzard')
+		local header = header_of('SaftUI_Party', 4)
+		UF.groups = { party = header }
+		local border = UF:GroupBorder(header)
+		local member = make_unit_frame('SaftUI_PartyUnitButton1', 'party', { 'Health' }, header)
+		member:SetFrameLevel(header:GetFrameLevel() + 1)
+		UF:UpdateGroupBorder('party')
+		eq(border:GetFrameLevel(), header:GetFrameLevel() + 2, client .. ': one over the members')
+		-- Drawn again, it doesn't climb over itself.
+		UF:UpdateGroupBorder('party')
+		eq(border:GetFrameLevel(), header:GetFrameLevel() + 2, client .. ': and stays there')
+		-- A member raised higher: the border follows on the next draw.
+		member:SetFrameLevel(header:GetFrameLevel() + 7)
+		UF:UpdateGroupBorder('party')
+		eq(border:GetFrameLevel(), header:GetFrameLevel() + 8, client .. ': over a raised member')
+		eq(#take_errors(), 0, client .. ': no errors')
+	end
+end)
+
+test('a member joining in combat re-levels nothing', function()
+	world('forever', 'blizzard')
+	local header = header_of('SaftUI_Party', 4)
+	UF.groups = { party = header }
+	local border = UF:GroupBorder(header)
+	local first = make_unit_frame('SaftUI_PartyUnitButton1', 'party', { 'Health' }, header)
+	first:SetFrameLevel(header:GetFrameLevel() + 1)
+	UF:UpdateGroupBorder('party')
+	local level = border:GetFrameLevel()
+
+	local protected = true
+	rawset(header, 'IsProtected', function() return protected, protected end)
+	local calls = {}
+	local function spy(frame, name)
+		local real = frame.SetFrameLevel
+		rawset(frame, 'SetFrameLevel', function(self, ...)
+			calls[#calls + 1] = name
+			return real(self, ...)
+		end)
+	end
+	spy(border, 'border'); spy(first, 'first member')
+	stub.in_combat = true
+	-- The header's own layout makes and places a fifth member, then SaftUI's
+	-- update for the group runs.
+	local joined = make_unit_frame('SaftUI_PartyUnitButton5', 'party', { 'Health' }, header)
+	spy(joined, 'joined member')
+	joined:SetFrameLevel(header:GetFrameLevel() + 3)
+	local before = #calls
+	protected = false; header:SetSize(200, 5 * 34 + 4 * 8); protected = true
+	local ok, err = pcall(UF.UpdateGroupBorder, UF, 'party')
+	check(ok, 'the update in combat: no error: ' .. tostring(err))
+	eq(#calls, before, 'no SetFrameLevel on the border or any member in combat: ' .. table.concat(calls, ','))
+	eq(border:GetFrameLevel(), level, 'the border keeps its last level')
+	eq(#stub.blocked, 0, 'nothing protected called')
+
+	stub.in_combat = false
+	UF:UpdateGroupBorder('party')
+	eq(border:GetFrameLevel(), joined:GetFrameLevel() + 1, 'out of combat it rises over the new member')
+	eq(#take_errors(), 0, 'no errors')
 end)
 
 test('which Theme turns the group border on', function()
@@ -694,8 +765,8 @@ test("it follows a member joining in combat, with nothing of SaftUI's running, n
 	-- The header's own secure layout pass for a fifth member: not addon code,
 	-- so the game doesn't block it.
 	protected = false; header:SetSize(200, 5 * 34 + 4 * 8); protected = true
-	eq(T.around(border, header), '-2,2,2,-3', 'the border follows by its anchors')
-	eq(size_of(border), '204x207', 'around five members')
+	eq(T.around(border, header), '-4,4,4,-4', 'the border follows by its anchors')
+	eq(size_of(border), '208x210', 'around five members')
 	eq(calls, 0, "no code of SaftUI's ran")
 	UF.UpdateGroupBorder = real
 	stub.in_combat = false
@@ -708,11 +779,11 @@ end)
 -- show, for every pending invite and briefly while a group disbands. It sizes
 -- itself to a sliver then (configureChildren in SecureGroupHeaders.lua:
 -- minWidth by minHeight, at least 0.1; 200 by 0.1 for the party growing
--- down), where the border would be a bronze strip. So the border's art is
+-- down), where the border would be a strip of the box. So the border's art is
 -- hidden (its alpha 0) while either side is under two of its pieces (12),
 -- from the border's own OnSizeChanged, which the stub fires as the game's
 -- layout pass does.
-test("a header with no member to show (a pending invite) shows no bronze strip: the border's art waits until two pieces fit, in combat too", function()
+test("a header with no member to show (a pending invite) shows no strip of the box: the border's art waits until two pieces fit, in combat too", function()
 	world('forever', 'blizzard')
 	local header = header_of('SaftUI_Party', 4)
 	UF.groups = { party = header }
@@ -732,18 +803,18 @@ test("a header with no member to show (a pending invite) shows no bronze strip: 
 	end
 	layout(200, 0.1)
 	check(border:IsShown(), 'no member to show: still shown')
-	eq(border:GetAlpha(), 0, 'but its art hidden: no bronze strip')
+	eq(border:GetAlpha(), 0, 'but its art hidden: no strip of the box')
 	layout(200, 34)
 	eq(border:GetAlpha(), 1, 'one member: its art shows again')
-	layout(200, 6)
-	eq(border:GetAlpha(), 0, 'the border 11 tall: under two pieces, hidden')
-	layout(200, 7)
+	layout(200, 3)
+	eq(border:GetAlpha(), 0, 'the border 11 tall (4 outside each side): under two pieces, hidden')
+	layout(200, 4)
 	eq(border:GetAlpha(), 1, 'the border 12 tall: two pieces fit, shown')
 	layout(0.1, 34)
 	eq(border:GetAlpha(), 0, 'a header growing sideways with no member, 0.1 wide: hidden')
-	layout(7, 34)
+	layout(3, 34)
 	eq(border:GetAlpha(), 0, 'the border 11 wide: hidden')
-	layout(8, 34)
+	layout(4, 34)
 	eq(border:GetAlpha(), 1, 'the border 12 wide: shown')
 	eq(#stub.blocked, 0, 'nothing protected called')
 
@@ -840,10 +911,9 @@ test('test mode previews get the same border', function()
 			local border = UF:GroupBorder(container)
 			if theme == 'blizzard' then
 				check(border:IsShown(), 'under Blizzard the previews sit in the border')
-				eq(T.around(border, container), '-2,2,2,-3', "at Blizzard's offsets around them")
+				eq(T.around(border, container), '-4,4,4,-4', 'the box 4 outside them')
 				eq((T.art(border):gsub('=[^,]*', '')), BOX, 'its eight pieces')
-				eq(border:GetFrameLevel(), container:GetFrameLevel(), "at the container's level")
-				check(border:GetFrameLevel() < container.frames[1]:GetFrameLevel(), 'under the previews')
+				check(border:GetFrameLevel() > container.frames[1]:GetFrameLevel(), 'over the previews')
 			else
 				check(not border:IsShown(), 'under Thick none')
 				eq(T.art(border), '', 'nothing drawn')

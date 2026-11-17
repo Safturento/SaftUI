@@ -35,7 +35,7 @@ UF.group_strings = {
 -- The kind of frame (st.THEME_KINDS) a unit's frames and their bars draw as:
 -- a party or raid member's (a group header's, UF.group_strings) as a member,
 -- which Blizzard draws as a bare fill; every other unit's (player, target,
--- boss, ...) as a unit frame, which Blizzard draws in the bronze box. Under
+-- boss, ...) as a unit frame, which Blizzard draws in the box. Under
 -- Thick and Thin both draw as a bar.
 function UF.UnitKind(unit)
 	return UF.group_strings[unit] and 'member' or 'unitframe'

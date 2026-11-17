@@ -131,9 +131,6 @@ local MINIMAL_ARROWS = {
 -- size by size at the drawn frame's own corner, the edges between them, size
 -- thick and stretched, every piece in the art's layer.
 
--- Blizzard's raid group border, which the group border is cut from.
-local GROUP_BORDER = Atlas('options_frame_child')
-
 -- Blizzard's UniqueCornersLayout with the ui-hud-minimap-button kit, as retail's
 -- minimap header draws it (Blizzard_Minimap/Mainline/Minimap.xml, BorderTop):
 -- the corners are different sizes, so each edge runs between its own two.
@@ -216,34 +213,6 @@ ThemeArt.ART = {
 		BottomEdge = { atlas = Atlas('_UI-Frame-Metal-EdgeBottom') },
 		LeftEdge = { atlas = Atlas('!UI-Frame-Metal-EdgeLeft') },
 		RightEdge = { atlas = Atlas('!UI-Frame-Metal-EdgeRight') },
-	},
-
-	-- The party and raid group border, a cut, around each group header's
-	-- members (SaftUI-Unitframes/groups.lua, UF:GroupBorder), read as a control
-	-- and drawn with ThemeArt.PaintCut on a frame of SaftUI's that is only
-	-- the border. Blizzard's raid frames draw it around each group with Edit
-	-- Mode's Display Border on (CompactRaidGroupTemplate's borderFrame), the
-	-- whole atlas stretched; cut at 6px it stays crisp at any size: a 2-3px
-	-- rim with rounded corners (bronze on Forever's Camelot member, which has
-	-- a faint dark middle; retail's middle is clear). No middle is drawn: the
-	-- members draw over the pieces' inner part. offsets put the border from
-	-- the group's top left (left x, top y) to its bottom right (right x, bottom
-	-- y), as CompactRaidGroup_UpdateBorder puts it around its first and last
-	-- member. The same rectangles on both clients.
-	groupborder = {
-		layer = 'BORDER',
-		size = 6,
-		offsets = { -2, 2, 2, -3 },
-		pieces = {
-			TopLeftCorner = { atlas = GROUP_BORDER, rect = { 0, 6, 0, 6 } },
-			TopRightCorner = { atlas = GROUP_BORDER, rect = { 22, 28, 0, 6 } },
-			BottomLeftCorner = { atlas = GROUP_BORDER, rect = { 0, 6, 20, 26 } },
-			BottomRightCorner = { atlas = GROUP_BORDER, rect = { 22, 28, 20, 26 } },
-			TopEdge = { atlas = GROUP_BORDER, rect = { 6, 22, 0, 6 } },
-			BottomEdge = { atlas = GROUP_BORDER, rect = { 6, 22, 20, 26 } },
-			LeftEdge = { atlas = GROUP_BORDER, rect = { 0, 6, 6, 20 } },
-			RightEdge = { atlas = GROUP_BORDER, rect = { 22, 28, 6, 20 } },
-		},
 	},
 
 	-- The unit frames' bar fills (SaftUI-Unitframes/updaters.lua,

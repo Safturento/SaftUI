@@ -197,10 +197,6 @@ return {
 			file = 8036204, coords = { 605 / 1024, 803 / 1024, 1 / 512, 72 / 512 } },
 		['UI-HUD-UnitFrame-Target-PortraitOn'] = { 194, 68,
 			file = 8036204, coords = { 201 / 1024, 395 / 1024, 87 / 512, 155 / 512 } },
-		-- The raid group border (groupborder), its Camelot member (-c60), in
-		-- file 8086468, 1024 by 1024
-		['options_frame_child'] = { 28, 26,
-			file = 8086468, coords = { 901 / 1024, 929 / 1024, 1 / 1024, 27 / 1024 } },
 		-- The raid frames' bar fills (unitbars), tiled as CompactUnitFrame.xml
 		-- tiles them
 		['RaidFrame-Hp-Fill'] = { 32, 32, 'hv' },
@@ -395,9 +391,6 @@ return {
 			file = 4631591, coords = { 1 / 1024, 199 / 1024, 87 / 512, 158 / 512 } },
 		['UI-HUD-UnitFrame-Target-PortraitOn'] = { 192, 67,
 			file = 4631591, coords = { 1 / 1024, 193 / 1024, 229 / 512, 296 / 512 } },
-		-- The raid group border (groupborder), in file 1318750, 1024 by 1024
-		['options_frame_child'] = { 28, 26,
-			file = 1318750, coords = { 616 / 1024, 644 / 1024, 24 / 1024, 50 / 1024 } },
 		-- The raid frames' bar fills (unitbars), tiled as CompactUnitFrame.xml
 		-- tiles them
 		['RaidFrame-Hp-Fill'] = { 32, 32, 'hv' },

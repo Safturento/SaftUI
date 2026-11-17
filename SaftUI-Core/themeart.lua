@@ -22,12 +22,11 @@ local st = SaftUI
 	  ART[name]    each piece of art: the box (the one border of panels,
 	               bars, tooltips and unit frames, drawn over the frame it
 	               borders: ThemeArt.BoxFrame) and the metal, the
-	               unit frame's bronze box (cut from Blizzard's unit frame art
-	               by texture coordinates, ThemeArt.Cut), the action and item
+	               action and item
 	               buttons', the aura's, the close button's, and each
 	               control's (CONTROLS), which st.ThemeArt.Control reads;
-	               the party and raid group border is one of those, a cut
-	               drawn by ThemeArt.PaintCut.
+	               the party and raid group border is no art of its own: it
+	               is the box, laid by ThemeArt.PaintBox.
 	A value that differs by client is ByClient(forever, live); the accessors
 	give this client's. An art name that starts with Interface\ is a file;
 	every other is an atlas, and is marked Atlas() where the tables name it, so
@@ -66,7 +65,7 @@ local CONTROLS = {
 	button = true, checkbox = true, tab = true, dropdown = true, slider = true,
 	input = true, search = true, swatch = true, binding = true, nudge = true, scrollbar = true,
 	optionstab = true, optionslist = true, micro = true, mover = true, classpower = true,
-	groupborder = true, unitbars = true, optionswindow = true, resizegrip = true,
+	unitbars = true, optionswindow = true, resizegrip = true,
 	nameplatetarget = true, sizebutton = true,
 }
 
@@ -525,16 +524,18 @@ function ThemeArt.LayBox(pieces, frame, centre)
 end
 
 -- One more than the highest frame level among target and its direct children
--- (target:GetChildren()), the box frames left out: where a box goes to lie
+-- (target:GetChildren()), the box frames left out, and skip, a child of
+-- target that is the box being levelled (a group border, which is itself
+-- target's child and mustn't count): where a box goes to lie
 -- over the frame it borders and over its child bars, buttons and texts. A
 -- level can be secret (target or a child may be Blizzard's): a child's
 -- secret level is left out, and with target's own secret it is nil, and the
 -- caller leaves the level as it is.
-function ThemeArt.LevelAbove(target)
+function ThemeArt.LevelAbove(target, skip)
 	local level = target:GetFrameLevel()
 	if issecretvalue(level) then return nil end
 	for _, child in ipairs({ target:GetChildren() }) do
-		if not isBoxFrame[child] then
+		if not isBoxFrame[child] and child ~= skip then
 			local childLevel = child:GetFrameLevel()
 			if not issecretvalue(childLevel) and childLevel > level then level = childLevel end
 		end
@@ -748,15 +749,12 @@ function ThemeArt.SetBorder(frame, look, kind, host, r, g, b, a)
 	end
 end
 
--- Lays and shows the cut ART[name] (the group border) on frame, a frame of
--- SaftUI's that is only that art, not a backdrop: its pieces at frame's
--- corners and along its edges (LayCut), white, kept as frame's art
--- (ThemeArt.Get). No fill, no kind and no colors: ThemeArt.Clear hides them.
--- Moves only the pieces.
-function ThemeArt.PaintCut(frame, name)
-	local cut = ThemeArt.ART[name]
-	if not (cut and IsCut(cut)) then error(tostring(name) .. ' is not a cut', 2) end
-	LayCut(Art(frame).pieces, frame, ForClient(cut))
+-- Lays and shows this client's box (ThemeArt.LayBox, with no centre) on
+-- frame, a frame of SaftUI's that is only that art, not a backdrop: kept as
+-- frame's art (ThemeArt.Get). No fill, no kind and no colors:
+-- ThemeArt.Clear hides it. Moves only the pieces.
+function ThemeArt.PaintBox(frame)
+	ThemeArt.LayBox(Art(frame).pieces, frame, false)
 end
 
 -- Draws a Blizzard look (st:ResolveTheme) on frame as kind: a backdrop that

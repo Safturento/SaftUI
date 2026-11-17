@@ -63,12 +63,12 @@ function UF.FillsFrame(config)
 	return point == relativePoint and tonumber(x) == 0 and tonumber(y) == 0
 end
 
--- The kind a bar draws with a border of its own under Blizzard: the bronze
+-- The kind a bar draws with a border of its own under Blizzard: the
 -- box.
 local BORDERED = { unitframe = true }
 
 -- The Theme and Background an element draws with: its config's, but None for
--- a bar drawn with a border (the bronze box) that
+-- a bar drawn with a border (the box) that
 -- lies exactly over its unit frame (UF.FillsFrame) while both its own Theme
 -- and its frame's draw in Blizzard's art. Filling the frame, it has the
 -- frame's size and so its kind, and the frame's border alone shows on those

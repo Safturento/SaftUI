@@ -196,14 +196,12 @@ end
 ---- The group border --------------
 ------------------------------------
 --[[
-	Under the Blizzard theme a group's members sit in one thin rounded border,
-	as Blizzard's raid frames draw a group with Edit Mode's Display Border on
-	(CompactRaidGroupTemplate's borderFrame): options_frame_child cut at 6px,
-	with no middle (st.ThemeArt.ART.groupborder), Blizzard's offsets from the
-	group's top left (-2, 2) to its bottom right (2, -3). One around each
-	header's shown members (the party; a whole raid, not each raid group), and
-	one around a party or raid group's test mode previews. The members draw
-	no border of their own under Blizzard (they're drawn as members).
+	Under the Blizzard theme a group's members sit in the box, the one border
+	Blizzard's look draws everywhere (ThemeArt.LayBox), 4 outside the group
+	(KINDS.unitframe's reach, in whole pixels): one around each header's shown
+	members (the party; a whole raid, not each raid group), and one around a
+	party or raid group's test mode previews. The members draw no border of
+	their own under Blizzard (they're drawn as members).
 
 	The header is secure, and lays itself out (shows, places and sizes its
 	members, and sizes itself to them) when someone joins or leaves, in
@@ -216,16 +214,23 @@ end
 	written onto the header: the border is kept in a weak table keyed by it
 	(.agents/taint.md).
 
+	The box lies over what it borders, so the border is raised one level over
+	the highest of the header's children (ThemeArt.LevelAbove), the members
+	among them. That only happens out of combat (UF:UpdateGroupBorder): a
+	member the header makes in combat sits at the level it was given, and the
+	border keeps its last level until the next draw out of combat, a plain
+	SetFrameLevel on SaftUI's own frame that nothing in combat depends on.
+
 	A header can show with no member to show: the party's, with showPlayer
 	off (its default), for every pending invite (an invite makes a group of
 	one at once, so [group:party] holds) and briefly while a group disbands.
 	It sizes itself to a sliver then (minWidth by minHeight, at least 0.1:
 	configureChildren in SecureGroupHeaders.lua), about 200 by 0.1 for the
-	party, where the border would be a bronze strip. So the border's art is
-	hidden (its alpha 0) while either side is under two of its pieces, and
-	shown again once they fit, from the border's own OnSizeChanged. That's
-	code of SaftUI's running in combat, but only on its own border, calling
-	nothing protected (alpha isn't).
+	party, where the border would be a strip of the box. So the border's art
+	is hidden (its alpha 0) while either side is under two of its pieces,
+	and shown again once they fit, from the border's own OnSizeChanged.
+	That's code of SaftUI's running in combat, but only on its own border,
+	calling nothing protected (alpha isn't).
 ]]
 
 -- owner (a group header or a preview container) -> its border.
@@ -236,25 +241,30 @@ local groupBorders = setmetatable({}, { __mode = 'k' })
 -- Only the border's alpha, so in combat too; a secret size leaves it as it is.
 local function FitBorder(border, width, height)
 	if issecretvalue(width) or issecretvalue(height) then return end
-	local least = 2 * st.ThemeArt.ART.groupborder.size
+	local least = 2 * 6
 	border:SetAlpha((width < least or height < least) and 0 or 1)
 end
 
+-- Anchors border around owner, the box's reach outside it in whole pixels.
+local function AnchorBorder(border, owner)
+	local reach = st.ThemeArt.Whole(st.ThemeArt.Reach('unitframe'), owner)
+	border:ClearAllPoints()
+	border:SetPoint('TOPLEFT', owner, 'TOPLEFT', -reach, reach)
+	border:SetPoint('BOTTOMRIGHT', owner, 'BOTTOMRIGHT', reach, -reach)
+end
+
 -- The border of owner, a group header or a test mode preview container: made
--- the first time, as owner's child at owner's frame level, so the members
--- (owner's children, one level up) draw over its inner part; left at the
--- level it was made at when owner's level is secret. Anchored around owner at
--- the group border's offsets, its art shown only while it fits (FitBorder).
--- It starts hidden; UF:UpdateGroupBorder shows it.
+-- the first time, as owner's child at owner's frame level (left at the level
+-- it was made at when owner's level is secret; UF:UpdateGroupBorder raises it
+-- out of combat), anchored around owner (AnchorBorder), its art shown only
+-- while it fits (FitBorder). It starts hidden; UF:UpdateGroupBorder shows it.
 function UF:GroupBorder(owner)
 	local border = groupBorders[owner]
 	if border then return border end
 	border = CreateFrame('Frame', nil, owner)
 	local level = owner:GetFrameLevel()
-	if not issecretvalue(level) then border:SetFrameLevel(level) end
-	local left, top, right, bottom = unpack(st.ThemeArt.Control('groupborder').offsets)
-	border:SetPoint('TOPLEFT', owner, 'TOPLEFT', left, top)
-	border:SetPoint('BOTTOMRIGHT', owner, 'BOTTOMRIGHT', right, bottom)
+	if not issecretvalue(level) then border:SetFrameLevel(level + 1) end
+	AnchorBorder(border, owner)
 	border:SetScript('OnSizeChanged', FitBorder)
 	border:Hide()
 	groupBorders[owner] = border
@@ -275,7 +285,13 @@ end
 local function UpdateBorder(owner, config)
 	local border = UF:GroupBorder(owner)
 	if UF.GroupBorderShown(config) then
-		st.ThemeArt.PaintCut(border, 'groupborder')
+		-- Out of combat only: a header's member made in combat keeps the level
+		-- it was given, and the border its last one (above).
+		if not InCombatLockdown() then
+			local level = st.ThemeArt.LevelAbove(owner, border)
+			if level then border:SetFrameLevel(level) end
+		end
+		st.ThemeArt.PaintBox(border)
 		FitBorder(border, border:GetSize())
 		border:Show()
 	else
