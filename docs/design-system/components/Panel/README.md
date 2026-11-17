@@ -33,7 +33,7 @@ The theme's colours change live from Global settings > Theme (`st:RecolorThemed`
 
 ## Blizzard theme
 
-Each kind takes Blizzard's art: `window` the character frame's metal (its header moves into the metal's 20px title strip), `tooltip` the tooltip border, `action` the action ring, `slot` and `aura` the white icon frame in the frame's own colour, `unitframe` the bronze box (inset 2), `member` a bare fill. Fills are the Blizzard theme's dark grey (`#1f1f21`, windows and the rest set apart on the Theme tab); a small frame keeps one line in `#808080`; `header`, `close` and `control` are cleared. Insets per kind: window 2; panel, bar, tooltip, action, slot 3; small 1; unitframe 2; aura, member, header, close, control 0.
+Each kind takes Blizzard's art: `window` the character frame's metal (its header moves into the metal's 20px title strip), `panel`, `bar`, `tooltip` and `unitframe` the one Blizzard box (the minimap header button's, 6px corners, drawn over the frame, 4px outside it; a frame drawn on itself takes it inside its bounds), `action` the action ring, `slot` and `aura` the white icon frame in the frame's own colour, `member` a bare fill. A frame's own border colour shows on the box desaturated and tinted. Fills are the Blizzard theme's dark grey (`#1f1f21`, windows and the rest set apart on the Theme tab); a small frame keeps one line in `#808080`; `header`, `close` and `control` are cleared. Insets per kind: window 2; panel, bar, tooltip, action, slot 3; small 1; unitframe 2; aura, member, header, close, control 0.
 
 ## Do and don't
 
