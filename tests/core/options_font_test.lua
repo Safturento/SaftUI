@@ -1614,12 +1614,14 @@ test("the menu's frame is off any old anchor when its rows are drawn (M8: Draw's
 		local body = M.body
 		local draw = body.Draw
 		body.Draw = function(self, ...)
-			at = M.frame:GetNumPoints()
+			-- only the screen's provisional point (Draw's, for the rows' measuring), never the old anchor
+			local _, relative = M.frame:GetPoint(1)
+			at = M.frame:GetNumPoints() == 1 and relative == UIParent and 0 or M.frame:GetNumPoints()
 			return draw(self, ...)
 		end
 		stub.click(dots_of('chat'))
 		body.Draw = draw
-		eq(at, 0, 'no point on the frame when the rows are drawn')
+		eq(at, 0, 'only the screen holds the frame when the rows are drawn')
 		close_dots()
 	end)
 end)

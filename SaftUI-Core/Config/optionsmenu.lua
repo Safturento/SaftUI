@@ -298,6 +298,10 @@ local function Draw(m, body, row, dots, menu, title)
 	-- again, and a pooled widget they take may be the one the menu still hangs
 	-- from (a font row's dots), which would anchor a row to its own descendant.
 	m.frame:ClearAllPoints()
+	-- Held by the screen for the draw: a frame with no anchor has no rect, and what a row measures as it
+	-- is drawn (a hover line's room, a setting's reset icon by its control: DrawnLeft) needs one. The
+	-- screen hangs from no row, so it cannot loop. Nothing shows between here and Anchor.
+	m.frame:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 0, 0)
 	DrawBody(m)
 	Anchor(m, dots)
 end

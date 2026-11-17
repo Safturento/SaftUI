@@ -246,38 +246,99 @@ test("a unit's page at full and half width: every row's line ends before its con
 	end
 end)
 
--- The game's sequence the tests above missed: a part's menu is drawn by OW:OpenMenu, which clears the menu
--- frame's anchors before it draws the rows (optionsmenu.lua, Draw: "the rows are drawn before the menu is
--- anchored again") and anchors it to the dots after. At draw time no row has a rect (GetLeft is nil, as the
--- game answers a frame whose chain has no anchor), so the line cannot be fitted to the control then: it is
--- fitted when it shows (the owner saw "Multiple" under the Font select and under a toggle's box).
+-- The game's sequence the tests above missed: a part's menu is drawn by OW:OpenMenu (optionsmenu.lua, Draw),
+-- which has the rows drawn before the menu has a place, so no row has a rect at draw time; the line must
+-- still end before the control when it shows, entered through the label or through the control itself.
+-- The stub counts 6.5 units a byte, wider than the game's text, so on its own the toggle's line fits either
+-- room; small_text(9) puts the line without Own (141) between the control's room (137) and the cell's (160), as the game has it.
+local function small_text(size)
+	local fo = OB.Font('small')
+	local path, _, flags = fo:GetFont()
+	fo:SetFont(path, size, flags)
+end
+
+local function open_menu(look)
+	local root = tree()
+	local body, by = page_body(root, 'player', 774, false)
+	local part = by.healthtext
+	check(part and part.widget:OpenMenu(), look .. ': the menu opens')
+	return body, part, PW.OW.GetMenuFrames(1)
+end
+
 test("a part's menu as the game opens it (rows drawn before the menu has a place): the hover line still ends before the control", function()
 	for _, look in ipairs({ 'thick', 'thin', 'blizzard' }) do
 		world()
 		in_look(look, function()
-			local root = tree()
 			local OW = PW.OW
-			local body, by = page_body(root, 'player', 774, false)
-			local part = by.healthtext
-			check(part and part.widget:OpenMenu(), look .. ': the menu opens')
-			local menu = OW.GetMenuFrames(1)
+			small_text(9)
+			local body, part, menu = open_menu(look)
 			local mroot = OM.MenuRoot(part.row.option)
-			local font
-			for _, c in ipairs(menu.body.cells) do if c.row.type == 'font' then font = c end end
-			check(font ~= nil, look .. ': the Font row')
+			local by = {}
+			for _, c in ipairs(menu.body.cells) do by[c.row.key] = c end
+			own_everything(nil, mroot, by)
 			for _, name in ipairs({ 'Friz Quadrata TT', 'Arial Narrow', 'Morpheus', 'Skurri' }) do
-				if OM.Set(mroot, font.row, name) and UF:IsOwn('player', 'health.text.font') then break end
+				if by.font and OM.Set(mroot, by.font.row, name) and UF:IsOwn('player', 'health.text.font') then break end
+			end
+			OW:CloseMenu()
+			check(part.widget:OpenMenu(), look .. ': the menu opens again')
+			menu = OW.GetMenuFrames(1)
+			local seen, toggles, fonts = 0, 0, 0
+			for _, c in ipairs(menu.body.cells) do
+				if c.row.type ~= 'item' and c.widget and c.frame.share and c.frame.shareOffers then
+					local label = look .. ' ' .. tostring(c.row.key) .. ' (' .. c.row.type .. ')'
+					-- through the label, then through the control's own OnEnter (a hooked part of it)
+					if check_line(c, label) then seen = seen + 1 end
+					stub.fire_script(c.widget.frame, 'OnEnter', true)
+					local p = c.frame.share
+					local control = drawn_left(c.widget.frame)
+					check(p.line:IsShown(), label .. ': the line shows from the control')
+					check(p.line:GetRight() <= control - ROOM, label .. ': from the control, the line ends before it: ' .. p.line:GetRight() .. ' vs ' .. (control - ROOM))
+					stub.fire_script(c.frame, 'OnLeave', true)
+					stub.cursor_x, stub.cursor_y = 0, 0
+					if c.row.type == 'toggle' then toggles = toggles + 1 elseif c.row.type == 'font' then fonts = fonts + 1 end
+				end
+			end
+			check(seen > 0 and toggles > 0 and fonts > 0, look .. ': lines checked: ' .. seen .. ', toggles ' .. toggles .. ', fonts ' .. fonts)
+			eq(#P_.off(menu.content), 0, look .. ': whole pixels: ' .. P_.report(P_.off(menu.content)))
+			OW:CloseMenu()
+			body:Release()
+		end)
+	end
+end)
+
+-- A setting's own reset icon in a menu (a source page's row, whose line has no Reset): placed at draw time, when
+-- the menu has no rect, and it still ends DEFAULT_GAP (6) before the control's drawn left, Blizzard's art included.
+test("a part's menu as the game opens it: a toggle's own reset icon ends before the control", function()
+	for _, look in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		world()
+		in_look(look, function()
+			local OW = PW.OW
+			local root = tree()
+			local body, by = page_body(root, 'all', 774, false)
+			local part = by.healthtext
+			check(part.widget:OpenMenu(), look .. ': the menu opens')
+			local mroot = OM.MenuRoot(part.row.option)
+			local menu = OW.GetMenuFrames(1)
+			for _, c in ipairs(menu.body.cells) do
+				if c.row.type == 'toggle' then
+					local v = OM.Get(mroot, c.row)
+					OM.Set(mroot, c.row, not v)
+				end
 			end
 			OW:CloseMenu()
 			check(part.widget:OpenMenu(), look .. ': the menu opens again')
 			menu = OW.GetMenuFrames(1)
 			local seen = 0
 			for _, c in ipairs(menu.body.cells) do
-				if c.row.type ~= 'item' and c.widget and c.frame.share and c.frame.shareOffers then
-					if check_line(c, look .. ' ' .. tostring(c.row.key)) then seen = seen + 1 end
+				local icon = c.frame.defaultReset
+				if c.row.type == 'toggle' and icon and icon:IsShown() then
+					seen = seen + 1
+					local control = drawn_left(c.widget.frame)
+					check(icon:GetRight() <= control - 6, look .. ' ' .. tostring(c.row.key) .. ': the icon ends 6 before the control: '
+						.. icon:GetRight() .. ' vs ' .. (control - 6))
 				end
 			end
-			check(seen > 0, look .. ': some line was checked: ' .. seen)
+			check(seen > 0, look .. ': a toggle shows its reset icon: ' .. seen)
 			OW:CloseMenu()
 			body:Release()
 		end)
