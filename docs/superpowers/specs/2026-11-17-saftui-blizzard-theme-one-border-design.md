@@ -91,13 +91,13 @@ An earlier round of CSS sketches (a gold rim, the tooltip border padded out) was
 | Every other `panel`, `bar` and `tooltip` (loot feed and rolls, chat, bags' sub-panels, edit mode's bar, totem timers, RestedXP and the rest of the files using those kinds) | tooltip border | the box |
 | Single unit frames, their separate bars, castbars, boss frames (`unitframe`) | bronze box, or a 1px line under 12px | the box, at every size |
 | Party and raid groups (`UF:GroupBorder`, `groups.lua`) | `ART.groupborder` | the box around each group |
-| Micro menu: zone, clock, latency, FPS, addon count, expansion, mail, difficulty, queue, search, each micro button | header, square, tracking atlases; the action bar strip | the box, inside each box, every box 25 tall |
+| Micro menu: zone, clock, latency, FPS, addon count, expansion, mail, difficulty, queue, search, each micro button | header, square, tracking atlases; the action bar strip | the box, inside each box, every box the bar's height |
 
 Windows (`window`), rings (`action`, `slot`), auras (`aura`), `small` frames and the strips and controls keep what they have.
 
 ### The micro menu
 
-- Every item stands on one box of the same height (25, the row's `BUTTON_SIZE`) and the same art; the boxes keep the spacing Thick gives them.
+- Every item stands on one box of the same height (the bar's height, `MicroMenu:BarHeight()`, 16 to 48, default 25; revised 2026-11-17 after the micro menu settings merged) and the same art, at the item's own width (`S.ItemWidth(item, height)`, a micro button's `MicroMenu:MicroWidth`); the boxes keep the bar's spacing (`MicroMenu:Spacing`). The 6px corners fit the least height, 16. An item turned off (`show[key] == false`) is concealed at alpha 0 on its holder, so its box draws nothing.
 - The strip behind the micro buttons (`UpdateStrip`, `ART.microbar.strip`) goes; each micro button gets its own box like every other item. Blizzard's own micro button art (icons, highlights) stays on top as today.
 - Search keeps its magnifier as an icon on the box, not the tracking button's drawn-in one.
 - The addon count gets a box.

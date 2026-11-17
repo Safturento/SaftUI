@@ -146,10 +146,11 @@
 
 **Interfaces:**
 - Consumes: `ThemeArt.LayBox(item.boxPieces, item.backdrop, true)` (Task 1): inside the item's rect, with the centre.
-- Produces: under Blizzard every micro menu item (zone, clock, latency, FPS, addon count, expansion, mail, difficulty, queue, search, each micro button) has its box laid on `item.backdrop` at the item's own rect (25 tall), centre shown, no other fill (the item's backdrop is drawn as `control`, which has none); no strip frame exists; Blizzard's micro button art stays above (backdrop level stays button level - 1).
+- Produces: under Blizzard every micro menu item (zone, clock, latency, FPS, addon count, expansion, mail, difficulty, queue, search, each micro button) has its box laid on `item.backdrop` at the item's own rect (the bar's height, `MicroMenu:BarHeight()`, by the item's width, `S.ItemWidth(item, height)`; see `.agents/architecture.md`, "The bar's settings"), centre shown, no other fill (the item's backdrop is drawn as `control`, which has none); no strip frame exists; Blizzard's micro button art stays above (backdrop level stays button level - 1).
 
 - [ ] **Step 1: Write the failing tests** in `tests/minimap/blizzard_look_test.lua`:
-  - `every item stands on the same box`: for each item, `T.around(item.backdrop, button) == '0,0,0,0'` and its box pieces read the same pieces (Forever file 8026705) with a `Center`; heights all 25.
+  - `every item stands on the same box`: for each item, `T.around(item.backdrop, button) == '0,0,0,0'` and its box pieces read the same pieces (Forever file 8026705) with a `Center`; every box's height equals `MicroMenu:BarHeight()`, checked at the default 25 and at the setting's ends, 16 and 48 (6px corners whole, edges a positive length).
+  - `a turned-off item draws no box`: `show['micro_<name>'] = false` → the item's holder alpha is 0 and its box pieces aren't visible; `show['zone'] = false` the same for a text item.
   - `no fill outside the box`: `item.backdrop`'s backdrop fill alpha is 0 under Blizzard (the spec's band outside the rim).
   - `no strip under the micro buttons`: `MicroMenu.GetStrip` is nil and no texture of `ui-hud-actionbar-frame` is shown.
   - `search keeps its magnifier`: the search item's icon is shown under Blizzard.
