@@ -129,7 +129,9 @@ builders.keybinding = function(w)
 	end)
 	button:SetScript('OnMouseDown', function(_, mouseButton)
 		if mouseButton == 'LeftButton' or mouseButton == 'RightButton' then return end
-		Press(MOUSE_BUTTONS[mouseButton] or mouseButton)
+		-- Buttons 6 to 31 arrive as 'Button6'; the game's binding name is BUTTON6.
+		local number = mouseButton:match('^Button(%d+)$')
+		Press(MOUSE_BUTTONS[mouseButton] or (number and 'BUTTON' .. number) or mouseButton)
 	end)
 	button:SetScript('OnClick', function(_, mouseButton)
 		if w.disabled then return end

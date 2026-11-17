@@ -44,7 +44,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-15 — UI scale: E1 on the friends' screens](#2026-11-15--ui-scale-e1-on-the-friends-screens)
   - [2026-11-15 — UI scale: the owner's standing calls](#2026-11-15--ui-scale-the-owners-standing-calls)
   - [2026-11-15 — UI scale: the Keep prompt's line weight at 150% and the Esc order](#2026-11-15--ui-scale-the-keep-prompts-line-weight-at-150-and-the-esc-order)
-  - [2026-11-15 — The options kit's keybinding widget commits mouse buttons 6 to 31 raw](#2026-11-15--the-options-kits-keybinding-widget-commits-mouse-buttons-6-to-31-raw)
   - [2026-11-13 — Loot rolls: the roll bar doesn't hold after a choice](#2026-11-13--loot-rolls-the-roll-bar-doesnt-hold-after-a-choice)
   - [2026-11-15 — UI scale: the kit's buttons and labels are off whole pixels on every screen that is not 1440p](#2026-11-15--ui-scale-the-kits-buttons-and-labels-are-off-whole-pixels-on-every-screen-that-is-not-1440p)
   - [2026-11-15 — UI scale: a kit confirm dialog or an open select list can cover the Keep prompt](#2026-11-15--ui-scale-a-kit-confirm-dialog-or-an-open-select-list-can-cover-the-keep-prompt)
@@ -154,6 +153,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-15 — The options kit's keybinding widget commits mouse buttons 6 to 31 raw](#2026-11-15--the-options-kits-keybinding-widget-commits-mouse-buttons-6-to-31-raw)
   - [2026-11-13 — Unit frames: shared settings across units, and small parts as menu items](#2026-11-13--unit-frames-shared-settings-across-units-and-small-parts-as-menu-items)
   - [2026-11-11 — Old gear's tabard and shirt exclusion never matched](#2026-11-11--old-gears-tabard-and-shirt-exclusion-never-matched)
   - [2026-11-15 — A bag window's least width ignores a Window titles change](#2026-11-15--a-bag-windows-least-width-ignores-a-window-titles-change)
@@ -765,16 +765,6 @@ It prints, for each shown row: the card's hover state, whether the Layer shows, 
 **Shape of work:** The owner's check settles (2); if one Esc closes `/sui` first, raise the prompt's catcher or have `/sui`'s Esc handler skip while the prompt shows. Close this entry on the owner's word.
 
 **Open questions:** The Esc order, in the game.
-
-### 2026-11-15 — The options kit's keybinding widget commits mouse buttons 6 to 31 raw
-
-**What:** The `keybinding` widget (`SaftUI-Core/Config/optionskeybinding.lua`) converts only `MiddleButton`, `Button4` and `Button5` (its `MOUSE_BUTTONS` table). Mouse buttons 6 to 31 reach `Press` as `Button6` and so on and are committed raw, where the game's binding names are `BUTTON6`. `/sui kb` converts every button with `GetConvertedKeyOrButton` (`SaftUI-ActionBars/keybindmode.lua`).
-
-**Why noticed:** Review of the small-followups package (2026-11-15), reading the widget's new use of Blizzard's binding helpers. The gap is older than that change; it is rare (a mouse with more than five buttons).
-
-**Anchors:** `SaftUI-Core/Config/optionskeybinding.lua` (`MOUSE_BUTTONS`, the `OnMouseDown` script), `SaftUI-ActionBars/keybindmode.lua` (`BindingKey`), `Blizzard_SharedXML/BindingUtil.lua` (`GetConvertedKeyOrButton`, the same on both clients), `tests/core/options_fields_test.lua`.
-
-**Shape of work:** small: in `OnMouseDown`, convert through `GetConvertedKeyOrButton` where the client has it, keeping `MOUSE_BUTTONS` as the fallback; a test that `Button6` commits `BUTTON6`.
 
 ### 2026-11-13 — Loot rolls: the roll bar doesn't hold after a choice
 
@@ -2867,6 +2857,18 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-15 — The options kit's keybinding widget commits mouse buttons 6 to 31 raw
+
+**What:** The `keybinding` widget (`SaftUI-Core/Config/optionskeybinding.lua`) converts only `MiddleButton`, `Button4` and `Button5` (its `MOUSE_BUTTONS` table). Mouse buttons 6 to 31 reach `Press` as `Button6` and so on and are committed raw, where the game's binding names are `BUTTON6`. `/sui kb` converts every button with `GetConvertedKeyOrButton` (`SaftUI-ActionBars/keybindmode.lua`).
+
+**Why noticed:** Review of the small-followups package (2026-11-15), reading the widget's new use of Blizzard's binding helpers. The gap is older than that change; it is rare (a mouse with more than five buttons).
+
+**Anchors:** `SaftUI-Core/Config/optionskeybinding.lua` (`MOUSE_BUTTONS`, the `OnMouseDown` script), `SaftUI-ActionBars/keybindmode.lua` (`BindingKey`), `Blizzard_SharedXML/BindingUtil.lua` (`GetConvertedKeyOrButton`, the same on both clients), `tests/core/options_fields_test.lua`.
+
+**Shape of work:** small: in `OnMouseDown`, convert through `GetConvertedKeyOrButton` where the client has it, keeping `MOUSE_BUTTONS` as the fallback; a test that `Button6` commits `BUTTON6`.
+
+**Resolved 2026-11-17:** the widget turns `Button6` to `Button31` into `BUTTON6` to `BUTTON31` (`optionskeybinding.lua`); case in `tests/core/options_fields_test.lua`.
 
 ### 2026-11-13 — Unit frames: shared settings across units, and small parts as menu items
 
