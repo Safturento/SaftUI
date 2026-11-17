@@ -1716,7 +1716,7 @@ end)
 -- inside the call, so the bar hides with no choice known. The post-hook, which
 -- runs after the call, names the roll, and the hold is made from what the bar
 -- showed at the hide.
-for _, case in ipairs({ { 'Greed', 2, 'amulet' }, { 'Need', 1, 'amulet' }, { 'Pass', 0, 'amulet' }, { 'Transmog', 4, 'ring' } }) do
+for _, case in ipairs({ { 'Greed', 2, 'amulet' }, { 'Need', 1, 'amulet' }, { 'Pass', 0, 'amulet' }, { 'Transmog', 4, 'ring' }, { 'Disenchant', 3, 'amulet' } }) do
 	local label, rollType, key = case[1], case[2], case[3]
 	each_shape("an addon's direct RollOnLoot " .. label .. ' on a roll with no confirmation holds it with its item, time, drop and place', function()
 		world()
@@ -1731,14 +1731,15 @@ for _, case in ipairs({ { 'Greed', 2, 'amulet' }, { 'Need', 1, 'amulet' }, { 'Pa
 		local frame = frame_of(rolls[2])
 
 		RollOnLoot(rolls[2], rollType)
-		history_choice(drops[2], STATE_OF[label])
+		history_choice(drops[2], STATE_OF[label] or 'Greed')
 		LT:UpdateRollBars()
 
 		eq(frame_of(rolls[5]), frame, 'the waiting roll took the frame inside the same call')
 		local bar = held_bar(rolls[2])
 		check(bar ~= nil, 'the roll is held')
 		if not bar then return end
-		eq(bar.Choice:GetText(), label, 'locked on ' .. label)
+		local lit = label == 'Disenchant' and 'Greed' or label -- no Disenchant button: the amulet's bar shows Greed
+		eq(bar.Choice:GetText(), lit, 'locked on ' .. lit)
 		eq(bar.Name:GetText(), ITEMS[key].name, 'with its own item, not the waiting roll\'s')
 		eq(bar.Timer.Text:GetText(), '01:30', 'and the time it had at the call')
 		eq(bar:GetBottom(), base + step, 'in the second place of the stack')
@@ -1747,6 +1748,18 @@ for _, case in ipairs({ { 'Greed', 2, 'amulet' }, { 'Need', 1, 'amulet' }, { 'Pa
 		eq(#LT:GetHeldRolls(), 1, 'one held bar')
 	end)
 end
+
+test("an addon's direct RollOnLoot prints the snapshot and the hold from it with debug on", function()
+	world()
+	local roll = start_roll('amulet')
+	LT:UpdateRollBars()
+	tick(10)
+	st.DEBUG = true
+	local lines = printed_by(function() RollOnLoot(roll, 2) end)
+	st.DEBUG = false
+	check(any_line(lines, 'snapshot kept for ' .. roll), 'the snapshot: ' .. table.concat(lines, ' | '))
+	check(any_line(lines, 'holding from the snapshot at the hide: ' .. roll .. ' Greed'), 'the hold from it')
+end)
 
 test("a bar that hides without a call on its roll is not held, even if the roll is rolled on after the frame", function()
 	world()

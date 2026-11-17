@@ -446,6 +446,7 @@ local function OnBarHide(frame)
 					shown = shown, index = index,
 				} }
 				hidden[rollID] = snapshot
+				if st.DEBUG then st:Debug('Loot', 'bar hid with no choice known: snapshot kept for', rollID, 'seconds left', ('%.1f'):format(timer.left)) end
 				C_Timer.After(0, function()
 					if hidden[rollID] == snapshot then hidden[rollID] = nil end
 				end)
@@ -532,6 +533,7 @@ local function OnRollChosen(rollID, rollType)
 		-- showed then, with the choice the call names.
 		hidden[rollID] = nil
 		snapshot.roll.choice = choice
+		if st.DEBUG then st:Debug('Loot', 'holding from the snapshot at the hide:', rollID, choice) end
 		LT:HoldRoll(snapshot.frame, snapshot.roll)
 		return
 	end
