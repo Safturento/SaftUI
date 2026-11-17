@@ -7,6 +7,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-17 — Micro menu: item order](#2026-11-17--micro-menu-item-order)
+  - [2026-11-17 — Micro menu: direction (right to left, vertical)](#2026-11-17--micro-menu-direction-right-to-left-vertical)
   - [2026-11-17 — Micro buttons' hover: one alpha a texture or two](#2026-11-17--micro-buttons-hover-one-alpha-a-texture-or-two)
   - [2026-11-17 — Scroll bar thumbs: the same solid hover reads soft on chat and opaque on the tracker](#2026-11-17--scroll-bar-thumbs-the-same-solid-hover-reads-soft-on-chat-and-opaque-on-the-tracker)
   - [2026-11-16 — The loot window's opaque hover on the first open: nothing found that writes it](#2026-11-16--the-loot-windows-opaque-hover-on-the-first-open-nothing-found-that-writes-it)
@@ -249,6 +251,34 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-17 — Micro menu: item order
+
+**What:** let the owner reorder the micro menu bar's items on its `/sui` page (up and down arrows per item, or a drag list), rather than the fixed order in `MicroMenu:OnEnable`.
+
+**Why noticed:** one of eight micro menu settings offered on 2026-11-17 (thread "micro menu config"). The owner took 1 to 6 (height, spacing, widths, show/hide, font, mouseover fade, all shipped on branch `micromenu-settings`) and agreed order and direction wait as followups.
+
+**Anchors:** `SaftUI-Minimap/micromenu.lua` (`OnEnable`'s `Add` calls, `UpdateButtons`), `micromenuoptions.lua` (the Items tab already lists every item by key in bar order), `microbuttons.lua` (`SkinBlizzardMicroMenu` adds the micro buttons as one run of holders).
+
+**What's been considered:** every item already has a stable key (`zone`, `clock`, ..., `micro_<name>`), so an `order` list of keys in the profile, with unknown keys appended, is enough; `UpdateButtons` would sort `MicroMenu.Buttons` by it. Whether the micro buttons move as one block or one by one is open. The Blizzard theme rework (`blizzard-borders`, task 5) drops Forever's strip under the micro buttons, which removes the only reason they'd need to stay together.
+
+**Shape of work:** small: an `order` setting, a sort in `UpdateButtons`, and a list row with arrows on the Items tab (a new options widget unless an existing list widget fits).
+
+**Open questions:** micro buttons as a block or each on its own; arrows or drag.
+
+### 2026-11-17 — Micro menu: direction (right to left, vertical)
+
+**What:** a Direction setting for the micro menu bar: left to right (today), right to left (for a bar anchored on the right edge), and vertical.
+
+**Why noticed:** offered with the other micro menu settings on 2026-11-17 (see "Micro menu: item order"); deferred by the owner's pick.
+
+**Anchors:** `SaftUI-Minimap/micromenu.lua` (`UpdateButtons` anchors each item `TOPLEFT` to the previous one's `TOPRIGHT`; `SizeContainer`), `micromenuart.lua` (Forever's header atlases are laid along a horizontal box; the `blizzard-borders` plan's task 5 replaces them with one box per item, which makes vertical easier).
+
+**What's been considered:** right to left is a mirrored anchor chain and a container sized the same way. Vertical needs a sensible width for the zone text (one column as wide as the widest item, or each item at its own width, left-aligned), and the micro buttons at the bar's width rather than its height.
+
+**Shape of work:** right to left is small; vertical is a design pass first (a mockup) and then a layout change.
+
+**Open questions:** vertical column width; whether the text items should wrap or clip when narrow.
 
 ### 2026-11-17 — Micro buttons' hover: one alpha a texture or two
 
