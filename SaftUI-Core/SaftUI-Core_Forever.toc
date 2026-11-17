@@ -34,6 +34,7 @@ init.lua
 constants.lua
 api.lua
 uiscale.lua
+uiscalelock.lua
 Widgets\load.xml
 skinning.lua
 panels.lua

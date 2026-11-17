@@ -12,8 +12,8 @@ local st = SaftUI
 --
 -- The runtime (from UIScale:Start down) sets UIParent's scale from the choice,
 -- at login and again after every change, and puts it back when the game moves
--- it. UIParent is Blizzard's: its SetScale is protected in combat (inferred,
--- .agents/taint.md rule 6), so it is called only here, out of combat, and a
+-- it. UIParent is Blizzard's: its SetScale is protected in combat (seen in game:
+-- ADDON_ACTION_BLOCKED, .agents/taint.md rule 6), so it is called only here, out of combat, and a
 -- change in combat waits whole for the end of it.
 local UIScale = {}
 st.UIScale = UIScale
@@ -437,6 +437,8 @@ function UIScale:Check()
 	else
 		st:UpdateScreenMargin()
 	end
+	-- Blizzard's Use UI Scale row follows the mode (uiscalelock.lua).
+	if UIScale.RefreshLock then Safely(UIScale.RefreshLock, UIScale) end
 end
 
 -- Whether choice is one a preview or a save may take, with why not: 'mode' (an
