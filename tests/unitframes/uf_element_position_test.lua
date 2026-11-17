@@ -90,3 +90,28 @@ test('unit frame position: relative_to reads the element, the global frame or th
 	eq(o.validate(info, 'frame', 'NoSuchFrame'), "Frame doesn't exist", 'a typed name that is no frame')
 	eq(o.validate(info, 'point', 'TOP'), true, 'the points are not checked')
 end)
+
+test('unit frame position: the dropdown names an element as the pages do and keeps the key it saves', function()
+	local UF = SaftUI:GetModule('Unitframes', true) or SaftUI:NewModule('Unitframes')
+	UF.ELEMENT_NAMES = { Castbar = 'Cast bar', ReadyCheckIndicator = 'Ready check', Health = 'Health' }
+	local unitframe = CreateFrame('Frame', 'GeneratorsNamesUnit', UIParent)
+	for _, name in ipairs({ 'Name', 'Castbar', 'ReadyCheckIndicator', 'Health', 'Portrait' }) do
+		unitframe[name] = CreateFrame('Frame', nil, unitframe)
+	end
+	unitframe.elements = { Name = unitframe.Name, Castbar = unitframe.Castbar, ReadyCheckIndicator = unitframe.ReadyCheckIndicator,
+		Health = unitframe.Health, Portrait = unitframe.Portrait }
+	unitframe.Name.unitframe = unitframe
+	local store = { element = false, frame = false }
+	local o = generators.uf_element_position(50,
+		function(key) return store[key] end,
+		function(key, value) store[key] = value end,
+		function() return unitframe.Name end)
+	local root, r = row_of(o)
+	local listed = {}
+	for i, entry in ipairs(OM.Values(root, r)) do listed[i] = entry.key .. '=' .. entry.name end
+	-- Sorted by the name shown; an element the pages have no name for shows its key.
+	eq(table.concat(listed, ','),
+		'__unitframe=Unit frame,Castbar=Cast bar,Health=Health,Portrait=Portrait,ReadyCheckIndicator=Ready check,__global=Global frame')
+	o.set(info, 'relative_to', 'ReadyCheckIndicator')
+	eq(store.element, 'ReadyCheckIndicator', 'the saved key is the element key, not its name')
+end)

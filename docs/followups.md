@@ -18,7 +18,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-16 — All units: small rules left open](#2026-11-16--all-units-small-rules-left-open)
   - [2026-11-16 — Nameplates and All units](#2026-11-16--nameplates-and-all-units)
   - [2026-11-16 — The Sourced-from line on a plate page could link to the other page](#2026-11-16--the-sourced-from-line-on-a-plate-page-could-link-to-the-other-page)
-  - [2026-11-16 — The TO dropdown names parts by key](#2026-11-16--the-to-dropdown-names-parts-by-key)
   - [2026-11-16 — The states scan misses hand-rolled states it should catch](#2026-11-16--the-states-scan-misses-hand-rolled-states-it-should-catch)
   - [2026-11-16 — A Buttons color saved by an older build after a downgrade stays as an orphan key](#2026-11-16--a-buttons-color-saved-by-an-older-build-after-a-downgrade-stays-as-an-orphan-key)
   - [2026-11-16 — The tracker's whole pixels at other scales](#2026-11-16--the-trackers-whole-pixels-at-other-scales)
@@ -153,6 +152,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-16 — The TO dropdown names parts by key](#2026-11-16--the-to-dropdown-names-parts-by-key)
   - [2026-11-16 — All units' Position offers anchors some units lack (pre-flight ruling L7 was never built)](#2026-11-16--all-units-position-offers-anchors-some-units-lack-pre-flight-ruling-l7-was-never-built)
   - [2026-11-13 — Unit frames: shared settings across units, and small parts as menu items](#2026-11-13--unit-frames-shared-settings-across-units-and-small-parts-as-menu-items)
   - [2026-11-11 — Old gear's tabard and shirt exclusion never matched](#2026-11-11--old-gears-tabard-and-shirt-exclusion-never-matched)
@@ -417,20 +417,6 @@ It prints, for each shown row: the card's hover state, whether the Layer shows, 
 **Shape of work:** Small: the line becomes a link row that reveals `Unitframes.friendlynameplate.general` (or the enemy's). A test that the click lands on the right pick.
 
 **Open questions:** Whether a link is wanted, or the line is enough.
-
-### 2026-11-16 — The TO dropdown names parts by key
-
-**What:** A Position block's TO dropdown on a unit frame lists the unit's parts by their element key ("ReadyCheckIndicator", "RaidTargetIndicator", "AdditionalPower"), not by the names the pages use ("Ready check", "Raid target", "Additional power"). The dropdown is now 136 wide (`selectWidth`), 4 less than it was, so a long key may be cut.
-
-**Why noticed:** An owner question from Task 5's review, with the in-game check "is AdditionalPower cut in the TO dropdown" (checklist section I, step 14).
-
-**Anchors:** `SaftUI-Core/Config/optionsposition.lua` (`toWidth`, `selectWidth`); `SaftUI-Unitframes/config/position.lua` (the anchor choices); `UF.ELEMENT_NAMES` in `SaftUI-Unitframes/config/parts.lua` (the page names); `tests/unitframes/parts_test.lua` (N1: select 136, name box the same, gap 12).
-
-**What's been considered:** Naming the list by `UF.ELEMENT_NAMES` while keeping the saved key (what the part summaries and tooltips already do, "Right of Cast bar: 2, 3"); the name box for a global frame is typed and unchanged.
-
-**Shape of work:** Small: the anchor list's display names, with the keys saved as before, plus a test that every key has a name.
-
-**Open questions:** Whether the owner saw a name cut in game; if not, the keys can stay until someone asks.
 
 ### 2026-11-16 — The states scan misses hand-rolled states it should catch
 
@@ -2857,6 +2843,23 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-16 — The TO dropdown names parts by key
+
+**What:** A Position block's TO dropdown on a unit frame lists the unit's parts by their element key ("ReadyCheckIndicator", "RaidTargetIndicator", "AdditionalPower"), not by the names the pages use ("Ready check", "Raid target", "Additional power"). The dropdown is now 136 wide (`selectWidth`), 4 less than it was, so a long key may be cut.
+
+**Why noticed:** An owner question from Task 5's review, with the in-game check "is AdditionalPower cut in the TO dropdown" (checklist section I, step 14).
+
+**Anchors:** `SaftUI-Core/Config/optionsposition.lua` (`toWidth`, `selectWidth`); `SaftUI-Unitframes/config/position.lua` (the anchor choices); `UF.ELEMENT_NAMES` in `SaftUI-Unitframes/config/parts.lua` (the page names); `tests/unitframes/parts_test.lua` (N1: select 136, name box the same, gap 12).
+
+**What's been considered:** Naming the list by `UF.ELEMENT_NAMES` while keeping the saved key (what the part summaries and tooltips already do, "Right of Cast bar: 2, 3"); the name box for a global frame is typed and unchanged.
+
+**Shape of work:** Small: the anchor list's display names, with the keys saved as before, plus a test that every key has a name.
+
+**Open questions:** Whether the owner saw a name cut in game; if not, the keys can stay until someone asks.
+
+**Resolved 2026-11-17:** the dropdown lists an element by `UF.ELEMENT_NAMES` (an element with no name there shows its key) and sorts by the name shown; the saved key is unchanged. Pinned in `tests/unitframes/uf_element_position_test.lua`. The in-game check that "Additional power" fits the 136-wide dropdown is the owner's.
+
 
 ### 2026-11-16 — All units' Position offers anchors some units lack (pre-flight ruling L7 was never built)
 

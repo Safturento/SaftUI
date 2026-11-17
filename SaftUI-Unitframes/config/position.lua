@@ -93,8 +93,18 @@ function generators.uf_element_position(order, get, set, target, desc, name, sav
 		return lacking
 	end
 
+	-- An element as the dropdown shows it: the name the pages use (UF.ELEMENT_NAMES, parts.lua), else its key.
+	local function ElementLabel(name)
+		return UF and UF.ELEMENT_NAMES and UF.ELEMENT_NAMES[name] or name
+	end
+	local function ByLabel(a, b)
+		local la, lb = ElementLabel(a), ElementLabel(b)
+		if la ~= lb then return la < lb end
+		return a < b
+	end
+
 	-- The elements of the target's unit frame, apart from the target itself,
-	-- sorted. On All units the elements every member having the part has. Every
+	-- sorted by the name shown. On All units the elements every member having the part has. Every
 	-- registered element while the unit frame isn't known.
 	local function GetElementNames()
 		local unitframe, frame = UnitFrame(), ResolveTarget(target)
@@ -106,7 +116,7 @@ function generators.uf_element_position(order, get, set, target, desc, name, sav
 					tinsert(names, name)
 				end
 			end
-			sort(names)
+			sort(names, ByLabel)
 			return names
 		end
 		for name in pairs(unitframe and unitframe.elements or st:GetModule('Unitframes').elements) do
@@ -114,7 +124,7 @@ function generators.uf_element_position(order, get, set, target, desc, name, sav
 				tinsert(names, name)
 			end
 		end
-		sort(names)
+		sort(names, ByLabel)
 		return names
 	end
 
@@ -138,7 +148,7 @@ function generators.uf_element_position(order, get, set, target, desc, name, sav
 	option.values = function()
 		local values = { [UNIT_FRAME] = 'Unit frame', [GLOBAL_FRAME] = 'Global frame' }
 		for _, name in ipairs(GetElementNames()) do
-			values[name] = name
+			values[name] = ElementLabel(name)
 		end
 		return values
 	end
