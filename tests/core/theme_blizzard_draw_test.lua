@@ -207,12 +207,12 @@ test('a tooltip: the eight box pieces on its box frame, edges stretched, no line
 	check(not outerShown(b), "Thick's lines are hidden")
 end)
 
-test("ThemeArt.LayBorder lays a kit with its Center on a frame, in the caller's own table", function()
+test("ThemeArt.LayBox lays retail's kit with its Center on a frame, in the caller's own table", function()
 	local st = blizzard('retail')
 	local owner, pieces = frame(st), {}
 	local function count(t) local n = 0 for _ in pairs(t) do n = n + 1 end return n end
 	local function size_of(r) return text(r:GetWidth(), r:GetHeight()):gsub('%.00', ''):gsub(',', 'x') end
-	st.ThemeArt.LayBorder(pieces, owner, st.ThemeArt.Control('microbar').header.kit)
+	st.ThemeArt.LayBox(pieces, owner, true)
 	eq(count(pieces), 9)
 	eq(pieces.TopLeftCorner:GetAtlas(), 'ui-hud-minimap-button-NineSlice-CornerTopLeft'); eq(size_of(pieces.TopLeftCorner), '6x6')
 	eq(T.around(pieces.TopLeftCorner, owner):match('^%-?%d+,%-?%d+'), '0,0', 'at the corner')

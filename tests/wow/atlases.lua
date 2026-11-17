@@ -207,14 +207,12 @@ return {
 		['raidframe-hp-bg-white'] = { 32, 32 },
 		['_RaidFrame-Resource-Fill'] = { 16, 6, 'h' },
 		['_RaidFrame-Resource-Background'] = { 16, 6, 'h' },
-		-- The micro menu bar (microbar): the strip frame, then Camelot's header, square and tracking button
+		-- Camelot's micro menu frame art (Blizzard's own, which SaftUI fades), then the minimap header button
 		['UI-HUD-ActionBar-Frame'] = { 55, 55 },
 		-- The header button is also the box (panel, bar, tooltip, unitframe),
 		-- cut from its Camelot member (-c60), in file 8026705, 512 by 512
 		['ui-hud-minimap-header-button'] = { 152, 23,
 			file = 8026705, coords = { 256 / 512, 408 / 512, 256 / 512, 279 / 512 } },
-		['ui-hud-minimap-addon-indicator'] = { 23, 22 },
-		['ui-hud-minimap-tracking-button'] = { 23, 23 },
 		['ui-hud-minimap-button-NineSlice-CornerTopLeft'] = { 6, 6 },
 		['ui-hud-minimap-button-NineSlice-CornerTopRight'] = { 7, 6 },
 		['ui-hud-minimap-button-NineSlice-CornerBottomLeft'] = { 6, 7 },
@@ -406,7 +404,7 @@ return {
 		['raidframe-hp-bg-white'] = { 32, 32 },
 		['_RaidFrame-Resource-Fill'] = { 16, 6, 'h' },
 		['_RaidFrame-Resource-Background'] = { 16, 6, 'h' },
-		-- The micro menu bar (microbar): the strip frame and the minimap button kit
+		-- The micro menu's frame art (Blizzard's own, which SaftUI fades) and the minimap button kit
 		['UI-HUD-ActionBar-Frame'] = { 55, 55 },
 		['ui-hud-minimap-button-NineSlice-CornerTopLeft'] = { 6, 6 },
 		['ui-hud-minimap-button-NineSlice-CornerTopRight'] = { 7, 6 },

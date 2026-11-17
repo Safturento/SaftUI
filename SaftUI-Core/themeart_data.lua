@@ -625,26 +625,6 @@ ThemeArt.ART = {
 		highlightBlend = 'BLEND',
 	},
 
-	-- The micro menu bar's art under Blizzard (Control('microbar')). Forever
-	-- draws Camelot's: the action bar's frame as the strip under the micro
-	-- buttons, with its icon background inside it, and each box (the header,
-	-- the addon indicator square, the tracking button) as one atlas. Retail has
-	-- no strip, and draws each box as the ui-hud-minimap-button kit, as its
-	-- minimap header does. pad and backgroundInset are how far the strip and its
-	-- background reach outside the buttons and in from the strip.
-	microbar = ByClient({
-		strip = { frame = Atlas('UI-HUD-ActionBar-Frame'), background = Atlas('UI-HUD-ActionBar-IconFrame-Background'), pad = 4, backgroundInset = 2 },
-		header = { atlas = Atlas('ui-hud-minimap-header-button', 'forever'), height = 23 },
-		square = { atlas = Atlas('ui-hud-minimap-addon-indicator', 'forever'), width = 23, height = 22 },
-		-- icon: the art has the item's icon drawn in.
-		tracking = { atlas = Atlas('ui-hud-minimap-tracking-button', 'forever'), width = 23, height = 23, icon = true },
-	}, {
-		strip = false,
-		header = { kit = MINIMAP_BUTTON_KIT },
-		square = { kit = MINIMAP_BUTTON_KIT },
-		tracking = { kit = MINIMAP_BUTTON_KIT },
-	}),
-
 	-- Edit Mode's selection (EditModeSystemSelectionLayout), drawn on a mover's
 	-- outline: the highlight kit on every mover, the selected kit on the one
 	-- being moved. Each atlas is a format of the kit (%s). The corners are one

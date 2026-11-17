@@ -1,16 +1,9 @@
--- SaftUI-Minimap's micro menu bar under the Blizzard theme
--- (st.ThemeArt.Control('microbar')):
---   - on Forever the zone, clock, latency and FPS boxes stand on Camelot's
---     header button, the square items on its addon indicator and search on its
---     tracking button, whose magnifier is drawn in, so SaftUI's hides; each
---     drawn at its own height, centred in the 25 tall row, on the item's panel;
---   - on retail every box takes the grey minimap button kit, and SaftUI's
---     magnifier stays;
---   - on Forever the micro buttons stand on one bronze strip of SaftUI's, from
---     the first shown holder to the last, which follows Blizzard showing and
---     hiding them (in combat too) and goes when none shows; retail has none;
---   - Thick puts today's boxes back, and nothing of Blizzard's micro menu is
---     shown, moved or written onto.
+-- SaftUI-Minimap's micro menu bar under the Blizzard theme: every item (the
+-- zone, clock, latency, FPS, addon count, expansion, mail, difficulty, queue,
+-- search and each micro button) stands on the same box, ThemeArt.LayBox's
+-- (the minimap header button's), laid on the item's own panel at the item's
+-- rect with its centre. No strip stands under the micro buttons, search keeps
+-- the magnifier SaftUI draws, and Thick and Thin put today's boxes back.
 --
 -- Real: SaftUI-Minimap's minimap.lua, config.lua, micromenu.lua,
 -- micromenuart.lua, micromenuitems.lua, micromenuoptions.lua and
@@ -37,6 +30,7 @@ local function world(client)
 	load_saftui('SaftUI-Minimap/micromenuoptions.lua')
 	load_saftui('SaftUI-Minimap/microbuttons.lua')
 	MM = st:GetModule('MicroMenu')
+	st:BindModuleConfig(MM, 'micromenu')
 	MM.Container = CreateFrame('Frame', nil, UIParent)
 	MM.Container:SetPoint('TOPLEFT')
 end
@@ -69,98 +63,6 @@ local function shown(pieces)
 	end
 	return n
 end
-
-test("Forever under Blizzard: the zone, clock, latency and FPS boxes on the header button, the square items on the addon indicator, search on Blizzard's tracking button; Thick puts today's boxes back", function()
-	world('forever')
-	local zone, fps = item({ width = 200, art = 'header' }), item({ width = 48, art = 'header' })
-	local square, search = item(), CreateFrame('Button', nil, UIParent)
-	local magnifier = search:CreateTexture(); MM:AddButton(search, { art = 'tracking', icon = magnifier })
-	MM:SkinBarButton(zone) -- its flat hover (the state Layer)
-	theme('blizzard')
-	local z = MM:GetItemArt(zone)
-	eq(z:GetAtlas(), 'ui-hud-minimap-header-button'); eq(T.around(z, zone), '0,-1,0,1', 'its 23 centred on the 25 row, the box wide')
-	eq(T.around(MM:GetItemArt(fps), fps), '0,-1,0,1')
-	local s = MM:GetItemArt(square); eq(s:GetAtlas(), 'ui-hud-minimap-addon-indicator'); eq(T.around(s, square), '1,-1,-1,2')
-	local t = MM:GetItemArt(search); eq(t:GetAtlas(), 'ui-hud-minimap-tracking-button'); eq(T.around(t, search), '1,-1,-1,1')
-	check(z:IsShown() and s:IsShown() and t:IsShown(), 'each shows')
-	eq(select(1, z:GetDrawLayer()), 'ARTWORK')
-	check(not magnifier:IsShown(), "SaftUI's magnifier hidden: Blizzard's is drawn in")
-	eq(drawn(panel(zone)), 'theme,theme,control'); eq(panel(zone).backdropInfo, nil, 'no flat box, no line')
-	eq(z:GetParent(), panel(zone), "on the item's panel, under the item's own art")
-	stub.fire_script(zone, 'OnEnter')
-	eq(st:StateLook(zone).layer.shown, true, 'the flat hover stays: the state Layer, under every theme')
-	stub.fire_script(zone, 'OnLeave')
-	eq(shown(select(2, MM:GetItemArt(zone))), 0, 'no kit on Forever')
-	theme('thick')
-	check(not z:IsShown() and not s:IsShown() and not t:IsShown()); check(magnifier:IsShown())
-	eq(drawn(panel(zone)), 'theme,theme,control')
-	eq(T.inset(panel(zone)), 2); eq(T.offset(panel(zone), 'TOPLEFT'), '-2.00,2.00', "today's small frame")
-	eq(select(4, panel(zone):GetBackdropColor()), 0.9, "SaftUI's transparent background, as today")
-	theme('thin'); check(not z:IsShown() and not t:IsShown() and magnifier:IsShown() and T.inset(panel(zone)) == 1, "Thin: today's 1px small frame, no Blizzard art")
-	theme('blizzard')
-	check(z:IsShown() and t:IsShown(), 'and back'); check(not magnifier:IsShown())
-end)
-
-test('retail under Blizzard: every box takes the grey minimap button kit, and there is no strip', function()
-	world('retail')
-	local zone, square = item({ width = 200, art = 'header' }), item()
-	local search = CreateFrame('Button', nil, UIParent)
-	local magnifier = search:CreateTexture(); MM:AddButton(search, { art = 'tracking', icon = magnifier })
-	item({ width = 20, theme = 'none', micro = true }); item({ width = 20, theme = 'none', micro = true })
-	theme('blizzard')
-	local boxes = { zone = zone, square = square, search = search }
-	for name, box in pairs(boxes) do
-		local texture, pieces = MM:GetItemArt(box)
-		check(not (texture and texture:IsShown()), name .. ": no atlas of Forever's")
-		eq(shown(pieces), 9, name .. ': nine kit pieces')
-		eq(pieces.TopLeftCorner:GetAtlas(), 'ui-hud-minimap-button-NineSlice-CornerTopLeft', name)
-		eq(pieces.Center:GetAtlas(), 'ui-hud-minimap-button-NineSlice-Center', name)
-		eq(pieces.Center:GetParent(), panel(box), name .. ': on its panel')
-		eq(T.around(pieces.TopLeftCorner, box):match('^%-?%d+,%-?%d+'), '0,0', name .. ": the top left corner at the box's corner")
-		eq(T.around(pieces.BottomRightCorner, box):match('%-?%d+,%-?%d+$'), '0,0', name .. ": the bottom right corner at the box's corner")
-		eq(T.around(pieces.Center, box), '6,-6,-7,7', name .. ': the Center between the corners')
-	end
-	check(magnifier:IsShown(), "SaftUI's magnifier stays: the kit draws no icon")
-	local strip = MM:GetStrip()
-	check(not (strip and strip:IsShown()), 'no strip')
-	theme('thick')
-	for name, box in pairs(boxes) do
-		eq(shown(select(2, MM:GetItemArt(box))), 0, name .. ': under Thick no piece shows')
-	end
-	check(magnifier:IsShown())
-	eq(T.inset(panel(zone)), 2, "today's small frame")
-end)
-
-test('the micro buttons stand on one bronze strip from the first shown holder to the last, and it follows Blizzard showing and hiding them', function()
-	world('forever')
-	local before = item({ width = 48, art = 'header' })
-	local a, b, c = item({ width = 20, theme = 'none', micro = true }), item({ width = 20, theme = 'none', micro = true }), item({ width = 20, theme = 'none', micro = true })
-	local mail = item()
-	check(MM:GetStrip() == nil, 'made the first time it shows')
-	theme('blizzard')
-	local strip, frameArt, background = MM:GetStrip()
-	check(strip:IsShown()); eq(frameArt:GetAtlas(), 'UI-HUD-ActionBar-Frame'); eq(T.around(frameArt, strip), '0,0,0,0')
-	eq(background:GetAtlas(), 'UI-HUD-ActionBar-IconFrame-Background'); eq(T.around(background, strip), '2,-2,-2,2')
-	eq(select(1, frameArt:GetDrawLayer()), 'BORDER', 'the frame over'); eq(select(1, background:GetDrawLayer()), 'BACKGROUND', 'the background under it')
-	eq(T.around(strip, a):match('^%-?%d+,%-?%d+'), '-4,4'); eq(T.around(strip, c):match('%-?%d+,%-?%d+$'), '4,-4')
-	eq(strip:GetHeight(), 33); check(strip:GetLeft() > before:GetRight(), 'clear of the box before it')
-	check(strip:GetRight() < mail:GetLeft(), 'and of the box after it')
-	eq(strip:GetParent(), MM.Container); eq(strip:GetFrameLevel(), MM.Container:GetFrameLevel(), "the Container's level, under the holders")
-	c:Hide(); eq(strip:GetRight(), b:GetRight() + 4, 'it ends at the last one shown')
-	mail:Hide(); check(not MM:GetItemArt(mail):IsVisible(), "an item's art goes with it")
-	-- In game the Container is protected: Blizzard's buttons are anchored to
-	-- its holders. The strip, its child, isn't, so it still follows.
-	MM.Container.IsProtected = function() return true end
-	stub.in_combat = true; c:Show(); eq(strip:GetRight(), c:GetRight() + 4); eq(#stub.blocked, 0); stub.in_combat = false
-	MM.Container.IsProtected = nil
-	a:Hide(); eq(strip:GetLeft(), b:GetLeft() - 4, 'it starts at the first one shown')
-	b:Hide(); c:Hide(); check(not strip:IsShown(), 'none shown: no strip')
-	a:Show(); check(strip:IsShown(), 'back with one')
-	theme('thick'); check(not strip:IsShown())
-	theme('thin'); check(not strip:IsShown(), 'nor under Thin')
-end)
-
------------------------------------- Blizzard's micro menu
 
 -- A micro button as Blizzard's MainMenuBarMicroButton template builds it,
 -- copied from theme_test.lua (which says what it models), hung on MicroMenu.
@@ -198,6 +100,142 @@ local function micro_button(index, textureName)
 	return locked(button, 'Blizzard micro button')
 end
 
+-- The items a bar has: text items, square ones, a search with its own
+-- magnifier, and micro button holders (Blizzard's micro buttons' own panels
+-- are the buttons', so the holders are theme 'none' items under Thick).
+local function bar()
+	local items = {
+		zone = item({ key = 'zone', width = 200, text = UIParent:CreateFontString() }),
+		clock = item({ key = 'clock', width = 60 }),
+		latency = item({ width = 48 }),
+		mail = item({ key = 'mail' }),
+	}
+	-- Real micro buttons, which SkinBlizzardMicroMenu gives a holder each
+	local menu = _G.MicroMenu or CreateFrame('Frame', 'MicroMenu', UIParent)
+	function menu:Layout() end
+	local character, spells = micro_button(1, 'CharacterMicroButton'), micro_button(2, 'SpellbookMicroButton')
+	MM:SkinBlizzardMicroMenu()
+	MM:UpdateButtons() -- the holders take their places
+	items.micro_character = select(2, character:GetPoint(1))
+	items.micro_spells = select(2, spells:GetPoint(1))
+	local search = CreateFrame('Button', nil, UIParent)
+	local magnifier = search:CreateTexture(); MM:AddButton(search, { key = 'search', icon = magnifier })
+	items.search = search
+	return items, magnifier
+end
+
+-- The box pieces of an item (laid on its panel), by key.
+local function box_of(button)
+	return MM:GetItemBox(button)
+end
+
+local EIGHT = { 'BottomEdge', 'BottomLeftCorner', 'BottomRightCorner', 'LeftEdge', 'RightEdge', 'TopEdge', 'TopLeftCorner', 'TopRightCorner' }
+
+test('every item stands on the same box, at the bar height: the default and the setting\'s ends', function()
+	world('forever')
+	local items = bar()
+	theme('blizzard')
+	for _, height in ipairs({ 25, 16, 48 }) do
+		st.config.profile.micromenu.height = height
+		MM:UpdateConfig()
+		eq(MM:BarHeight(), height)
+		for name, button in pairs(items) do
+			local where = name .. ' at ' .. height
+			local pieces = box_of(button)
+			check(pieces, where .. ': has a box')
+			eq(T.around(panel(button), button), '0,0,0,0', where .. ": the panel is the item's rect")
+			eq(drawn(panel(button)), 'theme,theme,control', where)
+			eq(panel(button).backdropInfo, nil, where .. ': no fill or line of its own')
+			for _, key in ipairs(EIGHT) do
+				check(pieces[key] and pieces[key]:IsShown(), where .. ': ' .. key .. ' shows')
+				eq(pieces[key]:GetParent(), panel(button), where .. ': on the panel')
+			end
+			check(pieces.Center and pieces.Center:IsShown(), where .. ': the centre shows')
+			local info = C_Texture.GetAtlasInfo('ui-hud-minimap-header-button')
+			eq(pieces.TopLeftCorner:GetTexture(), 8026705, where .. ': a cut of the header button file')
+			eq(pieces.TopLeftCorner:GetWidth() .. 'x' .. pieces.TopLeftCorner:GetHeight(), '6x6', where .. ': 6px corners whole')
+			local top, bottom = pieces.TopLeftCorner:GetTop(), pieces.BottomLeftCorner:GetBottom()
+			eq(top - bottom, height, where .. ": the box is the bar's height")
+			eq(pieces.TopLeftCorner:GetLeft(), button:GetLeft(), where .. ": from the item's left")
+			eq(pieces.TopRightCorner:GetRight(), button:GetRight(), where .. ": to the item's right")
+			check(pieces.LeftEdge:GetHeight() > 0, where .. ': the side edges a positive length')
+			check(pieces.TopEdge:GetWidth() > 0, where .. ': the top edge a positive length')
+		end
+	end
+end)
+
+test('a turned-off item draws no box', function()
+	world('forever')
+	local items = bar()
+	theme('blizzard')
+	local show = st.config.profile.micromenu.show
+	show.micro_button1 = false; show.zone = false
+	MM:UpdateConfig()
+	for _, name in ipairs({ 'micro_character', 'zone' }) do
+		eq(items[name]:GetAlpha(), 0, name .. ': concealed')
+		eq(box_of(items[name]).TopLeftCorner:GetEffectiveAlpha(), 0, name .. ': no box piece is visible')
+	end
+	check(shown(box_of(items.clock)) > 0, 'the others keep theirs')
+end)
+
+test("no fill outside the box, no strip under the micro buttons", function()
+	world('forever')
+	local items = bar()
+	theme('blizzard')
+	for name, button in pairs(items) do
+		local p = panel(button)
+		check(p.backdropInfo == nil or select(4, p:GetBackdropColor()) == 0, name .. ': the panel has no fill')
+	end
+	eq(MM.GetStrip, nil, 'there is no strip')
+	local named = 0
+	for _, child in ipairs({ MM.Container:GetChildren() }) do
+		for _, region in ipairs({ child:GetRegions() }) do
+			local atlas = region.GetAtlas and region:GetAtlas()
+			if region:IsShown() and atlas and atlas:lower() == 'ui-hud-actionbar-frame' then named = named + 1 end
+		end
+	end
+	eq(named, 0, 'no ui-hud-actionbar-frame shows')
+end)
+
+test('search keeps its magnifier under Blizzard', function()
+	world('forever')
+	local items, magnifier = bar()
+	theme('blizzard')
+	check(magnifier:IsShown(), 'shown on Forever')
+	theme('thick'); check(magnifier:IsShown())
+	theme('blizzard'); check(magnifier:IsShown(), 'and back')
+end)
+
+test('retail draws the kit on every item', function()
+	world('retail')
+	local items, magnifier = bar()
+	theme('blizzard')
+	for name, button in pairs(items) do
+		local pieces = box_of(button)
+		eq(pieces.TopLeftCorner:GetAtlas(), 'ui-hud-minimap-button-NineSlice-CornerTopLeft', name)
+		eq(pieces.Center:GetAtlas(), 'ui-hud-minimap-button-NineSlice-Center', name)
+		check(pieces.Center:IsShown(), name .. ': with its centre')
+	end
+	check(magnifier:IsShown())
+end)
+
+test("Thick and Thin draw no box, and the micro menu reads as on modular", function()
+	world('forever')
+	local items = bar()
+	theme('blizzard')
+	theme('thick')
+	for name, button in pairs(items) do
+		eq(shown(box_of(button)), 0, name .. ': no piece shows under Thick')
+		if button ~= items.micro_character and button ~= items.micro_spells then
+			eq(T.inset(panel(button)), 2, name .. ": today's small frame")
+		end
+	end
+	theme('thin')
+	for name, button in pairs(items) do eq(shown(box_of(button)), 0, name .. ': nor under Thin') end
+end)
+
+------------------------------------ Blizzard's micro menu
+
 -- A region's points as text, to tell whether anything moved it.
 local function points(region)
 	local out = {}
@@ -232,11 +270,10 @@ test("nothing of Blizzard's micro menu is shown, moved or written onto", functio
 	eq(points(menu.BorderArt) .. '|' .. points(menu.BackgroundArt), before, 'and unmoved')
 	eq(menu.BorderArt:GetAtlas(), 'UI-HUD-ActionBar-Frame', 'and as Blizzard set it')
 	local holder = select(2, button:GetPoint(1))
-	local strip = MM:GetStrip()
-	check(strip ~= nil and strip:IsShown(), 'the strip of SaftUI shows')
-	eq(T.around(strip, holder), '-4,4,4,-4', "around the button's holder")
-	eq(strip:GetParent(), MM.Container, "a frame of SaftUI's bar")
-	check(strip:GetFrameLevel() < holder:GetFrameLevel(), 'under the holder')
+	local backdrop = panel(holder)
+	check(backdrop and backdrop:IsShown(), "the holder's panel of SaftUI shows, with the box on it")
+	eq(T.around(backdrop, holder), '0,0,0,0', "on the holder's rect")
+	check(backdrop:GetFrameLevel() < holder:GetFrameLevel() + 1, "under the holder's level: Blizzard's button art stays above")
 	theme('thick')
-	check(not strip:IsShown()); eq(menu.BorderArt:GetAlpha(), 0)
+	eq(shown(MM:GetItemBox(holder)), 0, 'no box under Thick'); eq(menu.BorderArt:GetAlpha(), 0)
 end)
