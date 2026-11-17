@@ -42,5 +42,5 @@ function MicroMenu:SkinTimeManagerClockButton()
             GameTimeFrame_OnClick()
         end
     end)
-    return button, { width = 60, text = button.text, art = 'header' }
+    return button, { width = 60, text = button.text }
 end

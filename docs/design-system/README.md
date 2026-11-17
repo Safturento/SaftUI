@@ -96,7 +96,7 @@ Frames stack by strata, lowest first: `strata-grid`, `strata-skins`, `strata-fra
 
 - **Thick** (default): `backdrop` #1f1f1f, `border` #4d4d4d between two `border-alt` #1a1a1a lines; content insets 2.
 - **Thin**: `backdrop` #1f1f1f inside a black `border`; content insets 1.
-- **Blizzard**: Blizzard's own art on SaftUI's frames, per kind (the character frame's metal for windows, the tooltip border, the action ring, the bronze unit frame box). The options window keeps Blizzard's flat layout (rows `row-height-flat` 34, columns 40 apart, no panels), and every control with a Settings equivalent takes that art. SaftUI's own marks keep their colours (`own`, `diff`, `accent`).
+- **Blizzard**: Blizzard's own art on SaftUI's frames, per kind (the character frame's metal for windows, the action ring, and one box, the minimap header button's, on panels, bars, tooltips, unit frames, groups and micro menu boxes). The options window keeps Blizzard's flat layout (rows `row-height-flat` 34, columns 40 apart, no panels), and every control with a Settings equivalent takes that art. SaftUI's own marks keep their colours (`own`, `diff`, `accent`).
 
 Every page whose frames SaftUI draws offers Theme and Background, with "Use SaftUI's theme" as the follow choice. Every draw call names its kind (`panel`, `window`, `bar`, `action`, `slot`, `aura`, `tooltip`, `header`, `close`, `control`, `unitframe`, `member`, `small`).
 

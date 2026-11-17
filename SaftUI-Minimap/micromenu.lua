@@ -5,14 +5,14 @@ MicroMenu.Buttons = {}
 -- The micro menu's files load in the TOC's order: this one (the module, the
 -- bar's items and their entries, laying the bar out, a profile change and
 -- OnEnable), micromenuart.lua (each item's panel and its art under the
--- Blizzard theme, and Forever's strip under the micro buttons),
+-- Blizzard theme),
 -- micromenuitems.lua (SkinBarButton, and the mail and tracking items),
 -- micromenuoptions.lua (the /sui page), then microbuttons.lua and the other
 -- items' files.
 
 -- The bar's default height. The bar's height and its gap between items are
 -- the profile's (height, spacing: MicroMenu:BarHeight, MicroMenu:Spacing);
--- micromenuart.lua centres an item's box in the row and microbuttons.lua sizes
+-- micromenuart.lua lays an item's box on its rect and microbuttons.lua sizes
 -- Blizzard's micro buttons by MicroMenu:BarHeight.
 local BUTTON_SIZE = 25
 MicroMenu.BUTTON_SIZE = BUTTON_SIZE
@@ -36,7 +36,7 @@ local items = setmetatable({}, { __mode = 'k' }) -- bar item -> its settings, it
 
 -- MicroMenu.S: what the micro menu's files share with each other and nothing
 -- else; not an API. items is set here (a table that is only filled), and
--- micromenuart.lua sets UpdateBackdrop and UpdateStrip, which UpdateButtons
+-- micromenuart.lua sets UpdateBackdrop, which UpdateButtons
 -- calls through S as it runs.
 local S = { items = items }
 MicroMenu.S = S
@@ -96,10 +96,9 @@ end
 -- item's name in the profile's show and widths tables), width (default
 -- the bar's height, square; a key in widths wins), theme and background (its panel's, by default SaftUI's theme;
 -- theme 'none' for no panel), text (a font string to center across the item),
--- art (the box it stands on under Blizzard, a key of Control('microbar'):
--- 'header', 'square' (the default) or 'tracking'), icon (a texture of SaftUI's
--- on the item, hidden while its art has an icon drawn in) and micro (true for
--- a Blizzard micro button's holder, which stands on the strip).
+-- icon (a texture of SaftUI's on the item) and micro (true for a Blizzard
+-- micro button's holder, whose width is the micro buttons'). Under Blizzard
+-- every item stands on the same box (micromenuart.lua).
 function MicroMenu:AddButton(button, options)
     if not button then return end
     tinsert(self.Buttons, button)
@@ -114,11 +113,9 @@ function MicroMenu:AddButton(button, options)
 end
 
 function MicroMenu:UpdateButtons()
-    -- Read once a pass: Control gives a fresh copy of the art each call
-    local microbar = st.ThemeArt.Control('microbar')
     local height, spacing = self:BarHeight(), self:Spacing()
     local font = self:TextFont()
-    local prev, firstMicro, lastMicro
+    local prev
     local barWidth = 0
     for _, button in ipairs(self.Buttons) do
         -- An item turned off stays concealed where it is (S.Conceal), out of the row
@@ -144,7 +141,7 @@ function MicroMenu:UpdateButtons()
                 text:SetPoint('RIGHT', button, 'RIGHT', -4, 0)
             end
 
-            S.UpdateBackdrop(button, item, microbar)
+            S.UpdateBackdrop(button, item)
 
             -- The widget API's own methods: Forever's queue eye is an Edit Mode
             -- system, whose Lua SetPoint/ClearAllPoints write Edit Mode state.
@@ -155,17 +152,12 @@ function MicroMenu:UpdateButtons()
                 st:SetPointDirect(button, 'TOPLEFT', self.Container)
             end
 
-            if item.micro then
-                firstMicro = firstMicro or button
-                lastMicro = button
-            end
             prev = button
         end
     end
 
     -- Blizzard's micro buttons sit over their holders, laid out above
     self:UpdateBlizzardButtons()
-    S.UpdateStrip(self.Container, firstMicro, lastMicro, microbar.strip)
 
     self.barWidth = barWidth
     self:SizeContainer()

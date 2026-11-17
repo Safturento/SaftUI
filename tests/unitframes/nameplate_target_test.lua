@@ -40,7 +40,7 @@ test('Thin: the same white line', function()
 end)
 
 for _, client in ipairs({ 'forever', 'retail' }) do
-	test(client .. ": Blizzard: Blizzard's target art round the target's health bar; the bronze box keeps its colour", function()
+	test(client .. ": Blizzard: Blizzard's target art round the target's health bar; the box keeps its colour", function()
 		local st, UF = setup(client, 'blizzard')
 		local one, two = NP.add('nameplate1'), NP.add('nameplate2')
 		target('nameplate2')
@@ -64,7 +64,7 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		eq(found.BOTTOMRIGHT[2] .. ',' .. found.BOTTOMRIGHT[3], right .. ',' .. bottom, 'BOTTOMRIGHT offsets')
 		eq(art:GetFrameLevel(), two.Health:GetFrameLevel() + 2, 'two levels over the bar')
 		eq(art:GetParent(), two, "a child of the plate's frame")
-		-- The bronze box is not turned white.
+		-- The box is not turned white.
 		local border = UF.PlateBorderFrame(two)
 		local before = T.art(border)
 		check(before ~= '', 'the box is there')

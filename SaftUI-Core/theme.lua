@@ -53,7 +53,7 @@ st.THEME_KINDS = {
 	header = true,  -- header and footer strips
 	close = true,   -- the close button
 	control = true, -- a small frame Blizzard draws with art of its own: buttons, check boxes, tabs, edit boxes, the micro menu's items
-	small = true,   -- everything else: indicators, and a unit frame or bar too small for the bronze box (UF.SizedKind)
+	small = true,   -- everything else: indicators
 	unitframe = true, -- a unit frame or one of its bars
 	member = true,    -- a party or raid member's frame or bar
 }
@@ -626,15 +626,16 @@ end
 -- and the background inside it, or a strip's fill with no lines. Every width
 -- is lines of frame's own (LineIn), the record's inset in its own units
 -- (InsetIn: Record has already made it). A Blizzard look is st.ThemeArt's to
--- draw, with Thick's lines hidden, and a button's ring on host (Host); any
--- other hides the frame's Blizzard art. No look clears it.
-local function PaintLook(frame, look, kind, host, pixel)
+-- draw, with Thick's lines hidden, a button's ring on host (Host) and the box
+-- over over (the frame a backdrop sits behind, or the frame st:SetTemplate
+-- was given); any other hides the frame's Blizzard art. No look clears it.
+local function PaintLook(frame, look, kind, host, pixel, over)
 	if not look or look.name == 'blizzard' then
 		if frame.altborder then
 			for _, line in pairs(frame.altborder) do line:Hide() end
 		end
 		if look then
-			st.ThemeArt.Paint(frame, look, kind, host, pixel)
+			st.ThemeArt.Paint(frame, look, kind, host, pixel, over)
 		else
 			frame:SetBackdrop(nil)
 			st.ThemeArt.Clear(frame)
@@ -673,8 +674,8 @@ local function PaintLook(frame, look, kind, host, pixel)
 end
 
 -- Draws a look on frame (PaintLook), then st:SnapDrawn.
-local function Paint(frame, look, kind, host, pixel)
-	PaintLook(frame, look, kind, host, pixel)
+local function Paint(frame, look, kind, host, pixel, over)
+	PaintLook(frame, look, kind, host, pixel, over)
 	st:SnapDrawn(frame)
 end
 
@@ -765,7 +766,7 @@ local function DrawBackdrop(backdrop, owner, backdrops, theme, background, kind,
 			owner.thick = look.name == 'thick'
 		end
 	end
-	Paint(backdrop, look, drawKind, Host(entry), pixel)
+	Paint(backdrop, look, drawKind, Host(entry), pixel, owner)
 	return look
 end
 
@@ -775,15 +776,23 @@ end
 -- owner), is that button: under Blizzard the frame's ring and own-color piece
 -- are textures of it, between its icon and its texts, where a holder frame
 -- over it would cover them. It's remembered for a redraw.
-function st:SetTemplate(frame, theme, background, kind, host)
+-- over, for a frame drawn on itself that is another frame's backdrop (a
+-- module's own), is that frame: under Blizzard the box sits around it, the
+-- kind's reach outside it, as around a backdrop's owner; with none the box is
+-- on frame's own bounds. It's remembered for a redraw too, and a backdrop the
+-- engine drew behind an owner keeps its owner.
+function st:SetTemplate(frame, theme, background, kind, host, over)
 	CheckKind(theme, kind)
 	local look, drawKind = DrawLook(theme, background, kind)
 	-- The host of this draw: the one given, or the last draw's. The record is
 	-- made first, so what the art reads of it (st:DrawnInset) is this draw's.
-	local useHost = host or Host(drawn[frame])
+	local last = drawn[frame]
+	local useHost = host or Host(last)
+	local useOver = over or (last and (last.over or last.owner))
 	local pixel = look and st:DrawPixelSize(frame)
-	Record(frame, theme, background, kind, look, nil, nil, pixel).host = host
-	Paint(frame, look, drawKind, useHost, pixel)
+	local entry = Record(frame, theme, background, kind, look, nil, nil, pixel)
+	entry.host, entry.over = host, useOver
+	Paint(frame, look, drawKind, useHost, pixel, useOver)
 end
 
 -- Draws theme and background on a frame of SaftUI's (frame.backdrop), made the
@@ -924,7 +933,7 @@ local function Redraw(frame, entry)
 		local look, kind = DrawLook(entry.theme, entry.background, entry.kind)
 		local pixel = look and st:DrawPixelSize(frame)
 		entry.inset, entry.look = InsetIn(look, kind, frame, pixel), look and look.name
-		Paint(frame, look, kind, Host(entry), pixel)
+		Paint(frame, look, kind, Host(entry), pixel, entry.over)
 	end
 end
 

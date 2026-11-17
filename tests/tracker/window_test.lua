@@ -700,9 +700,13 @@ test('Theme and Background: a panel in the pair; None draws none; a round trip t
 	switch('thick')
 	expect('Thick again')
 	eq(arts[1], '', 'Thick draws no Blizzard art')
-	check(arts[2] ~= '', "Blizzard draws its tooltip-border look: " .. arts[2])
+	check(arts[2] ~= '', "Blizzard draws its box: " .. arts[2])
 	eq(arts[3], '', 'Thick again: the art is gone')
-	eq(count(), before, 'a theme change makes no new frame')
+	-- The first Blizzard draw makes the box's frame (st.ThemeArt.BoxFrame), once.
+	eq(count(), before + 1, 'a theme change makes no new frame but the box frame')
+	switch('blizzard')
+	switch('thick')
+	eq(count(), before + 1, 'and another round trip makes none')
 	eq(#take_errors(), 0, 'no errors')
 end)
 
@@ -733,7 +737,11 @@ test('UpdateConfig and a theme change make no new frame; off, none of this exist
 	TR:SetCollapsed(true)
 	TR:SetCollapsed(false)
 	TR:UpdateHeader({ counts = COUNTS })
-	eq(tree(), before, 'no frame made after the build')
+	-- But the box frame (st.ThemeArt.BoxFrame), made once by the first Blizzard draw.
+	eq(tree(), before + 1, 'no frame made after the build')
+	T.theme('blizzard', function() TR:UpdateConfig(); st:ColorsChanged('theme') end)
+	T.theme('thin', function() TR:UpdateConfig(); st:ColorsChanged('theme') end)
+	eq(tree(), before + 1, 'and none by another switch')
 
 	for _, client in ipairs({ 'forever', 'retail' }) do
 		local st2, TR2 = TW.world({ client = client })

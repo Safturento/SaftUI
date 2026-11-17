@@ -35,7 +35,7 @@ UF.group_strings = {
 -- The kind of frame (st.THEME_KINDS) a unit's frames and their bars draw as:
 -- a party or raid member's (a group header's, UF.group_strings) as a member,
 -- which Blizzard draws as a bare fill; every other unit's (player, target,
--- boss, ...) as a unit frame, which Blizzard draws in the bronze box. Under
+-- boss, ...) as a unit frame, which Blizzard draws in the box. Under
 -- Thick and Thin both draw as a bar.
 function UF.UnitKind(unit)
 	return UF.group_strings[unit] and 'member' or 'unitframe'
@@ -61,29 +61,6 @@ function UF.PlateConfigKey(friendly)
 		return profile.friendlynameplate.use_enemy and 'nameplate' or 'friendlynameplate'
 	end
 	return profile.nameplate.use_friendly and 'friendlynameplate' or 'nameplate'
-end
-
--- Whether the bronze box fits a unit frame or bar of this size (width and
--- height from its config; nil for a side it doesn't set). The box is drawn
--- its inset outside the frame, and that drawn frame must hold the box's two
--- corners (st.ThemeArt.ART.unitframe) on each side, which would overlap on a
--- smaller one: at least 16 for 8px corners, so a bar at least 12 for an inset
--- of 2. Read from the config, so it's known before the frame is sized and
--- nothing is read back off a unit frame.
-function UF.BoxFits(width, height)
-	local least = 2 * st.ThemeArt.ART.unitframe.size - 2 * st.ThemeArt.Inset('unitframe')
-	width, height = tonumber(width), tonumber(height)
-	return not ((width and width < least) or (height and height < least))
-end
-
--- The kind a unit frame or one of its bars draws as at its size: its unit's
--- (UF.UnitKind), but a small frame (a line and the fill) where the bronze box
--- doesn't fit (UF.BoxFits), such as a 5-tall power bar. Under Thick and Thin
--- a small frame draws as a bar does.
-function UF.SizedKind(unit, width, height)
-	local kind = UF.UnitKind(unit)
-	if kind == 'unitframe' and not UF.BoxFits(width, height) then return 'small' end
-	return kind
 end
 
 function UF:GetFrame(unitframe, configPosition)
@@ -654,9 +631,6 @@ function UF:UpdateUnitFrame(frame, element_name)
 			return -- disabled, and moved off screen
 		end
 
-		local config = frame.config
-		st:SetBackdrop(frame, config.theme, config.background, UF.SizedKind(frame.base_unit, config.width, config.height))
-
 		-- Updated in place: oUF's range element keeps its state on this table.
 		frame.Range = frame.Range or {}
 		frame.Range.insideAlpha = frame.config.range_alpha.inside
@@ -670,6 +644,11 @@ function UF:UpdateUnitFrame(frame, element_name)
             end
 		end
 	end
+
+	-- Drawn after the elements: the frame's box lies over its bars' frame
+	-- levels (ThemeArt.LevelAbove), which an element's update sets.
+	local config = frame.config
+	st:SetBackdrop(frame, config.theme, config.background, UF.UnitKind(frame.base_unit))
 
 	frame:UpdateAllElements('OnShow')
 
@@ -901,14 +880,16 @@ function UF:ApplyConfig(unit, element_name)
 				end
 			end
 
-			-- The group border follows the members' Theme (groups.lua). It
-			-- touches only SaftUI's own border, so in combat too.
-			xpcall(function() self:UpdateGroupBorder(unit) end, geterrorhandler())
-
 			-- After the buttons are resized, so the header measures them anew.
 			if layout then
 				xpcall(function() self:ApplyGroupLayout(unit) end, geterrorhandler())
 			end
+
+			-- The group border follows the members' Theme (groups.lua). After
+			-- the layout, which makes the header's buttons the first time (the
+			-- border is levelled over them). It touches only SaftUI's own
+			-- border, so in combat too.
+			xpcall(function() self:UpdateGroupBorder(unit) end, geterrorhandler())
 			xpcall(function() self:UpdateGroupPreview(unit) end, geterrorhandler())
 		elseif UF.IsPlateUnit(unit) then
 			-- The plates' frames (nameplates.lua), which aren't among the units:

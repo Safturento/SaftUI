@@ -67,10 +67,15 @@ ThemeArt.PER_CLIENT = PER_CLIENT
 --          4px inside them (3); a window's background starts 2px in; the
 --          action and item rings have no layout to measure them by (3); an
 --          aura has no border; a small frame is one line; a unit frame's
---          bronze box is 2, its pieces' outer 2px being the dark outline and
+--          box is 2, its pieces' outer 2px being the dark outline and
 --          the rim; a party or raid member is a bare fill; and the rest draw
---          nothing, a control placing its own content.
+--          nothing, a control placing its own content. A kind drawn in the box
+--          keeps the inset it had, so nothing placed by it moves (the box's
+--          art sits outside the frame and over it, by reach).
 --   art    the name in ART of the art it's drawn in; none draws no art.
+--   reach  for a kind drawn in the box (ART.box): how far the box's outer
+--          edge sits outside the frame it borders, on every side (4, a
+--          starting value). Only the art reads it.
 --   fill   the theme's color its backdrop is filled with: windowcolor for a
 --          window, backdropcolor for the rest; none, no fill (the action and
 --          item buttons' art behind the icon fills them).
@@ -80,9 +85,9 @@ ThemeArt.PER_CLIENT = PER_CLIENT
 -- background, and the close button and each control show art of their own.
 ThemeArt.KINDS = {
 	window = { inset = ByClient(2, 2), art = 'metal', fill = 'windowcolor' },
-	panel = { inset = ByClient(3, 3), art = 'tooltip', fill = 'backdropcolor' },
-	bar = { inset = ByClient(3, 3), art = 'tooltip', fill = 'backdropcolor' },
-	tooltip = { inset = ByClient(3, 3), art = 'tooltip', fill = 'backdropcolor' },
+	panel = { inset = ByClient(3, 3), art = 'box', reach = ByClient(4, 4), fill = 'backdropcolor' },
+	bar = { inset = ByClient(3, 3), art = 'box', reach = ByClient(4, 4), fill = 'backdropcolor' },
+	tooltip = { inset = ByClient(3, 3), art = 'box', reach = ByClient(4, 4), fill = 'backdropcolor' },
 	action = { inset = ByClient(3, 3), art = 'action' },
 	slot = { inset = ByClient(3, 3), art = 'slot' },
 	aura = { inset = ByClient(0, 0), art = 'aura' },
@@ -90,7 +95,7 @@ ThemeArt.KINDS = {
 	header = { inset = ByClient(0, 0) },
 	close = { inset = ByClient(0, 0) },
 	control = { inset = ByClient(0, 0) },
-	unitframe = { inset = ByClient(2, 2), art = 'unitframe', fill = 'backdropcolor' },
+	unitframe = { inset = ByClient(2, 2), art = 'box', reach = ByClient(4, 4), fill = 'backdropcolor' },
 	member = { inset = ByClient(0, 0), fill = 'backdropcolor' },
 }
 
@@ -126,14 +131,6 @@ local MINIMAL_ARROWS = {
 -- size by size at the drawn frame's own corner, the edges between them, size
 -- thick and stretched, every piece in the art's layer.
 
--- Blizzard's player and target frames (Blizzard_UnitFrame), which the unit
--- frame's box is cut from.
-local UF_PLAYER = Atlas('UI-HUD-UnitFrame-Player-PortraitOn')
-local UF_TARGET = Atlas('UI-HUD-UnitFrame-Target-PortraitOn')
-
--- Blizzard's raid group border, which the group border is cut from.
-local GROUP_BORDER = Atlas('options_frame_child')
-
 -- Blizzard's UniqueCornersLayout with the ui-hud-minimap-button kit, as retail's
 -- minimap header draws it (Blizzard_Minimap/Mainline/Minimap.xml, BorderTop):
 -- the corners are different sizes, so each edge runs between its own two.
@@ -150,22 +147,41 @@ local MINIMAP_BUTTON_KIT = {
 	Center = { atlas = Atlas('ui-hud-minimap-button-NineSlice-Center') },
 }
 
+-- Forever's minimap header button (Camelot's member, 152 x 23), which the box
+-- is cut from on Forever.
+local HEADER_BUTTON = Atlas('ui-hud-minimap-header-button', 'forever')
+
 ThemeArt.ART = {
-	-- The tooltip border (NineSliceLayouts.TooltipDefaultLayout), on panels,
-	-- bars and tooltips. Its art is white, and a frame's own border color tints
-	-- it. Blizzard's fill (Tooltip-NineSlice-Center) isn't drawn: the fill is
-	-- the drawn frame's backdrop, in the theme's Background.
-	tooltip = {
+	-- The box, the Blizzard theme's one border (the round 3 design,
+	-- docs/superpowers/specs/2026-11-17-saftui-blizzard-theme-one-border-design.md),
+	-- on panels, bars, tooltips and unit frames: drawn by ThemeArt.Paint on a
+	-- frame of SaftUI's over the frame it borders (ThemeArt.BoxFrame), its
+	-- outer edge the kind's reach outside it, and laid by ThemeArt.LayBox.
+	-- Forever's is a cut of the minimap header button: 6px corners and the
+	-- edges between them, stretched; its rows from the top are a soft outline,
+	-- the bronze rim, then an inner shadow into a translucent dark centre.
+	-- centre is that centre's rectangle, drawn only where LayBox is asked for
+	-- it (the micro menu's boxes); elsewhere the fill is the drawn frame's
+	-- backdrop, in the theme's Background. Retail has no header button, and
+	-- draws the same box as the ui-hud-minimap-button kit, its own drawing of
+	-- it, its Center likewise only where asked. Starting rectangles, measured
+	-- on the decoded art, to be tuned in game. A frame's own border color
+	-- tints the pieces.
+	box = ByClient({
 		layer = 'BORDER',
-		TopLeftCorner = { atlas = Atlas('Tooltip-NineSlice-CornerTopLeft') },
-		TopRightCorner = { atlas = Atlas('Tooltip-NineSlice-CornerTopRight') },
-		BottomLeftCorner = { atlas = Atlas('Tooltip-NineSlice-CornerBottomLeft') },
-		BottomRightCorner = { atlas = Atlas('Tooltip-NineSlice-CornerBottomRight') },
-		TopEdge = { atlas = Atlas('_Tooltip-NineSlice-EdgeTop') },
-		BottomEdge = { atlas = Atlas('_Tooltip-NineSlice-EdgeBottom') },
-		LeftEdge = { atlas = Atlas('!Tooltip-NineSlice-EdgeLeft') },
-		RightEdge = { atlas = Atlas('!Tooltip-NineSlice-EdgeRight') },
-	},
+		size = 6,
+		pieces = {
+			TopLeftCorner = { atlas = HEADER_BUTTON, rect = { 0, 6, 0, 6 } },
+			TopRightCorner = { atlas = HEADER_BUTTON, rect = { 146, 152, 0, 6 } },
+			BottomLeftCorner = { atlas = HEADER_BUTTON, rect = { 0, 6, 17, 23 } },
+			BottomRightCorner = { atlas = HEADER_BUTTON, rect = { 146, 152, 17, 23 } },
+			TopEdge = { atlas = HEADER_BUTTON, rect = { 6, 146, 0, 6 } },
+			BottomEdge = { atlas = HEADER_BUTTON, rect = { 6, 146, 17, 23 } },
+			LeftEdge = { atlas = HEADER_BUTTON, rect = { 0, 6, 6, 17 } },
+			RightEdge = { atlas = HEADER_BUTTON, rect = { 146, 152, 6, 17 } },
+		},
+		centre = { 6, 146, 6, 17 },
+	}, MINIMAP_BUTTON_KIT),
 
 	-- The character frame's metal (NineSliceLayouts.ButtonFrameTemplateNoPortrait,
 	-- Forever's after its Camelot offsets), on windows, without the portrait
@@ -197,71 +213,6 @@ ThemeArt.ART = {
 		BottomEdge = { atlas = Atlas('_UI-Frame-Metal-EdgeBottom') },
 		LeftEdge = { atlas = Atlas('!UI-Frame-Metal-EdgeLeft') },
 		RightEdge = { atlas = Atlas('!UI-Frame-Metal-EdgeRight') },
-	},
-
-	-- The unit frame's bronze box, a cut, on unit frames and their bars.
-	-- Blizzard's player and target frames are each one shaped texture at a
-	-- fixed size, the portrait ring and bar wells drawn in, which can't wrap a
-	-- frame of any other size; their square ends can. The left corners and
-	-- edge are cut from the target frame's left end, the right ones from the
-	-- player frame's right end, and the top and bottom edges are a 1px column
-	-- of the player frame's top and bottom, stretched across. Each
-	-- rectangle puts the art's dark outline on a piece's outer pixel and its
-	-- rim (bronze on Forever's Camelot members, grey on retail's) on the next
-	-- one in, on every side: starting values, measured on the decoded art, to
-	-- be tuned in game. Retail's art is its own drawing, so its rectangles are
-	-- its own. A frame's own border color tints the pieces. The fill is the
-	-- drawn frame's backdrop, in the theme's Background.
-	unitframe = {
-		layer = 'BORDER',
-		size = 8,
-		pieces = ByClient({
-			TopLeftCorner = { atlas = UF_TARGET, rect = { 2, 10, 8, 16 } },
-			BottomLeftCorner = { atlas = UF_TARGET, rect = { 2, 10, 48, 56 } },
-			LeftEdge = { atlas = UF_TARGET, rect = { 2, 10, 30, 40 } },
-			TopRightCorner = { atlas = UF_PLAYER, rect = { 187, 195, 11, 19 } },
-			BottomRightCorner = { atlas = UF_PLAYER, rect = { 187, 195, 51, 59 } },
-			RightEdge = { atlas = UF_PLAYER, rect = { 187, 195, 34, 42 } },
-			TopEdge = { atlas = UF_PLAYER, rect = { 120, 121, 11, 19 } },
-			BottomEdge = { atlas = UF_PLAYER, rect = { 120, 121, 51, 59 } },
-		}, {
-			TopLeftCorner = { atlas = UF_TARGET, rect = { 1, 9, 21, 29 } },
-			BottomLeftCorner = { atlas = UF_TARGET, rect = { 1, 9, 48, 56 } },
-			LeftEdge = { atlas = UF_TARGET, rect = { 1, 9, 30, 40 } },
-			TopRightCorner = { atlas = UF_PLAYER, rect = { 186, 194, 24, 32 } },
-			BottomRightCorner = { atlas = UF_PLAYER, rect = { 186, 194, 51, 59 } },
-			RightEdge = { atlas = UF_PLAYER, rect = { 186, 194, 34, 42 } },
-			TopEdge = { atlas = UF_PLAYER, rect = { 120, 121, 24, 32 } },
-			BottomEdge = { atlas = UF_PLAYER, rect = { 120, 121, 51, 59 } },
-		}),
-	},
-
-	-- The party and raid group border, a cut, around each group header's
-	-- members (SaftUI-Unitframes/groups.lua, UF:GroupBorder), read as a control
-	-- and drawn with ThemeArt.PaintCut on a frame of SaftUI's that is only
-	-- the border. Blizzard's raid frames draw it around each group with Edit
-	-- Mode's Display Border on (CompactRaidGroupTemplate's borderFrame), the
-	-- whole atlas stretched; cut at 6px it stays crisp at any size: a 2-3px
-	-- rim with rounded corners (bronze on Forever's Camelot member, which has
-	-- a faint dark middle; retail's middle is clear). No middle is drawn: the
-	-- members draw over the pieces' inner part. offsets put the border from
-	-- the group's top left (left x, top y) to its bottom right (right x, bottom
-	-- y), as CompactRaidGroup_UpdateBorder puts it around its first and last
-	-- member. The same rectangles on both clients.
-	groupborder = {
-		layer = 'BORDER',
-		size = 6,
-		offsets = { -2, 2, 2, -3 },
-		pieces = {
-			TopLeftCorner = { atlas = GROUP_BORDER, rect = { 0, 6, 0, 6 } },
-			TopRightCorner = { atlas = GROUP_BORDER, rect = { 22, 28, 0, 6 } },
-			BottomLeftCorner = { atlas = GROUP_BORDER, rect = { 0, 6, 20, 26 } },
-			BottomRightCorner = { atlas = GROUP_BORDER, rect = { 22, 28, 20, 26 } },
-			TopEdge = { atlas = GROUP_BORDER, rect = { 6, 22, 0, 6 } },
-			BottomEdge = { atlas = GROUP_BORDER, rect = { 6, 22, 20, 26 } },
-			LeftEdge = { atlas = GROUP_BORDER, rect = { 0, 6, 6, 20 } },
-			RightEdge = { atlas = GROUP_BORDER, rect = { 22, 28, 6, 20 } },
-		},
 	},
 
 	-- The unit frames' bar fills (SaftUI-Unitframes/updaters.lua,
@@ -642,26 +593,6 @@ ThemeArt.ART = {
 		highlight = 'UI-HUD-MicroMenu-%s-Mouseover',
 		highlightBlend = 'BLEND',
 	},
-
-	-- The micro menu bar's art under Blizzard (Control('microbar')). Forever
-	-- draws Camelot's: the action bar's frame as the strip under the micro
-	-- buttons, with its icon background inside it, and each box (the header,
-	-- the addon indicator square, the tracking button) as one atlas. Retail has
-	-- no strip, and draws each box as the ui-hud-minimap-button kit, as its
-	-- minimap header does. pad and backgroundInset are how far the strip and its
-	-- background reach outside the buttons and in from the strip.
-	microbar = ByClient({
-		strip = { frame = Atlas('UI-HUD-ActionBar-Frame'), background = Atlas('UI-HUD-ActionBar-IconFrame-Background'), pad = 4, backgroundInset = 2 },
-		header = { atlas = Atlas('ui-hud-minimap-header-button', 'forever'), height = 23 },
-		square = { atlas = Atlas('ui-hud-minimap-addon-indicator', 'forever'), width = 23, height = 22 },
-		-- icon: the art has the item's icon drawn in.
-		tracking = { atlas = Atlas('ui-hud-minimap-tracking-button', 'forever'), width = 23, height = 23, icon = true },
-	}, {
-		strip = false,
-		header = { kit = MINIMAP_BUTTON_KIT },
-		square = { kit = MINIMAP_BUTTON_KIT },
-		tracking = { kit = MINIMAP_BUTTON_KIT },
-	}),
 
 	-- Edit Mode's selection (EditModeSystemSelectionLayout), drawn on a mover's
 	-- outline: the highlight kit on every mover, the selected kit on the one

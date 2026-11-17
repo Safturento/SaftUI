@@ -64,7 +64,8 @@ local function UpdateBackdrop(theme, background)
 		end
 	end
 
-	st:SetTemplate(backdrop, theme, background, 'panel')
+	-- over the map: the Blizzard box goes around it, above it
+	st:SetTemplate(backdrop, theme, background, 'panel', nil, Minimap)
 	local offset = st:ThemeInset(theme, background, 'panel')
 	backdrop:ClearAllPoints()
 	backdrop:SetPoint('TOPLEFT', Minimap, 'TOPLEFT', -offset, offset)

@@ -4,7 +4,7 @@
 --   - under Thick and Thin the plate's health bar and castbar draw as unit
 --     frames, so as every other unit frame's bars (a bar's look), the cast
 --     icon as a control and the aura buttons as auras;
---   - under Blizzard the health bar and the castbar sit in the bronze box, the
+--   - under Blizzard the health bar and the castbar sit in the box, the
 --     health bar on Blizzard's raid fill and the castbar on its own texture;
 --   - the target's border (white under Thick and Thin, Blizzard's art under
 --     Blizzard) survives a theme recolour and redraw, and
@@ -177,14 +177,14 @@ end
 ------------------------------------------------------------------ Blizzard
 
 for _, client in ipairs(CLIENTS) do
-	test(client .. ": Blizzard: health and castbar in the bronze box, health on Blizzard's raid fill, the castbar on its own texture", function()
+	test(client .. ": Blizzard: health and castbar in the box, health on Blizzard's raid fill, the castbar on its own texture", function()
 		local st, UF, P, drawn = world(client, 'blizzard')
 		local frame = enemy('nameplate1', 0)
 		eq(drawn(frame.Health), 'theme,theme,unitframe', 'the health bar as a unit frame')
 		eq(drawn(frame.Castbar), 'theme,theme,unitframe', 'the castbar too')
 		for name, part in pairs({ Health = frame.Health, Castbar = frame.Castbar }) do
 			local box = st:DrawnFrame(part)
-			eq(pieces(box), BOX, name .. ': the bronze box')
+			eq(pieces(box), BOX, name .. ': the box')
 			eq(T.inset(box), 2, name .. ': at the box inset')
 			eq(T.around(box, part), '-2,2,2,-2', name .. ': 2 round the bar')
 			eq(box.backdropInfo.edgeFile, nil, name .. ': no line')
@@ -198,31 +198,25 @@ for _, client in ipairs(CLIENTS) do
 	end)
 end
 
--- A plate bar too small for the bronze box (UF.BoxFits: under 12 on a side
--- for the box's 8px corners and inset 2) draws as a small frame under
--- Blizzard, as every unit's bars do: one line round the fill, no pieces.
+-- A plate bar of any size draws the box under Blizzard, as every unit's bars
+-- do: no small frame's line under 12 on a side.
 for _, client in ipairs(CLIENTS) do
-	test(client .. ': Blizzard: a plate bar under the box threshold draws as a small frame, a line and the fill', function()
+	test(client .. ': Blizzard: a thin plate bar draws the box at any size', function()
 		local st, UF, P, drawn = world(client, 'blizzard')
 		P.castbar.height = 8
 		P.height = 10 -- the plate, and the health bar filling it
 		UF:UpdateConfig('nameplate')
 		local frame = enemy('nameplate1', 0)
-		eq(drawn(frame.Castbar), 'theme,theme,small', 'the castbar, 8 tall')
-		eq(drawn(frame.Health), 'theme,theme,small', 'the health bar, 10 tall')
+		eq(drawn(frame.Castbar), 'theme,theme,unitframe', 'the castbar, 8 tall')
+		eq(drawn(frame.Health), 'theme,theme,unitframe', 'the health bar, 10 tall')
 		for name, part in pairs({ Health = frame.Health, Castbar = frame.Castbar }) do
 			local box = st:DrawnFrame(part)
-			eq(pieces(box), '', name .. ': no pieces of the box')
-			eq(T.inset(box), 1, name .. ': at the small inset')
-			eq(T.around(box, part), '-1,1,1,-1', name .. ': 1 round the bar')
-			check(box.backdropInfo.edgeFile ~= nil, name .. ': a line')
+			eq(pieces(box), BOX, name .. ': the box')
+			eq(T.inset(box), 2, name .. ': at the box inset')
+			eq(T.around(box, part), '-2,2,2,-2', name .. ': 2 round the bar')
+			check(box.backdropInfo.edgeFile == nil, name .. ': no line')
 		end
 		eq(fill(frame.Health), 'atlas RaidFrame-Hp-Fill, tiled', "health still on Blizzard's raid fill")
-		-- At the threshold, the box again.
-		P.castbar.height = 12
-		UF:UpdateConfig('nameplate')
-		eq(drawn(frame.Castbar), 'theme,theme,unitframe', 'the castbar, 12 tall: the box')
-		eq(pieces(st:DrawnFrame(frame.Castbar)), BOX, 'its pieces')
 		eq(#take_errors(), 0, 'no error')
 	end)
 end
@@ -257,7 +251,7 @@ for _, theme in ipairs({ 'thick', 'thin', 'blizzard' }) do
 				local art = UF:PlateTargetArt(one).texture
 				eq(art:GetAtlas(), st.ThemeArt.Control('nameplatetarget').atlas, step[1] .. ": Blizzard's target art")
 				eq(T.art(UF.PlateBorderFrame(one)) .. ' ' .. tints(UF.PlateBorderFrame(one)), box,
-					step[1] .. ': the bronze box keeps its own colour under the art, as the other plate\'s')
+					step[1] .. ': the box keeps its own colour under the art, as the other plate\'s')
 				check(tints(UF.PlateBorderFrame(one)):find('TopEdge=1.00,1.00,1.00,1.00', 1, true) ~= nil,
 					step[1] .. ': untinted')
 			else

@@ -48,7 +48,14 @@ local function nine(prefix)
 		'TopRightCorner=' .. prefix .. '-CornerTopRight',
 	}, ',')
 end
-local TOOLTIP, METAL = nine('Tooltip-NineSlice'), nine('UI-Frame-Metal')
+local METAL = nine('UI-Frame-Metal')
+
+-- The box's eight pieces as T.art lists them on Forever: each cut from the
+-- minimap header button's file (8026705).
+local BOX = table.concat({
+	'BottomEdge=8026705', 'BottomLeftCorner=8026705', 'BottomRightCorner=8026705', 'LeftEdge=8026705',
+	'RightEdge=8026705', 'TopEdge=8026705', 'TopLeftCorner=8026705', 'TopRightCorner=8026705',
+}, ',')
 
 -- Thick's header strip: its border color at 0.4.
 local THICK_STRIP = '0.30,0.30,0.30,0.40'
@@ -431,7 +438,7 @@ test('a profile switch from a Blizzard profile to a Thick one', function()
 	st:SetBackdrop(tip, 'theme', 'theme', 'tooltip')
 	local close = st:GetCloseButton(p)
 	eq(T.art(p.backdrop), METAL, 'Blizzard profile: the window wears the metal')
-	eq(T.art(tip.backdrop), TOOLTIP, 'Blizzard profile: the tooltip its border')
+	eq(T.art(tip.backdrop), BOX, 'Blizzard profile: the tooltip its box')
 	inTitleBar(st, p, 'forever', 'Blizzard profile')
 	eq(st:CloseButtonInSocket(p), true, "Blizzard profile: the close button in the metal's socket")
 	blizzardLook(close, 28, 'Blizzard profile')

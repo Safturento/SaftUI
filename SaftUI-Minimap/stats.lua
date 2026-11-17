@@ -29,7 +29,7 @@ function MicroMenu:CreateLatencyButton()
     self.Latency = latency
     latency:SetScript('OnUpdate', function(frame) MicroMenu:UpdateLatency(frame) end)
 
-    return latency, { width = BUTTON_WIDTH, text = latency.text, art = 'header' }
+    return latency, { width = BUTTON_WIDTH, text = latency.text }
 end
 
 function MicroMenu:UpdateLatency(latency)
@@ -87,7 +87,7 @@ function MicroMenu:CreateFramerateButton()
     framerate:SetScript('OnUpdate', function(frame) MicroMenu:UpdateFramerate(frame) end)
     framerate:SetScript('OnEnter', function() MicroMenu:ShowAddonStatsTooltip() end)
     framerate:SetScript('OnLeave', function() GameTooltip:Hide() end)
-    return framerate, { width = BUTTON_WIDTH, text = framerate.text, art = 'header' }
+    return framerate, { width = BUTTON_WIDTH, text = framerate.text }
 end
 
 function MicroMenu:UpdateFramerate(framerate)

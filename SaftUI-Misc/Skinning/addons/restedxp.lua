@@ -446,7 +446,9 @@ local function SkinTimer(bar)
 	for _, box in ipairs({ skin.bar, skin.icon }) do
 		box:SetFrameLevel(level)
 	end
-	st:SetTemplate(skin.bar, TIMER_THEME, TIMER_BACKGROUND, 'bar')
+	-- over: the status bar the box goes around, so it is levelled over it (a bar of
+	-- LibCandyBar's, only read and anchored to).
+	st:SetTemplate(skin.bar, TIMER_THEME, TIMER_BACKGROUND, 'bar', nil, bar.candyBarBar)
 	st:SetTemplate(skin.icon, TIMER_THEME, TIMER_BACKGROUND, 'small')
 	skin.bar:Show()
 

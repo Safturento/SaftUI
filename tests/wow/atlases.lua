@@ -191,27 +191,25 @@ return {
 		['UF-Arcane-Icon'] = { 19, 19 },
 		['UF-Essence-BG'] = { 24, 24 },
 		['UF-Essence-Icon'] = { 24, 24 },
-		-- The unit frame's bronze box (unitframe), cut from the player and
-		-- target frames' Camelot members (-c60), both in file 8036204, 1024 by 512
+		-- The player and target frames' Camelot members (-c60), both in file
+		-- 8036204, 1024 by 512: no longer drawn (the one box replaced them), kept
+		-- for the theme tests that still name them
 		['UI-HUD-UnitFrame-Player-PortraitOn'] = { 198, 71,
 			file = 8036204, coords = { 605 / 1024, 803 / 1024, 1 / 512, 72 / 512 } },
 		['UI-HUD-UnitFrame-Target-PortraitOn'] = { 194, 68,
 			file = 8036204, coords = { 201 / 1024, 395 / 1024, 87 / 512, 155 / 512 } },
-		-- The raid group border (groupborder), its Camelot member (-c60), in
-		-- file 8086468, 1024 by 1024
-		['options_frame_child'] = { 28, 26,
-			file = 8086468, coords = { 901 / 1024, 929 / 1024, 1 / 1024, 27 / 1024 } },
 		-- The raid frames' bar fills (unitbars), tiled as CompactUnitFrame.xml
 		-- tiles them
 		['RaidFrame-Hp-Fill'] = { 32, 32, 'hv' },
 		['raidframe-hp-bg-white'] = { 32, 32 },
 		['_RaidFrame-Resource-Fill'] = { 16, 6, 'h' },
 		['_RaidFrame-Resource-Background'] = { 16, 6, 'h' },
-		-- The micro menu bar (microbar): the strip frame, then Camelot's header, square and tracking button
+		-- Camelot's micro menu frame art (Blizzard's own, which SaftUI fades), then the minimap header button
 		['UI-HUD-ActionBar-Frame'] = { 55, 55 },
-		['ui-hud-minimap-header-button'] = { 152, 23 },
-		['ui-hud-minimap-addon-indicator'] = { 23, 22 },
-		['ui-hud-minimap-tracking-button'] = { 23, 23 },
+		-- The header button is also the box (panel, bar, tooltip, unitframe),
+		-- cut from its Camelot member (-c60), in file 8026705, 512 by 512
+		['ui-hud-minimap-header-button'] = { 152, 23,
+			file = 8026705, coords = { 256 / 512, 408 / 512, 256 / 512, 279 / 512 } },
 		['ui-hud-minimap-button-NineSlice-CornerTopLeft'] = { 6, 6 },
 		['ui-hud-minimap-button-NineSlice-CornerTopRight'] = { 7, 6 },
 		['ui-hud-minimap-button-NineSlice-CornerBottomLeft'] = { 6, 7 },
@@ -394,16 +392,13 @@ return {
 			file = 4631591, coords = { 1 / 1024, 199 / 1024, 87 / 512, 158 / 512 } },
 		['UI-HUD-UnitFrame-Target-PortraitOn'] = { 192, 67,
 			file = 4631591, coords = { 1 / 1024, 193 / 1024, 229 / 512, 296 / 512 } },
-		-- The raid group border (groupborder), in file 1318750, 1024 by 1024
-		['options_frame_child'] = { 28, 26,
-			file = 1318750, coords = { 616 / 1024, 644 / 1024, 24 / 1024, 50 / 1024 } },
 		-- The raid frames' bar fills (unitbars), tiled as CompactUnitFrame.xml
 		-- tiles them
 		['RaidFrame-Hp-Fill'] = { 32, 32, 'hv' },
 		['raidframe-hp-bg-white'] = { 32, 32 },
 		['_RaidFrame-Resource-Fill'] = { 16, 6, 'h' },
 		['_RaidFrame-Resource-Background'] = { 16, 6, 'h' },
-		-- The micro menu bar (microbar): the strip frame and the minimap button kit
+		-- The micro menu's frame art (Blizzard's own, which SaftUI fades) and the minimap button kit
 		['UI-HUD-ActionBar-Frame'] = { 55, 55 },
 		['ui-hud-minimap-button-NineSlice-CornerTopLeft'] = { 6, 6 },
 		['ui-hud-minimap-button-NineSlice-CornerTopRight'] = { 7, 6 },

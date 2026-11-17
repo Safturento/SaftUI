@@ -17,14 +17,16 @@ local st = SaftUI
 	The tables, st.ThemeArt.KINDS and st.ThemeArt.ART (in themeart_data.lua):
 	  KINDS[kind]  each kind of frame (st.THEME_KINDS) under Blizzard: its inset
 	               on each client, the art it's drawn in (a name in ART), its
-	               fill (one of the theme's colors) and whether it's a 1px line.
-	  ART[name]    each piece of art: the tooltip border and the metal, the
-	               unit frame's bronze box (cut from Blizzard's unit frame art
-	               by texture coordinates, ThemeArt.Cut), the action and item
+	               fill (one of the theme's colors), whether it's a 1px line,
+	               and for a kind in the box how far the box reaches outside.
+	  ART[name]    each piece of art: the box (the one border of panels,
+	               bars, tooltips and unit frames, drawn over the frame it
+	               borders: ThemeArt.BoxFrame) and the metal, the
+	               action and item
 	               buttons', the aura's, the close button's, and each
 	               control's (CONTROLS), which st.ThemeArt.Control reads;
-	               the party and raid group border is one of those, a cut
-	               drawn by ThemeArt.PaintCut.
+	               the party and raid group border is no art of its own: it
+	               is the box, laid by ThemeArt.PaintBox.
 	A value that differs by client is ByClient(forever, live); the accessors
 	give this client's. An art name that starts with Interface\ is a file;
 	every other is an atlas, and is marked Atlas() where the tables name it, so
@@ -62,8 +64,8 @@ end
 local CONTROLS = {
 	button = true, checkbox = true, tab = true, dropdown = true, slider = true,
 	input = true, search = true, swatch = true, binding = true, nudge = true, scrollbar = true,
-	optionstab = true, optionslist = true, micro = true, microbar = true, mover = true, classpower = true,
-	groupborder = true, unitbars = true, optionswindow = true, resizegrip = true,
+	optionstab = true, optionslist = true, micro = true, mover = true, classpower = true,
+	unitbars = true, optionswindow = true, resizegrip = true,
 	nameplatetarget = true, sizebutton = true,
 }
 
@@ -81,6 +83,13 @@ end
 -- on this client.
 function ThemeArt.Inset(kind)
 	return ForClient(Kind(kind).inset)
+end
+
+-- How far a kind's box reaches outside the frame it borders under Blizzard,
+-- on this client; 0 for a kind not drawn in the box. Only the art reads it:
+-- what's placed by a kind's inset doesn't move.
+function ThemeArt.Reach(kind)
+	return ForClient(Kind(kind).reach) or 0
 end
 
 -- A length of the art in whole pixels of frame (UIParent with none): the
@@ -258,7 +267,8 @@ end
 -- owner (st:SetBackdrop, st:SetBackdropIn), or the frame itself
 -- (st:SetTemplate). Its pieces are textures made once, then shown, hidden and
 -- re-pointed by later draws. Each is a texture on a frame of SaftUI's: the
--- drawn frame, a button's ring on the button of SaftUI's it sits behind, or
+-- drawn frame, a button's ring on the button of SaftUI's it sits behind, the
+-- box's pieces on the box frame over the frame it borders (BoxFrame), or
 -- else on a frame of SaftUI's over the drawn frame (Holder). They're kept
 -- here, never in a field on a frame (.agents/taint.md), and placed by anchors
 -- and offsets: no size is read back from the game.
@@ -268,6 +278,11 @@ local drawnArt = setmetatable({}, { __mode = 'k' })
 
 -- drawn frame -> the frame of SaftUI's its over pieces are on (Holder).
 local holders = setmetatable({}, { __mode = 'k' })
+
+-- drawn frame -> the frame of SaftUI's its box is on (ThemeArt.BoxFrame); and
+-- each box frame, as a key, so ThemeArt.LevelAbove leaves them out.
+local boxFrames = setmetatable({}, { __mode = 'k' })
+local isBoxFrame = setmetatable({}, { __mode = 'k' })
 
 -- The pieces behind a button's icon, bottom first: the keys of its art's behind.
 local BEHIND = { 'SlotBackground', 'SlotArt' }
@@ -342,7 +357,23 @@ local function Holder(frame)
 	return holder
 end
 
--- A border (the tooltip's, the metal's or a kit) on frame, its textures kept in
+-- A border's or a cut's piece -> the frame it was last laid on (BorderPiece),
+-- kept here so a redraw reads nothing back from the game.
+local laidOn = setmetatable({}, { __mode = 'k' })
+
+-- A border's or a cut's piece, by key, on frame: Piece, and moved to frame
+-- when it was laid before on another frame of SaftUI's (a drawn frame first
+-- drawn as a window, its metal on itself, then in the box, on its box frame,
+-- or back). Only these: a ring or an own-color piece is never moved.
+local function BorderPiece(pieces, frame, key, name, layer)
+	local made = pieces[key] == nil
+	local piece = Piece(pieces, frame, key, name, layer)
+	if not made and laidOn[piece] ~= frame then piece:SetParent(frame) end
+	laidOn[piece] = frame
+	return piece
+end
+
+-- A border (the metal or a kit) on frame, its textures kept in
 -- pieces by key: its corners, then its edges between them, then its Center
 -- when it has one, in its layer. Pixel snapping is off where the border says so,
 -- with the texel snapping bias at 0, as Blizzard's nine-slice code turns
@@ -351,7 +382,7 @@ end
 -- never sets it back, and nothing gives its default.
 local function LayBorder(pieces, frame, border)
 	local function Lay(key)
-		local piece = Piece(pieces, frame, key, border[key].atlas, border.layer)
+		local piece = BorderPiece(pieces, frame, key, border[key].atlas, border.layer)
 		piece:ClearAllPoints()
 		if border.snap == false then piece:SetTexelSnappingBias(0) end
 		piece:SetSnapToPixelGrid(border.snap ~= false)
@@ -430,16 +461,17 @@ function ThemeArt.Cut(texture, atlas, rect)
 	return true
 end
 
--- A cut (the unit frame's bronze box, the group border) on frame: each piece
+-- A cut (Forever's box) on
+-- frame, its textures kept in pieces by key: each piece
 -- cut from its atlas (ThemeArt.Cut, which hides one it can't cut), the
--- corners size by size at the drawn frame's own corners, the edges between
+-- corners size by size at frame's own corners, the edges between
 -- them, size thick and stretched, every piece in the cut's layer. Pixel
 -- snapping is on, the game's default, so a piece once drawn as the metal
 -- doesn't keep it off.
-local function LayCut(art, frame, cut)
+local function LayCut(pieces, frame, cut)
 	local size = cut.size
 	local function Lay(key)
-		local piece = Piece(art.pieces, frame, key, nil, cut.layer)
+		local piece = BorderPiece(pieces, frame, key, nil, cut.layer)
 		piece:ClearAllPoints()
 		piece:SetSnapToPixelGrid(true)
 		piece:SetHorizTile(false)
@@ -454,10 +486,83 @@ local function LayCut(art, frame, cut)
 	end
 	for key, edge in pairs(EDGES) do
 		local piece = Lay(key)
-		piece:SetPoint(edge.point, art.pieces[edge.first], edge.to)
-		piece:SetPoint(edge.to, art.pieces[edge.last], edge.point)
+		piece:SetPoint(edge.point, pieces[edge.first], edge.to)
+		piece:SetPoint(edge.to, pieces[edge.last], edge.point)
 		if edge.across then piece:SetHeight(size) else piece:SetWidth(size) end
 	end
+end
+
+-- Lays this client's box (ART.box) on frame's own bounds, its textures
+-- frame's, kept by key in the caller's pieces: Forever's a cut (LayCut),
+-- retail's the minimap button kit (LayBorder). With centre the box's centre
+-- too, as a Center piece between the corners (Forever's cut from the header
+-- button's centre, retail's the kit's Center); without it a Center laid
+-- before is hidden. Shown and white; HidePieces hides them. The micro menu's
+-- boxes lay it on frames of their own; ThemeArt.Paint lays it on a drawn
+-- frame's box frame.
+function ThemeArt.LayBox(pieces, frame, centre)
+	local box = ForClient(ThemeArt.ART.box)
+	if IsCut(box) then
+		LayCut(pieces, frame, box)
+		if centre then
+			local piece = BorderPiece(pieces, frame, 'Center', nil, box.layer)
+			piece:ClearAllPoints()
+			piece:SetSnapToPixelGrid(true)
+			piece:SetHorizTile(false)
+			piece:SetVertTile(false)
+			ThemeArt.Cut(piece, box.pieces.TopLeftCorner.atlas, box.centre)
+			piece:SetPoint('TOPLEFT', pieces.TopLeftCorner, 'BOTTOMRIGHT')
+			piece:SetPoint('BOTTOMRIGHT', pieces.BottomRightCorner, 'TOPLEFT')
+			return
+		end
+	else
+		if not centre then box.Center = nil end
+		LayBorder(pieces, frame, box)
+		if centre then return end
+	end
+	if pieces.Center then pieces.Center:Hide() end
+end
+
+-- One more than the highest frame level among target and its direct children
+-- (target:GetChildren()), the box frames left out, and skip, a child of
+-- target that is the box being levelled (a group border, which is itself
+-- target's child and mustn't count): where a box goes to lie
+-- over the frame it borders and over its child bars, buttons and texts. A
+-- level can be secret (target or a child may be Blizzard's): a child's
+-- secret level is left out, and with target's own secret it is nil, and the
+-- caller leaves the level as it is.
+--
+-- depth (1 when left out) is how many generations below target count: 2 also
+-- counts the children's children (a group border lies over its members' bars).
+-- A box frame and everything under it is left out at any depth.
+function ThemeArt.LevelAbove(target, skip, depth)
+	local level = target:GetFrameLevel()
+	if issecretvalue(level) then return nil end
+	local function Scan(frame, remaining)
+		for _, child in ipairs({ frame:GetChildren() }) do
+			if not isBoxFrame[child] and child ~= skip then
+				local childLevel = child:GetFrameLevel()
+				if not issecretvalue(childLevel) and childLevel > level then level = childLevel end
+				if remaining > 1 then Scan(child, remaining - 1) end
+			end
+		end
+	end
+	Scan(target, depth or 1)
+	return level + 1
+end
+
+-- The frame of SaftUI's a drawn frame's box is on: made the first time as the
+-- drawn frame's child, so it shows and hides with it, and kept here. Its
+-- place and level are ThemeArt.Paint's (over the frame the box borders,
+-- ThemeArt.LevelAbove); ThemeArt.Clear hides it.
+function ThemeArt.BoxFrame(frame)
+	local box = boxFrames[frame]
+	if not box then
+		box = CreateFrame('Frame', nil, frame)
+		boxFrames[frame] = box
+		isBoxFrame[box] = true
+	end
+	return box
 end
 
 -- Where a ring on a button of SaftUI's draws among the button's own regions:
@@ -539,8 +644,11 @@ function ThemeArt.Get(frame)
 	return drawnArt[frame]
 end
 
--- Hides every piece of frame's art: for a frame drawn in another look, or None.
+-- Hides every piece of frame's art, and its box frame: for a frame drawn in
+-- another look, or None.
 function ThemeArt.Clear(frame)
+	local box = boxFrames[frame]
+	if box then box:Hide() end
 	local art = drawnArt[frame]
 	if not art then return end
 	for _, set in ipairs({ art.pieces, art.over }) do
@@ -573,6 +681,12 @@ function ThemeArt.Color(frame, look, kind)
 	for _, set in ipairs({ art.pieces, art.over }) do
 		for _, piece in pairs(set) do piece:SetVertexColor(1, 1, 1, 1) end
 	end
+	-- The box shows plain bronze again (SetBorder desaturated it for a colour).
+	-- Only when it is: a recolor makes no call it didn't (theme_scale_test m1).
+	if art.desaturated then
+		art.desaturated = false
+		for _, piece in pairs(art.pieces) do piece:SetDesaturated(false) end
+	end
 	for _, key in ipairs(BEHIND) do
 		if art.pieces[key] then art.pieces[key]:SetAlpha(look.alpha) end
 	end
@@ -581,7 +695,8 @@ function ThemeArt.Color(frame, look, kind)
 end
 
 -- Puts a frame's own border color on a Blizzard look drawn on frame as kind
--- (st:SetBorderColor): a border's or a cut's pieces are tinted; a button's or
+-- (st:SetBorderColor): a border's or a cut's pieces are tinted (the box's too,
+-- desaturated, so the colour shows as itself); a button's or
 -- an aura's own-color piece (its equipped or quality border, white art) is
 -- shown in the color, over the icon's edge, on host as the ring is (Paint); a
 -- small frame's line takes it. No color puts the theme's back: white pieces,
@@ -607,8 +722,14 @@ function ThemeArt.SetBorder(frame, look, kind, host, r, g, b, a)
 	-- every bag slot update.
 	local style = blizzard.art and ThemeArt.ART[blizzard.art]
 	if not style then return end
-	if style.TopLeftCorner or IsCut(style) then
+	if blizzard.art == 'box' or style.TopLeftCorner or IsCut(style) then
+		-- The box's bronze would tint muddy, so a colour goes on it grey: the
+		-- colour shows as itself. No colour is the bronze.
+		local grey = blizzard.art == 'box' and r ~= nil
+		local change = blizzard.art == 'box' and (art.desaturated or false) ~= grey
+		if change then art.desaturated = grey end
 		for _, piece in pairs(art.pieces) do
+			if change then piece:SetDesaturated(grey) end
 			if r then piece:SetVertexColor(r, g, b, a) else piece:SetVertexColor(1, 1, 1, 1) end
 		end
 	elseif style.border then
@@ -636,15 +757,12 @@ function ThemeArt.SetBorder(frame, look, kind, host, r, g, b, a)
 	end
 end
 
--- Lays and shows the cut ART[name] (the group border) on frame, a frame of
--- SaftUI's that is only that art, not a backdrop: its pieces at frame's
--- corners and along its edges (LayCut), white, kept as frame's art
--- (ThemeArt.Get). No fill, no kind and no colors: ThemeArt.Clear hides them.
--- Moves only the pieces.
-function ThemeArt.PaintCut(frame, name)
-	local cut = ThemeArt.ART[name]
-	if not (cut and IsCut(cut)) then error(tostring(name) .. ' is not a cut', 2) end
-	LayCut(Art(frame), frame, ForClient(cut))
+-- Lays and shows this client's box (ThemeArt.LayBox, with no centre) on
+-- frame, a frame of SaftUI's that is only that art, not a backdrop: kept as
+-- frame's art (ThemeArt.Get). No fill, no kind and no colors:
+-- ThemeArt.Clear hides it. Moves only the pieces.
+function ThemeArt.PaintBox(frame)
+	ThemeArt.LayBox(Art(frame).pieces, frame, false)
 end
 
 -- Draws a Blizzard look (st:ResolveTheme) on frame as kind: a backdrop that
@@ -655,7 +773,15 @@ end
 -- top in whole pixels. A kind that draws nothing is cleared. Then colors it. host is
 -- the button of SaftUI's frame sits behind, whose ring is a texture of its own
 -- (LayButton), or nil.
-function ThemeArt.Paint(frame, look, kind, host, pixel)
+--
+-- A kind in the box (ART.box) has it laid on frame's box frame (BoxFrame),
+-- over the frame it borders: over, the frame a backdrop sits behind, with its
+-- outer edge the kind's reach outside over (in whole pixels of the drawn
+-- frame's pixel, or of over's when there is none), or with
+-- no over frame itself, the box on its own bounds. The box frame is one level
+-- above that frame and its children (LevelAbove), where it was made when that
+-- frame's level is secret.
+function ThemeArt.Paint(frame, look, kind, host, pixel, over)
 	local blizzard = Kind(kind)
 	ThemeArt.Clear(frame)
 	if not Draws(blizzard) then
@@ -674,11 +800,23 @@ function ThemeArt.Paint(frame, look, kind, host, pixel)
 		})
 	end
 
-	local art = blizzard.art and ForClient(ThemeArt.ART[blizzard.art])
-	if art and art.TopLeftCorner then
+	-- The box is read for the client by LayBox; any other art here.
+	local art = blizzard.art and blizzard.art ~= 'box' and ForClient(ThemeArt.ART[blizzard.art])
+	if blizzard.art == 'box' then
+		local target = over or frame
+		local reach = over and ThemeArt.Whole(ThemeArt.Reach(kind), over, pixel) or 0
+		local box = ThemeArt.BoxFrame(frame)
+		box:ClearAllPoints()
+		box:SetPoint('TOPLEFT', target, 'TOPLEFT', -reach, reach)
+		box:SetPoint('BOTTOMRIGHT', target, 'BOTTOMRIGHT', reach, -reach)
+		local level = ThemeArt.LevelAbove(target)
+		if level then box:SetFrameLevel(level) end
+		box:Show()
+		ThemeArt.LayBox(Art(frame).pieces, box, false)
+	elseif art and art.TopLeftCorner then
 		LayBorder(Art(frame).pieces, frame, art)
 	elseif art and IsCut(art) then
-		LayCut(Art(frame), frame, art)
+		LayCut(Art(frame).pieces, frame, art)
 	elseif art and art.ring then
 		LayButton(Art(frame), frame, art, host)
 	end

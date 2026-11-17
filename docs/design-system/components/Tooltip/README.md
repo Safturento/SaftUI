@@ -36,7 +36,7 @@ The approved mockup drew its own tooltip: a `#101010` box with a black outer lin
 
 ## Blizzard theme
 
-The tooltip kind takes Blizzard's tooltip border art; lines and colours are unchanged.
+The tooltip kind takes the one Blizzard box, the same as panels and bars (not the tooltip border art); lines and colours are unchanged, and an item's quality colour shows on the box desaturated and tinted.
 
 ## Do and don't
 

@@ -297,8 +297,8 @@ end
 
 -- The bar item that takes the button's slot. The button's own panel (below)
 -- draws under its art, so the holder has no backdrop and only reserves space.
--- Under Blizzard on Forever the run of shown holders stands on the bar's strip
--- (micromenuart.lua's UpdateStrip), as Blizzard's buttons stand on its frame art.
+-- Under Blizzard each holder stands on the bar's box (micromenuart.lua's
+-- UpdateBackdrop), under Blizzard's button art.
 local buttonOf = setmetatable({}, { __mode = 'k' }) -- holder -> its button
 
 local function CreateHolder(button)
@@ -425,8 +425,8 @@ function MicroMenu:SkinBlizzardMicroMenu()
     if #buttons == 0 then return end
 
     -- Forever's frame art around the whole menu, faded in every look. Under
-    -- Blizzard the bar draws a strip of its own under the holders instead
-    -- (micromenuart.lua's UpdateStrip), so this stays where Blizzard put it.
+    -- Blizzard each holder stands on a box of the bar's instead
+    -- (micromenuart.lua), so this stays where Blizzard put it.
     if menu.BorderArt then menu.BorderArt:SetAlpha(0) end
     if menu.BackgroundArt then menu.BackgroundArt:SetAlpha(0) end
 

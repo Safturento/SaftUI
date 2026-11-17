@@ -292,38 +292,6 @@ test("the size arrows' art is Blizzard's expand and condense button, an atlas ea
 	end
 end)
 
-test("a client's micro bar art names only atlases that client has", function()
-	for _, client in ipairs(CLIENTS) do
-		local st = T.client(client)
-		local mine, names = st.ThemeArt.Client(), st:ThemeAtlases()
-		local art = st.ThemeArt.Control('microbar')
-		local bad = {}
-		local function walk(t, path)
-			for key, value in pairs(t) do
-				local here = path .. '.' .. tostring(key)
-				if type(value) == 'string' and names[value] ~= nil then
-					if names[value] ~= true and names[value] ~= mine then bad[#bad + 1] = here .. ' names ' .. value end
-				elseif type(value) == 'table' then
-					walk(value, here)
-				end
-			end
-		end
-		walk(art, 'microbar')
-		eq(table.concat(bad, ', '), '', client .. ": only this client's atlases")
-		if client == 'forever' then
-			for _, item in ipairs({ 'header', 'square', 'tracking' }) do
-				check(art[item].atlas, client .. ': ' .. item .. ' has an atlas')
-			end
-			check(art.strip.frame and art.strip.background, client .. ': the strip has its two')
-		else
-			eq(art.strip, false, 'retail has no strip')
-			for _, item in ipairs({ 'header', 'square', 'tracking' }) do
-				check(art[item].kit, client .. ': ' .. item .. ' has a kit')
-			end
-		end
-	end
-end)
-
 test("the atlas stub answers each client's table, ignoring case", function()
 	local st = T.client('forever')
 	local info = C_Texture.GetAtlasInfo('UI-Frame-Metal-CornerTopLeft')

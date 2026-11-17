@@ -28,7 +28,7 @@ Party and raid frames are `member` frames with names centred in Normal; a corner
 
 ## Blizzard theme
 
-The frame takes the bronze box (`unitframe`, inset 2) and Blizzard's bar fills; party and raid members take a bare fill; groups sit in Blizzard's raid group border.
+The frame and its bars take the one Blizzard box (`unitframe`, inset 2) at any size, with Blizzard's bar fills (there is no thin-line fallback under 12px); party and raid members take a bare fill; each party and raid group sits in the same box, drawn over the members.
 
 ## Do and don't
 
