@@ -5,7 +5,7 @@ local UF = st:GetModule('Unitframes')
 	Settings the unit frames share: "All units". The storage and the rules; this file builds no
 	page and applies nothing (a frame changes only through UF:UpdateConfig, which waits for the end
 	of combat), and every function here writes tables and nothing else, so each is safe in combat.
-	Nothing calls the conversion or the sync at login yet.
+	UF:PrepareShared (sharedsetup.lua) is what a login and a profile change call.
 
 	The model. Eleven units are members (UF.SHARE_MEMBERS). A member follows All units for each
 	setting it has, until it owns that setting. A shared setting is an entry of UF.SHARED: its key
@@ -495,7 +495,7 @@ end
 -- nil in a saved table, a position's missing part, a color with no channels, comes back as the default's
 -- value; a false stays false). The conversion compares and copies this, so what it decides holds after a
 -- login. The config itself when nothing is missing, else a stand-in holding this entry's paths.
-local PARTS = { 'point', 'rel_point', 'x_off', 'y_off', 'element', 'frame' }
+local POSITION_FIELDS = { 'point', 'rel_point', 'x_off', 'y_off', 'element', 'frame' }
 
 local function Shown(entry, unit, config)
 	local stand
@@ -510,7 +510,7 @@ local function Shown(entry, unit, config)
 		elseif entry.type == 'position' and type(value) == 'table' then
 			local found, default = st:DefaultAt('unitframes', 'profiles', profile, unit, unpack(path))
 			if found and type(default) == 'table' then
-				for _, part in ipairs(PARTS) do
+				for _, part in ipairs(POSITION_FIELDS) do
 					if value[part] == nil and default[part] ~= nil then
 						fill = fill or CopyPlain(value)
 						fill[part] = default[part]
