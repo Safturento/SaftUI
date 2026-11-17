@@ -67,7 +67,7 @@ end
 -- A micro button as Blizzard's MainMenuBarMicroButton template builds it,
 -- copied from theme_test.lua (which says what it models), hung on MicroMenu.
 -- The button is locked, so a field the skin writes onto it fails.
-local function micro_button(index, textureName)
+local function micro_button(index, textureName, character)
 	local menu = _G.MicroMenu
 	local button = CreateFrame('Button', nil, menu)
 	button.layoutIndex, button.textureName = index, textureName
@@ -91,7 +91,17 @@ local function micro_button(index, textureName)
 	button.NotificationOverlay:CreateTexture(nil, 'OVERLAY')
 	button:SetNormalTexture(button:CreateTexture(nil, 'ARTWORK'))
 	button:SetPushedTexture(button:CreateTexture(nil, 'ARTWORK'))
-	button:SetHighlightTexture(button:CreateTexture(nil, 'HIGHLIGHT'))
+	if character then
+		-- The character button: no highlight and no textureName of Blizzard's
+		-- (it never loads the mouseover atlases), and a portrait it re-anchors
+		-- itself (here, to the whole button, as its SetNormal and SetPushed do).
+		button.textureName = nil
+		button.Portrait = button:CreateTexture(nil, 'ARTWORK')
+		button.SetNormal = function(self) self:SetButtonState('NORMAL') end
+		button.SetPushed = function(self) self:SetButtonState('PUSHED', true) end
+	else
+		button:SetHighlightTexture(button:CreateTexture(nil, 'HIGHLIGHT'))
+	end
 	button.SetHighlightAtlas = function(self, atlas, blend)
 		local highlight = self:GetHighlightTexture()
 		highlight:SetAtlas(atlas)
@@ -300,4 +310,76 @@ test("the minimap's box is 4 outside the map, above it; Thick keeps its backdrop
 		map:UpdateConfig()
 		eq(T.offset(backdrop, 'TOPLEFT'), '-2.00,2.00', client .. ': Thick keeps its backdrop 2px outside the map')
 	end
+end)
+
+------------------------------------ The character button
+
+-- The character button on its own: Blizzard gives it no highlight and no
+-- mouseover art, so the white square SaftUI's own highlight made under Blizzard
+-- is hidden there (the state helper tints it under Thick and Thin), and its
+-- portrait takes Blizzard's size relative to the icons' art (7px insets on a
+-- 32x40 button, scaled as the icons are) instead of the whole button.
+local function character_world(name)
+	world('forever')
+	_G.MicroMenu = _G.MicroMenu or CreateFrame('Frame', 'MicroMenu', UIParent)
+	function _G.MicroMenu:Layout() end
+	local button = micro_button(1, nil, true)
+	MM:SkinBlizzardMicroMenu()
+	theme(name)
+	return button
+end
+
+local function visible(highlight)
+	return highlight:IsShown() and highlight:GetAlpha() * select(4, highlight:GetVertexColor()) > 0
+end
+
+test('character button: no highlight shows under Blizzard, after a hover and after a switch from Thick; Thick tints it', function()
+	local button = character_world('thick')
+	local highlight = button:GetHighlightTexture()
+	check(highlight ~= nil, 'SaftUI gave it a highlight')
+	local tint = select(4, highlight:GetVertexColor())
+	check(tint > 0 and highlight:GetAlpha() > 0, 'Thick: the hover tint (' .. tint .. ')')
+	theme('blizzard')
+	check(not visible(highlight), 'after a switch to Blizzard: not visible')
+	stub.fire_script(button, 'OnEnter')
+	button:SetNormal(); button:SetPushed(); button:SetNormal()
+	check(not visible(highlight), 'after a hover and Blizzard\'s button states: not visible')
+	theme('thick')
+	eq(highlight:GetAlpha(), 1, 'back under Thick: shown again')
+	eq(select(4, highlight:GetVertexColor()), tint, 'with its tint')
+	theme('thin')
+	check(visible(highlight), 'and under Thin')
+	check(#stub.blocked == 0, 'nothing written onto the button')
+end)
+
+test("character button: the portrait takes Blizzard's insets at the icons' scale, centred, at the ends of the bar's height; Thick fills the button", function()
+	local button = character_world('blizzard')
+	local portrait = button.Portrait
+	for _, height in ipairs({ 25, 48, 16 }) do
+		st.config.profile.micromenu.height = height
+		MM:UpdateConfig()
+		local iconWidth, iconHeight = math.floor(22 * height / 25 + 0.5), math.floor(28 * height / 25 + 0.5)
+		local w = math.floor(18 * iconWidth / 32 + 0.5)
+		local h = math.floor(26 * iconHeight / 41 + 0.5)
+		eq(T.text(portrait:GetSize()), T.text(w, h), 'height ' .. height .. ': 7px insets of the 32x40, scaled')
+		check(w < button:GetWidth() and h < button:GetHeight(), 'height ' .. height .. ': smaller than the button')
+		local point, relativeTo, relativePoint, x, y = portrait:GetPoint(1)
+		eq(('%s,%s,%s,%s,%s'):format(point, relativeTo == button and 'button' or 'other', relativePoint, x or 0, y or 0),
+			'CENTER,button,CENTER,0,0', 'height ' .. height .. ': centred, where the art is')
+		eq(portrait:GetNumPoints(), 1)
+	end
+	st.config.profile.micromenu.height = 25
+	MM:UpdateConfig()
+	local width = MM:MicroWidth()
+	-- pushed keeps its inset
+	button:SetPushed()
+	local pw, ph = portrait:GetSize()
+	check(pw < 12 and ph < 18, 'pushed: inset again')
+	button:SetNormal()
+	theme('thick')
+	eq(portrait:GetNumPoints(), 2, 'Thick: two corners')
+	eq(T.around(portrait, button), '0,0,0,0', 'Thick: fills the button')
+	theme('thin')
+	eq(T.around(portrait, button), '0,0,0,0', 'Thin: fills the button')
+	check(width > 0)
 end)

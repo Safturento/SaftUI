@@ -56,6 +56,21 @@ end
 
 local ALERT_ALPHA = 0.5
 
+-- Blizzard's portrait on its 32x40 button (MainMenuBarMicroButtons.xml): 7px
+-- inside each edge. The art it sits among is the 32x41 atlas, which the icons
+-- draw at IconSize.
+local BLIZZARD_BUTTON_WIDTH, BLIZZARD_BUTTON_HEIGHT, BLIZZARD_ART_WIDTH, BLIZZARD_ART_HEIGHT = 32, 40, 32, 41
+local BLIZZARD_PORTRAIT_INSET = 7
+
+-- The portrait's size under Blizzard: its template's insets scaled as the icons
+-- are, at the bar's height, in whole pixels.
+local function BlizzardPortraitSize()
+    local iconWidth, iconHeight = IconSize()
+    local w = (BLIZZARD_BUTTON_WIDTH - BLIZZARD_PORTRAIT_INSET * 2) * iconWidth / BLIZZARD_ART_WIDTH
+    local h = (BLIZZARD_BUTTON_HEIGHT - BLIZZARD_PORTRAIT_INSET * 2) * iconHeight / BLIZZARD_ART_HEIGHT
+    return math.floor(w + 0.5), math.floor(h + 0.5)
+end
+
 local buttons = {} -- Blizzard's micro buttons, in Blizzard's order
 local arts = setmetatable({}, { __mode = 'k' }) -- button -> whether its art is Blizzard's (StyleArt)
 local skins = setmetatable({}, { __mode = 'k' }) -- button -> SaftUI backdrop
@@ -194,6 +209,13 @@ local function StyleTextures(button)
         local blizzardHighlight = button:GetHighlightTexture()
         if blizzardHighlight then PlaceArt(blizzardHighlight, button) end
     end
+    -- The character button has no mouseover art (no textureName; its highlight
+    -- is SaftUI's own, for the state helper under Thick and Thin), and Blizzard
+    -- draws no hover on it: hidden under Blizzard, its tint back otherwise.
+    if button.Portrait and not button.textureName then
+        local own = button:GetHighlightTexture()
+        if own then own:SetAlpha(blizzard and 0 or 1) end
+    end
     local highlight = not blizzard and button:GetHighlightTexture()
     if highlight then
         highlight:ClearAllPoints()
@@ -206,9 +228,19 @@ local function StyleTextures(button)
         -- fill shows around it.
         local inset = button:GetButtonState() == 'PUSHED' and 2 or 0
         portrait:ClearAllPoints()
-        portrait:SetPoint('TOPLEFT', button, 'TOPLEFT', inset, -inset)
-        portrait:SetPoint('BOTTOMRIGHT', button, 'BOTTOMRIGHT', -inset, inset)
-        portrait:SetTexCoord(GetPortraitCoords(width - inset * 2, height - inset * 2))
+        if blizzard then
+            -- Blizzard's own size relative to its art, centered where the
+            -- icons are
+            local w, h = BlizzardPortraitSize()
+            w, h = w - inset * 2, h - inset * 2
+            portrait:SetPoint('CENTER', button, 'CENTER')
+            portrait:SetSize(w, h)
+            portrait:SetTexCoord(GetPortraitCoords(w, h))
+        else
+            portrait:SetPoint('TOPLEFT', button, 'TOPLEFT', inset, -inset)
+            portrait:SetPoint('BOTTOMRIGHT', button, 'BOTTOMRIGHT', -inset, inset)
+            portrait:SetTexCoord(GetPortraitCoords(width - inset * 2, height - inset * 2))
+        end
     end
 
     -- Last in the look: Blizzard's atlas swaps put its own art back on the
