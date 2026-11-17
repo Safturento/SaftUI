@@ -108,7 +108,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Purge table: retail gaps](#2026-11-11--purge-table-retail-gaps)
   - [2026-11-11 — Blizzard theme round 2: in-game checks](#2026-11-11--blizzard-theme-round-2-in-game-checks)
   - [2026-11-11 — Blizzard theme: a border per real raid group, not per header](#2026-11-11--blizzard-theme-a-border-per-real-raid-group-not-per-header)
-  - [2026-11-11 — /sui: no resize cursor on the grip and the bottom edge](#2026-11-11--sui-no-resize-cursor-on-the-grip-and-the-bottom-edge)
   - [2026-11-11 — Screen edge margin: art reach only for /sui](#2026-11-11--screen-edge-margin-art-reach-only-for-sui)
   - [2026-11-11 — Blizzard theme round 2: test gaps and small items parked in review](#2026-11-11--blizzard-theme-round-2-test-gaps-and-small-items-parked-in-review)
   - [2026-11-11 — Categories tab: the scrolled editor's two gaps](#2026-11-11--categories-tab-the-scrolled-editors-two-gaps)
@@ -153,6 +152,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-11 — /sui: no resize cursor on the grip and the bottom edge](#2026-11-11--sui-no-resize-cursor-on-the-grip-and-the-bottom-edge)
   - [2026-11-15 — The options kit's keybinding widget commits mouse buttons 6 to 31 raw](#2026-11-15--the-options-kits-keybinding-widget-commits-mouse-buttons-6-to-31-raw)
   - [2026-11-13 — Unit frames: shared settings across units, and small parts as menu items](#2026-11-13--unit-frames-shared-settings-across-units-and-small-parts-as-menu-items)
   - [2026-11-11 — Old gear's tabard and shirt exclusion never matched](#2026-11-11--old-gears-tabard-and-shirt-exclusion-never-matched)
@@ -1940,20 +1940,6 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 
 **Open questions:** Does the user want the border per real raid group at all, given a single border around the raid already reads as Blizzard's with Keep Groups Together off?
 
-### 2026-11-11 — /sui: no resize cursor on the grip and the bottom edge
-
-**What:** `/sui` grows taller by its grip and its bottom edge, but neither shows a resize cursor on hover. The 6px bottom edge has no visual cue at all, and the grip's only cue is its highlight.
-
-**Why noticed:** Round 2's Task 10. Blizzard's `PanelResizeButtonMixin:OnEnter` calls `SetCursor('UI_RESIZE_CURSOR')`; the task's brief didn't ask for it and `SetCursor` isn't stubbed.
-
-**Anchors:** `SaftUI-Core/Config/optionsresize.lua` (`F.grip`, `F.sizer`, `StartResize`); `tests/wow/` (no `SetCursor` stub); `SaftUI-Core/skinning.lua` (`st:EnableResizing`, which also sets none).
-
-**What's been considered:** `SetCursor` on `OnEnter` and `SetCursor(nil)` on `OnLeave` and while the resize is held, on both handles, with a `SetCursor` stub that remembers the last cursor. Whether to do the same for `st:EnableResizing`'s windows is a question for the same change.
-
-**Shape of work:** A few lines in `optionswindow.lua`, a `SetCursor` stub in `tests/wow/widgets.lua` or `game.lua`, and one test.
-
-**Open questions:** Do the in-game checks show the edge needs a cue at all?
-
 ### 2026-11-11 — Screen edge margin: art reach only for /sui
 
 **What:** `st:KeepInScreenMargin(frame, reach)` can keep a frame's art, not just its rect, inside the margin, but only `/sui`'s window passes a `reach` (the metal's, under Blizzard). The bag, bank and combined bank windows, whose header sits in the metal's title bar above the window, still clamp their rect only, so at a margin under 20 their title bar can go off the top of the screen. *Update 2026-11-11 (round 2's final fix wave):* the entry's second loose end, a margin change while `/sui` is open at its most height not shrinking it until the next open, is fixed: `optionswindow.lua`'s `Build` hooks `st:UpdateScreenMargin` to `ApplyHeight` (`optionsresize.lua`), tested in `tests/core/options_resize_test.lua`. What is left is the art reach for the bag windows.
@@ -2857,6 +2843,22 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-11 — /sui: no resize cursor on the grip and the bottom edge
+
+**What:** `/sui` grows taller by its grip and its bottom edge, but neither shows a resize cursor on hover. The 6px bottom edge has no visual cue at all, and the grip's only cue is its highlight.
+
+**Why noticed:** Round 2's Task 10. Blizzard's `PanelResizeButtonMixin:OnEnter` calls `SetCursor('UI_RESIZE_CURSOR')`; the task's brief didn't ask for it and `SetCursor` isn't stubbed.
+
+**Anchors:** `SaftUI-Core/Config/optionsresize.lua` (`F.grip`, `F.sizer`, `StartResize`); `tests/wow/` (no `SetCursor` stub); `SaftUI-Core/skinning.lua` (`st:EnableResizing`, which also sets none).
+
+**What's been considered:** `SetCursor` on `OnEnter` and `SetCursor(nil)` on `OnLeave` and while the resize is held, on both handles, with a `SetCursor` stub that remembers the last cursor. Whether to do the same for `st:EnableResizing`'s windows is a question for the same change.
+
+**Shape of work:** A few lines in `optionswindow.lua`, a `SetCursor` stub in `tests/wow/widgets.lua` or `game.lua`, and one test.
+
+**Open questions:** Do the in-game checks show the edge needs a cue at all?
+
+**Resolved 2026-11-17:** both handles set `UI_RESIZE_CURSOR` on enter and put the pointer back on leave and at the end of a drag (`optionsresize.lua`); `SetCursor` stubbed in `tests/wow/game.lua`. Not done: `st:EnableResizing`'s windows (left as they were, no report of a missing cue there). In game: hover the grip and the bottom edge.
 
 ### 2026-11-15 — The options kit's keybinding widget commits mouse buttons 6 to 31 raw
 

@@ -161,6 +161,11 @@ end
 function InCombatLockdown() return stub.in_combat end
 function IsMouseButtonDown(button) return stub.mouse_buttons[button or 'LeftButton'] == true end
 function GetCursorPosition() return stub.cursor_x, stub.cursor_y end
+-- SetCursor(name) shows a cursor art over the mouse until SetCursor(nil) or ResetCursor puts
+-- the pointer back; stub.cursor is the name now shown (nil: the normal pointer). The game
+-- ignores a name it has no art for; this stub keeps whatever it is given.
+function SetCursor(name) stub.cursor = name end
+function ResetCursor() stub.cursor = nil end
 -- 'item', itemID, itemLink while the cursor holds an item; nothing otherwise.
 function GetCursorInfo()
 	local item = stub.cursor_item

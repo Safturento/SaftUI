@@ -71,6 +71,8 @@ local function StopResize()
 	local resize = S.sizing
 	S.sizing = nil
 	resize.handle:SetScript('OnUpdate', nil)
+	-- The resize cursor stayed through the drag (OnLeave); it goes now unless the mouse is still on the handle.
+	if not resize.handle:IsMouseOver() then SetCursor(nil) end
 	if resize.at == resize.height then return end
 	-- The height, with the corner it has (a window never moved has none saved,
 	-- and the next open would centre it again): the top stays where it was.
@@ -140,6 +142,9 @@ local function BuildResize(window)
 		handle:EnableMouse(true)
 		handle:SetScript('OnMouseDown', StartResize)
 		handle:SetScript('OnMouseUp', EndResize)
+		-- Blizzard's PanelResizeButtonMixin: the resize cursor under the mouse (held through a drag).
+		handle:SetScript('OnEnter', function() SetCursor('UI_RESIZE_CURSOR') end)
+		handle:SetScript('OnLeave', function() if not S.sizing then SetCursor(nil) end end)
 	end
 	F.grip, F.sizer = grip, sizer
 	-- A glyph, the pushed texture too: the game shows it instead of the normal one while held (after the scripts above): the corner is white, the lighter tone of the accent under
