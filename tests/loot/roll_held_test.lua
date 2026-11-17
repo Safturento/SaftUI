@@ -1544,8 +1544,8 @@ test('a Disenchant choice lights the Greed or Transmog button the bar shows', fu
 	local transmog = start_roll('ring', { confirm = true }) -- Transmog shows
 	tick(5)
 	-- Neither client has a Disenchant button: an addon calls RollOnLoot(roll, 3).
-	-- A roll with no confirmation would be cancelled inside the call (not held,
-	-- see docs/followups.md); one that asks (bind on pickup) stays up, the post-hook
+	-- A roll with no confirmation is cancelled inside the call (held from the
+	-- bar's snapshot, tested below); one that asks (bind on pickup) stays up, the post-hook
 	-- notes the choice, and accepting the popup takes the bar away.
 	for _, roll in ipairs({ greed, transmog }) do
 		RollOnLoot(roll, 3)
@@ -1709,6 +1709,71 @@ test('a click that hides nothing leaves no pending choice, and a pending choice 
 	tick(30)
 	stub.fire_event('CANCEL_LOOT_ROLL', c)
 	eq(held_bar(c), nil, 'a cleared pending choice holds nothing')
+end)
+
+-- Another addon's RollOnLoot (an auto-roll addon, a macro): no roll button, so
+-- no PreClick, and on a roll with no confirmation the client cancels the roll
+-- inside the call, so the bar hides with no choice known. The post-hook, which
+-- runs after the call, names the roll, and the hold is made from what the bar
+-- showed at the hide.
+for _, case in ipairs({ { 'Greed', 2, 'amulet' }, { 'Need', 1, 'amulet' }, { 'Pass', 0, 'amulet' }, { 'Transmog', 4, 'ring' }, { 'Disenchant', 3, 'amulet' } }) do
+	local label, rollType, key = case[1], case[2], case[3]
+	each_shape("an addon's direct RollOnLoot " .. label .. ' on a roll with no confirmation holds it with its item, time, drop and place', function()
+		world()
+		local drops = { add_drop('sword', {}), add_drop(key, { { 'Brightblade', 'PALADIN', 'Greed' } }),
+			add_drop('cloth', {}), add_drop('ring', {}), add_drop('sword', {}) }
+		local rolls = {}
+		for _, k in ipairs({ 'sword', key, 'cloth', 'ring', 'sword' }) do rolls[#rolls + 1] = start_roll(k) end
+		LT:UpdateRollBars()
+		tick(30)
+		local step = LT.config.roll.height + LT.config.roll.spacing
+		local base = frame_of(rolls[1]):GetBottom()
+		local frame = frame_of(rolls[2])
+
+		RollOnLoot(rolls[2], rollType)
+		history_choice(drops[2], STATE_OF[label] or 'Greed')
+		LT:UpdateRollBars()
+
+		eq(frame_of(rolls[5]), frame, 'the waiting roll took the frame inside the same call')
+		local bar = held_bar(rolls[2])
+		check(bar ~= nil, 'the roll is held')
+		if not bar then return end
+		local lit = label == 'Disenchant' and 'Greed' or label -- no Disenchant button: the amulet's bar shows Greed
+		eq(bar.Choice:GetText(), lit, 'locked on ' .. lit)
+		eq(bar.Name:GetText(), ITEMS[key].name, 'with its own item, not the waiting roll\'s')
+		eq(bar.Timer.Text:GetText(), '01:30', 'and the time it had at the call')
+		eq(bar:GetBottom(), base + step, 'in the second place of the stack')
+		eq(frame_of(rolls[5]):GetBottom(), base + 4 * step, 'the new roll goes last')
+		check(bar.dropID ~= nil and bar.dropID == '7:' .. drops[2].lootListKey, 'and its drop: ' .. tostring(bar.dropID))
+		eq(#LT:GetHeldRolls(), 1, 'one held bar')
+	end)
+end
+
+test("an addon's direct RollOnLoot prints the snapshot and the hold from it with debug on", function()
+	world()
+	local roll = start_roll('amulet')
+	LT:UpdateRollBars()
+	tick(10)
+	st.DEBUG = true
+	local lines = printed_by(function() RollOnLoot(roll, 2) end)
+	st.DEBUG = false
+	check(any_line(lines, 'snapshot kept for ' .. roll), 'the snapshot: ' .. table.concat(lines, ' | '))
+	check(any_line(lines, 'holding from the snapshot at the hide: ' .. roll .. ' Greed'), 'the hold from it')
+end)
+
+test("a bar that hides without a call on its roll is not held, even if the roll is rolled on after the frame", function()
+	world()
+	local roll = start_roll('amulet')
+	local other = start_roll('sword')
+	LT:UpdateRollBars()
+	tick(30)
+	stub.fire_event('CANCEL_LOOT_ROLL', roll) -- the roll ends (another player's choice, say)
+	RollOnLoot(other, 1) -- a call on another roll holds that roll, not this one
+	eq(held_bar(roll), nil, 'the ended roll is not held')
+	check(held_bar(other) ~= nil, 'the other is')
+	stub.run_timers() -- the next frame
+	RollOnLoot(roll, 2) -- a late call on the finished roll
+	eq(held_bar(roll), nil, 'a call after the frame holds nothing')
 end)
 
 test('a roll click holds in combat', function()

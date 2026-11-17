@@ -46,7 +46,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-13 — Loot rolls: the roll bar doesn't hold after a choice](#2026-11-13--loot-rolls-the-roll-bar-doesnt-hold-after-a-choice)
   - [2026-11-15 — UI scale: the kit's buttons and labels are off whole pixels on every screen that is not 1440p](#2026-11-15--ui-scale-the-kits-buttons-and-labels-are-off-whole-pixels-on-every-screen-that-is-not-1440p)
   - [2026-11-15 — UI scale: a kit confirm dialog or an open select list can cover the Keep prompt](#2026-11-15--ui-scale-a-kit-confirm-dialog-or-an-open-select-list-can-cover-the-keep-prompt)
-  - [2026-11-15 — An addon's direct RollOnLoot on a roll with no confirmation is not held](#2026-11-15--an-addons-direct-rollonloot-on-a-roll-with-no-confirmation-is-not-held)
   - [2026-11-15 — The color picker's preview copies other widgets' geometry](#2026-11-15--the-color-pickers-preview-copies-other-widgets-geometry)
   - [2026-11-15 — UI scale: a frame drawn parentless and parented later into a frame with a scale of its own keeps UIParent's line](#2026-11-15--ui-scale-a-frame-drawn-parentless-and-parented-later-into-a-frame-with-a-scale-of-its-own-keeps-uiparents-line)
   - [2026-11-15 — UI scale: the bags' loading overlay holds st.BACKDROP and needs SetBackdrop(nil) to take a new line](#2026-11-15--ui-scale-the-bags-loading-overlay-holds-stbackdrop-and-needs-setbackdropnil-to-take-a-new-line)
@@ -154,6 +153,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-16 — `optionsOf` keeps every page root alive: the reset walk's options table holds its own key](#2026-11-16--optionsof-keeps-every-page-root-alive-the-reset-walks-options-table-holds-its-own-key)
   - [2026-11-11 — /sui: no resize cursor on the grip and the bottom edge](#2026-11-11--sui-no-resize-cursor-on-the-grip-and-the-bottom-edge)
   - [2026-11-15 — The options kit's keybinding widget commits mouse buttons 6 to 31 raw](#2026-11-15--the-options-kits-keybinding-widget-commits-mouse-buttons-6-to-31-raw)
+  - [2026-11-15 — An addon's direct RollOnLoot on a roll with no confirmation is not held](#2026-11-15--an-addons-direct-rollonloot-on-a-roll-with-no-confirmation-is-not-held)
   - [2026-11-13 — Unit frames: shared settings across units, and small parts as menu items](#2026-11-13--unit-frames-shared-settings-across-units-and-small-parts-as-menu-items)
   - [2026-11-11 — Old gear's tabard and shirt exclusion never matched](#2026-11-11--old-gears-tabard-and-shirt-exclusion-never-matched)
   - [2026-11-15 — A bag window's least width ignores a Window titles change](#2026-11-15--a-bag-windows-least-width-ignores-a-window-titles-change)
@@ -814,20 +814,6 @@ What's left needs evidence from the game. In the order they'd be checked:
 **Shape of work:** small: `KP:Ask` closes the kit's open dialog and list first, with a test; or leave as is.
 
 **Open questions:** whether to close them at all, since a Task 7 row's own select list is what asked and closes on its pick.
-
-### 2026-11-15 — An addon's direct RollOnLoot on a roll with no confirmation is not held
-
-**What:** A held roll (`SaftUI-Loot/rollinfo.lua`) is held at the bar's hide from the choice a roll button's `PreClick` noted. A call to `RollOnLoot` with no click on a Blizzard roll button (another addon's) has no PreClick, and on a roll with no confirmation the client cancels the roll inside the call, so the bar hides with no choice known and is not held. Only the post-hook's own case (a confirmation, a Need's animation: the bar stays up) works for such a call. (The gamepad UI is not a case: with it on, on Forever, Blizzard's own cards show the rolls and SaftUI's frames never show one.)
-
-**Why noticed:** Fixing "loot roll didn't stay open" (the owner's debug lines were `bar hid: ... choice noted false frame hidden true`, then `choice not noted: ... no shown bar with that roll`): the cause was that a plain click's roll is cancelled inside `RollOnLoot`, before the post-hook runs. The fix covers a button click through PreClick; this is the part it leaves.
-
-**Anchors:** `SaftUI-Loot/rollinfo.lua` (`OnBarHide`, `OnRollPreClick`, `OnRollChosen`), `SaftUI-Loot/roll.lua` (`LT:HoldRoll`, `LT:LayoutRollFrames`), `tests/loot/roll_held_test.lua` (the `RollOnLoot` stub), `.agents/taint.md` rule 19.
-
-**What's been considered:** keeping a snapshot at hide time (the bar's state, a copy of `skin.shown` and the frame's stack slot) for the rest of the call, for the post-hook to hold from. It needs `LT:HoldRoll` to take a saved `shown` and a saved stack position: the frame can show a waiting roll right after the hide (overwriting `skin.shown`), and `LT:LayoutRollFrames` drops the frame's stack entry on the container update, so a hold done from the post-hook has to restore both. That is a larger change to roll.lua than the button case needed. Wrapping or replacing `RollOnLoot` is out (`.agents/taint.md` rule 9 and 2).
-
-**Shape of work:** one small ticket: snapshot at `OnBarHide` when no choice is known (the bar's state, `skin.shown`, stack index, the timer read at hide), keep it until the post-hook of that roll or the next frame, hold from it if the post-hook names that roll. The time left could not be read before the call, so it comes from the timer at hide (the Need animation case does not reach this path).
-
-**Open questions:** whether addons that roll for you (auto-roll addons) are common enough among the owner's setups to matter; a plain call cancelling inside is inferred from the debug order, not read from C code: confirm with the next real roll's debug lines first.
 
 ### 2026-11-15 — The color picker's preview copies other widgets' geometry
 
@@ -2882,6 +2868,21 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Shape of work:** small: in `OnMouseDown`, convert through `GetConvertedKeyOrButton` where the client has it, keeping `MOUSE_BUTTONS` as the fallback; a test that `Button6` commits `BUTTON6`.
 
 **Resolved 2026-11-17:** the widget turns `Button6` to `Button31` into `BUTTON6` to `BUTTON31` (`optionskeybinding.lua`); case in `tests/core/options_fields_test.lua`.
+### 2026-11-15 — An addon's direct RollOnLoot on a roll with no confirmation is not held
+
+**What:** A held roll (`SaftUI-Loot/rollinfo.lua`) is held at the bar's hide from the choice a roll button's `PreClick` noted. A call to `RollOnLoot` with no click on a Blizzard roll button (another addon's) has no PreClick, and on a roll with no confirmation the client cancels the roll inside the call, so the bar hides with no choice known and is not held. Only the post-hook's own case (a confirmation, a Need's animation: the bar stays up) works for such a call. (The gamepad UI is not a case: with it on, on Forever, Blizzard's own cards show the rolls and SaftUI's frames never show one.)
+
+**Why noticed:** Fixing "loot roll didn't stay open" (the owner's debug lines were `bar hid: ... choice noted false frame hidden true`, then `choice not noted: ... no shown bar with that roll`): the cause was that a plain click's roll is cancelled inside `RollOnLoot`, before the post-hook runs. The fix covers a button click through PreClick; this is the part it leaves.
+
+**Anchors:** `SaftUI-Loot/rollinfo.lua` (`OnBarHide`, `OnRollPreClick`, `OnRollChosen`), `SaftUI-Loot/roll.lua` (`LT:HoldRoll`, `LT:LayoutRollFrames`), `tests/loot/roll_held_test.lua` (the `RollOnLoot` stub), `.agents/taint.md` rule 19.
+
+**What's been considered:** keeping a snapshot at hide time (the bar's state, a copy of `skin.shown` and the frame's stack slot) for the rest of the call, for the post-hook to hold from. It needs `LT:HoldRoll` to take a saved `shown` and a saved stack position: the frame can show a waiting roll right after the hide (overwriting `skin.shown`), and `LT:LayoutRollFrames` drops the frame's stack entry on the container update, so a hold done from the post-hook has to restore both. That is a larger change to roll.lua than the button case needed. Wrapping or replacing `RollOnLoot` is out (`.agents/taint.md` rule 9 and 2).
+
+**Shape of work:** one small ticket: snapshot at `OnBarHide` when no choice is known (the bar's state, `skin.shown`, stack index, the timer read at hide), keep it until the post-hook of that roll or the next frame, hold from it if the post-hook names that roll. The time left could not be read before the call, so it comes from the timer at hide (the Need animation case does not reach this path).
+
+**Open questions:** whether addons that roll for you (auto-roll addons) are common enough among the owner's setups to matter; a plain call cancelling inside is inferred from the debug order, not read from C code: confirm with the next real roll's debug lines first.
+
+**Resolved 2026-11-17:** `OnBarHide` now keeps a snapshot when a bar hides with no choice known (the item it showed, its stack index, the timer read at the hide) until the next frame, and the `RollOnLoot` post-hook holds the roll from it when it names that roll, with the choice it names; a bar that ended on its own is never claimed. `LT:HoldRoll` takes the saved `shown` and `index`, and puts the held bar in the roll's place only if the stack still has the old roll's entry there. Still inferred, not read from C code: that the client cancels inside a direct call as it does inside a click's (see the in-game check in the report). Test: `tests/loot/roll_held_test.lua`.
 
 ### 2026-11-13 — Unit frames: shared settings across units, and small parts as menu items
 
