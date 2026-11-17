@@ -623,9 +623,11 @@ function CHT:RegisterChatMover()
 	self:UpdateFootprint()
 end
 
-function CHT:FCFDock_UpdateTabs(dock, forceUpdate)
-	if not (dock.isDirty or forceUpdate) then return end
-
+-- A post-hook on Blizzard's FCFDock_UpdateTabs, which clears dock.isDirty at its end, so
+-- by now a plain dirty update (a resize of ChatFrame1, a pick from the overflow list, an
+-- undock) looks the same as an idle call: this lays the row out on every call. It is a few
+-- ClearAllPoints and SetPoint on the tabs, and gives the same anchors each time.
+function CHT:FCFDock_UpdateTabs(dock)
 	-- The dock scrolls an overflowing row by moving its scroll child, so a tab that
 	-- Blizzard anchors to the scroll child (the first one that isn't static docked, from
 	-- ChatFrame3 up) keeps that anchor, and the tabs after it follow it and scroll with it.

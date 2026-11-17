@@ -6,11 +6,9 @@
 -- Blizzard's FCFDock_UpdateTabs (FloatingChatFrame.lua, both clients) returns at once
 -- when `not dock.isDirty and not forceUpdate`, and otherwise ends with
 -- `dock.isDirty = false`. The game runs a post-hook after it, so by then isDirty is
--- already false: the hook lays the tabs out only on a forced update (a call with
--- forceUpdate, as Blizzard makes after a window is added or closed and when the gamepad
--- mode changes). In game the docked tabs sit right after a drag and dock and after a
--- plain tab switch (checked 2026-11-13), so that is harmless; these cases call the hook as
--- the game does and pin the early return and the forced update.
+-- already false, so the hook can't tell a plain dirty update (a resize of ChatFrame1, a
+-- pick from the overflow list, an undock) from an idle call: it lays the row out on every
+-- call, forced or not. These cases call the hook as the game does and pin each path.
 --
 -- Real: SaftUI-Chat's config.lua and chatframe.lua, Core's helpers and edit mode.
 -- Stand-ins: the dock is a plain table with Blizzard's DOCKED_CHAT_FRAMES list, each a
@@ -87,19 +85,64 @@ local function update(dock, forceUpdate)
 	CHT:FCFDock_UpdateTabs(dock, forceUpdate)
 end
 
-test('a plain update leaves the tabs where Blizzard put them: its isDirty is already cleared', function()
-	local dock = dock_of(3)
-	dock.isDirty = true -- a window was docked; Blizzard lays the tabs out and clears it
-	update(dock)
-	local tab = tab_of(dock, 1)
-	local point, relative, relPoint, x, y = tab:GetPoint(1)
-	eq(relative, UIParent, "the first tab is still anchored where Blizzard's layout left it")
-	eq(x .. ',' .. y, '5,5', 'at the same offset')
+-- Where a docked tab ends up after SaftUI's layout: the first above its window, a static
+-- one after it on the tab before it, with the one anchor.
+local function assert_laid_out(dock, label)
+	local first = tab_of(dock, 1)
+	local point, relative, relPoint, x, y = first:GetPoint(1)
+	eq(relative, dock.DOCKED_CHAT_FRAMES[1], label .. ': the first tab is above its window, not on the dock')
+	eq(point .. ',' .. relPoint .. ',' .. x .. ',' .. y, 'BOTTOMLEFT,TOPLEFT,0,10', label .. ': at SaftUI\'s offset')
+	eq(first:GetNumPoints(), 1, label .. ': one anchor')
+end
 
-	update(dock) -- nothing dirty, nothing forced
-	_, relative, _, x, y = tab:GetPoint(1)
-	eq(relative, UIParent, 'a clean, unforced update changes nothing either')
-	eq(x .. ',' .. y, '5,5', 'at the same offset')
+-- Blizzard clears dock.isDirty before the post-hook runs (the end of FCFDock_UpdateTabs), so
+-- the hook can't tell a plain dirty update from an idle call; it lays the row out every time.
+-- Each of these is a path that is not forced.
+test('a plain dirty update (a resize of ChatFrame1) lays the tabs out, not Blizzard', function()
+	local dock = dock_of(3)
+	dock.isDirty = true -- FCFDock_OnPrimarySizeChanged
+	update(dock)
+	assert_laid_out(dock, 'after a resize')
+	eq(select(2, tab_of(dock, 2):GetPoint(1)), tab_of(dock, 1), 'tab 2 follows tab 1')
+end)
+
+test('a pick from the overflow list (FCFDock_SelectWindow) lays the tabs out', function()
+	local dock = dock_of(5)
+	update(dock, true)
+	dock.isDirty = true -- FCFDock_SelectWindow: dirty, then an unforced update
+	update(dock)
+	assert_laid_out(dock, 'after a pick')
+	eq(select(2, tab_of(dock, 3):GetPoint(1)), dock.scrollFrame:GetScrollChild(), 'the first dynamic tab stays on the scroll child')
+end)
+
+test('an undock (FCFDock_RemoveChatFrame) lays out the tabs that stay, and skips the one that left', function()
+	local dock = dock_of(4, 4)
+	update(dock, true)
+	local gone = table.remove(dock.DOCKED_CHAT_FRAMES, 2) -- tDeleteItem, then dirty and an unforced update
+	dock.isDirty = true
+	update(dock)
+	assert_laid_out(dock, 'after an undock')
+	eq(select(2, tab_of(dock, 2):GetPoint(1)), tab_of(dock, 1), 'the window that was third is now on the first')
+	eq(tab_of(dock, 2):GetNumPoints(), 1, 'one anchor')
+	check(gone ~= dock.DOCKED_CHAT_FRAMES[2], 'the undocked window is no longer in the list')
+end)
+
+test('an idle call (nothing dirty, nothing forced) leaves the row as it is', function()
+	local dock = dock_of(5)
+	update(dock, true)
+	local before = {}
+	for i = 1, 5 do
+		local point, relative, relPoint, x, y = tab_of(dock, i):GetPoint(1)
+		before[i] = { point, relative, relPoint, x, y, tab_of(dock, i):GetNumPoints() }
+	end
+	update(dock)
+	update(dock)
+	for i = 1, 5 do
+		local point, relative, relPoint, x, y = tab_of(dock, i):GetPoint(1)
+		local was = before[i]
+		eq(point .. relPoint .. x .. y .. tab_of(dock, i):GetNumPoints(), was[1] .. was[3] .. was[4] .. was[5] .. was[6], 'tab ' .. i .. ' unchanged')
+		eq(relative, was[2], 'tab ' .. i .. ' on the same frame')
+	end
 end)
 
 test('a forced update puts the first tab above its window', function()
