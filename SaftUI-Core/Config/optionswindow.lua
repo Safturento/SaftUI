@@ -1284,6 +1284,7 @@ local function OnHide()
 	W.CloseColorPicker()
 	F.window:StopMovingOrSizing()
 	S.StopResize()
+	S.ReleaseCursor()
 	F.keys:EnableKeyboard(false)
 	F.keys:Hide()
 	pending, dragging = false, false

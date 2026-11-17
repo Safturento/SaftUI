@@ -95,14 +95,16 @@ end
 
 local function Trim(text) return (text:gsub('^%s+', ''):gsub('%s+$', '')) end
 
--- S6: the places CreateTexture is handed the game's HIGHLIGHT layer, with how many each file may
+-- S6: the places CreateTexture is handed the game's HIGHLIGHT layer by its literal name (the form
+-- `CreateTexture(nil, st.ThemeArt.HOVER_LAYER)` is the allowed one: it is the layer the theme's
+-- hover pieces go in, so the scan does not look for it), with how many each file may
 -- make and why (the game shows such a texture only under the mouse).
 local HIGHLIGHT_ALLOWED = {
 	['SaftUI-Core/Config/optionslook.lua'] = { count = 1, reason = "the kit's box highlight under the mouse, adopted by the helper's box shape" },
-	['SaftUI-Core/Config/optionssizes.lua'] = { count = 1, reason = "the size buttons' glow, the helper's hover piece" },
-	['SaftUI-Core/Widgets/button.lua'] = { count = 1, reason = "SaftUI's button highlight, the helper's hover piece" },
+	['SaftUI-Core/Config/optionssizes.lua'] = { count = 1, reason = "the size buttons' Blizzard-art highlight (art.glow), shown by the game under the mouse" },
+	['SaftUI-Core/Widgets/button.lua'] = { count = 1, reason = "the Blizzard-art button's highlight (art.Highlight), shown by the game under the mouse" },
 	['SaftUI-Minimap/microbuttons.lua'] = { count = 1, reason = "the character micro button's empty highlight (the S2 entry's), replaced by MicroMenu.SkinHighlight" },
-	['SaftUI-Misc/totemskin.lua'] = { count = 1, reason = "the totem button's hover texture, adopted by the helper" },
+	['SaftUI-Misc/totemskin.lua'] = { count = 1, reason = "the flyout arrow's thick glyph (skin.hover), shown by the game under the mouse" },
 	['SaftUI-Tracker/items.lua'] = { count = 1, reason = "a quest item button's hover texture, adopted by the helper" },
 }
 
@@ -443,7 +445,7 @@ test('the scan catches each: a fixture line per rule fails it', function()
 	-- S6
 	eq(scan("local t = button:CreateTexture(nil, 'HIGHLIGHT')"), 'S6', 'a HIGHLIGHT texture')
 	eq(scan('local t = button:CreateTexture(nil, "HIGHLIGHT", nil, 1)'), 'S6', 'the other quotes, with a sublevel')
-	eq(scan("local t = button:CreateTexture(nil, 'ARTWORK')\nlocal u = button:CreateTexture(nil, st.ThemeArt.HOVER_LAYER)"), '', 'other layers')
+	eq(scan("local t = button:CreateTexture(nil, 'ARTWORK')\nlocal u = button:CreateTexture(nil, st.ThemeArt.HOVER_LAYER)"), '', 'other layers: ARTWORK, and the theme\'s HOVER_LAYER constant, the allowed form')
 	eq(scan("-- button:CreateTexture(nil, 'HIGHLIGHT')\nlocal s = \"CreateTexture(nil, 'HIGHLIGHT')\""), '', 'a comment and a string')
 	eq(scan("local t = button:CreateTexture(nil, 'HIGHLIGHT')", nil, 'SaftUI-Tracker/items.lua'), '', 'a listed file at its count')
 	eq(scan(("local t = button:CreateTexture(nil, 'HIGHLIGHT')\n"):rep(2), nil, 'SaftUI-Tracker/items.lua'), 'S6,S6', 'a listed file over its count')

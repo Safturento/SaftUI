@@ -861,7 +861,6 @@ What's left needs evidence from the game. In the order they'd be checked:
 
 **Shape of work:** small: clear and set again in the bags' pass after a scale change (phase 4c).
 
-
 ### 2026-11-15 — `/sui` following during a color drag
 
 **What:** While the color picker is open, every SaftUI frame follows the color as it is dragged except the `/sui` window itself, which redraws once when the picker closes (Okay or Cancel). Making the window follow during the drag is a larger change across the options kit.
