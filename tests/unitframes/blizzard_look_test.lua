@@ -9,11 +9,10 @@
 --     keeps its own box (Review Focus 4);
 --   - the player's separate power bar has its own box, and a castbar whose
 --     Theme is Thin keeps Thin's line;
---   - a bar or frame too small for the bronze box's two corners on a side
---     draws as a small frame (a line and the fill), decided from its config
---     at every update, so it follows its size; under Thick and Thin it looks
---     as a bar; a bar sized by another's config (Mana as primary) goes by
---     that size;
+--   - the box draws at every size, a thin bar's as a frame's: no bar or frame
+--     falls back to a small frame; under Thick and Thin a thin bar looks as
+--     a bar; a bar sized by another's config (Mana as primary) is sized by
+--     it and keeps the box; the frame's box lies over its bars' levels;
 --   - the test mode previews draw as their real frames do: a party member's
 --     as members, a boss's as unit frames;
 --   - the group border (groups.lua): under Blizzard each party and raid
@@ -56,7 +55,7 @@ local make_unit_frame = UW.unit_frame
 
 -- What a frame's backdrop shows: its inset, fill and edge colors, whether
 -- Thick's outer lines show, where it sits around the frame, whether it has an
--- edge line (Blizzard draws one only for a small frame) and the Blizzard art
+-- edge line (Blizzard draws none for a box) and the Blizzard art
 -- shown on it (T.art); 'bare' for none.
 local function looks(frame)
 	local backdrop = frame.backdrop
@@ -84,7 +83,7 @@ end
 local BOX = 'BottomEdge,BottomLeftCorner,BottomRightCorner,LeftEdge,RightEdge,TopEdge,TopLeftCorner,TopRightCorner'
 
 -- How a Blizzard kind looks on a frame: the bronze box (its eight pieces,
--- inset 2, no line), a small frame (a 1px line, inset 1, no art) or a member
+-- inset 2, no line) or a member
 -- (the fill, inset 0, no line, no art); 'bare' for none.
 local function blizzard(frame)
 	local backdrop = frame.backdrop
@@ -92,7 +91,6 @@ local function blizzard(frame)
 	local line = backdrop.backdropInfo.edgeFile ~= nil
 	local inset, around = T.inset(backdrop), T.around(backdrop, frame)
 	if pieces(frame) == BOX and inset == 2 and not line and around == '-2,2,2,-2' then return 'box' end
-	if pieces(frame) == '' and inset == 1 and line and around == '-1,1,1,-1' then return 'small' end
 	if pieces(frame) == '' and inset == 0 and not line and around == '0,0,0,0' then return 'member' end
 	return 'something else: ' .. looks(frame)
 end
@@ -297,67 +295,62 @@ test("the player's separate power bar has its own box; a castbar set to Thin kee
 	end
 end)
 
------------------------------------------------------------------- too small for the box
+------------------------------------------------------------------ any size
 
--- The box's two 8px corners need a drawn frame at least 16 on each side: a
--- bar or frame at most 11 (drawn 15) draws as a small frame instead, a line
--- and the fill. Decided from its config at each update.
-test('a bar or frame too small for the bronze box draws as a small frame, decided again when its size changes; under Thick and Thin nothing changes', function()
+-- The box draws at every size: a thin bar, or a frame 10 tall, has it as a
+-- 34-tall frame does, with no small frame's line under Blizzard. Decided
+-- from the unit alone, so a size change doesn't change the kind.
+test('an 8 tall power bar draws the box, not a line; the 34 tall frame and the 8 tall bar have the same box', function()
+	for _, client in ipairs(CLIENTS) do
+		world(client, 'blizzard')
+		P.player.theme = 'theme'
+		local player = make_unit_frame('P', 'player', { 'Health', 'Power' })
+		UF:UpdateUnitFrame(player)
+		P.player.power.width, P.player.power.relative_width, P.player.power.height = 299, false, 8
+		UF:UpdateUnitFrame(player, 'Power')
+		eq(player.Power:GetHeight(), 8, client .. ': 8 tall')
+		eq(drawn(player.Power), 'theme,theme,unitframe', client .. ': drawn as unitframe')
+		eq(blizzard(player.Power), 'box', client .. ': the box')
+		check(T.art(player.Power.backdrop) ~= '', client .. ': it lists the box')
+		eq(T.art(player.Power.backdrop), T.art(player.backdrop), client .. ': the frame and the bar have the same box')
+		eq(#take_errors(), 0, client .. ': no errors')
+	end
+end)
+
+test('no size of bar or frame falls back to a small frame; under Thick and Thin a thin bar looks as a bar', function()
 	for _, client in ipairs(CLIENTS) do
 		world(client, 'blizzard')
 		local power = P.target.power
 		power.enable = true
 		local target = make_unit_frame('T', 'target', { 'Health', 'Power' })
 		UF:UpdateUnitFrame(target)
-		local function update(where, kind, look)
-			UF:UpdateUnitFrame(target, 'Power')
-			eq(drawn(target.Power), 'theme,theme,' .. kind, client .. ', ' .. where .. ': drawn as ' .. kind)
-			eq(blizzard(target.Power), look, client .. ', ' .. where .. ': ' .. look)
-		end
-
 		eq(power.height, 5, "the target's power bar is 5 tall by default")
-		eq(drawn(target.Power), 'theme,theme,small', client .. ': a 5-tall power bar is a small frame')
-		eq(blizzard(target.Power), 'small', client .. ': a line and the fill, no pieces')
-		power.height = 20
-		update('20 tall', 'unitframe', 'box')
-		power.height = 5
-		update('5 tall again', 'small', 'small')
-		power.height = 12
-		update('12 tall, drawn 16', 'unitframe', 'box')
-		power.height = 11
-		update('11 tall, drawn 15', 'small', 'small')
+		for _, height in ipairs({ 5, 11, 12, 20 }) do
+			power.height = height
+			UF:UpdateUnitFrame(target, 'Power')
+			eq(drawn(target.Power), 'theme,theme,unitframe', client .. ', ' .. height .. ' tall: unitframe')
+			eq(blizzard(target.Power), 'box', client .. ', ' .. height .. ' tall: the box')
+		end
 		power.height, power.width, power.relative_width = 30, 5, false
-		update('a vertical bar 5 wide', 'small', 'small')
-		power.width = 12
-		update('12 wide', 'unitframe', 'box')
-		power.width = 11
-		update('11 wide', 'small', 'small')
+		UF:UpdateUnitFrame(target, 'Power')
+		eq(blizzard(target.Power), 'box', client .. ': a vertical bar 5 wide: the box')
 		power.height, power.width, power.relative_width = 5, 0, true
+		UF:UpdateUnitFrame(target, 'Power')
 
 		-- A relative size: the frame's height less 24.
 		P.target.health.height = -24
 		UF:UpdateUnitFrame(target, 'Health')
-		eq(drawn(target.Health), 'theme,theme,small', client .. ': health 10 tall (34 - 24)')
+		eq(drawn(target.Health), 'theme,theme,unitframe', client .. ': health 10 tall (34 - 24)')
 		P.target.health.height = 0
 
-		-- The unit frame itself, 10 tall, with its own Theme: it draws the line,
-		-- and its health, filling it, draws None, so one line shows on its edges.
+		-- The unit frame itself, 10 tall: the box, and its health, filling it, draws None.
 		P.target.theme, P.target.height = 'theme', 10
 		UF:UpdateUnitFrame(target)
-		eq(drawn(target), 'theme,theme,small', client .. ': a unit frame 10 tall')
-		eq(blizzard(target), 'small', client .. ': a line and the fill')
-		eq(drawn(target.Health), 'none,theme,small', client .. ': its health, filling it, draws None')
-		eq(looks(target.Health), 'bare', client .. ': and shows nothing: no second line on the same edges')
-		-- Health 2 shorter: both lines, the frame's and its own.
-		P.target.health.height = -2
-		UF:UpdateUnitFrame(target, 'Health')
-		eq(drawn(target.Health), 'theme,theme,small', client .. ': health 8 tall in the 10-tall frame draws its own Theme')
-		eq(blizzard(target.Health), 'small', client .. ': its own line and fill')
-		P.target.health.height = 0
+		eq(drawn(target), 'theme,theme,unitframe', client .. ': a unit frame 10 tall')
+		eq(blizzard(target), 'box', client .. ': the box')
+		eq(drawn(target.Health), 'none,theme,unitframe', client .. ': its health draws None')
+		eq(looks(target.Health), 'bare', client .. ': and shows nothing')
 		P.target.height = 34
-		UF:UpdateUnitFrame(target)
-		eq(blizzard(target), 'box', client .. ': 34 tall: the box')
-		eq(looks(target.Health), 'bare', client .. ': and health none')
 		P.target.theme = 'none'
 
 		-- Under Thick and Thin a 5-tall bar looks exactly as a bar.
@@ -370,21 +363,39 @@ test('a bar or frame too small for the bronze box draws as a small frame, decide
 	end
 end)
 
+test("the frame's box sits over its health and power bars", function()
+	for _, client in ipairs(CLIENTS) do
+		world(client, 'blizzard')
+		P.player.theme = 'theme'
+		local player = make_unit_frame('P', 'player', { 'Health', 'Power' })
+		UF:UpdateUnitFrame(player)
+		local box = st.ThemeArt.BoxFrame(player.backdrop)
+		check(box:GetFrameLevel() > player.Health:GetFrameLevel(), client .. ": over the health bar's level")
+		check(box:GetFrameLevel() > player.Power:GetFrameLevel(), client .. ": over the power bar's level")
+		-- A bar levelled above everything else by a config edit: the box is
+		-- drawn again on that update, over it.
+		P.player.health.framelevel = 150
+		UF:UpdateUnitFrame(player, 'Health')
+		check(box:GetFrameLevel() > player.Health:GetFrameLevel(), client .. ': over the health bar after its level changed')
+		eq(#take_errors(), 0, client .. ': no errors')
+	end
+end)
+
 -- power.lua and additionalpower.lua hand UF:UpdateElement the other bar's
 -- config with Mana as primary on, and the bar is sized by it
 -- (UF:UpdateElementSize): its kind follows that size.
-test("a bar sized by another's config takes its kind from that size", function()
+test("a bar sized by another's config is sized by it and keeps the box", function()
 	world('forever', 'blizzard')
 	local player = make_unit_frame('P', 'player', { 'Health', 'Power', 'AdditionalPower' })
 	UF:UpdateUnitFrame(player)
 	local other = P.player.additionalpower
 	other.height = 5
 	eq(UF:ElementKind(player.Power), 'unitframe', 'by its own config, 20 tall: a unit frame')
-	eq(UF:ElementKind(player.Power, other), 'small', "by the additional power's, 5 tall: a small frame")
+	eq(UF:ElementKind(player.Power, other), 'unitframe', "by the additional power's, 5 tall: still a unit frame")
 	UF:UpdateElement(player.Power, other)
 	eq(player.Power:GetHeight(), 5, 'sized by it')
-	eq(drawn(player.Power), 'theme,theme,small', 'and drawn as a small frame, in its own Theme')
-	eq(blizzard(player.Power), 'small', 'a line and the fill')
+	eq(drawn(player.Power), 'theme,theme,unitframe', 'and drawn as a unit frame, in its own Theme')
+	eq(blizzard(player.Power), 'box', 'the box')
 	eq(#take_errors(), 0, 'no errors')
 end)
 
@@ -446,7 +457,7 @@ test('a party preview draws as members, a boss preview as a unit frame', functio
 		for i, preview in ipairs(previews) do
 			local where = theme .. ', boss preview ' .. i
 			eq(drawn(preview), 'theme,theme,unitframe', where .. ': a unit frame')
-			eq(drawn(preview.Power), 'theme,theme,small', where .. ': its 5-tall power bar a small frame')
+			eq(drawn(preview.Power), 'theme,theme,unitframe', where .. ': its 5-tall power bar a unit frame')
 			eq(picture(preview), picture(UF.units.boss[i]), where .. ' draws like boss frame ' .. i)
 		end
 		if theme == 'blizzard' then

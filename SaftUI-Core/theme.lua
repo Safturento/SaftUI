@@ -53,7 +53,7 @@ st.THEME_KINDS = {
 	header = true,  -- header and footer strips
 	close = true,   -- the close button
 	control = true, -- a small frame Blizzard draws with art of its own: buttons, check boxes, tabs, edit boxes, the micro menu's items
-	small = true,   -- everything else: indicators, and a unit frame or bar too small for the bronze box (UF.SizedKind)
+	small = true,   -- everything else: indicators
 	unitframe = true, -- a unit frame or one of its bars
 	member = true,    -- a party or raid member's frame or bar
 }

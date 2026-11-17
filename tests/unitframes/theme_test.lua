@@ -2,8 +2,8 @@
 --   - every unit's and element's Theme and Background default draws exactly
 --     what its template default drew before themes;
 --   - each part of a unit frame draws as its kind: the unit frame and its bars
---     as unit frames (a party or raid member's as members, a bar too small for
---     the bronze box as a small frame: tests/unitframes/blizzard_look_test.lua),
+--     as unit frames (a party or raid member's as members, at any size:
+--     tests/unitframes/blizzard_look_test.lua),
 --     the aura buttons as auras, the castbar's icon and the indicators as
 --     controls (bare under Blizzard), and the class power points as controls;
 --   - a config update draws no backdrop on the aura and class power areas
@@ -397,11 +397,10 @@ local function override(unit)
 end
 
 -- How each part is drawn, by group: a boss's as unit frames, its 5-tall power
--- bar as a small frame (too small for the bronze box), a party member's as
--- members.
+-- bar too, a party member's as members.
 local EXPECTED_DRAWS = {
 	boss = {
-		frame = 'thin,transparent,unitframe', Health = 'thick,solid,unitframe', Power = 'thin,theme,small',
+		frame = 'thin,transparent,unitframe', Health = 'thick,solid,unitframe', Power = 'thin,theme,unitframe',
 		GroupRoleIndicator = 'thick,transparent,control',
 	},
 	party = {

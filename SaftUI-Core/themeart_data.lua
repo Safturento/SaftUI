@@ -131,11 +131,6 @@ local MINIMAL_ARROWS = {
 -- size by size at the drawn frame's own corner, the edges between them, size
 -- thick and stretched, every piece in the art's layer.
 
--- Blizzard's player and target frames (Blizzard_UnitFrame), which the unit
--- frame's box is cut from.
-local UF_PLAYER = Atlas('UI-HUD-UnitFrame-Player-PortraitOn')
-local UF_TARGET = Atlas('UI-HUD-UnitFrame-Target-PortraitOn')
-
 -- Blizzard's raid group border, which the group border is cut from.
 local GROUP_BORDER = Atlas('options_frame_child')
 
@@ -221,43 +216,6 @@ ThemeArt.ART = {
 		BottomEdge = { atlas = Atlas('_UI-Frame-Metal-EdgeBottom') },
 		LeftEdge = { atlas = Atlas('!UI-Frame-Metal-EdgeLeft') },
 		RightEdge = { atlas = Atlas('!UI-Frame-Metal-EdgeRight') },
-	},
-
-	-- The unit frame's bronze box, a cut, on unit frames and their bars.
-	-- Blizzard's player and target frames are each one shaped texture at a
-	-- fixed size, the portrait ring and bar wells drawn in, which can't wrap a
-	-- frame of any other size; their square ends can. The left corners and
-	-- edge are cut from the target frame's left end, the right ones from the
-	-- player frame's right end, and the top and bottom edges are a 1px column
-	-- of the player frame's top and bottom, stretched across. Each
-	-- rectangle puts the art's dark outline on a piece's outer pixel and its
-	-- rim (bronze on Forever's Camelot members, grey on retail's) on the next
-	-- one in, on every side: starting values, measured on the decoded art, to
-	-- be tuned in game. Retail's art is its own drawing, so its rectangles are
-	-- its own. A frame's own border color tints the pieces. The fill is the
-	-- drawn frame's backdrop, in the theme's Background.
-	unitframe = {
-		layer = 'BORDER',
-		size = 8,
-		pieces = ByClient({
-			TopLeftCorner = { atlas = UF_TARGET, rect = { 2, 10, 8, 16 } },
-			BottomLeftCorner = { atlas = UF_TARGET, rect = { 2, 10, 48, 56 } },
-			LeftEdge = { atlas = UF_TARGET, rect = { 2, 10, 30, 40 } },
-			TopRightCorner = { atlas = UF_PLAYER, rect = { 187, 195, 11, 19 } },
-			BottomRightCorner = { atlas = UF_PLAYER, rect = { 187, 195, 51, 59 } },
-			RightEdge = { atlas = UF_PLAYER, rect = { 187, 195, 34, 42 } },
-			TopEdge = { atlas = UF_PLAYER, rect = { 120, 121, 11, 19 } },
-			BottomEdge = { atlas = UF_PLAYER, rect = { 120, 121, 51, 59 } },
-		}, {
-			TopLeftCorner = { atlas = UF_TARGET, rect = { 1, 9, 21, 29 } },
-			BottomLeftCorner = { atlas = UF_TARGET, rect = { 1, 9, 48, 56 } },
-			LeftEdge = { atlas = UF_TARGET, rect = { 1, 9, 30, 40 } },
-			TopRightCorner = { atlas = UF_PLAYER, rect = { 186, 194, 24, 32 } },
-			BottomRightCorner = { atlas = UF_PLAYER, rect = { 186, 194, 51, 59 } },
-			RightEdge = { atlas = UF_PLAYER, rect = { 186, 194, 34, 42 } },
-			TopEdge = { atlas = UF_PLAYER, rect = { 120, 121, 24, 32 } },
-			BottomEdge = { atlas = UF_PLAYER, rect = { 120, 121, 51, 59 } },
-		}),
 	},
 
 	-- The party and raid group border, a cut, around each group header's

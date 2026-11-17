@@ -42,14 +42,12 @@ end
 
 -- The kind of frame (st.THEME_KINDS) an element's Theme draws it as. Its bars
 -- (health, power, additional power, the castbar) draw as their unit frame's
--- unit does, at their own size (UF.SizedKind): a unit frame, a party or raid
--- member, or a small frame where the bronze box doesn't fit. Everything else
--- (the castbar's icon, the indicators) is a control, which Thick and Thin draw
--- as a small frame and Blizzard draws bare. configOverride is the one
--- UF:UpdateElement was handed, which UF:UpdateElementSize sizes it by.
+-- unit does, at any size (UF.UnitKind): a unit frame or a party or raid
+-- member. Everything else (the castbar's icon, the indicators) is a control,
+-- which Thick and Thin draw as a small frame and Blizzard draws bare.
 function UF:ElementKind(element, configOverride)
 	if not element:IsObjectType('StatusBar') then return 'control' end
-	return UF.SizedKind(element.unitframe.base_unit, self:ElementSize(element, configOverride))
+	return UF.UnitKind(element.unitframe.base_unit)
 end
 
 -- Whether an element's config puts it exactly over its unit frame: as wide and
@@ -65,12 +63,12 @@ function UF.FillsFrame(config)
 	return point == relativePoint and tonumber(x) == 0 and tonumber(y) == 0
 end
 
--- The kinds a bar draws with a border of its own under Blizzard: the bronze
--- box, or a small frame's line where the box doesn't fit (UF.SizedKind).
-local BORDERED = { unitframe = true, small = true }
+-- The kind a bar draws with a border of its own under Blizzard: the bronze
+-- box.
+local BORDERED = { unitframe = true }
 
 -- The Theme and Background an element draws with: its config's, but None for
--- a bar drawn with a border (the bronze box, or a small frame's line) that
+-- a bar drawn with a border (the bronze box) that
 -- lies exactly over its unit frame (UF.FillsFrame) while both its own Theme
 -- and its frame's draw in Blizzard's art. Filling the frame, it has the
 -- frame's size and so its kind, and the frame's border alone shows on those

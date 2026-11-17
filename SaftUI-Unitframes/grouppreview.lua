@@ -155,7 +155,6 @@ local function StylePreviewFrame(frame)
 	local config = frame:GetConfig()
 	frame.config = config
 	st:SetSize(frame, config.width, config.height)
-	st:SetBackdrop(frame, config.theme, config.background, UF.SizedKind(frame.base_unit, config.width, config.height))
 	-- The parts are placed one by one: two anchored each way round across two
 	-- profiles would close a loop against the old points (as for the real
 	-- frames, UF:ApplyConfig). A preview is SaftUI's own, so in combat too.
@@ -166,6 +165,8 @@ local function StylePreviewFrame(frame)
 	for _, element in ipairs(frame.previewElements) do
 		UF:UpdateElement(element)
 	end
+	-- After the parts: a unit frame's box lies over their frame levels.
+	st:SetBackdrop(frame, config.theme, config.background, UF.UnitKind(frame.base_unit))
 	local role = frame.GroupRoleIndicator
 	role:SetSize(role.config.size, role.config.size)
 end

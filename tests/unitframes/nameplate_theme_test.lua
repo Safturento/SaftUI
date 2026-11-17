@@ -198,31 +198,25 @@ for _, client in ipairs(CLIENTS) do
 	end)
 end
 
--- A plate bar too small for the bronze box (UF.BoxFits: under 12 on a side
--- for the box's 8px corners and inset 2) draws as a small frame under
--- Blizzard, as every unit's bars do: one line round the fill, no pieces.
+-- A plate bar of any size draws the box under Blizzard, as every unit's bars
+-- do: no small frame's line under 12 on a side.
 for _, client in ipairs(CLIENTS) do
-	test(client .. ': Blizzard: a plate bar under the box threshold draws as a small frame, a line and the fill', function()
+	test(client .. ': Blizzard: a thin plate bar draws the box at any size', function()
 		local st, UF, P, drawn = world(client, 'blizzard')
 		P.castbar.height = 8
 		P.height = 10 -- the plate, and the health bar filling it
 		UF:UpdateConfig('nameplate')
 		local frame = enemy('nameplate1', 0)
-		eq(drawn(frame.Castbar), 'theme,theme,small', 'the castbar, 8 tall')
-		eq(drawn(frame.Health), 'theme,theme,small', 'the health bar, 10 tall')
+		eq(drawn(frame.Castbar), 'theme,theme,unitframe', 'the castbar, 8 tall')
+		eq(drawn(frame.Health), 'theme,theme,unitframe', 'the health bar, 10 tall')
 		for name, part in pairs({ Health = frame.Health, Castbar = frame.Castbar }) do
 			local box = st:DrawnFrame(part)
-			eq(pieces(box), '', name .. ': no pieces of the box')
-			eq(T.inset(box), 1, name .. ': at the small inset')
-			eq(T.around(box, part), '-1,1,1,-1', name .. ': 1 round the bar')
-			check(box.backdropInfo.edgeFile ~= nil, name .. ': a line')
+			eq(pieces(box), BOX, name .. ': the box')
+			eq(T.inset(box), 2, name .. ': at the box inset')
+			eq(T.around(box, part), '-2,2,2,-2', name .. ': 2 round the bar')
+			check(box.backdropInfo.edgeFile == nil, name .. ': no line')
 		end
 		eq(fill(frame.Health), 'atlas RaidFrame-Hp-Fill, tiled', "health still on Blizzard's raid fill")
-		-- At the threshold, the box again.
-		P.castbar.height = 12
-		UF:UpdateConfig('nameplate')
-		eq(drawn(frame.Castbar), 'theme,theme,unitframe', 'the castbar, 12 tall: the box')
-		eq(pieces(st:DrawnFrame(frame.Castbar)), BOX, 'its pieces')
 		eq(#take_errors(), 0, 'no error')
 	end)
 end
