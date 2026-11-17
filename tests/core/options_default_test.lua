@@ -1017,3 +1017,26 @@ test("the kit's reset icon is exported for the Categories list's order icon: the
 	check(source:find('OB.ResetIcon(', 1, true) ~= nil, 'the order icon draws it')
 	check(not source:find('st.icons.rotateCcw', 1, true), 'and no copy of it is left')
 end)
+
+test("opening /sui again lets go of the old tree: the reset's options table (optionsdefault.lua's optionsOf) holds no page root alive", function()
+	close_all()
+	local built = setmetatable({}, { __mode = 'k' }) -- every tree Config:Open drew, held weakly
+	local register = st.Config.RegisterOptions
+	st.Config.RegisterOptions = function(self, ...)
+		local tree = register(self, ...)
+		built[tree] = true
+		return tree
+	end
+	local ok, err = pcall(function()
+		for _ = 1, 3 do
+			st.Config:Open('Loot')
+			close_all()
+		end
+	end)
+	st.Config.RegisterOptions = register
+	if not ok then error(err, 0) end
+	collectgarbage(); collectgarbage()
+	local alive = 0
+	for _ in pairs(built) do alive = alive + 1 end
+	eq(alive, 1, 'only the tree the window keeps for the next open is alive, not one for every open')
+end)

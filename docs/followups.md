@@ -23,7 +23,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-16 — The states scan misses hand-rolled states it should catch](#2026-11-16--the-states-scan-misses-hand-rolled-states-it-should-catch)
   - [2026-11-16 — A Buttons color saved by an older build after a downgrade stays as an orphan key](#2026-11-16--a-buttons-color-saved-by-an-older-build-after-a-downgrade-stays-as-an-orphan-key)
   - [2026-11-16 — The tracker's whole pixels at other scales](#2026-11-16--the-trackers-whole-pixels-at-other-scales)
-  - [2026-11-16 — `optionsOf` keeps every page root alive: the reset walk's options table holds its own key](#2026-11-16--optionsof-keeps-every-page-root-alive-the-reset-walks-options-table-holds-its-own-key)
   - [2026-11-16 — The full-UI Accent pass is about 2,500 setters, and the bag slots are 1,400 of them](#2026-11-16--the-full-ui-accent-pass-is-about-2500-setters-and-the-bag-slots-are-1400-of-them)
   - [2026-11-16 — The Hue shift setting reads "20", not "20 degrees"](#2026-11-16--the-hue-shift-setting-reads-20-not-20-degrees)
   - [2026-11-16 — The keybind field's "Press a key" in the Accent on the selected look is 2.9 to 4.3:1](#2026-11-16--the-keybind-fields-press-a-key-in-the-accent-on-the-selected-look-is-29-to-431)
@@ -152,6 +151,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-16 — `optionsOf` keeps every page root alive: the reset walk's options table holds its own key](#2026-11-16--optionsof-keeps-every-page-root-alive-the-reset-walks-options-table-holds-its-own-key)
   - [2026-11-11 — /sui: no resize cursor on the grip and the bottom edge](#2026-11-11--sui-no-resize-cursor-on-the-grip-and-the-bottom-edge)
   - [2026-11-15 — The options kit's keybinding widget commits mouse buttons 6 to 31 raw](#2026-11-15--the-options-kits-keybinding-widget-commits-mouse-buttons-6-to-31-raw)
   - [2026-11-13 — Unit frames: shared settings across units, and small parts as menu items](#2026-11-13--unit-frames-shared-settings-across-units-and-small-parts-as-menu-items)
@@ -483,18 +483,6 @@ It prints, for each shown row: the card's hover state, whether the Layer shows, 
 **Shape of work:** small, with the tracker's phase of the UI scale work: snap the pad, and add `scaled_test` cases that put a hovered row, a selected row and the window on whole pixels at 0.75, 1.25 and 1.55.
 
 **Open questions:** whether the pad stays at 2 units or becomes 2 pixels.
-
-### 2026-11-16 — `optionsOf` keeps every page root alive: the reset walk's options table holds its own key
-
-**What:** `SaftUI-Core/Config/optionsdefault.lua` keeps `optionsOf`, a weak-keyed table from a page's root (the options tree a `/sui` render was built from) to a wrapper `{ type = 'group', args = root }`, so the reset's default lookup walks a row's path without making a table per row. The wrapper's `args` is its own key, and Lua 5.1 does not free a weak-keyed entry whose value refers to its key, so no root is ever freed. `OM.ForgetRoot(root)` lets one go, and `optionsmodel.lua` calls it for a menu's root when the menu's cache is freed, but nothing calls it for a page root. Config:Open builds a new tree each time (`Config:GetOptionsTable`), so every open of `/sui` that asks the reset about a row leaves a whole option tree (every module's config table and its closures) alive for the session.
-
-**Why noticed:** reading `optionsdefault.lua` while folding the interaction states docs (Task 11), after the menu's cache fix (`bf9b4a6a`) found the same pattern for a menu's root. Not measured in game.
-
-**Anchors:** `SaftUI-Core/Config/optionsdefault.lua` (`optionsOf`, `OptionsFor`, `OM.ForgetRoot`), `SaftUI-Core/Config/optionsmodel.lua` (the menu cache that calls `ForgetRoot`), `SaftUI-Core/Config/config.lua` (`Config:Open`, `RegisterOptions`), `SaftUI-Core/Config/optionswindow.lua` (`Open`, `Draw`).
-
-**What's been considered:** calling `OM.ForgetRoot(root)` when the window opens on a new root and when it closes (the old root is the one `pageBody:SetRoot` replaces); or keying the wrapper by a weak proxy so the value no longer holds the key; or building the wrapper only for the walk's duration (a table per walk, not per row).
-
-**Shape of work:** small: one call at `/sui`'s open and close, a case that opens the window twice and counts live roots (`collectgarbage` and a weak sentinel), in `tests/core/options_default_test.lua`.
 
 ### 2026-11-16 — The full-UI Accent pass is about 2,500 setters, and the bag slots are 1,400 of them
 
@@ -2843,6 +2831,20 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-16 — `optionsOf` keeps every page root alive: the reset walk's options table holds its own key
+
+**What:** `SaftUI-Core/Config/optionsdefault.lua` keeps `optionsOf`, a weak-keyed table from a page's root (the options tree a `/sui` render was built from) to a wrapper `{ type = 'group', args = root }`, so the reset's default lookup walks a row's path without making a table per row. The wrapper's `args` is its own key, and Lua 5.1 does not free a weak-keyed entry whose value refers to its key, so no root is ever freed. `OM.ForgetRoot(root)` lets one go, and `optionsmodel.lua` calls it for a menu's root when the menu's cache is freed, but nothing calls it for a page root. Config:Open builds a new tree each time (`Config:GetOptionsTable`), so every open of `/sui` that asks the reset about a row leaves a whole option tree (every module's config table and its closures) alive for the session.
+
+**Why noticed:** reading `optionsdefault.lua` while folding the interaction states docs (Task 11), after the menu's cache fix (`bf9b4a6a`) found the same pattern for a menu's root. Not measured in game.
+
+**Anchors:** `SaftUI-Core/Config/optionsdefault.lua` (`optionsOf`, `OptionsFor`, `OM.ForgetRoot`), `SaftUI-Core/Config/optionsmodel.lua` (the menu cache that calls `ForgetRoot`), `SaftUI-Core/Config/config.lua` (`Config:Open`, `RegisterOptions`), `SaftUI-Core/Config/optionswindow.lua` (`Open`, `Draw`).
+
+**What's been considered:** calling `OM.ForgetRoot(root)` when the window opens on a new root and when it closes (the old root is the one `pageBody:SetRoot` replaces); or keying the wrapper by a weak proxy so the value no longer holds the key; or building the wrapper only for the walk's duration (a table per walk, not per row).
+
+**Shape of work:** small: one call at `/sui`'s open and close, a case that opens the window twice and counts live roots (`collectgarbage` and a weak sentinel), in `tests/core/options_default_test.lua`.
+
+**Resolved 2026-11-17:** `OW:Open` and `OW:SetRoot` let go of the old tree's options table (`KeepRoot` in `optionswindow.lua` calls `OM.ForgetRoot`); case in `tests/core/options_default_test.lua` opens `/sui` three times and counts live trees (one). A small dialog's own root is not covered; none was seen leaking.
 
 ### 2026-11-11 — /sui: no resize cursor on the grip and the bottom edge
 
