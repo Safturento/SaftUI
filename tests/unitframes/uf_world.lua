@@ -18,7 +18,7 @@
 --
 --   UW.load_module(after)
 --     unitframes.lua, the group files (grouplayout.lua, groups.lua,
---     blizzardraid.lua, grouppreview.lua), config/shared.lua, config/profiles.lua,
+--     blizzardraid.lua, grouppreview.lua), config/shared.lua, config/sharedsetup.lua, config/profiles.lua,
 --     config/groupoptions.lua, config/parts.lua, config/sharedoptions.lua,
 --     config/config.lua, constructors.lua and updaters.lua, in the TOC's order (UW.MODULE_FILES), then the files after
 --     names (e.g. { 'tags', 'aurafilters' }), in its order. Set UF.oUF's
@@ -69,11 +69,11 @@ UW.ELEMENTS = { 'auras', 'power', 'additionalpower', 'health', 'castbar', 'class
 -- unitframes.lua and the group files).
 UW.MODULE_FILES = {
 	'unitframes', 'grouplayout', 'groups', 'blizzardraid', 'grouppreview',
-	'config/shared', 'config/profiles', 'config/groupoptions', 'config/parts', 'config/sharedoptions', 'config/config',
+	'config/shared', 'config/sharedsetup', 'config/profiles', 'config/groupoptions', 'config/parts', 'config/sharedoptions', 'config/config',
 	'constructors', 'updaters',
 }
 -- The files shared settings add (SW.world's opts.bare leaves them out: the world as it was without them).
-UW.SHARED_FILES = { ['config/shared'] = true, ['config/sharedoptions'] = true }
+UW.SHARED_FILES = { ['config/shared'] = true, ['config/sharedsetup'] = true, ['config/sharedoptions'] = true }
 
 -- oUF as far as unitframes.lua and the previews use it: its colors table,
 -- into which UF:UpdateColors merges the profile's.

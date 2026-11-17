@@ -1,4 +1,4 @@
--- SaftUI-Unitframes/config/shared.lua: the settings the unit frames share (All units): the list of
+-- SaftUI-Unitframes/config/shared.lua and sharedsetup.lua: the settings the unit frames share (All units): the list of
 -- them against the member pages, who has and who owns a setting, the conversion and its numbers on a
 -- fresh profile, every write of the API, the sync, the once-a-frame update, a conversion that fails,
 -- the backup and its restore, an imported profile that has no All units, and that every call is table
@@ -710,8 +710,10 @@ test('the backup is small: the shared values, not the profile', function()
 end)
 
 test('the interface is table writes: no function of the file touches a frame but the ticker', function()
-	local source = read_saftui_source('SaftUI-Unitframes/config/shared.lua')
-	for _, word in ipairs({ 'SetPoint', 'ClearAllPoints', 'SetSize', 'SetWidth', 'SetHeight', 'SetAttribute', 'SetParent', 'RegisterEvent' }) do
-		check(not source:find(word, 1, true), 'shared.lua never calls ' .. word)
+	for _, path in ipairs({ 'SaftUI-Unitframes/config/shared.lua', 'SaftUI-Unitframes/config/sharedsetup.lua' }) do
+		local source = read_saftui_source(path)
+		for _, word in ipairs({ 'SetPoint', 'ClearAllPoints', 'SetSize', 'SetWidth', 'SetHeight', 'SetAttribute', 'SetParent', 'RegisterEvent' }) do
+			check(not source:find(word, 1, true), path .. ' never calls ' .. word)
+		end
 	end
 end)

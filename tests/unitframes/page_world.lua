@@ -72,6 +72,7 @@ function M.world()
 	function UF:GetMoverFrame(unit) return self.holders[unit] or self.units[unit] end
 
 	load_saftui('SaftUI-Unitframes/config/shared.lua')
+	load_saftui('SaftUI-Unitframes/config/sharedsetup.lua')
 	load_saftui('SaftUI-Unitframes/config/profiles.lua')
 	load_saftui('SaftUI-Unitframes/config/groupoptions.lua')
 	load_saftui('SaftUI-Unitframes/config/parts.lua')

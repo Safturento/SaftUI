@@ -434,7 +434,7 @@ end)
 ------------------------------------------------------------------ Important 5: who may call the API
 
 -- The sharing API and who may call it (N3). Every mention of one of these words, in any file of any
--- addon but config/shared.lua, must sit in a top-level function listed here for that file: the calls
+-- addon but config/shared.lua and sharedsetup.lua, must sit in a top-level function listed here for that file: the calls
 -- that wire sharing (login, profile changes, the pages) and nothing else. An alias, a call through self
 -- or a string key is a mention too. Any other mention fails, naming the file, the function and the word.
 local API = { 'ConvertShared', 'SyncShared', 'PrepareShared', 'RestoreShared', 'UpdateShared', 'PropagateShared',
@@ -507,6 +507,16 @@ local function enclosing(mask, position)
 	return current
 end
 
+-- The two files of the shared settings' storage and rules: shared.lua and sharedsetup.lua (its second half).
+local SHARED_FILES = { ['SaftUI-Unitframes/config/shared.lua'] = true, ['SaftUI-Unitframes/config/sharedsetup.lua'] = true }
+
+-- Their masked sources as one.
+local function masked_shared()
+	local a = masked('SaftUI-Unitframes/config/shared.lua')
+	local b = masked('SaftUI-Unitframes/config/sharedsetup.lua')
+	return a .. '\n' .. b
+end
+
 local function listed(list, word)
 	for _, entry in ipairs(list or {}) do
 		if entry == word then return true end
@@ -517,7 +527,7 @@ end
 test('wiring: only the listed functions of the listed files mention the sharing API', function()
 	local scanned, mentions = 0, 0
 	for _, path in ipairs((T.saftui_files())) do
-		if path ~= 'SaftUI-Unitframes/config/shared.lua' then
+		if not SHARED_FILES[path] then
 			local mask, source = masked(path)
 			if mask then
 				scanned = scanned + 1
@@ -582,7 +592,7 @@ test('wiring: the scan itself finds a disguised call', function()
 	eq(mentions(source, 'SyncShared', 'UF:B'), false, 'and the function it is in')
 end)
 
--- Every mention of an API word inside shared.lua outside its own definition, counted: a new one, an alias
+-- Every mention of an API word inside shared.lua and sharedsetup.lua outside its own definition, counted: a new one, an alias
 -- (`local sync = UF.SyncShared`, called from the ticker) included, changes a count and fails here.
 local SHARED_MENTIONS = { ApplyTo = 0, ApplyToAll = 0, CanMarkOwn = 1, ConvertShared = 1, CopyProfileData = 0, CopyShared = 6,
 	DefaultShared = 2, EnableShared = 0, FollowAll = 0, HasShared = 11, HasSharedBackup = 2, IsOwn = 1, OwnShared = 0,
@@ -590,7 +600,7 @@ local SHARED_MENTIONS = { ApplyTo = 0, ApplyToAll = 0, CanMarkOwn = 1, ConvertSh
 	SharedRestored = 2, SharedState = 4, SharedStateText = 3, SharedValue = 0, SharedWhole = 0, SyncShared = 2,
 	UpdateShared = 1, sharedTicker = 4 }
 local function shared_mentions()
-	local mask = masked('SaftUI-Unitframes/config/shared.lua')
+	local mask = masked_shared()
 	local counts = {}
 	for _, word in ipairs(API) do
 		local n = 0
@@ -621,7 +631,7 @@ end)
 test('no string-built access to the API: no UF[...] index, and no other addon reaches the Unitframes module by a name', function()
 	for _, path in ipairs((T.saftui_files())) do
 		local mask, source = masked(path)
-		if mask and path ~= 'SaftUI-Unitframes/config/shared.lua' then
+		if mask and not SHARED_FILES[path] then
 			if path:find('^SaftUI%-Unitframes/') then
 				check(not mask:find('%f[%w_]UF%s*%['), path .. ' indexes UF by a computed name')
 				check(not mask:find("%f[%w_]Unitframes'?%)?%s*%["), path .. ' indexes the module by a computed name')
@@ -635,8 +645,8 @@ test('no string-built access to the API: no UF[...] index, and no other addon re
 	end
 end)
 
-test('config/shared.lua wires nothing itself: no hook, event or login call, and its own calls are the ones it needs', function()
-	local mask = masked('SaftUI-Unitframes/config/shared.lua')
+test('config/shared.lua and sharedsetup.lua wire nothing themselves: no hook, event or login call, and its own calls are the ones it needs', function()
+	local mask = masked_shared()
 	for _, word in ipairs({ 'OnEnable', 'OnInitialize', 'hooksecurefunc', 'SecureHook', 'RegisterEvent', 'RegisterMessage',
 		'RegisterCallback', 'C_Timer', 'HookScript' }) do
 		check(not mask:find('%f[%w_]' .. word .. '%f[^%w_]'), 'shared.lua uses ' .. word)
