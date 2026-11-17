@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-16 — The /sui slider's knob shows no hover or held state in the game: cause not found](#2026-11-16--the-sui-sliders-knob-shows-no-hover-or-held-state-in-the-game-cause-not-found)
   - [2026-11-16 — Redesign the loot window](#2026-11-16--redesign-the-loot-window)
   - [2026-11-16 — The tracker's wrapped text, one line short: the cause is inferred, not seen in the game](#2026-11-16--the-trackers-wrapped-text-one-line-short-the-cause-is-inferred-not-seen-in-the-game)
   - [2026-11-16 — All units' Position offers anchors some units lack (pre-flight ruling L7 was never built)](#2026-11-16--all-units-position-offers-anchors-some-units-lack-pre-flight-ruling-l7-was-never-built)
@@ -245,6 +246,18 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-16 — The /sui slider's knob shows no hover or held state in the game: cause not found
+
+**What:** in the game on the flat theme the owner sees no hover and no held state on a `/sui` range's knob (in-game check 6: expected light blue under the mouse, darker while dragged, the fill staying blue), while the scroll bar's thumb shows its states. Every test passes, in the stubs and in the real window with the mouse played, so the cause is a difference between the stubs and the client that nothing here shows.
+
+**Why noticed:** the owner's round 2 in-game check of the interaction states, 2026-11-16. The fix round (branch `r2-slider`) read the code and ran it in the stubs without finding the cause.
+
+**Anchors:** `SaftUI-Core/Config/optionsrange.lua` (`st:AddStates(slider, 'knob', ...)`, `LookRange`), `SaftUI-Core/Widgets/states.lua` (`Rewire`, `Colors`, `PutSolid`), `tests/core/kit_states_test.lua` ("the range: the fill stays the accent..."), `tests/core/options_range_mouse_test.lua`.
+
+**What's been considered:** ruled out in the stubs: the helper's hooks after the slider's own scripts, a later `SetScript` dropping them, the 'knob' paint (rest, hover and pushed differ in Thick and Thin), the real window with the mouse moved row then slider, a covering frame (the slider and the value box are the mouse focus at their centres once a reparent moves the children above their parent). Not ruled out, needs the game: the client's Slider not firing OnEnter, OnLeave, OnMouseDown or OnMouseUp to hooks, or the client drawing the thumb without its vertex color. Under Blizzard the knob has no hover art by design.
+
+**Shape of work:** the owner pastes the `/run` line from `r2-slider-report.md` while holding the mouse over a knob; its numbers decide between the two.
 
 ### 2026-11-16 — Redesign the loot window
 
