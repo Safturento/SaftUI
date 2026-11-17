@@ -23,7 +23,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-16 — The states scan misses hand-rolled states it should catch](#2026-11-16--the-states-scan-misses-hand-rolled-states-it-should-catch)
   - [2026-11-16 — A Buttons color saved by an older build after a downgrade stays as an orphan key](#2026-11-16--a-buttons-color-saved-by-an-older-build-after-a-downgrade-stays-as-an-orphan-key)
   - [2026-11-16 — The tracker's whole pixels at other scales](#2026-11-16--the-trackers-whole-pixels-at-other-scales)
-  - [2026-11-16 — `optionsOf` keeps every page root alive: the reset walk's options table holds its own key](#2026-11-16--optionsof-keeps-every-page-root-alive-the-reset-walks-options-table-holds-its-own-key)
   - [2026-11-16 — The full-UI Accent pass is about 2,500 setters, and the bag slots are 1,400 of them](#2026-11-16--the-full-ui-accent-pass-is-about-2500-setters-and-the-bag-slots-are-1400-of-them)
   - [2026-11-16 — The Hue shift setting reads "20", not "20 degrees"](#2026-11-16--the-hue-shift-setting-reads-20-not-20-degrees)
   - [2026-11-16 — The keybind field's "Press a key" in the Accent on the selected look is 2.9 to 4.3:1](#2026-11-16--the-keybind-fields-press-a-key-in-the-accent-on-the-selected-look-is-29-to-431)
@@ -44,7 +43,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-15 — UI scale: E1 on the friends' screens](#2026-11-15--ui-scale-e1-on-the-friends-screens)
   - [2026-11-15 — UI scale: the owner's standing calls](#2026-11-15--ui-scale-the-owners-standing-calls)
   - [2026-11-15 — UI scale: the Keep prompt's line weight at 150% and the Esc order](#2026-11-15--ui-scale-the-keep-prompts-line-weight-at-150-and-the-esc-order)
-  - [2026-11-15 — The options kit's keybinding widget commits mouse buttons 6 to 31 raw](#2026-11-15--the-options-kits-keybinding-widget-commits-mouse-buttons-6-to-31-raw)
   - [2026-11-13 — Loot rolls: the roll bar doesn't hold after a choice](#2026-11-13--loot-rolls-the-roll-bar-doesnt-hold-after-a-choice)
   - [2026-11-15 — UI scale: the kit's buttons and labels are off whole pixels on every screen that is not 1440p](#2026-11-15--ui-scale-the-kits-buttons-and-labels-are-off-whole-pixels-on-every-screen-that-is-not-1440p)
   - [2026-11-15 — UI scale: a kit confirm dialog or an open select list can cover the Keep prompt](#2026-11-15--ui-scale-a-kit-confirm-dialog-or-an-open-select-list-can-cover-the-keep-prompt)
@@ -68,7 +66,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-15 — Temporary chat windows (whispers, pet battle log) are never skinned](#2026-11-15--temporary-chat-windows-whispers-pet-battle-log-are-never-skinned)
   - [2026-11-15 — A font Size drag restyles too much on the action bars, unit frames and tracker](#2026-11-15--a-font-size-drag-restyles-too-much-on-the-action-bars-unit-frames-and-tracker)
   - [2026-11-15 — Hide full with a secret health: lift the limit with a Step curve into the text's alpha](#2026-11-15--hide-full-with-a-secret-health-lift-the-limit-with-a-step-curve-into-the-texts-alpha)
-  - [2026-11-15 — Option descriptions that say "red" or "yellow" for what Danger and Caution color](#2026-11-15--option-descriptions-that-say-red-or-yellow-for-what-danger-and-caution-color)
   - [2026-11-15 — Check box labels: no font setting until a SaftUI check box has a visible label](#2026-11-15--check-box-labels-no-font-setting-until-a-saftui-check-box-has-a-visible-label)
   - [2026-11-15 — A window title font per theme](#2026-11-15--a-window-title-font-per-theme)
   - [2026-11-15 — The tooltip lines take SaftUI's shadow and spacing](#2026-11-15--the-tooltip-lines-take-saftuis-shadow-and-spacing)
@@ -106,7 +103,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Purge table: retail gaps](#2026-11-11--purge-table-retail-gaps)
   - [2026-11-11 — Blizzard theme round 2: in-game checks](#2026-11-11--blizzard-theme-round-2-in-game-checks)
   - [2026-11-11 — Blizzard theme: a border per real raid group, not per header](#2026-11-11--blizzard-theme-a-border-per-real-raid-group-not-per-header)
-  - [2026-11-11 — /sui: no resize cursor on the grip and the bottom edge](#2026-11-11--sui-no-resize-cursor-on-the-grip-and-the-bottom-edge)
   - [2026-11-11 — Screen edge margin: art reach only for /sui](#2026-11-11--screen-edge-margin-art-reach-only-for-sui)
   - [2026-11-11 — Blizzard theme round 2: test gaps and small items parked in review](#2026-11-11--blizzard-theme-round-2-test-gaps-and-small-items-parked-in-review)
   - [2026-11-11 — Categories tab: the scrolled editor's two gaps](#2026-11-11--categories-tab-the-scrolled-editors-two-gaps)
@@ -154,6 +150,10 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-15 — Chat's dock hook leaves Blizzard's tab layout after a resize, an overflow-list pick or an undock](#2026-11-15--chats-dock-hook-leaves-blizzards-tab-layout-after-a-resize-an-overflow-list-pick-or-an-undock)
   - [2026-11-15 — Chat's scroll bar loses SaftUI's anchor at every dock or lock change](#2026-11-15--chats-scroll-bar-loses-saftuis-anchor-at-every-dock-or-lock-change)
   - [2026-11-15 — With IM chat style the tab row is always hidden](#2026-11-15--with-im-chat-style-the-tab-row-is-always-hidden)
+  - [2026-11-15 — Option descriptions that say "red" or "yellow" for what Danger and Caution color](#2026-11-15--option-descriptions-that-say-red-or-yellow-for-what-danger-and-caution-color)
+  - [2026-11-16 — `optionsOf` keeps every page root alive: the reset walk's options table holds its own key](#2026-11-16--optionsof-keeps-every-page-root-alive-the-reset-walks-options-table-holds-its-own-key)
+  - [2026-11-11 — /sui: no resize cursor on the grip and the bottom edge](#2026-11-11--sui-no-resize-cursor-on-the-grip-and-the-bottom-edge)
+  - [2026-11-15 — The options kit's keybinding widget commits mouse buttons 6 to 31 raw](#2026-11-15--the-options-kits-keybinding-widget-commits-mouse-buttons-6-to-31-raw)
   - [2026-11-13 — Unit frames: shared settings across units, and small parts as menu items](#2026-11-13--unit-frames-shared-settings-across-units-and-small-parts-as-menu-items)
   - [2026-11-11 — Old gear's tabard and shirt exclusion never matched](#2026-11-11--old-gears-tabard-and-shirt-exclusion-never-matched)
   - [2026-11-15 — A bag window's least width ignores a Window titles change](#2026-11-15--a-bag-windows-least-width-ignores-a-window-titles-change)
@@ -456,6 +456,8 @@ It prints, for each shown row: the card's hover state, whether the Layer shows, 
 
 **Open questions:** how much the hover-handler heuristic may flag before it needs an allow list.
 
+**Partly done 2026-11-17:** S3 now covers every file, and three rules were added to `tests/core/states_scan_test.lua`: S6 (`CreateTexture(nil, 'HIGHLIGHT')`, pinned per file), S7 (a color setter in an `OnEnter` or `OnLeave` handler without `st:SetState`, nine lines listed in `HANDLER_ALLOWED`, all Danger meanings or Blizzard-art branches) and S8 (a literal `SetAlpha` under 1 beside enable or disabled). Left open: S2's allowed calls are still counted per file, not listed by line text, and the `ColorRGBA('accent')` then `SetVertexColor(r, g, b, 0.4)` form in a file that is not a hover handler is still missed.
+
 ### 2026-11-16 — A Buttons color saved by an older build after a downgrade stays as an orphan key
 
 **What:** migration step 8 retires Buttons > Normal, Hover, Pushed and Checked, and a profile's `colors.version` only rises. If the owner runs an older build (version 7) after this one, that build can save a Buttons color again into a profile already at version 8; the newer build then never runs step 8 on it, and the key stays in the saved variables as an orphan. It is harmless: nothing iterates `colors.button`, and `st:Color('button', 'hover')` errors only if something calls it, which nothing does.
@@ -483,18 +485,6 @@ It prints, for each shown row: the card's hover state, whether the Layer shows, 
 **Shape of work:** small, with the tracker's phase of the UI scale work: snap the pad, and add `scaled_test` cases that put a hovered row, a selected row and the window on whole pixels at 0.75, 1.25 and 1.55.
 
 **Open questions:** whether the pad stays at 2 units or becomes 2 pixels.
-
-### 2026-11-16 — `optionsOf` keeps every page root alive: the reset walk's options table holds its own key
-
-**What:** `SaftUI-Core/Config/optionsdefault.lua` keeps `optionsOf`, a weak-keyed table from a page's root (the options tree a `/sui` render was built from) to a wrapper `{ type = 'group', args = root }`, so the reset's default lookup walks a row's path without making a table per row. The wrapper's `args` is its own key, and Lua 5.1 does not free a weak-keyed entry whose value refers to its key, so no root is ever freed. `OM.ForgetRoot(root)` lets one go, and `optionsmodel.lua` calls it for a menu's root when the menu's cache is freed, but nothing calls it for a page root. Config:Open builds a new tree each time (`Config:GetOptionsTable`), so every open of `/sui` that asks the reset about a row leaves a whole option tree (every module's config table and its closures) alive for the session.
-
-**Why noticed:** reading `optionsdefault.lua` while folding the interaction states docs (Task 11), after the menu's cache fix (`bf9b4a6a`) found the same pattern for a menu's root. Not measured in game.
-
-**Anchors:** `SaftUI-Core/Config/optionsdefault.lua` (`optionsOf`, `OptionsFor`, `OM.ForgetRoot`), `SaftUI-Core/Config/optionsmodel.lua` (the menu cache that calls `ForgetRoot`), `SaftUI-Core/Config/config.lua` (`Config:Open`, `RegisterOptions`), `SaftUI-Core/Config/optionswindow.lua` (`Open`, `Draw`).
-
-**What's been considered:** calling `OM.ForgetRoot(root)` when the window opens on a new root and when it closes (the old root is the one `pageBody:SetRoot` replaces); or keying the wrapper by a weak proxy so the value no longer holds the key; or building the wrapper only for the walk's duration (a table per walk, not per row).
-
-**Shape of work:** small: one call at `/sui`'s open and close, a case that opens the window twice and counts live roots (`collectgarbage` and a weak sentinel), in `tests/core/options_default_test.lua`.
 
 ### 2026-11-16 — The full-UI Accent pass is about 2,500 setters, and the bag slots are 1,400 of them
 
@@ -766,16 +756,6 @@ It prints, for each shown row: the card's hover state, whether the Layer shows, 
 
 **Open questions:** The Esc order, in the game.
 
-### 2026-11-15 — The options kit's keybinding widget commits mouse buttons 6 to 31 raw
-
-**What:** The `keybinding` widget (`SaftUI-Core/Config/optionskeybinding.lua`) converts only `MiddleButton`, `Button4` and `Button5` (its `MOUSE_BUTTONS` table). Mouse buttons 6 to 31 reach `Press` as `Button6` and so on and are committed raw, where the game's binding names are `BUTTON6`. `/sui kb` converts every button with `GetConvertedKeyOrButton` (`SaftUI-ActionBars/keybindmode.lua`).
-
-**Why noticed:** Review of the small-followups package (2026-11-15), reading the widget's new use of Blizzard's binding helpers. The gap is older than that change; it is rare (a mouse with more than five buttons).
-
-**Anchors:** `SaftUI-Core/Config/optionskeybinding.lua` (`MOUSE_BUTTONS`, the `OnMouseDown` script), `SaftUI-ActionBars/keybindmode.lua` (`BindingKey`), `Blizzard_SharedXML/BindingUtil.lua` (`GetConvertedKeyOrButton`, the same on both clients), `tests/core/options_fields_test.lua`.
-
-**Shape of work:** small: in `OnMouseDown`, convert through `GetConvertedKeyOrButton` where the client has it, keeping `MOUSE_BUTTONS` as the fallback; a test that `Button6` commits `BUTTON6`.
-
 ### 2026-11-13 — Loot rolls: the roll bar doesn't hold after a choice
 
 **What:** After a choice on a group loot roll, SaftUI should show its own bar in Blizzard's place, locked on the choice, until the roll ends (the held rolls feature, built 2026-11-10). In game it doesn't: the user reports the bars "don't seem to be staying up after selecting a choice" (Forever, the night of 2026-11-12).
@@ -880,7 +860,6 @@ What's left needs evidence from the game. In the order they'd be checked:
 **Anchors:** `SaftUI-Bags/container.lua:81`, `SaftUI-Core/uiscale.lua` (`SetTokens`), plan phase 4c.
 
 **Shape of work:** small: clear and set again in the bags' pass after a scale change (phase 4c).
-
 
 ### 2026-11-15 — `/sui` following during a color drag
 
@@ -1114,16 +1093,6 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 **Shape of work:** Small: one curve at load, one `SetAlpha` call per update, and `SetAlpha(1)` on the other branches, with a test in `secret_texts_test.lua`.
 
 **Open questions:** How Step behaves at exactly 1.0 (check in game), and whether the game rounds a near-full health to 1.
-
-### 2026-11-15 — Option descriptions that say "red" or "yellow" for what Danger and Caution color
-
-**What:** Two unit frame descriptions still name a hue for a color that is now a role the player can change, so they can stop being true: "Color hostile" ("names of hostile units red, and of unfriendly and neutral ones yellow", `SaftUI-Unitframes/elements/name.lua:71`) and the Color by reaction description ("red when hostile, yellow when neutral, green when friendly", `SaftUI-Unitframes/config/config.lua:125`). They could say "in the Danger color" and "in the Caution color" (Global settings > Colors > Text). The totem bar's two timer descriptions, the tracker's out of range row (now named "Tint out of range") and the README's totem line were reworded 2026-11-15 and are done.
-
-**Why noticed:** Color roles Task 4 moved those readers to Text > Danger and Text > Caution (the hue-named keys went), and its rule for the Colors page's own descriptions is that they name what a color colors, never its hue. These option descriptions sit outside that page, so the task left them.
-
-**Anchors:** `SaftUI-Unitframes/elements/name.lua:71`; `SaftUI-Unitframes/config/config.lua:125` (the Color by reaction description names the Reputation colors for neutral and friendly, which are not roles, so only the hostile part is a role: check which of the three the reader uses before rewording); `docs/design-system/25-colour-roles.md`.
-
-**Shape of work:** a wording pass over two strings in Unitframes (left because another package was editing that addon); the tests that pin a description's text change with them. The power color's "blue for mana, red for rage" and the health gradient's "red through yellow to green" describe resource and health colors, not roles: they stay.
 
 ### 2026-11-15 — Check box labels: no font setting until a SaftUI check box has a visible label
 
@@ -1907,20 +1876,6 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 **Shape of work:** A design pass first (eight headers or one with its rows split, the layout sums, the holder and the mover), then a task for the headers and one for the border per header, which would reuse `UF:GroupBorder` unchanged.
 
 **Open questions:** Does the user want the border per real raid group at all, given a single border around the raid already reads as Blizzard's with Keep Groups Together off?
-
-### 2026-11-11 — /sui: no resize cursor on the grip and the bottom edge
-
-**What:** `/sui` grows taller by its grip and its bottom edge, but neither shows a resize cursor on hover. The 6px bottom edge has no visual cue at all, and the grip's only cue is its highlight.
-
-**Why noticed:** Round 2's Task 10. Blizzard's `PanelResizeButtonMixin:OnEnter` calls `SetCursor('UI_RESIZE_CURSOR')`; the task's brief didn't ask for it and `SetCursor` isn't stubbed.
-
-**Anchors:** `SaftUI-Core/Config/optionsresize.lua` (`F.grip`, `F.sizer`, `StartResize`); `tests/wow/` (no `SetCursor` stub); `SaftUI-Core/skinning.lua` (`st:EnableResizing`, which also sets none).
-
-**What's been considered:** `SetCursor` on `OnEnter` and `SetCursor(nil)` on `OnLeave` and while the resize is held, on both handles, with a `SetCursor` stub that remembers the last cursor. Whether to do the same for `st:EnableResizing`'s windows is a question for the same change.
-
-**Shape of work:** A few lines in `optionswindow.lua`, a `SetCursor` stub in `tests/wow/widgets.lua` or `game.lua`, and one test.
-
-**Open questions:** Do the in-game checks show the edge needs a cue at all?
 
 ### 2026-11-11 — Screen edge margin: art reach only for /sui
 
@@ -2873,6 +2828,60 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Does the owner use IM style, and which of (a), (b) and (c) should it be?
 
 **Resolved 2026-11-17:** `CHT:SyncDock` (`SaftUI-Chat/chatframe.lua`) replaces the edit box's `OnShow` and `OnHide` hooks with ones on show, hide, `OnEditFocusGained` and `OnEditFocusLost`: the tab row hides only while Blizzard has a window active (`ChatFrameUtil.GetActiveWindow`) and its box shows, so in IM style the idle, dimmed box leaves the row up and classic style is unchanged (`tests/chat/theme_test.lua`). Chosen by the fu-chat review's recommendation (a); not yet seen in game: check the tabs stay clickable over the dimmed box.
+### 2026-11-15 — Option descriptions that say "red" or "yellow" for what Danger and Caution color
+
+**What:** Two unit frame descriptions still name a hue for a color that is now a role the player can change, so they can stop being true: "Color hostile" ("names of hostile units red, and of unfriendly and neutral ones yellow", `SaftUI-Unitframes/elements/name.lua:71`) and the Color by reaction description ("red when hostile, yellow when neutral, green when friendly", `SaftUI-Unitframes/config/config.lua:125`). They could say "in the Danger color" and "in the Caution color" (Global settings > Colors > Text). The totem bar's two timer descriptions, the tracker's out of range row (now named "Tint out of range") and the README's totem line were reworded 2026-11-15 and are done.
+
+**Why noticed:** Color roles Task 4 moved those readers to Text > Danger and Text > Caution (the hue-named keys went), and its rule for the Colors page's own descriptions is that they name what a color colors, never its hue. These option descriptions sit outside that page, so the task left them.
+
+**Anchors:** `SaftUI-Unitframes/elements/name.lua:71`; `SaftUI-Unitframes/config/config.lua:125` (the Color by reaction description names the Reputation colors for neutral and friendly, which are not roles, so only the hostile part is a role: check which of the three the reader uses before rewording); `docs/design-system/25-colour-roles.md`.
+
+**Shape of work:** a wording pass over two strings in Unitframes (left because another package was editing that addon); the tests that pin a description's text change with them. The power color's "blue for mana, red for rage" and the health gradient's "red through yellow to green" describe resource and health colors, not roles: they stay.
+
+**Resolved 2026-11-17:** Color hostile now says the Danger and Caution colors (`name.lua`); Color by reaction says the Reputation colors, since its health and power bars read `oUF.colors.reaction` (the Reputation colors), not a role (`config.lua`). Pinned in `tests/unitframes/name_color_test.lua`.
+
+
+### 2026-11-16 — `optionsOf` keeps every page root alive: the reset walk's options table holds its own key
+
+**What:** `SaftUI-Core/Config/optionsdefault.lua` keeps `optionsOf`, a weak-keyed table from a page's root (the options tree a `/sui` render was built from) to a wrapper `{ type = 'group', args = root }`, so the reset's default lookup walks a row's path without making a table per row. The wrapper's `args` is its own key, and Lua 5.1 does not free a weak-keyed entry whose value refers to its key, so no root is ever freed. `OM.ForgetRoot(root)` lets one go, and `optionsmodel.lua` calls it for a menu's root when the menu's cache is freed, but nothing calls it for a page root. Config:Open builds a new tree each time (`Config:GetOptionsTable`), so every open of `/sui` that asks the reset about a row leaves a whole option tree (every module's config table and its closures) alive for the session.
+
+**Why noticed:** reading `optionsdefault.lua` while folding the interaction states docs (Task 11), after the menu's cache fix (`bf9b4a6a`) found the same pattern for a menu's root. Not measured in game.
+
+**Anchors:** `SaftUI-Core/Config/optionsdefault.lua` (`optionsOf`, `OptionsFor`, `OM.ForgetRoot`), `SaftUI-Core/Config/optionsmodel.lua` (the menu cache that calls `ForgetRoot`), `SaftUI-Core/Config/config.lua` (`Config:Open`, `RegisterOptions`), `SaftUI-Core/Config/optionswindow.lua` (`Open`, `Draw`).
+
+**What's been considered:** calling `OM.ForgetRoot(root)` when the window opens on a new root and when it closes (the old root is the one `pageBody:SetRoot` replaces); or keying the wrapper by a weak proxy so the value no longer holds the key; or building the wrapper only for the walk's duration (a table per walk, not per row).
+
+**Shape of work:** small: one call at `/sui`'s open and close, a case that opens the window twice and counts live roots (`collectgarbage` and a weak sentinel), in `tests/core/options_default_test.lua`.
+
+**Resolved 2026-11-17:** `OW:Open` and `OW:SetRoot` let go of the old tree's options table (`KeepRoot` in `optionswindow.lua` calls `OM.ForgetRoot`); case in `tests/core/options_default_test.lua` opens `/sui` three times and counts live trees (one). A small dialog's own root is not covered; none was seen leaking.
+
+### 2026-11-11 — /sui: no resize cursor on the grip and the bottom edge
+
+**What:** `/sui` grows taller by its grip and its bottom edge, but neither shows a resize cursor on hover. The 6px bottom edge has no visual cue at all, and the grip's only cue is its highlight.
+
+**Why noticed:** Round 2's Task 10. Blizzard's `PanelResizeButtonMixin:OnEnter` calls `SetCursor('UI_RESIZE_CURSOR')`; the task's brief didn't ask for it and `SetCursor` isn't stubbed.
+
+**Anchors:** `SaftUI-Core/Config/optionsresize.lua` (`F.grip`, `F.sizer`, `StartResize`); `tests/wow/` (no `SetCursor` stub); `SaftUI-Core/skinning.lua` (`st:EnableResizing`, which also sets none).
+
+**What's been considered:** `SetCursor` on `OnEnter` and `SetCursor(nil)` on `OnLeave` and while the resize is held, on both handles, with a `SetCursor` stub that remembers the last cursor. Whether to do the same for `st:EnableResizing`'s windows is a question for the same change.
+
+**Shape of work:** A few lines in `optionswindow.lua`, a `SetCursor` stub in `tests/wow/widgets.lua` or `game.lua`, and one test.
+
+**Open questions:** Do the in-game checks show the edge needs a cue at all?
+
+**Resolved 2026-11-17:** both handles set `UI_RESIZE_CURSOR` on enter and put the pointer back on leave and at the end of a drag (`optionsresize.lua`); `SetCursor` stubbed in `tests/wow/game.lua`. Not done: `st:EnableResizing`'s windows (left as they were, no report of a missing cue there). In game: hover the grip and the bottom edge.
+
+### 2026-11-15 — The options kit's keybinding widget commits mouse buttons 6 to 31 raw
+
+**What:** The `keybinding` widget (`SaftUI-Core/Config/optionskeybinding.lua`) converts only `MiddleButton`, `Button4` and `Button5` (its `MOUSE_BUTTONS` table). Mouse buttons 6 to 31 reach `Press` as `Button6` and so on and are committed raw, where the game's binding names are `BUTTON6`. `/sui kb` converts every button with `GetConvertedKeyOrButton` (`SaftUI-ActionBars/keybindmode.lua`).
+
+**Why noticed:** Review of the small-followups package (2026-11-15), reading the widget's new use of Blizzard's binding helpers. The gap is older than that change; it is rare (a mouse with more than five buttons).
+
+**Anchors:** `SaftUI-Core/Config/optionskeybinding.lua` (`MOUSE_BUTTONS`, the `OnMouseDown` script), `SaftUI-ActionBars/keybindmode.lua` (`BindingKey`), `Blizzard_SharedXML/BindingUtil.lua` (`GetConvertedKeyOrButton`, the same on both clients), `tests/core/options_fields_test.lua`.
+
+**Shape of work:** small: in `OnMouseDown`, convert through `GetConvertedKeyOrButton` where the client has it, keeping `MOUSE_BUTTONS` as the fallback; a test that `Button6` commits `BUTTON6`.
+
+**Resolved 2026-11-17:** the widget turns `Button6` to `Button31` into `BUTTON6` to `BUTTON31` (`optionskeybinding.lua`); case in `tests/core/options_fields_test.lua`.
 
 ### 2026-11-13 — Unit frames: shared settings across units, and small parts as menu items
 

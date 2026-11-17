@@ -38,6 +38,47 @@ end
 
 ------------------------------------------------------------------ /sui grows taller
 
+test('the grip and the bottom edge show the resize cursor under the mouse, and it stays through a drag', function()
+	close_all()
+	theme('thick')
+	st.config.global.optionsWindow = nil
+	st.Config:Open('Loot')
+	local F = frames()
+	for _, handle in ipairs({ F.grip, F.sizer }) do
+		stub.cursor = nil
+		stub.fire_script(handle, 'OnEnter', true)
+		eq(stub.cursor, 'UI_RESIZE_CURSOR', 'the resize cursor on entering')
+		stub.fire_script(handle, 'OnLeave', true)
+		eq(stub.cursor, nil, 'the pointer back on leaving')
+	end
+	-- Held: the mouse may leave the handle during the drag, and the cursor stays.
+	stub.fire_script(F.grip, 'OnEnter', true)
+	stub.mouse_buttons.LeftButton = true
+	stub.cursor_y = 500
+	stub.fire_script(F.grip, 'OnMouseDown', 'LeftButton')
+	stub.fire_script(F.grip, 'OnLeave', true)
+	eq(stub.cursor, 'UI_RESIZE_CURSOR', 'kept while the resize is held')
+	stub.mouse_buttons.LeftButton = nil
+	F.grip:SetScript('OnUpdate', nil)
+	stub.fire_script(F.grip, 'OnMouseUp', 'LeftButton')
+	eq(stub.cursor, nil, 'the pointer back when the resize ends away from the handle')
+
+	-- The window hidden under the mouse (Esc, combat), hovering or mid-drag: the game fires no OnLeave.
+	stub.fire_script(F.grip, 'OnEnter', true)
+	eq(stub.cursor, 'UI_RESIZE_CURSOR', 'hovering again')
+	F.window:Hide()
+	eq(stub.cursor, nil, 'the pointer back when the window hides while hovering')
+	st.Config:Open('Loot')
+	F = frames()
+	stub.mouse_buttons.LeftButton = true
+	stub.cursor_y = 500
+	stub.fire_script(F.grip, 'OnEnter', true)
+	stub.fire_script(F.grip, 'OnMouseDown', 'LeftButton')
+	F.window:Hide()
+	stub.mouse_buttons.LeftButton = nil
+	eq(stub.cursor, nil, 'and when it hides mid-drag')
+end)
+
 test("the grip's corner is a glyph: white at rest, the lighter tone of the accent under the mouse and held (the pushed texture shows the corner too: the game swaps it for the normal one while held), its highlight clear", function()
 	close_all()
 	theme('thick')

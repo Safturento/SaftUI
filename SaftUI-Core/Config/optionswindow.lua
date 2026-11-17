@@ -1284,6 +1284,7 @@ local function OnHide()
 	W.CloseColorPicker()
 	F.window:StopMovingOrSizing()
 	S.StopResize()
+	S.ReleaseCursor()
 	F.keys:EnableKeyboard(false)
 	F.keys:Hide()
 	pending, dragging = false, false
@@ -1635,12 +1636,19 @@ function OW:GetRoot()
 	return root
 end
 
+-- The tree the window draws is now tree: the reset's options table for the old one is let go
+-- (optionsdefault.lua's optionsOf holds its key alive until it is).
+local function KeepRoot(tree)
+	if root and root ~= tree and OM.ForgetRoot then OM.ForgetRoot(root) end
+	root = tree
+end
+
 -- Shows the window at path (a list of option keys, e.g. { 'Unitframes',
 -- 'player', 'general' }; empty keeps the page it was on). root is the tree to
 -- draw, kept for the next open. False in combat.
 function OW:Open(path, tree)
 	if InCombatLockdown() then return false end
-	if tree then root = tree end
+	if tree then KeepRoot(tree) end
 	if not root then error('SaftUI options: no option tree to draw', 2) end
 	if not F.window then Build() end
 	if path and #path > 0 then
@@ -1721,7 +1729,7 @@ end
 
 -- A new tree (a profile change rebuilt it), drawn on the next frame.
 function OW:SetRoot(tree)
-	root = tree
+	KeepRoot(tree)
 	Schedule()
 end
 

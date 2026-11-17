@@ -114,3 +114,17 @@ test('the secrets are put back', function()
 	restoreSecrets()
 	check(true)
 end)
+
+test("the Color hostile and Color by reaction descriptions name the color roles, not their hues, which the player can change", function()
+	local function line(path, needle)
+		for text in read_saftui_source(path):gmatch('[^\n]+') do
+			if text:find(needle, 1, true) then return text end
+		end
+		error(path .. ' has no line with ' .. needle)
+	end
+	local hostile = line('SaftUI-Unitframes/elements/name.lua', "'Color hostile'")
+	check(hostile:find('Danger', 1, true) and hostile:find('Caution', 1, true), 'Color hostile names Danger and Caution')
+	check(not hostile:find('red') and not hostile:find('yellow'), 'and no hue')
+	local desc = line('SaftUI-Unitframes/config/config.lua', 'By how the unit stands with you')
+	check(desc:find('Reputation', 1, true) and not desc:find('red') and not desc:find('yellow') and not desc:find('green'), 'Color by reaction names the Reputation colors, no hue')
+end)
