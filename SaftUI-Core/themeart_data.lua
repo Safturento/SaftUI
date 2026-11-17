@@ -69,8 +69,13 @@ ThemeArt.PER_CLIENT = PER_CLIENT
 --          aura has no border; a small frame is one line; a unit frame's
 --          bronze box is 2, its pieces' outer 2px being the dark outline and
 --          the rim; a party or raid member is a bare fill; and the rest draw
---          nothing, a control placing its own content.
+--          nothing, a control placing its own content. A kind drawn in the box
+--          keeps the inset it had, so nothing placed by it moves (the box's
+--          art sits outside the frame and over it, by reach).
 --   art    the name in ART of the art it's drawn in; none draws no art.
+--   reach  for a kind drawn in the box (ART.box): how far the box's outer
+--          edge sits outside the frame it borders, on every side (4, a
+--          starting value). Only the art reads it.
 --   fill   the theme's color its backdrop is filled with: windowcolor for a
 --          window, backdropcolor for the rest; none, no fill (the action and
 --          item buttons' art behind the icon fills them).
@@ -80,9 +85,9 @@ ThemeArt.PER_CLIENT = PER_CLIENT
 -- background, and the close button and each control show art of their own.
 ThemeArt.KINDS = {
 	window = { inset = ByClient(2, 2), art = 'metal', fill = 'windowcolor' },
-	panel = { inset = ByClient(3, 3), art = 'tooltip', fill = 'backdropcolor' },
-	bar = { inset = ByClient(3, 3), art = 'tooltip', fill = 'backdropcolor' },
-	tooltip = { inset = ByClient(3, 3), art = 'tooltip', fill = 'backdropcolor' },
+	panel = { inset = ByClient(3, 3), art = 'box', reach = ByClient(4, 4), fill = 'backdropcolor' },
+	bar = { inset = ByClient(3, 3), art = 'box', reach = ByClient(4, 4), fill = 'backdropcolor' },
+	tooltip = { inset = ByClient(3, 3), art = 'box', reach = ByClient(4, 4), fill = 'backdropcolor' },
 	action = { inset = ByClient(3, 3), art = 'action' },
 	slot = { inset = ByClient(3, 3), art = 'slot' },
 	aura = { inset = ByClient(0, 0), art = 'aura' },
@@ -90,7 +95,7 @@ ThemeArt.KINDS = {
 	header = { inset = ByClient(0, 0) },
 	close = { inset = ByClient(0, 0) },
 	control = { inset = ByClient(0, 0) },
-	unitframe = { inset = ByClient(2, 2), art = 'unitframe', fill = 'backdropcolor' },
+	unitframe = { inset = ByClient(2, 2), art = 'box', reach = ByClient(4, 4), fill = 'backdropcolor' },
 	member = { inset = ByClient(0, 0), fill = 'backdropcolor' },
 }
 
@@ -150,22 +155,41 @@ local MINIMAP_BUTTON_KIT = {
 	Center = { atlas = Atlas('ui-hud-minimap-button-NineSlice-Center') },
 }
 
+-- Forever's minimap header button (Camelot's member, 152 x 23), which the box
+-- is cut from on Forever.
+local HEADER_BUTTON = Atlas('ui-hud-minimap-header-button', 'forever')
+
 ThemeArt.ART = {
-	-- The tooltip border (NineSliceLayouts.TooltipDefaultLayout), on panels,
-	-- bars and tooltips. Its art is white, and a frame's own border color tints
-	-- it. Blizzard's fill (Tooltip-NineSlice-Center) isn't drawn: the fill is
-	-- the drawn frame's backdrop, in the theme's Background.
-	tooltip = {
+	-- The box, the Blizzard theme's one border (the round 3 design,
+	-- docs/superpowers/specs/2026-11-17-saftui-blizzard-theme-one-border-design.md),
+	-- on panels, bars, tooltips and unit frames: drawn by ThemeArt.Paint on a
+	-- frame of SaftUI's over the frame it borders (ThemeArt.BoxFrame), its
+	-- outer edge the kind's reach outside it, and laid by ThemeArt.LayBox.
+	-- Forever's is a cut of the minimap header button: 6px corners and the
+	-- edges between them, stretched; its rows from the top are a soft outline,
+	-- the bronze rim, then an inner shadow into a translucent dark centre.
+	-- centre is that centre's rectangle, drawn only where LayBox is asked for
+	-- it (the micro menu's boxes); elsewhere the fill is the drawn frame's
+	-- backdrop, in the theme's Background. Retail has no header button, and
+	-- draws the same box as the ui-hud-minimap-button kit, its own drawing of
+	-- it, its Center likewise only where asked. Starting rectangles, measured
+	-- on the decoded art, to be tuned in game. A frame's own border color
+	-- tints the pieces.
+	box = ByClient({
 		layer = 'BORDER',
-		TopLeftCorner = { atlas = Atlas('Tooltip-NineSlice-CornerTopLeft') },
-		TopRightCorner = { atlas = Atlas('Tooltip-NineSlice-CornerTopRight') },
-		BottomLeftCorner = { atlas = Atlas('Tooltip-NineSlice-CornerBottomLeft') },
-		BottomRightCorner = { atlas = Atlas('Tooltip-NineSlice-CornerBottomRight') },
-		TopEdge = { atlas = Atlas('_Tooltip-NineSlice-EdgeTop') },
-		BottomEdge = { atlas = Atlas('_Tooltip-NineSlice-EdgeBottom') },
-		LeftEdge = { atlas = Atlas('!Tooltip-NineSlice-EdgeLeft') },
-		RightEdge = { atlas = Atlas('!Tooltip-NineSlice-EdgeRight') },
-	},
+		size = 6,
+		pieces = {
+			TopLeftCorner = { atlas = HEADER_BUTTON, rect = { 0, 6, 0, 6 } },
+			TopRightCorner = { atlas = HEADER_BUTTON, rect = { 146, 152, 0, 6 } },
+			BottomLeftCorner = { atlas = HEADER_BUTTON, rect = { 0, 6, 17, 23 } },
+			BottomRightCorner = { atlas = HEADER_BUTTON, rect = { 146, 152, 17, 23 } },
+			TopEdge = { atlas = HEADER_BUTTON, rect = { 6, 146, 0, 6 } },
+			BottomEdge = { atlas = HEADER_BUTTON, rect = { 6, 146, 17, 23 } },
+			LeftEdge = { atlas = HEADER_BUTTON, rect = { 0, 6, 6, 17 } },
+			RightEdge = { atlas = HEADER_BUTTON, rect = { 146, 152, 6, 17 } },
+		},
+		centre = { 6, 146, 6, 17 },
+	}, MINIMAP_BUTTON_KIT),
 
 	-- The character frame's metal (NineSliceLayouts.ButtonFrameTemplateNoPortrait,
 	-- Forever's after its Camelot offsets), on windows, without the portrait

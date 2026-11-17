@@ -209,7 +209,10 @@ return {
 		['_RaidFrame-Resource-Background'] = { 16, 6, 'h' },
 		-- The micro menu bar (microbar): the strip frame, then Camelot's header, square and tracking button
 		['UI-HUD-ActionBar-Frame'] = { 55, 55 },
-		['ui-hud-minimap-header-button'] = { 152, 23 },
+		-- The header button is also the box (panel, bar, tooltip, unitframe),
+		-- cut from its Camelot member (-c60), in file 8026705, 512 by 512
+		['ui-hud-minimap-header-button'] = { 152, 23,
+			file = 8026705, coords = { 256 / 512, 408 / 512, 256 / 512, 279 / 512 } },
 		['ui-hud-minimap-addon-indicator'] = { 23, 22 },
 		['ui-hud-minimap-tracking-button'] = { 23, 23 },
 		['ui-hud-minimap-button-NineSlice-CornerTopLeft'] = { 6, 6 },

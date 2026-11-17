@@ -1,13 +1,14 @@
 -- The Blizzard theme drawn (SaftUI-Core/themeart.lua, through theme.lua's
 -- draw calls):
---   - each kind's look under Blizzard: the tooltip border on tooltips, bars
---     and panels, the metal on windows (at each client's corner offsets, with
+--   - each kind's look under Blizzard: the box on tooltips, bars and panels
+--     (on its box frame over the frame; tests/core/theme_blizzard_box_test.lua
+--     has the rest of it), the metal on windows (at each client's corner offsets, with
 --     its title bar above the window), the action and item buttons' rings over
 --     the icon's edge with their slot art behind it, a bare aura, small as one
 --     line in Border, and header and control clear;
 --   - the unit frame kinds: unitframe and member drawn as bar under Thick and
---     Thin; under Blizzard unitframe the bronze box, eight pieces cut by
---     texture coordinates from the player and target art on each client
+--     Thin; under Blizzard unitframe the box, as a panel, on Forever eight
+--     pieces cut by texture coordinates from the header button
 --     (st.ThemeArt.Cut), hidden where the atlas gives no file, and tinted by
 --     a frame's own border color; member a bare fill;
 --   - the fill in the theme's Background (Window background for a window) at
@@ -104,7 +105,14 @@ local function nine(prefix)
 		'TopRightCorner=' .. prefix .. '-CornerTopRight',
 	}, ',')
 end
-local TOOLTIP, METAL = nine('Tooltip-NineSlice'), nine('UI-Frame-Metal')
+local METAL = nine('UI-Frame-Metal')
+
+-- The box's eight pieces as T.art lists them on Forever: each cut from the
+-- minimap header button's file (8026705).
+local BOX = table.concat({
+	'BottomEdge=8026705', 'BottomLeftCorner=8026705', 'BottomRightCorner=8026705', 'LeftEdge=8026705',
+	'RightEdge=8026705', 'TopEdge=8026705', 'TopLeftCorner=8026705', 'TopRightCorner=8026705',
+}, ',')
 
 -- A button of SaftUI's laid out as Blizzard's templates lay one out (the same
 -- on both clients): its icon (the action button's in BACKGROUND, the item
@@ -151,7 +159,7 @@ local ACTION_RING = 'Ring=UI-HUD-ActionBar-IconFrame'
 local SLOT_ART = 'SlotArt=bags-item-slot64'
 local SLOT_RING = [[Ring=Interface\Buttons\UI-Quickslot2]]
 
-test('a tooltip: the eight tooltip pieces, edges tiled, no line, the Background at the Opacity', function()
+test('a tooltip: the eight box pieces on its box frame, edges stretched, no line, the Background at the Opacity', function()
 	local st = blizzard()
 	local f = frame(st)
 	-- Drawn Thick first, so it has Thick's lines for Blizzard to hide.
@@ -160,9 +168,10 @@ test('a tooltip: the eight tooltip pieces, edges tiled, no line, the Background 
 	check(outerShown(b), "drawn Thick: Thick's lines show")
 	st:SetBackdrop(f, 'theme', 'theme', 'tooltip')
 
-	eq(T.art(b), TOOLTIP, 'the eight tooltip pieces')
+	eq(T.art(b), BOX, 'the eight box pieces')
 	eq(T.over(b), '', 'nothing over an icon')
-	local names = { [b] = 'frame' }
+	local holder = st.ThemeArt.BoxFrame(b)
+	local names = { [holder] = 'box' }
 	for _, key in ipairs({ 'TopLeftCorner', 'TopRightCorner', 'BottomLeftCorner', 'BottomRightCorner' }) do
 		names[piece(st, b, key)] = key
 	end
@@ -172,7 +181,7 @@ test('a tooltip: the eight tooltip pieces, edges tiled, no line, the Background 
 	}
 	for key, point in pairs(corners) do
 		local p = piece(st, b, key)
-		eq(anchor(p, point, names), point .. ' frame ' .. point .. ' 0.00,0.00', key .. " at the drawn frame's corner")
+		eq(anchor(p, point, names), point .. ' box ' .. point .. ' 0.00,0.00', key .. " at the box frame's corner")
 		check(not p:GetHorizTile() and not p:GetVertTile(), key .. ' does not tile')
 	end
 	-- Each edge runs between its corners, as Blizzard's nine-slice code lays it.
@@ -182,13 +191,13 @@ test('a tooltip: the eight tooltip pieces, edges tiled, no line, the Background 
 	eq(anchor(piece(st, b, 'BottomEdge'), 'BOTTOMRIGHT', names), 'BOTTOMRIGHT BottomRightCorner BOTTOMLEFT 0.00,0.00', 'the bottom edge')
 	eq(anchor(left, 'BOTTOMLEFT', names), 'BOTTOMLEFT BottomLeftCorner TOPLEFT 0.00,0.00', 'the left edge')
 	eq(anchor(piece(st, b, 'RightEdge'), 'TOPRIGHT', names), 'TOPRIGHT TopRightCorner BOTTOMRIGHT 0.00,0.00', 'the right edge')
-	check(top:GetHorizTile() and not top:GetVertTile(), 'TopEdge tiles across')
-	check(piece(st, b, 'BottomEdge'):GetHorizTile(), 'BottomEdge tiles across')
-	check(left:GetVertTile() and not left:GetHorizTile(), 'LeftEdge tiles down')
-	check(piece(st, b, 'RightEdge'):GetVertTile(), 'RightEdge tiles down')
+	for _, key in ipairs({ 'TopEdge', 'BottomEdge', 'LeftEdge', 'RightEdge' }) do
+		local p = piece(st, b, key)
+		check(not p:GetHorizTile() and not p:GetVertTile(), key .. ' is stretched, not tiled')
+	end
 	eachPiece(st, b, function(key, p)
-		eq(p:GetParent(), b, key .. ' is on the drawn frame')
-		eq((p:GetDrawLayer()), 'BORDER', key .. " in the tooltip border's layer")
+		eq(p:GetParent(), holder, key .. ' is on the box frame')
+		eq((p:GetDrawLayer()), 'BORDER', key .. " in the box's layer")
 		eq(text(p:GetVertexColor()), '1.00,1.00,1.00,1.00', key .. ' untinted')
 	end)
 
@@ -213,7 +222,7 @@ test("ThemeArt.LayBorder lays a kit with its Center on a frame, in the caller's 
 	st.ThemeArt.HidePieces(pieces); check(not pieces.Center:IsShown())
 end)
 
-test('bars and panels wear the tooltip border, a window the metal', function()
+test('bars and panels wear the box, a window the metal', function()
 	local st = blizzard()
 	local drawn = {}
 	for _, kind in ipairs({ 'bar', 'panel', 'window' }) do
@@ -221,8 +230,8 @@ test('bars and panels wear the tooltip border, a window the metal', function()
 		st:SetBackdrop(f, 'theme', 'theme', kind)
 		drawn[kind] = f.backdrop
 	end
-	eq(T.art(drawn.bar), TOOLTIP, 'a bar: the tooltip border')
-	eq(T.art(drawn.panel), TOOLTIP, 'a panel: the tooltip border')
+	eq(T.art(drawn.bar), BOX, 'a bar: the box')
+	eq(T.art(drawn.panel), BOX, 'a panel: the box')
 	eq(T.art(drawn.window), METAL, 'a window: the metal')
 	eachPiece(st, drawn.window, function(key, p)
 		eq((p:GetDrawLayer()), 'OVERLAY', key .. ": the metal's layer")
@@ -249,11 +258,20 @@ test("a frame drawn as a window, then as a tooltip: the metal's snapping doesn't
 	local f = frame(st)
 	st:SetBackdrop(f, 'theme', 'theme', 'window')
 	st:SetBackdrop(f, 'theme', 'theme', 'tooltip')
-	eq(T.art(f.backdrop), TOOLTIP, 'the tooltip border, on the same pieces')
+	eq(T.art(f.backdrop), BOX, 'the box, on the same pieces')
+	local holder = st.ThemeArt.BoxFrame(f.backdrop)
 	eachPiece(st, f.backdrop, function(key, p)
 		eq(p:IsSnappingToPixelGrid(), true, key .. ': pixel snapping is back on')
-		eq((p:GetDrawLayer()), 'BORDER', key .. ": in the tooltip border's layer")
+		eq((p:GetDrawLayer()), 'BORDER', key .. ": in the box's layer")
+		eq(p:GetParent(), holder, key .. ': moved to the box frame')
 	end)
+	-- And back: the metal's pieces on the drawn frame again, the box frame hidden.
+	st:SetBackdrop(f, 'theme', 'theme', 'window')
+	eq(T.art(f.backdrop), METAL, 'the metal again')
+	eachPiece(st, f.backdrop, function(key, p)
+		eq(p:GetParent(), f.backdrop, key .. ': back on the drawn frame')
+	end)
+	check(not holder:IsShown(), 'the box frame is hidden')
 end)
 
 test("the metal's corners sit at each client's offsets", function()
@@ -739,7 +757,7 @@ test("drawing under Blizzard writes nothing onto a frame that isn't SaftUI's", f
 	st:RedrawThemed()
 	local errors = take_errors()
 	eq(#errors, 0, 'nothing written through a recolor and two switches: ' .. tostring(errors[1]))
-	eq(T.art(backdrops[frames.tooltip]), TOOLTIP, 'the tooltip border is drawn')
+	eq(T.art(backdrops[frames.tooltip]), BOX, 'the box is drawn')
 	eq(T.over(backdrops[frames.slot]), SLOT_RING, "a slot's ring is drawn")
 end)
 
@@ -1028,7 +1046,7 @@ local function size_of(region)
 	return ('%dx%d'):format(math.floor(w + 0.5), math.floor(h + 0.5))
 end
 
--- The bronze box's eight pieces as T.art lists them, each cut from file.
+-- A cut box's eight pieces as T.art lists them, each cut from file.
 local function box(file)
 	local keys = {
 		'BottomEdge', 'BottomLeftCorner', 'BottomRightCorner', 'LeftEdge',
@@ -1063,63 +1081,45 @@ test('unitframe and member draw as bar under Thick and Thin', function()
 	end
 end)
 
-test('under Blizzard unitframe is the bronze box: eight pieces cut from the player and target art, on each client', function()
+test('under Blizzard unitframe is the box: on Forever eight pieces cut from the header button, on retail the kit', function()
 	for _, client in ipairs(CLIENTS) do
 		local st = T.client(client); st.config.profile.theme.name = 'blizzard'
 		local owner = frame(st); st:SetBackdrop(owner, 'theme', 'theme', 'unitframe')
-		local pieces = st.ThemeArt.Get(owner.backdrop).pieces
+		local b = owner.backdrop
+		local pieces = st.ThemeArt.Get(b).pieces
+		local holder = st.ThemeArt.BoxFrame(b)
 		local forever = client == 'forever'
-		eq(pieces.TopLeftCorner:GetTexture(), forever and 8036204 or 4631591)
-		eq(coords(pieces.TopLeftCorner), forever and px(203, 211, 95, 103, 1024, 512) or px(2, 10, 250, 258, 1024, 512))
-		eq(coords(pieces.BottomRightCorner), forever and px(792, 800, 52, 60, 1024, 512) or px(187, 195, 138, 146, 1024, 512))
-		eq(size_of(pieces.TopLeftCorner), '8x8')
-		eq(T.around(pieces.TopLeftCorner, owner):match('^%-?%d+,%-?%d+'), '-2,2', 'its corner 2 outside the frame')
-		eq(T.around(pieces.TopEdge, owner):match('^%-?%d+,%-?%d+'), '6,2', 'the top edge from the corner')
-		eq(T.around(pieces.BottomRightCorner, owner):match('%-?%d+,%-?%d+$'), '2,-2')
-		check(not pieces.TopEdge:GetHorizTile(), 'stretched, not tiled')
-		eq(pieces.LeftEdge:GetDrawLayer(), 'BORDER')
-		eq(T.inset(owner.backdrop), 2); eq(T.fill(owner.backdrop), backdropcolor)
-
-		-- Every piece, in file pixels: the member's left or top plus the
-		-- piece's rectangle (Forever's target member starts at 201, 87, its
-		-- player at 605, 1; retail's at 1, 229 and 1, 87). Both files are
-		-- 1024 by 512.
-		local want = forever and {
-			TopLeftCorner = { 203, 211, 95, 103 }, BottomLeftCorner = { 203, 211, 135, 143 },
-			LeftEdge = { 203, 211, 117, 127 },
-			TopRightCorner = { 792, 800, 12, 20 }, BottomRightCorner = { 792, 800, 52, 60 },
-			RightEdge = { 792, 800, 35, 43 },
-			TopEdge = { 725, 726, 12, 20 }, BottomEdge = { 725, 726, 52, 60 },
-		} or {
-			TopLeftCorner = { 2, 10, 250, 258 }, BottomLeftCorner = { 2, 10, 277, 285 },
-			LeftEdge = { 2, 10, 259, 269 },
-			TopRightCorner = { 187, 195, 111, 119 }, BottomRightCorner = { 187, 195, 138, 146 },
-			RightEdge = { 187, 195, 121, 129 },
-			TopEdge = { 121, 122, 111, 119 }, BottomEdge = { 121, 122, 138, 146 },
-		}
-		local file = forever and 8036204 or 4631591
-		eq(T.art(owner.backdrop), box(file), client .. ': the eight pieces, from the one file')
-		eq(T.over(owner.backdrop), '', client .. ': nothing over an icon')
-		for key, r in pairs(want) do
-			local p = pieces[key]
-			eq(coords(p), px(r[1], r[2], r[3], r[4], 1024, 512), client .. ': ' .. key .. "'s rectangle")
-			eq(p:GetParent(), owner.backdrop, client .. ': ' .. key .. ' is on the drawn frame')
-			eq((p:GetDrawLayer()), 'BORDER', client .. ': ' .. key .. " in the box's layer")
-			check(not p:GetHorizTile() and not p:GetVertTile(), client .. ': ' .. key .. ' is stretched, not tiled')
+		if forever then
+			eq(T.art(b), box(8026705), client .. ': the eight pieces, from the one file')
+			-- Every piece, in file pixels: the member's left and top (256, 256)
+			-- plus the piece's rectangle in the 152 by 23 atlas; the file is 512
+			-- by 512.
+			local want = {
+				TopLeftCorner = { 256, 262, 256, 262 }, TopRightCorner = { 402, 408, 256, 262 },
+				BottomLeftCorner = { 256, 262, 273, 279 }, BottomRightCorner = { 402, 408, 273, 279 },
+				TopEdge = { 262, 402, 256, 262 }, BottomEdge = { 262, 402, 273, 279 },
+				LeftEdge = { 256, 262, 262, 273 }, RightEdge = { 402, 408, 262, 273 },
+			}
+			for key, r in pairs(want) do
+				eq(coords(pieces[key]), px(r[1], r[2], r[3], r[4], 512, 512), client .. ': ' .. key .. "'s rectangle")
+			end
+			eq(size_of(pieces.TopLeftCorner), '6x6', client .. ': 6 by 6 corners')
+		else
+			eq(T.art(b), nine('ui-hud-minimap-button-NineSlice'), client .. ": the kit's eight pieces")
+		end
+		eq(T.over(b), '', client .. ': nothing over an icon')
+		for key, p in pairs(pieces) do
+			eq(p:GetParent(), holder, client .. ': ' .. key .. ' is on the box frame')
+			if forever then
+				check(not p:GetHorizTile() and not p:GetVertTile(), client .. ': ' .. key .. ' is stretched, not tiled')
+			end
 			eq(text(p:GetVertexColor()), '1.00,1.00,1.00,1.00', client .. ': ' .. key .. ' untinted')
 		end
-		-- The corners at the drawn frame's corners, 8 by 8; the edges between
-		-- them, 8 thick. The drawn frame is the 100 by 50 frame and 2 outside
-		-- it: 104 by 54.
-		local b = owner.backdrop
-		eq(T.around(pieces.TopLeftCorner, b), '0,0,-96,46', client .. ': the top left corner')
-		eq(T.around(pieces.TopRightCorner, b), '96,0,0,46', client .. ': the top right corner')
-		eq(T.around(pieces.BottomLeftCorner, b), '0,-46,-96,0', client .. ': the bottom left corner')
-		eq(T.around(pieces.BottomRightCorner, b), '96,-46,0,0', client .. ': the bottom right corner')
-		eq(T.around(pieces.TopEdge, b), '8,0,-8,46', client .. ': the top edge')
-		eq(T.around(pieces.BottomEdge, b), '8,-46,-8,0', client .. ': the bottom edge')
-		eq(T.around(pieces.LeftEdge, b), '0,-8,-96,8', client .. ': the left edge')
-		eq(T.around(pieces.RightEdge, b), '96,-8,0,8', client .. ': the right edge')
+		-- The box 4 outside the frame, the backdrop's fill 2 outside it as before.
+		eq(T.around(holder, owner), '-4,4,4,-4', client .. ': the box 4 outside the frame')
+		eq(T.around(pieces.TopLeftCorner, holder):match('^%-?%d+,%-?%d+'), '0,0', client .. ": its corner at the box frame's")
+		eq(T.around(b, owner), '-2,2,2,-2', client .. ': the backdrop where it was')
+		eq(T.inset(b), 2, client .. ': the fill at the inset 2'); eq(T.fill(b), backdropcolor)
 		eq(b.backdropInfo and b.backdropInfo.edgeFile, nil, client .. ': no edge line')
 		check(not outerShown(b), client .. ": no Thick lines")
 		eq(st:DrawnInset(owner), 2, client .. ': drawn at the inset 2')
@@ -1153,12 +1153,13 @@ test('a cut with no atlas file, or no texture coordinates, hides its pieces', fu
 		check(t:IsShown(), client .. ': and shows')
 
 		-- A stand-in for the atlas table, put back at the end of the case: the
-		-- box's atlases at their sizes and with no file, as an AtlasInfo
+		-- cuts' atlases at their sizes and with no file, as an AtlasInfo
 		-- without one reads.
 		local getAtlasInfo = C_Texture.GetAtlasInfo
 		local standIn = {
 			['UI-HUD-UnitFrame-Player-PortraitOn'] = { width = 198, height = 71 },
 			['UI-HUD-UnitFrame-Target-PortraitOn'] = { width = 194, height = 68 },
+			['ui-hud-minimap-header-button'] = { width = 152, height = 23 },
 			-- A file but no texture coordinates.
 			['no-coords'] = { width = 64, height = 64, file = 12345 },
 		}
@@ -1176,14 +1177,17 @@ test('a cut with no atlas file, or no texture coordinates, hides its pieces', fu
 		eq(cut, false, client .. ': no texture coordinates, no cut')
 		check(not v:IsShown(), client .. ': hidden too')
 
-		local ok, err = pcall(st.SetBackdrop, st, owner, 'theme', 'theme', 'unitframe')
-		check(ok, client .. ': drawn without an error: ' .. tostring(err))
-		eq(T.art(owner.backdrop), '', client .. ': no piece shows')
-		eq(fill(owner.backdrop), backdropcolor, client .. ': the fill is still drawn')
-		st:SetBorderColor(owner.backdrop, 1, 0, 0)
-		st:RecolorThemed()
-		st:RedrawThemed()
-		eq(T.art(owner.backdrop), '', client .. ': a color, a recolor and a redraw show none')
+		-- Forever's box is a cut (retail's is the kit, which cuts nothing).
+		if client == 'forever' then
+			local ok, err = pcall(st.SetBackdrop, st, owner, 'theme', 'theme', 'unitframe')
+			check(ok, client .. ': drawn without an error: ' .. tostring(err))
+			eq(T.art(owner.backdrop), '', client .. ': no piece shows')
+			eq(fill(owner.backdrop), backdropcolor, client .. ': the fill is still drawn')
+			st:SetBorderColor(owner.backdrop, 1, 0, 0)
+			st:RecolorThemed()
+			st:RedrawThemed()
+			eq(T.art(owner.backdrop), '', client .. ': a color, a recolor and a redraw show none')
+		end
 		eq(#take_errors(), 0, client .. ': no errors')
 		C_Texture.GetAtlasInfo = getAtlasInfo
 	end
