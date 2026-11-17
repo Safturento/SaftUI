@@ -302,7 +302,7 @@ test('the list: SaftUI fonts, the six in order each in its face, Typefaces, then
 	end)
 end)
 
-test('the picked entry is a selected row (a bar and the fade, its text Normal by contrast): the shared font, or the typeface by its face', function()
+test('the picked entry is a selected row (a bar and the fade, its text Normal): the shared font, or the typeface by its face', function()
 	in_look('thick', function()
 		local w = row_widget('header', 'heading')
 		local list = open(w)

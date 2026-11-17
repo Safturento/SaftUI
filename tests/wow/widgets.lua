@@ -431,6 +431,17 @@ function ScriptRegion.SetParent(self, s, parent)
 		end
 		if s.groups.Frame then
 			s.level = parent and states[parent].level + 1 or 0
+			-- The game moves the frame's children back above it with it (SaftUI's range
+			-- widget saw its track drawn over by a child frame after a reparent), so each
+			-- descendant is one level above its parent. SetFrameLevel alone moves no child
+			-- here: whether the game's does is not established.
+			local function above(frame_state)
+				for _, child in ipairs(frame_state.children or {}) do
+					states[child].level = frame_state.level + 1
+					above(states[child])
+				end
+			end
+			above(s)
 		end
 	end)
 end
@@ -1911,6 +1922,16 @@ end
 function stub.try_click(button, mouse, down, ...)
 	if click_refusal(button, mouse, down) then return false end
 	return stub.fire_script(button, 'OnClick', mouse, down, ...)
+end
+
+-- The client changing a registered action button's checked state itself, with no
+-- call of the button's SetChecked method, so a hooksecurefunc post-hook on it
+-- does not run (modelled: LibActionButton registers its buttons with
+-- C_ActionBar.RegisterActionUIButton and leaves their ACTIONBAR_UPDATE_STATE to
+-- the client; whether the client's write bypasses the hook is the open
+-- question of tests/actionbars/checked_cast_test.lua).
+function stub.engine_set_checked(button, checked)
+	states[button].checked = checked and true or false
 end
 
 -- The click of the harness before it played the game's rules: OnClick runs

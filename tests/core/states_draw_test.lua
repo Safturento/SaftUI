@@ -366,7 +366,7 @@ test('a glyph: rest its own color; hover the lighter tone; Layers the accent', f
 	near_hex('no glyphRest: left as it is', bytes_of(label:GetTextColor()), PLUS)
 end)
 
-test('the text on a fill follows the pick, and its rest color comes back', function()
+test('the text on a fill is Text > Normal, never a dark one, and its rest color comes back', function()
 	world()
 	local f = box()
 	local label = f:CreateFontString(nil, 'OVERLAY')
@@ -378,11 +378,11 @@ test('the text on a fill follows the pick, and its rest color comes back', funct
 	eq(T.rgb(label:GetTextColor()), T.rgb(normal.r, normal.g, normal.b), 'light over the default composite')
 	st:SetState(f, 'hover', false)
 	eq(T.rgb(label:GetTextColor()), '0.70,0.70,0.70', 'rest is back')
-	-- strong settings and a pale accent: the dark text
+	-- strong settings and a pale accent: still Text > Normal (the text never flips to a dark one)
 	with_accent(230 / 255, 200 / 255, 74 / 255, function()
 		with_settings({ mode = 'layers', hover = 0.6 }, function()
 			st:SetState(f, 'hover', true)
-			eq(T.rgb(label:GetTextColor()), T.rgb(unpack(ST.DARK_TEXT)), 'dark over a strong pale hover')
+			eq(T.rgb(label:GetTextColor()), T.rgb(normal.r, normal.g, normal.b), 'Text > Normal over a strong pale hover')
 			st:SetState(f, 'hover', false)
 			eq(T.rgb(label:GetTextColor()), '0.70,0.70,0.70')
 		end)
@@ -395,10 +395,10 @@ test('the text on a fill follows the pick, and its rest color comes back', funct
 	-- a list of labels, and a body the caller gives
 	local g = box()
 	local a, b = g:CreateFontString(nil, 'OVERLAY'), g:CreateFontString(nil, 'OVERLAY')
-	st:AddStates(g, 'box', { edge = 'theme', text = { a, b }, body = { 0.9, 0.9, 0.9 } })
+	st:AddStates(g, 'box', { edge = 'theme', text = { a, b } })
 	st:SetState(g, 'hover', true)
-	eq(T.rgb(a:GetTextColor()), T.rgb(unpack(ST.DARK_TEXT)), 'over a pale body the dark text')
-	eq(T.rgb(b:GetTextColor()), T.rgb(unpack(ST.DARK_TEXT)))
+	eq(T.rgb(a:GetTextColor()), T.rgb(normal.r, normal.g, normal.b), 'over a pale body still Text > Normal')
+	eq(T.rgb(b:GetTextColor()), T.rgb(normal.r, normal.g, normal.b))
 end)
 
 test('under Blizzard the pieces are held at alpha 0 and the edge is the art', function()

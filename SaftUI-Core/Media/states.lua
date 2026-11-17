@@ -4,7 +4,7 @@ local st = SaftUI
 -- (docs/superpowers/specs/2026-11-15-saftui-interaction-states-design.md,
 -- section 2): hover, pushed, selected, focus and disabled colors, in three
 -- modes (Layers, Tones, Hue-shifted tones), computed in OKLCH, cached, and read
--- through st:StateColor, st:StateSolid, st:StateText, st:StateFade and
+-- through st:StateColor, st:StateSolid, st:StateFade and
 -- st:StateAlpha. A plain table, no module: it has no OnColorsChanged of its own.
 -- Widgets draw the states through Widgets/states.lua; nothing here draws.
 --
@@ -15,8 +15,6 @@ st.States = ST
 
 local floor, max, min, abs, sqrt, cos, sin, atan2, pi = math.floor, math.max, math.min, math.abs, math.sqrt, math.cos, math.sin, math.atan2, math.pi
 
--- The text color the pick turns to over a light fill (WCAG contrast decides).
-ST.DARK_TEXT = { 17 / 255, 17 / 255, 17 / 255 }
 -- A thumb's rest color (Question 1 of the spec: one constant to change).
 ST.THUMB_REST = st.BOX_COLORS.edge
 
@@ -103,26 +101,6 @@ end
 -- x * (1 - a) + y * a per channel, in sRGB (as BLEND draws).
 function ST.Mix(r1, g1, b1, r2, g2, b2, a)
 	return r1 * (1 - a) + r2 * a, g1 * (1 - a) + g2 * a, b1 * (1 - a) + b2 * a
-end
-
-local function Luminance(r, g, b)
-	return 0.2126 * Lin(Clamp01(r)) + 0.7152 * Lin(Clamp01(g)) + 0.0722 * Lin(Clamp01(b))
-end
-
--- WCAG 2 contrast of two colors.
-function ST.Contrast(r1, g1, b1, r2, g2, b2)
-	local y1, y2 = Luminance(r1, g1, b1), Luminance(r2, g2, b2)
-	return (max(y1, y2) + 0.05) / (min(y1, y2) + 0.05)
-end
-
--- The text over a composite: Text > Normal (r, g, b given) unless the dark
--- text has the higher contrast. Ties go to the light.
-function ST.PickText(lr, lg, lb, r, g, b)
-	local dark = ST.DARK_TEXT
-	if ST.Contrast(lr, lg, lb, r, g, b) >= ST.Contrast(dark[1], dark[2], dark[3], r, g, b) then
-		return lr, lg, lb
-	end
-	return dark[1], dark[2], dark[3]
 end
 
 ------------------------------------------------------------------ the tones
@@ -276,34 +254,6 @@ function st:StateSolid(name, r, g, b, derived)
 	end
 	local c = name == 'hover' and derived.light or derived.dark
 	return c[1], c[2], c[3]
-end
-
--- The color a label takes over a body (r, g, b) under a state's pieces: Text >
--- Normal or the dark text, by contrast over the composite under its start:
--- the body, then the Layer, then the Fill at its strongest. name is 'rest'
--- (the body alone), 'hover', 'pushed', 'fill' (selected) or 'fillHover'
--- (selected + hover: the hover layer, then the hover fill).
-function st:StateText(name, r, g, b, derived)
-	derived = derived or ST.Current()
-	if name == 'hover' then
-		local c = derived.hover
-		r, g, b = ST.Mix(r, g, b, c[1], c[2], c[3], c[4])
-	elseif name == 'pushed' then
-		local c = derived.pushed
-		r, g, b = ST.Mix(r, g, b, c[1], c[2], c[3], c[4])
-	elseif name == 'fill' then
-		local c = derived.fill
-		r, g, b = ST.Mix(r, g, b, c[1], c[2], c[3], c[4])
-	elseif name == 'fillHover' then
-		local c = derived.hover
-		r, g, b = ST.Mix(r, g, b, c[1], c[2], c[3], c[4])
-		c = derived.fillHover
-		r, g, b = ST.Mix(r, g, b, c[1], c[2], c[3], c[4])
-	elseif name ~= 'rest' then
-		error('SaftUI: no state text ' .. tostring(name), 2)
-	end
-	local normal = st:Color('text', 'normal')
-	return ST.PickText(normal.r, normal.g, normal.b, r, g, b)
 end
 
 -- The Fill's right texture coordinate: the fade ends 1 / f of the way across.

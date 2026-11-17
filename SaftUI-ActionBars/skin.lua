@@ -30,7 +30,9 @@ local LAB = LibStub('LibActionButton-1.0')
 	    action) get an accent border on the backdrop, in place of the template's
 	    green glow (hideElements.equipped), through AB:PaintEdge. A checked
 	    button's comes from a post-hook on its SetChecked (AB.OnChecked), which
-	    only colors the backdrop, a frame of SaftUI's. The edge goes back on
+	    only colors the backdrop, a frame of SaftUI's, and AB:SyncChecked sets it
+	    again from the game's active state on the events that change it (inferred: the
+	    client unchecks a registered button with no SetChecked call). The edge goes back on
 	    after a theme recolor or redraw (AB:OnColorsChanged).
 	  - A pet action's autocast corners and ants (the template's AutoCastOverlay)
 	    sit over the icon.
@@ -357,6 +359,37 @@ function AB.OnChecked(button, checked)
 	if st:GetState(button, 'selected') == checked then return end
 	st:SetState(button, 'selected', checked)
 end
+
+-- A LibActionButton button is registered with the client (actionButtonUI), and
+-- LibActionButton leaves its ACTIONBAR_UPDATE_STATE to the client (OnEvent walks
+-- ActionButtonsNonUI only). Established from LibActionButton's code: every
+-- Lua place that checks a button is a SetChecked call this file's post-hook
+-- hears, and none runs at the end of a cast on these buttons, so a key press's
+-- PostClick turns the edge on and nothing in Lua turns it off. INFERRED, not
+-- seen in game: that the client unchecks the button itself with no call of the
+-- Lua SetChecked (in-game check R2). Either way, on the events that change
+-- what is active, each such button's selected state is read again from the
+-- game's own question, the one LibActionButton's UpdateButtonState asks
+-- (IsCurrentlyActive, IsAutoRepeat: read-only), never from GetChecked. Only
+-- the state is set: no SetChecked, attribute or protected call, so it runs in
+-- combat. ACTIONBAR_UPDATE_STATE is the event that matters; the auto repeat and
+-- combat events are a backstop, LibActionButton's own StartFlash and StopFlash
+-- already reach SetChecked for them. Pet, stance and leave vehicle buttons have
+-- neither method and are skipped (their own Lua calls SetChecked).
+function AB:SyncChecked()
+	for button in pairs(skins) do
+		if button.IsCurrentlyActive and button.IsAutoRepeat then
+			AB.OnChecked(button, button:IsCurrentlyActive() or button:IsAutoRepeat())
+		end
+	end
+end
+
+local checkedWatch = CreateFrame('Frame')
+for _, event in ipairs({ 'ACTIONBAR_UPDATE_STATE', 'START_AUTOREPEAT_SPELL', 'STOP_AUTOREPEAT_SPELL',
+	'PLAYER_ENTER_COMBAT', 'PLAYER_LEAVE_COMBAT' }) do
+	checkedWatch:RegisterEvent(event)
+end
+checkedWatch:SetScript('OnEvent', function() AB:SyncChecked() end)
 
 ------------------------------------
 --- Skin ----------------------------
