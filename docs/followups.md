@@ -7,6 +7,9 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-17 — UI scale: pixel fonts are unreadable below 100%](#2026-11-17--ui-scale-pixel-fonts-are-unreadable-below-100)
+  - [2026-11-17 — UI scale: pixel fonts look wrong in a window at k 1](#2026-11-17--ui-scale-pixel-fonts-look-wrong-in-a-window-at-k-1)
+  - [2026-11-17 — Cooldown Manager: SaftUI's own settings instead of Blizzard's Edit Mode ones](#2026-11-17--cooldown-manager-saftuis-own-settings-instead-of-blizzards-edit-mode-ones)
   - [2026-11-17 — Blizzard box: tune the reach and the cut in game](#2026-11-17--blizzard-box-tune-the-reach-and-the-cut-in-game)
   - [2026-11-17 — Micro menu: item order](#2026-11-17--micro-menu-item-order)
   - [2026-11-17 — Micro menu: direction (right to left, vertical)](#2026-11-17--micro-menu-direction-right-to-left-vertical)
@@ -37,7 +40,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-15 — UI scale: a nameplate's inner parts are not yet even in pixels](#2026-11-15--ui-scale-a-nameplates-inner-parts-are-not-yet-even-in-pixels)
   - [2026-11-15 — UI scale: EvenIfCentred and st:EvenPixels disagree for negative counts](#2026-11-15--ui-scale-evenifcentred-and-stevenpixels-disagree-for-negative-counts)
   - [2026-11-15 — UI scale: the Blizzard theme's art is not on whole pixels in a scaled frame](#2026-11-15--ui-scale-the-blizzard-themes-art-is-not-on-whole-pixels-in-a-scaled-frame)
-  - [2026-11-15 — UI scale: E4, SetScale in combat, still to run](#2026-11-15--ui-scale-e4-setscale-in-combat-still-to-run)
   - [2026-11-15 — UI scale: E0, the friends' check of the default UI size and its range](#2026-11-15--ui-scale-e0-the-friends-check-of-the-default-ui-size-and-its-range)
   - [2026-11-15 — UI scale: E6 and deleting the font demo](#2026-11-15--ui-scale-e6-and-deleting-the-font-demo)
   - [2026-11-15 — UI scale: E1 on the friends' screens](#2026-11-15--ui-scale-e1-on-the-friends-screens)
@@ -146,6 +148,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-15 — UI scale: E4, SetScale in combat](#2026-11-15--ui-scale-e4-setscale-in-combat)
   - [2026-11-15 — Chat's dock hook leaves Blizzard's tab layout after a resize, an overflow-list pick or an undock](#2026-11-15--chats-dock-hook-leaves-blizzards-tab-layout-after-a-resize-an-overflow-list-pick-or-an-undock)
   - [2026-11-15 — Chat's scroll bar loses SaftUI's anchor at every dock or lock change](#2026-11-15--chats-scroll-bar-loses-saftuis-anchor-at-every-dock-or-lock-change)
   - [2026-11-15 — With IM chat style the tab row is always hidden](#2026-11-15--with-im-chat-style-the-tab-row-is-always-hidden)
@@ -252,6 +255,48 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-17 — UI scale: pixel fonts are unreadable below 100%
+
+**What:** At 1080p (k 0.75) Homespun draws at 7.5 pixels and the owner finds the pixel fonts "pretty unreadable"; the frames themselves look rough there too. The spec's call was "fonts follow the scale, unrounded" (Fonts), with phase 5 to revisit it only if an in-game check asked: this one asks.
+
+**Why noticed:** The owner's UI scale phase 1 pass (Test Rounds, scaling E3, 2026-11-17, two screenshots: the unit frames and the minimap's info bar at 1920 x 1080).
+
+**Anchors:** `docs/superpowers/specs/2026-11-14-saftui-ui-scaling-design.md` (Fonts; Phase 5), `SaftUI-Core/Media/fonts.lua` (`FN:UpdateFontConfig`, the one place a per-face rule goes), `SaftUI-Core/uiscale.lua`.
+
+**What's been considered:** Asked the owner 2026-11-17 (my pick first): (A) pixel faces keep their native size in screen pixels (Homespun 10 stays 10 px, so text is a third larger relative to the frames at 1080p and may need room); (B) below k 1, pixel faces give way to the smooth Text font; (C) wait for the friends' check. The rough frames at 1080p are partly phase 4's (each addon's inner lines and gaps at k other than 1).
+
+**Shape of work:** A rule per face in `FN:UpdateFontConfig` plus tests at 0.75 and 1.55; then a look at what overflows at 1080p.
+
+**Open questions:** The owner's pick of A, B or C.
+
+### 2026-11-17 — UI scale: pixel fonts look wrong in a window at k 1
+
+**What:** With the window resized a little under the screen (about 2560 x 1377, in the snap band, so k is exactly 1 and the frames are crisp), the pixel fonts look smeared. At k 1 a font is the same number of pixels as full screen, so the scale alone shouldn't do it.
+
+**Why noticed:** The owner's UI scale phase 1 pass (Test Rounds, scaling E4, 2026-11-17, screenshot of the minimap's info bar).
+
+**Anchors:** `SaftUI-Core/uiscale.lua` (`UIScale:Check`, the set-back on the next frame), `SaftUI-Core/Media/fonts.lua`.
+
+**What's been considered:** Hypothesis, not confirmed: the text was drawn while the engine's own scale was in place for a frame (before SaftUI set it back) and isn't drawn again when the scale returns. Asked the owner 2026-11-17 to resize, then `/reload`: crisp after the reload points at that, and the fix is to set every font again after a scale change; still smeared points at the window itself (its render size against its client size).
+
+**Shape of work:** Small once the probe answers: either the font refresh in the pass, or a note in `.agents/clients.md`.
+
+**Open questions:** The probe's result.
+
+### 2026-11-17 — Cooldown Manager: SaftUI's own settings instead of Blizzard's Edit Mode ones
+
+**What:** Replace Blizzard's Cooldown Manager settings (the Edit Mode ones first, such as Icon size, then the advanced options) with SaftUI's own in `/sui`.
+
+**Why noticed:** The owner's UI scale phase 1 pass (Test Rounds, scaling A6, a fail, 2026-11-17): Blizzard's Edit Mode Icon size (80%, 150%) scales the Cooldown Manager's frames, and the one-pixel borders SaftUI keeps on frames the game scales then meet the icons unevenly. The owner: "I think we should just get rid of blizzard's terrible cooldown manager config and just add our own in /sui. we can start with the edit mode config and then probably expand to even cover the advanced CDM options."
+
+**Anchors:** `SaftUI-Misc/Skinning/` (the Cooldown Manager skin), `.agents/taint.md` rule 5 (Edit Mode system frames' overrides), the scaling spec's call that one-pixel lines stay on frames the game scales.
+
+**What's been considered:** Owning the size would let SaftUI keep the icons on whole pixels instead of chasing Blizzard's scale. Taint is the main risk: the Cooldown Manager's viewers are Edit Mode systems, so SaftUI's settings can't simply call their Edit Mode setters.
+
+**Shape of work:** Its own brainstorm, spec and plan: what Blizzard's settings do on both clients, what SaftUI can own without taint, then the `/sui` page.
+
+**Open questions:** When to take it up (asked 2026-11-17: after UI scale phase 2, or sooner).
 
 ### 2026-11-17 — Blizzard box: tune the reach and the cut in game
 
@@ -710,20 +755,6 @@ It prints, for each shown row: the card's hover state, whether the Layer shows, 
 **Shape of work:** Look at it at 0.75, 1.25 and 1.55 under Blizzard (the checklist asks); only if a friend or the owner finds a seam, a pass over `ThemeArt` placing each piece on whole pixels.
 
 **Open questions:** Whether it looks wrong at all.
-
-### 2026-11-15 — UI scale: E4, SetScale in combat, still to run
-
-**What:** Experiment E4: is `UIParent:SetScale` refused in combat? It is inferred to be (`SetScale` is a protected function and UIParent is protected in combat, since protection spreads to a secure frame's parents), so SaftUI builds as if it were: a scale change in combat waits for the end of the fight (`.agents/taint.md`, rule 6; `.agents/clients.md`, F8, "inferred"). E4 was not run.
-
-**Why noticed:** The scaling design's experiments; the owner ran E1 to E3, E5 and E5b on 2026-11-15 and said to go on without E4.
-
-**Anchors:** `.agents/clients.md` ("Screen and UI scale", F8), `.agents/taint.md` rule 6, `SaftUI-Core/uiscale.lua` (`UIScale:Check`, `st:QueueAfterCombat('UIScale', ...)`), `docs/superpowers/plans/2026-11-15-saftui-ui-scaling-phase-1-in-game-checklist.md` (the check, first).
-
-**What's been considered:** What each outcome changes: nothing unsafe either way. If `SetScale` in combat is blocked (an "Interface action failed" or `ADDON_ACTION_BLOCKED`, UIParent's scale unchanged), F8 is confirmed and the docs drop "inferred". If it is allowed, the wait could in principle go, but the pass still cannot run in combat (it moves protected frames), so the scale would change in a fight with SaftUI's frames at the old line until the end of it: the wait stays and only the docs change.
-
-**Shape of work:** The owner's two commands in a fight on a dummy (the checklist has them), then update F8 and rule 6 from "inferred" to "confirmed" with the result.
-
-**Open questions:** The result, on Forever and, if possible, on retail.
 
 ### 2026-11-15 — UI scale: E0, the friends' check of the default UI size and its range
 
@@ -2797,6 +2828,22 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-15 — UI scale: E4, SetScale in combat
+
+**What:** Experiment E4: is `UIParent:SetScale` refused in combat? It is inferred to be (`SetScale` is a protected function and UIParent is protected in combat, since protection spreads to a secure frame's parents), so SaftUI builds as if it were: a scale change in combat waits for the end of the fight (`.agents/taint.md`, rule 6; `.agents/clients.md`, F8, "inferred"). E4 was not run.
+
+**Why noticed:** The scaling design's experiments; the owner ran E1 to E3, E5 and E5b on 2026-11-15 and said to go on without E4.
+
+**Anchors:** `.agents/clients.md` ("Screen and UI scale", F8), `.agents/taint.md` rule 6, `SaftUI-Core/uiscale.lua` (`UIScale:Check`, `st:QueueAfterCombat('UIScale', ...)`), `docs/superpowers/plans/2026-11-15-saftui-ui-scaling-phase-1-in-game-checklist.md` (the check, first).
+
+**What's been considered:** What each outcome changes: nothing unsafe either way. If `SetScale` in combat is blocked (an "Interface action failed" or `ADDON_ACTION_BLOCKED`, UIParent's scale unchanged), F8 is confirmed and the docs drop "inferred". If it is allowed, the wait could in principle go, but the pass still cannot run in combat (it moves protected frames), so the scale would change in a fight with SaftUI's frames at the old line until the end of it: the wait stays and only the docs change.
+
+**Shape of work:** The owner's two commands in a fight on a dummy (the checklist has them), then update F8 and rule 6 from "inferred" to "confirmed" with the result.
+
+**Open questions:** The result, on Forever and, if possible, on retail.
+
+**Resolved 2026-11-17:** the owner ran it on Forever (Test Rounds, scaling F1): `/run UIParent:SetScale(0.5)` in a fight raised `ADDON_ACTION_BLOCKED` for `UIParent:SetScale()`. F8 and rule 6 now say seen in game, not inferred; the combat wait stays as it was.
 
 ### 2026-11-15 — Chat's dock hook leaves Blizzard's tab layout after a resize, an overflow-list pick or an undock
 
