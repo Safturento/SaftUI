@@ -245,3 +245,41 @@ test("a unit's page at full and half width: every row's line ends before its con
 		end)
 	end
 end)
+
+-- The game's sequence the tests above missed: a part's menu is drawn by OW:OpenMenu, which clears the menu
+-- frame's anchors before it draws the rows (optionsmenu.lua, Draw: "the rows are drawn before the menu is
+-- anchored again") and anchors it to the dots after. At draw time no row has a rect (GetLeft is nil, as the
+-- game answers a frame whose chain has no anchor), so the line cannot be fitted to the control then: it is
+-- fitted when it shows (the owner saw "Multiple" under the Font select and under a toggle's box).
+test("a part's menu as the game opens it (rows drawn before the menu has a place): the hover line still ends before the control", function()
+	for _, look in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		world()
+		in_look(look, function()
+			local root = tree()
+			local OW = PW.OW
+			local body, by = page_body(root, 'player', 774, false)
+			local part = by.healthtext
+			check(part and part.widget:OpenMenu(), look .. ': the menu opens')
+			local menu = OW.GetMenuFrames(1)
+			local mroot = OM.MenuRoot(part.row.option)
+			local font
+			for _, c in ipairs(menu.body.cells) do if c.row.type == 'font' then font = c end end
+			check(font ~= nil, look .. ': the Font row')
+			for _, name in ipairs({ 'Friz Quadrata TT', 'Arial Narrow', 'Morpheus', 'Skurri' }) do
+				if OM.Set(mroot, font.row, name) and UF:IsOwn('player', 'health.text.font') then break end
+			end
+			OW:CloseMenu()
+			check(part.widget:OpenMenu(), look .. ': the menu opens again')
+			menu = OW.GetMenuFrames(1)
+			local seen = 0
+			for _, c in ipairs(menu.body.cells) do
+				if c.row.type ~= 'item' and c.widget and c.frame.share and c.frame.shareOffers then
+					if check_line(c, look .. ' ' .. tostring(c.row.key)) then seen = seen + 1 end
+				end
+			end
+			check(seen > 0, look .. ': some line was checked: ' .. seen)
+			OW:CloseMenu()
+			body:Release()
+		end)
+	end
+end)
