@@ -13,7 +13,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-16 — The /sui slider's knob shows no hover or held state in the game: cause not found](#2026-11-16--the-sui-sliders-knob-shows-no-hover-or-held-state-in-the-game-cause-not-found)
   - [2026-11-16 — Redesign the loot window](#2026-11-16--redesign-the-loot-window)
   - [2026-11-16 — The tracker's wrapped text, one line short: the cause is inferred, not seen in the game](#2026-11-16--the-trackers-wrapped-text-one-line-short-the-cause-is-inferred-not-seen-in-the-game)
-  - [2026-11-16 — All units' Position offers anchors some units lack (pre-flight ruling L7 was never built)](#2026-11-16--all-units-position-offers-anchors-some-units-lack-pre-flight-ruling-l7-was-never-built)
   - [2026-11-16 — Unit frames shared settings: dead code, stale comments, names with two meanings, and shared.lua at 1293 lines](#2026-11-16--unit-frames-shared-settings-dead-code-stale-comments-names-with-two-meanings-and-sharedlua-at-1293-lines)
   - [2026-11-16 — Search stops at 100 results, so a part's name cuts the last pages](#2026-11-16--search-stops-at-100-results-so-a-parts-name-cuts-the-last-pages)
   - [2026-11-16 — All units: small rules left open](#2026-11-16--all-units-small-rules-left-open)
@@ -154,6 +153,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-16 — All units' Position offers anchors some units lack (pre-flight ruling L7 was never built)](#2026-11-16--all-units-position-offers-anchors-some-units-lack-pre-flight-ruling-l7-was-never-built)
   - [2026-11-13 — Unit frames: shared settings across units, and small parts as menu items](#2026-11-13--unit-frames-shared-settings-across-units-and-small-parts-as-menu-items)
   - [2026-11-11 — Old gear's tabard and shirt exclusion never matched](#2026-11-11--old-gears-tabard-and-shirt-exclusion-never-matched)
   - [2026-11-15 — A bag window's least width ignores a Window titles change](#2026-11-15--a-bag-windows-least-width-ignores-a-window-titles-change)
@@ -341,16 +341,6 @@ It prints, for each shown row: the card's hover state, whether the Layer shows, 
 **What's been considered:** `TR:Measure` keeps a height per text and width, valid for `fontStamp`, which `CheckFonts` bumped only on a font change. A UI scale change moves glyph widths (the game snaps them to whole pixels), so the same text at the same width can wrap to another count while the kept height stays: the scale is now in the key. Ruled out by reading: the width measured is the width drawn (only `Measure` sets a row text's width; `Width` is the zone title's), and a no-objective quest's line takes the same width path as an objective's. Not ruled out without the game: a font file not loaded at the first measure, and `GetStringHeight` read before the client has laid the text out.
 
 **Shape of work:** the owner pastes the `/run` line from the report on a wrong row; if the numbers show the string height is 3 lines and the layout used 2 at the same scale as the last draw, the cause is another one (then measure by `GetNumLines` and `GetLineHeight`).
-
-### 2026-11-16 — All units' Position offers anchors some units lack (pre-flight ruling L7 was never built)
-
-**What:** Ruling L7, adopted in the pre-flight, says that on All units a Position's TO list is the elements every member having the part has, and that validate refuses another element. It was never built: no brief carried it and no test pins it. On All units the TO list is every registered element, and `CheckFollowers` only checks for loops.
-
-**Why noticed:** The final review of the plan "unit frames: parts and sharing" (`.superpowers/sdd/2026-11-15-saftui-unitframes-parts-and-sharing/final-review.md`, Minor 1). What the player would see: All units > Name's Position offers Threat, Subtext, ClassPower, AdditionalPower and ReadyCheckIndicator. Picking Cast bar places TargetTarget's, FocusTarget's and PetTarget's names against their unit frame instead, silently (`UF:GetFrame` falls back), and their summaries say "Unit frame".
-
-**Anchors:** `SaftUI-Unitframes/config/position.lua:79-114` (with no unit frame for `'all'` the TO list is every registered element); `SaftUI-Unitframes/config/sharedoptions.lua:261-285` (`CheckFollowers`, loops only); `preflight.md` L7 in the plan's folder under `.superpowers/sdd/2026-11-15-saftui-unitframes-parts-and-sharing/`; `UF.SHARE_MEMBERS`.
-
-**Shape of work:** small. On `'all'`, build the TO list from `UF.SHARE_MEMBERS` that have the part (the intersection of their elements), and in `validate` refuse another element with "TargetTarget, FocusTarget and PetTarget have no Cast bar." A test for each.
 
 ### 2026-11-16 — Unit frames shared settings: dead code, stale comments, names with two meanings, and shared.lua at 1293 lines
 
@@ -2867,6 +2857,19 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-16 — All units' Position offers anchors some units lack (pre-flight ruling L7 was never built)
+
+**What:** Ruling L7, adopted in the pre-flight, says that on All units a Position's TO list is the elements every member having the part has, and that validate refuses another element. It was never built: no brief carried it and no test pins it. On All units the TO list is every registered element, and `CheckFollowers` only checks for loops.
+
+**Why noticed:** The final review of the plan "unit frames: parts and sharing" (`.superpowers/sdd/2026-11-15-saftui-unitframes-parts-and-sharing/final-review.md`, Minor 1). What the player would see: All units > Name's Position offers Threat, Subtext, ClassPower, AdditionalPower and ReadyCheckIndicator. Picking Cast bar places TargetTarget's, FocusTarget's and PetTarget's names against their unit frame instead, silently (`UF:GetFrame` falls back), and their summaries say "Unit frame".
+
+**Anchors:** `SaftUI-Unitframes/config/position.lua:79-114` (with no unit frame for `'all'` the TO list is every registered element); `SaftUI-Unitframes/config/sharedoptions.lua:261-285` (`CheckFollowers`, loops only); `preflight.md` L7 in the plan's folder under `.superpowers/sdd/2026-11-15-saftui-unitframes-parts-and-sharing/`; `UF.SHARE_MEMBERS`.
+
+**Shape of work:** small. On `'all'`, build the TO list from `UF.SHARE_MEMBERS` that have the part (the intersection of their elements), and in `validate` refuse another element with "TargetTarget, FocusTarget and PetTarget have no Cast bar." A test for each.
+
+**Resolved 2026-11-17:** built (ruling L7): on All units a Position's TO list is the elements every member having the part has (`UF.MembersWith` in `config/sharedoptions.lua`, read by `config/position.lua`), and validate refuses another element naming the units that lack it. Pinned in `tests/unitframes/shared_page_test.lua`.
+
 
 ### 2026-11-13 — Unit frames: shared settings across units, and small parts as menu items
 

@@ -74,11 +74,41 @@ function generators.uf_element_position(order, get, set, target, desc, name, sav
 		return UNIT_FRAME
 	end
 
+	-- On All units (no frame of its own): the members that have the part this Position places, and which
+	-- of them lack an element. The element's own ValidUnit decides, as the pages do (ruling L7).
+	local UF = st:GetModule('Unitframes', true)
+	local function AllSpec()
+		local spec = UF and type(target) == 'function' and UF.targetSpecs and UF.targetSpecs[target]
+		return spec and spec.unit == 'all' and UF.MembersWith and spec or nil
+	end
+	local function HasElement(unit, name)
+		local element = UF.elements and UF.elements[name]
+		return element ~= nil and (not element.ValidUnit or element.ValidUnit(unit) and true or false)
+	end
+	local function LackingUnits(spec, name)
+		local lacking = {}
+		for _, unit in ipairs(UF.MembersWith(spec.element)) do
+			if not HasElement(unit, name) then lacking[#lacking + 1] = unit end
+		end
+		return lacking
+	end
+
 	-- The elements of the target's unit frame, apart from the target itself,
-	-- sorted. Every registered element while the unit frame isn't known.
+	-- sorted. On All units the elements every member having the part has. Every
+	-- registered element while the unit frame isn't known.
 	local function GetElementNames()
 		local unitframe, frame = UnitFrame(), ResolveTarget(target)
 		local names = {}
+		local all = AllSpec()
+		if all then
+			for name in pairs(UF.elements) do
+				if not (name == all.element and not all.key) and #LackingUnits(all, name) == 0 then
+					tinsert(names, name)
+				end
+			end
+			sort(names)
+			return names
+		end
 		for name in pairs(unitframe and unitframe.elements or st:GetModule('Unitframes').elements) do
 			if not (unitframe and unitframe[name] == frame) then
 				tinsert(names, name)
@@ -90,7 +120,6 @@ function generators.uf_element_position(order, get, set, target, desc, name, sav
 
 	-- Which element (and its text or icon) the position places, for an All units row's check against
 	-- each follower's own frame (sharedoptions.lua): a weak side table, so the option gains no field.
-	local UF = st:GetModule('Unitframes', true)
 	if UF and UF.targetSpecs and type(target) == 'function' and UF.targetSpecs[target] then
 		UF.positionSpecs = UF.positionSpecs or setmetatable({}, { __mode = 'k' })
 		UF.positionSpecs[option] = UF.targetSpecs[target]
@@ -138,6 +167,16 @@ function generators.uf_element_position(order, get, set, target, desc, name, sav
 			return WithAnchorPage(page, function() return ValidatePart(info, part, value) end)
 		end
 		local unitframe = UnitFrame()
+		local all = AllSpec()
+		if all and value ~= UNIT_FRAME and value ~= GLOBAL_FRAME then
+			local lacking = LackingUnits(all, value)
+			if #lacking > 0 then
+				local names = {}
+				for i, unit in ipairs(lacking) do names[i] = UF.UnitPageName(unit) end
+				local who = #names == 1 and names[1] or table.concat(names, ', ', 1, #names - 1) .. ' and ' .. names[#names]
+				return who .. (#names == 1 and ' has no ' or ' have no ') .. (UF.ELEMENT_NAMES and UF.ELEMENT_NAMES[value] or value) .. '.'
+			end
+		end
 		if not (frame and unitframe) then return true end
 		local relative
 		if value == UNIT_FRAME then

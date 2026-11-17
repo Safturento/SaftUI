@@ -50,7 +50,7 @@ function UF:ConfigTarget(unit, element, key)
 	end
 	-- What it was made for, so All units' Position can ask each follower's own frame (sharedoptions.lua).
 	self.targetSpecs = self.targetSpecs or setmetatable({}, { __mode = 'k' })
-	self.targetSpecs[target] = { element = element, key = key }
+	self.targetSpecs[target] = { element = element, key = key, unit = unit }
 	return target
 end
 
