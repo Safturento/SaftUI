@@ -17,7 +17,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-16 — Search stops at 100 results, so a part's name cuts the last pages](#2026-11-16--search-stops-at-100-results-so-a-parts-name-cuts-the-last-pages)
   - [2026-11-16 — All units: small rules left open](#2026-11-16--all-units-small-rules-left-open)
   - [2026-11-16 — Nameplates and All units](#2026-11-16--nameplates-and-all-units)
-  - [2026-11-16 — The Sourced-from line on a plate page could link to the other page](#2026-11-16--the-sourced-from-line-on-a-plate-page-could-link-to-the-other-page)
   - [2026-11-16 — The states scan misses hand-rolled states it should catch](#2026-11-16--the-states-scan-misses-hand-rolled-states-it-should-catch)
   - [2026-11-16 — A Buttons color saved by an older build after a downgrade stays as an orphan key](#2026-11-16--a-buttons-color-saved-by-an-older-build-after-a-downgrade-stays-as-an-orphan-key)
   - [2026-11-16 — The tracker's whole pixels at other scales](#2026-11-16--the-trackers-whole-pixels-at-other-scales)
@@ -152,6 +151,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-16 — The Sourced-from line on a plate page could link to the other page](#2026-11-16--the-sourced-from-line-on-a-plate-page-could-link-to-the-other-page)
   - [2026-11-16 — The TO dropdown names parts by key](#2026-11-16--the-to-dropdown-names-parts-by-key)
   - [2026-11-16 — All units' Position offers anchors some units lack (pre-flight ruling L7 was never built)](#2026-11-16--all-units-position-offers-anchors-some-units-lack-pre-flight-ruling-l7-was-never-built)
   - [2026-11-13 — Unit frames: shared settings across units, and small parts as menu items](#2026-11-13--unit-frames-shared-settings-across-units-and-small-parts-as-menu-items)
@@ -403,20 +403,6 @@ It prints, for each shown row: the card's hover state, whether the Layer shows, 
 **Shape of work:** A design pass first: which settings the plates share with the frames and what a plate's own default should read as. Then a members' list change, the plate pages' decorator (plate pages are built in `nameplates/options.lua`, not `GetUnitConfig`) and the conversion's tests over the plate profiles.
 
 **Open questions:** Whether the owner wants plates in All units at all; if yes, as one member or two.
-
-### 2026-11-16 — The Sourced-from line on a plate page could link to the other page
-
-**What:** With "Use friendly nameplates' settings" checked, the Enemy page shows a centred "Sourced from friendly nameplates" line (and the Friendly page the same for the enemy's). The line is text; it could be a link that opens the other plate page.
-
-**Why noticed:** An owner question from Task 5's review (`task-5-review.md`, "Left for the owner").
-
-**Anchors:** `SaftUI-Unitframes/nameplates/options.lua` (`sourced`, the line at order 2001); `SaftUI-Core/Config/optionsmodel.lua` (a way to reveal a path: `OW:Reveal`).
-
-**What's been considered:** The line's option is a description today; a link needs a row type or a `desc` with a click that selects the other pick through the window (`OW:Reveal` takes a path and opens the unit's page).
-
-**Shape of work:** Small: the line becomes a link row that reveals `Unitframes.friendlynameplate.general` (or the enemy's). A test that the click lands on the right pick.
-
-**Open questions:** Whether a link is wanted, or the line is enough.
 
 ### 2026-11-16 — The states scan misses hand-rolled states it should catch
 
@@ -2843,6 +2829,23 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-16 — The Sourced-from line on a plate page could link to the other page
+
+**What:** With "Use friendly nameplates' settings" checked, the Enemy page shows a centred "Sourced from friendly nameplates" line (and the Friendly page the same for the enemy's). The line is text; it could be a link that opens the other plate page.
+
+**Why noticed:** An owner question from Task 5's review (`task-5-review.md`, "Left for the owner").
+
+**Anchors:** `SaftUI-Unitframes/nameplates/options.lua` (`sourced`, the line at order 2001); `SaftUI-Core/Config/optionsmodel.lua` (a way to reveal a path: `OW:Reveal`).
+
+**What's been considered:** The line's option is a description today; a link needs a row type or a `desc` with a click that selects the other pick through the window (`OW:Reveal` takes a path and opens the unit's page).
+
+**Shape of work:** Small: the line becomes a link row that reveals `Unitframes.friendlynameplate.general` (or the enemy's). A test that the click lands on the right pick.
+
+**Open questions:** Whether a link is wanted, or the line is enough.
+
+**Resolved 2026-11-17:** the line is an `execute` button (same key `sourced`, text, order and hidden rule) whose click calls `OW:Reveal` on the other plate page's own box (Enemy to `friendlynameplate.general.use_enemy`, Friendly to `nameplate.general.use_friendly`). Pinned in `tests/unitframes/friendly_page_test.lua`. It is now a button in General's toggles' panel, no longer a centred fill line: how it looks is the owner's check.
+
 
 ### 2026-11-16 — The TO dropdown names parts by key
 

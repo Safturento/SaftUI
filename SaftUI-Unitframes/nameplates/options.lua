@@ -29,8 +29,8 @@ local UF = st:GetModule('Unitframes')
 	checked, keptGeneral, General's that stay shown, and keptParts, the Parts
 	rows of General that stay (the rest are hidden while it's checked, so not
 	drawn and not searched; a page with none loses the Parts section whole);
-	sourced, the centred
-	line while it's checked; otherChecked, the box's tooltip while it's
+	sourced, the link
+	line while it's checked, otherName the page it opens; otherChecked, the box's tooltip while it's
 	disabled because the other page's is checked.
 ]]
 local PLATE_PAGES = {
@@ -41,6 +41,7 @@ local PLATE_PAGES = {
 		keptGeneral = { enable = true, threat_solo = true, use_friendly = true, sourced = true, parts = true },
 		keptParts = { threat = true },
 		sourced = 'Sourced from friendly nameplates',
+		otherName = 'Friendly nameplates',
 		otherChecked = "Friendly nameplates use this page's settings. To check this box, uncheck Use enemy nameplates' settings on the Friendly nameplates page.",
 	},
 	friendlynameplate = {
@@ -50,6 +51,7 @@ local PLATE_PAGES = {
 		keptGeneral = { friendly = true, use_enemy = true, sourced = true },
 		keptParts = {},
 		sourced = 'Sourced from enemy nameplates',
+		otherName = 'Enemy nameplates',
 		otherChecked = "Enemy nameplates use this page's settings, all but threat. To check this box, uncheck Use friendly nameplates' settings on the Enemy nameplates page.",
 	},
 }
@@ -140,16 +142,19 @@ local function PlateBox(unit, order, name, desc)
 		UF:UpdateConfig('nameplate')
 	end
 	-- After General's other settings and its Parts (order 2000; the kept Threat row sits
-	-- directly under the box's section, then this line), which are hidden while it shows: in the
-	-- middle of what the switches leave of the page, across and down (a fill
-	-- row, as the window draws a description with fill).
+	-- directly under the box's section, then this line), which are hidden while it shows. A
+	-- link: a button named for where the settings come from, which opens that page (OW:Reveal
+	-- lights the other page's own box, the row that says why this page is bare).
 	local sourced = {
 		order = 2001,
-		type = 'description',
+		type = 'execute',
 		name = plate.sourced,
-		justifyH = 'CENTER',
-		fill = true,
+		desc = ('Opens the %s page.'):format(plate.otherName),
 		hidden = function() return not PlateBoxChecked(unit) end,
+		func = function()
+			local OW = st.OptionsWindow
+			if OW and OW.Reveal then OW:Reveal({ 'Unitframes', plate.other, 'general', PLATE_PAGES[plate.other].box }) end
+		end,
 	}
 	return box, sourced
 end

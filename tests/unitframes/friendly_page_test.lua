@@ -10,7 +10,7 @@
 --     checked, leaves its page's tabs where they are but disables them (all
 --     but General, and Threat on the Enemy page), and General keeps only the
 --     on/off switches and the box, with one centred line in place of the
---     rest ("Sourced from enemy nameplates");
+--     rest (a button, "Sourced from enemy nameplates", that opens the Enemy page);
 --   - while one box is checked the other page's is disabled, and its tooltip
 --     (the row's disabledDesc) says why; while another nameplate addon draws
 --     the plates, it says that;
@@ -44,7 +44,7 @@ local PLATE_BOX = { nameplate = 'use_friendly', friendlynameplate = 'use_enemy' 
 local FRIENDLY_USES_THIS = "Friendly nameplates use this page's settings. To check this box, uncheck Use enemy nameplates' settings on the Friendly nameplates page."
 local ENEMY_USES_THIS = "Enemy nameplates use this page's settings, all but threat. To check this box, uncheck Use friendly nameplates' settings on the Enemy nameplates page."
 local DRAWN_BY_PLATER = "Nameplates are drawn by Plater. Turn it off to use SaftUI's."
--- The centred line in place of General's other settings while a page's box is checked.
+-- The link in place of General's other settings while a page's box is checked.
 local FRIENDLY_SOURCED, ENEMY_SOURCED = 'Sourced from enemy nameplates', 'Sourced from friendly nameplates'
 local ENEMY_BOX_DESC = "Draws enemy and neutral nameplates with the Friendly nameplates page's settings. This page's own are set aside, kept for when it's unchecked: its Health, Cast bar and Auras tabs are disabled, and General's other settings and parts are hidden. Threat when solo and the Threat part stay, and still apply."
 local FRIENDLY_BOX_DESC = "Draws friendly nameplates with the Enemy nameplates page's settings. This page's own are set aside, kept for when it's unchecked: its Health, Cast bar and Auras tabs are disabled, and General's other settings and parts are hidden. Friendly nameplates never show threat."
@@ -275,7 +275,7 @@ end)
 
 ------------------------------------------------------------------ the boxes
 
-test("checking a box: the page's tabs stay where they are, disabled but General (and Threat on the Enemy page), and General keeps its switches with a centred line in place of the rest", function()
+test("checking a box: the page's tabs stay where they are, disabled but General (and Threat on the Enemy page), and General keeps its switches with a link to the other page in place of the rest", function()
 	for _, client in ipairs({ 'forever', 'retail' }) do
 		local st, UF = world(client)
 		local OM = SaftUI.OptionsModel
@@ -286,10 +286,9 @@ test("checking a box: the page's tabs stay where they are, disabled but General 
 		local root, view = page(UF, 'friendlynameplate')
 		eq(keys(view), 'friendly,use_enemy,sourced', client .. ': Friendly plates, the box, and one line in place of the rest')
 		local line = row_for(view, 'sourced')
-		eq(line.type, 'description', client .. ': a description')
+		eq(line.type, 'execute', client .. ': a link')
 		eq(line.name, FRIENDLY_SOURCED, client .. ': saying where the settings come from')
-		eq(OM.Member(root, line, 'justifyH'), 'CENTER', client .. ': centred across the page')
-		eq(OM.Member(root, line, 'fill'), true, client .. ': and down the space the switches leave')
+		eq(OM.Member(root, line, 'desc'), 'Opens the Enemy nameplates page.', client .. ': and which page it opens')
 		for _, row in ipairs(rows(view)) do
 			check(not row.disabled, client .. ': ' .. row.key .. ' enabled')
 		end
@@ -550,7 +549,7 @@ test('another nameplate addon loaded: both pages say which, and everything on th
 	end
 end)
 
-test("General's toggles keep their panel while the box is checked: only the centred line under them is bare", function()
+test("General's toggles keep their panel while the box is checked: the link to the other page is below them", function()
 	local st, UF = world('forever')
 	local theme = st.config.profile.theme.name
 	st.config.profile.theme.name = 'thick'
@@ -580,16 +579,8 @@ test("General's toggles keep their panel while the box is checked: only the cent
 			eq(-top, first.y, label .. ': from the first row')
 			if checked then
 				check(sourced ~= nil, label .. ': the centred line')
-				if name == 'nameplate' then
-					-- The kept Threat row's section sits directly under the toggles' panel, then the line under it.
-					local _, _, _, _, top2 = panels[2]:GetPoint(1)
-					eq(-top2 + panels[2]:GetHeight(), sourced.y, label .. ': the line directly under the Parts panel')
-					check(-top2 >= -top + panels[1]:GetHeight(), label .. ': the Parts panel is below the toggles')
-				else
-					eq(-top + panels[1]:GetHeight(), sourced.y, label .. ': to the line, which is not under it')
-				end
-				local _, _, _, x = sourced.frame:GetPoint(1)
-				eq(x .. '+' .. sourced.frame:GetWidth(), '0+774', label .. ': the line bare, the whole width')
+				-- The link is a button (it sits as any button does), below the toggles.
+				check(sourced.y > first.y, label .. ': the link is below the first row')
 				local _, _, _, fx = first.frame:GetPoint(1)
 				eq(fx, 14, label .. ': the toggles padded')
 			else
@@ -651,5 +642,29 @@ test('another nameplate addon: every part row is disabled, the stand-down line r
 		local _, view = page(UF, 'nameplate')
 		eq(row_for(view, 'threat').disabled, true, client .. ': Threat disabled while the plates are another addon\'s')
 		eq(#take_errors(), 0, client .. ': no error')
+	end
+end)
+
+test("the Sourced-from link opens the other plate page, at its own box", function()
+	for _, client in ipairs({ 'forever', 'retail' }) do
+		local st, UF = world(client)
+		local OM, OW = SaftUI.OptionsModel, st.OptionsWindow
+		local opened = {}
+		local real = OW.Reveal
+		OW.Reveal = function(_, path) opened[#opened + 1] = path end
+		for _, case in ipairs({ { 'friendlynameplate', 'use_enemy', 'nameplate', 'use_friendly' },
+			{ 'nameplate', 'use_friendly', 'friendlynameplate', 'use_enemy' } }) do
+			local name, box, other, otherBox = case[1], case[2], case[3], case[4]
+			check(set(UF, name, box, true), client .. ': ' .. name .. ' box checked')
+			local root, view = page(UF, name)
+			OM.Set(root, row_for(view, 'sourced'))
+			local path = opened[#opened]
+			eq(table.concat(path or {}, '.'), 'Unitframes.' .. other .. '.general.' .. otherBox, client .. ': ' .. name .. "'s link goes to the other page's box")
+			local pick, selection = OM.SelectionForPath(root, path)
+			eq(pick, 'Unitframes', client .. ': the Unit frames page')
+			eq(selection.pick .. ',' .. tostring(selection.tab), other .. ',general', client .. ': the other pick, General')
+			check(set(UF, name, box, false), client .. ': unchecked')
+		end
+		OW.Reveal = real
 	end
 end)
