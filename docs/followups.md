@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-16 — Redesign the loot window](#2026-11-16--redesign-the-loot-window)
   - [2026-11-16 — The tracker's wrapped text, one line short: the cause is inferred, not seen in the game](#2026-11-16--the-trackers-wrapped-text-one-line-short-the-cause-is-inferred-not-seen-in-the-game)
   - [2026-11-16 — All units' Position offers anchors some units lack (pre-flight ruling L7 was never built)](#2026-11-16--all-units-position-offers-anchors-some-units-lack-pre-flight-ruling-l7-was-never-built)
   - [2026-11-16 — Unit frames shared settings: dead code, stale comments, names with two meanings, and shared.lua at 1293 lines](#2026-11-16--unit-frames-shared-settings-dead-code-stale-comments-names-with-two-meanings-and-sharedlua-at-1293-lines)
@@ -245,6 +246,18 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 ## Active
 
+### 2026-11-16 — Redesign the loot window
+
+**What:** the owner wants the loot window (Blizzard's scroll box `LootFrame`, skinned by `SaftUI-Loot/popup.lua`) redesigned. Today it is Blizzard's layout in SaftUI's theme: a small titled panel ("Items", a close cross) with one row per item (icon, name, the quality word at the right).
+
+**Why noticed:** the owner's in-game pass of the interaction states checks on 2026-11-16 (check 28, "The loot window and the feed"). While reporting that a row's hover fill was fully opaque on the first open after a reload, they added: "Also can you add a follow up to redesign this loot window?" They gave no direction for the new design. Their screenshot showed two rows (a Poor and a Common item) in a panel about 215 wide under the mouse.
+
+**Anchors:** `SaftUI-Loot/popup.lua` (the skin: post-hooks and weak tables only), `.agents/taint.md` rule 18 (what the skin may and may not do to `LootFrame`), the Loot window page in `/sui` (Enable, Theme, Background, Font), `SaftUI-Loot/Feed/` and `rollbar.lua` (SaftUI's own loot looks, for a shared language), `docs/design-system/`.
+
+**Shape of work:** a design pass first (brainstorm with the owner, mockups in a private artifact), then a plan. The size depends on whether the redesign can stay a skin of Blizzard's frame (rule 18's limits: no reparenting, no sizes on its secure parts in combat) or needs SaftUI's own window, which is a larger piece (looting in combat, the secure click).
+
+**Open questions:** what the owner dislikes about today's window and what they want from it (compact rows, quality color instead of the quality word, item level or price, where it opens); a skin or SaftUI's own frame.
+
 ### 2026-11-16 — The tracker's wrapped text, one line short: the cause is inferred, not seen in the game
 
 **What:** a quest's text that wraps to three lines was laid out as two, so the third line drew over the next quest's title. The fix keeps the rows' kept heights per scale; whether that was the whole cause is for the game to say.
@@ -423,7 +436,9 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **Shape of work:** one engine task: a hidden-host skip with a repaint on show, tests for each (a hidden slot costs a pass nothing, shown it is painted at once, a pass while hidden and a show gives the new color), and the bags' windows calling it from their show. Medium.
 
-**Open questions:** what `/sui debug` reads in game (G11). If every line is under 2 ms, close this as measured.
+**Open questions:** none left on the trigger: see the in-game number below.
+
+**In game 2026-11-16:** with every bag and the bank open and the Accent dragged, `/sui debug`'s slowest pass was 5.2 ms (the check's line was 2 ms). The owner could not notice it and said to optimize if there is an opportunity but not to worry much about it. So the trigger is met and the work above is worth doing when the states engine is next open, not urgently.
 
 ### 2026-11-16 — The Hue shift setting reads "20", not "20 degrees"
 
