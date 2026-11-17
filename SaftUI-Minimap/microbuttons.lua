@@ -244,8 +244,12 @@ end
 -- window is open) after the atlas swap the SetHighlightAtlas hook restyles. In
 -- the client a texture may keep one alpha for SetAlpha and its vertex color, and
 -- then that write undoes the hover's strength: the hover drew as an opaque block
--- on every button UpdateMicroButtons had passed (2026-11-16). So the state colors
+-- on the buttons whose SetNormal and SetPushed write that alpha after the swap,
+-- Professions to Shop (2026-11-16). The character button's have no such write, and
+-- the game menu button is repainted by its OnUpdate, which swaps the atlas again
+-- (at once under the mouse: OnEnter zeroes its updateInterval). So the state colors
 -- go on again after both. Colors only (st:PaintStates), so in combat too.
+-- The one-alpha model is unverified: docs/followups.md, "Micro buttons' hover".
 local function PaintButton(button)
     st:PaintStates(button)
 end
