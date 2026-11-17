@@ -19,7 +19,7 @@ The Colors page lets the player change colours that are named after a hue (Blue,
 ### The owner's answers (2026-11-14)
 
 1. **The role names are right.** "yep this is good"
-2. **Blue becomes the theme's accent.** "sounds good, if there's something that's using blue that isn't a "theme" coloring let me know and we can address what to shift them to". The design that follows lists every such use for him.
+2. **Blue becomes the theme's accent.** "sounds good, if there's something that's using blue that isn't a "theme" coloring let me know and we can address what to shift them to". The design that follows lists every such use for the owner.
 3. **Loot rolls, factions and roles get groups of their own.** "yep this is exactly why I wanted the research, we can establish better groups to change certain things without messing other things up"
 4. **No new Own and Edited colours.** The diff marker becomes Muted and the highlight of a bar's own setting becomes the accent. "maybe the yellow diff marker can just become muted, and the blue highlight we can make the accent color? we can play with individual opacity for those highlights if needed"
 5. **The equipped item's border is the accent.** "lets go with accent color for now"
