@@ -18,7 +18,9 @@
 -- before RollOnLoot returns. A pre-hook on each roll button (PreClick) notes the
 -- click as pending, and the bar hiding holds the roll with it; a post-hook on
 -- RollOnLoot notes the choice that leaves the bar up (a bind on pickup
--- confirmation, a Need's dice animation). The held bar carries the roll's drop
+-- confirmation, a Need's dice animation), and holds a roll whose bar hid with
+-- no click behind it (another addon's RollOnLoot) from a snapshot taken at the
+-- hide. The held bar carries the roll's drop
 -- forward and is matched and updated here with the Blizzard bars. A Blizzard
 -- bar never takes a drop you've chosen on (only a bar that keeps its roll keeps
 -- one), and a held roll only takes one you have. It finishes when its drop resolves (here) or its
@@ -63,6 +65,15 @@ local pending = {}
 -- [roll button] = the rollID its click is pending for, to clear it at PostClick
 -- (the frame may show another roll by then).
 local clicking = setmetatable({}, { __mode = 'k' })
+
+-- A bar that hid with no choice known, by rollID, until RollOnLoot returns: a
+-- call from another addon has no PreClick, and on a roll with no confirmation
+-- the game cancels the roll inside the call, so the bar hides first. The roll's
+-- state as it was at the hide ({ frame, roll (HoldRoll's, with the item's
+-- `shown` and stack `index`) }); the RollOnLoot post-hook holds from it if it
+-- names that roll. Dropped at the next frame (a bar that ended on its own is
+-- never claimed).
+local hidden = {}
 
 ------------------------------------
 ---- Counts ------------------------
@@ -403,6 +414,7 @@ end
 -- the drop it was matched to (or last was: one that resolved just before
 -- makes the held roll finish at once (LT:UpdateRollBars, below): it stays up a
 -- few seconds and fades).
+local ReadTimer
 local function OnBarHide(frame)
 	local state = bars[frame]
 	if state then
@@ -422,6 +434,22 @@ local function OnBarHide(frame)
 			})
 			-- Only a hold that happened: the post-hook says nothing of one skipped.
 			if bar then choice.held = true end
+		elseif state.rollID and not frame:IsShown() then
+			local timer = ReadTimer(frame)
+			local shown, index = LT:RollSnapshot(frame)
+			if timer and shown then
+				local rollID = state.rollID
+				local snapshot = { frame = frame, roll = {
+					rollID = rollID, choice = nil, ends = timer.ends, length = timer.length,
+					link = state.link, item = state.item, itemID = state.itemID,
+					dropID = state.dropID or state.lastDropID, rolls = state.dropID and state.rolls,
+					shown = shown, index = index,
+				} }
+				hidden[rollID] = snapshot
+				C_Timer.After(0, function()
+					if hidden[rollID] == snapshot then hidden[rollID] = nil end
+				end)
+			end
 		end
 		ClearBar(state)
 	end
@@ -436,7 +464,7 @@ local CHOICE_FOR_ROLL_TYPE = { [0] = 'Pass', [1] = 'Need', [2] = 'Greed', [3] = 
 -- The roll's time left, as Blizzard's timer shows it now: { ends (the GetTime
 -- it runs out), length (the roll's, in seconds), left } in plain seconds, or nil
 -- when its values are not plain numbers.
-local function ReadTimer(frame)
+function ReadTimer(frame)
 	local PlainNumber = LT.PlainNumber
 	local _, length = frame.Timer:GetMinMaxValues()
 	local left = PlainNumber(frame.Timer:GetValue())
@@ -498,6 +526,15 @@ local function OnRollChosen(rollID, rollType)
 		if st.DEBUG then st:Debug('Loot', 'choice held at the bar hiding:', rollID, choice) end
 		return
 	end
+	local snapshot = hidden[rollID]
+	if snapshot then
+		-- The bar hid inside this call with no click behind it: held from what it
+		-- showed then, with the choice the call names.
+		hidden[rollID] = nil
+		snapshot.roll.choice = choice
+		LT:HoldRoll(snapshot.frame, snapshot.roll)
+		return
+	end
 	for frame in pairs(bars) do
 		if frame:IsShown() and PlainNumber(frame.rollID) == rollID then
 			local noted = click or ReadTimer(frame)
@@ -525,6 +562,7 @@ end
 function LT:OnCancelAllLootRolls()
 	wipe(chosen)
 	wipe(pending)
+	wipe(hidden)
 	local list = {}
 	for _, bar in ipairs(self:GetHeldRolls()) do tinsert(list, bar) end
 	for _, bar in ipairs(list) do self:ReleaseHeldRoll(bar) end

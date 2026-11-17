@@ -346,6 +346,21 @@ end
 -- rollID }) and the held bars ({ bar }). LayoutRollFrames keeps it.
 local stack = {}
 
+-- What the frame shows of its roll and where its roll is in the stack, as they
+-- are now, for a hold made later (HoldRoll's roll.shown and roll.index): the
+-- frame may show a waiting roll, and the stack may drop its entry, before then.
+function LT:RollSnapshot(frame)
+	local skin = skins[frame]
+	local index
+	for i, entry in ipairs(stack) do
+		if entry.frame == frame then
+			index = i
+			break
+		end
+	end
+	return skin and skin.shown, index
+end
+
 -- Holds the roll `frame` showed, after you chose on it: a held bar, locked on
 -- your choice, takes the frame's place in the stack. `roll` is rollinfo.lua's:
 -- { rollID, choice (a roll button's name), ends (the GetTime its time runs
@@ -360,7 +375,7 @@ local stack = {}
 -- same frame right after.
 function LT:HoldRoll(frame, roll)
 	local skin = skins[frame]
-	local shown = skin and skin.shown
+	local shown = roll.shown or (skin and skin.shown)
 	if not shown or shown.rollID == nil or shown.rollID ~= roll.rollID then
 		if st.DEBUG then st:Debug('Loot', 'hold', roll.rollID, 'skipped: the frame did not show that roll') end
 		return
@@ -408,14 +423,18 @@ function LT:HoldRoll(frame, roll)
 	ApplyBarConfig(bar, self.config.roll)
 	SetBarTimer(bar, roll.ends - GetTime())
 
+	-- Held from a snapshot (roll.shown, roll.index: LT:RollSnapshot, taken at the
+	-- hide), the frame's entry may be gone or may be the next roll's: it is the
+	-- old roll's entry only if it still names it, and the bar goes where the
+	-- roll was otherwise.
 	local entry = { bar = bar }
 	for i, other in ipairs(stack) do
-		if other.frame == frame then
+		if other.frame == frame and (not roll.shown or other.rollID == roll.rollID) then
 			stack[i], entry = entry, nil
 			break
 		end
 	end
-	if entry then tinsert(stack, entry) end
+	if entry then tinsert(stack, math.min(roll.index or #stack + 1, #stack + 1), entry) end
 
 	tinsert(held, bar)
 	bar:Show()
