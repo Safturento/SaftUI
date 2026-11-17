@@ -1706,7 +1706,7 @@ test('the part rows of every member walk as share rows, and each unit page keeps
 	for _, unit in ipairs({ 'player', 'party', 'boss' }) do
 		for _, part in ipairs(UF.UnitParts(unit)) do
 			local item = tree.args[unit].args.general.args.parts and tree.args[unit].args.general.args.parts.args[part.key]
-			if item and UF.PartShare(unit, part) then
+			if item and UF.SHARED_BY_KEY[part.config .. (part.sub and ('.' .. part.sub) or '') .. '.enable'] then
 				eq(OM.DefaultSource(root, { option = item, path = { 'Unitframes', unit, 'general', 'parts', part.key }, type = 'item', key = part.key }),
 					'share', unit .. ' ' .. part.key)
 			end

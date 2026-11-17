@@ -357,6 +357,10 @@ It prints, for each shown row: the card's hover state, whether the Layer shows, 
 
 **Shape of work:** remove or rename the above; move `shared.lua:918-1293` (backup, restore, states, `PrepareShared`, `EnableShared`) to `SaftUI-Unitframes/config/sharedsetup.lua`, and let the file allowlist in `tests/unitframes/shared_guard_test.lua` follow (and `config/load.xml`, and `.agents/architecture.md`).
 
+**Done 2026-11-17, left open:** `shared.lua`'s second half (backup, restore, the conversion, states, `PrepareShared`, `EnableShared`) is `config/sharedsetup.lua` (it reads the locals it needs through `UF.sharedLocals`); the three stale comments are fixed; `config.lua`'s `UnitName` is `UF.UnitPageName`; the local `PARTS` is `POSITION_FIELDS`; `UF.PartShare` is gone. Left for the owner:
+- `UF.PartFor` and `UF.UnitParts` (`config/parts.lua`) are called by tests only (`parts_test.lua`, `config_test.lua`: they are the oracle of what each page shows). Options: A, remove them and move the same two functions into `tests/unitframes/page_world.lua` as test helpers (about ten call sites change); B, keep them in `parts.lua` (now commented as test-only). Recommendation: B, since a test needs a list of parts per unit that does not go through the pages it checks, and the cost of keeping is two small functions.
+- `part` means a position field or `'toggle'`/`'color'` in `SetShared` and `WriteValue` (shared.lua), but a unit frame part in `entry.part`. The entry names no target. Options: A, rename the parameter to `field` in both (the signature in `.agents/architecture.md` follows; no caller changes, as it is positional); B, leave. Recommendation: A, a mechanical rename.
+
 ### 2026-11-16 — Search stops at 100 results, so a part's name cuts the last pages
 
 **What:** `/sui`'s search lists at most 100 results (`MAX_RESULTS` in `OM.Search`, `SaftUI-Core/Config/optionsmodel.lua`). A part's name matches its whole menu on every page, so searching a part by name over all fourteen picks (`Health text`, `Cast bar`) fills the 100 with the first pages (All units and the first eleven units) and never lists Raid 40's menu or the nameplates'.

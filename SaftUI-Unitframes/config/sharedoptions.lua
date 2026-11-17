@@ -189,13 +189,6 @@ function UF.SettingShare(unit, entry, option)
 	return share
 end
 
--- A part row's share: its Enable's, which is the setting its check box is. nil for a part with no Enable.
-function UF.PartShare(unit, part)
-	local key = part.config .. (part.sub and ('.' .. part.sub) or '') .. '.enable'
-	local entry = UF.SHARED_BY_KEY[key]
-	return entry and UF.SettingShare(unit, entry) or nil
-end
-
 ------------------------------------------------------------------ decorating a page
 
 local VALUE = {

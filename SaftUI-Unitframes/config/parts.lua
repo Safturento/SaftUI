@@ -75,6 +75,7 @@ local function ElementName(element)
 	return UF.ELEMENT_NAMES[element] or tostring(element)
 end
 
+-- Used by the tests only (parts_test.lua, config_test.lua), as the oracle of what a page shows.
 function UF.PartFor(key)
 	for _, part in ipairs(UF.PARTS) do
 		if part.key == key then return part end
@@ -93,7 +94,7 @@ local function HasElement(unit, element)
 		and (not registered.ValidUnit or registered.ValidUnit(unit) and true or false)
 end
 
--- The parts unit has, in UF.PARTS' order.
+-- The parts unit has, in UF.PARTS' order. Used by the tests only, as the oracle of what a page shows.
 function UF.UnitParts(unit)
 	local parts = {}
 	for _, part in ipairs(UF.PARTS) do
