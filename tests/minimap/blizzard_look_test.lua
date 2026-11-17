@@ -277,3 +277,27 @@ test("nothing of Blizzard's micro menu is shown, moved or written onto", functio
 	theme('thick')
 	eq(shown(MM:GetItemBox(holder)), 0, 'no box under Thick'); eq(menu.BorderArt:GetAlpha(), 0)
 end)
+
+test("the minimap's box is 4 outside the map, above it; Thick keeps its backdrop's offset", function()
+	for _, client in ipairs({ 'forever', 'retail' }) do
+		world(client)
+		local map = st:GetModule('Minimap')
+		st:BindModuleConfig(map, 'minimap')
+		Minimap:SetSize(100, 100)
+		Minimap:SetPoint('CENTER')
+		st.config.profile.theme.name = 'blizzard'
+		map:UpdateConfig()
+		local backdrop
+		for _, child in ipairs({ Minimap:GetChildren() }) do
+			if drawn(child) then backdrop = child end
+		end
+		check(backdrop ~= nil, client .. ': the minimap has a panel')
+		local holder = st.ThemeArt.BoxFrame(backdrop)
+		eq(T.around(holder, Minimap), '-4,4,4,-4', client .. ': the box 4 outside the map')
+		check(holder:GetFrameLevel() > Minimap:GetFrameLevel(), client .. ': above the map')
+
+		T.theme('thick')
+		map:UpdateConfig()
+		eq(T.offset(backdrop, 'TOPLEFT'), '-2.00,2.00', client .. ': Thick keeps its backdrop 2px outside the map')
+	end
+end)

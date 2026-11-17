@@ -56,9 +56,10 @@ end
 
 -- The draw calls, the argument count each needs (the kind is the last), and
 -- which argument is the theme. optional is how many more arguments follow the
--- kind: st:SetTemplate takes the button its ring is a texture of after it.
+-- kind: st:SetTemplate takes the button its ring is a texture of after it,
+-- and the frame its box goes around (over).
 local DRAWS = {
-	{ name = 'SetTemplate', count = 4, theme = 2, optional = 1 },
+	{ name = 'SetTemplate', count = 4, theme = 2, optional = 2 },
 	{ name = 'SetBackdrop', count = 4, theme = 2 },
 	{ name = 'SetBackdropIn', count = 5, theme = 3 },
 	{ name = 'ThemeInset', count = 3, theme = 1, optional = 1 }, -- the frame its inset is read for
@@ -96,7 +97,7 @@ local function Scan(path, source)
 					-- A call with the optional extra argument is safe: the kind is
 					-- still where it was, and CheckKind throws at runtime for a
 					-- missing or unknown one.
-					if #args ~= rule.count and #args ~= rule.count + (rule.optional or 0) and not IsNone(args[rule.theme]) then
+					if (#args < rule.count or #args > rule.count + (rule.optional or 0)) and not IsNone(args[rule.theme]) then
 						problem(s, ('st:%s with %d arguments: it needs %d, the kind last (%s)'):format(
 							name, #args, rule.count, table.concat(args, ', ')))
 					end

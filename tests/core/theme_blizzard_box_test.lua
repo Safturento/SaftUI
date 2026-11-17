@@ -377,3 +377,18 @@ test('a recolour pass leaves the box plain', function()
 		end)
 	end
 end)
+
+test("the swing timer, the XP and reputation bars and the tooltip's status bar wear the box outside", function()
+	for _, client in ipairs(CLIENTS) do
+		local st = blizzard(client)
+		-- SetBackdrop's owners: the XP and reputation bars, the tooltip's status bar
+		local owner = frame(st)
+		st:SetBackdrop(owner, 'theme', 'theme', 'bar')
+		eq(T.around(st.ThemeArt.BoxFrame(owner.backdrop), owner), '-4,4,4,-4', client .. ': SetBackdrop bar')
+		-- SetBackdropIn's: the swing timer's, drawn in its module's own table
+		local backdrops, bar = {}, frame(st)
+		local made = st:SetBackdropIn(backdrops, bar, 'theme', 'theme', 'bar')
+		eq(T.around(st.ThemeArt.BoxFrame(made), bar), '-4,4,4,-4', client .. ': SetBackdropIn bar')
+		check(st.ThemeArt.BoxFrame(made):GetFrameLevel() > bar:GetFrameLevel(), client .. ': above the bar')
+	end
+end)
