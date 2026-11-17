@@ -412,7 +412,7 @@ test('a Text pass re-picks the label of a row under the mouse (an undone row hov
 	EM:Deactivate()
 end)
 
-test('an Accent pass keeps the helper\'s dark text on the current step at Selected 60% with a pale Accent', function()
+test('an Accent pass keeps Text > Normal on the current step at Selected 60% with a pale Accent', function()
 	world()
 	local list = open_list()
 	local accent, settings = st.config.profile.theme.accent, st.config.profile.theme.states
@@ -424,12 +424,13 @@ test('an Accent pass keeps the helper\'s dark text on the current step at Select
 	for _, row in ipairs(list.rows) do if row:IsShown() and st:GetState(row, 'selected') then current = row end end
 	check(current, 'a current row')
 	local want = look(current).text
-	check(SL.near(want, '111111'), 'the pick is the dark text: ' .. SL.bytes(want))
+	local normal = st:Color('text', 'normal')
+	check(SL.near(want, ('%02x%02x%02x'):format(normal.r * 255 + 0.5, normal.g * 255 + 0.5, normal.b * 255 + 0.5)), 'the label is Text > Normal, not a dark text: ' .. SL.bytes(want))
 	accent:SetRGB(1, 1, 0.7)
 	st:ColorChanged('accent')
 	local got = look(current).text
 	eq(label(current), rgb(got.r, got.g, got.b), 'after an Accent pass the label is still the pick')
-	check(select(1, current.label:GetTextColor()) < 0.2, 'dark')
+	check(select(1, current.label:GetTextColor()) > 0.5, 'light')
 	accent:SetRGB(keep_r, keep_g, keep_b)
 	settings.selected = keep_s
 	st.States.Changed()

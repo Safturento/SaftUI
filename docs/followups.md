@@ -468,6 +468,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **Open questions:** whether it reads well enough in game to leave it.
 
+*Update 2026-11-16:* the text pick (`textKeep` writing the dark text) is gone; a label never flips to dark, so the "dark text where the light does not read" option above no longer exists.
+
 ### 2026-11-16 — With the History list open, a Theme recolor restyles its twelve rows
 
 **What:** the edit mode bar's History list has twelve pooled rows, each a state frame (`'row'`), and a Theme recolor restyles each of them while the list is open (`LookList` and `RecolorList`), the same pattern as the movers' fill and fade that Task 4's review (I1) found at 365 layout calls a pass. After the engine's small task (a restyle of an unchanged frame makes no table and moves no piece) it is cheap, but it still does the work: the rows' looks do not change on a Theme recolor, only their kept colors.

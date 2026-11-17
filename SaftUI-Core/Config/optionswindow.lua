@@ -175,7 +175,6 @@ local NAV_ITEM = 26
 local FOOT_HEIGHT = 30
 
 local SIDEBAR_BG = { 0.09, 0.09, 0.09, 1 } -- #171717, at the window's alpha (OW:PaintSidebar)
-S.SIDEBAR_BG = SIDEBAR_BG -- the sidebar's rows sit on it (optionsnav.lua): their text is picked over its color alone
 
 local POINTS = {
 	TOPLEFT = true, TOP = true, TOPRIGHT = true, LEFT = true, CENTER = true, RIGHT = true,
