@@ -64,9 +64,17 @@ local function micro_button(index, textureName)
 		highlight:SetAtlas(atlas)
 		highlight:SetBlendMode(blend or 'BLEND')
 	end
-	-- Blizzard's SetPushed: the button state first, then the highlight swap
-	button.SetPushed = function(self) self:SetButtonState('PUSHED', true); self:SetHighlightAtlas('UI-HUD-MicroMenu-x-Mouseover', 'BLEND') end
-	button.SetNormal = function(self) self:SetButtonState('NORMAL'); self:SetHighlightAtlas('UI-HUD-MicroMenu-x-Mouseover', 'BLEND') end
+	-- Blizzard's SetPushed: the button state first, then the highlight swap, then
+	-- the highlight's alpha (MainMenuBarMicroButtonMixin, forever and live: 0.5
+	-- pushed, 1 normal), after the swap SaftUI's SetHighlightAtlas hook follows
+	button.SetPushed = function(self)
+		self:SetButtonState('PUSHED', true); self:SetHighlightAtlas('UI-HUD-MicroMenu-x-Mouseover', 'BLEND')
+		self:GetHighlightTexture():SetAlpha(0.5)
+	end
+	button.SetNormal = function(self)
+		self:SetButtonState('NORMAL'); self:SetHighlightAtlas('UI-HUD-MicroMenu-x-Mouseover', 'BLEND')
+		self:GetHighlightTexture():SetAlpha(1)
+	end
 	return locked(button, 'Blizzard micro button')
 end
 
@@ -113,6 +121,53 @@ test("micro buttons: the highlight T+ at 0.16; a window open: the fade and the p
 		st:RecolorThemed()
 		eq(T.edge(panel), T.text(st:StateColor('edge')), theme .. ': through a recolor')
 		button:SetNormal()
+	end
+end)
+
+-- One alpha for a texture: SetAlpha and the vertex color's alpha write and read the
+-- same value. The stubs keep two (a region alpha and a vertex alpha, multiplied);
+-- the in-game opaque hover of 2026-11-16 (micro buttons from Professions to Shop,
+-- the highlight T+ at full strength right after Blizzard's SetNormal) is what one
+-- value gives. Unverified in the client (the report's /run line decides), so it is
+-- put on the one texture a case names, never on the stubs.
+local function one_alpha(texture)
+	local methods = getmetatable(texture).__index
+	local setAlpha, setColor = methods.SetAlpha, methods.SetVertexColor
+	texture.SetAlpha = function(self, a)
+		setAlpha(self, a)
+		local r, g, b = self:GetVertexColor()
+		setColor(self, r, g, b, self:GetAlpha())
+	end
+	texture.SetVertexColor = function(self, r, g, b, a)
+		setColor(self, r, g, b, a or self:GetAlpha())
+		setAlpha(self, select(4, self:GetVertexColor()))
+	end
+	return texture
+end
+
+test("micro buttons: Blizzard's SetNormal and SetPushed set the highlight's alpha after the swap; the hover's strength is put back after them", function()
+	for _, theme in ipairs({ 'thick', 'thin' }) do
+		local buttons = micro_world(theme)
+		local hoverAlpha = select(4, st:StateColor('hover'))
+		-- one alpha a texture: the hover's own 16% after each, never Blizzard's 1 or 0.5
+		local button = buttons[3]
+		local highlight = one_alpha(button:GetHighlightTexture())
+		button:SetNormal()
+		eq(('%.2f'):format(select(4, highlight:GetVertexColor())), ('%.2f'):format(hoverAlpha),
+			theme .. ', one alpha: after SetNormal (UpdateMicroButtons) the hover is a tint, not a solid block')
+		local hr, hg, hb = st:StateColor('hover')
+		local r, g, b = highlight:GetVertexColor()
+		eq(T.text(r, g, b), T.text(hr, hg, hb), theme .. ': its color is the hover tone')
+		button:SetPushed()
+		eq(('%.2f'):format(select(4, highlight:GetVertexColor())), ('%.2f'):format(hoverAlpha), theme .. ', one alpha: after SetPushed too')
+		button:SetNormal()
+		eq(('%.2f'):format(select(4, highlight:GetVertexColor())), ('%.2f'):format(hoverAlpha), theme .. ', one alpha: and closed again')
+		-- two alphas (the stubs'): what shows is Blizzard's alpha times the hover's, as before
+		local other = buttons[4]:GetHighlightTexture()
+		buttons[4]:SetNormal()
+		eq(('%.2f'):format(other:GetAlpha() * select(4, other:GetVertexColor())), ('%.2f'):format(hoverAlpha),
+			theme .. ', two alphas: the hover at its strength after SetNormal')
+		eq(#stub.blocked, 0)
 	end
 end)
 

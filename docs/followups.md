@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-16 — The loot window's opaque hover on the first open: nothing found that writes it](#2026-11-16--the-loot-windows-opaque-hover-on-the-first-open-nothing-found-that-writes-it)
   - [2026-11-16 — Redesign the loot window](#2026-11-16--redesign-the-loot-window)
   - [2026-11-16 — The tracker's wrapped text, one line short: the cause is inferred, not seen in the game](#2026-11-16--the-trackers-wrapped-text-one-line-short-the-cause-is-inferred-not-seen-in-the-game)
   - [2026-11-16 — All units' Position offers anchors some units lack (pre-flight ruling L7 was never built)](#2026-11-16--all-units-position-offers-anchors-some-units-lack-pre-flight-ruling-l7-was-never-built)
@@ -245,6 +246,20 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-16 — The loot window's opaque hover on the first open: nothing found that writes it
+
+**What:** on the first open of the loot window after a `/reload`, a row's hover (the card's Layer, `SaftUI-Loot/popup.lua` `StyleCard`/`HoverCard`) drew as a solid block of the hover tone; later hovers were a 16% tint. The micro buttons' same symptom was fixed by repainting after Blizzard's alpha write (branch `r2-opaque-fill`), but for the loot rows no writer was found.
+
+**Why noticed:** the owner's in-game pass of the interaction states checks on 2026-11-16 (check 28). Measured in their screenshot: the card is the hover tone (`a978ff` there) at full strength, inside the Layer's inset and over the slot's backdrop, the same color the 16% tints elsewhere carry, so it is the Layer with its alpha at 1, not another piece.
+
+**Anchors:** `SaftUI-Core/Widgets/states.lua` (`Restyle` sets the own pieces' alpha before `Refresh` paints, so the engine itself never leaves it at 1); `SaftUI-Loot/popup.lua`; `tests/loot/fixtures/loot_frame.lua` (it has no `ShowAnim`, the row's 0.1 s alpha animation Blizzard plays on every `Init`); Blizzard's `LootFrame.lua`/`.xml` (forever); SpeedyAutoLoot, which the owner runs, parents `LootFrame` to a hidden frame between loots; the report `r2-opaque-fill-report.md` of that round (its `/run` line tells one alpha a texture from two).
+
+**What's been considered:** the calls on the Layer during a first open and hover, logged in the fixture, end with `SetVertexColor(T+, 0.16)`; under a stub that keeps one alpha a texture (either way a missing alpha goes) the loot tests still pass, so nothing in the fixture's flow writes it. No Blizzard or installed addon code reaches the card (SaftUI's own frame). Not ruled out: a write the client makes (one alpha a texture, plus something around the row's first `ShowAnim` or the reparenting), or a draw quirk of a texture made while its row's alpha animation runs.
+
+**Shape of work:** an in-game probe first: with the window just opened and a row opaque, read the card through `SaftUI:StateLook` (its Layer's `a` and `alpha`), then hover off and on and read again. If the stored alpha is 1, find the write (hook the Layer's `SetAlpha` and `SetVertexColor` with `debugstack`); if it is 0.16 while it shows opaque, it is not a stored alpha at all.
+
+**Open questions:** whether it happens on a later open whose rows are new (a corpse with more items than any before); whether it happens with SpeedyAutoLoot off.
 
 ### 2026-11-16 — Redesign the loot window
 
