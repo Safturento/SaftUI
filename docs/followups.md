@@ -65,7 +65,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-15 — Bag search box: the magnifier and the clear button](#2026-11-15--bag-search-box-the-magnifier-and-the-clear-button)
   - [2026-11-15 — Tracker: an Edit Mode anchor to a frame other than UIParent gives the default spot](#2026-11-15--tracker-an-edit-mode-anchor-to-a-frame-other-than-uiparent-gives-the-default-spot)
   - [2026-11-15 — The bag bar and Hekili: what still writes onto Blizzard's frames](#2026-11-15--the-bag-bar-and-hekili-what-still-writes-onto-blizzards-frames)
-  - [2026-11-15 — With IM chat style the tab row is always hidden](#2026-11-15--with-im-chat-style-the-tab-row-is-always-hidden)
   - [2026-11-15 — Temporary chat windows (whispers, pet battle log) are never skinned](#2026-11-15--temporary-chat-windows-whispers-pet-battle-log-are-never-skinned)
   - [2026-11-15 — Chat's scroll bar loses SaftUI's anchor at every dock or lock change](#2026-11-15--chats-scroll-bar-loses-saftuis-anchor-at-every-dock-or-lock-change)
   - [2026-11-15 — Chat's dock hook leaves Blizzard's tab layout after a resize, an overflow-list pick or an undock](#2026-11-15--chats-dock-hook-leaves-blizzards-tab-layout-after-a-resize-an-overflow-list-pick-or-an-undock)
@@ -154,6 +153,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-15 — With IM chat style the tab row is always hidden](#2026-11-15--with-im-chat-style-the-tab-row-is-always-hidden)
   - [2026-11-13 — Unit frames: shared settings across units, and small parts as menu items](#2026-11-13--unit-frames-shared-settings-across-units-and-small-parts-as-menu-items)
   - [2026-11-11 — Old gear's tabard and shirt exclusion never matched](#2026-11-11--old-gears-tabard-and-shirt-exclusion-never-matched)
   - [2026-11-15 — A bag window's least width ignores a Window titles change](#2026-11-15--a-bag-windows-least-width-ignores-a-window-titles-change)
@@ -1070,22 +1070,6 @@ Also older: Hekili's first-build button is not skinned until its second build (a
 **What's been considered:** The write-free ways above. The bag slots are plain ItemButtons, not secure.
 
 **Shape of work:** Small each. Could fold into the `st:Kill` entry's own fix, since `st:Kill` is Core's helper.
-
-### 2026-11-15 — With IM chat style the tab row is always hidden
-
-**What:** In `chatStyle` "im" Blizzard keeps the last active edit box shown at alpha 0.35 (`ChatFrameUtil.SetLastActiveWindow`: `editBox:Show()` then `Deactivate()`, both clients), so SaftUI's `OnShow` hook on the edit box, which hides `GeneralDockManager` (the tab row) while the box shows, keeps the tab row hidden all the time. The hook is there because SaftUI anchors the box right above the chat's backdrop, where the tab row sits, so the two overlap while a box shows; in the classic style the box shows only while typing, but in IM style it is always there. Predates the chat work.
-
-**Why noticed:** The fu-p11 review (its P3 point). The dock overflow button's fade, its other half, was fixed 2026-11-15 (`CHT:HoldOverflowAlpha`).
-
-**Anchors:** `SaftUI-Chat/chatframe.lua` (`CHT:SkinChatFrame`, the edit box's `HookScript('OnShow')` and `OnHide`); Blizzard's `ChatFrameUtil.lua` `SetLastActiveWindow` and `Deactivate`, `ChatFrameEditBox.lua` `OnShow`.
-
-**What's been considered:** (a) hide the tab row only while the box is active (typing: `editbox:HasFocus()`), leaving the tab row shown with an inactive box over it, which overlaps in IM style; (b) in IM style anchor the box elsewhere (below the chat, or over the chat's bottom), so both show, a layout change; (c) leave it, as now: IM style users lose the tab row. Not chosen: needs the owner's call on whether IM style is supported at all and what it should look like.
-
-**Shape of work:** Small for (a) and (c), a layout pass for (b).
-
-**Review of fu-chat (2026-11-15):** option (c) costs more than a look: IM players then have no tab row at all (no clicking a tab, no whisper flash), and so does classic style while a voice transcription window is selected (`IsVoiceTranscription` in `SetLastActiveWindow`). Whether `chatStyle` can default to "im" for new accounts is not in the Lua source and is unverified (`/dump C_CVar.GetCVarDefault("chatStyle")` on both clients); if it does, every player on default settings hits this and it should not wait. Recommend (a) with `OnEditFocusGained` and `OnEditFocusLost` hooks instead of `OnShow` and `OnHide`: in classic, show and focus come together (`ShouldDeactivateChatOnEditFocusLost` hides the box), so classic is unchanged, and in IM the row hides only while typing. Check in game that the tabs stay clickable over the dimmed, inactive box.
-
-**Open questions:** Does the owner use IM style, and which of (a), (b) and (c) should it be?
 
 ### 2026-11-15 — Temporary chat windows (whispers, pet battle log) are never skinned
 
@@ -2867,6 +2851,24 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-15 — With IM chat style the tab row is always hidden
+
+**What:** In `chatStyle` "im" Blizzard keeps the last active edit box shown at alpha 0.35 (`ChatFrameUtil.SetLastActiveWindow`: `editBox:Show()` then `Deactivate()`, both clients), so SaftUI's `OnShow` hook on the edit box, which hides `GeneralDockManager` (the tab row) while the box shows, keeps the tab row hidden all the time. The hook is there because SaftUI anchors the box right above the chat's backdrop, where the tab row sits, so the two overlap while a box shows; in the classic style the box shows only while typing, but in IM style it is always there. Predates the chat work.
+
+**Why noticed:** The fu-p11 review (its P3 point). The dock overflow button's fade, its other half, was fixed 2026-11-15 (`CHT:HoldOverflowAlpha`).
+
+**Anchors:** `SaftUI-Chat/chatframe.lua` (`CHT:SkinChatFrame`, the edit box's `HookScript('OnShow')` and `OnHide`); Blizzard's `ChatFrameUtil.lua` `SetLastActiveWindow` and `Deactivate`, `ChatFrameEditBox.lua` `OnShow`.
+
+**What's been considered:** (a) hide the tab row only while the box is active (typing: `editbox:HasFocus()`), leaving the tab row shown with an inactive box over it, which overlaps in IM style; (b) in IM style anchor the box elsewhere (below the chat, or over the chat's bottom), so both show, a layout change; (c) leave it, as now: IM style users lose the tab row. Not chosen: needs the owner's call on whether IM style is supported at all and what it should look like.
+
+**Shape of work:** Small for (a) and (c), a layout pass for (b).
+
+**Review of fu-chat (2026-11-15):** option (c) costs more than a look: IM players then have no tab row at all (no clicking a tab, no whisper flash), and so does classic style while a voice transcription window is selected (`IsVoiceTranscription` in `SetLastActiveWindow`). Whether `chatStyle` can default to "im" for new accounts is not in the Lua source and is unverified (`/dump C_CVar.GetCVarDefault("chatStyle")` on both clients); if it does, every player on default settings hits this and it should not wait. Recommend (a) with `OnEditFocusGained` and `OnEditFocusLost` hooks instead of `OnShow` and `OnHide`: in classic, show and focus come together (`ShouldDeactivateChatOnEditFocusLost` hides the box), so classic is unchanged, and in IM the row hides only while typing. Check in game that the tabs stay clickable over the dimmed, inactive box.
+
+**Open questions:** Does the owner use IM style, and which of (a), (b) and (c) should it be?
+
+**Resolved 2026-11-17:** `CHT:SyncDock` (`SaftUI-Chat/chatframe.lua`) replaces the edit box's `OnShow` and `OnHide` hooks with ones on show, hide, `OnEditFocusGained` and `OnEditFocusLost`: the tab row hides only while Blizzard has a window active (`ChatFrameUtil.GetActiveWindow`) and its box shows, so in IM style the idle, dimmed box leaves the row up and classic style is unchanged (`tests/chat/theme_test.lua`). Chosen by the fu-chat review's recommendation (a); not yet seen in game: check the tabs stay clickable over the dimmed box.
 
 ### 2026-11-13 — Unit frames: shared settings across units, and small parts as menu items
 

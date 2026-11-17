@@ -207,6 +207,29 @@ function CHT:ApplyTabFading()
 	self:HoldOverflowAlpha()
 end
 
+-- The tab row (GeneralDockManager) sits where an edit box shows, so it hides while a box is
+-- in use: Blizzard has a window active and its box shows (ChatFrameUtil.GetActiveWindow, set by
+-- ActivateChat and cleared by DeactivateChat), which stays so while a box keeps its text
+-- after losing focus. In chatStyle "im" (and a voice transcription window) Blizzard keeps
+-- the last active box shown but deactivated, dimmed, and the row stays up over it; in
+-- classic a box shows only while in use, so the row behaves as it did. Called after
+-- Blizzard's own scripts on the box's show, hide, focus gained and focus lost.
+function CHT:SyncDock(editbox)
+	local util = ChatFrameUtil
+	local inUse
+	if util and util.GetActiveWindow then
+		local active = util.GetActiveWindow()
+		inUse = active and active:IsShown()
+	else
+		inUse = editbox:IsShown() and editbox:HasFocus()
+	end
+	if inUse then
+		GeneralDockManager:Hide()
+	else
+		GeneralDockManager:Show()
+	end
+end
+
 function CHT:SkinChatFrame(frame)
 	local name = frame:GetName()
 	st:StripTextures(frame)
@@ -241,12 +264,14 @@ function CHT:SkinChatFrame(frame)
 	editbox:SetFrameLevel(frame:GetFrameLevel()+2)
 	editbox:SetAltArrowKeyMode(false)
 	st:SkinEditBox(editbox, self.config.theme, self.config.background, self.config.font)
-	-- Added to Blizzard's own OnShow and OnHide (ChatFrameEditBoxMixin), which run first and
-	-- stay: they reset the chat type, deactivate the box and pick the last active window.
+	-- Added to Blizzard's own scripts (ChatFrameEditBoxMixin), which run first and stay: they
+	-- reset the chat type, deactivate the box and pick the last active window.
 	if not hooked[editbox] then
 		hooked[editbox] = true
-		editbox:HookScript('OnShow', function() GeneralDockManager:Hide() end)
-		editbox:HookScript('OnHide', function() GeneralDockManager:Show() end)
+		local function SyncDock() CHT:SyncDock(editbox) end
+		for _, script in ipairs({ 'OnShow', 'OnHide', 'OnEditFocusGained', 'OnEditFocusLost' }) do
+			editbox:HookScript(script, SyncDock)
+		end
 	end
 
 	st:Kill(_G[name..'ButtonFrame'])

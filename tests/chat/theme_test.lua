@@ -122,17 +122,67 @@ test("skinning a chat window writes no field onto Blizzard's window, edit box or
 	check(st:DrawnFrame(frame) ~= nil, "the window is drawn behind all the same")
 end)
 
+-- Blizzard's ChatFrameUtil.GetActiveWindow reads ACTIVE_CHAT_EDIT_BOX, which ActivateChat
+-- sets before it shows and focuses the box and DeactivateChat clears before it hides or
+-- clears the focus of one (Blizzard_ChatFrameBase/Shared/ChatFrameUtil.lua). The stand-ins
+-- below run those steps in the game's order, with the stubs' own focus events.
+local active
+_G.ChatFrameUtil = { GetActiveWindow = function() return active end }
+local function activate(editbox)
+	active = editbox
+	editbox:Show()
+	editbox:SetFocus()
+end
+-- chatStyle "classic": Deactivate hides the box. "im": it stays shown (alpha 0.35) and loses focus.
+local function deactivate(editbox, style)
+	active = nil
+	if style == 'im' then editbox:ClearFocus() else editbox:ClearFocus() editbox:Hide() end
+end
+
 test("the edit box keeps Blizzard's OnShow and OnHide, and SaftUI's hide and show the dock after them", function()
 	local frame, editbox = CW.build(9)
 	CHT:SkinChatFrame(frame)
 	CW.ran.show, CW.ran.hide = 0, 0
 	GeneralDockManager:Show()
-	editbox:Show()
+	activate(editbox)
 	eq(CW.ran.show, 1, "Blizzard's OnShow ran")
-	check(not GeneralDockManager:IsShown(), 'the dock is hidden while the edit box shows')
-	editbox:Hide()
+	check(not GeneralDockManager:IsShown(), 'the dock is hidden while the box is in use')
+	deactivate(editbox, 'classic')
 	eq(CW.ran.hide, 1, "Blizzard's OnHide ran")
 	check(GeneralDockManager:IsShown(), 'and shown again when it hides')
+end)
+
+-- In chatStyle "im" Blizzard keeps the last active window's box shown at alpha 0.35,
+-- deactivated (SetLastActiveWindow: Show, then Deactivate), so the tab row, which sits where
+-- the box does, must stay up until the box is typed in.
+test("in IM style the tab row shows with the idle box and hides only while typing", function()
+	local frame, editbox = CW.build(18)
+	CHT:SkinChatFrame(frame)
+	GeneralDockManager:Show()
+	editbox:Show() -- SetLastActiveWindow: shown, then deactivated; nothing is active
+	check(GeneralDockManager:IsShown(), 'the idle box does not hide the tab row')
+
+	activate(editbox) -- a click or Enter
+	check(not GeneralDockManager:IsShown(), 'typing hides it')
+	deactivate(editbox, 'im') -- Enter on an empty box, Escape
+	check(editbox:IsShown(), 'the IM box stays shown, dimmed')
+	check(GeneralDockManager:IsShown(), 'and the tab row is back')
+end)
+
+test("a box that keeps its text after losing focus keeps the tab row hidden, and moving to another window shows it", function()
+	local frame, editbox = CW.build(19)
+	local other_frame, other = CW.build(20)
+	CHT:SkinChatFrame(frame)
+	CHT:SkinChatFrame(other_frame)
+	GeneralDockManager:Show()
+	activate(editbox)
+	editbox:ClearFocus() -- text stays: Blizzard does not deactivate (ShouldDeactivateChatOnEditFocusLost)
+	check(not GeneralDockManager:IsShown(), 'still in use, still covering the row')
+	deactivate(editbox, 'classic')
+	check(GeneralDockManager:IsShown(), 'shown when it is done')
+	activate(other)
+	check(not GeneralDockManager:IsShown(), "another window's box takes over")
+	deactivate(other, 'classic')
 end)
 
 -- ChatFrame1 is an Edit Mode system frame: Blizzard sets its clamp insets from its
@@ -276,9 +326,10 @@ test("a second skin of the same window adds no second hook on its edit box", fun
 	rawset(dock, 'Hide', function(self, ...) hides = hides + 1 return real(self, ...) end)
 	CHT:SkinChatFrame(frame)
 	CHT:SkinChatFrame(frame)
-	editbox:Show()
+	activate(editbox)
 	rawset(dock, 'Hide', nil)
-	eq(hides, 1, 'one hook, one Hide of the dock manager')
+	deactivate(editbox, 'classic')
+	eq(hides, 2, 'one hook set, two Hides: the box showing and gaining focus (a second hook set would make four)')
 end)
 
 test("the fixture refuses a SetScript on the chat window but the wheel's", function()
