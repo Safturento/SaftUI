@@ -16,12 +16,20 @@
 --       helper's own texture back with Blizzard's blend) and 'glyph' (a glyph's
 --       own state textures, which the game shows). A new call fails until it is
 --       listed with its reason;
---   S3  no SetBlendMode('ADD') (nor 'ADD' handed to SetHighlightTexture) in a
---       file that uses the helpers (STATE_FILES: a flat state is the picked
---       color mixed over what is under it, BLEND);
+--   S3  no SetBlendMode('ADD') (nor 'ADD' handed to SetHighlightTexture) in any
+--       file (a flat state is the picked color mixed over what is under it,
+--       BLEND; the art tables' 'ADD' values in themeart_data.lua are data, not a call);
 --   S4  no read of a retired Buttons color (Normal, Hover, Pushed, Checked), by a
 --       colors table or a `'button', 'hover'`-style pair;
---   S5  every st:AddStates names a shape of the list.
+--   S5  every st:AddStates names a shape of the list;
+--   S6  no CreateTexture(nil, 'HIGHLIGHT') but at the sites of HIGHLIGHT_ALLOWED (a texture
+--       the game shows under the mouse is a state drawn by hand unless the helper adopts it);
+--   S7  no color setter (SetBackdropBorderColor, SetColorTexture, SetVertexColor,
+--       SetTextColor) inside an OnEnter or OnLeave handler that does not go through
+--       st:SetState or PaintStates, but the lines of HANDLER_ALLOWED (a color's meaning,
+--       Danger, or the Blizzard art's own branch, is no state);
+--   S8  no SetAlpha with a literal under 1 on a line that says enable or disabled (a
+--       disabled dim is the helper's, st:StateAlpha).
 -- The scan reads itself on fixtures: a line per rule fails it.
 local T = load_test_file('lib/theme_helpers.lua')
 local L = load_test_file('lib/source_lex.lua')
@@ -87,6 +95,87 @@ end
 
 local function Trim(text) return (text:gsub('^%s+', ''):gsub('%s+$', '')) end
 
+-- S6: the places CreateTexture is handed the game's HIGHLIGHT layer, with how many each file may
+-- make and why (the game shows such a texture only under the mouse).
+local HIGHLIGHT_ALLOWED = {
+	['SaftUI-Core/Config/optionslook.lua'] = { count = 1, reason = "the kit's box highlight under the mouse, adopted by the helper's box shape" },
+	['SaftUI-Core/Config/optionssizes.lua'] = { count = 1, reason = "the size buttons' glow, the helper's hover piece" },
+	['SaftUI-Core/Widgets/button.lua'] = { count = 1, reason = "SaftUI's button highlight, the helper's hover piece" },
+	['SaftUI-Minimap/microbuttons.lua'] = { count = 1, reason = "the character micro button's empty highlight (the S2 entry's), replaced by MicroMenu.SkinHighlight" },
+	['SaftUI-Misc/totemskin.lua'] = { count = 1, reason = "the totem button's hover texture, adopted by the helper" },
+	['SaftUI-Tracker/items.lua'] = { count = 1, reason = "a quest item button's hover texture, adopted by the helper" },
+}
+
+local function HighlightTextures(code, mask)
+	local out, from = {}, 1
+	while true do
+		local s, e = code:find('CreateTexture%s*%([^()]*[\'"]HIGHLIGHT[\'"]', from)
+		if not s then break end
+		if mask:sub(s, s + 12) == 'CreateTexture' then out[#out + 1] = s end
+		from = e + 1
+	end
+	return out
+end
+
+-- S7: the color setters of an OnEnter or OnLeave handler (a SetScript or HookScript with a function)
+-- that does not go through st:SetState or PaintStates, as positions.
+local COLOR_SETTERS = { 'SetBackdropBorderColor', 'SetColorTexture', 'SetVertexColor', 'SetTextColor' }
+local HANDLER_ALLOWED = {
+	['SaftUI-Core/Config/optionsnav.lua'] = {
+		{ line = 'if not self.disabled then self.text:SetTextColor(PickedText()) end', reason = "the Blizzard art's own hover (the handler returns early under Thick and Thin)" },
+		{ line = 'if S.blizzard and not (self.active or self.disabled) then self.text:SetTextColor(Normal()) end', reason = "the Blizzard tab's own text color" },
+		{ line = 'if S.blizzard and not self.active then self.text:SetTextColor(Muted()) end', reason = "the Blizzard tab's own text color" },
+	},
+	['SaftUI-Bags/ruleeditor.lua'] = {
+		{ line = "remove:SetScript('OnEnter', function(self) self.icon:SetVertexColor(st:Color('text', 'danger'):GetRGB()) end)", reason = "a remove cross is Text > Danger under the mouse: a color's meaning, not a state" },
+		{ line = "remove:SetScript('OnLeave', function(self) self.icon:SetVertexColor(Muted()) end)", reason = 'the cross at rest, Text > Muted' },
+	},
+	['SaftUI-Bags/categoriestab.lua'] = {
+		{ line = "remove:SetScript('OnEnter', function(self) self.icon:SetVertexColor(st:Color('text', 'danger'):GetRGB()) end)", reason = "a remove cross is Text > Danger under the mouse: a color's meaning, not a state" },
+		{ line = "remove:SetScript('OnLeave', function(self) self.icon:SetVertexColor(Muted()) end)", reason = 'the cross at rest, Text > Muted' },
+	},
+	['SaftUI-Loot/popup.lua'] = {
+		{ line = 'if closes[button] then closes[button].icon:SetVertexColor(CloseColor(true)) end', reason = "the loot window's close cross is Text > Danger under the mouse (CloseColor)" },
+		{ line = 'if closes[button] then closes[button].icon:SetVertexColor(CloseColor(false)) end', reason = 'the cross at rest, Text > Muted (CloseColor)' },
+	},
+}
+
+local function HandlerColors(code, mask)
+	local out, from = {}, 1
+	while true do
+		local s, e = code:find('Script%s*%(%s*[\'"]On[EL][a-z]+[\'"]%s*,', from)
+		if not s then break end
+		from = e + 1
+		local open = code:find('%(', s)
+		local name = code:sub(s, e):match('[\'"](On[EL][a-z]+)[\'"]')
+		if mask:sub(s, s + 5) == 'Script' and (name == 'OnEnter' or name == 'OnLeave') then
+			local depth, close = 0, nil
+			for i = open, #mask do
+				local c = mask:sub(i, i)
+				if c == '(' or c == '{' or c == '[' then depth = depth + 1
+				elseif c == ')' or c == '}' or c == ']' then
+					depth = depth - 1
+					if depth == 0 then close = i; break end
+				end
+			end
+			local body = mask:sub(e + 1, close or #mask)
+			if body:find('function') and not body:find('SetState') and not body:find('PaintStates') then
+				for _, setter in ipairs(COLOR_SETTERS) do
+					local at = 1
+					while true do
+						local a, b = body:find('[:.]%s*' .. setter .. '%s*%(', at)
+						if not a then break end
+						out[#out + 1] = e + a
+						at = b + 1
+					end
+				end
+			end
+		end
+	end
+	table.sort(out)
+	return out
+end
+
 -- Every failure of one source, as { rule, line, text }. path picks the exempt files.
 local function Scan(path, source, opts)
 	opts = opts or {}
@@ -122,7 +211,7 @@ local function Scan(path, source, opts)
 	end
 
 	-- S3
-	if opts.helpers then
+	do
 		from = 1
 		while true do
 			local s, e = code:find('SetBlendMode%s*%(%s*[\'"]ADD[\'"]', from)
@@ -138,6 +227,32 @@ local function Scan(path, source, opts)
 			if args[2] and Trim(args[2]):match('^[\'"]ADD[\'"]$') and mask:sub(s, s + 4) == 'SetHi' then Fail('S3', s) end
 			from = e + 1
 		end
+	end
+
+	-- S6
+	if not opts.noS6 and #HighlightTextures(code, mask) > (HIGHLIGHT_ALLOWED[path] and HIGHLIGHT_ALLOWED[path].count or 0) then
+		for _, position in ipairs(HighlightTextures(code, mask)) do Fail('S6', position) end
+	end
+
+	-- S7
+	for _, call in ipairs(HandlerColors(code, mask)) do
+		local line = Trim(source:match('^' .. ('[^\n]*\n'):rep(L.LineAt(mask, call) - 1) .. '([^\n]*)') or '')
+		local listed = false
+		for _, entry in ipairs(HANDLER_ALLOWED[path] or {}) do
+			if entry.line == line then listed = true end
+		end
+		if not listed then Fail('S7', call) end
+	end
+
+	-- S8
+	from = 1
+	for line in mask:gmatch('[^\n]*\n?') do
+		local lower = line:lower()
+		if lower:find('setalpha%s*%(') and (lower:find('disabled') or lower:find('enable')) then
+			local text = code:sub(from, from + #line - 1)
+			if text:find('[^%w_.]0?%.%d') or text:find('[^%w_.]0%s') then Fail('S8', from + (line:find('[Ss]et[Aa]lpha') or 1) - 1) end
+		end
+		from = from + #line
 	end
 
 	-- S4: a color table's Buttons key, or a literal pair. (SaftUI-Core/Media/colors.lua holds the retired
@@ -205,17 +320,11 @@ test('every file the TOCs name could be read', function()
 	check(#files > 100, 'the TOCs name SaftUI files')
 end)
 
--- A file uses the helpers when it makes a state frame or restyles one.
-local function UsesHelpers(source)
-	local _, mask = L.Lex(source)
-	return mask:find('AddStates%s*%(') ~= nil or mask:find('RestyleStates%s*%(') ~= nil
-end
-
 local function Failures(rule)
 	local out = {}
 	for _, path in ipairs(files) do
 		local source = read_saftui_source(path)
-		for _, f in ipairs(Scan(path, source, { helpers = UsesHelpers(source), dynamic = DYNAMIC[path] })) do
+		for _, f in ipairs(Scan(path, source, { dynamic = DYNAMIC[path] })) do
 			if f.rule == rule then out[#out + 1] = ('%s:%d: %s'):format(path, f.line, f.text) end
 		end
 	end
@@ -244,9 +353,44 @@ test('S2: every listed file has the calls its entry says, so a stale entry is no
 	end
 end)
 
-test("S3: no ADD blend on a converted file's textures", function()
+test("S3: no ADD blend on any file's textures", function()
 	local out = Failures('S3')
 	eq(#out, 0, 'a flat state is BLEND, never ADD:\n' .. table.concat(out, '\n'))
+end)
+
+test("S6: a texture in the game's HIGHLIGHT layer is made only at the listed sites", function()
+	local out = Failures('S6')
+	eq(#out, 0, 'a new CreateTexture(nil, \'HIGHLIGHT\') needs its HIGHLIGHT_ALLOWED entry:\n' .. table.concat(out, '\n'))
+	local loaded = {}
+	for _, path in ipairs(files) do loaded[path] = true end
+	for path, entry in pairs(HIGHLIGHT_ALLOWED) do
+		check(loaded[path], path .. ' is on the list but no TOC loads it')
+		check(#entry.reason > 20, path .. ': a reason')
+		local code, mask = L.Lex(read_saftui_source(path) or '')
+		eq(#HighlightTextures(code, mask), entry.count, path .. ' makes this many HIGHLIGHT textures now: change its count, or take it off the list')
+	end
+end)
+
+test('S7: no hover handler colors by hand, but the listed lines', function()
+	local out = Failures('S7')
+	eq(#out, 0, 'an OnEnter or OnLeave handler colors through st:SetState, or its line is listed in HANDLER_ALLOWED:\n' .. table.concat(out, '\n'))
+	for path, entries in pairs(HANDLER_ALLOWED) do
+		local source = read_saftui_source(path) or ''
+		local code, mask = L.Lex(source)
+		local lines = {}
+		for _, position in ipairs(HandlerColors(code, mask)) do
+			lines[Trim(source:match('^' .. ('[^\n]*\n'):rep(L.LineAt(mask, position) - 1) .. '([^\n]*)') or '')] = true
+		end
+		for _, entry in ipairs(entries) do
+			check(#entry.reason > 20, path .. ': a reason')
+			check(lines[entry.line], path .. ' no longer has the handler line listed: ' .. entry.line)
+		end
+	end
+end)
+
+test('S8: no disabled dim by a literal alpha', function()
+	local out = Failures('S8')
+	eq(#out, 0, 'a disabled look is the helper\'s (st:StateAlpha), not a literal alpha:\n' .. table.concat(out, '\n'))
 end)
 
 test('S4: no Buttons > Normal, Hover, Pushed or Checked read anywhere', function()
@@ -293,8 +437,33 @@ test('the scan catches each: a fixture line per rule fails it', function()
 	eq(scan('texture:SetBlendMode("ADD")'), 'S3', 'the other quotes')
 	eq(scan("button:SetHighlightTexture(texture, 'ADD')", { helpers = true, noS2 = true }), 'S3', 'a highlight handed ADD')
 	eq(scan("texture:SetBlendMode('BLEND')\ntexture:SetBlendMode(blend)"), '', 'BLEND, or a computed blend')
-	eq(scan("texture:SetBlendMode('ADD')", { helpers = false }), '', 'a file that does not use the helpers')
+	eq(scan("texture:SetBlendMode('ADD')", {}), 'S3', 'a file that does not use the helpers too')
+	eq(scan("button:SetHighlightTexture(texture, 'ADD')", { noS2 = true }), 'S3', 'a highlight handed ADD, in any file')
 	eq(scan("-- texture:SetBlendMode('ADD')\nlocal s = \"SetBlendMode('ADD')\""), '', 'a comment and a string')
+	-- S6
+	eq(scan("local t = button:CreateTexture(nil, 'HIGHLIGHT')"), 'S6', 'a HIGHLIGHT texture')
+	eq(scan('local t = button:CreateTexture(nil, "HIGHLIGHT", nil, 1)'), 'S6', 'the other quotes, with a sublevel')
+	eq(scan("local t = button:CreateTexture(nil, 'ARTWORK')\nlocal u = button:CreateTexture(nil, st.ThemeArt.HOVER_LAYER)"), '', 'other layers')
+	eq(scan("-- button:CreateTexture(nil, 'HIGHLIGHT')\nlocal s = \"CreateTexture(nil, 'HIGHLIGHT')\""), '', 'a comment and a string')
+	eq(scan("local t = button:CreateTexture(nil, 'HIGHLIGHT')", nil, 'SaftUI-Tracker/items.lua'), '', 'a listed file at its count')
+	eq(scan(("local t = button:CreateTexture(nil, 'HIGHLIGHT')\n"):rep(2), nil, 'SaftUI-Tracker/items.lua'), 'S6,S6', 'a listed file over its count')
+	-- S7
+	eq(scan("frame:SetScript('OnEnter', function(self) self.edge:SetBackdropBorderColor(st:ColorRGBA('accent')) end)"), 'S7', 'a border colored on enter')
+	eq(scan("frame:HookScript('OnLeave', function(self)\n\tself.tex:SetColorTexture(0.2, 0.2, 0.2, 1)\nend)"), 'S7', 'a flat grey on leave, over several lines')
+	eq(scan("frame:SetScript('OnEnter', function(self) self.text:SetTextColor(1, 1, 1) end)"), 'S7', 'a text color')
+	eq(scan("frame:SetScript('OnEnter', function(self) self.tex:SetVertexColor(1, 1, 1) end)"), 'S7', 'a vertex color')
+	eq(scan("frame:SetScript('OnEnter', function(self) st:SetState(self, 'hover', true) end)"), '', 'through the helper')
+	eq(scan("frame:SetScript('OnEnter', function(self) self.tex:SetVertexColor(1, 1, 1); st:PaintStates(self) end)"), '', 'a handler that paints the states')
+	eq(scan("frame:SetScript('OnClick', function(self) self.tex:SetVertexColor(1, 1, 1) end)"), '', 'another script')
+	eq(scan("frame:SetScript('OnEnter', nil)\nlocal t = x:SetVertexColor(1, 1, 1)"), '', 'a color outside the handler')
+	eq(scan("-- frame:SetScript('OnEnter', function() x:SetVertexColor(1) end)"), '', 'a comment')
+	eq(scan("remove:SetScript('OnEnter', function(self) self.icon:SetVertexColor(st:Color('text', 'danger'):GetRGB()) end)", nil, 'SaftUI-Bags/ruleeditor.lua'), '', 'a listed line')
+	-- S8
+	eq(scan('button:SetAlpha(enabled and 1 or 0.35)'), 'S8', 'a dim beside enabled')
+	eq(scan('if disabled then frame:SetAlpha(0.5) end'), 'S8', 'a dim beside disabled')
+	eq(scan('frame:SetAlpha(st:StateAlpha())\nif disabled then frame:SetAlpha(1) end'), '', 'the helper, and full alpha')
+	eq(scan('frame:SetAlpha(0.5)'), '', 'a dim with no state word')
+	eq(scan('-- button:SetAlpha(enabled and 1 or 0.35)'), '', 'a comment')
 	-- S4
 	for _, key in ipairs({ 'normal', 'hover', 'pushed', 'checked' }) do
 		eq(scan('local c = st.config.profile.colors.button.' .. key), 'S4', key)

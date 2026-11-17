@@ -456,6 +456,8 @@ It prints, for each shown row: the card's hover state, whether the Layer shows, 
 
 **Open questions:** how much the hover-handler heuristic may flag before it needs an allow list.
 
+**Partly done 2026-11-17:** S3 now covers every file, and three rules were added to `tests/core/states_scan_test.lua`: S6 (`CreateTexture(nil, 'HIGHLIGHT')`, pinned per file), S7 (a color setter in an `OnEnter` or `OnLeave` handler without `st:SetState`, nine lines listed in `HANDLER_ALLOWED`, all Danger meanings or Blizzard-art branches) and S8 (a literal `SetAlpha` under 1 beside enable or disabled). Left open: S2's allowed calls are still counted per file, not listed by line text, and the `ColorRGBA('accent')` then `SetVertexColor(r, g, b, 0.4)` form in a file that is not a hover handler is still missed.
+
 ### 2026-11-16 — A Buttons color saved by an older build after a downgrade stays as an orphan key
 
 **What:** migration step 8 retires Buttons > Normal, Hover, Pushed and Checked, and a profile's `colors.version` only rises. If the owner runs an older build (version 7) after this one, that build can save a Buttons color again into a profile already at version 8; the newer build then never runs step 8 on it, and the key stays in the saved variables as an orphan. It is harmless: nothing iterates `colors.button`, and `st:Color('button', 'hover')` errors only if something calls it, which nothing does.
