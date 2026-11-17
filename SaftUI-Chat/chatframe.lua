@@ -221,6 +221,7 @@ function CHT:SyncDock(editbox)
 		local active = util.GetActiveWindow()
 		inUse = active and active:IsShown()
 	else
+		-- A guard for a client without ChatFrameUtil.GetActiveWindow: focus stands in for use.
 		inUse = editbox:IsShown() and editbox:HasFocus()
 	end
 	if inUse then

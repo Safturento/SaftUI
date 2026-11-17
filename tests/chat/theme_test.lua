@@ -169,6 +169,28 @@ test("in IM style the tab row shows with the idle box and hides only while typin
 	check(GeneralDockManager:IsShown(), 'and the tab row is back')
 end)
 
+-- SetLastActiveWindow (IM style) hides the previous box before it shows the new one, so the
+-- row must come back for A's deactivation, stay up while A is hidden, and go only when B types.
+test("in IM style, moving from window A to window B: the row stays up until B is typed in", function()
+	local frameA, a = CW.build(23)
+	local frameB, b = CW.build(24)
+	CHT:SkinChatFrame(frameA)
+	CHT:SkinChatFrame(frameB)
+	GeneralDockManager:Show()
+	activate(a)
+	check(not GeneralDockManager:IsShown(), 'A in use: row hidden')
+	deactivate(a, 'im')
+	check(GeneralDockManager:IsShown(), 'A deactivated, still shown dimmed: row up')
+	a:Hide() -- SetLastActiveWindow hides the previous box
+	check(GeneralDockManager:IsShown(), 'A hidden while B is not shown yet: row up')
+	b:Show() -- B shown, deactivated (nothing active)
+	check(GeneralDockManager:IsShown(), 'B shown idle: row up')
+	activate(b)
+	check(not GeneralDockManager:IsShown(), 'B typed in: row hidden')
+	deactivate(b, 'im')
+	check(GeneralDockManager:IsShown(), 'and back after')
+end)
+
 test("a box that keeps its text after losing focus keeps the tab row hidden, and moving to another window shows it", function()
 	local frame, editbox = CW.build(19)
 	local other_frame, other = CW.build(20)
