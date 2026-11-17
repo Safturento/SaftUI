@@ -247,14 +247,24 @@ test("a unit's page at full and half width: every row's line ends before its con
 end)
 
 -- The game's sequence the tests above missed: a part's menu is drawn by OW:OpenMenu (optionsmenu.lua, Draw),
--- which has the rows drawn before the menu has a place, so no row has a rect at draw time; the line must
--- still end before the control when it shows, entered through the label or through the control itself.
+-- which draws the rows before it anchors the menu to its dots, and clears its old anchors first; Draw holds
+-- the menu on the screen meanwhile, so every row has a rect as it is drawn (checked below). The line must
+-- end before the control when it shows, entered through the label or through the control itself.
 -- The stub counts 6.5 units a byte, wider than the game's text, so on its own the toggle's line fits either
 -- room; small_text(9) puts the line without Own (141) between the control's room (137) and the cell's (160), as the game has it.
 local function small_text(size)
 	local fo = OB.Font('small')
 	local path, _, flags = fo:GetFont()
 	fo:SetFont(path, size, flags)
+end
+
+-- The first shown, mouse-enabled part of a control (it or what is under it) that the share hooked: where the mouse enters.
+local function hooked_part(region)
+	if region:IsShown() and region:IsMouseEnabled() and region.shareHooked then return region end
+	for _, child in ipairs({ region:GetChildren() }) do
+		local found = hooked_part(child)
+		if found then return found end
+	end
 end
 
 local function open_menu(look)
@@ -265,7 +275,7 @@ local function open_menu(look)
 	return body, part, PW.OW.GetMenuFrames(1)
 end
 
-test("a part's menu as the game opens it (rows drawn before the menu has a place): the hover line still ends before the control", function()
+test("a part's menu as the game opens it (rows drawn on a menu held on the screen): the hover line still ends before the control", function()
 	for _, look in ipairs({ 'thick', 'thin', 'blizzard' }) do
 		world()
 		in_look(look, function()
@@ -280,7 +290,19 @@ test("a part's menu as the game opens it (rows drawn before the menu has a place
 				if by.font and OM.Set(mroot, by.font.row, name) and UF:IsOwn('player', 'health.text.font') then break end
 			end
 			OW:CloseMenu()
-			check(part.widget:OpenMenu(), look .. ': the menu opens again')
+			-- every row has a rect as PlaceShare and PlaceDefault run (the margin of the cases below is a few units)
+			local placed, rectless = 0, 0
+			local place_share = OB.PlaceShare
+			OB.PlaceShare = function(cell)
+				placed = placed + 1
+				if not (cell.frame:GetLeft() and (not cell.widget or cell.widget.frame:GetLeft())) then rectless = rectless + 1 end
+				return place_share(cell)
+			end
+			local opened = part.widget:OpenMenu()
+			OB.PlaceShare = place_share
+			check(opened, look .. ': the menu opens again')
+			check(placed > 0, look .. ': rows were placed: ' .. placed)
+			eq(rectless, 0, look .. ': every row has a rect as it is drawn')
 			menu = OW.GetMenuFrames(1)
 			local seen, toggles, fonts = 0, 0, 0
 			for _, c in ipairs(menu.body.cells) do
@@ -288,8 +310,12 @@ test("a part's menu as the game opens it (rows drawn before the menu has a place
 					local label = look .. ' ' .. tostring(c.row.key) .. ' (' .. c.row.type .. ')'
 					-- through the label, then through the control's own OnEnter (a hooked part of it)
 					if check_line(c, label) then seen = seen + 1 end
-					stub.fire_script(c.widget.frame, 'OnEnter', true)
 					local p = c.frame.share
+					-- the line goes away (its watcher does it when the mouse has left), then the control's own part takes the mouse
+					p.line:Hide()
+					local part_hit = hooked_part(c.widget.frame)
+					check(part_hit ~= nil, label .. ': a part of the control takes the mouse')
+					if part_hit then stub.fire_script(part_hit, 'OnEnter', true) end
 					local control = drawn_left(c.widget.frame)
 					check(p.line:IsShown(), label .. ': the line shows from the control')
 					check(p.line:GetRight() <= control - ROOM, label .. ': from the control, the line ends before it: ' .. p.line:GetRight() .. ' vs ' .. (control - ROOM))
@@ -306,8 +332,9 @@ test("a part's menu as the game opens it (rows drawn before the menu has a place
 	end
 end)
 
--- A setting's own reset icon in a menu (a source page's row, whose line has no Reset): placed at draw time, when
--- the menu has no rect, and it still ends DEFAULT_GAP (6) before the control's drawn left, Blizzard's art included.
+-- A setting's own reset icon in a menu (a source page's row, whose line has no Reset): placed at draw time from the
+-- control's drawn left, so it needs the rect the menu's hold on the screen gives; it ends DEFAULT_GAP (6) before
+-- that, Blizzard's art included.
 test("a part's menu as the game opens it: a toggle's own reset icon ends before the control", function()
 	for _, look in ipairs({ 'thick', 'thin', 'blizzard' }) do
 		world()
@@ -341,6 +368,77 @@ test("a part's menu as the game opens it: a toggle's own reset icon ends before 
 			check(seen > 0, look .. ': a toggle shows its reset icon: ' .. seen)
 			OW:CloseMenu()
 			body:Release()
+		end)
+	end
+end)
+
+-- The fallback for a row with no rect at draw time (SaftUI-Core/Config/optionsshare.lua: LineEnd reckons the control at
+-- the cell's right edge less the widget's, ShowLine fits the line again as it shows). A menu holds a rect now, so this
+-- body is drawn on a frame with no anchor, then the frame is anchored and the rows are hovered.
+test('rows drawn with no rect: the hover line is fitted again as it shows, and the reset icon stays clear of the control frame', function()
+	for _, look in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		world()
+		in_look(look, function()
+			small_text(9)
+			local root = tree()
+			local function bare_body(unit, part)
+				local item = root.Unitframes.args[unit].args.general.args.parts.args[part]
+				local menu_root = OM.MenuRoot(item)
+				local content = CreateFrame('Frame', nil, UIParent) -- no anchor: no rect
+				content:SetSize(376, 900)
+				local body = OB.New(content, menu_root, nil, 376)
+				body:SetWidth(376, true)
+				body:Draw(OM.BuildView(menu_root, OM.MENU_KEY).sections)
+				local by = {}
+				for _, c in ipairs(body.cells) do by[c.row.key] = c end
+				return body, by, content, menu_root
+			end
+			-- owned toggles and Font on the player
+			local body, by, content, mroot = bare_body('player', 'healthtext')
+			own_everything(nil, mroot, by)
+			for _, name in ipairs({ 'Friz Quadrata TT', 'Arial Narrow', 'Morpheus', 'Skurri' }) do
+				if OM.Set(mroot, by.font.row, name) and UF:IsOwn('player', 'health.text.font') then break end
+			end
+			body:Release()
+			body, by, content = bare_body('player', 'healthtext')
+			eq(by.deficit.frame:GetLeft(), nil, look .. ': no rect while drawn')
+			content:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 100, -100)
+			local seen = 0
+			for _, c in pairs(by) do
+				if c.row.type ~= 'item' and c.widget and c.frame.shareOffers then
+					if check_line(c, look .. ' ' .. tostring(c.row.key)) then seen = seen + 1 end
+				end
+			end
+			check(seen > 0, look .. ': lines checked: ' .. seen)
+			body:Release()
+			-- a source page's toggle with its own reset icon, drawn the same way
+			local sroot = tree()
+			local item = sroot.Unitframes.args.all.args.general.args.parts.args.healthtext
+			local sm = OM.MenuRoot(item)
+			local scontent = CreateFrame('Frame', nil, UIParent)
+			scontent:SetSize(376, 900)
+			local sbody = OB.New(scontent, sm, nil, 376)
+			sbody:SetWidth(376, true)
+			sbody:Draw(OM.BuildView(sm, OM.MENU_KEY).sections)
+			for _, c in ipairs(sbody.cells) do
+				if c.row.type == 'toggle' then OM.Set(sm, c.row, not OM.Get(sm, c.row)) end
+			end
+			sbody:Release()
+			sbody = OB.New(scontent, sm, nil, 376)
+			sbody:SetWidth(376, true)
+			sbody:Draw(OM.BuildView(sm, OM.MENU_KEY).sections)
+			scontent:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 100, -100)
+			local icons = 0
+			for _, c in ipairs(sbody.cells) do
+				local icon = c.frame.defaultReset
+				if c.row.type == 'toggle' and icon and icon:IsShown() then
+					icons = icons + 1
+					-- no rect at draw: the control is reckoned at the cell's edge (its art is not known)
+					check(icon:GetRight() <= c.widget.frame:GetLeft() - 6, look .. ' ' .. tostring(c.row.key) .. ': the icon is clear of the control frame')
+				end
+			end
+			check(icons > 0, look .. ': icons: ' .. icons)
+			sbody:Release()
 		end)
 	end
 end)

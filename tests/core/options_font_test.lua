@@ -1608,20 +1608,25 @@ test("the menu's frame is off any old anchor when its rows are drawn (M8: Draw's
 		stub.click(dots_of('header'))
 		local M = OW.GetMenuFrames()
 		OW:CloseMenu()
-		-- A stale anchor, as a menu left on a pooled widget would hold.
-		M.frame:SetPoint('TOPLEFT', dots_of('tip'), 'BOTTOMLEFT', 0, 0)
-		local at
+		-- A stale anchor, as Anchor leaves it on a pooled widget's dots (a TOPLEFT one would be replaced by
+		-- Draw's own provisional point, hiding a missing clear).
+		M.frame:SetPoint('TOPRIGHT', dots_of('tip'), 'BOTTOMRIGHT', 0, -4)
+		local points, strays
 		local body = M.body
 		local draw = body.Draw
 		body.Draw = function(self, ...)
 			-- only the screen's provisional point (Draw's, for the rows' measuring), never the old anchor
-			local _, relative = M.frame:GetPoint(1)
-			at = M.frame:GetNumPoints() == 1 and relative == UIParent and 0 or M.frame:GetNumPoints()
+			points, strays = M.frame:GetNumPoints(), 0
+			for i = 1, points do
+				local _, relative = M.frame:GetPoint(i)
+				if relative ~= UIParent then strays = strays + 1 end
+			end
 			return draw(self, ...)
 		end
 		stub.click(dots_of('chat'))
 		body.Draw = draw
-		eq(at, 0, 'only the screen holds the frame when the rows are drawn')
+		eq(points, 1, 'one point on the frame when the rows are drawn')
+		eq(strays, 0, 'and it is the screen')
 		close_dots()
 	end)
 end)

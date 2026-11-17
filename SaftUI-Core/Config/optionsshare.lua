@@ -489,7 +489,7 @@ function ShowLine(host)
 	local parts = host.share
 	if not (parts and host.shareOffers) then return end
 	local cell = host.shareCell
-	-- Fitted again as it shows: the rects the draw had none of (a menu not yet anchored) are there now.
+	-- Fitted again as it shows: the fallback for a row that had no rect at draw time (LineEnd then reckons the control from widths); the real drawn left is read now.
 	if host.shareLifts and cell and host.shareState then FitLine(cell, parts, host.shareState, host.shareShift) end
 	parts.line:Show()
 	if cell and cell.lineInline then HideSummary(cell) end
@@ -811,8 +811,8 @@ LineEnd = function(cell)
 	local stop = cell.lineEnd or frame:GetWidth()
 	if not (widget and widget.frame and cell.row.type ~= 'item' and cell.height <= cell.rowHeight) then return stop end
 	local x0, drawn = frame:GetLeft(), DrawnLeft(widget.frame)
-	-- No rect yet (a menu draws its rows before it is anchored: its frame has no place
-	-- then): the control sits at the cell's right edge, as PlaceDefault reckons it.
+	-- A row with no rect at draw time (none in a menu now: Draw holds it on the screen; a body on a
+	-- frame not yet anchored): the control sits at the cell's right edge, as PlaceDefault reckons it.
 	local at = x0 and drawn and floor(drawn - x0) or (frame:GetWidth() - widget:GetWidth())
 	return min(stop, at - LABEL_ROOM)
 end

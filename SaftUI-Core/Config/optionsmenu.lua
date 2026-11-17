@@ -94,7 +94,10 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	draw of its rows, as defence for a redraw while shown (FollowMenu): those
 	rows are drawn before the menu is anchored again, and a row's widget may be
 	that very widget (a face-only font row), which would anchor a row to a cell
-	that hangs from its own dots, an anchor loop. Each has a test of its own.
+	that hangs from its own dots, an anchor loop. Each has a test of its own. The frame is held on UIParent's
+	top left while its rows are drawn (it hangs from no row, so no loop), so each
+	row has a rect as it is drawn: what a row measures then (DrawnLeft: the hover
+	line's room, the own reset icon) needs one.
 
 	Following its item (S.FollowMenu, on every render after the dialog's): it
 	finds its item's cell again in owner.body's cells by path, asks that
