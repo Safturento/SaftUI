@@ -531,15 +531,23 @@ end
 -- level can be secret (target or a child may be Blizzard's): a child's
 -- secret level is left out, and with target's own secret it is nil, and the
 -- caller leaves the level as it is.
-function ThemeArt.LevelAbove(target, skip)
+--
+-- depth (1 when left out) is how many generations below target count: 2 also
+-- counts the children's children (a group border lies over its members' bars).
+-- A box frame and everything under it is left out at any depth.
+function ThemeArt.LevelAbove(target, skip, depth)
 	local level = target:GetFrameLevel()
 	if issecretvalue(level) then return nil end
-	for _, child in ipairs({ target:GetChildren() }) do
-		if not isBoxFrame[child] and child ~= skip then
-			local childLevel = child:GetFrameLevel()
-			if not issecretvalue(childLevel) and childLevel > level then level = childLevel end
+	local function Scan(frame, remaining)
+		for _, child in ipairs({ frame:GetChildren() }) do
+			if not isBoxFrame[child] and child ~= skip then
+				local childLevel = child:GetFrameLevel()
+				if not issecretvalue(childLevel) and childLevel > level then level = childLevel end
+				if remaining > 1 then Scan(child, remaining - 1) end
+			end
 		end
 	end
+	Scan(target, depth or 1)
 	return level + 1
 end
 

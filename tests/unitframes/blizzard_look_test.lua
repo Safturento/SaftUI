@@ -626,23 +626,78 @@ test('party and raid groups wear the box, 4 outside the members', function()
 	end
 end)
 
-test('the border sits above the members', function()
+-- The highest frame level among frame's children and theirs.
+local function highest_below(frame, skip)
+	local top = frame:GetFrameLevel()
+	for _, child in ipairs({ frame:GetChildren() }) do
+		if child ~= skip then top = math.max(top, highest_below(child)) end
+	end
+	return top
+end
+
+test("the border sits above the members and their bars", function()
 	for _, client in ipairs(CLIENTS) do
 		world(client, 'blizzard')
 		local header = header_of('SaftUI_Party', 4)
 		UF.groups = { party = header }
 		local border = UF:GroupBorder(header)
-		local member = make_unit_frame('SaftUI_PartyUnitButton1', 'party', { 'Health' }, header)
-		member:SetFrameLevel(header:GetFrameLevel() + 1)
+		local member = make_unit_frame('SaftUI_PartyUnitButton1', 'party', { 'Health', 'Power' }, header)
+		member.is_group_unit = true
+		member:SetPoint('TOP', header)
+		UF:UpdateUnitFrame(member)
 		UF:UpdateGroupBorder('party')
-		eq(border:GetFrameLevel(), header:GetFrameLevel() + 2, client .. ': one over the members')
+		local health, power = member.Health:GetFrameLevel(), member.Power:GetFrameLevel()
+		check(border:GetFrameLevel() > member:GetFrameLevel(), client .. ': over the member')
+		check(border:GetFrameLevel() > health, client .. ": over the member's health bar: " .. border:GetFrameLevel() .. ' vs ' .. health)
+		check(border:GetFrameLevel() > power, client .. ": over the member's power bar")
+		eq(border:GetFrameLevel(), highest_below(header, border) + 1, client .. ': one over the highest')
 		-- Drawn again, it doesn't climb over itself.
+		local level = border:GetFrameLevel()
 		UF:UpdateGroupBorder('party')
-		eq(border:GetFrameLevel(), header:GetFrameLevel() + 2, client .. ': and stays there')
-		-- A member raised higher: the border follows on the next draw.
-		member:SetFrameLevel(header:GetFrameLevel() + 7)
+		eq(border:GetFrameLevel(), level, client .. ': and stays there')
+		-- A bar raised higher: the border follows on the next draw.
+		member.Health:SetFrameLevel(150)
 		UF:UpdateGroupBorder('party')
-		eq(border:GetFrameLevel(), header:GetFrameLevel() + 8, client .. ': over a raised member')
+		eq(border:GetFrameLevel(), 151, client .. ': over a raised bar')
+		eq(#take_errors(), 0, client .. ': no errors')
+	end
+end)
+
+test('the border is anchored again with the group, in whole pixels of the new scale', function()
+	world('forever', 'blizzard')
+	local header = header_of('SaftUI_Party', 4)
+	UF.groups = { party = header }
+	local border = UF:GroupBorder(header)
+	UF:UpdateGroupBorder('party')
+	local _, _, _, before = border:GetPoint(1)
+	local scale = 0.37
+	rawset(header, 'GetEffectiveScale', function() return scale end)
+	stub.in_combat = true
+	UF:UpdateGroupBorder('party')
+	stub.in_combat = false
+	local _, _, _, after = border:GetPoint(1)
+	local expected = -st.ThemeArt.Whole(st.ThemeArt.Reach('unitframe'), header)
+	eq(after, expected, "the reach in whole pixels of the header's scale, in combat too")
+	check(after ~= before, 'and it moved with the scale: ' .. before .. ' -> ' .. after)
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("the least size is this client's two corners, as laid", function()
+	for _, client in ipairs(CLIENTS) do
+		world(client, 'blizzard')
+		local header = header_of('SaftUI_Party', 4)
+		UF.groups = { party = header }
+		local border = UF:GroupBorder(header)
+		UF:UpdateGroupBorder('party')
+		local pieces = st.ThemeArt.Get(border).pieces
+		local least = pieces.TopLeftCorner:GetWidth() + pieces.TopRightCorner:GetWidth()
+		check(least >= 12, client .. ': corners ' .. least)
+		header:SetSize(least - 8 - 0.5, 34)
+		stub.fire_script(border, 'OnSizeChanged', border:GetSize())
+		eq(border:GetAlpha(), 0, client .. ': a hair under two corners: hidden')
+		header:SetSize(least - 8, 34)
+		stub.fire_script(border, 'OnSizeChanged', border:GetSize())
+		eq(border:GetAlpha(), 1, client .. ': two corners: shown')
 		eq(#take_errors(), 0, client .. ': no errors')
 	end
 end)
@@ -684,7 +739,7 @@ test('a member joining in combat re-levels nothing', function()
 
 	stub.in_combat = false
 	UF:UpdateGroupBorder('party')
-	eq(border:GetFrameLevel(), joined:GetFrameLevel() + 1, 'out of combat it rises over the new member')
+	check(border:GetFrameLevel() > joined:GetFrameLevel(), 'out of combat it rises over the new member')
 	eq(#take_errors(), 0, 'no errors')
 end)
 
@@ -914,6 +969,8 @@ test('test mode previews get the same border', function()
 				eq(T.around(border, container), '-4,4,4,-4', 'the box 4 outside them')
 				eq((T.art(border):gsub('=[^,]*', '')), BOX, 'its eight pieces')
 				check(border:GetFrameLevel() > container.frames[1]:GetFrameLevel(), 'over the previews')
+				check(border:GetFrameLevel() > container.frames[1].Health:GetFrameLevel(), "over the previews' health bars")
+				check(border:GetFrameLevel() > container.frames[1].Power:GetFrameLevel(), "over the previews' power bars")
 			else
 				check(not border:IsShown(), 'under Thick none')
 				eq(T.art(border), '', 'nothing drawn')

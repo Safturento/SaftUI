@@ -215,8 +215,8 @@ end
 	(.agents/taint.md).
 
 	The box lies over what it borders, so the border is raised one level over
-	the highest of the header's children (ThemeArt.LevelAbove), the members
-	among them. That only happens out of combat (UF:UpdateGroupBorder): a
+	the highest of the header's children and their children (ThemeArt.LevelAbove,
+	depth 2): the members and their bars, which the rim covers the outer pixels of. That only happens out of combat (UF:UpdateGroupBorder): a
 	member the header makes in combat sits at the level it was given, and the
 	border keeps its last level until the next draw out of combat, a plain
 	SetFrameLevel on SaftUI's own frame that nothing in combat depends on.
@@ -241,11 +241,25 @@ local groupBorders = setmetatable({}, { __mode = 'k' })
 -- Only the border's alpha, so in combat too; a secret size leaves it as it is.
 local function FitBorder(border, width, height)
 	if issecretvalue(width) or issecretvalue(height) then return end
-	local least = 2 * 6
-	border:SetAlpha((width < least or height < least) and 0 or 1)
+	local pieces = st.ThemeArt.Get(border)
+	pieces = pieces and pieces.pieces
+	-- This client's corners as laid (Forever's 6, retail's 6 and 7), 12 until
+	-- the box is laid.
+	local function Size(a, b, side)
+		local first, second = pieces and pieces[a], pieces and pieces[b]
+		if not (first and second) then return 12 end
+		local one, two = first[side](first), second[side](second)
+		if issecretvalue(one) or issecretvalue(two) then return 12 end
+		return one + two
+	end
+	local leastWidth = math.max(Size('TopLeftCorner', 'TopRightCorner', 'GetWidth'), Size('BottomLeftCorner', 'BottomRightCorner', 'GetWidth'))
+	local leastHeight = math.max(Size('TopLeftCorner', 'BottomLeftCorner', 'GetHeight'), Size('TopRightCorner', 'BottomRightCorner', 'GetHeight'))
+	border:SetAlpha((width < leastWidth or height < leastHeight) and 0 or 1)
 end
 
--- Anchors border around owner, the box's reach outside it in whole pixels.
+-- Anchors border around owner, the box's reach outside it in whole pixels
+-- (drawn again with the group, so a scale change is followed; in combat too:
+-- the border is unprotected).
 local function AnchorBorder(border, owner)
 	local reach = st.ThemeArt.Whole(st.ThemeArt.Reach('unitframe'), owner)
 	border:ClearAllPoints()
@@ -287,8 +301,10 @@ local function UpdateBorder(owner, config)
 	if UF.GroupBorderShown(config) then
 		-- Out of combat only: a header's member made in combat keeps the level
 		-- it was given, and the border its last one (above).
+		AnchorBorder(border, owner)
 		if not InCombatLockdown() then
-			local level = st.ThemeArt.LevelAbove(owner, border)
+			-- Depth 2: over the members and their bars.
+			local level = st.ThemeArt.LevelAbove(owner, border, 2)
 			if level then border:SetFrameLevel(level) end
 		end
 		st.ThemeArt.PaintBox(border)
