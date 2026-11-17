@@ -134,18 +134,18 @@ end)
 
 -- The composites at the defaults over the kit's button fill (0.12): the hover
 -- layer, the pushed layer, the Fill's start, and selected + hover's start,
--- with the light text's contrast. The spec's table.
+-- (the spec's table, less its contrast columns: the text no longer flips).
 local BODY = 0.12
 local COMPOSITES = {
-	{ BLUE, 'layers', '1a3540', 10.1, '154c62', 7.3, '174151', 8.6, '14526a', 6.7 },
-	{ BLUE, 'tones', '283943', 9.3, '154456', 8.3, '174151', 8.6, '355b70', 5.7 },
-	{ BLUE, 'hue', '1e3b40', 9.4, '27405f', 8.3, '174151', 8.6, '1e5e6a', 5.7 },
-	{ VIOLET, 'layers', '302841', 10.9, '413263', 8.8, '382d52', 9.9, '45356c', 8.3 },
-	{ VIOLET, 'tones', '332e43', 10.2, '3a2a5a', 10.0, '382d52', 9.9, '4d4170', 7.1 },
-	{ VIOLET, 'hue', '392b40', 10.3, '322b61', 10.0, '382d52', 9.9, '5a3b6a', 7.3 },
-	{ GOLD, 'layers', '3f3a26', 9.0, '5e552c', 5.9, '4e4729', 7.3, '675c2e', 5.3 },
-	{ GOLD, 'tones', '433e2c', 8.4, '564d22', 6.7, '4e4729', 7.3, '70653c', 4.5 },
-	{ GOLD, 'hue', '413e2d', 8.4, '5f4815', 6.8, '4e4729', 7.3, '6d663f', 4.5 },
+	{ BLUE, 'layers', '1a3540', '154c62', '174151', '14526a' },
+	{ BLUE, 'tones', '283943', '154456', '174151', '355b70' },
+	{ BLUE, 'hue', '1e3b40', '27405f', '174151', '1e5e6a' },
+	{ VIOLET, 'layers', '302841', '413263', '382d52', '45356c' },
+	{ VIOLET, 'tones', '332e43', '3a2a5a', '382d52', '4d4170' },
+	{ VIOLET, 'hue', '392b40', '322b61', '382d52', '5a3b6a' },
+	{ GOLD, 'layers', '3f3a26', '5e552c', '4e4729', '675c2e' },
+	{ GOLD, 'tones', '433e2c', '564d22', '4e4729', '70653c' },
+	{ GOLD, 'hue', '413e2d', '5f4815', '4e4729', '6d663f' },
 }
 
 local function composites(accent, mode)
@@ -164,7 +164,7 @@ test('the composites at the defaults', function()
 		local d, c = composites(accent, mode)
 		for i = 1, 4 do
 			local label = ('#%s %s %s'):format(accent, mode, ({ 'hover', 'pushed', 'fill', 'fill + hover' })[i])
-			within(label, hex(c[i][1], c[i][2], c[i][3]), row[1 + i * 2])
+			within(label, hex(c[i][1], c[i][2], c[i][3]), row[2 + i])
 		end
 	end
 	-- over the kit's field fill (0.078) the Tones hovers

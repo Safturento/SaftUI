@@ -560,7 +560,7 @@ test('whole pixels: the row and the menu under Thick, Thin and Blizzard', functi
 	close_all()
 end)
 
------------------------------------------------------------------- the box labels' text pick
+------------------------------------------------------------------ the box labels keep their color
 
 test('box labels keep their color: gold at Hover 60%; a caller\'s own color and the font object survive', function()
 	fresh()
@@ -764,6 +764,15 @@ test('M1: a label that was hovered at Hover 60% follows Text > Normal in the sam
 		st:ColorChanged('text', 'normal')
 		eq(T.rgb(b.text:GetTextColor()), T.rgb(c[1], c[2], c[3]), 'after the pass: that color')
 	end
+	-- a change made while the button is still hovered (the picker's Okay with the mouse on it)
+	stub.fire_script(b, 'OnEnter', true)
+	st:HoldColorEdit()
+	normal:SetRGB(0.9, 0.3, 0.6)
+	st:ColorChanged('text', 'normal')
+	st:ReleaseColorEdit()
+	eq(T.rgb(b.text:GetTextColor()), '0.90,0.30,0.60', 'hovered, through a held edit: followed')
+	stub.fire_script(b, 'OnLeave', true)
+	eq(T.rgb(b.text:GetTextColor()), '0.90,0.30,0.60', 'and after the leave')
 	-- Text > Normal's own reset
 	local default = st.defaults.colors.text.normal
 	normal:SetRGB(default.r, default.g, default.b)

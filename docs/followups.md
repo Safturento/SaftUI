@@ -468,7 +468,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **Open questions:** whether it reads well enough in game to leave it.
 
-*Update 2026-11-16:* the text pick (`textKeep` writing the dark text) is gone; a label never flips to dark, so the "dark text where the light does not read" option above no longer exists.
+*Update 2026-11-16:* the text pick (`textKeep` writing the dark text) is gone; a label never flips to dark, so the "dark text where the light does not read" option above no longer exists, and `ST.Contrast` is gone too, so the 4.5:1 option needs it back.
 
 ### 2026-11-16 — With the History list open, a Theme recolor restyles its twelve rows
 

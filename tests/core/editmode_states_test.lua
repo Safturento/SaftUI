@@ -395,7 +395,7 @@ end)
 
 ------------------------------------------------------------------ History row labels
 
-test('a Text pass re-picks the label of a row under the mouse (an undone row hovered is Normal, not Muted)', function()
+test('a Text pass repaints the label of a row under the mouse (an undone row hovered is Normal, not Muted)', function()
 	world()
 	local list = open_list()
 	local undone
@@ -429,7 +429,7 @@ test('an Accent pass keeps Text > Normal on the current step at Selected 60% wit
 	accent:SetRGB(1, 1, 0.7)
 	st:ColorChanged('accent')
 	local got = look(current).text
-	eq(label(current), rgb(got.r, got.g, got.b), 'after an Accent pass the label is still the pick')
+	eq(label(current), rgb(got.r, got.g, got.b), 'after an Accent pass the label is still Text > Normal')
 	check(select(1, current.label:GetTextColor()) > 0.5, 'light')
 	accent:SetRGB(keep_r, keep_g, keep_b)
 	settings.selected = keep_s

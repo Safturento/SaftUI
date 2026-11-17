@@ -45,7 +45,7 @@ test('at the defaults a label is never written: its own color and the font objec
 		st:SetState(f, key, false)
 	end
 	eq(writes, 0, 'nothing written')
-	-- a label that never had a color of its own keeps following the font object
+	-- a label that never had a color of its own is not written either
 	local g, plain = box()
 	local n = 0
 	local realPlain = plain.SetTextColor
@@ -112,4 +112,69 @@ test('a raw BeginColorEdit is not ended by a holder\'s last release; an edit a h
 	st:ReleaseColorEdit()
 	check(st:InColorEdit(), 'a later raw edit is not the holders\'')
 	st:EndColorEdit()
+end)
+
+------------------------------------------------------------------ a font object, with the state still drawn
+
+-- A kit-like label: it follows a font object's color. The helper never writes it (textKeep), so it
+-- keeps following the object while a state is drawn, and a Text > Normal change reaches it at once.
+local function followed_box()
+	local fo = CreateFont('SaftUI_TextKeepTestFont' .. tostring(math.random(1e9)))
+	fo:SetTextColor(0.9, 0.9, 0.8)
+	local f = st:CreateFrame('Button', nil, UIParent)
+	f:SetSize(100, 24)
+	st:SetTemplate(f, 'theme', 'solid', 'control')
+	local label = f:CreateFontString(nil, 'OVERLAY')
+	label:SetFontObject(fo)
+	st:AddStates(f, 'box', { text = label, textKeep = true })
+	return f, label, fo
+end
+
+local function with_bytes(fn)
+	local ok, err = pcall(fn)
+	stub.color_bytes = nil
+	if not ok then error(err, 0) end
+end
+
+local function follows_while_lit()
+	world()
+	gold()
+	settings({ hover = 0.6 })
+	local f, label, fo = followed_box()
+	st:SetState(f, 'hover', true)
+	eq(T.rgb(label:GetTextColor()), '0.90,0.90,0.80', 'hovered at Hover 60%: the object\'s color')
+	fo:SetTextColor(0.2, 0.7, 0.9)
+	st:ColorsChanged('text')
+	eq(T.rgb(label:GetTextColor()), '0.20,0.70,0.90', 'the object recolored while hovered: followed at once')
+	-- through a held color edit (the picker, then Okay, with the mouse still on the button)
+	st:HoldColorEdit()
+	fo:SetTextColor(0.9, 0.3, 0.3)
+	st:ColorsChanged('text')
+	st:ReleaseColorEdit()
+	eq(T.rgb(label:GetTextColor()), '0.90,0.30,0.30', 'after a held edit ends, still hovered')
+	st:SetState(f, 'hover', false)
+	eq(T.rgb(label:GetTextColor()), '0.90,0.30,0.30', 'left: the same')
+	fo:SetTextColor(0.5, 0.5, 0.1)
+	st:ColorsChanged('text')
+	eq(T.rgb(label:GetTextColor()), '0.50,0.50,0.10', 'and it still follows')
+end
+
+test('a label on a font object follows it while a state is drawn at Hover 60% on a pale Accent, and after', follows_while_lit)
+
+test('the same in byte-color mode', function() with_bytes(function() stub.color_bytes = true; follows_while_lit() end) end)
+
+test("a caller's own color (Bank Buy's red) is kept through hover and selected, and is not made to follow the object", function()
+	world()
+	gold()
+	settings({ hover = 0.6 })
+	local f, label, fo = followed_box()
+	label:SetTextColor(0.9, 0.2, 0.2)
+	st:SetState(f, 'hover', true)
+	eq(T.rgb(label:GetTextColor()), '0.90,0.20,0.20', 'hovered')
+	st:SetState(f, 'selected', true)
+	fo:SetTextColor(0.1, 0.5, 0.1)
+	st:ColorsChanged('text')
+	eq(T.rgb(label:GetTextColor()), '0.90,0.20,0.20', 'selected, the object recolored: its own red')
+	st:SetState(f, 'selected', false); st:SetState(f, 'hover', false)
+	eq(T.rgb(label:GetTextColor()), '0.90,0.20,0.20', 'left')
 end)
