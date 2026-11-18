@@ -52,7 +52,9 @@ local UF = st:GetModule('Unitframes')
 
 	A setting added later gets since = n, UF.SHARED_VERSION rises to n, and the conversion runs that
 	step for those entries alone, so a unit whose default for the new setting differs owns it from the
-	start. Changing a shipped default of a shared setting for some members needs a step as well:
+	start. The exception: when every member's default and All units' are the same and no saved profile
+	could hold another value (a key that didn't exist before), step 1 is enough: no member would own it
+	(the texts' Align rows). Changing a shipped default of a shared setting for some members needs a step as well:
 	the sync keeps a follower at All units' value. A test fails an entry no step covers.
 ]]
 
@@ -103,6 +105,8 @@ local function Add(entry)
 end
 
 -- Each row of a part or bar: { suffix below its config key, name, type, shows, part }.
+-- The texts' Align rows (justify) came after the first step but are step 1 entries: every unit's
+-- default is AUTO, All units' too, so no member would own one and a step would change nothing.
 local function Rows(config, element, part, rows)
 	for _, row in ipairs(rows) do
 		local key = config .. '.' .. row[1]
@@ -160,6 +164,7 @@ local function Bar(config, element, textPart, own)
 		{ 'enable', 'Show', 'toggle' },
 		{ 'hide_full', 'Hide full', 'toggle' },
 		{ 'font', 'Font', 'font' },
+		{ 'justify', 'Align', 'select' },
 		{ 'percent', 'Percent', 'toggle' },
 		{ 'short', 'Short', 'toggle' },
 		{ 'position', 'Text position', 'position' },
@@ -194,6 +199,7 @@ Rows('name', 'Name', 'name', {
 	{ 'color_friendly', 'Color friendly', 'toggle', shows = 'npcs' },
 	{ 'maxLength', 'Max length', 'range' },
 	{ 'max_width', 'Max width', 'range' },
+	{ 'justify', 'Align', 'select' },
 	{ 'alpha', 'Alpha', 'range' },
 	{ 'position', 'Position', 'position' },
 })
@@ -222,9 +228,11 @@ Rows('castbar', 'Castbar', nil, {
 	{ 'icon.theme', 'Icon theme', 'select' },
 	{ 'text.enable', 'Spell name', 'toggle' },
 	{ 'text.font', 'Spell name font', 'font' },
+	{ 'text.justify', 'Spell name align', 'select' },
 	{ 'text.position', 'Spell name position', 'position' },
 	{ 'time.enable', 'Time', 'toggle' },
 	{ 'time.font', 'Time font', 'font' },
+	{ 'time.justify', 'Time align', 'select' },
 	{ 'time.position', 'Time position', 'position' },
 })
 

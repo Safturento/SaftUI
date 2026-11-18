@@ -132,6 +132,7 @@ local function GetConfigTable(unit)
 					enable = G.toggle(0, 'Enable', 'Shows the power as text on the unit frame.', 'small'),
 					hide_full = G.toggle(1, 'Hide full', 'Hides the text while power is full.', 'small'),
 					font = G.font(2, "The power text's font."),
+					justify = G.justify(2.5, "Lines the power text up. No visible effect for now: the text is only as wide as itself."),
 					percent = G.toggle(3, 'Percent', 'Shows the power as a percent instead of the number.', 'small'),
 					short = G.toggle(4.5, 'Short', 'Shortens the power from 1000 up, as 1.5K or 1.2M; without it only from 10000 up. Not with Percent on.', 'small'),
 					-- Without it the text keeps its font's color, white.

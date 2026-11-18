@@ -154,6 +154,7 @@ function UF:UpdateElement(element, configOverride)
 
     if element:IsObjectType('FontString') then
         st:ApplyFont(element, config.font)
+        UF.ApplyJustify(element, config)
     end
 
     if element.textElements then
@@ -396,6 +397,28 @@ function UF:UpdateStatusBarElement(element, configOverride)
     end
 end
 
+-- A text's Align (its config's justify): Left, Center or Right, or Auto (any
+-- other value, a config from before the setting too), which follows the text's
+-- point: from its left for a left point, from its right for a right one, else
+-- from its middle. It shows only on a text with a width (the name's and the
+-- subtext's Max width) or of more than one line; a font string with no width
+-- is as wide as its text. Set after the font: SetFontObject gives a font
+-- string its font's justification again.
+local JUSTIFY = { LEFT = 'LEFT', CENTER = 'CENTER', RIGHT = 'RIGHT' }
+function UF.TextJustify(config)
+    local justify = JUSTIFY[config.justify]
+    if justify then return justify end
+    local point = config.position and config.position.point
+    if type(point) ~= 'string' then return 'CENTER' end
+    if point:find('LEFT') then return 'LEFT' end
+    if point:find('RIGHT') then return 'RIGHT' end
+    return 'CENTER'
+end
+
+function UF.ApplyJustify(text, config)
+    text:SetJustifyH(UF.TextJustify(config))
+end
+
 function UF:UpdateText(text, configOverride)
     local config = configOverride or text:GetConfig()
     if not text:IsObjectType('FontString') then
@@ -404,6 +427,7 @@ function UF:UpdateText(text, configOverride)
 
     UF:UpdateElement(text, configOverride)
     st:ApplyFont(text, config.font)
+    UF.ApplyJustify(text, config)
 
     -- The health and power texts' own color (colorCustom and customColor in
     -- their text config; the other texts have none). Off, a text keeps its

@@ -53,7 +53,7 @@ end
 
 test('UF.SHARED is every row the member pages show under a part or a bar, and the frame Theme and Background', function()
 	world()
-	eq(#UF.SHARED, 187, 'the entries')
+	eq(#UF.SHARED, 192, 'the entries')
 	local seen = {}
 	for _, unit in ipairs(SW.MEMBERS) do
 		local keys, extra = SW.page_keys(UF, unit)
@@ -72,7 +72,7 @@ test('UF.SHARED is every row the member pages show under a part or a bar, and th
 	eq(#missing, 0, 'entries no member page has a row for: ' .. table.concat(missing, ', '))
 	local count = 0
 	for _ in pairs(seen) do count = count + 1 end
-	eq(count, 187, 'the keys the pages show')
+	eq(count, 192, 'the keys the pages show')
 	-- The frame's own settings and the group layout have no entry.
 	for _, key in ipairs({ 'enable', 'width', 'height', 'position', 'range_alpha.inside', 'growthDirection' }) do
 		eq(UF.SHARED_BY_KEY[key], nil, key .. ' is not shared')

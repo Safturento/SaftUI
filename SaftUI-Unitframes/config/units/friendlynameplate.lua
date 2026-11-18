@@ -30,6 +30,7 @@ st.defaults.unitframes.profiles["**"].friendlynameplate = {
         npc = true,
         player = true,
         font = 'normal',
+        justify = 'AUTO', -- Align: AUTO follows the point (UF.TextJustify)
         color = { r = 0.8, g = 0.8, b = 0.8 },
         alpha = 1,
         max_width = 150,

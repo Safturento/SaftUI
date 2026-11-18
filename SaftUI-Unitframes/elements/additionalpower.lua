@@ -120,6 +120,7 @@ local function GetConfigTable(unit)
 				enable = G.toggle(0, 'Enable', 'Shows your mana as text, while the bar shows.', 'small'),
 				hide_full = G.toggle(1, 'Hide full', 'Hides the text while your mana is full.', 'small'),
 				font = G.font(2, "The mana text's font."),
+				justify = G.justify(2.5, "Lines the mana text up. No visible effect for now: the text is only as wide as itself."),
 				percent = G.toggle(3, 'Percent', 'Shows your mana as a percent instead of the number.', 'small'),
 				short = G.toggle(4.5, 'Short', 'Shortens your mana, as 12.5K or 1.2M. Not with Percent on.', 'small'),
 				-- Without it the text keeps its font's color, white.
