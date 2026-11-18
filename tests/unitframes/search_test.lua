@@ -258,6 +258,11 @@ test("a plate page whose box is checked: the tabs it can't open and the part row
 		if r.path[2] == 'nameplate' and r.path[3] == 'Castbar' then castbarBefore = castbarBefore + 1 end
 	end
 	check(castbarBefore > 0, "and its Cast bar tab's rows: " .. castbarBefore)
+	local healthBefore = 0
+	for _, r in ipairs(OM.Search(tree(), 'Reverse fill')) do
+		if r.path[2] == 'nameplate' and r.path[3] == 'Health' then healthBefore = healthBefore + 1 end
+	end
+	check(healthBefore > 0, "and its Health tab's rows: " .. healthBefore)
 
 	config.nameplate.use_friendly = true
 	local root = tree()

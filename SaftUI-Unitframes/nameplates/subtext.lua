@@ -177,7 +177,7 @@ local function GetConfigTable(unit)
 				end,
 			},
 			alpha = G.alpha(4, 'How solid the subtext is, from see-through to opaque.'),
-			max_width = G.range(5, 'Max width', 0, 600, 1, "Cuts the subtext at this many pixels. 0: no limit."),
+			max_width = G.max_width(5, 'subtext'),
 			justify = G.justify(6, 'subtext', function() return Config().max_width end),
 			-- Last in the tab.
 			position = G.uf_element_position(1000,

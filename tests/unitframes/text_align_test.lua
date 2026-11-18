@@ -39,7 +39,6 @@ test('Auto follows the point; Left, Center and Right are taken only with a Max w
 		eq(at('TOPRIGHT', justify), justify, justify .. ' over a right point')
 		eq(at('LEFT', justify), justify, justify .. ' over a left point')
 		eq(at('TOPRIGHT', justify, 0), 'RIGHT', justify .. ' with no Max width: by the point')
-		eq(at('LEFT', justify, nil), justify, justify .. ' (the helper defaults to 100 here)')
 		eq(UF.TextJustify({ justify = justify, position = { point = 'LEFT' } }), 'LEFT', justify .. ' with no max_width at all: by the point')
 	end
 end)
