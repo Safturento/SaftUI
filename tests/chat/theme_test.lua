@@ -4,6 +4,8 @@
 --   - a chat window's backdrop is drawn as a panel in chat's Theme and
 --     Background, the padding outside the window, and None draws none; its tab
 --     gets no backdrop, as before;
+--   - under Blizzard the box lies on that backdrop's edges, so the padding is
+--     inside it and the box never covers the text;
 --   - edit mode's outline sits on the backdrop's border, or on the chat itself
 --     under None.
 --
@@ -73,7 +75,7 @@ test('each page offers Theme and Background, not Template', function()
 end)
 
 -- A chat window as SkinChatFrame leaves it (the frame and its tab are Blizzard's).
--- The backdrop is SaftUI's, in the module's own table: st:DrawnFrame finds it.
+-- The backdrop is SaftUI's, in the module's own table: CHT:Backdrop finds it.
 local CW = load_test_file('chat/fixtures/chat_window.lua')
 local function chat_frame()
 	local frame, _, tab = CW.build(7)
@@ -83,9 +85,9 @@ end
 test("a chat window's backdrop is a panel in chat's Theme and Background, the padding outside it", function()
 	local frame, tab = chat_frame()
 	CHT:UpdateChatFrameDisplay(frame)
-	local backdrop = st:DrawnFrame(frame)
+	local backdrop = CHT:Backdrop(frame)
 	check(backdrop ~= nil and backdrop ~= frame, "SaftUI's own frame is drawn behind the window")
-	eq(drawn(frame), 'theme,theme,panel', "chat's Theme and Background, as a panel")
+	eq(drawn(backdrop), 'theme,theme,panel', "chat's Theme and Background, as a panel")
 	eq(T.inset(backdrop), 2, "Thick's border")
 	eq(T.offset(backdrop, 'TOPLEFT'), '-10.00,10.00', 'the padding outside the window')
 	eq(drawn(tab), nil, 'the tab gets no backdrop')
@@ -94,7 +96,7 @@ test("a chat window's backdrop is a panel in chat's Theme and Background, the pa
 
 	profile.chat.theme, profile.chat.background = 'thin', 'transparent'
 	CHT:UpdateChatFrameDisplay(frame)
-	eq(drawn(frame), 'thin,transparent,panel', 'a new Theme and Background')
+	eq(drawn(backdrop), 'thin,transparent,panel', 'a new Theme and Background')
 	eq(T.inset(backdrop), 1, "Thin's border")
 	eq(T.offset(backdrop, 'TOPLEFT'), '-10.00,10.00', 'still the padding outside the window')
 
@@ -102,6 +104,30 @@ test("a chat window's backdrop is a panel in chat's Theme and Background, the pa
 	CHT:UpdateChatFrameDisplay(frame)
 	eq(backdrop.backdropInfo, nil, 'None draws none')
 	profile.chat.theme, profile.chat.background = 'theme', 'theme'
+end)
+
+-- Under Blizzard the box is drawn over the frame it borders, reaching 4px outside it.
+-- Drawn around the chat window itself it lay over the text's edges (the bottom line
+-- cut off) while the fill went the padding past it (2026-11-18, padding 19 in game).
+-- The box lies on the backdrop's own edges instead, as Thick's border does, so the
+-- padding is room inside the box.
+test("under Blizzard the chat's box lies on the backdrop's edges, the padding inside it", function()
+	local frame = chat_frame()
+	frame:SetPoint('CENTER')
+	frame:SetSize(400, 200)
+	profile.chat.theme, profile.chat.padding = 'blizzard', 19
+	CHT:UpdateChatFrameDisplay(frame)
+	local backdrop = CHT:Backdrop(frame)
+	eq(T.around(backdrop, frame), '-19,19,19,-19', 'the fill reaches the padding outside the text')
+	local box = st.ThemeArt.BoxFrame(backdrop)
+	check(box:IsShown(), 'the box is drawn')
+	eq(T.around(box, backdrop), '0,0,0,0', "the box lies on the backdrop's edges, not around the text")
+
+	profile.chat.padding = 4
+	CHT:UpdateChatFrameDisplay(frame)
+	eq(T.around(box, frame), '-4,4,4,-4', 'a new padding moves the box with the fill')
+	profile.chat.theme, profile.chat.padding = 'theme', st.defaults.chat.padding
+	CHT:UpdateChatFrameDisplay(frame)
 end)
 
 -- What SkinChatFrame does to Blizzard's chat window, edit box and tab: no field
@@ -119,7 +145,7 @@ test("skinning a chat window writes no field onto Blizzard's window, edit box or
 	check(stub.hook_wrappers[rawget(tab, 'SetAlpha')], "the tab's SetAlpha is only a hooksecurefunc wrapper")
 	rawset(tab, 'SetAlpha', nil)
 	eq(CW.keys(tab), before[3], "the tab's keys")
-	check(st:DrawnFrame(frame) ~= nil, "the window is drawn behind all the same")
+	check(CHT:Backdrop(frame) ~= nil, "the window is drawn behind all the same")
 end)
 
 -- Blizzard's ChatFrameUtil.GetActiveWindow reads ACTIVE_CHAT_EDIT_BOX, which ActivateChat
@@ -391,7 +417,7 @@ test("under None the edit box and scroll bar anchor to the chat window, and a th
 
 	profile.chat.theme = 'theme'
 	CHT:ApplyChatFrameConfig(frame)
-	local backdrop = st:DrawnFrame(frame)
+	local backdrop = CHT:Backdrop(frame)
 	check(backdrop ~= nil, 'a theme draws the backdrop')
 	for i = 1, editbox:GetNumPoints() do
 		eq(select(2, editbox:GetPoint(i)), backdrop, 'the box follows the backdrop, anchor ' .. i)
@@ -417,7 +443,7 @@ end
 test("a dock or lock change that Blizzard re-anchors the scroll bar for leaves it on SaftUI's backdrop again", function()
 	local frame = CW.build(21)
 	CHT:SkinChatFrame(frame)
-	local backdrop = st:DrawnFrame(frame)
+	local backdrop = CHT:Backdrop(frame)
 	local _, relative, relPoint, x = frame.ScrollBar:GetPoint(1)
 	eq(relative, backdrop, 'skinned: on the backdrop')
 	eq(x, 5, 'with the gap of 5')
@@ -492,7 +518,7 @@ test("under None the combat log's edit box sits above its quick button bar", fun
 	eq(y, 25, "the bar's height and the 1 every box has")
 	profile.chat.theme = 'theme'
 	CHT:ApplyChatFrameConfig(frame)
-	local backdrop = st:DrawnFrame(frame)
+	local backdrop = CHT:Backdrop(frame)
 	_, relative, _, _, y = editbox:GetPoint(1)
 	eq(relative, backdrop, 'under a theme, on the backdrop')
 	eq(y, 1, 'which already includes the bar')

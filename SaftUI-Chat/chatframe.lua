@@ -98,13 +98,40 @@ end
 
 -- Kept apart from Blizzard's frames, which get no field from SaftUI
 -- (.agents/taint.md, rule 1), each keyed weakly by the chat frame:
---   backdrops: chat frame -> the frame of SaftUI's drawn behind it (st:SetBackdropIn);
+--   backdrops: chat frame -> the frame of SaftUI's drawn behind it (DrawBackdrop);
 --   pieces: chat frame -> { editbox, tab }, Blizzard's edit box and tab of that window;
 --   hooked: the edit boxes whose scripts and the tabs whose SetAlpha SaftUI has
 --   hooked, so a second skin of the same window adds no second hook.
 local backdrops = setmetatable({}, { __mode = 'k' })
 local pieces = setmetatable({}, { __mode = 'k' })
 local hooked = setmetatable({}, { __mode = 'k' })
+
+-- The backdrop drawn behind a chat window, or nil for one never drawn (None).
+function CHT:Backdrop(frame)
+	return backdrops[frame]
+end
+
+-- Draws chat's Theme and Background as a panel on the window's backdrop, a frame of
+-- SaftUI's one level under the window, made the first time a look is drawn (none is
+-- made while the theme is None). The backdrop is drawn on itself (st:SetTemplate), not
+-- behind the window as its owner (st:SetBackdropIn): under Blizzard the box then lies
+-- on the backdrop's own edges, as Thick's and Thin's borders do, so the padding the
+-- backdrop reaches past the text is room inside the box. Drawn behind the window, the
+-- box went around the window itself, 4px out and over the text's edges, while the
+-- fill went the padding past it. UpdateChatFrameDisplay anchors it, and a theme redraw
+-- leaves it there. Returns the backdrop, or nil under None.
+local function DrawBackdrop(frame, theme, background)
+	local backdrop = backdrops[frame]
+	if not backdrop then
+		if theme == 'none' then return end
+		backdrop = st:CreateFrame('frame', nil, frame)
+		local level = frame:GetFrameLevel()
+		if not issecretvalue(level) then backdrop:SetFrameLevel(math.max(0, level - 1)) end
+		backdrops[frame] = backdrop
+	end
+	st:SetTemplate(backdrop, theme, background, 'panel')
+	if theme ~= 'none' then return backdrop end
+end
 
 -- A chat frame's tab: the one SkinChatFrame found, or for a window it never skinned
 -- (a docked one Blizzard made later) the global its XML names. Only read.
@@ -234,8 +261,6 @@ end
 function CHT:SkinChatFrame(frame)
 	local name = frame:GetName()
 	st:StripTextures(frame)
-	st:SetBackdropIn(backdrops, frame, self.config.theme, self.config.background, 'panel')
-
 	st:Kill(_G[frame:GetName()..'Background'])
 	st:Kill(_G[frame:GetName()..'RightTexture'])
 
@@ -290,7 +315,7 @@ end
 
 function CHT:UpdateChatFrameDisplay(frame)
 	-- The backdrop when a look is drawn; nil under None, even after a theme was drawn once.
-	local drawnBackdrop = st:SetBackdropIn(backdrops, frame, self.config.theme, self.config.background, 'panel')
+	local drawnBackdrop = DrawBackdrop(frame, self.config.theme, self.config.background)
 
 	local offset = 0
 	if frame.CombatLogQuickButtonFrame then
