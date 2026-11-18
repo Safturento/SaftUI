@@ -62,7 +62,7 @@ local function GetConfigTable(unit)
 		color_hostile = G.toggle(8, 'Color hostile', 'Colors the names of hostile units in the Danger color, and of unfriendly and neutral ones in the Caution color (Global settings > Colors > Text).', 'small'),
 		maxLength = G.range(9, 'Max length', 1, 100, 1, 'Cuts the name to this many letters.'),
 		max_width = G.range(9.5, 'Max width', 0, 600, 1, "Cuts the name at this many pixels, so it can't run under the health text. 0: no limit."),
-		justify = G.justify(9.7, 'Where the name sits in its Max width: shows only while Max width is above 0.'),
+		justify = G.justify(9.7, 'Lines the name up inside its Max width. Only has an effect while Max width is above 0.'),
 		alpha = G.alpha(10, 'How solid the name is, from see-through to opaque.'),
 		-- Last in the tab.
 		position = G.uf_element_position(1000,

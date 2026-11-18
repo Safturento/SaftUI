@@ -106,7 +106,7 @@ test('Align sets each text on a plate, through its option; Auto puts it back by 
 	local cases = {
 		{ 'Name', {}, function() return frame.Name end, 'LEFT' },
 		{ 'Health', { 'text' }, function() return frame.Health.text end, 'RIGHT' },
-		{ 'Castbar', { 'text' }, function() return frame.Castbar.Text end, nil },
+		{ 'Castbar', { 'text' }, function() return frame.Castbar.Text end, 'LEFT' },
 		{ 'Subtext', {}, function() return frame.Subtext end, 'CENTER' },
 		{ 'Threat', {}, function() return frame.Threat end, 'RIGHT' },
 	}
@@ -137,6 +137,13 @@ test('a name with no Max width takes Align too, and keeps it through a font chan
 	eq(name:GetJustifyH(), 'LEFT', 'Auto: the target name is at a left point')
 	tab.set({ 'justify' }, 'RIGHT')
 	eq(name:GetJustifyH(), 'RIGHT', 'Right')
+	-- In game SetFontObject puts the font's justification back; the stub keeps it, so this name's does
+	-- what the game does, and an Align set before the font would be lost here.
+	local setFontObject = name.SetFontObject
+	name.SetFontObject = function(self, ...)
+		setFontObject(self, ...)
+		self:SetJustifyH('CENTER')
+	end
 	tab.set({ 'font' }, 'pixel')
 	eq(name:GetJustifyH(), 'RIGHT', 'kept through a font change')
 	tab.set({ 'max_width' }, 100)
@@ -159,4 +166,19 @@ test('Align is shared: All units has the five rows, step 1 entries like the rest
 	eq(UF.SHARED_BY_KEY['subtext.justify'], nil, "the plates' texts aren't shared")
 	eq(UF.SHARED_BY_KEY['threat.justify'], nil, "the plates' texts aren't shared")
 	eq(UF.SHARED_BY_KEY['additionalpower.text.justify'], nil, 'Additional power is never shared')
+end)
+
+test('a profile converted before Align existed: nothing to sync, nobody owns it', function()
+	local _, UF, profile = world()
+	eq(UF:PrepareShared(profile) ~= nil, true, 'prepared')
+	for _, unit in ipairs(UF.SHARE_MEMBERS) do
+		for _, key in ipairs({ 'name.justify', 'health.text.justify', 'power.text.justify', 'castbar.text.justify', 'castbar.time.justify' }) do
+			if UF:HasShared(unit, key) then rawset(profile[unit].own, key, nil) end
+		end
+	end
+	eq(UF:SyncShared(profile), 0, 'the sync writes nothing')
+	for _, unit in ipairs(UF.SHARE_MEMBERS) do
+		eq(profile[unit].name.justify, 'AUTO', unit .. ': Auto')
+		check(not rawget(profile[unit].own, 'name.justify'), unit .. ': follows All units')
+	end
 end)

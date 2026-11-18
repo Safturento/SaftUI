@@ -52,7 +52,9 @@ local UF = st:GetModule('Unitframes')
 
 	A setting added later gets since = n, UF.SHARED_VERSION rises to n, and the conversion runs that
 	step for those entries alone, so a unit whose default for the new setting differs owns it from the
-	start. Changing a shipped default of a shared setting for some members needs a step as well:
+	start. The exception: when every member's default and All units' are the same and no saved profile
+	could hold another value (a key that didn't exist before), step 1 is enough: no member would own it
+	(the texts' Align rows). Changing a shipped default of a shared setting for some members needs a step as well:
 	the sync keeps a follower at All units' value. A test fails an entry no step covers.
 ]]
 

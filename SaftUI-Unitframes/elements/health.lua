@@ -126,7 +126,7 @@ local function GetConfigTable(unit)
 		enable = G.toggle(0, 'Enable', "Shows the health as text on the unit frame.", 'small'),
 		hide_full = G.toggle(1, 'Hide full', 'Hides the text while health is full.', 'small'),
 		font = G.font(2, "The health text's font."),
-		justify = G.justify(2.5, "How the health text lines up in its box. The box is only as wide as the text, so one line looks the same either way."),
+		justify = G.justify(2.5, "Lines the health text up. No visible effect for now: the text is only as wide as itself."),
 		deficit = G.toggle(3, 'Deficit', 'Shows how much health is missing, as -1234, instead of the health.', 'small'),
 		percent = G.toggle(4, 'Percent', 'Shows the health as a percent instead. Deficit wins when both are on.', 'small'),
 		short = G.toggle(4.5, 'Short', 'Shortens the health, as 12.5K or 1.2M. Not with Deficit or Percent on.', 'small'),
