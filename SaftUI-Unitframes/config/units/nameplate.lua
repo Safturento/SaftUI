@@ -39,6 +39,7 @@ st.defaults.unitframes.profiles["**"].nameplate = {
         enable = true,
         font = 'pixel',
         justify = 'AUTO', -- Align: AUTO follows the point (UF.TextJustify)
+        max_width = 0, -- in pixels; 0 for no limit (UF.SetMaxWidth)
         position = { point = 'BOTTOMRIGHT', element = 'Health', rel_point = 'TOPRIGHT', x_off = 0, y_off = 6 },
     },
     -- The subtext under the name (nameplates/subtext.lua): an NPC's title or a

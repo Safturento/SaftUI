@@ -15,7 +15,7 @@ local T = load_test_file('lib/theme_helpers.lua')
 local L = load_test_file('lib/source_lex.lua')
 
 local st, UF
-local EXPECTED_DIGEST = 647353639
+local EXPECTED_DIGEST = 602440654
 
 local function world(opts)
 	st, UF = SW.world(opts)
@@ -814,7 +814,7 @@ test('L9 every member\'s default for every shared setting is pinned: changing on
 	local why = 'A shared setting\'s default changed for some member. A follower keeps the value it holds, so only fresh profiles '
 		.. 'would see the new default: give the setting a conversion step (since = n and UF.SHARED_VERSION = n in '
 		.. 'config/shared.lua), or, for a new setting, since = n; then update this digest.'
-	eq(count, 1923, 'settings on members. ' .. why)
+	eq(count, 1961, 'settings on members. ' .. why)
 	eq(sum, EXPECTED_DIGEST, 'the digest (' .. size .. ' characters). ' .. why)
 end)
 

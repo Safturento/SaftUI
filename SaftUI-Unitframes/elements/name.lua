@@ -5,33 +5,11 @@ local function Constructor(unitframe)
 	return UF:AddTextElement(unitframe, 'Name')
 end
 
--- Max width: the name gets that width on one line, so the game cuts a longer
--- one, a secret name too, which the tag can't shorten (tags.lua). 0, every
--- unit's default but the plates', leaves a name that was never sized as it
--- is, and gives one sized before no width again (0: as wide as its text),
--- wrapping as a font string does. Align (UF.ApplyJustify) is set after, in
--- either case: the caller's ApplyFont has just put the font's back.
-local function SetMaxWidth(name, config)
-	local width = tonumber(config.max_width) or 0
-	if width > 0 then
-		name:SetWidth(width)
-		name:SetWordWrap(false)
-		name.sizedByMaxWidth = true
-	elseif name.sizedByMaxWidth then
-		name:SetWidth(0)
-		name:SetWordWrap(true)
-		name.sizedByMaxWidth = nil
-	end
-	UF.ApplyJustify(name, config)
-end
--- Shared with the nameplates' subtext line (nameplates/subtext.lua).
-UF.SetMaxWidth = SetMaxWidth
-
 local function UpdateConfig(unitframe)
 	UF:UpdateElement(unitframe.Name)
 
 	st:ApplyFont(unitframe.Name, unitframe.config.name.font)
-	SetMaxWidth(unitframe.Name, unitframe.config.name)
+	UF.SetMaxWidth(unitframe.Name, unitframe.config.name)
     unitframe.Name.overrideUnit = true
 
 	-- The tag names the config unit it reads (tags.lua), so it's bound again
@@ -62,7 +40,7 @@ local function GetConfigTable(unit)
 		color_hostile = G.toggle(8, 'Color hostile', 'Colors the names of hostile units in the Danger color, and of unfriendly and neutral ones in the Caution color (Global settings > Colors > Text).', 'small'),
 		maxLength = G.range(9, 'Max length', 1, 100, 1, 'Cuts the name to this many letters.'),
 		max_width = G.range(9.5, 'Max width', 0, 600, 1, "Cuts the name at this many pixels, so it can't run under the health text. 0: no limit."),
-		justify = G.justify(9.7, 'Lines the name up inside its Max width. Only has an effect while Max width is above 0.'),
+		justify = G.justify(9.7, 'name', function() return UnitConfig().name.max_width end),
 		alpha = G.alpha(10, 'How solid the name is, from see-through to opaque.'),
 		-- Last in the tab.
 		position = G.uf_element_position(1000,
