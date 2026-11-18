@@ -228,14 +228,26 @@ function generators.background(order, desc)
 	return OrderedSelect(order, 'Background', desc or BACKGROUND_DESC, BACKGROUND_VALUES)
 end
 
--- A text's Align (the unit frames' UF.ApplyJustify): Auto, which follows the
--- text's point, or Left, Center or Right. desc says what it lines up and when
--- that shows; what Auto does is added after it.
+-- A text's Max width and Align (the unit frames' UF.SetMaxWidth and
+-- UF.TextJustify). what names the text in the descs. Align is Auto, which
+-- follows the text's point, or Left, Center or Right, and is disabled while
+-- maxWidth() (the text's saved Max width) is 0: a text with no width lines up
+-- by its point.
 local JUSTIFY_VALUES = { { 'AUTO', 'Auto' }, { 'LEFT', 'Left' }, { 'CENTER', 'Center' }, { 'RIGHT', 'Right' } }
-local JUSTIFY_DESC = "Auto lines it up on the side of its point: left for a left point, right for a right one, else centered."
+local JUSTIFY_OFF = 'Needs a Max width above 0. Without one the text is as wide as itself and lines up by its position.'
 
-function generators.justify(order, desc)
-	return OrderedSelect(order, 'Align', desc and desc .. ' ' .. JUSTIFY_DESC or JUSTIFY_DESC, JUSTIFY_VALUES)
+function generators.max_width(order, what)
+	return generators.range(order, 'Max width', 0, 600, 1,
+		("Gives the %s this width on one line, so a longer one is cut. 0: no limit, as wide as itself."):format(what))
+end
+
+function generators.justify(order, what, maxWidth)
+	local option = OrderedSelect(order, 'Align',
+		("Lines the %s up inside its Max width. Auto lines it up on the side of its point: left for a left point, right for a right one, else centered."):format(what),
+		JUSTIFY_VALUES)
+	option.disabled = function() return (tonumber(maxWidth()) or 0) <= 0 end
+	option.disabledDesc = JUSTIFY_OFF
+	return option
 end
 
 -- A font setting's row (SaftUI's own type 'font', Config/optionsfont.lua): its

@@ -108,7 +108,7 @@ test("a part's name lists its menu's settings after it; with a part many pages s
 	for _, r in ipairs(results) do
 		if r.name == 'Health text' then rows[#rows + 1] = r.path[2] end
 	end
-	eq(table.concat(rows, ','), 'all,' .. table.concat(UNITS, ',', 1, 10), "All units and then the pages in the picker's order, to the cap")
+	eq(table.concat(rows, ','), 'all,' .. table.concat(UNITS, ',', 1, 9), "All units and then the pages in the picker's order, to the cap")
 	-- Each part row is followed by its own menu's settings before the next page's.
 	eq(results[1].name, 'Health text')
 	eq(results[1].menu, nil)
@@ -254,10 +254,15 @@ test("a plate page whose box is checked: the tabs it can't open and the part row
 	end
 	eq(names, 1, "Enemy's Name menu found while its box is unchecked")
 	local castbarBefore = 0
-	for _, r in ipairs(OM.Search(tree(), 'Width')) do
+	for _, r in ipairs(OM.Search(tree(), "Can't interrupt")) do
 		if r.path[2] == 'nameplate' and r.path[3] == 'Castbar' then castbarBefore = castbarBefore + 1 end
 	end
 	check(castbarBefore > 0, "and its Cast bar tab's rows: " .. castbarBefore)
+	local healthBefore = 0
+	for _, r in ipairs(OM.Search(tree(), 'Reverse fill')) do
+		if r.path[2] == 'nameplate' and r.path[3] == 'Health' then healthBefore = healthBefore + 1 end
+	end
+	check(healthBefore > 0, "and its Health tab's rows: " .. healthBefore)
 
 	config.nameplate.use_friendly = true
 	local root = tree()
@@ -268,8 +273,12 @@ test("a plate page whose box is checked: the tabs it can't open and the part row
 		check(not (r.path[2] == 'nameplate' and r.path[3] == 'general' and r.path[5] == 'name'),
 			'nor the Name row itself: ' .. pathText(r))
 	end
-	for _, r in ipairs(OM.Search(root, 'Width')) do
-		check(not (r.path[2] == 'nameplate' and (r.path[3] == 'Castbar' or r.path[3] == 'Health')), "nor a disabled tab's rows: " .. pathText(r))
+	-- (Searched by words only those tabs and few others have: 'Width' is in every text's Max width now,
+	-- and the 100 cap would cut the plate pages before the check sees them.)
+	for _, word in ipairs({ "Can't interrupt", 'Reverse fill' }) do
+		for _, r in ipairs(OM.Search(root, word)) do
+			check(not (r.path[2] == 'nameplate' and (r.path[3] == 'Castbar' or r.path[3] == 'Health')), "nor a disabled tab's rows: " .. pathText(r))
+		end
 	end
 	check(#listing(root, 'Show level') >= 12, "the other pages' still are")
 	-- The Threat part stays on the page, so its menu is still found.

@@ -1,7 +1,9 @@
--- Every unit frame text's Align (its config's justify; UF.TextJustify and
--- UF.ApplyJustify in updaters.lua): Auto, the default, follows the text's
--- point as the name's Max width always did; Left, Center and Right set the
--- font string's horizontal justification. On every text's options (Name,
+-- Every unit frame text's Max width and Align (its config's max_width and
+-- justify; UF.SetMaxWidth, UF.TextJustify and UF.ApplyJustify in updaters.lua).
+-- Max width gives the text that width on one line. Align is taken only while
+-- the text has one (its row is disabled at 0): Left, Center and Right set the
+-- font string's horizontal justification; Auto, the default, and any text with
+-- no width follow the text's point, as before. On every text's options (Name,
 -- Health and Power text, Additional power's text, the castbar's spell name and
 -- time, the plates' Subtext and Threat), applied by each text's update.
 --
@@ -20,10 +22,10 @@ local function enemy(unit)
 	return NP.add(unit)
 end
 
-test('Auto follows the point; Left, Center and Right are taken as they are', function()
+test('Auto follows the point; Left, Center and Right are taken only with a Max width', function()
 	local _, UF = world()
-	local function at(point, justify)
-		return UF.TextJustify({ justify = justify, position = { point = point } })
+	local function at(point, justify, width)
+		return UF.TextJustify({ justify = justify, position = { point = point }, max_width = width or 100 })
 	end
 	eq(at('LEFT', 'AUTO'), 'LEFT', 'a left point')
 	eq(at('TOPLEFT', 'AUTO'), 'LEFT', 'a top left point')
@@ -36,6 +38,8 @@ test('Auto follows the point; Left, Center and Right are taken as they are', fun
 	for _, justify in ipairs({ 'LEFT', 'CENTER', 'RIGHT' }) do
 		eq(at('TOPRIGHT', justify), justify, justify .. ' over a right point')
 		eq(at('LEFT', justify), justify, justify .. ' over a left point')
+		eq(at('TOPRIGHT', justify, 0), 'RIGHT', justify .. ' with no Max width: by the point')
+		eq(UF.TextJustify({ justify = justify, position = { point = 'LEFT' } }), 'LEFT', justify .. ' with no max_width at all: by the point')
 	end
 end)
 
@@ -94,13 +98,26 @@ test("every text has Align: Auto, Left, Center, Right; Auto by default", functio
 				eq(option.values.AUTO, 'Auto', label .. ': Auto named')
 				check(type(option.desc) == 'string' and option.desc ~= '', label .. ': with a desc')
 				eq(group.get({ 'justify' }), 'AUTO', label .. ': Auto by default')
+				eq(option.disabledDesc ~= nil, true, label .. ': says why it is disabled')
+				local width = group.args.max_width
+				if check(width ~= nil, label .. ': has Max width') then
+					eq(width.name, 'Max width', label .. ': Max width named')
+					eq(width.type, 'range', label .. ': a range')
+					eq(width.min, 0, label .. ': from 0')
+					local saved = group.get({ 'max_width' })
+					group.set({ 'max_width' }, 0)
+					eq(option.disabled(), true, label .. ': Align disabled with no Max width')
+					group.set({ 'max_width' }, 80)
+					eq(option.disabled(), false, label .. ': and enabled with one')
+					group.set({ 'max_width' }, saved)
+				end
 			end
 		end
 	end
 	eq(#take_errors(), 0, 'no error')
 end)
 
-test('Align sets each text on a plate, through its option; Auto puts it back by the point', function()
+test('Max width sizes each text on a plate, Align lines it up in it; Auto, and no width, by the point', function()
 	local _, UF, P = world()
 	local frame = enemy('nameplate1')
 	local cases = {
@@ -114,19 +131,26 @@ test('Align sets each text on a plate, through its option; Auto puts it back by 
 		local element, path, text, auto = case[1], case[2], case[3], case[4]
 		local group = find_text_group(UF, element, 'nameplate', path)
 		local label = element .. ' ' .. table.concat(path, '.')
-		if auto then eq(text():GetJustifyH(), auto, label .. ': Auto, by its point') end
+		eq(text():GetJustifyH(), auto, label .. ': Auto, by its point')
+		group.set({ 'max_width' }, 120)
+		eq(text():GetWidth(), 120, label .. ': Max width gives it 120')
+		eq(text():CanWordWrap(), false, label .. ': on one line')
 		for _, justify in ipairs({ 'RIGHT', 'CENTER', 'LEFT' }) do
 			group.set({ 'justify' }, justify)
 			eq(text():GetJustifyH(), justify, label .. ': ' .. justify)
 		end
+		group.set({ 'justify' }, 'RIGHT')
+		group.set({ 'max_width' }, 0)
+		eq(text():GetWidth(), 0, label .. ': no width again')
+		eq(text():GetJustifyH(), auto, label .. ': Right is set aside with no width: by its point')
 		group.set({ 'justify' }, 'AUTO')
-		if auto then eq(text():GetJustifyH(), auto, label .. ': Auto again') end
+		eq(text():GetJustifyH(), auto, label .. ': Auto again')
 	end
 	eq(P.nameplate.name.justify, 'AUTO', 'saved back to Auto')
 	eq(#take_errors(), 0, 'no error')
 end)
 
-test('a name with no Max width takes Align too, and keeps it through a font change and a width change', function()
+test("a name's Align waits for a Max width, and keeps it through a font change", function()
 	local _, UF, P = world()
 	local target = NP.ouf:Spawn('target', 'SaftUI_Target')
 	UF.units.target = target
@@ -136,7 +160,9 @@ test('a name with no Max width takes Align too, and keeps it through a font chan
 	eq(P.target.name.max_width, 0, 'no Max width')
 	eq(name:GetJustifyH(), 'LEFT', 'Auto: the target name is at a left point')
 	tab.set({ 'justify' }, 'RIGHT')
-	eq(name:GetJustifyH(), 'RIGHT', 'Right')
+	eq(name:GetJustifyH(), 'LEFT', 'Right waits: no width, so by its point')
+	tab.set({ 'max_width' }, 100)
+	eq(name:GetJustifyH(), 'RIGHT', 'Right once it has a width')
 	-- In game SetFontObject puts the font's justification back; the stub keeps it, so this name's does
 	-- what the game does, and an Align set before the font would be lost here.
 	local setFontObject = name.SetFontObject
@@ -146,20 +172,19 @@ test('a name with no Max width takes Align too, and keeps it through a font chan
 	end
 	tab.set({ 'font' }, 'pixel')
 	eq(name:GetJustifyH(), 'RIGHT', 'kept through a font change')
-	tab.set({ 'max_width' }, 100)
-	eq(name:GetJustifyH(), 'RIGHT', 'kept when it gets a width')
 	tab.set({ 'max_width' }, 0)
-	eq(name:GetJustifyH(), 'RIGHT', 'and when it loses it')
+	eq(name:GetJustifyH(), 'LEFT', 'by its point again when it loses the width')
 	eq(#take_errors(), 0, 'no error')
 end)
 
-test('Align is shared: All units has the five rows, step 1 entries like the rest', function()
+test('Align and Max width are shared: All units has their rows, step 1 entries like the rest', function()
 	world()
 	local UF = SaftUI:GetModule('Unitframes')
-	for _, key in ipairs({ 'name.justify', 'health.text.justify', 'power.text.justify', 'castbar.text.justify', 'castbar.time.justify' }) do
+	for _, key in ipairs({ 'name.justify', 'health.text.justify', 'power.text.justify', 'castbar.text.justify', 'castbar.time.justify',
+			'health.text.max_width', 'power.text.max_width', 'castbar.text.max_width', 'castbar.time.max_width' }) do
 		local entry = UF.SHARED_BY_KEY[key]
 		if check(entry ~= nil, key .. ' is shared') then
-			eq(entry.type, 'select', key .. ': a select')
+			eq(entry.type, key:match('max_width$') and 'range' or 'select', key .. ': its row type')
 			eq(entry.since, 1, key .. ': step 1')
 		end
 	end

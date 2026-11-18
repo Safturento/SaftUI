@@ -154,7 +154,7 @@ function UF:UpdateElement(element, configOverride)
 
     if element:IsObjectType('FontString') then
         st:ApplyFont(element, config.font)
-        UF.ApplyJustify(element, config)
+        UF.SetMaxWidth(element, config)
     end
 
     if element.textElements then
@@ -397,16 +397,43 @@ function UF:UpdateStatusBarElement(element, configOverride)
     end
 end
 
--- A text's Align (its config's justify): Left, Center or Right, or Auto (any
--- other value, a config from before the setting too), which follows the text's
--- point: from its left for a left point, from its right for a right one, else
--- from its middle. It shows only on a text with a width (the name's and the
--- subtext's Max width) or of more than one line; a font string with no width
--- is as wide as its text. Set after the font: SetFontObject gives a font
--- string its font's justification again.
+-- A text's Max width (its config's max_width, in pixels): the text gets that
+-- width on one line, so the game cuts a longer one, a secret one too, which a
+-- tag can't shorten (tags.lua). 0, every text's default but the plates' name
+-- and subtext, leaves a text that was never sized as it is, and gives one
+-- sized before no width again (0: as wide as its text), wrapping as a font
+-- string does.
+function UF.MaxWidth(config)
+    local width = tonumber(config.max_width) or 0
+    return width > 0 and width or 0
+end
+
+-- Sizes a text by its Max width, then justifies it (UF.ApplyJustify). Called
+-- after the font: SetFontObject gives a font string its font's justification
+-- again.
+function UF.SetMaxWidth(text, config)
+    local width = UF.MaxWidth(config)
+    if width > 0 then
+        text:SetWidth(width)
+        text:SetWordWrap(false)
+        text.sizedByMaxWidth = true
+    elseif text.sizedByMaxWidth then
+        text:SetWidth(0)
+        text:SetWordWrap(true)
+        text.sizedByMaxWidth = nil
+    end
+    UF.ApplyJustify(text, config)
+end
+
+-- A text's Align (its config's justify): Left, Center or Right, taken only
+-- while it has a Max width, the one case where it shows (a font string with no
+-- width is as wide as its text). Auto (any other value, a config from before
+-- the setting too), and any text with no Max width, follows the text's point:
+-- from its left for a left point, from its right for a right one, else from
+-- its middle.
 local JUSTIFY = { LEFT = 'LEFT', CENTER = 'CENTER', RIGHT = 'RIGHT' }
 function UF.TextJustify(config)
-    local justify = JUSTIFY[config.justify]
+    local justify = UF.MaxWidth(config) > 0 and JUSTIFY[config.justify]
     if justify then return justify end
     local point = config.position and config.position.point
     if type(point) ~= 'string' then return 'CENTER' end
@@ -427,7 +454,7 @@ function UF:UpdateText(text, configOverride)
 
     UF:UpdateElement(text, configOverride)
     st:ApplyFont(text, config.font)
-    UF.ApplyJustify(text, config)
+    UF.SetMaxWidth(text, config)
 
     -- The health and power texts' own color (colorCustom and customColor in
     -- their text config; the other texts have none). Off, a text keeps its
