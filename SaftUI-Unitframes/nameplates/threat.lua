@@ -279,6 +279,7 @@ local function GetConfigTable(unit)
 				"Shows your threat on an enemy as a percent above its health bar: in the bar's threat color while it's tinted, else in the normal text color. Only where the bars are tinted: in a party or raid, or on your own with Threat when solo on.", 'small'),
 			font = G.font(1, "The threat text's font, which sets its size."),
 			alpha = G.alpha(2, 'How solid the threat text is, from see-through to opaque.'),
+			justify = G.justify(3, "How the threat text lines up in its box. The box is only as wide as the text, so one line looks the same either way."),
 			-- Last in the tab.
 			position = G.uf_element_position(1000,
 				function(index) return Config().position[index] end,

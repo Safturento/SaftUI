@@ -729,7 +729,7 @@ test("the Threat part: Enable (its box), Font, Alpha and Position, on the plates
 	local keys = {}
 	for key in pairs(tab.menu.args) do keys[#keys + 1] = key end
 	table.sort(keys)
-	eq(table.concat(keys, ','), 'alpha,font,position', "its menu's options: Enable is the row's box")
+	eq(table.concat(keys, ','), 'alpha,font,justify,position', "its menu's options: Enable is the row's box")
 	check(type(tab.desc) == 'string' and tab.desc ~= '', 'the box has a desc')
 	for key, option in pairs(tab.menu.args) do
 		check(type(option.desc) == 'string' and option.desc ~= '', key .. ' has a desc')

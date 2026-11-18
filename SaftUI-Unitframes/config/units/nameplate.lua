@@ -38,6 +38,7 @@ st.defaults.unitframes.profiles["**"].nameplate = {
     threat = {
         enable = true,
         font = 'pixel',
+        justify = 'AUTO', -- Align: AUTO follows the point (UF.TextJustify)
         position = { point = 'BOTTOMRIGHT', element = 'Health', rel_point = 'TOPRIGHT', x_off = 0, y_off = 6 },
     },
     -- The subtext under the name (nameplates/subtext.lua): an NPC's title or a
@@ -50,6 +51,7 @@ st.defaults.unitframes.profiles["**"].nameplate = {
         npc = false,
         player = false,
         font = 'normal',
+        justify = 'AUTO', -- Align: AUTO follows the point (UF.TextJustify)
         color = { r = 0.8, g = 0.8, b = 0.8 },
         alpha = 1,
         max_width = 200,

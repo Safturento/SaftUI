@@ -415,7 +415,7 @@ test('the Subtext part on both plate pages: a row of General\'s Parts with no bo
 			for _, section in ipairs(view.sections) do
 				for _, row in ipairs(section.rows) do keys[#keys + 1] = row.key end
 			end
-			eq(table.concat(keys, ','), 'npc,player,font,color,alpha,max_width,position', client .. ': ' .. unit .. ': its options')
+			eq(table.concat(keys, ','), 'npc,player,font,color,alpha,max_width,justify,position', client .. ': ' .. unit .. ': its options')
 			eq(group.args.npc.name, 'NPC titles', client .. ': the NPC box named')
 			eq(group.args.npc.desc, "Shows an NPC's title, such as General Goods Vendor, under its name.", client .. ': its desc')
 			eq(group.args.player.name, 'Player guilds', client .. ': the player box named')

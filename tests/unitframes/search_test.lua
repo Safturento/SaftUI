@@ -108,7 +108,7 @@ test("a part's name lists its menu's settings after it; with a part many pages s
 	for _, r in ipairs(results) do
 		if r.name == 'Health text' then rows[#rows + 1] = r.path[2] end
 	end
-	eq(table.concat(rows, ','), 'all,' .. table.concat(UNITS, ',', 1, 11), "All units and then the pages in the picker's order, to the cap")
+	eq(table.concat(rows, ','), 'all,' .. table.concat(UNITS, ',', 1, 10), "All units and then the pages in the picker's order, to the cap")
 	-- Each part row is followed by its own menu's settings before the next page's.
 	eq(results[1].name, 'Health text')
 	eq(results[1].menu, nil)

@@ -103,6 +103,8 @@ local function Add(entry)
 end
 
 -- Each row of a part or bar: { suffix below its config key, name, type, shows, part }.
+-- The texts' Align rows (justify) came after the first step but are step 1 entries: every unit's
+-- default is AUTO, All units' too, so no member would own one and a step would change nothing.
 local function Rows(config, element, part, rows)
 	for _, row in ipairs(rows) do
 		local key = config .. '.' .. row[1]
@@ -160,6 +162,7 @@ local function Bar(config, element, textPart, own)
 		{ 'enable', 'Show', 'toggle' },
 		{ 'hide_full', 'Hide full', 'toggle' },
 		{ 'font', 'Font', 'font' },
+		{ 'justify', 'Align', 'select' },
 		{ 'percent', 'Percent', 'toggle' },
 		{ 'short', 'Short', 'toggle' },
 		{ 'position', 'Text position', 'position' },
@@ -194,6 +197,7 @@ Rows('name', 'Name', 'name', {
 	{ 'color_friendly', 'Color friendly', 'toggle', shows = 'npcs' },
 	{ 'maxLength', 'Max length', 'range' },
 	{ 'max_width', 'Max width', 'range' },
+	{ 'justify', 'Align', 'select' },
 	{ 'alpha', 'Alpha', 'range' },
 	{ 'position', 'Position', 'position' },
 })
@@ -222,9 +226,11 @@ Rows('castbar', 'Castbar', nil, {
 	{ 'icon.theme', 'Icon theme', 'select' },
 	{ 'text.enable', 'Spell name', 'toggle' },
 	{ 'text.font', 'Spell name font', 'font' },
+	{ 'text.justify', 'Spell name align', 'select' },
 	{ 'text.position', 'Spell name position', 'position' },
 	{ 'time.enable', 'Time', 'toggle' },
 	{ 'time.font', 'Time font', 'font' },
+	{ 'time.justify', 'Time align', 'select' },
 	{ 'time.position', 'Time position', 'position' },
 })
 

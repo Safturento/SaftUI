@@ -228,6 +228,16 @@ function generators.background(order, desc)
 	return OrderedSelect(order, 'Background', desc or BACKGROUND_DESC, BACKGROUND_VALUES)
 end
 
+-- A text's Align (the unit frames' UF.ApplyJustify): Auto, which follows the
+-- text's point, or Left, Center or Right. desc says what it lines up and when
+-- that shows; what Auto does is added after it.
+local JUSTIFY_VALUES = { { 'AUTO', 'Auto' }, { 'LEFT', 'Left' }, { 'CENTER', 'Center' }, { 'RIGHT', 'Right' } }
+local JUSTIFY_DESC = "Auto lines it up on the side of its point: left for a left point, right for a right one, else centered."
+
+function generators.justify(order, desc)
+	return OrderedSelect(order, 'Align', desc and desc .. ' ' .. JUSTIFY_DESC or JUSTIFY_DESC, JUSTIFY_VALUES)
+end
+
 -- A font setting's row (SaftUI's own type 'font', Config/optionsfont.lua): its
 -- value is a shared font's key or a typeface table, and its list is SaftUI's
 -- fonts, then every typeface. opts, optional, each field optional too:

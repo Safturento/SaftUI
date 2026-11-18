@@ -165,6 +165,7 @@ local function GetConfigTable(unit)
 		return {
 			enable = generators.toggle(0, 'Enable', ('Shows the %s on the castbar.'):format(what), 'small'),
 			font = generators.font(1, ("The %s's font."):format(what)),
+			justify = generators.justify(2, ("How the %s lines up in its box. The box is only as wide as the text, so one line looks the same either way."):format(what)),
 			-- Last in its section.
 			position = Position(1000, key, frameKey, what, name),
 		}
