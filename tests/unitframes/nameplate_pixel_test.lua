@@ -467,10 +467,10 @@ test('a secret scale leaves the frame as it is, and the size as the config has i
 	restore()
 	check(ok, tostring(err))
 
-	-- A zero scale (WorldFrame's) gives the config's too.
-	WorldFrame:SetScale(0)
-	eq(driver(UF, 200, 20), '200x20', 'a zero scale')
-	WorldFrame:SetScale(1)
+	-- A zero scale (UIParent's) gives the config's too, an odd size left odd.
+	UIParent.GetEffectiveScale = function() return 0 end
+	eq(driver(UF, 201, 21), '201x21', 'a zero scale')
+	UIParent.GetEffectiveScale = nil
 
 	-- Readable again, the next scale change pins it.
 	start_uiscale({ mode = 'auto', size = 1 })
