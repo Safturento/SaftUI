@@ -784,9 +784,27 @@ do
 		}
 	end
 
+	-- A plate's units are UI units: the game takes its size as uiUnit
+	-- (C_NamePlate.SetNamePlateSize) and draws the plate at UIParent's
+	-- effective scale, whatever WorldFrame's (seen in game 2026-11-19: a size
+	-- of 200 x 20 gives a plate whose GetWidth and GetHeight are 200 and 20,
+	-- as are those of SaftUI's frame on it, pinned to UIParent's scale). So
+	-- each plate ignores WorldFrame's scale and takes UIParent's, taken again
+	-- when the plate is made and whenever a size is set (SaftUI sets it again
+	-- after every scale change). A secret scale leaves the plate's as it is.
+	local function plate_scale(frame)
+		local scale = UIParent:GetEffectiveScale()
+		if issecretvalue(scale) then return end
+		frame:SetIgnoreParentScale(true)
+		frame:SetScale(scale)
+	end
+
 	local function set_size(width, height)
 		stub.nameplate_size = { width, height }
-		for _, plate in pairs(plates) do plate.frame:SetSize(width, height) end
+		for _, plate in pairs(plates) do
+			plate_scale(plate.frame)
+			plate.frame:SetSize(width, height)
+		end
 	end
 
 	C_NamePlate = {}
@@ -861,6 +879,7 @@ do
 			-- Anchor restricted, as the game's plates are (widgets.lua):
 			-- SaftUI can't measure the plate or anything anchored to it.
 			stub.restrict_anchors(frame)
+			plate_scale(frame)
 			if stub.nameplate_size then frame:SetSize(stub.nameplate_size[1], stub.nameplate_size[2]) end
 			frame:Hide()
 			record = { frame = frame, hit_points = {} }
