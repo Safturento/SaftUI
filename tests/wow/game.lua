@@ -612,6 +612,9 @@ end
 --     last set (every plate takes it), nil until one is set.
 --   stub.nameplate_target: the unit token whose plate is the target's
 --     (C_NamePlate.GetNamePlateForUnit('target')), nil for none.
+--   stub.nameplate_mouseover: the same for the unit under the cursor
+--     ('mouseover'); set it, then fire UPDATE_MOUSEOVER_UNIT. The game fires
+--     nothing when the cursor leaves a unit.
 --   stub.add_nameplate(unit, opts) -> plate: the game shows unit ('nameplateN')
 --     on a plate and fires NAME_PLATE_UNIT_ADDED. The plate is a new one,
 --     numbered after the last, unless opts.plate = n hands it NamePlate<n>
@@ -684,6 +687,7 @@ end
 -- centre), and units other than nameplateN and the target.
 stub.nameplate_size = nil
 stub.nameplate_target = nil
+stub.nameplate_mouseover = nil
 stub.on_nameplate_frame = nil
 
 do
@@ -693,11 +697,15 @@ do
 	local plates = {}
 	local byUnit = {}  -- the plate showing each unit token
 
-	-- The plate record for a unit token: 'target' is stub.nameplate_target's.
+	-- The plate record for a unit token: 'target' is stub.nameplate_target's,
+	-- 'mouseover' stub.nameplate_mouseover's.
 	local function record_for(unit)
 		unit = unit:lower()
 		if unit == 'target' then
 			unit = stub.nameplate_target
+			if not unit then return nil end
+		elseif unit == 'mouseover' then
+			unit = stub.nameplate_mouseover
 			if not unit then return nil end
 		end
 		return byUnit[unit]

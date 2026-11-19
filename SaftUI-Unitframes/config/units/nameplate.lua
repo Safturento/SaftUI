@@ -33,6 +33,12 @@ st.defaults.unitframes.profiles["**"].nameplate = {
     -- Never on together with friendlynameplate.use_enemy.
     use_friendly = false,
     threat_solo = false,
+    -- The plates' borders (nameplates/target.lua): the target's colour, and
+    -- the colour of the plate under the cursor while hover_highlight is on
+    -- (the hovered target keeps the target's).
+    target_color = { r = 1, g = 1, b = 1 },
+    hover_highlight = true,
+    hover_color = { r = 0.4, g = 0.7, b = 1 },
     -- The threat text (nameplates/threat.lua): your threat on an enemy as a
     -- percent, small, above the bar's right end, level with the debuffs.
     threat = {
