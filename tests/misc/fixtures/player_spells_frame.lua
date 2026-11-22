@@ -119,6 +119,14 @@ function PSF.build(opts)
 		lock_widget(button, OWNER)
 	end
 
+	-- PortraitFrameTemplate's close button (Blizzard_SharedXML ButtonFrameTemplate,
+	-- parentKey CloseButton), 28 square at TOPRIGHT 0, 3 (Camelot's
+	-- UIPanelCloseButtonDefaultAnchorsMixin:OnLoad).
+	local close = CreateFrame('Button', nil, window)
+	close:SetSize(28, 28)
+	close:SetPoint('TOPRIGHT', window, 'TOPRIGHT', 0, 3)
+	rawset(window, 'CloseButton', close)
+	lock_widget(close, OWNER)
 	PSF.window, PSF.talents, PSF.parent = window, talents, parent
 	lock_widget(parent, OWNER)
 	lock_widget(talents, OWNER)
