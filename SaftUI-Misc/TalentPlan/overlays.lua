@@ -49,6 +49,59 @@ local function Edges(frame)
 	frame.edges = list
 end
 
+-- Blizzard's own talent glow (the art its talent buttons use for a node that
+-- can be bought: added light, pulsing in and out over 0.72 seconds), on the
+-- glow frame's own texture and animation. Made the first time the Blizzard
+-- theme asks, never written onto a Blizzard frame.
+local GLOW_ATLAS = 'talents-node-circle-greenglow'
+local GLOW_SPREAD = 12
+-- Added light, as the game draws this art. A glow, not an interaction state
+-- (the states scan, S3, forbids a literal ADD blend for those).
+local GLOW_BLEND = 'ADD'
+
+local function GlowArt(frame)
+	if frame.glowTexture then return frame.glowTexture end
+	local texture = frame:CreateTexture(nil, 'OVERLAY')
+	texture:SetAtlas(GLOW_ATLAS)
+	texture:SetBlendMode(GLOW_BLEND)
+	texture:SetPoint('TOPLEFT', frame, 'TOPLEFT', -GLOW_SPREAD, GLOW_SPREAD)
+	texture:SetPoint('BOTTOMRIGHT', frame, 'BOTTOMRIGHT', GLOW_SPREAD, -GLOW_SPREAD)
+	frame.glowTexture = texture
+	if frame.CreateAnimationGroup then
+		local group = frame:CreateAnimationGroup()
+		group:SetLooping('REPEAT')
+		local up = group:CreateAnimation('Alpha')
+		up:SetTarget(texture)
+		up:SetFromAlpha(0)
+		up:SetToAlpha(1)
+		up:SetDuration(0.36)
+		up:SetOrder(1)
+		up:SetSmoothing('OUT')
+		local down = group:CreateAnimation('Alpha')
+		down:SetTarget(texture)
+		down:SetFromAlpha(1)
+		down:SetToAlpha(0)
+		down:SetDuration(0.36)
+		down:SetOrder(2)
+		down:SetSmoothing('IN')
+		frame.glowAnim = group
+	end
+	return texture
+end
+
+-- The waiting node's highlight in the panel's theme: under Blizzard a glow,
+-- under Thick and Thin the border.
+local function SetGlowLook(frame, blizzard)
+	for _, texture in ipairs(frame.edges) do texture:SetShown(not blizzard) end
+	if blizzard then
+		GlowArt(frame):Show()
+		if frame.glowAnim and not frame.glowAnim:IsPlaying() then frame.glowAnim:Play() end
+	elseif frame.glowTexture then
+		if frame.glowAnim then frame.glowAnim:Stop() end
+		frame.glowTexture:Hide()
+	end
+end
+
 local function Layer()
 	if TP.layer then return TP.layer end
 	TP.layer = st:CreateFrame('Frame', nil, TP:TalentsFrame())
@@ -188,9 +241,12 @@ end
 function TP:PaintOverlays()
 	local nr, ng, nb = st:Color('text', 'normal'):GetRGB()
 	local ar, ag, ab = st:Color('accent'):GetRGB()
+	local panels = st.config.profile.panels
+	local blizzard = st:IsBlizzardLook(panels and panels.theme)
 	for _, rec in pairs(records) do
 		PaintEdges(rec.light, nr, ng, nb)
 		PaintEdges(rec.glow, ar, ag, ab)
+		SetGlowLook(rec.glow, blizzard)
 	end
 end
 
