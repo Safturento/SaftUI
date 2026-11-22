@@ -671,11 +671,28 @@ function TP:DrawDrag()
 	TP.DragParts.PlaceGhost(w.ghost)
 	local place, before = self:DropSpot()
 	if not place then return w.insert:Hide() end
+	-- the line turns Danger where the tree's rules would refuse the drop
+	local ok = self:DropAllowed(w.drag, place)
+	if ok then w.insert:SetColorTexture(st:Color('accent'):GetRGB())
+	else w.insert:SetColorTexture(st:Color('text', 'danger'):GetRGB()) end
 	local top = (before - 1) * L.ROW_HEIGHT
 	w.insert:ClearAllPoints()
 	w.insert:SetPoint('TOPLEFT', panel.content, 'TOPLEFT', 0, -(top - 1))
 	w.insert:SetPoint('TOPRIGHT', panel.content, 'TOPRIGHT', 0, -(top - 1))
 	w.insert:Show()
+end
+
+-- May the dragged step land at place by the tree's rules (TP.Sim.CanMove)?
+-- With no shape read, nothing is refused.
+function TP:DropAllowed(drag, place)
+	local shape = self.view and self.view.tree and self.view.tree.shape
+	if not (shape and drag and drag.plan) then return true end
+	-- DrawDrag asks every frame: the answer is kept for the spot until it moves
+	if drag.askedAt ~= place then
+		drag.askedAt = place
+		drag.ok, drag.reason = TP.Sim.CanMove(shape, drag.plan.steps, drag.from, place)
+	end
+	return drag.ok, drag.reason
 end
 
 -- A press on a handle. Only while the panel shows a plan (TP.view can be
@@ -701,6 +718,11 @@ function TP:EndDrag()
 	if not (place and panel:IsShown() and view and view.plan == drag.plan) then return end
 	local record = panel.entries[drag.from]
 	if not (record and record.index == drag.index) then return end
+	local ok, reason = self:DropAllowed(drag, place)
+	if not ok then
+		st:Print(reason) -- refused as a planning click is: the plan stays as it was
+		return 'refused', reason
+	end
 	local map = M.MoveStep(drag.plan, drag.from, place)
 	if self.selected then self.selected = map[self.selected] or self.selected end
 	self:QueueRefresh()

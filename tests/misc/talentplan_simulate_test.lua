@@ -173,3 +173,17 @@ test('ShowCount', function()
 	eq(Sim.ShowCount(s, a3, 1, 'maxed'), false); eq(Sim.ShowCount(s, a3, 0, 'selectable'), false)
 	eq(Sim.ShowCount(s, a1, 1, 'partial'), true, 'a multi-rank node still shows')
 end)
+
+test('CanMove refuses a drag that breaks a step, naming it, and allows one that breaks none', function()
+	local s = shape(); s.firstLevel = 10
+	local steps = concat(times(a1, 5), { a3, b1 })
+	local ok, why = Sim.CanMove(s, steps, 6, 1)
+	eq(ok, false); eq(why, 'a3 at level 10: Needs 5 points in A first.')
+	ok, why = Sim.CanMove(s, steps, 1, 6)
+	eq(ok, false); eq(why, 'a3 at level 14: Needs 5 points in A first.')
+	eq(Sim.CanMove(s, steps, 7, 1), true, 'b1 can go first')
+	eq(Sim.CanMove(s, steps, 3, 3), true, 'no move')
+	-- a step that was already broken doesn't block a move
+	local broken = concat({ a3 }, times(a1, 5), { b1 })
+	eq(Sim.CanMove(s, broken, 7, 2), true)
+end)

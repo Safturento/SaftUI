@@ -260,3 +260,33 @@ test('a drag held while the panel hides ends with no move, and a new drag works'
 	check(table.concat(plan.steps, ',') ~= before, 'a new drag works')
 	clean()
 end)
+
+test("a drop the tree's rules refuse changes nothing, says why, and its line shows Danger", function()
+	world({ tree = { shape = true } })
+	local plan = S.New('Enhancement', 1)
+	for i = 1, 5 do plan.steps[i] = SH.ID['Thundering Strikes'] end
+	plan.steps[6] = SH.ID.Flurry -- row 2 of Enhancement: needs the 5 above
+	open()
+	local before = table.concat(plan.steps, ',')
+	-- the line while Flurry hangs over the top: Danger
+	stub.mouse_buttons.LeftButton = true
+	stub.fire_script(entry(6).handle, 'OnMouseDown', 'LeftButton')
+	local l, b, width, h = entry(1):GetRect()
+	local scale = entry(1):GetEffectiveScale()
+	stub.cursor_x, stub.cursor_y = (l + width / 2) * scale, (b + 0.75 * h) * scale
+	TP:DrawDrag()
+	local dr, dg, db = st:Color('text', 'danger'):GetRGB()
+	local r, g, bl = unpack(stub.state(TP.dragWidget.insert).color_texture)
+	eq(string.format('%.2f %.2f %.2f', r, g, bl), string.format('%.2f %.2f %.2f', dr, dg, db), 'the line is Danger')
+	stub.mouse_buttons.LeftButton = nil
+	stub.fire_script(entry(6).handle, 'OnMouseUp', 'LeftButton')
+	eq(table.concat(plan.steps, ','), before, 'Flurry stays after the points it needs')
+	-- a point it depends on can't be dragged below it either
+	drag(1, entry(6), true)
+	eq(table.concat(plan.steps, ','), before)
+	-- a legal move still works: a Thundering Strikes rank swaps with another
+	drag(2, entry(4), true)
+	eq(table.concat(plan.steps, ','), before, 'the same talent: the order reads the same')
+	stub.run_timers()
+	clean()
+end)

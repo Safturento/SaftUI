@@ -167,6 +167,30 @@ function Sim.CanRemove(shape, steps, nodeID)
 	return true
 end
 
+-- Would moving step `from` to `to` (a drag in the panel) leave every step that
+-- is legal now still legal? The moved step too, if it is legal now (a step
+-- already broken may move anywhere: the drag is how it gets fixed).
+-- ok, or false and the first broken step's reason, with its talent and level.
+function Sim.CanMove(shape, steps, from, to)
+	local n = #steps
+	if from == to or from < 1 or from > n or to < 1 or to > n then return true end
+	local new, old = {}, {} -- old[i]: where new[i] was
+	for i = 1, n do if i ~= from then new[#new + 1] = steps[i]; old[#old + 1] = i end end
+	table.insert(new, to, steps[from]); table.insert(old, to, from)
+	local before, run = Sim.Run(shape, steps), Sim.Run(shape, new)
+	for i = 1, n do
+		if before.steps[old[i]].ok and not run.steps[i].ok then
+			local reason = run.steps[i].reason
+			local node = shape.nodes[new[i]]
+			if node and node.name and shape.firstLevel then
+				reason = ('%s at level %d: %s'):format(node.name, shape.firstLevel + i - 1, reason)
+			end
+			return false, reason
+		end
+	end
+	return true
+end
+
 -- The rules over the real ranks, against what the game says: the nodes where
 -- they disagree. real[id] = { rank, isAvailable, meetsEdgeRequirements }.
 function Sim.Check(shape, real)

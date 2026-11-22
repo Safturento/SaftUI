@@ -102,12 +102,38 @@ local function GlowArt(frame, atlas)
 	return texture
 end
 
+-- The border's pulse under Thick and Thin: the light's border (a panel row's
+-- hover) fading out to the face's own border under it and back, as slow as
+-- Blizzard's glow (0.72 seconds a beat).
+local PULSE = 0.72
+local function EdgePulse(frame)
+	if frame.edgeAnim or not frame.CreateAnimationGroup then return frame.edgeAnim end
+	local group = frame:CreateAnimationGroup()
+	group:SetLooping('BOUNCE')
+	for _, texture in ipairs(frame.edges) do
+		local a = group:CreateAnimation('Alpha')
+		a:SetTarget(texture)
+		a:SetFromAlpha(1)
+		a:SetToAlpha(0.15)
+		a:SetDuration(PULSE)
+		a:SetSmoothing('IN_OUT')
+	end
+	frame.edgeAnim = group
+	return group
+end
+
 -- The waiting node's highlight in the panel's theme: under Blizzard a glow,
--- under Thick and Thin the border.
+-- under Thick and Thin the light's border, pulsing.
 local function SetGlowLook(rec, blizzard)
 	local frame = rec.glow
 	local on = blizzard and frame:IsShown()
 	for _, texture in ipairs(frame.edges) do texture:SetShown(not blizzard) end
+	local pulse = not blizzard and frame:IsShown() and EdgePulse(frame)
+	if pulse then
+		if not pulse:IsPlaying() then pulse:Play() end
+	elseif frame.edgeAnim and frame.edgeAnim:IsPlaying() then
+		frame.edgeAnim:Stop()
+	end
 	if on then
 		GlowArt(frame, GlowAtlas(rec.button)):Show()
 		if frame.glowAnim and not frame.glowAnim:IsPlaying() then frame.glowAnim:Play() end
@@ -339,12 +365,11 @@ end
 
 function TP:PaintOverlays()
 	local nr, ng, nb = st:Color('text', 'normal'):GetRGB()
-	local ar, ag, ab = st:Color('accent'):GetRGB()
 	local panels = st.config.profile.panels
 	local blizzard = st:IsBlizzardLook(panels and panels.theme)
 	for _, rec in pairs(records) do
 		PaintEdges(rec.light, nr, ng, nb)
-		PaintEdges(rec.glow, ar, ag, ab)
+		PaintEdges(rec.glow, nr, ng, nb) -- the light's border, pulsing (SetGlowLook)
 		SetGlowLook(rec, blizzard)
 	end
 end
