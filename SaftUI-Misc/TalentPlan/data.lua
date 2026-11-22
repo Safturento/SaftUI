@@ -17,13 +17,12 @@ local TP = st:GetModule('TalentPlan')
 	every read of a node with no staged change.
 
 	tree.shape is the tree's shape for the plan's rules (simulate.lua): groups
-	(the tree's displayed groups by order), hideSingle (no budget: a plan runs
-	to max level, so no step is refused for points), and every visible node that is not in a hero
-	sub tree, plannable or not: { maxRanks, cost, group (the first of its groupIDs
-	the tree lists, else nil), gates, parents (its incoming edges), plannable, posY,
-	name }. A node's gates are its conditions with isGate and spentAmountRequired;
-	when no node has one, the tree's own gates (GetTreeInfo) go to the nodes of
-	their top left node's group at or below its posY. tree.real[nodeID] is the
+	(the tree's displayed groups by order), budget (51: one point a level from
+	10 to 60), firstLevel and lastLevel, hideSingle, and every visible node that
+	is not in a hero sub tree, plannable or not: { maxRanks, cost, group (the
+	first of its groupIDs the tree lists, else nil), row, gates, parents (its
+	incoming edges), plannable, posY, name }. A node's gate is its row's
+	(RowGates: 5 points a row in its spec). tree.real[nodeID] is the
 	game's rank, isAvailable and meetsEdgeRequirements, for /sui tp check.
 
 	Nodes are skipped when they aren't visible, have other than one entry (a
@@ -65,23 +64,37 @@ function D.BlockReason(info, gates, active)
 	return 'No talent points to spend.'
 end
 
--- The gates a GetTreeInfo lists (a top left node and a condition each), when no
--- node carries its own: each goes to the nodes of the top left node's group at
--- or below its posY (the shape's nodes keep the posY they were read with).
-local function TreeGates(shape, readFrom, treeInfo)
+-- The row gates, by Forever's own rule (its DB2, TraitCond on each row's node
+-- group): each spec's rows are its nodes' distinct posY, top first, and row r
+-- (0 based) needs 5 * r points spent in the rows above it in the same spec. A
+-- plan is played forward, so when a step is taken every point already in its
+-- spec sits in a row above it or was itself allowed by that count: the spec's
+-- total gives the same answer, which is what Sim counts (node.group). The
+-- nodes' own conditions are not read for this: Forever's don't say isGate.
+D.POINTS_PER_ROW = 5
+local function RowGates(shape)
+	-- 'tree' holds every node's row, for a node with no listed group (it counts the tree)
+	local ys = { tree = {} }
 	for _, node in pairs(shape.nodes) do
-		if #node.gates > 0 then return end
-	end
-	for _, gate in ipairs(treeInfo and treeInfo.gates or {}) do
-		local top = shape.nodes[gate.topLeftNodeID]
-		local cond = top and C_Traits.GetConditionInfo(readFrom, gate.conditionID)
-		if cond and cond.spentAmountRequired then
-			for _, node in pairs(shape.nodes) do
-				if node.group == top.group and (node.posY or 0) >= (top.posY or 0) then
-					node.gates[#node.gates + 1] = { required = cond.spentAmountRequired, currency = cond.traitCurrencyID }
-				end
-			end
+		local y = node.posY or 0
+		ys.tree[y] = true
+		if node.group then
+			ys[node.group] = ys[node.group] or {}
+			ys[node.group][y] = true
 		end
+	end
+	local rowOf = {}
+	for key, set in pairs(ys) do
+		local list = {}
+		for y in pairs(set) do list[#list + 1] = y end
+		table.sort(list)
+		rowOf[key] = {}
+		for i, y in ipairs(list) do rowOf[key][y] = i - 1 end
+	end
+	for _, node in pairs(shape.nodes) do
+		local row = rowOf[node.group or 'tree'][node.posY or 0]
+		node.row = row
+		node.gates = row > 0 and { { required = D.POINTS_PER_ROW * row } } or {}
 	end
 end
 
@@ -128,18 +141,14 @@ function D.Read(specGroup)
 		listed[g.groupID] = true
 	end
 	table.sort(shape.groups, function(a, b) return (a.order or 0) < (b.order or 0) end)
-	-- no budget: a plan runs to max level, so a levelling character's plan is never refused for points
+	-- the points a plan can spend: one a level, FIRST_LEVEL to LAST_LEVEL (51)
+	local M = TP.Model
+	shape.budget, shape.firstLevel, shape.lastLevel = M.POINTS, M.FIRST_LEVEL, M.LAST_LEVEL
 
 	for _, nodeID in ipairs(C_Traits.GetTreeNodes(treeID) or {}) do
 		local info = C_Traits.GetNodeInfo(readFrom, nodeID)
 		if info and info.isVisible and not info.subTreeID then
-			local gates, parents = {}, {}
-			for _, condID in ipairs(info.conditionIDs or {}) do
-				local cond = C_Traits.GetConditionInfo(readFrom, condID)
-				if cond and cond.isGate and cond.spentAmountRequired then
-					gates[#gates + 1] = { required = cond.spentAmountRequired, currency = cond.traitCurrencyID }
-				end
-			end
+			local gates, parents = {}, {} -- gates: RowGates, below
 			local costs = C_Traits.GetNodeCost and C_Traits.GetNodeCost(readFrom, nodeID)
 			-- the same fallback as the plannable node's below: the node's, else its one entry's, else 1
 			local only = info.entryIDs and #info.entryIDs == 1 and C_Traits.GetEntryInfo(readFrom, info.entryIDs[1])
@@ -194,6 +203,6 @@ function D.Read(specGroup)
 			if child then child.parents[#child.parents + 1] = { nodeID = nodeID, type = edge.type } end
 		end
 	end
-	TreeGates(shape, readFrom, treeInfo)
+	RowGates(shape)
 	return tree
 end

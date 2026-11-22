@@ -1,6 +1,7 @@
 -- SaftUI-Misc/TalentPlan/data.lua: the talent tree read through the trait stubs
 -- (tests/wow/traits.lua), on the shaman fixture. It only reads.
 load_saftui('SaftUI-Misc/TalentPlan/talentplan.lua')
+load_saftui('SaftUI-Misc/TalentPlan/model.lua') -- the levels the shape's budget comes from
 load_saftui('SaftUI-Misc/TalentPlan/data.lua')
 local D = SaftUI:GetModule('TalentPlan').Data
 local SH = load_test_file('misc/fixtures/talentplan_shaman.lua')
@@ -101,18 +102,18 @@ test('the shape holds groups, gates, edges and costs', function()
 	check(choice, 'the choice node is in the shape'); eq(choice.plannable, false)
 	eq(shape.nodes[SH.ID['Totemic Focus']].parents[1].nodeID, 130)
 	eq(shape.nodes[131], nil, 'an invisible node is not')
-	eq(shape.budget, nil); eq(shape.hideSingle, false)
+	eq(shape.budget, 51); eq(shape.firstLevel, 10); eq(shape.lastLevel, 60); eq(shape.hideSingle, false)
 	eq(#stub.traits.calls, 0)
 end)
 
-test('a cost and hideSingleRankNumbers come from the game, and a point budget is never set', function()
+test('a cost and hideSingleRankNumbers come from the game; the budget is 51 whatever the currency says', function()
 	SH.install({ shape = true })
 	stub.traits.costs[SH.ID.Flurry] = { { ID = 800, amount = 2 } }
 	stub.traits.currency = { { traitCurrencyID = 800, quantity = 5, maxQuantity = 31, spent = 0 } }
 	stub.traits.tree_info[501] = { hideSingleRankNumbers = true }
 	local shape = D.Read(1).shape
 	eq(shape.nodes[SH.ID.Flurry].cost, 2); eq(shape.hideSingle, true)
-	eq(shape.budget, nil, 'a plan runs to max level')
+	eq(shape.budget, 51, 'one point a level, 10 to 60, not the points earned so far')
 end)
 
 test('a node with no maxRanks takes its entry\'s in the shape and in the nodes alike', function()
@@ -132,19 +133,20 @@ test('a node whose group the tree does not list has no group', function()
 	eq(shape.nodes[SH.ID['Mental Quickness']].group, nil)
 end)
 
-test('gates from GetTreeInfo when nodes carry none', function()
+test('row gates come from the rows, 5 points a row in the spec, whatever the conditions say', function()
 	SH.install({ shape = true })
+	-- Forever's conditions don't flag isGate: the rows still gate
 	for _, info in pairs(stub.traits.nodes[1001]) do info.conditionIDs = {} end
-	-- the gate's top left node is Stormstrike (Enhancement, row 2): it covers that group's nodes at or below posY 50
-	stub.traits.conditions[8001] = { isGate = true, isMet = false, spentAmountRequired = 5, traitCurrencyID = 800 }
-	stub.traits.tree_info[501] = { gates = { { topLeftNodeID = SH.ID.Stormstrike, conditionID = 8001 } } }
 	local shape = D.Read(1).shape
-	eq(shape.nodes[SH.ID.Flurry].gates[1].required, 5)
-	eq(shape.nodes[SH.ID['Spirit Weapons']].gates[1].required, 5, 'a row below')
-	eq(#shape.nodes[SH.ID['Thundering Strikes']].gates, 0, 'a row above')
-	eq(#shape.nodes[SH.ID['Call of Flame']].gates, 0, 'another group')
-	-- nodes that carry their own gate are left as they are
-	stub.traits.nodes[1001][SH.ID.Flurry].conditionIDs = { 9000 + SH.ID.Flurry }
-	stub.traits.conditions[9000 + SH.ID.Flurry] = { isGate = true, isMet = false, spentAmountRequired = 5 }
-	eq(#D.Read(1).shape.nodes[SH.ID.Flurry].gates, 1)
+	local function gate(name) local g = shape.nodes[SH.ID[name]].gates[1]; return g and g.required or 0 end
+	eq(gate('Thundering Strikes'), 0, 'Enhancement row 1')
+	eq(shape.nodes[SH.ID['Thundering Strikes']].row, 0)
+	eq(gate('Flurry'), 5, 'Enhancement row 2')
+	eq(gate('Spirit Weapons'), 10, 'Enhancement row 3')
+	eq(shape.nodes[SH.ID['Spirit Weapons']].row, 2)
+	eq(gate('Call of Flame'), 0, "Elemental's own first row")
+	eq(shape.nodes[SH.ID['Totemic Focus']].gates[1].required, 5, "Restoration's second row")
+	-- rows are counted in each spec by its own posY: a spec whose rows start lower still starts at 0
+	for nodeID = 116, 121 do stub.traits.nodes[1001][nodeID].posY = stub.traits.nodes[1001][nodeID].posY + 600 end
+	eq(D.Read(1).shape.nodes[SH.ID['Call of Flame']].row, 0)
 end)

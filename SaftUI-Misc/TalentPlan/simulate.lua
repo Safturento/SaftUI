@@ -6,7 +6,7 @@ local TP = st:GetModule('TalentPlan')
 	steps (a list of node IDs) against the tree's shape and says, for each step,
 	whether the game would have allowed it at that point, and for each node its
 	state after the last step. The shape is read by data.lua:
-	{ groups = { { id, name, order } }, budget, hideSingle,
+	{ groups = { { id, name, order } }, budget, firstLevel, lastLevel, hideSingle,
 	  nodes = { [id] = { maxRanks, cost, group, gates = { { required } },
 	                     parents = { { nodeID, type } }, plannable, name } } }.
 	A gate counts the points spent in the node's group when it has one, else in
@@ -73,7 +73,7 @@ local function Legal(shape, ranks, spent, nodeID)
 	local edgeOK, parentName = EdgesMet(shape, node, ranks)
 	if not edgeOK then return false, ('Needs %s first.'):format(parentName), 'locked' end
 	if shape.budget and (spent.total or 0) + (node.cost or 1) > shape.budget then
-		return false, 'No points left at this level.', 'disabled'
+		return false, ('No points left: the last one comes at level %d.'):format(shape.lastLevel or 60), 'disabled'
 	end
 	return true
 end
@@ -115,6 +115,15 @@ function Sim.Run(shape, steps)
 	return { ranks = ranks, spent = spent, steps = out, nodes = nodes }
 end
 
+-- The reason a later step breaks: its talent and level, when the shape knows them.
+local function Needed(shape, nodeID, index)
+	local node = shape.nodes[nodeID]
+	if node and node.name and shape.firstLevel then
+		return ('%s at level %d needs this rank.'):format(node.name, shape.firstLevel + index - 1)
+	end
+	return 'Other planned talents need this rank.'
+end
+
 local function Insert(steps, nodeID, after)
 	local out, at = {}, after == nil and #steps or math.max(0, math.min(after, #steps))
 	for i = 1, at do out[#out + 1] = steps[i] end
@@ -131,7 +140,7 @@ function Sim.CanAdd(shape, steps, nodeID, after)
 	if not run.steps[at].ok then return false, run.steps[at].reason end
 	for i = at + 1, #new do
 		if before.steps[i - 1].ok and not run.steps[i].ok then
-			return false, 'Other planned talents need this rank.'
+			return false, Needed(shape, new[i], i - 1)
 		end
 	end
 	return true
@@ -150,7 +159,7 @@ function Sim.CanRemove(shape, steps, nodeID)
 	local run = Sim.Run(shape, new)
 	for i = last + 1, #steps do
 		if before.steps[i].ok and not run.steps[i - 1].ok then
-			return false, 'Other planned talents need this rank.'
+			return false, Needed(shape, steps[i], i)
 		end
 	end
 	return true

@@ -112,7 +112,7 @@ test('CanAdd follows the order', function()
 	ok, why = Sim.CanAdd(shape(), {}, x1)
 	eq(ok, false); eq(why, "This talent can't be planned.")
 	local s = shape(); s.budget = 1
-	eq(select(2, Sim.CanAdd(s, { a1 }, a2)), 'No points left at this level.')
+	eq(select(2, Sim.CanAdd(s, { a1 }, a2)), 'No points left: the last one comes at level 60.')
 	-- an insert that starves a later step is refused
 	s.budget = 6
 	ok, why = Sim.CanAdd(s, concat(times(a1, 5), { a3 }), a2, 0)
@@ -125,6 +125,22 @@ test('CanRemove refuses a rank a later step needs', function()
 	eq(Sim.CanRemove(shape(), concat(times(a1, 6), { a3 }), a1), true, 'the sixth was after')
 	ok, why = Sim.CanRemove(shape(), { a1 }, a2)
 	eq(ok, false); eq(why, 'Not in the plan.')
+end)
+
+test('with levels, a refusal names the talent and level that need the rank; 51 points cap the plan', function()
+	local s = shape(); s.firstLevel, s.lastLevel = 10, 60
+	local ok, why = Sim.CanRemove(s, concat(times(a1, 5), { a3 }), a1)
+	eq(ok, false); eq(why, 'a3 at level 15 needs this rank.')
+	s.budget = 6
+	ok, why = Sim.CanAdd(s, concat(times(a1, 5), { a3 }), a2, 0)
+	eq(ok, false); eq(why, 'a3 at level 15 needs this rank.')
+	s.budget = 51
+	local full = concat(times(a1, 5), times(a2, 3), times(b1, 2))
+	for _ = 1, 41 do full[#full + 1] = b2 end -- the plan's count, not a legal plan: only the budget matters here
+	ok, why = Sim.CanAdd(s, full, a3)
+	eq(ok, false); eq(why, 'No points left: the last one comes at level 60.')
+	table.remove(full)
+	eq(Sim.CanAdd(s, full, a3), true, 'the 51st point')
 end)
 
 test('a gate in an unlisted group counts the tree; a negative after clamps', function()
