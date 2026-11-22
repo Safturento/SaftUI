@@ -23,6 +23,8 @@ test('an override name wins, and a spell name is the fallback', function()
 	local entryID = stub.traits.nodes[1001][id].entryIDs[1]
 	stub.traits.definitions[stub.traits.entries[entryID].definitionID].overrideName = 'Renamed'
 	eq(D.Read(1).nodes[id].name, 'Renamed')
+	stub.traits.definitions[stub.traits.entries[entryID].definitionID].overrideName = ''
+	eq(D.Read(1).nodes[id].name, 'Flurry', 'an empty override is no override')
 end)
 
 test('a node the game does not know, a sub tree node and a nameless one are skipped', function()

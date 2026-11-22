@@ -85,7 +85,10 @@ function D.Read(specGroup)
 		if info and info.isVisible and not info.subTreeID and info.entryIDs and #info.entryIDs == 1 then
 			local entry = C_Traits.GetEntryInfo(readFrom, info.entryIDs[1])
 			local def = entry and entry.definitionID and C_Traits.GetDefinitionInfo(entry.definitionID)
-			local name = def and (def.overrideName or (def.spellID and C_Spell.GetSpellName(def.spellID)))
+			local name = def and def.overrideName
+			if def and (not name or name == '') then -- "" is no override, as Blizzard reads it
+				name = def.spellID and C_Spell.GetSpellName(def.spellID)
+			end
 			if name and name ~= '' then
 				local icon = def.overrideIcon or (def.spellID and (C_Spell.GetSpellTexture(def.spellID)))
 				local maxRanks = info.maxRanks or entry.maxRanks or 1
