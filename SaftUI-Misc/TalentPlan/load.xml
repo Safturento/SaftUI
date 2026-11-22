@@ -8,4 +8,5 @@
 	<Script file="panel.lua"/>
 	<Script file="import.lua"/>
 	<Script file="overlays.lua"/>
+	<Script file="options.lua"/>
 </Ui>

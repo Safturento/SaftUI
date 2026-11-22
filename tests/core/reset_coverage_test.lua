@@ -19,6 +19,7 @@ local PAGES = {
 	['SaftUI-ActionBars/options.lua'] = { page = 'ActionBars', test = 'actionbars/page_test.lua' },
 	['SaftUI-Bags/options.lua'] = { page = 'Inventory', test = 'bags/theme_test.lua' },
 	['SaftUI-Misc/tooltipposition.lua'] = { page = 'Tooltip', test = 'misc/options_pages_test.lua' },
+	['SaftUI-Misc/TalentPlan/options.lua'] = { page = 'TalentPlan', test = 'misc/talentplan_options_test.lua' },
 	['SaftUI-Misc/totemoptions.lua'] = { page = 'TotemBar', test = 'misc/options_pages_test.lua' },
 	['SaftUI-Misc/Skinning/skinning.lua'] = { page = 'Skinning', test = 'misc/options_pages_test.lua' },
 	['SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua'] = { page = 'Auras', test = 'misc/options_pages_test.lua' },
