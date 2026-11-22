@@ -156,9 +156,14 @@ local function Record(button)
 		TP:PlanClick(rec.nodeID, mouse)
 		if GameTooltip:IsOwned(catcher) then TP:ShowCatcherTip(rec) end
 	end)
-	catcher:SetScript('OnEnter', function() TP:ShowCatcherTip(rec) end)
+	catcher:SetScript('OnEnter', function()
+		TP:ShowCatcherTip(rec)
+		TP:HoverFace(rec.nodeID, true)
+	end)
 	catcher:SetScript('OnLeave', function()
 		if GameTooltip:IsOwned(catcher) then GameTooltip:Hide() end
+		if TP.refusal and TP.refusal.nodeID == rec.nodeID then TP.refusal = nil end
+		TP:HoverFace(rec.nodeID, false)
 	end)
 	rec.catcher = catcher
 	records[button] = rec
@@ -168,8 +173,9 @@ end
 ------------------------------------------------------------------ pure parts
 
 -- The catcher's tooltip: the node's name, a line a planned rank, then either
--- that every rank is planned or what a click does.
-function TP.CatcherLines(plan, nodeID, node)
+-- that every rank is planned or what a click does, and, after a refused click,
+-- the refusal's reason as the last line (the tooltip paints it Danger).
+function TP.CatcherLines(plan, nodeID, node, refusal)
 	local lines = { node.name }
 	local steps = plan and M.StepsOf(plan, nodeID) or {}
 	for _, step in ipairs(steps) do
@@ -180,6 +186,7 @@ function TP.CatcherLines(plan, nodeID, node)
 	else
 		lines[#lines + 1] = 'Click: add the next rank. Right-click: remove the last one.'
 	end
+	if refusal then lines[#lines + 1] = refusal end
 	return lines
 end
 
@@ -224,7 +231,8 @@ function TP:DrawOverlays(view)
 	local talents = self:TalentsFrame()
 	local plan, nodes = view.plan, view.tree.nodes
 	local waiting = view.rows and view.summary.waiting and view.rows[view.summary.waiting]
-	local dimOn = self.config and self.config.dim and plan and #plan.steps > 0
+	-- while planning the simulated state is the dim (the faces), so this one is off
+	local dimOn = self.config and self.config.dim and plan and #plan.steps > 0 and not self.planning
 	local live = {}
 	for button in talents:EnumerateAllTalentButtons() do
 		local rec = Record(button)
@@ -251,6 +259,82 @@ function TP:DrawOverlays(view)
 		end
 	end
 	self:PaintOverlays()
+	self:PaintTotal()
+	self:QueueFaces()
+end
+
+-- The talent faces' module (Blizzard_TalentFaces.lua), when it is there.
+local function Faces() return st:GetModule('TalentFaces', true) end
+
+-- The faces draw again: the plan or planning changed what they show.
+function TP:QueueFaces()
+	local faces = Faces()
+	if faces then faces:Queue() end
+end
+
+function TP:HoverFace(nodeID, on)
+	local faces = Faces()
+	if faces and faces.Hover then faces:Hover(nodeID, on) end
+end
+
+-- What a node's face shows while planning: the simulated state and the planned rank,
+-- or nil (not planning, or a node the tree's shape doesn't know: it shows its real
+-- state). The rank is nil too where Blizzard's rule shows no number.
+function TP:PlanDisplay(nodeID)
+	local view = self.planning and self.view
+	local shape = view and view.sim and view.tree.shape
+	local node = shape and nodeID and view.sim.nodes[nodeID]
+	if not node then return nil end
+	-- Blizzard's rule for the number (a rank above 0 or a node that can be taken) is the
+	-- face's; the tree's own rule, no number for a one rank node, is the source's
+	local planned = node.rank
+	if shape.hideSingle and shape.nodes[nodeID].maxRanks == 1 and not TP.Sim.ShowCount(shape, nodeID, node.rank, node.state) then
+		planned = nil
+	end
+	return { state = node.state, planned = planned }
+end
+
+-- The window's top left while planning: the planned points, then each tree's.
+function TP.TotalLines(shape, sim)
+	local lines = { ('Planned: %d points'):format(sim.spent.total or 0) }
+	local parts = {}
+	for _, g in ipairs(shape.groups or {}) do
+		parts[#parts + 1] = ('%s %d'):format(g.name, sim.spent[g.id] or 0)
+	end
+	if #parts > 0 then lines[2] = table.concat(parts, ' · ') end
+	return lines
+end
+
+function TP:PaintTotal()
+	local view = self.view
+	local on = self.planning and view and view.sim and true or false
+	if not on then
+		if self.total then self.total:Hide() end
+		return
+	end
+	local talents = self:TalentsFrame()
+	if not self.totalFrame then
+		-- its own frame, so it can sit above Camelot's child frames of the window
+		self.totalFrame = CreateFrame('Frame', nil, talents)
+		self.totalFrame:SetAllPoints(talents)
+		self.totalFrame:EnableMouse(false)
+		self.total = st:CreateFontString(self.totalFrame, st.config.profile.skinning.font)
+		self.total:SetJustifyH('LEFT')
+		self.total:SetPoint('TOPLEFT', talents, 'TOPLEFT', 12, -10)
+	end
+	local top = talents:GetFrameLevel()
+	for _, child in ipairs({ talents:GetChildren() }) do
+		if child ~= self.totalFrame then top = math.max(top, child:GetFrameLevel()) end
+	end
+	self.totalFrame:SetFrameLevel(top + 5)
+	st:ApplyFont(self.total, st.config.profile.skinning.font) -- again: the font may have changed
+	self.total:SetText(table.concat(TP.TotalLines(view.tree.shape, view.sim), '\n'))
+	self.total:SetTextColor(st:Color('text', 'normal'):GetRGB())
+	self.total:Show()
+end
+
+function TP:OnFontsChanged()
+	if self.total and self.total:IsShown() then self:PaintTotal() end
 end
 
 function TP:PaintOverlays()
@@ -269,8 +353,11 @@ end
 function TP:HideOverlays()
 	self.lit = nil
 	self.planning = false
+	self.refusal = nil
 	for _, rec in pairs(records) do HideAll(rec) end
 	self:PaintPlanButton()
+	self:PaintTotal()
+	self:QueueFaces()
 end
 
 function TP:Light(nodeID)
@@ -284,41 +371,69 @@ function TP:SetPlanning(on)
 	on = on and true or false
 	if on == (self.planning or false) then return end
 	self.planning = on
+	self.refusal = nil
 	self:PaintPlanButton()
+	self:QueueFaces()
 	if self.panel and self.panel:IsShown() then self:Refresh() end
 end
 
 function TP:ShowCatcherTip(rec)
 	local node = self.view and self.view.tree.nodes[rec.nodeID]
 	if not node then return end
-	local lines = TP.CatcherLines(S.Active(self:ViewedGroup()), rec.nodeID, node)
+	local refusal = self.refusal and self.refusal.nodeID == rec.nodeID and self.refusal.reason or nil
+	local lines = TP.CatcherLines(S.Active(self:ViewedGroup()), rec.nodeID, node, refusal)
 	GameTooltip:SetOwner(rec.catcher, 'ANCHOR_RIGHT')
 	GameTooltip:SetText(lines[1], 1, 1, 1, 1, true)
-	for i = 2, #lines do GameTooltip:AddLine(lines[i], 0.8, 0.8, 0.8, true) end
+	for i = 2, #lines do
+		if refusal and i == #lines then
+			local r, g, b = st:Color('text', 'danger'):GetRGB()
+			GameTooltip:AddLine(lines[i], r, g, b, true)
+		else
+			GameTooltip:AddLine(lines[i], 0.8, 0.8, 0.8, true)
+		end
+	end
 	GameTooltip:Show()
 end
 
 ------------------------------------------------------------------ planning
 
 -- A planning click on a node: left adds its next rank (after the selected row,
--- when there is one), right removes its last. 'added' | 'removed' | 'maxed' | nil.
+-- when there is one), right removes its last. Both ask the tree's rules first
+-- (TP.Sim.CanAdd, CanRemove): a click they refuse changes nothing and gives
+-- 'refused', the reason, which the catcher's tooltip then shows.
+-- 'added' | 'removed' | 'maxed' | 'refused', reason | nil.
 function TP:PlanClick(nodeID, mouse)
 	local view = self.view
 	local node = view and nodeID and view.tree.nodes[nodeID]
 	if not node then return nil end
 	local group = self:ViewedGroup()
 	local plan = S.Active(group)
+	local shape = view.tree.shape
+	local steps = plan and plan.steps or {}
 	local result
+	self.refusal = nil
 	if mouse == 'RightButton' then
-		local removed = plan and M.RemoveLastOf(plan, nodeID)
-		if not removed then return nil end
+		if not (plan and M.PlannedRanks(plan, nodeID) > 0) then return nil end
+		local ok, reason = TP.Sim.CanRemove(shape, steps, nodeID)
+		if not ok then
+			self.refusal = { nodeID = nodeID, reason = reason }
+			return 'refused', reason
+		end
+		local removed = M.RemoveLastOf(plan, nodeID) -- the step CanRemove judged: the node's last
 		if self.selected and self.selected >= removed then
 			self.selected = self.selected > removed and self.selected - 1 or nil
 		end
 		result = 'removed'
 	elseif mouse == 'LeftButton' then
+		-- a selection with no plan, or past the plan's end, would leave a hole in the steps
+		if not plan or (self.selected and (self.selected < 1 or self.selected > #plan.steps)) then self.selected = nil end
+		if plan and M.PlannedRanks(plan, nodeID) >= node.maxRanks then return 'maxed' end
+		local ok, reason = TP.Sim.CanAdd(shape, steps, nodeID, plan and self.selected or nil)
+		if not ok then
+			self.refusal = { nodeID = nodeID, reason = reason }
+			return 'refused', reason
+		end
 		plan = plan or S.New('New plan', group)
-		if M.PlannedRanks(plan, nodeID) >= node.maxRanks then return 'maxed' end
 		local index = M.AddStep(plan, nodeID, self.selected)
 		if self.selected then self.selected = index end
 		result = 'added'

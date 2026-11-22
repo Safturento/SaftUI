@@ -85,7 +85,7 @@ local function world(opts)
 	end
 	load_saftui('SaftUI-Core/Widgets/scrollframe.lua')
 	if not _G.GameTooltip then create('GameTooltip', 'GameTooltip', UIParent, 'GameTooltipTemplate') end
-	for _, file in ipairs({ 'talentplan', 'model', 'parser', 'store', 'data', 'drag', 'panel', 'import', 'overlays' }) do
+	for _, file in ipairs({ 'talentplan', 'model', 'simulate', 'parser', 'store', 'data', 'drag', 'panel', 'import', 'overlays' }) do
 		load_saftui('SaftUI-Misc/TalentPlan/' .. file .. '.lua')
 	end
 	load_saftui('SaftUI-Misc/movable.lua')
@@ -652,5 +652,26 @@ test("nothing is written onto Blizzard's frames, and nothing is bought", functio
 	PSF.talents:Hide(); PSF.window:Hide(); stub.run_timers()
 	eq(#plan.steps, 19)
 	eq(next(PSF.clicks), nil, 'no talent button was clicked')
+	clean()
+end)
+
+test('an out-of-order step shows blocked with its reason', function()
+	world({ tree = { shape = true } })
+	local plan = S.New('Wrong order', 1)
+	-- an import in the wrong order: Flurry (row 2) before its five points
+	plan.steps = { SH.ID.Flurry, SH.ID['Thundering Strikes'], SH.ID['Thundering Strikes'] }
+	open()
+	eq(row(1).tag:GetText(), 'blocked')
+	stub.fire_script(row(1), 'OnEnter')
+	eq(stub.state(GameTooltip).texts[1], 'Needs 5 points in Enhancement first.')
+	stub.fire_script(row(1), 'OnLeave')
+	eq(row(2).tag:GetText(), 'R1', 'a legal step is as before')
+	eq(row(3).tag:GetText(), 'R2')
+	check(TP.view.sim.steps[2].ok and not TP.view.sim.steps[1].ok, 'the simulation says which')
+	-- the order mended, nothing is blocked
+	plan.steps = { SH.ID['Thundering Strikes'], SH.ID['Thundering Strikes'], SH.ID['Thundering Strikes'],
+		SH.ID['Thundering Strikes'], SH.ID['Thundering Strikes'], SH.ID.Flurry }
+	TP:Refresh()
+	eq(row(6).tag:GetText(), 'R1')
 	clean()
 end)

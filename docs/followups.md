@@ -11,6 +11,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-22 — Spy skin: shared Skinning helpers](#2026-11-22--spy-skin-shared-skinning-helpers)
   - [2026-11-22 — Talent plan: remember the talent window's spot](#2026-11-22--talent-plan-remember-the-talent-windows-spot)
   - [2026-11-22 — Talent plan: check a whole plan against the tree](#2026-11-22--talent-plan-check-a-whole-plan-against-the-tree)
+  - [2026-11-22 — Talent faces: the edges in planning mode](#2026-11-22--talent-faces-the-edges-in-planning-mode)
+  - [2026-11-22 — Talent faces: the search match icon is covered](#2026-11-22--talent-faces-the-search-match-icon-is-covered)
   - [2026-11-22 — Talent plan: choice nodes and hero talents in a plan](#2026-11-22--talent-plan-choice-nodes-and-hero-talents-in-a-plan)
   - [2026-11-22 — Move the drag parts to Core](#2026-11-22--move-the-drag-parts-to-core)
   - [2026-11-22 — Talent plan, experiment E1: which node field is the committed rank](#2026-11-22--talent-plan-experiment-e1-which-node-field-is-the-committed-rank)
@@ -336,6 +338,36 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 **Shape of work:** Medium: a pure replay in `model.lua` with the gates in the read tree, and a warning line on the rows it finds.
 
 **Open questions:** Which steps does the guide order treat as legal that the replay would flag (a plan written for another patch)?
+
+**Update 2026-11-22:** Mostly done by the talent faces: `TP.Sim` (`simulate.lua`) replays a plan against the tree's gates and prerequisites, the panel draws a step the rules would not allow as blocked with the reason, and `/sui tp check` compares the rules with the game. What remains is the in-game check of the gate scope (the faces spec's open questions 1, 2 and 4).
+
+### 2026-11-22 — Talent faces: the edges in planning mode
+
+**What:** The lines between talents keep Blizzard's real state while planning, so an edge can say "open" for a node the plan has not reached.
+
+**Why noticed:** The talent faces spec's non-goals.
+
+**Anchors:** `docs/superpowers/specs/2026-11-22-talent-faces-design.md` (Non-goals), `SaftUI-Misc/Skinning/blizzard/Blizzard_TalentFaces.lua`, `SaftUI-Misc/TalentPlan/overlays.lua` (`TP:PlanDisplay`).
+
+**What's been considered:** Drawing them means SaftUI's own lines over Blizzard's pooled edge frames, colored by `Sim.Run`'s ranks (an edge is active when its parent is maxed in the plan).
+
+**Shape of work:** Medium: a layer of lines anchored to the buttons' corners and a rule for which edge is which style.
+
+**Open questions:** Does the owner want them at all once the faces show the plan's state?
+
+### 2026-11-22 — Talent faces: the search match icon is covered
+
+**What:** Blizzard's talent search marks a match with `button.SearchIcon`, a child frame of the button; the SaftUI face sits over it, so a match is not visible while the faces show.
+
+**Why noticed:** The talent faces spec's non-goals; the in-game checklist's item 10.
+
+**Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_TalentFaces.lua`, `docs/superpowers/specs/2026-11-22-talent-faces-design.md`.
+
+**What's been considered:** SaftUI's own mark on the face from `SearchIcon:IsShown()` (a read), in the Accent. Not built until the owner has seen whether a match is still visible.
+
+**Shape of work:** Small: one texture on the face and one read in the draw.
+
+**Open questions:** Is the match visible at all today (the covered icon may sit on a frame level above the face)?
 
 ### 2026-11-22 — Talent plan: choice nodes and hero talents in a plan
 

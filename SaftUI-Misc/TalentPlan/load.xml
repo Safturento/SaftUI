@@ -1,6 +1,7 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
 	<Script file="talentplan.lua"/>
 	<Script file="model.lua"/>
+	<Script file="simulate.lua"/>
 	<Script file="parser.lua"/>
 	<Script file="store.lua"/>
 	<Script file="data.lua"/>

@@ -744,6 +744,9 @@ function PS:UpdateConfig()
 	if installed then
 		self:StyleAll()
 		self:PlaceTalentPlan()
+		-- the talent buttons' faces follow the same look (TalentFaces)
+		local ok, faces = pcall(st.GetModule, st, 'TalentFaces', true)
+		if ok and faces and faces.UpdateConfig then faces:UpdateConfig() end
 	end
 end
 

@@ -11,6 +11,15 @@
 	invisible one (131), which the talent plan's reader skips. opts.ranks[name] = n
 	sets a node's ranksPurchased; opts.second = true adds config 1002 for group 2
 	(the same tree, no ranks). It returns SH.world = { configID, treeID, second }.
+
+	opts.shape = true gives the tree the shape the planning rules read: three
+	groups (SH.GROUP: Elemental 701, Enhancement 702, Restoration 703, in that
+	order), the nodes spread over them (Enhancement 101 to 115, Elemental 116 to
+	121, Restoration 122 and 123), five to a row (posY 0, 50, 100), a gate on
+	each row after the first (isGate, spentAmountRequired 5 per row above, a
+	condition of the node), two prerequisite edges, fixture data (Spirit
+	Weapons to Stormstrike, Stormstrike to Improved Stormstrike, type 3), and
+	the choice node 130 (group 703) as the parent of Totemic Focus.
 ]]
 local SH = { NAMES = {}, ID = {} }
 
@@ -33,11 +42,41 @@ for i, t in ipairs(list) do
 end
 
 local CONFIG, TREE, SECOND = 1001, 501, 1002
+SH.GROUP = { Elemental = 701, Enhancement = 702, Restoration = 703 }
 
 local function node_info(nodeID, maxRanks, entryIDs, ranks, visible)
 	return { ID = nodeID, entryIDs = entryIDs, entryIDsWithCommittedRanks = {}, canPurchaseRank = true,
 		canRefundRank = false, isAvailable = true, isVisible = visible, ranksPurchased = ranks or 0,
 		maxRanks = maxRanks, meetsEdgeRequirements = true, conditionIDs = {}, groupIDs = {} }
+end
+
+-- Groups, rows, gates and edges, written onto the nodes of config 1001 (and 1002).
+function SH.shape(tr)
+	tr.groups[TREE] = { { groupID = 701, orderIndex = 1, displayName = 'Elemental' },
+		{ groupID = 702, orderIndex = 2, displayName = 'Enhancement' },
+		{ groupID = 703, orderIndex = 3, displayName = 'Restoration' } }
+	local nodes = tr.nodes[CONFIG]
+	local function place(nodeID, group, row)
+		local info = nodes[nodeID]
+		info.groupIDs, info.posY = { group }, (row - 1) * 50
+		if row > 1 then
+			local cond = 9000 + nodeID
+			tr.conditions[cond] = { isGate = true, isMet = false, spentAmountRequired = 5 * (row - 1), traitCurrencyID = 800 }
+			info.conditionIDs = { cond }
+		end
+	end
+	for i = 1, 15 do place(100 + i, 702, math.ceil(i / 5)) end
+	for i = 16, 21 do place(100 + i, 701, math.ceil((i - 15) / 5)) end
+	place(122, 703, 1); place(123, 703, 2)
+	place(130, 703, 1)
+	nodes[SH.ID['Spirit Weapons']].visibleEdges = { { targetNode = SH.ID.Stormstrike, type = 3, isActive = false } }
+	nodes[SH.ID.Stormstrike].visibleEdges = { { targetNode = SH.ID['Improved Stormstrike'], type = 3, isActive = false } }
+	nodes[130].visibleEdges = { { targetNode = SH.ID['Totemic Focus'], type = 3, isActive = false } }
+	if tr.nodes[SECOND] then
+		for nodeID, info in pairs(nodes) do
+			for _, k in ipairs({ 'groupIDs', 'posY', 'conditionIDs', 'visibleEdges' }) do tr.nodes[SECOND][nodeID][k] = info[k] end
+		end
+	end
 end
 
 function SH.install(opts)
@@ -76,6 +115,7 @@ function SH.install(opts)
 			tr.nodes[SECOND][nodeID] = copy
 		end
 	end
+	if opts.shape then SH.shape(tr) end
 	SH.world = { configID = CONFIG, treeID = TREE, second = opts.second and SECOND or nil }
 	return SH.world
 end

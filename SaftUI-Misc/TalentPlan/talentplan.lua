@@ -35,6 +35,9 @@ end
 function TP:OnEnable()
 	st:BindModuleConfig(self, 'talentplan')
 	if not st.forever then return end
+	-- the faces (Blizzard_TalentFaces.lua) show the plan's simulated state while planning
+	local faces = st:GetModule('TalentFaces', true)
+	if faces then faces:SetPlanSource(function(nodeID) return TP:PlanDisplay(nodeID) end) end
 	st:OnBlizzardAddon('Blizzard_PlayerSpells', function() self:SetupBlizzard() end)
 end
 
@@ -112,7 +115,7 @@ function TP:QueueDock()
 	end)
 end
 
-local EVENTS = { 'PLAYER_LEVEL_UP', 'TRAIT_CONFIG_UPDATED', 'TRAIT_NODE_CHANGED' }
+local EVENTS = { 'PLAYER_LEVEL_UP', 'TRAIT_CONFIG_UPDATED', 'TRAIT_NODE_CHANGED', 'TRAIT_NODE_CHANGED_PARTIAL' }
 
 -- The events the panel hears, only while it shows.
 function TP:Listen(on)
@@ -162,11 +165,51 @@ function TP:Refresh()
 	local plan = TP.Store.Active(group)
 	local rows, summary
 	if plan then rows, summary = TP.Model.States(plan, tree.nodes, tree.level) end
-	self.view = { tree = tree, plan = plan, rows = rows, summary = summary }
+	-- the plan played against the tree's rules (simulate.lua), for the faces, the clicks and the panel
+	local sim = TP.Sim.Run(tree.shape, plan and plan.steps or {})
+	self.view = { tree = tree, plan = plan, rows = rows, summary = summary, sim = sim }
 	self:DrawPanel(self.view)
 	self:DrawOverlays(self.view)
 	if self.fresh then
 		self.fresh = false
 		self:ScrollToWaiting()
 	end
+end
+
+-- '/sui tp check': the plan's rules against the game, over the real ranks of the
+-- viewed (or the active) spec: the nodes where they disagree, or that they agree.
+-- The owner's check of the gate scope (see the talent faces spec, open questions).
+function TP:RunCheck()
+	if not st.forever then
+		st:Print('The talent plan is for WoW Forever only.')
+		return
+	end
+	local group = self.hooked and self:TalentsFrame() and self:TalentsFrame().GetTab and self:ViewedGroup()
+		or C_SpecializationInfo.GetActiveSpecGroup()
+	local tree = TP.Data.Read(group)
+	if not tree or not tree.configID then
+		st:Print('No talent tree to check.')
+		return
+	end
+	local bad = TP.Sim.Check(tree.shape, tree.real)
+	if #bad == 0 then
+		st:Print("The plan's rules agree with the game.")
+		return
+	end
+	st:Print('A character below max level may see extra lines: the game also holds nodes back for level, which the rules do not model.')
+	for _, d in ipairs(bad) do
+		local node = tree.shape.nodes[d.nodeID]
+		st:Print(('%s (%d): the game says %s %s, the rules say %s.'):format(node.name or 'a node', d.nodeID,
+			d.field == 'gated' and 'available' or 'edges met', tostring(d.game), tostring(d.sim)))
+	end
+end
+
+if st.Config and st.Config.AddSubcommand then
+	st.Config:AddSubcommand('tp', function(rest)
+		if (rest or ''):lower() == 'check' then
+			TP:RunCheck()
+		else
+			st:Print('/sui tp check compares the talent plan\'s rules with the game\'s.')
+		end
+	end)
 end

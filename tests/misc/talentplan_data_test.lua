@@ -83,3 +83,68 @@ test('a node blocked by a gate reads its reason through the condition', function
 	info.ranksPurchased = 5
 	eq(D.Read(1).nodes[SH.ID.Flurry].block, nil, 'a maxed node has no reason')
 end)
+
+test('the shape holds groups, gates, edges and costs', function()
+	SH.install({ shape = true })
+	local shape = D.Read(1).shape
+	eq(#shape.groups, 3)
+	eq(shape.groups[1].name, 'Elemental'); eq(shape.groups[2].name, 'Enhancement'); eq(shape.groups[3].name, 'Restoration')
+	eq(shape.groups[2].id, SH.GROUP.Enhancement)
+	local ss = shape.nodes[SH.ID.Stormstrike]
+	eq(#ss.parents, 1); eq(ss.parents[1].nodeID, SH.ID['Spirit Weapons']); eq(ss.parents[1].type, 3)
+	eq(shape.nodes[SH.ID['Improved Stormstrike']].parents[1].nodeID, SH.ID.Stormstrike)
+	local flurry = shape.nodes[SH.ID.Flurry] -- row 2 of Enhancement
+	eq(flurry.gates[1].required, 5); eq(flurry.group, SH.GROUP.Enhancement); eq(flurry.posY, 50)
+	eq(flurry.maxRanks, 5); eq(flurry.cost, 1); eq(flurry.plannable, true); eq(flurry.name, 'Flurry')
+	eq(#shape.nodes[SH.ID['Thundering Strikes']].gates, 0, 'row 1 has no gate')
+	local choice = shape.nodes[130]
+	check(choice, 'the choice node is in the shape'); eq(choice.plannable, false)
+	eq(shape.nodes[SH.ID['Totemic Focus']].parents[1].nodeID, 130)
+	eq(shape.nodes[131], nil, 'an invisible node is not')
+	eq(shape.budget, nil); eq(shape.hideSingle, false)
+	eq(#stub.traits.calls, 0)
+end)
+
+test('a cost and hideSingleRankNumbers come from the game, and a point budget is never set', function()
+	SH.install({ shape = true })
+	stub.traits.costs[SH.ID.Flurry] = { { ID = 800, amount = 2 } }
+	stub.traits.currency = { { traitCurrencyID = 800, quantity = 5, maxQuantity = 31, spent = 0 } }
+	stub.traits.tree_info[501] = { hideSingleRankNumbers = true }
+	local shape = D.Read(1).shape
+	eq(shape.nodes[SH.ID.Flurry].cost, 2); eq(shape.hideSingle, true)
+	eq(shape.budget, nil, 'a plan runs to max level')
+end)
+
+test('a node with no maxRanks takes its entry\'s in the shape and in the nodes alike', function()
+	SH.install({ shape = true })
+	local id = SH.ID.Flurry
+	stub.traits.nodes[1001][id].maxRanks = nil
+	local t = D.Read(1)
+	eq(t.nodes[id].maxRanks, 5); eq(t.shape.nodes[id].maxRanks, 5)
+end)
+
+test('a node whose group the tree does not list has no group', function()
+	SH.install({ shape = true })
+	stub.traits.nodes[1001][SH.ID.Flurry].groupIDs = { 999, SH.GROUP.Elemental }
+	stub.traits.nodes[1001][SH.ID['Mental Quickness']].groupIDs = { 999 }
+	local shape = D.Read(1).shape
+	eq(shape.nodes[SH.ID.Flurry].group, SH.GROUP.Elemental, 'the first listed one')
+	eq(shape.nodes[SH.ID['Mental Quickness']].group, nil)
+end)
+
+test('gates from GetTreeInfo when nodes carry none', function()
+	SH.install({ shape = true })
+	for _, info in pairs(stub.traits.nodes[1001]) do info.conditionIDs = {} end
+	-- the gate's top left node is Stormstrike (Enhancement, row 2): it covers that group's nodes at or below posY 50
+	stub.traits.conditions[8001] = { isGate = true, isMet = false, spentAmountRequired = 5, traitCurrencyID = 800 }
+	stub.traits.tree_info[501] = { gates = { { topLeftNodeID = SH.ID.Stormstrike, conditionID = 8001 } } }
+	local shape = D.Read(1).shape
+	eq(shape.nodes[SH.ID.Flurry].gates[1].required, 5)
+	eq(shape.nodes[SH.ID['Spirit Weapons']].gates[1].required, 5, 'a row below')
+	eq(#shape.nodes[SH.ID['Thundering Strikes']].gates, 0, 'a row above')
+	eq(#shape.nodes[SH.ID['Call of Flame']].gates, 0, 'another group')
+	-- nodes that carry their own gate are left as they are
+	stub.traits.nodes[1001][SH.ID.Flurry].conditionIDs = { 9000 + SH.ID.Flurry }
+	stub.traits.conditions[9000 + SH.ID.Flurry] = { isGate = true, isMet = false, spentAmountRequired = 5 }
+	eq(#D.Read(1).shape.nodes[SH.ID.Flurry].gates, 1)
+end)
