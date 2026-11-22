@@ -123,20 +123,30 @@ local function EdgePulse(frame)
 end
 
 -- The waiting node's highlight in the panel's theme: under Blizzard a glow,
--- under Thick and Thin the light's border, pulsing.
-local function SetGlowLook(rec, blizzard)
+-- under Thick and Thin the light's border. Either pulses only while the
+-- character has a point to spend; with none it holds still (a steady glow, a
+-- steady border), so the plan's next pick still shows.
+local STEADY_GLOW = 0.7
+local function SetGlowLook(rec, blizzard, unspent)
 	local frame = rec.glow
 	local on = blizzard and frame:IsShown()
 	for _, texture in ipairs(frame.edges) do texture:SetShown(not blizzard) end
-	local pulse = not blizzard and frame:IsShown() and EdgePulse(frame)
+	local pulse = unspent and not blizzard and frame:IsShown() and EdgePulse(frame)
 	if pulse then
 		if not pulse:IsPlaying() then pulse:Play() end
 	elseif frame.edgeAnim and frame.edgeAnim:IsPlaying() then
 		frame.edgeAnim:Stop()
 	end
 	if on then
-		GlowArt(frame, GlowAtlas(rec.button)):Show()
-		if frame.glowAnim and not frame.glowAnim:IsPlaying() then frame.glowAnim:Play() end
+		local texture = GlowArt(frame, GlowAtlas(rec.button))
+		texture:Show()
+		if unspent then
+			texture:SetAlpha(1)
+			if frame.glowAnim and not frame.glowAnim:IsPlaying() then frame.glowAnim:Play() end
+		else
+			if frame.glowAnim and frame.glowAnim:IsPlaying() then frame.glowAnim:Stop() end
+			texture:SetAlpha(STEADY_GLOW)
+		end
 	elseif frame.glowTexture then
 		if frame.glowAnim then frame.glowAnim:Stop() end
 		frame.glowTexture:Hide()
@@ -367,10 +377,11 @@ function TP:PaintOverlays()
 	local nr, ng, nb = st:Color('text', 'normal'):GetRGB()
 	local panels = st.config.profile.panels
 	local blizzard = st:IsBlizzardLook(panels and panels.theme)
+	local unspent = self.view and self.view.tree and self.view.tree.unspent or false
 	for _, rec in pairs(records) do
 		PaintEdges(rec.light, nr, ng, nb)
 		PaintEdges(rec.glow, nr, ng, nb) -- the light's border, pulsing (SetGlowLook)
-		SetGlowLook(rec, blizzard)
+		SetGlowLook(rec, blizzard, unspent)
 	end
 end
 
