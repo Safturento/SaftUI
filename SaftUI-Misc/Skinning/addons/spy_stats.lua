@@ -6,11 +6,10 @@ local L = SP.lib
 -- through SP.lib. Nothing is written onto a Spy frame: SaftUI's boxes are children of
 -- Spy's buttons and are kept in the tables of spy.lua and below.
 --
--- What is left in Spy's look, because the helper that would draw it writes fields onto the
--- widget (.agents/taint.md, rule 1 and its third-party note): the four check boxes
--- (st:SkinCheckButton sets .text, .SetText, .SetTextFont) and the list's scroll bar
--- (st:SkinScrollBar sets .Thumb). Their labels do wear the Skinning font. The tab button
--- is hidden by Spy until it has a second tab; the drop-down is Blizzard's.
+-- What is left in Spy's look: the list's scroll bar (st:SkinScrollBar sets .Thumb on the
+-- widget: .agents/taint.md, rule 1 and its third-party note). The check boxes are drawn here
+-- without st:SkinCheckButton, which sets .text, .SetText and .SetTextFont on the button. The
+-- tab button is hidden by Spy until it has a second tab; the drop-down is Blizzard's.
 local boxed = setmetatable({}, L.weak)   -- Spy's UIPanelButtonTemplate button -> its hover hooks are on
 local skinned = setmetatable({}, L.weak) -- Spy's frame -> true once drawn
 
@@ -26,8 +25,9 @@ local function Fade(region)
 end
 
 -- A button's own textures (normal, pushed, disabled, highlight) at alpha 0.
-local function FadeButtonTextures(button)
+local function FadeButtonTextures(button, keepHighlight)
 	for _, getter in ipairs({ 'GetNormalTexture', 'GetPushedTexture', 'GetDisabledTexture', 'GetHighlightTexture' }) do
+		if keepHighlight and getter == 'GetHighlightTexture' then break end
 		if button[getter] then Fade(button[getter](button)) end
 	end
 end
@@ -37,8 +37,8 @@ local function Global(name)
 	return type(value) == 'table' and value or nil
 end
 
--- A UIPanelButtonTemplate button: Blizzard's three parts and its highlight at alpha 0, a SaftUI
--- box (a 'control') inside it with the hover and the press drawn by the states, the label in
+-- A UIPanelButtonTemplate button: Blizzard's three parts at alpha 0, a SaftUI
+-- box (a 'control') inside it with the press drawn by the states, the hover as below, the label in
 -- the Skinning font. The box is the button's backdrop, so a Theme change redraws it.
 local function SkinPanelButton(button)
 	if type(button) ~= 'table' or boxed[button] or not button.HookScript then return end
@@ -46,12 +46,14 @@ local function SkinPanelButton(button)
 	if not box then return end
 	boxed[button] = true
 	for _, key in ipairs(BUTTON_ART) do Fade(button[key]) end
-	FadeButtonTextures(button)
+	FadeButtonTextures(button, true)
+	-- The hover is the button's own highlight, SaftUI's flat one: the game shows it under the
+	-- mouse and while Spy has LockHighlight on (the Refresh button blinks it while new data
+	-- waits), and the states color it.
+	button:SetHighlightTexture(st.BLANK_TEX, 'BLEND')
+	st:AddStates(button, 'icon', { pieces = { hover = button:GetHighlightTexture() } })
 	st:AddStates(box, 'box', { edge = 'theme', wire = false })
-	-- Post-hooks that only color SaftUI's own box. The game passes a second argument
-	-- (motion) to OnEnter and OnLeave, which they don't use.
-	button:HookScript('OnEnter', function() st:SetState(box, 'hover', true) end)
-	button:HookScript('OnLeave', function() st:SetState(box, 'hover', false) end)
+	-- Post-hooks that only color SaftUI's own box.
 	button:HookScript('OnMouseDown', function(_, mouse)
 		if mouse == nil or mouse == 'LeftButton' then st:SetState(box, 'pushed', true) end
 	end)
@@ -76,6 +78,27 @@ local function SkinLine(line)
 	if name then
 		for _, key in ipairs(LINE_TEXTS) do L.HookFont(Global(name .. key), 'text') end
 	end
+end
+
+-- A check box, as st:SkinCheckButton draws one without its fields: a 'control' box, Blizzard's
+-- art at alpha 0, a flat checked texture the game shows, hover and the selected state by the
+-- states.
+local function SkinCheck(check)
+	if type(check) ~= 'table' or skinned[check] or not (check.SetCheckedTexture and check.HookScript) then return end
+	if not L.Panel(check, 'control') then return end
+	skinned[check] = true
+	FadeButtonTextures(check)
+	if check.GetCheckedTexture then Fade(check:GetCheckedTexture()) end
+	if check.GetDisabledCheckedTexture then Fade(check:GetDisabledCheckedTexture()) end
+	local mark = check:CreateTexture(nil, 'OVERLAY')
+	mark:SetTexture(st.BLANK_TEX)
+	mark:SetAllPoints(check)
+	check:SetCheckedTexture(mark)
+	st:AddStates(check, 'check', { mark = mark })
+	local function Repaint(self) st:SetState(self, 'selected', self:GetChecked() and true or false) end
+	hooksecurefunc(check, 'SetChecked', Repaint)
+	check:HookScript('PostClick', Repaint)
+	Repaint(check)
 end
 
 function SP:SkinStats()
@@ -120,8 +143,10 @@ function SP:SkinStats()
 		SkinLine(line)
 	end
 
-	-- The filter box: a 'control' backdrop of SaftUI's (st:SkinEditBox would put fields on it),
-	-- Spy's own backdrop frame faded, a border in the Accent while it has focus.
+	-- The filter box: a 'control' backdrop of SaftUI's, drawn through spy.lua's panels so that
+	-- SP:UpdateConfig redraws it with the Theme live, and Spy's own font size kept (HookFont;
+	-- st:StyleEditBox would set the face at its own size). Spy's backdrop frame is faded, and
+	-- the border takes the Accent while the box has focus.
 	local box = Global('SpyStatsFilterBox')
 	if box then
 		Fade(box.FilterBox)
@@ -134,5 +159,8 @@ function SP:SkinStats()
 		L.HookFont(box, 'text')
 	end
 
-	for _, key in ipairs(CHECKS) do L.HookFont(Global('SpyStats' .. key .. 'CheckboxText'), 'text') end
+	for _, key in ipairs(CHECKS) do
+		SkinCheck(Global('SpyStats' .. key .. 'Checkbox'))
+		L.HookFont(Global('SpyStats' .. key .. 'CheckboxText'), 'text')
+	end
 end

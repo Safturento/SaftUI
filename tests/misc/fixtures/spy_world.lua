@@ -377,6 +377,10 @@ local function build_stats(opts)
 		filter:SetSize(150, 26)
 		filter:SetAutoFocus(false)
 		backdrop_child(filter, 'FilterBox')
+		-- The stub EditBox has no font methods of its own; the game's has.
+		local font = { FONT, 12, '' }
+		own(filter, 'GetFont', function() return unpack(font) end)
+		own(filter, 'SetFont', function(_, file, size, flags) font = { file, size, flags } end)
 		for _, key in ipairs({ 'Kos', 'Realm', 'WinsLoses', 'Reason' }) do
 			local check = CreateFrame('CheckButton', 'SpyStats' .. key .. 'Checkbox', frame)
 			check:SetSize(26, 26)
