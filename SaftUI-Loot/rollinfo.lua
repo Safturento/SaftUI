@@ -23,8 +23,9 @@
 -- hide. The held bar carries the roll's drop
 -- forward and is matched and updated here with the Blizzard bars. A Blizzard
 -- bar never takes a drop you've chosen on (only a bar that keeps its roll keeps
--- one), and a held roll only takes one you have. It finishes when its drop resolves (here) or its
--- time runs out (roll.lua): it then stays up a few seconds and fades before it
+-- one), and a held roll only takes one you have. It finishes when its drop resolves (here), when
+-- chat says its roll ended (a winner or all passed: here, for a roll the history never matched),
+-- or when its time runs out (roll.lua): it then stays up a few seconds and fades before it
 -- goes (roll.lua), takes no drop and is left out of matching; it still shows
 -- the later results of the drop it finished on (counts only).
 --
@@ -270,6 +271,12 @@ end
 
 local function ByRoll(a, b) return a.rollID < b.rollID end
 
+-- Result lines in chat that finished no held roll ({ item, itemID, at }), for a
+-- roll held after them; and held rolls finished by their drop whose line hasn't
+-- come yet, so that line finishes nothing else (Roll results in chat, below).
+local unclaimedLines, owedLines = {}, {}
+local OweLine
+
 -- A drop's summary from its id (encounterID:index, as LT:GetOpenDrops makes
 -- them), nil when it can't be read.
 function LT:ReadDropRolls(dropID)
@@ -394,8 +401,164 @@ function LT:UpdateRollBars()
 	-- still be read; if not, the bar keeps the counts it had.
 	for _, bar in ipairs(held) do
 		if ended[bar] then
+			OweLine(bar)
 			self:FinishHeldRoll(bar, 'drop resolved', self:ReadDropRolls(bar.dropID))
 		end
+	end
+end
+
+------------------------------------
+---- Roll results in chat ----------
+------------------------------------
+
+-- The game says in chat when a roll ends (CHAT_MSG_LOOT): who won it, or that
+-- everyone passed. That line comes whether or not the loot history has a drop
+-- for the roll, so it also finishes a held roll the history never matched
+-- (trash, or anything C_LootHistory doesn't list), which would otherwise stay
+-- up for its whole roll time after the item was awarded. GlobalStrings.lua's
+-- result lines, on both clients; any the client lacks are skipped. The others
+-- in the same channel (a choice, a roll, your loot) are not results.
+local RESULT_STRINGS = {
+	'LOOT_ROLL_WON', 'LOOT_ROLL_YOU_WON', 'LOOT_ROLL_ALL_PASSED',
+	'LOOT_ROLL_WON_NO_SPAM_NEED', 'LOOT_ROLL_WON_NO_SPAM_GREED',
+	'LOOT_ROLL_WON_NO_SPAM_DE', 'LOOT_ROLL_WON_NO_SPAM_TRANSMOG',
+	'LOOT_ROLL_YOU_WON_NO_SPAM_NEED', 'LOOT_ROLL_YOU_WON_NO_SPAM_GREED',
+	'LOOT_ROLL_YOU_WON_NO_SPAM_DE', 'LOOT_ROLL_YOU_WON_NO_SPAM_TRANSMOG',
+}
+
+local function Escape(text)
+	return (text:gsub('[%^%$%(%)%%%.%[%]%*%+%-%?]', '%%%0'))
+end
+
+-- A whole-line Lua pattern from a format string: each %s, %d, %1$s or %2$d
+-- becomes a lazy wildcard, the rest is matched literally.
+local function TemplatePattern(template)
+	local parts, pos = { '^' }, 1
+	while true do
+		local first, last = template:find('%%%d*%$?[sd]', pos)
+		if not first then break end
+		tinsert(parts, Escape(template:sub(pos, first - 1)))
+		tinsert(parts, '.-')
+		pos = last + 1
+	end
+	tinsert(parts, Escape(template:sub(pos)))
+	tinsert(parts, '$')
+	return table.concat(parts)
+end
+
+local resultPatterns
+local function IsRollResult(message)
+	if not resultPatterns then
+		resultPatterns = {}
+		for _, name in ipairs(RESULT_STRINGS) do
+			local template = _G[name]
+			if type(template) == 'string' then tinsert(resultPatterns, TemplatePattern(template)) end
+		end
+	end
+	for _, pattern in ipairs(resultPatterns) do
+		if message:match(pattern) then return true end
+	end
+	return false
+end
+
+-- How long a roll's result is remembered for its other half: a result line
+-- waiting for a hold (a main spec Need's bar stays up through its dice
+-- animation, and the roll can end in that time), or a held roll the history
+-- finished waiting for its line.
+local RESULT_KEEP = 10
+
+
+local function Forget(list, now)
+	for i = #list, 1, -1 do
+		if now - list[i].at > RESULT_KEEP then tremove(list, i) end
+	end
+end
+
+-- Takes the oldest entry of `list` for the item (same item string, else the
+-- same item ID), true if there was one.
+local function TakeEntry(list, item, itemID)
+	for pass = 1, 2 do
+		for i, entry in ipairs(list) do
+			if (pass == 1 and entry.item == item) or (pass == 2 and itemID and entry.itemID == itemID) then
+				tremove(list, i)
+				return true
+			end
+		end
+	end
+	return false
+end
+
+-- A held roll finished by its drop resolving: its result line is still to come.
+function OweLine(bar)
+	tinsert(owedLines, { item = bar.item, itemID = bar.itemID, at = GetTime() })
+end
+
+-- A roll result line: finishes the held roll of its item that it ended. A line
+-- owed to a roll its drop already finished is used up and does nothing. Of two
+-- held copies, the oldest (by rollID, as matching goes) whose loot history drop
+-- isn't still open: one the history still rolls is not the one that ended.
+-- Failing that, the oldest (the line can come before the history's update). A
+-- line that finishes nothing is kept a few seconds for a roll held after it.
+function LT:OnRollResultMessage(message)
+	local PlainString = self.PlainString
+	message = PlainString and PlainString(message)
+	if not message or not IsRollResult(message) then return end
+	local now = GetTime()
+	Forget(unclaimedLines, now)
+	Forget(owedLines, now)
+
+	local item = message:match('|H(item:[^|]*)|h')
+	if not item then return end
+	local itemID = self.ItemID(item)
+	if TakeEntry(owedLines, item, itemID) then return end
+
+	local candidates = {}
+	for _, bar in ipairs(self:GetHeldRolls()) do
+		if not bar.finishedAt and bar.item then tinsert(candidates, bar) end
+	end
+	table.sort(candidates, ByRoll)
+	local found
+	for pass = 1, 2 do
+		for _, bar in ipairs(candidates) do
+			if (pass == 1 and bar.item == item) or (pass == 2 and itemID and bar.itemID == itemID) then
+				found = found or {}
+				tinsert(found, bar)
+			end
+		end
+		if found then break end
+	end
+	if not found then
+		tinsert(unclaimedLines, { item = item, itemID = itemID, at = now })
+		return
+	end
+
+	local bar = found[1]
+	if found[2] then
+		local open = {}
+		for _, drop in ipairs(self:GetOpenDrops()) do open[drop.id] = true end
+		for _, other in ipairs(found) do
+			if not (other.dropID and open[other.dropID]) then
+				bar = other
+				break
+			end
+		end
+	end
+	self:FinishHeldRoll(bar, 'result in chat', bar.dropID and self:ReadDropRolls(bar.dropID))
+end
+
+-- Called by LT:HoldRoll (roll.lua) for a roll just held: a result line for its
+-- item that came in the last few seconds and finished nothing ended this roll
+-- before it was held, unless the history still has the roll's drop open.
+function LT:OnRollHeld(bar)
+	Forget(unclaimedLines, GetTime())
+	if not unclaimedLines[1] or not bar.item then return end
+	if bar.dropID then
+		for _, drop in ipairs(self:GetOpenDrops()) do
+			if drop.id == bar.dropID then return end
+		end
+	end
+	if TakeEntry(unclaimedLines, bar.item, bar.itemID) then
+		self:FinishHeldRoll(bar, 'result in chat before the hold', bar.dropID and self:ReadDropRolls(bar.dropID))
 	end
 end
 
@@ -565,6 +728,8 @@ function LT:OnCancelAllLootRolls()
 	wipe(chosen)
 	wipe(pending)
 	wipe(hidden)
+	wipe(unclaimedLines)
+	wipe(owedLines)
 	local list = {}
 	for _, bar in ipairs(self:GetHeldRolls()) do tinsert(list, bar) end
 	for _, bar in ipairs(list) do self:ReleaseHeldRoll(bar) end
