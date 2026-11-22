@@ -67,7 +67,7 @@ local PS = SK:NewModule('Blizzard_PlayerSpellsSkin')
 	templates and this window's Lua: they only show and hide the tab pieces).
 	Every step is nil-guarded so a region this client lacks skips its step.
 	The hooks: hooksecurefunc on each tab system's AddTab (a tab acquired later)
-	and on each tab's SetTabSelected; HookScript on the buttons, tabs and boxes'
+	and on each tab's SetTabSelected and SetTabEnabled; HookScript on the buttons, tabs and boxes'
 	OnEnter, OnLeave, OnMouseDown, OnMouseUp, OnEnable, OnDisable and the search
 	boxes' OnEditFocusGained and OnEditFocusLost, which only set states on
 	SaftUI's own boxes.
