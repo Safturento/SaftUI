@@ -101,7 +101,7 @@ end
 -- Fonts.lua: Russian and CJK names have no glyphs in one roman file), so a bare SetFont
 -- with SaftUI's face would draw them as squares. The skin builds a family of its own: the
 -- roman member is SaftUI's face and outline, the other alphabets keep the files of the
--- font object Spy set, all at Spy's size. One family per face, size, outline and files.
+-- font object Spy set, all at the one size ApplyFont chose. One family per face, size, outline and files.
 local ALPHABETS = { 'korean', 'simplifiedchinese', 'traditionalchinese', 'russian' }
 local families, familyCount = {}, 0
 
@@ -128,7 +128,7 @@ local function Family(fs, face, size, outline)
 end
 
 -- Spy asks for a size with SetFontObject (Spy:ApplyFont's family) or SetFont: the
--- skin keeps that size and puts SaftUI's face and outline on it. kind 'title' is the
+-- skin keeps that size (but for kind 'row') and puts SaftUI's face and outline on it. kind 'title' is the
 -- Window titles font, 'text' the Skinning page's. kind 'row' is the Skinning page's
 -- font at its own size too: Spy sizes the Nearby rows' texts from the bar height, which
 -- draws a pixel face at sizes it isn't made for.

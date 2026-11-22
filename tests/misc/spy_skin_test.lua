@@ -358,10 +358,11 @@ test('SaftUI\'s face keeps the other alphabets of Spy\'s font family', function(
 	local russian = row.LeftText:GetFontObject():GetFontObjectForAlphabet('russian')
 	eq((russian:GetFont()), [[Fonts\FRIZQT___CYR.TTF]], 'Cyrillic keeps its file')
 	eq(select(2, russian:GetFont()), select(2, st:FontValues(st.config.profile.skinning.font)), 'at the same size')
-	st.config.profile.skinning.font = 'pixel'
+	check(select(2, st:FontValues(st.config.profile.skinning.font)) ~= select(2, st:FontValues('normal_med')), 'the next font has another size')
+	st.config.profile.skinning.font = 'normal_med'
 	SK:UpdateConfig()
 	local again = row.LeftText:GetFontObject():GetFontObjectForAlphabet('russian')
-	eq(({ row.LeftText:GetFont() })[2], select(2, st:FontValues('pixel')), 'the new font\'s size')
+	eq(({ row.LeftText:GetFont() })[2], select(2, st:FontValues('normal_med')), 'the new font\'s size')
 	eq((again:GetFont()), [[Fonts\FRIZQT___CYR.TTF]], 'and after the face changes')
 end)
 
