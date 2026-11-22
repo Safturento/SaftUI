@@ -35,8 +35,8 @@
 	opts.noFamily has the game lack CreateFontFamily (Spy then uses SetFont); opts.invert sets the InvertSpy option.
 	opts.renamed drops pieces, as a Spy version that renamed them would: the
 	window's StatsButton, the alert's Icon, SpyStatsFrame's TabFrame, the KoS
-	button's Border, and Spy.AlertWindow itself (the CreateMainWindow still builds
-	the rest).
+	button's Border (the CreateMainWindow still builds the rest). opts.noAlert drops
+	Spy.AlertWindow itself.
 
 	SpyFix.geometry_calls lists every move, size, show, hide or reparent call made
 	on the main window or a row: { frame, method, from_spy }, from_spy true while one
@@ -242,25 +242,30 @@ local function build_window(opts)
 end
 
 -- MainWindow.lua's alert window
-local function build_alert()
+local function build_alert(opts)
 	local alert = CreateFrame('Frame', 'Spy_AlertWindow', UIParent, 'BackdropTemplate')
 	alert:SetHeight(42)
 	alert:SetWidth(160)
 	alert:SetPoint('TOP', UIParent, 'TOP', 0, -140)
 	alert:SetBackdrop(TOOLTIP)
-	local icon = CreateFrame('Frame', nil, alert, 'BackdropTemplate')
-	icon:SetPoint('TOPLEFT', alert, 'TOPLEFT', 6, -5)
-	icon:SetSize(32, 32)
-	if not Spy.renamed then own(alert, 'Icon', icon) end
+	if not opts.renamed then
+		local icon = CreateFrame('Frame', nil, alert, 'BackdropTemplate')
+		icon:SetPoint('TOPLEFT', alert, 'TOPLEFT', 6, -5)
+		icon:SetSize(32, 32)
+		own(alert, 'Icon', icon)
+	end
 	local title = text(alert, 'GameFontNormal')
 	title:SetPoint('TOPLEFT', alert, 'TOPLEFT', 42, -3)
 	own(alert, 'Title', title)
+	Spy:SetFontSize(title, 12) -- Spy:AddFontString puts its font family on it
 	local name = text(alert, 'GameFontNormal')
 	name:SetPoint('TOPLEFT', alert, 'TOPLEFT', 42, -15)
 	own(alert, 'Name', name)
+	Spy:SetFontSize(name, 14) -- Spy:AddFontString puts its font family on it
 	local location = text(alert, 'GameFontNormal')
 	location:SetPoint('TOPLEFT', alert, 'TOPLEFT', 42, -26)
 	own(alert, 'Location', location)
+	Spy:SetFontSize(location, 10) -- Spy:AddFontString puts its font family on it
 	alert:Hide()
 	return alert
 end
@@ -406,6 +411,11 @@ function SpyFix.make(opts)
 	function Spy.Colors:GetColor(branch, name)
 		return self.table[branch] and self.table[branch][name]
 	end
+	-- Colors.lua: RegisterBorder puts a registered color on a frame's backdrop border.
+	function Spy.Colors:RegisterBorder(branch, name, frame)
+		local c = self:GetColor(branch, name)
+		frame:SetBackdropBorderColor(c.r, c.g, c.b, c.a)
+	end
 
 	-- Display.lua: Spy:SetFontSize(fontString, size) keeps the face, asks for the size.
 	-- Fonts.lua: Spy:ApplyFont builds a font family around the face (roman and the
@@ -431,7 +441,7 @@ function SpyFix.make(opts)
 	function Spy:CreateMainWindow()
 		if Spy.MainWindow then return end
 		local window = own(Spy, 'MainWindow', build_window(opts))
-		if not opts.renamed then own(Spy, 'AlertWindow', build_alert()) end
+		if not opts.noAlert then own(Spy, 'AlertWindow', build_alert(opts)) end
 		record_geometry(window)
 		lock_tree(window)
 		if Spy.AlertWindow then lock_tree(Spy.AlertWindow) end
@@ -595,8 +605,7 @@ function SpyFix.make(opts)
 	function Spy:ShowAlert(kind, name, source, location)
 		local alert = Spy.AlertWindow
 		if not alert then return end
-		local c = Spy.Colors:GetColor('Alert', KINDS[kind] or 'Other Border')
-		alert:SetBackdropBorderColor(c.r, c.g, c.b, c.a)
+		Spy.Colors:RegisterBorder('Alert', KINDS[kind] or 'Other Border', alert)
 		if alert.Icon then alert.Icon:SetBackdrop({ bgFile = [[Interface\Icons\Ability_Creature_Cursed_02]] }) end
 		alert.Title:SetText(kind)
 		alert.Name:SetText(name)
