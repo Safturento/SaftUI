@@ -14,7 +14,9 @@
 	script fails; Spy's own field writes go through rawset):
 	  - the global Spy with db.profile, Colors (GetColor), and the functions the skin
 	    hooks: CreateMainWindow, CreateRow, SetupBar, SetBar, ManageBarsDisplayed,
-	    ResizeMainWindow, ApplyBorderStyle, ShowAlert, CreateKoSButton, SetFontSize.
+	    ResizeMainWindow, ApplyBorderStyle, ShowAlert, CreateKoSButton, SetFontSize,
+	    UpdateBarTextures, SetBarTextures (MainWindow.lua: Spy puts its own bar texture on
+	    every row again on its texture option and on a profile change).
 	    Spy:CreateMainWindow() makes Spy.MainWindow (Spy_MainWindow: Background,
 	    TitleBar, Title, CloseButton, LeftButton, RightButton, ClearButton,
 	    StatsButton, CountFrame.Text, CountButton, the four Drag* grips, Rows) and
@@ -427,6 +429,22 @@ function SpyFix.make(opts)
 		own(row, 'id', num)
 	end
 	Spy.CreateRow = spy_fn(Spy.CreateRow)
+
+	-- MainWindow.lua: the rows' bar texture again, from the profile's BarTexture.
+	function Spy:UpdateBarTextures()
+		for _, row in pairs(Spy.MainWindow.Rows) do
+			row.StatusBar:SetStatusBarTexture([[Interface\AddOns\Spy\Textures\flat]])
+		end
+	end
+	Spy.UpdateBarTextures = spy_fn(Spy.UpdateBarTextures)
+
+	function Spy:SetBarTextures(handle)
+		Spy.db.profile.BarTexture = handle
+		for _, row in pairs(Spy.MainWindow.Rows) do
+			row.StatusBar:SetStatusBarTexture([[Interface\AddOns\Spy\Textures\flat]])
+		end
+	end
+	Spy.SetBarTextures = spy_fn(Spy.SetBarTextures)
 
 	function Spy:SetBar(num, name, desc, value, colorgroup, colorclass)
 		local row = Spy.MainWindow and Spy.MainWindow.Rows[num]

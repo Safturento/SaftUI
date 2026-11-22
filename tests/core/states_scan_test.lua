@@ -52,6 +52,7 @@ local ALLOWED = {
 	['SaftUI-Minimap/expansionbutton.lua'] = { count = 1, kind = 'piece', reason = "the expansion button's highlight is handed the flat texture again (SetLandingPageIconFromAtlases puts an atlas on it); RestyleStates colors it" },
 	['SaftUI-Minimap/microbuttons.lua'] = { count = 1, kind = 'piece', reason = "the character micro button has no highlight of its own: it is given an empty HIGHLIGHT-layer texture, which MicroMenu.SkinHighlight then replaces" },
 	['SaftUI-Minimap/micromenuitems.lua'] = { count = 1, kind = 'piece', reason = "MicroMenu.SkinHighlight: the flat highlight on a Blizzard button, made once, handed to the setter with BLEND, and registered with the helper as the hover piece" },
+	['SaftUI-Misc/Skinning/addons/spy.lua'] = { count = 2, kind = 'piece', reason = "SkinIconButton: Spy's icon buttons (a third-party addon's) get SaftUI's icon as the pushed art, which the game shows, and the flat BLEND highlight, which is registered with the helper as the hover piece (the pushed art is not: the helper would flatten it)" },
 	['SaftUI-Misc/totemskin.lua'] = { count = 4, kind = 'piece', reason = "the totem buttons' highlight, pushed and checked textures are SaftUI's own flat ones (CreateStateTexture) handed to the setters; the helper adopts them (game = true); the flyout arrow's highlight too" },
 }
 

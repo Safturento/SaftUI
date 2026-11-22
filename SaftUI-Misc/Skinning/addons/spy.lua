@@ -25,6 +25,14 @@ local SP = SK:NewModule('Spy')
 
 local weak = { __mode = 'k' }
 local panels = setmetatable({}, weak) -- Spy's frame -> its SaftUI backdrop frame (st:SetBackdropIn)
+local kinds = setmetatable({}, weak)  -- Spy's frame -> { kind =, background = } its backdrop is drawn with
+local placers = setmetatable({}, weak) -- Spy's frame -> function(frame) that anchors its backdrop where the skin wants it
+local fontState = setmetatable({}, weak) -- Spy's font string -> { kind = 'text' | 'title', size = } (what Spy asked for)
+local tinted = setmetatable({}, weak)  -- texture -> true: drawn in Text > Muted
+local dividers = setmetatable({}, weak) -- SaftUI's divider textures
+local dividerOf = setmetatable({}, weak) -- SaftUI's panel -> its divider (a key only)
+local skinnedRows = setmetatable({}, weak) -- Spy's row -> true once skinned
+local applyingFont = false             -- the skin's own SetFont isn't taken for Spy's
 
 local installed = false
 
@@ -42,10 +50,160 @@ function SP:IsWanted()
 	return config.spy and not st:IsBlizzardLook(config.theme, config.background) or false
 end
 
--- A SaftUI panel behind frame (kind panel, a child of it one level under it).
-local function Panel(frame, kind)
+-- A SaftUI backdrop frame behind frame (a child of it one level under it), in kind
+-- (panel by default) and the page's Theme, and the page's Background unless one is
+-- given. The kind and background are kept, so a redraw draws it as it was.
+local function Draw(frame)
+	local theme, pageBackground = SP:GetStyle()
+	local entry = kinds[frame]
+	local backdrop = st:SetBackdropIn(panels, frame, theme, entry.background or pageBackground, entry.kind)
+	-- A redraw puts the backdrop around its frame again; where the skin wants it, it is moved back.
+	local place = placers[frame]
+	if backdrop and place then place(frame) end
+	return backdrop
+end
+
+local function Panel(frame, kind, background)
+	kinds[frame] = { kind = kind or 'panel', background = background }
+	return Draw(frame)
+end
+
+local function MutedRGB()
+	return st:Color('text', 'muted'):GetRGB()
+end
+
+-- A texture in Text > Muted, and again when the colors change.
+local function Tint(texture)
+	if not (texture and texture.SetVertexColor) then return end
+	tinted[texture] = true
+	texture:SetVertexColor(MutedRGB())
+end
+
+-- A one pixel line on frame in the theme's border color; the caller anchors it.
+local function ColorDivider(tex)
 	local theme, background = SP:GetStyle()
-	return st:SetBackdropIn(panels, frame, theme, background, kind or 'panel')
+	local look = st:ResolveTheme(theme, background) or st:ResolveTheme()
+	local r, g, b = unpack(look.colors.bordercolor)
+	tex:SetColorTexture(r, g, b, 0.5)
+end
+
+local function MakeDivider(frame)
+	local tex = frame:CreateTexture(nil, 'OVERLAY')
+	PixelUtil.SetHeight(tex, 1)
+	ColorDivider(tex)
+	dividers[tex] = true
+	return tex
+end
+
+-- Spy asks for a size with SetFont or SetFontObject (Spy:SetFontSize, its options): the
+-- skin keeps that size and puts SaftUI's face and outline on it. kind 'title' is the
+-- Window titles font, 'text' the Skinning page's.
+local function ApplyFont(fs)
+	local state = fontState[fs]
+	if not state or not state.size then return end
+	local _, _, fontName = SP:GetStyle()
+	if state.kind == 'title' then fontName = st.config.profile.headers.font end
+	local face, _, outline = st:FontValues(fontName)
+	applyingFont = true
+	fs:SetFont(face, state.size, outline)
+	applyingFont = false
+end
+
+local function HookFont(fs, kind)
+	if not (fs and fs.GetFont) or fontState[fs] then return end
+	fontState[fs] = { kind = kind, size = select(2, fs:GetFont()) }
+	hooksecurefunc(fs, 'SetFont', function(self, _, size)
+		if applyingFont then return end
+		fontState[self].size = size
+		ApplyFont(self)
+	end)
+	if fs.SetFontObject then
+		hooksecurefunc(fs, 'SetFontObject', function(self)
+			if applyingFont then return end
+			fontState[self].size = select(2, self:GetFont())
+			ApplyFont(self)
+		end)
+	end
+	ApplyFont(fs)
+end
+
+local GRIP_FLIPS = {
+	DragBottomRight = { 0, 1, 0, 1 }, DragBottomLeft = { 1, 0, 0, 1 },
+	DragTopRight = { 0, 1, 1, 0 }, DragTopLeft = { 1, 0, 1, 0 },
+}
+
+local BUTTON_ICONS = {
+	CloseButton = 'x', LeftButton = 'chevronLeft', RightButton = 'chevronRight',
+	ClearButton = 'eraser', StatsButton = 'chartNoAxesColumn',
+}
+
+-- An icon button: Spy's normal and pushed art replaced by the icon in Text > Muted, its
+-- highlight by SaftUI's flat one, and the hover drawn by the states.
+local function SkinIconButton(button, icon)
+	if type(button) ~= 'table' or not button.SetNormalTexture or not icon then return end
+	button:SetNormalTexture(icon)
+	button:SetPushedTexture(icon)
+	button:SetHighlightTexture(st.BLANK_TEX, 'BLEND')
+	Tint(button:GetNormalTexture())
+	Tint(button:GetPushedTexture())
+	-- Only the hover is a state piece: a pressed icon button shows its own pushed art, which
+	-- the helper would make a flat square if it adopted it.
+	st:AddStates(button, 'icon', { pieces = { hover = button:GetHighlightTexture() } })
+end
+
+-- A resize grip: SaftUI's corner arrow, flipped to its corner, in Text > Muted.
+local function SkinGrip(grip, flip)
+	if type(grip) ~= 'table' or not grip.SetNormalTexture then return end
+	for _, setter in ipairs({ 'SetNormalTexture', 'SetPushedTexture', 'SetHighlightTexture' }) do
+		grip[setter](grip, st.textures.cornerbr)
+	end
+	for _, getter in ipairs({ 'GetNormalTexture', 'GetPushedTexture', 'GetHighlightTexture' }) do
+		local tex = grip[getter](grip)
+		if tex then
+			tex:SetTexCoord(unpack(flip))
+			Tint(tex)
+		end
+	end
+end
+
+-- A row: a flat bar with a thin border (Spy keeps the bar's color), SaftUI's face
+-- on both texts at the sizes Spy asks for, the class icon cropped. The row itself,
+-- which is secure, is never touched: only its children.
+function SP:SkinRow(row)
+	if type(row) ~= 'table' or skinnedRows[row] then return end
+	local bar = row.StatusBar
+	if type(bar) ~= 'table' then return end
+	skinnedRows[row] = true
+	if bar.SetStatusBarTexture then bar:SetStatusBarTexture(st.BLANK_TEX) end
+	Panel(bar, 'control', 'none')
+	HookFont(row.LeftText, 'text')
+	HookFont(row.RightText, 'text')
+	if row.ClassIcon then st:SkinIcon(row.ClassIcon) end
+end
+
+-- Puts SaftUI's bar texture back on every row (Spy sets its own on its texture option
+-- and a profile change).
+function SP:FlatRows()
+	local window = Spy() and Spy().MainWindow
+	if type(window) ~= 'table' or type(window.Rows) ~= 'table' then return end
+	for _, row in pairs(window.Rows) do
+		local bar = type(row) == 'table' and row.StatusBar
+		if bar and bar.SetStatusBarTexture then bar:SetStatusBarTexture(st.BLANK_TEX) end
+	end
+end
+
+-- What Spy puts back on every ApplyBorderStyle and ManageBarsDisplayed: its title bar's
+-- backdrop, its gold ForeverBorder on the window and the title bar, its own background.
+function SP:RestyleMain()
+	local window = Spy() and Spy().MainWindow
+	if type(window) ~= 'table' then return end
+	local bar = window.TitleBar
+	if type(bar) == 'table' then
+		if bar.SetBackdrop then bar:SetBackdrop(nil) end
+		if bar.ForeverBorder then bar.ForeverBorder:Hide() end
+	end
+	if window.ForeverBorder then window.ForeverBorder:Hide() end
+	if window.Background and window.Background.SetAlpha then window.Background:SetAlpha(0) end
 end
 
 -- Draws what each of Spy's windows is made of. Tasks that follow fill these; each
@@ -54,7 +212,34 @@ end
 function SP:SkinMain()
 	local window = Spy() and Spy().MainWindow
 	if type(window) ~= 'table' then return end
-	Panel(window)
+
+	-- One panel from the title bar to the window's bottom, which follows the last shown row.
+	local bar = window.TitleBar
+	if type(bar) == 'table' then
+		placers[window] = function(w)
+			local panel = panels[w]
+			panel:ClearAllPoints()
+			panel:SetPoint('TOPLEFT', bar, 'TOPLEFT', 0, 0)
+			panel:SetPoint('BOTTOMRIGHT', w, 'BOTTOMRIGHT', 0, 0)
+		end
+	end
+	local panel = Panel(window)
+	if panel and type(bar) == 'table' and not dividerOf[panel] then
+		-- Under the title bar, a line in the theme's border color (a texture of SaftUI's panel).
+		local line = MakeDivider(panel)
+		line:SetPoint('TOPLEFT', bar, 'BOTTOMLEFT', 0, 0)
+		line:SetPoint('TOPRIGHT', bar, 'BOTTOMRIGHT', 0, 0)
+		dividerOf[panel] = line
+	end
+	SP:RestyleMain()
+
+	HookFont(window.Title, 'title')
+	HookFont(window.CountFrame and window.CountFrame.Text, 'title')
+	for key, icon in pairs(BUTTON_ICONS) do SkinIconButton(window[key], st.icons[icon]) end
+	for key, flip in pairs(GRIP_FLIPS) do SkinGrip(window[key], flip) end
+	if type(window.Rows) == 'table' then
+		for _, row in pairs(window.Rows) do SP:SkinRow(row) end
+	end
 end
 
 function SP:SkinAlert() end
@@ -86,6 +271,27 @@ function SP:Setup()
 			Run(SP.SkinAlert)
 		end)
 	end
+	for _, name in ipairs({ 'ApplyBorderStyle', 'ManageBarsDisplayed' }) do
+		if type(spy[name]) == 'function' then
+			hooksecurefunc(spy, name, function() Run(SP.RestyleMain) end)
+		end
+	end
+	for _, name in ipairs({ 'UpdateBarTextures', 'SetBarTextures' }) do
+		if type(spy[name]) == 'function' then
+			hooksecurefunc(spy, name, function() Run(SP.FlatRows) end)
+		end
+	end
+	if type(spy.SetupBar) == 'function' then
+		hooksecurefunc(spy, 'SetupBar', function(_, row) Run(function() SP:SkinRow(row) end) end)
+	end
+	if type(spy.CreateRow) == 'function' then
+		hooksecurefunc(spy, 'CreateRow', function(_, num)
+			Run(function()
+				local window = Spy() and Spy().MainWindow
+				SP:SkinRow(type(window) == 'table' and type(window.Rows) == 'table' and window.Rows[num])
+			end)
+		end)
+	end
 	if type(spy.CreateKoSButton) == 'function' then
 		hooksecurefunc(spy, 'CreateKoSButton', function() Run(SP.SkinKoS) end)
 	end
@@ -101,22 +307,25 @@ end
 -- panels again.
 function SP:UpdateConfig()
 	if not installed then return end
-	local theme, background = self:GetStyle()
 	for frame in pairs(panels) do
-		st:SetBackdropIn(panels, frame, theme, background, 'panel')
+		if kinds[frame] then Draw(frame) end
 	end
+	for tex in pairs(dividers) do ColorDivider(tex) end
 end
 
 -- A shared font or a font setting changed (st:FontsChanged): the Skinning font on
 -- Spy's texts again.
 function SP:OnFontsChanged()
 	if not installed then return end
+	for fs in pairs(fontState) do ApplyFont(fs) end
 end
 
 -- A color changed (st:ColorsChanged): what is colored from the theme or the text
 -- colors, colored again.
 function SP:OnColorsChanged()
 	if not installed then return end
+	for tex in pairs(tinted) do tex:SetVertexColor(MutedRGB()) end
+	for tex in pairs(dividers) do ColorDivider(tex) end
 end
 
 -- Off (Skinning -> Spy), or under the Blizzard theme, nothing is hooked or touched.
