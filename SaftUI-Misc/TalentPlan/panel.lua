@@ -150,10 +150,14 @@ local function NewRow(content, index)
 		end
 	end)
 	row:SetScript('OnEnter', function(self)
+		TP:Light(self.nodeID)
 		local tip = RowTip(self)
 		if tip then ShowTip(self, tip) end
 	end)
-	row:SetScript('OnLeave', function(self) HideTip(self) end)
+	row:SetScript('OnLeave', function(self)
+		TP:Light(nil)
+		HideTip(self)
+	end)
 	-- after the SetScripts: the helper hooks the scripts as they are now
 	st:AddStates(row, 'row')
 	return row
@@ -435,7 +439,10 @@ function TP:PaintColors()
 end
 
 function TP:OnColorsChanged(group)
-	if group == 'text' or group == 'accent' or group == 'theme' then self:PaintColors() end
+	if group == 'text' or group == 'accent' or group == 'theme' then
+		self:PaintColors()
+		self:PaintOverlays()
+	end
 end
 
 function TP:ScrollToWaiting()
@@ -524,11 +531,12 @@ function TP:OpenDotsMenu(button)
 	end)
 end
 
--- Plan: a spec tab with no plan gets one first. (Planning mode itself is Task 7's.)
+-- Plan: planning mode on or off (the first planning click makes a plan when
+-- the tab has none).
 function TP:OnPlanButton()
-	local group = self:ViewedGroup()
-	if not S.Active(group) then
-		S.New('New plan', group)
-		self:Refresh()
-	end
+	self:SetPlanning(not self.planning)
+end
+
+function TP:PaintPlanButton()
+	if self.panel then st:SetButtonPressed(self.panel.planButton, self.planning) end
 end
