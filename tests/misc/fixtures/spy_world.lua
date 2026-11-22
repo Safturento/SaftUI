@@ -633,6 +633,12 @@ function SpyFix.make(opts)
 	end
 	Spy.CreateKoSButton = spy_fn(Spy.CreateKoSButton)
 
+	-- Spy:ToggleKOSPlayer(add, name): the KoS list's add or remove (the click handler's call).
+	function Spy:ToggleKOSPlayer(add, name)
+		SpyPerCharDB.KOSData[name] = add and true or nil
+	end
+	Spy.ToggleKOSPlayer = spy_fn(Spy.ToggleKOSPlayer)
+
 	if not opts.noStats then build_stats(opts) end
 	if not opts.noWindow then
 		Spy:CreateMainWindow()
