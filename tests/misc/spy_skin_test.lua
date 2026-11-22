@@ -280,16 +280,21 @@ test('a late row is skinned', function()
 	eq(#take_errors(), 0, 'no error reported')
 end)
 
-test('row fonts keep the size Spy asks for', function()
+test('row fonts are the Skinning font at its own size, not the size Spy asks for', function()
 	world()
 	SpyFix.make()
 	enable()
 	local row = Spy.MainWindow.Rows[1]
-	Spy:SetFontSize(row.LeftText, 13)
+	local want_face, want_size, want_flags = st:FontValues(st.config.profile.skinning.font)
+	for _, asked in ipairs({ 9, 13, 22 }) do
+		Spy:SetFontSize(row.LeftText, asked)
+		eq(({ row.LeftText:GetFont() })[2], want_size, 'the Skinning size whatever Spy asks (' .. asked .. ')')
+	end
+	Spy:SetFontSize(row.RightText, 22)
+	eq(({ row.RightText:GetFont() })[2], want_size, 'the level text too')
 	local face, size, flags = row.LeftText:GetFont()
-	local want_face, _, want_flags = st:FontValues(st.config.profile.skinning.font)
 	eq(face, want_face, 'SaftUI\'s face')
-	eq(size, 13, 'Spy\'s size')
+	eq(size, want_size, 'SaftUI\'s size')
 	eq(flags, want_flags, 'SaftUI\'s outline')
 	local title_face = st:FontValues(st.config.profile.headers.font)
 	eq(({ Spy.MainWindow.Title:GetFont() })[1], title_face, 'the title is in the title font')
@@ -349,13 +354,14 @@ test('SaftUI\'s face keeps the other alphabets of Spy\'s font family', function(
 	local row = Spy.MainWindow.Rows[1]
 	Spy:SetFontSize(row.LeftText, 13)
 	eq(({ row.LeftText:GetFont() })[1], (st:FontValues(st.config.profile.skinning.font)), 'roman: SaftUI\'s face')
-	eq(({ row.LeftText:GetFont() })[2], 13, 'at Spy\'s size')
+	eq(({ row.LeftText:GetFont() })[2], select(2, st:FontValues(st.config.profile.skinning.font)), 'at the Skinning size')
 	local russian = row.LeftText:GetFontObject():GetFontObjectForAlphabet('russian')
 	eq((russian:GetFont()), [[Fonts\FRIZQT___CYR.TTF]], 'Cyrillic keeps its file')
-	eq(select(2, russian:GetFont()), 13, 'at the same size')
+	eq(select(2, russian:GetFont()), select(2, st:FontValues(st.config.profile.skinning.font)), 'at the same size')
 	st.config.profile.skinning.font = 'pixel'
 	SK:UpdateConfig()
 	local again = row.LeftText:GetFontObject():GetFontObjectForAlphabet('russian')
+	eq(({ row.LeftText:GetFont() })[2], select(2, st:FontValues('pixel')), 'the new font\'s size')
 	eq((again:GetFont()), [[Fonts\FRIZQT___CYR.TTF]], 'and after the face changes')
 end)
 
@@ -366,7 +372,7 @@ test('without CreateFontFamily the face is set with SetFont', function()
 	local row = Spy.MainWindow.Rows[1]
 	Spy:SetFontSize(row.LeftText, 13)
 	eq(({ row.LeftText:GetFont() })[1], (st:FontValues(st.config.profile.skinning.font)), 'SaftUI\'s face')
-	eq(({ row.LeftText:GetFont() })[2], 13, 'Spy\'s size')
+	eq(({ row.LeftText:GetFont() })[2], select(2, st:FontValues(st.config.profile.skinning.font)), 'the Skinning size')
 	eq(#take_errors(), 0, 'no error reported')
 end)
 
@@ -439,7 +445,7 @@ test('a font call that errors does not leave the hook off', function()
 	stub.refused_fonts[face] = nil
 	row.LeftText:SetFont([[Fonts\FRIZQT__.TTF]], 14, '')
 	eq(({ row.LeftText:GetFont() })[1], face, 'the hook still puts SaftUI\'s face on the next size')
-	eq(({ row.LeftText:GetFont() })[2], 14, 'at that size')
+	eq(({ row.LeftText:GetFont() })[2], select(2, st:FontValues(st.config.profile.skinning.font)), 'at the Skinning size')
 end)
 
 test('a toggled InvertSpy without a reload leaves the panel on the real bar', function()
