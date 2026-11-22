@@ -160,6 +160,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-22 — Loot rolls: a finished held roll stays for its whole timer](#2026-11-22--loot-rolls-a-finished-held-roll-stays-for-its-whole-timer)
   - [2026-11-19 — Clicking a SaftUI nameplate doesn't target its unit](#2026-11-19--clicking-a-saftui-nameplate-doesnt-target-its-unit)
   - [2026-11-15 — UI scale: E4, SetScale in combat](#2026-11-15--ui-scale-e4-setscale-in-combat)
   - [2026-11-15 — Chat's dock hook leaves Blizzard's tab layout after a resize, an overflow-list pick or an undock](#2026-11-15--chats-dock-hook-leaves-blizzards-tab-layout-after-a-resize-an-overflow-list-pick-or-an-undock)
@@ -2788,7 +2789,7 @@ The one route left is to work out the button order without reading the buttons. 
   - a plain click with no confirmation: **seen in game 2026-11-15** (the owner's debug lines, one click; which choice it was is not known): the bar hid before the post-hook ran (`bar hid: ... choice noted false frame hidden true`, then `choice not noted: ... no shown bar with that roll`), so the client cancels the roll inside `RollOnLoot` (inferred from that order; not read from C code). Not yet seen: the hold working after the fix (`PreClick`, `OnRollPreClick`), each choice, a main spec Need (its 5 second dice animation before the bar hides) and a choice that asks for a confirmation (bind on pickup), where the bar stays up and the post-hook notes the choice;
   - a roll's time: `START_LOOT_ROLL`'s rollTime and `GetLootRollTimeLeft` share a unit (Blizzard's `GroupLootFrame_OnUpdate` clamps one to the other) and `GetLootRollTimeLeft` is documented in milliseconds, so the live bars' countdown, which showed it as seconds, was wrong. `LT.RollSeconds` takes a length over 1000 as milliseconds, and the live and held countdowns both read through it. Look at the countdown in game;
   - `GameTooltip:SetHyperlink` takes the roll's full item link (a held bar's tooltip);
-  - does `GetLootRollItemInfo(rollID)` still return the item after you've rolled, until the roll ends? If so, it could end a held roll with no loot history drop when the roll ends. Today such a held roll stays until its time runs out, even once the item is awarded;
+  - does `GetLootRollItemInfo(rollID)` still return the item after you've rolled, until the roll ends? If so, it could end a held roll with no loot history drop when the roll ends. Since 2026-11-22 such a held roll ends at chat's roll result line instead (`LT:OnRollResultMessage`), so this no longer matters for that; still to see in game: that the result line comes for a roll with no history drop, and in the words of `LOOT_ROLL_WON` and the others (the debug line `held roll finished: <id> result in chat ...`);
   - `/reload` with a roll held drops it: held state isn't saved, and after the reload nothing links the roll to a drop. Decide whether that's acceptable;
   - visuals: a held bar sits exactly where its roll was, at Blizzard's DIALOG strata; its buttons are Blizzard's roll button art (the `lootroll-toast-icon-*-up` atlases), with only your choice's bordered, in the accent, its art inset inside the border; the label sits before the timer; a new roll goes after every bar already up.
 
@@ -3025,6 +3026,22 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-22 — Loot rolls: a finished held roll stays for its whole timer
+
+**What:** After you chose on a roll, SaftUI's held bar stayed up for the roll's whole time even once the item was awarded, instead of the 3 seconds and half second fade it shows after a roll ends.
+
+**Why noticed:** The owner, in game on 2026-11-22: "an item that has finished rolling and the item has been given is still sticking around for the full timer".
+
+**Anchors:** `SaftUI-Loot/rollinfo.lua` (`LT:OnRollResultMessage`, `LT:UpdateRollBars`), `SaftUI-Loot/roll.lua` (`LT:FinishHeldRoll`, `LT:InitializeRollFrame`), `tests/loot/roll_held_test.lua` (the chat result line tests), README's roll bars paragraph, [Loot rolls: confirm the client assumptions in game](#2026-11-08--loot-rolls-confirm-the-client-assumptions-in-game).
+
+**What's been considered:** A held roll finished only when its matched loot history drop resolved, or when its time ran out. A roll the history never matched (no drop listed for it, as trash rolls may not be on Forever, or a match that failed) had nothing to end it but the timer; README said so as a known limit. Other end signals: `GetLootRollItemInfo(rollID)` going nil once a roll ends (unconfirmed, and a wrong guess would end a held bar at the click, the thing held rolls exist to prevent); `LOOT_ROLLS_COMPLETE` (a loot handle, not a roll ID); `LOOT_ITEM_ROLL_WON` (only your own wins). The chat result line comes for every roll that ends and names its item.
+
+**Shape of work:** Done on `fix-roll-linger`: `CHAT_MSG_LOOT` lines in the words of `LOOT_ROLL_WON`, `LOOT_ROLL_YOU_WON`, `LOOT_ROLL_ALL_PASSED` and the `_NO_SPAM_` variants (whichever the client has) finish the oldest unfinished held bar of the line's item, preferring one whose history drop isn't still open. A bar the history already finished is left as it is, and its line, when it comes within 10 seconds, finishes nothing else. A line that finishes nothing is kept 10 seconds for a roll held after it (`LT:OnRollHeld`, from `LT:HoldRoll`): a roll can end during a main spec Need's dice animation, before the hold. Choices, rolls and loot lines in the same channel are not results.
+
+**Open questions:** Not yet seen in game: that Forever sends the result line for those rolls in those words. With `/sui debug` on, a held roll ending this way prints `held roll finished: <id> result in chat ...`. If two copies of one item are held and only one has a drop, a result line for the other copy before the history's update could end the wrong one; accepted. Likewise a result line that finished nothing (a copy that timed out on Blizzard's bar, say) finishes a new hold of the same item with no open drop within 10 seconds; rare, accepted.
+
+**Resolved 2026-11-22:** fixed on `fix-roll-linger`; awaiting the owner's next group roll.
 
 ### 2026-11-19 — Clicking a SaftUI nameplate doesn't target its unit
 

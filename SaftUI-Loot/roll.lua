@@ -245,7 +245,8 @@ end
 -- the choice read at the click's PreClick, since a plain click's roll is
 -- cancelled inside RollOnLoot, before any post-hook), matches it to its loot
 -- history drop and keeps its counts and tooltip up to date, and finishes it
--- when the drop resolves; it's finished here when its time runs out.
+-- when the drop resolves or chat names the roll's result (a winner, or all
+-- passed); it's finished here when its time runs out.
 --
 -- A finished bar doesn't vanish: it stays in the stack, locked, for
 -- FINISHED_HOLD seconds, fades out over FINISHED_FADE, and is then released
@@ -442,6 +443,8 @@ function LT:HoldRoll(frame, roll)
 	self:LayoutRollFrames()
 	self:UpdateRollPreviewVisibility()
 	if st.DEBUG then st:Debug('Loot', 'held roll', bar.rollID, 'choice', choice, 'seconds left', ('%.1f'):format(roll.ends - GetTime())) end
+	-- A result line that came before the hold (rollinfo.lua).
+	if self.OnRollHeld then self:OnRollHeld(bar) end
 	return bar
 end
 
@@ -592,6 +595,15 @@ function LT:InitializeRollFrame()
 	self:RegisterRollMover()
 	-- Every roll cancelled at once (rollinfo.lua).
 	self:RegisterEvent('CANCEL_ALL_LOOT_ROLLS', 'OnCancelAllLootRolls')
+	-- A roll's result line in chat finishes its held roll (rollinfo.lua). Its own
+	-- frame: the loot feed has the module's CHAT_MSG_LOOT handler.
+	if not self.rollResultFrame then
+		self.rollResultFrame = CreateFrame('frame')
+		self.rollResultFrame:SetScript('OnEvent', function(_, _, message)
+			LT:OnRollResultMessage(message)
+		end)
+		self.rollResultFrame:RegisterEvent('CHAT_MSG_LOOT')
+	end
 end
 
 -- True while a roll bar is on screen: a real or held roll (rolltest.lua's

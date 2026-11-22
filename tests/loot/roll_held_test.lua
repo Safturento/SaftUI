@@ -1276,6 +1276,209 @@ test('a roll with no loot history drop is held with no counts', function()
 	eq(stub.state(GameTooltip).texts[1], ITEMS.ring.link, 'by its link')
 end)
 
+-- The chat's roll result lines (CHAT_MSG_LOOT), as GlobalStrings.lua words
+-- them on both clients. The game sends one when a roll ends, whether or not
+-- the loot history has a drop for it.
+local RESULT_STRINGS = {
+	LOOT_ROLL_WON = '%s won: %s',
+	LOOT_ROLL_YOU_WON = 'You won: %s',
+	LOOT_ROLL_ALL_PASSED = 'Everyone passed on: %s',
+	LOOT_ROLL_WON_NO_SPAM_GREED = '%1$s won: %3$s |cff818181(Greed - %2$d)|r',
+	LOOT_ROLL_YOU_WON_NO_SPAM_NEED = 'You won: %2$s |cff818181(Need - %1$d)|r',
+	LOOT_ROLL_GREED = '%s has selected Greed for: %s',
+	LOOT_ROLL_ROLLED_GREED = 'Greed Roll - %d for %s by %s',
+}
+local function result_strings()
+	for name, text in pairs(RESULT_STRINGS) do _G[name] = text end
+end
+
+local function chat_loot(message)
+	stub.fire_event('CHAT_MSG_LOOT', message, '', '', '', '', '', 0, 0, '', 0, 0, '')
+end
+
+-- A held bar of `key` with no loot history drop (trash, or a drop the history
+-- doesn't list), chosen `after` seconds (10 by default) into its two minutes.
+local function held_without_drop(key, after)
+	local roll = start_roll(key)
+	tick(after or 10)
+	choose(roll, ITEMS[key].transmog and 'Transmog' or 'Greed')
+	LT:UpdateRollBars()
+	return roll, held_bar(roll)
+end
+
+test("a held roll with no loot history drop finishes at the chat's result line: 3 seconds, a fade, then it goes", function()
+	world()
+	result_strings()
+	local roll, bar = held_without_drop('amulet')
+	check(bar ~= nil, 'held')
+	if not bar then return end
+	tick(5)
+	chat_loot(RESULT_STRINGS.LOOT_ROLL_WON:format('Mistweave', ITEMS.amulet.link))
+	check(bar:IsShown() and held_bar(roll) == bar, 'awarded: the held bar stays for now')
+	eq(bar.Choice:GetText(), 'Greed', 'locked on your choice')
+	eq(bar.Timer.Text:GetText(), '01:45', 'its timer stopped where it was')
+	tick(1)
+	eq(bar.Timer.Text:GetText(), '01:45', 'and stays there')
+	tick_by(1.9, 0.1)
+	eq(bar:GetAlpha(), 1, 'full alpha for 3 seconds')
+	tick(0.35)
+	eq(T.text(bar:GetAlpha()), '0.50', 'then fading')
+	tick(0.3)
+	eq(held_bar(roll), nil, 'then gone, long before its time runs out')
+end)
+
+test("every roll result line finishes a held roll: you won, all passed, and the lines with the roll", function()
+	for _, line in ipairs({
+		RESULT_STRINGS.LOOT_ROLL_YOU_WON:format(ITEMS.ring.link),
+		RESULT_STRINGS.LOOT_ROLL_ALL_PASSED:format(ITEMS.ring.link),
+		(RESULT_STRINGS.LOOT_ROLL_WON_NO_SPAM_GREED:gsub('%%1%$s', 'Mistweave'):gsub('%%3%$s', ITEMS.ring.link):gsub('%%2%$d', '87')),
+		(RESULT_STRINGS.LOOT_ROLL_YOU_WON_NO_SPAM_NEED:gsub('%%2%$s', ITEMS.ring.link):gsub('%%1%$d', '12')),
+	}) do
+		world()
+		result_strings()
+		local roll, bar = held_without_drop('ring')
+		if not check(bar ~= nil, 'held') then return end
+		chat_loot(line)
+		tick(3.6)
+		eq(held_bar(roll), nil, 'gone after the linger: ' .. line)
+	end
+end)
+
+test("a chat line that isn't a result, or names another item, leaves a held roll up", function()
+	world()
+	result_strings()
+	local roll, bar = held_without_drop('amulet')
+	chat_loot(RESULT_STRINGS.LOOT_ROLL_GREED:format('Mistweave', ITEMS.amulet.link))
+	chat_loot(RESULT_STRINGS.LOOT_ROLL_ROLLED_GREED:format(55, ITEMS.amulet.link, 'Mistweave'))
+	chat_loot(RESULT_STRINGS.LOOT_ROLL_WON:format('Mistweave', ITEMS.sword.link))
+	chat_loot('You receive loot: ' .. ITEMS.amulet.link .. '.')
+	tick(10)
+	check(held_bar(roll) == bar and bar:IsShown() and bar:GetAlpha() == 1, 'still held, counting down')
+	eq(bar.Timer.Text:GetText(), '01:40', 'its timer running')
+end)
+
+test('a result line finishes the oldest held copy of its item, and one whose drop is still open waits', function()
+	world()
+	result_strings()
+	local first = held_without_drop('cloth')
+	local second = held_without_drop('cloth', 1)
+	chat_loot(RESULT_STRINGS.LOOT_ROLL_WON:format('Mistweave', ITEMS.cloth.link))
+	tick(3.6)
+	eq(held_bar(first), nil, 'the oldest copy went')
+	check(held_bar(second) ~= nil, 'the other is still held')
+	chat_loot(RESULT_STRINGS.LOOT_ROLL_ALL_PASSED:format(ITEMS.cloth.link))
+	tick(3.6)
+	eq(held_bar(second), nil, 'the next line finishes it')
+
+	-- With a history: the copy whose drop the history still has open is not the
+	-- one that ended, even if it's older.
+	local open = add_drop('sword', {})
+	local a = start_roll('sword')
+	LT:UpdateRollBars()
+	choose(a, 'Greed', open)
+	local b = held_without_drop('sword', 1)
+	chat_loot(RESULT_STRINGS.LOOT_ROLL_WON:format('Mistweave', ITEMS.sword.link))
+	tick(3.6)
+	check(held_bar(a) ~= nil, 'the copy with an open drop stays')
+	eq(held_bar(b), nil, 'the one without a drop went')
+end)
+
+test('a result line for a roll the history already finished does nothing more', function()
+	world()
+	result_strings()
+	local drop = add_drop('amulet', {})
+	local roll = start_roll('amulet')
+	LT:UpdateRollBars()
+	choose(roll, 'Greed', drop)
+	local bar = held_bar(roll)
+	drop.winner = { playerName = 'Mistweave', playerClass = 'PRIEST' }
+	LT:UpdateRollBars()
+	tick(2)
+	chat_loot(RESULT_STRINGS.LOOT_ROLL_WON:format('Mistweave', ITEMS.amulet.link))
+	tick(1.25)
+	eq(T.text(bar:GetAlpha()), '0.50', 'its linger was not restarted')
+end)
+
+test("the lines with the roll in them are read by their own words, with no plain won line to fall back on", function()
+	world()
+	result_strings()
+	_G.LOOT_ROLL_WON, _G.LOOT_ROLL_YOU_WON = nil, nil
+	local roll, bar = held_without_drop('ring')
+	if not check(bar ~= nil, 'held') then return end
+	chat_loot('Mistweave won: ' .. ITEMS.ring.link)
+	check(bar.finishedAt == nil, 'a plain won line is no result on a client without one')
+	chat_loot((RESULT_STRINGS.LOOT_ROLL_WON_NO_SPAM_GREED:gsub('%%1%$s', 'Mistweave'):gsub('%%3%$s', ITEMS.ring.link):gsub('%%2%$d', '87')))
+	check(bar.finishedAt ~= nil, 'the Greed line with its roll finishes it')
+end)
+
+test('a result line for a copy the history finished first does not finish the other copy', function()
+	world()
+	result_strings()
+	local d1 = add_drop('sword', {})
+	local d2 = add_drop('sword', {})
+	local a = start_roll('sword')
+	LT:UpdateRollBars()
+	choose(a, 'Greed', d1)
+	local b = start_roll('sword')
+	LT:UpdateRollBars()
+	choose(b, 'Greed', d2)
+	local ba, bb = held_bar(a), held_bar(b)
+	if not check(ba and bb and ba.dropID and bb.dropID and ba.dropID ~= bb.dropID, 'both held, each on its drop') then return end
+	d1.winner = { playerName = 'Mistweave', playerClass = 'PRIEST' }
+	LT:UpdateRollBars()
+	check(ba.finishedAt ~= nil, 'the first finished by its drop')
+	chat_loot(RESULT_STRINGS.LOOT_ROLL_WON:format('Mistweave', ITEMS.sword.link))
+	check(bb.finishedAt == nil, "its line comes after: the other copy, its drop still open, stays")
+	chat_loot(RESULT_STRINGS.LOOT_ROLL_ALL_PASSED:format(ITEMS.sword.link))
+	check(bb.finishedAt ~= nil, 'the next line is its own')
+end)
+
+test('a result line during a main spec Need\'s dice animation finishes the roll held after it', function()
+	world()
+	result_strings()
+	local roll = start_roll('amulet', { needAnim = 'later' })
+	LT:UpdateRollBars()
+	tick(20)
+	local frame = frame_of(roll)
+	click_of(roll, 'Need')
+	stub.fire_event('MAIN_SPEC_NEED_ROLL', roll, 77, true)
+	tick(1)
+	chat_loot(RESULT_STRINGS.LOOT_ROLL_YOU_WON:format(ITEMS.amulet.link))
+	tick(4)
+	GroupLootFrame_Remove(frame)
+	local bar = held_bar(roll)
+	if not check(bar ~= nil, 'held after the animation') then return end
+	check(bar.finishedAt ~= nil, 'already finished: its roll ended before the hold')
+	tick(3.6)
+	eq(held_bar(roll), nil, 'gone after the linger')
+end)
+
+test('a result line that finished nothing is forgotten after a few seconds', function()
+	world()
+	result_strings()
+	chat_loot(RESULT_STRINGS.LOOT_ROLL_WON:format('Mistweave', ITEMS.amulet.link))
+	tick(11)
+	local roll, bar = held_without_drop('amulet', 1)
+	if not check(bar ~= nil, 'held') then return end
+	check(bar.finishedAt == nil, 'an old line for another roll of the item does not finish it')
+end)
+
+test('a secret result line is skipped, and a link that differs but has the item ID still finds its bar', function()
+	world()
+	result_strings()
+	local roll, bar = held_without_drop('amulet')
+	if not check(bar ~= nil, 'held') then return end
+	local secret = newproxy(false)
+	local real = issecretvalue
+	issecretvalue = function(v) return v == secret or real(v) end
+	local ok, err = pcall(chat_loot, secret)
+	issecretvalue = real
+	check(ok, 'no error: ' .. tostring(err))
+	check(bar.finishedAt == nil, 'a secret line finishes nothing')
+	chat_loot(RESULT_STRINGS.LOOT_ROLL_WON:format('Mistweave', '|cffa335ee|Hitem:16309::::::::70:::::|h[Drakefire Amulet]|h|r'))
+	check(bar.finishedAt ~= nil, 'the same item at another level finishes it')
+end)
+
 test('held and live bars stack together, and a new roll stacks after them', function()
 	world()
 	local config = LT.config.roll
