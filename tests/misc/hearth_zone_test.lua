@@ -11,7 +11,7 @@
 -- Real: Core's helpers and hearthzone.lua. The zone APIs and
 -- TooltipDataProcessor are the test's stand-ins.
 local S = load_test_file('lib/secrets.lua')
-local HZ, post
+local HZ, post, toy_post
 
 local place -- what the zone APIs return now
 
@@ -25,11 +25,12 @@ local function world()
 	GetRealZoneText = function() return place.zone end
 	GetSubZoneText = function() return place.sub end
 	GetMinimapZoneText = function() return place.minimap end
-	Enum.TooltipDataType = { Item = 0 }
-	post = nil
+	Enum.TooltipDataType = { Item = 0, Toy = 19 }
+	post, toy_post = nil, nil
 	_G.TooltipDataProcessor = {
 		AddTooltipPostCall = function(kind, fn)
 			if kind == Enum.TooltipDataType.Item then post = fn end
+			if kind == Enum.TooltipDataType.Toy then toy_post = fn end
 		end,
 	}
 	if not _G.GameTooltip then CreateFrame('GameTooltip', 'GameTooltip', UIParent) end
@@ -103,12 +104,21 @@ test('any item that names the bind gets the line; others and city binds do not',
 	world()
 	st.config.char.hearth = { location = "Lion's Pride Inn", zone = 'Elwynn Forest' }
 	local toy = { id = 1234, lines = { { leftText = 'Toy' }, { leftText = "Use: Returns you to Lion's Pride Inn." } } }
-	eq(shown(toy)[1], 'Zone: Elwynn Forest', 'a toy that names the bind')
+	eq(shown(toy)[1], 'Zone: Elwynn Forest', 'an item whose Use: line names the bind')
+	eq(toy_post, post, 'toy tooltips take the same post-call')
+	eq(#shown({ id = 5, lines = { { leftText = 'Quest item' }, { leftText = "Bring it to Lion's Pride Inn." } } }), 0,
+		'a line that only mentions the bind')
 	eq(#shown({ id = 2589, lines = { { leftText = 'Linen Cloth' } } }), 0, 'another item')
 	eq(#shown(nil), 0, 'no data')
 	place.bind, place.zone = 'Stormwind City', 'Stormwind City'
 	st.config.char.hearth = { location = 'Stormwind City', zone = 'Stormwind City' }
 	eq(#shown(hearth_data()), 0, 'the bind is its zone')
+	-- A city bind arriving in the city's inn subzone: learned by the zone's name.
+	st.config.char.hearth = nil
+	place.bind, place.zone, place.sub, place.minimap = 'Orgrimmar', 'Orgrimmar', 'Valley of Strength', 'Valley of Strength'
+	stub.fire_event('ZONE_CHANGED_NEW_AREA')
+	eq(HZ:Zone(), 'Orgrimmar', 'learned in the city')
+	eq(#shown(hearth_data()), 0, 'and no not-known line')
 	clean()
 end)
 

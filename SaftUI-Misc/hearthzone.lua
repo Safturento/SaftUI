@@ -13,24 +13,29 @@ local HZ = st:NewModule('HearthZone')
 	    the loading screen, with GetSubZoneText or GetMinimapZoneText equal to
 	    the bind's name), which every hearth home ends in. So a character
 	    bound before this shipped learns its zone the next time it hearths, or
-	    walks into the inn.
+	    walks into the inn;
+	  - whenever the zone itself has the bind's name (a bind that names its
+	    city): the zone is the bind, and no line is needed.
 
 	A learned zone counts only while its location is still the bind's name; a
 	bind made with SaftUI off is not taken for the old one.
 
-	The line: any item tooltip whose text names the bind location (the
-	hearthstone's "Use: Returns you to ...", and any toy or item that says the
-	same) or that is the Hearthstone itself gets "Zone: <zone>", or, before the
-	zone is learned, a line that says how it will be. Nothing when the bind's
-	name already is the zone (a city's). From a TooltipDataProcessor post-call
-	for items, which writes only the line; on a client without one, nothing.
-	A secret value is never compared or shown.
+	The line: the Hearthstone's tooltip, and any item or toy tooltip with a
+	"Use:" line (ITEM_SPELL_TRIGGER_ONUSE) that names the bind location (the
+	hearthstone's "Use: Returns you to ..."; any other line that only mentions
+	the name is not enough), gets "Zone: <zone>", or, before the zone is
+	learned, a line that says how it will be. Nothing when the bind's name
+	already is the zone (a city's). From TooltipDataProcessor post-calls for
+	items and toys, which write only the line (Blizzard's handler shows the
+	tooltip again after its post-calls, so it is sized for it); on a client
+	without one, nothing. A secret value is never compared or shown.
 ]]
 
 local HEARTHSTONE = 6948
 
 local function Text(value)
-	return value ~= nil and not issecretvalue(value) and type(value) == 'string' and value ~= '' and value or nil
+	value = st.PlainString(value)
+	return value ~= '' and value or nil
 end
 
 local function Call(fn) return fn and Text(fn()) end
@@ -57,7 +62,8 @@ end
 function HZ:CheckArea()
 	local location = self:BindLocation()
 	if not location then return end
-	if Call(GetSubZoneText) == location or Call(GetMinimapZoneText) == location then
+	if Call(GetSubZoneText) == location or Call(GetMinimapZoneText) == location
+			or Call(GetRealZoneText) == location then
 		self:Learn()
 	end
 end
@@ -71,15 +77,16 @@ function HZ:Zone()
 end
 
 -- Whether an item's tooltip data is about the hearth: the Hearthstone, or a
--- line that names the bind location.
+-- "Use:" line that names the bind location.
 local function NamesBind(data, location)
 	if type(data) ~= 'table' then return false end
 	local id = data.id
 	if id ~= nil and not issecretvalue(id) and id == HEARTHSTONE then return true end
+	local use = Text(ITEM_SPELL_TRIGGER_ONUSE) or 'Use:'
 	if type(data.lines) ~= 'table' then return false end
 	for _, line in ipairs(data.lines) do
 		local text = type(line) == 'table' and Text(line.leftText)
-		if text and text:find(location, 1, true) then return true end
+		if text and text:find(use, 1, true) and text:find(location, 1, true) then return true end
 	end
 	return false
 end
@@ -113,9 +120,12 @@ function HZ:HookTooltips()
 			and Enum and Enum.TooltipDataType and Enum.TooltipDataType.Item) then
 		return false
 	end
-	TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tooltip, data)
-		HZ:AddTooltipLine(tooltip, data)
-	end)
+	local function post(tooltip, data) HZ:AddTooltipLine(tooltip, data) end
+	TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, post)
+	-- A toy's tooltip (the toy box, a toy on a bar) is its own type on retail.
+	if Enum.TooltipDataType.Toy then
+		TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Toy, post)
+	end
 	self.tooltipPostCall = true
 	return true
 end
