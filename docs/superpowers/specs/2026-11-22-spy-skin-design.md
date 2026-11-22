@@ -84,7 +84,9 @@ settings) are left as they are.
   Spy's alert colors.
 - Spy sets font sizes from its Row height and text size settings (`Spy:SetFontSize`). The
   skin keeps the size Spy asks for and puts SaftUI's face and outline on it (RestedXP's
-  `HookFont` pattern).
+  `HookFont` pattern). The Nearby rows' two texts are the exception (user, 22 Nov): Spy
+  sizes them from the bar height, which drew a pixel face at sizes it isn't made for, so
+  they take the Skinning font's own size.
 - Spy loads after SaftUI-Misc or before it: set up at `ADDON_LOADED` for `Spy`, or at once if
   it's loaded. `SpyStatsFrame` is XML, so it exists at load; the Nearby and alert windows
   are made in `Spy:CreateMainWindow` (post-hook it); the KoS button in `Spy:CreateKoSButton`.

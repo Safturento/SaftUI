@@ -101,7 +101,7 @@ end
 -- Fonts.lua: Russian and CJK names have no glyphs in one roman file), so a bare SetFont
 -- with SaftUI's face would draw them as squares. The skin builds a family of its own: the
 -- roman member is SaftUI's face and outline, the other alphabets keep the files of the
--- font object Spy set, all at Spy's size. One family per face, size, outline and files.
+-- font object Spy set, all at the one size ApplyFont chose. One family per face, size, outline and files.
 local ALPHABETS = { 'korean', 'simplifiedchinese', 'traditionalchinese', 'russian' }
 local families, familyCount = {}, 0
 
@@ -128,25 +128,29 @@ local function Family(fs, face, size, outline)
 end
 
 -- Spy asks for a size with SetFontObject (Spy:ApplyFont's family) or SetFont: the
--- skin keeps that size and puts SaftUI's face and outline on it. kind 'title' is the
--- Window titles font, 'text' the Skinning page's.
+-- skin keeps that size (but for kind 'row') and puts SaftUI's face and outline on it. kind 'title' is the
+-- Window titles font, 'text' the Skinning page's. kind 'row' is the Skinning page's
+-- font at its own size too: Spy sizes the Nearby rows' texts from the bar height, which
+-- draws a pixel face at sizes it isn't made for.
 local function ApplyFont(fs)
 	local state = fontState[fs]
 	if not state or not state.size then return end
 	local _, _, fontName = SP:GetStyle()
 	if state.kind == 'title' then fontName = st.config.profile.headers.font end
-	local face, _, outline = st:FontValues(fontName)
+	local face, fontSize, outline = st:FontValues(fontName)
 	outline = outline or ''
+	local size = state.size
+	if state.kind == 'row' and fontSize then size = fontSize end
 	applyingFont = true
 	local ok, err = pcall(function()
-		local family = Family(fs, face, state.size, outline)
+		local family = Family(fs, face, size, outline)
 		if family and fs.SetFontObject then
 			-- A font object brings its own color: Spy's is put back.
 			local r, g, b, a = fs:GetTextColor()
 			fs:SetFontObject(family)
 			if r then fs:SetTextColor(r, g, b, a) end
 		else
-			fs:SetFont(face, state.size, outline)
+			fs:SetFont(face, size, outline)
 		end
 	end)
 	applyingFont = false
@@ -215,8 +219,8 @@ local function SkinGrip(grip, flip)
 	grips[grip] = true
 end
 
--- A row: a flat bar with a thin border (Spy keeps the bar's color), SaftUI's face
--- on both texts at the sizes Spy asks for, the class icon cropped. The row itself,
+-- A row: a flat bar with a thin border (Spy keeps the bar's color), the Skinning
+-- font on both texts at its own size (not Spy's, which follows the bar height), the class icon cropped. The row itself,
 -- which is secure, is never touched: only its children.
 function SP:SkinRow(row)
 	if type(row) ~= 'table' or skinnedRows[row] then return end
@@ -225,8 +229,8 @@ function SP:SkinRow(row)
 	skinnedRows[row] = true
 	if bar.SetStatusBarTexture then bar:SetStatusBarTexture(st.BLANK_TEX) end
 	Panel(bar, 'control', 'none')
-	HookFont(row.LeftText, 'text')
-	HookFont(row.RightText, 'text')
+	HookFont(row.LeftText, 'row')
+	HookFont(row.RightText, 'row')
 	local icon = row.ClassIcon
 	if icon then
 		st:SkinIcon(icon)
