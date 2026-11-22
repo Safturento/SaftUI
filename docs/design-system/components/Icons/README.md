@@ -8,7 +8,7 @@ Wherever an icon fits (the owner's rule, from 2026-11-13 on): close, dropdown ca
 
 ## What the consumer provides
 
-The icon's name from `st.icons` (`x`, `chevronDown`, `chevronUp`, `rotateCcw`, `diff`, `ellipsis`, `ellipsisVertical`, `settings`, `funnel`, `arrowDownToLine`, and for the edit mode bar `logOut`, `grid3x3`, `magnet`, `alignStartVertical`, `layers`, `mapPin`, `eye`, `powerOff`, `search`, `undo2`, `redo2`, `history`, `pictureInPicture2`, `panelTop`, `squareMousePointer`, `squareDashedMousePointer`, `link`), its size, its colour, and a tooltip naming what it does.
+The icon's name from `st.icons` (`x`, `chevronDown`, `chevronUp`, `rotateCcw`, `diff`, `ellipsis`, `ellipsisVertical`, `settings`, `funnel`, `arrowDownToLine`, and for the edit mode bar `logOut`, `grid3x3`, `magnet`, `alignStartVertical`, `layers`, `mapPin`, `eye`, `powerOff`, `search`, `undo2`, `redo2`, `history`, `pictureInPicture2`, `panelTop`, `squareMousePointer`, `squareDashedMousePointer`, `link`, and for the Spy skin `skull`, `eraser`, `chartNoAxesColumn`), its size, its colour, and a tooltip naming what it does.
 
 ## Rules
 
@@ -38,6 +38,9 @@ The icon's name from `st.icons` (`x`, `chevronDown`, `chevronUp`, `rotateCcw`, `
 | `map-pin` | SaftUI's tracker: after the current zone's name on its zone header | 16 (an 8 px glyph) | `accent` |
 | `chevron-up`, `chevron-down` | SaftUI's tracker: the header's collapse button and each zone header's (up while it shows, down while collapsed; a 16 square button, the lighter tone under the mouse) | 16 (an 8 px glyph) | `text-muted`, `text-strong` under the mouse |
 | `link` | the font row's link to a shared font's section of Global settings > Fonts, in the slot at the row's right edge (the item's dots use the same slot); its tooltip names the font and says where it goes | 16 | `text-muted`, `accent` |
+| `skull` | the Spy skin's Kill on Sight button, on SaftUI's target frame | 12 | `text-muted`, `text-danger` |
+| `eraser` | the Spy skin's Clear button on the Nearby window | Spy's button size | `text-muted` |
+| `chartNoAxesColumn` | the Spy skin's Statistics button on the Nearby window | Spy's button size | `text-muted` |
 | `ellipsis`, `settings` | registered, unused | | |
 
 ## To replace with Lucide

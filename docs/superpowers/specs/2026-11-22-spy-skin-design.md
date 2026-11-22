@@ -105,16 +105,31 @@ settings) are left as they are.
 - Look (my call, stated to the owner): the Skinning page's Theme, Background and font,
   like the color picker and the Cooldown Manager skins; window titles in the Window
   titles font. A **Spy** toggle on the Skinning page (`skinning.spy`, default on). Off, or
-  with the Skinning Theme set to Blizzard, Spy keeps its own look; switching applies at once
-  where possible, else after a reload (the toggle's description says which).
+  with the Skinning Theme set to Blizzard, Spy keeps its own look.
+- Toggling needs a reload (built: the skin is installed only if the toggle is on and the
+  Theme isn't Blizzard when it is set up; the toggle's description says so). A Theme,
+  Background or font change after install applies live; a Theme switched to Blizzard after
+  install takes effect at the next reload.
+- Spy's per-alphabet font family is kept: the skin builds a family per size with SaftUI's
+  face as the roman member and Spy's other-alphabet files, so Russian and Asian names don't
+  turn to squares.
+- Each alert's border takes its kind's color, read from Spy's `RegisterBorder` call (the
+  Alert Background color is the fill, not the kind's color). Spy's own Border and window
+  colors are not used while the skin is on.
+- The Statistics window's check boxes are drawn field-free (a Panel control with faded
+  template art and a flat checked texture, in a SaftUI box). Its scroll bar stays Spy's
+  (Blizzard's FauxScrollFrame bar, which `st:SkinScrollBar` would write a field onto), and
+  so does its drop-down.
+- The Nearby window's panel runs to the window's bottom, the same area Spy's own Background
+  covered, so some empty panel shows below the rows, as with Spy.
+- The skin never touches the secure window's or rows' geometry (`.agents/taint.md`).
 
 ## Left to the builder
 
-- The exact Lucide icons (chevrons, eraser or trash, bar chart, x, skull).
-- Whether restoring Spy's look on toggle-off is live or needs a reload. Live is nicer;
-  reload is acceptable if restoring every texture is fragile.
+- The exact Lucide icons (chevrons, eraser or trash, bar chart, x, skull). Built.
 - Test fixtures: model Spy's frames from the TBC fork's source (`Widgets.lua`,
-  `MainWindow.lua`, `SpyStats.xml`) as the RestedXP tests do; the owner checks in game.
+  `MainWindow.lua`, `SpyStats.xml`) as the RestedXP tests do; the owner checks in game
+  (followups: "Spy skin: in-game checks").
 
 ## Source note
 
