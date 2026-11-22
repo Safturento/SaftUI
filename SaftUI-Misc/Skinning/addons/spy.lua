@@ -324,10 +324,25 @@ function SP:SkinMain()
 	end
 end
 
+-- The skin's shared pieces, for the files that skin Spy's other windows
+-- (spy_alert.lua, spy_stats.lua, spy_kos.lua, loaded after this one). They
+-- define SP:SkinAlert, SP:SkinStats and SP:SkinKoS; Setup looks those up when
+-- it runs, after every file has loaded.
+SP.lib = {
+	weak = weak,
+	panels = panels,
+	placers = placers,
+	Draw = Draw,
+	Panel = Panel,
+	MutedRGB = MutedRGB,
+	Tint = Tint,
+	MakeDivider = MakeDivider,
+	HookFont = HookFont,
+	SkinIconButton = SkinIconButton,
+}
+
 function SP:SkinAlert() end
-
 function SP:SkinStats() end
-
 function SP:SkinKoS() end
 
 local function Run(fn)
