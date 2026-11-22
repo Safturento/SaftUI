@@ -22,7 +22,11 @@
 	    ButtonsParent, laid in a grid, at frame level 5110, with GetNodeID (_node)
 	    and an OnClick that counts PSF.clicks[nodeID] (the game's buttons buy a
 	    rank there; the fixture only counts, so a test shows a plan never clicked
-	    one).
+	    one). Each button also wears TalentButtonArtTemplate's art (PSF.art, below):
+	    the regions Icon, IconMask, DisabledOverlay, StateBorder, StateBorderHover,
+	    Shadow, SelectableIcon, SpendText and spendTextShadows, the fields visualState
+	    and artSet, GetNodeInfo, ApplyVisualState and UpdateSpendText;
+	    PSF.set_state(button, state, text) calls both the way the game does.
 
 	Every frame here is locked (lib/locked_widget.lua, owner 'Blizzard'), so a
 	talent plan that writes a field onto one, or SetScripts one, fails. The
@@ -54,6 +58,7 @@ local lock_widget = load_test_file('lib/locked_widget.lua')
 local OWNER = 'Blizzard'
 
 local PSF = { clicks = {} }
+local make_fonts -- below: the named fonts the templates use
 
 local COLUMNS = 8
 local BUTTON = 40
@@ -121,6 +126,7 @@ function PSF.build(opts)
 		button:SetFrameLevel(5110)
 		rawset(button, '_node', nodeID)
 		rawset(button, 'GetNodeID', function(self) return self._node end)
+		PSF.art(button, i)
 		button:SetScript('OnClick', function(self)
 			PSF.clicks[self._node] = (PSF.clicks[self._node] or 0) + 1
 		end)
@@ -143,6 +149,120 @@ function PSF.build(opts)
 	lock_widget(window, OWNER)
 	PSF.byNode = byNode
 	return window
+end
+
+-- What TalentButtonArtTemplate gives a button (Blizzard_SharedTalentUI/
+-- Blizzard_TalentButtonArt.xml and .lua, checked 22 Nov against Gethe/wow-ui-source
+-- at 734f065): the regions Shadow, Icon, DisabledOverlay, StateBorder,
+-- StateBorderHover, SpendText with its four spendTextShadows, SelectableIcon,
+-- IconMask; the fields artSet (the Square set: no icon mask) and visualState (5,
+-- Selectable); and ApplyVisualState and UpdateSpendText, which set the border
+-- atlas, the text color, the icon's tint and desaturation, the overlay and
+-- the text the way Blizzard's do. GetNodeInfo gives { type = self._nodeType or 0 }
+-- (a test sets 2 for a choice node). Every new region is locked.
+PSF.ART_SET = {
+	iconMask = nil,
+	shadow = 'talents-node-square-shadow',
+	normal = 'talents-node-square-yellow',
+	disabled = 'talents-node-square-gray',
+	selectable = 'talents-node-square-green',
+	maxed = 'talents-node-square-yellow',
+	locked = 'talents-node-square-locked',
+	refundInvalid = 'talents-node-square-red',
+	displayError = 'talents-node-square-red',
+	glow = 'talents-node-square-greenglow',
+	ghost = 'talents-node-square-ghost',
+	spendFont = 'SystemFont16_Shadow_ThickOutline',
+}
+
+local COLORS = { [1] = { 1, 0.82, 0 }, [2] = { 0.5, 0.5, 0.5 }, [3] = { 0.5, 0.5, 0.5 }, [4] = { 0.5, 0.5, 0.5 },
+	[5] = { 0.1, 1, 0.1 }, [6] = { 1, 0.82, 0 }, [7] = { 1, 1, 1 }, [8] = { 1, 0.1, 0.1 }, [9] = { 1, 0.1, 0.1 } }
+
+function PSF.art(button, index)
+	make_fonts()
+	local function region(kind, key, layer)
+		local r
+		if kind == 'Texture' then
+			r = button:CreateTexture(nil, layer or 'ARTWORK')
+		elseif kind == 'MaskTexture' then
+			r = button:CreateMaskTexture(nil, layer or 'OVERLAY')
+		else
+			r = button:CreateFontString(nil, layer or 'OVERLAY', 'GameFontNormal')
+		end
+		rawset(button, key, r)
+		return r
+	end
+	region('Texture', 'Shadow', 'BACKGROUND'):SetPoint('CENTER')
+	local icon = region('Texture', 'Icon', 'BORDER')
+	icon:SetSize(36, 36)
+	icon:SetPoint('CENTER')
+	icon:SetTexture(135000 + index)
+	local overlay = region('Texture', 'DisabledOverlay', 'BORDER')
+	overlay:SetSize(36, 36)
+	overlay:SetPoint('CENTER')
+	overlay:SetColorTexture(0, 0, 0, 1)
+	overlay:Hide()
+	region('Texture', 'StateBorder', 'ARTWORK'):SetPoint('CENTER')
+	region('Texture', 'StateBorderHover', 'ARTWORK'):SetPoint('CENTER')
+	button.StateBorderHover:Hide()
+	local text = region('FontString', 'SpendText', 'OVERLAY')
+	text:SetPoint('BOTTOM', 11, 4)
+	local select = region('Texture', 'SelectableIcon', 'OVERLAY')
+	select:SetPoint('BOTTOMLEFT', -3, -3)
+	select:Hide()
+	local mask = region('MaskTexture', 'IconMask', 'OVERLAY')
+	mask:SetSize(36, 36)
+	mask:SetPoint('CENTER', icon, 'CENTER')
+	mask:Hide() -- the Square set has no icon mask (TalentButtonArtMixin:OnLoad)
+	local shadows = {}
+	for i, offset in ipairs({ { -1, 1 }, { 1, 1 }, { -1, -1 }, { 1, -1 } }) do
+		local shadow = region('FontString', 'SpendTextShadow' .. i, 'ARTWORK')
+		shadow:SetPoint('CENTER', text, 'CENTER', offset[1], offset[2])
+		shadows[i] = shadow
+	end
+	rawset(button, 'spendTextShadows', shadows)
+	rawset(button, 'artSet', PSF.ART_SET)
+	rawset(button, 'visualState', 5)
+	rawset(button, 'GetNodeInfo', function(self) return { type = self._nodeType or 0 } end)
+	rawset(button, 'ApplyVisualState', function(self, state)
+		rawset(self, 'visualState', state)
+		local color = COLORS[state] or COLORS[1]
+		self.SpendText:SetTextColor(color[1], color[2], color[3])
+		local invalid, failed = state == 8, state == 9
+		if invalid or failed then self.Icon:SetVertexColor(0.8, 0.1, 0.1, 1) else self.Icon:SetVertexColor(1, 1, 1, 1) end
+		local dimmed = state == 2 or state == 4 or state == 3
+		self.DisabledOverlay:SetAlpha((state == 2 and 0.7) or (invalid and 0.3) or 0.25)
+		self.DisabledOverlay:SetShown(invalid or dimmed)
+		self.Icon:SetDesaturated(not invalid and dimmed)
+		local set = self.artSet
+		local atlas
+		if invalid then atlas = set.refundInvalid
+		elseif failed then atlas = set.displayError
+		elseif state == 2 then atlas = set.locked
+		elseif state == 5 then atlas = set.selectable
+		elseif state == 6 then atlas = set.maxed
+		elseif not dimmed then atlas = set.normal
+		else atlas = set.disabled end
+		self.StateBorder:SetAtlas(atlas)
+		self.StateBorderHover:SetAtlas(atlas)
+	end)
+	rawset(button, 'UpdateSpendText', function(self)
+		self.SpendText:SetText(self._spendText or '')
+	end)
+	for _, key in ipairs({ 'Shadow', 'Icon', 'DisabledOverlay', 'StateBorder', 'StateBorderHover', 'SpendText',
+			'SelectableIcon', 'IconMask' }) do
+		lock_widget(button[key], OWNER)
+	end
+	for _, shadow in ipairs(shadows) do lock_widget(shadow, OWNER) end
+	button:ApplyVisualState(5)
+end
+
+-- A button's state and its number text, as the game's UpdateVisualState and
+-- UpdateSpendText set them.
+function PSF.set_state(button, state, text)
+	rawset(button, '_spendText', text)
+	button:ApplyVisualState(state)
+	button:UpdateSpendText()
 end
 
 function PSF.load()
@@ -183,7 +303,7 @@ end
 
 -- The named fonts the templates use; the stubs have only some (made when the
 -- window is, as a fresh world drops the globals).
-local function make_fonts()
+function make_fonts()
 	for _, name in ipairs({ 'GameFontNormal', 'GameFontHighlight', 'GameFontDisable', 'GameFontHighlightSmall',
 			'GameFontDisableSmall' }) do
 		if not _G[name] then

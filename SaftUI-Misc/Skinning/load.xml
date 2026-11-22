@@ -20,6 +20,7 @@
 	<Script file="blizzard/Blizzard_WorldMap.lua"/>
 	<Script file="blizzard/Blizzard_PlayerSpellsLayout.lua"/>
 	<Script file="blizzard/Blizzard_PlayerSpellsSkin.lua"/>
+	<Script file="blizzard/Blizzard_TalentFaces.lua"/>
 	<Script file="blizzard/ZoneText.lua"/>
 	<Script file="blizzard/ZoneFactions.lua"/>
 <!--	<Include file="Addons\addons.xml"/>-->
