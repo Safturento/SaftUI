@@ -85,7 +85,7 @@ local function world(opts)
 	end
 	load_saftui('SaftUI-Core/Widgets/scrollframe.lua')
 	if not _G.GameTooltip then create('GameTooltip', 'GameTooltip', UIParent, 'GameTooltipTemplate') end
-	for _, file in ipairs({ 'talentplan', 'model', 'parser', 'store', 'data', 'panel' }) do
+	for _, file in ipairs({ 'talentplan', 'model', 'parser', 'store', 'data', 'panel', 'overlays' }) do
 		load_saftui('SaftUI-Misc/TalentPlan/' .. file .. '.lua')
 	end
 	load_saftui('SaftUI-Misc/movable.lua')
@@ -321,14 +321,15 @@ test('empty state and New plan', function()
 	clean()
 end)
 
-test('the Plan button makes a plan when the tab has none, and the strip says No plan', function()
+test('the Plan button toggles planning and the strip says No plan', function()
 	world()
 	open()
 	eq(TP.StripText(TP.view), 'No plan')
 	stub.click(TP.panel.planButton, 'LeftButton')
-	eq(S.Active(1).name, 'New plan')
+	check(TP.planning, 'planning on')
+	eq(S.Active(1), nil, 'no plan is made until a click plans')
 	stub.click(TP.panel.planButton, 'LeftButton')
-	eq(#S.List(), 1, 'a tab with a plan keeps it')
+	check(not TP.planning, 'planning off')
 	clean()
 end)
 

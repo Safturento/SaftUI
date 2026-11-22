@@ -6,4 +6,5 @@
 	<Script file="data.lua"/>
 	<Script file="panel.lua"/>
 	<Script file="import.lua"/>
+	<Script file="overlays.lua"/>
 </Ui>

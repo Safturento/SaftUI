@@ -129,6 +129,8 @@ end
 
 function TP:HidePanel()
 	self:Listen(false)
+	self.view = nil
+	self:HideOverlays()
 	if self.panel then self.panel:Hide() end
 end
 
@@ -158,6 +160,7 @@ function TP:Refresh()
 	if plan then rows, summary = TP.Model.States(plan, tree.nodes, tree.level) end
 	self.view = { tree = tree, plan = plan, rows = rows, summary = summary }
 	self:DrawPanel(self.view)
+	self:DrawOverlays(self.view)
 	if self.fresh then
 		self.fresh = false
 		self:ScrollToWaiting()
