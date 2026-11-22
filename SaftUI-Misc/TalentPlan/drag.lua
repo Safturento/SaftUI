@@ -4,7 +4,7 @@ local TP = st:GetModule('TalentPlan')
 local floor, ceil = math.floor, math.ceil
 
 --[[
-	TP.DragParts: what the panel's rows and phase headers drag with, a copy of
+	TP.DragParts: what the panel's rows drag with, a copy of
 	SaftUI-Bags/dragparts.lua (Misc can't depend on Bags; a followup moves both
 	copies to Core), with its text from st:CreateFontString instead of the
 	options window's.
