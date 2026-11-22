@@ -11,7 +11,7 @@
 -- Real: Core's helpers and hearthzone.lua. The zone APIs and
 -- TooltipDataProcessor are the test's stand-ins.
 local S = load_test_file('lib/secrets.lua')
-local HZ, post, toy_post
+local HZ, post, toy_post, spell_post
 
 local place -- what the zone APIs return now
 
@@ -25,12 +25,13 @@ local function world()
 	GetRealZoneText = function() return place.zone end
 	GetSubZoneText = function() return place.sub end
 	GetMinimapZoneText = function() return place.minimap end
-	Enum.TooltipDataType = { Item = 0, Toy = 19 }
-	post, toy_post = nil, nil
+	Enum.TooltipDataType = { Item = 0, Spell = 1, Toy = 19 }
+	post, toy_post, spell_post = nil, nil, nil
 	_G.TooltipDataProcessor = {
 		AddTooltipPostCall = function(kind, fn)
 			if kind == Enum.TooltipDataType.Item then post = fn end
 			if kind == Enum.TooltipDataType.Toy then toy_post = fn end
+			if kind == Enum.TooltipDataType.Spell then spell_post = fn end
 		end,
 	}
 	if not _G.GameTooltip then CreateFrame('GameTooltip', 'GameTooltip', UIParent) end
@@ -136,6 +137,35 @@ test('secret values are never compared or shown', function()
 	data.id = S.secret(6948)
 	data.lines[2].leftText = S.secret(data.lines[2].leftText)
 	eq(#shown(data), 0, 'a secret id or line is not read')
+	clean()
+end)
+
+-- The lines after a post-call fn, from a fresh tooltip.
+local function shown_by(fn, data)
+	GameTooltip:ClearLines()
+	GameTooltip:SetOwner(UIParent, 'ANCHOR_NONE')
+	GameTooltip:SetText('Title')
+	fn(GameTooltip, data)
+	local s = stub.state(GameTooltip)
+	local out = {}
+	for i = 2, s.lines or 0 do out[#out + 1] = s.texts[i] end
+	return out
+end
+
+test('Astral Recall, the hearth spell and the hearthstone toys get the line', function()
+	world()
+	st.config.char.hearth = { location = "Lion's Pride Inn", zone = 'Elwynn Forest' }
+	check(spell_post, 'a post-call for spells')
+	eq(shown_by(spell_post, { id = 556, lines = { { leftText = 'Astral Recall' } } })[1], 'Zone: Elwynn Forest', 'Astral Recall by ID')
+	eq(shown_by(spell_post, { id = 8690, lines = {} })[1], 'Zone: Elwynn Forest', "the Hearthstone's spell")
+	eq(shown_by(spell_post, { id = 99999, lines = { { leftText = 'Astral Recall' },
+		{ leftText = "Yanks the caster through the twisting nether back to Lion's Pride Inn." } } })[1],
+		'Zone: Elwynn Forest', 'a spell whose text names the bind')
+	eq(#shown_by(spell_post, { id = 133, lines = { { leftText = 'Fireball' } } }), 0, 'another spell')
+	eq(shown_by(toy_post, { id = 212337, lines = { { leftText = 'Stone of the Hearth' } } })[1], 'Zone: Elwynn Forest',
+		'a hearthstone toy by ID, whatever its text')
+	eq(shown_by(toy_post, { id = 777777, lines = { { leftText = 'Custom Hearth' },
+		{ leftText = "Use: Returns you to Lion's Pride Inn." } } })[1], 'Zone: Elwynn Forest', 'an unlisted toy by its Use: line')
 	clean()
 end)
 
