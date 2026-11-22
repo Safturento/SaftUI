@@ -52,7 +52,12 @@ local function make_frame()
 	local window = CreateFrame('Frame', 'PlayerSpellsFrame', UIParent)
 	window.talentsWidth = 1218
 	window:SetSize(1218, 700)
-	function window:UpdateSize() self:SetWidth(self.talentsWidth) end
+	window.talentTabID, window.spellBookTabID = 1, 2
+	window.tab = 1
+	function window:GetTab() return self.tab end
+	function window:UpdateSize()
+		self:SetWidth(self.tab == 1 and self.talentsWidth or 1154)
+	end
 	local frame = CreateFrame('Frame', nil, window)
 	window.TalentsFrame = frame
 	frame:SetSize(1212, 681)
@@ -117,7 +122,7 @@ test('Apply moves the talents, headers and dividers and narrows the window', fun
 	eq(xs[5], 300)
 	eq(xs[12], 740) -- 2 * 260 + 40 + 3 * 60
 	local _, _, _, hx = frame.treeHeaders[2]:GetPoint()
-	eq(hx, 1.5 * 260 + 2)
+	eq(hx, 330, 'header keeps Blizzard\'s offset in its region')
 	local _, _, _, dx = frame.DividerVerticalLeft:GetPoint()
 	eq(dx, 262)
 	-- 3 * 400 - 780 = 420 narrower
@@ -125,6 +130,32 @@ test('Apply moves the talents, headers and dividers and narrows the window', fun
 	eq(window:GetWidth(), 1218 - 420)
 	window:UpdateSize()
 	eq(window:GetWidth(), 1218 - 420, 'UpdateSize keeps the narrow width')
+end)
+
+test('the spellbook keeps Blizzard width', function()
+	local window, frame = make_frame()
+	st.config.profile.talentwindow.compact = true
+	TW.frame = nil
+	TW:Install()
+	frame:LoadTalentTreeInternal()
+	window.tab = 2 -- the spellbook shows while the talents frame is still shown
+	window:UpdateSize()
+	eq(window:GetWidth(), 1154)
+end)
+
+test('an error in a hook does not reach Blizzard', function()
+	local window, frame = make_frame()
+	st.config.profile.talentwindow.compact = true
+	TW.frame = nil
+	TW:Install()
+	local old = TW.Apply
+	TW.Apply = function() error('boom') end
+	local handler = geterrorhandler()
+	seterrorhandler(function() end)
+	local ok = pcall(frame.LoadTalentTreeInternal, frame)
+	seterrorhandler(handler)
+	TW.Apply = old
+	check(ok, 'LoadTalentTreeInternal still returns')
 end)
 
 test('compact off moves nothing', function()

@@ -26,6 +26,10 @@ local TW = st:NewModule('TalentWindow')
 -- sits at the frame's left with leftPadding 0).
 local BLIZZARD_REGION = 400
 local BORDER_INSET = 2
+-- Blizzard puts a header's CENTER (icon and name together) 140 in from its
+-- region's left (TREE_HEADER_OFFSET_X); kept, so the header sits in its region
+-- as it does in Blizzard's.
+local HEADER_OFFSET = 140
 
 -- The pure part. trees: a list, left to right, of lists of button center x
 -- offsets (Blizzard's, from ButtonsParent's TOPLEFT); size: the button width.
@@ -135,7 +139,7 @@ local function PlaceDecor(frame, layout)
 	if not layout then return end
 	if frame.treeHeaders then
 		for i, header in ipairs(frame.treeHeaders) do
-			if i <= #layout.dx then SetX(header, (i - 0.5) * layout.region + BORDER_INSET) end
+			if i <= #layout.dx then SetX(header, (i - 0.5) * layout.region + BORDER_INSET + (HEADER_OFFSET - (BLIZZARD_REGION / 2 + BORDER_INSET))) end
 		end
 	end
 	local border = frame.BackgroundBorder
@@ -185,28 +189,39 @@ function TW:Apply()
 	PlaceDecor(frame, layout)
 end
 
+-- A hook runs in the middle of Blizzard's own code: an error in it would stop
+-- the caller there, so each runs in xpcall to the error handler.
+local function Guarded(fn)
+	return function(...)
+		local a, b = ...
+		xpcall(function() fn(a, b) end, geterrorhandler())
+	end
+end
+
 function TW:Install()
 	local frame = PlayerSpellsFrame and PlayerSpellsFrame.TalentsFrame
 	if not frame or self.frame then return end
 	self.frame = frame
-	hooksecurefunc(frame, 'UpdateTalentButtonPosition', function(f, button)
+	hooksecurefunc(frame, 'UpdateTalentButtonPosition', Guarded(function(f, button)
 		if not current or not Enabled() then return end
 		local info = button:GetNodeInfo()
 		local group = info and not info.subTreeID and info.groupIDs and info.groupIDs[1]
 		local dx = group and current.layout.dx[current.index[group] or 0]
 		if dx and info.posX then SetX(button, info.posX / 10 - (f:GetPanOffset()) + dx) end
-	end)
-	hooksecurefunc(frame, 'LoadTalentTreeInternal', function() self:Apply() end)
-	hooksecurefunc(frame, 'RefreshTreeHeaders', function(f)
+	end))
+	hooksecurefunc(frame, 'LoadTalentTreeInternal', Guarded(function() self:Apply() end))
+	hooksecurefunc(frame, 'RefreshTreeHeaders', Guarded(function(f)
 		if current and Enabled() then PlaceDecor(f, current.layout) end
-	end)
-	-- Blizzard sets the window's width on every show and tab change; the narrower
-	-- width goes back on after it.
-	hooksecurefunc(PlayerSpellsFrame, 'UpdateSize', function(window)
+	end))
+	-- Blizzard sets the window's width on every show and tab change (the
+	-- spellbook's OnShow calls it too); the narrower width goes back on after it
+	-- only while the talents tab is the window's tab.
+	hooksecurefunc(PlayerSpellsFrame, 'UpdateSize', Guarded(function(window)
 		if not (current and current.delta and Enabled() and frame:IsShown()) then return end
+		if window:GetTab() ~= window.talentTabID then return end
 		window:SetWidth((window.talentsWidth or window:GetWidth()) - current.delta)
-	end)
-	if frame:IsShown() then self:Apply() end
+	end))
+	if frame:IsShown() then xpcall(function() self:Apply() end, geterrorhandler()) end
 end
 
 function TW:OnEnable()
