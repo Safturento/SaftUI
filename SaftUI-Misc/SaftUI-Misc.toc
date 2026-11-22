@@ -16,5 +16,6 @@ totemskin.lua
 totemtimers.lua
 durability.lua
 durabilitytooltip.lua
+hearthzone.lua
 movable.lua
 Skinning\load.xml
