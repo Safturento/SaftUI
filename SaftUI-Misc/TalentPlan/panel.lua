@@ -11,13 +11,22 @@ local M, S = TP.Model, TP.Store
 
 	From the top: the title strip (the collapse arrow, "Leveling plan", the plan
 	select button, the count), the rows in a scroll frame, the off plan line, and
-	the footer (Plan, Import, Phases and the dots menu). Collapsed, only the
-	title strip is left, holding the waiting step. TP.panel.rows[i] = { frame,
+	the footer (Plan, Import, Phases and the dots menu). Collapsed, the panel is
+	hidden and a small button of SaftUI's (TP.expandButton) shows in the window's
+	title bar, just left of Blizzard's close button; its tooltip names the plan
+	and the waiting step, and a click opens the panel again. TP.panel.rows[i] = { frame,
 	kind, index } is the pooled row of step i, for the drag (Task 8);
 	TP.selected is the step the new steps go after, or nil (Task 7).
 ]]
 
-local L = { WIDTH = 250, GAP = 2, ROW_HEIGHT = 20 }
+-- BORDER_LEFT and BORDER_RIGHT: how far PlayerSpellsFrame's border art reaches
+-- outside its rect. The window is a PortraitFrameTemplate (Blizzard_SharedXML
+-- Mainline/SharedUIPanelTemplates.xml, with Camelot's overrides): its NineSlice
+-- layout (Mainline/NineSliceLayouts.lua, PortraitFrameTemplate) puts the left
+-- corners at x = -13 (the portrait corner) and the right corners at x = 4, which
+-- Camelot/NineSliceLayoutOverrides.lua moves 2 in (xAdjustment -2), so 2. GAP is
+-- the clear space left past the art.
+local L = { WIDTH = 250, GAP = 4, BORDER_LEFT = 13, BORDER_RIGHT = 2, ROW_HEIGHT = 20 }
 TP.Layout = L
 
 local PAD = 4 -- the room round the rows and between the strips' parts
@@ -52,7 +61,7 @@ function TP.StepLabel(row, node)
 	return label
 end
 
--- What the collapsed strip says.
+-- What the header button's tooltip says about the waiting step.
 function TP.StripText(view)
 	local rows, summary = view and view.rows, view and view.summary
 	if not rows or #rows == 0 then return 'No plan' end
@@ -103,6 +112,32 @@ local function NewArrow(parent)
 	-- after the SetScripts: the helper hooks the scripts as they are now
 	st:AddStates(button, 'glyph', { glyph = icon, glyphRest = Muted })
 	st:PaintStates(button)
+	return button
+end
+
+-- The header button a collapsed panel leaves in the talent window's title bar:
+-- SaftUI's own button on UIParent (never a child of Blizzard's frames), anchored
+-- to PlayerSpellsFrame's close button by TP:PlaceExpand.
+local EXPAND_SIZE = 22
+
+local function NewExpandButton()
+	local button = st:CreateButton('SaftUI_TalentPlanExpand', UIParent, nil, 'theme', 'theme')
+	button:SetSize(EXPAND_SIZE, EXPAND_SIZE)
+	button.icon = button:CreateTexture(nil, 'OVERLAY')
+	button.icon:SetTexture(st.icons.panelLeftOpen)
+	button.icon:SetSize(ICON, ICON)
+	button.icon:SetPoint('CENTER')
+	button:SetScript('OnClick', function() TP:SetCollapsed(false) end)
+	button:SetScript('OnEnter', function(self)
+		local view = TP.view
+		GameTooltip:SetOwner(self, 'ANCHOR_BOTTOMRIGHT')
+		GameTooltip:SetText(view and view.plan and view.plan.name or 'Leveling plan', 1, 1, 1, 1, true)
+		GameTooltip:AddLine(TP.StripText(view), nil, nil, nil, true)
+		GameTooltip:AddLine('Click to open the leveling plan', 0.6, 0.6, 0.6, true)
+		GameTooltip:Show()
+	end)
+	button:SetScript('OnLeave', function(self) HideTip(self) end)
+	button:Hide()
 	return button
 end
 
@@ -263,6 +298,7 @@ function TP:BuildPanel()
 	panel.headers = {} -- the pooled phase headers, by phase
 	panel.entries = {} -- { frame, kind, index | phase } in display order, for the drag
 	self.panel = panel
+	self.expandButton = self.expandButton or NewExpandButton()
 
 	-- the title strip
 	local title = st:CreateFrame('Frame', nil, panel)
@@ -284,12 +320,6 @@ function TP:BuildPanel()
 	panel.select:SetPoint('LEFT', panel.heading, 'RIGHT', PAD * 2, 0)
 	panel.select:SetPoint('RIGHT', panel.count, 'LEFT', -PAD, 0)
 	panel.select:SetScript('OnClick', function(self) TP:OpenPlanMenu(self) end)
-	panel.strip = st:CreateFontString(title, 'normal')
-	panel.strip:SetJustifyH('LEFT')
-	panel.strip:SetWordWrap(false)
-	panel.strip:SetPoint('LEFT', panel.arrow, 'RIGHT', PAD, 0)
-	panel.strip:SetPoint('RIGHT', title, 'RIGHT', -PAD - 2, 0)
-	panel.strip:Hide()
 
 	panel.hint = st:CreateFontString(panel, 'pixel', "Click talents in the order you'll take them")
 	panel.hint:SetJustifyH('LEFT')
@@ -376,42 +406,47 @@ function TP:IsCollapsed()
 	return S.Char().collapsed and true or false
 end
 
--- The panel's two anchor points (one, and the title's height, while collapsed)
--- and the arrow that faces the way the panel would move.
+-- The panel's two anchor points, clear of the window's border art, and the
+-- arrow that faces the way the panel would move.
 function TP:Place()
 	local panel, window = self.panel, _G.PlayerSpellsFrame
 	local right = (self.side or 'RIGHT') == 'RIGHT'
-	local x = right and L.GAP or -L.GAP
+	local x = right and L.BORDER_RIGHT + L.GAP or -(L.BORDER_LEFT + L.GAP)
 	local top, bottom, near = right and 'TOPLEFT' or 'TOPRIGHT', right and 'BOTTOMLEFT' or 'BOTTOMRIGHT', right and 'TOPRIGHT' or 'TOPLEFT'
 	panel:ClearAllPoints()
 	panel:SetPoint(top, window, near, x, 0)
-	if self:IsCollapsed() then
-		panel:SetHeight(st.config.profile.headers.height)
-	else
-		panel:SetPoint(bottom, window, right and 'BOTTOMRIGHT' or 'BOTTOMLEFT', x, 0)
+	panel:SetPoint(bottom, window, right and 'BOTTOMRIGHT' or 'BOTTOMLEFT', x, 0)
+	panel.arrow.icon:SetTexture(right and st.icons.chevronRight or st.icons.chevronLeft)
+	self:PlaceExpand()
+end
+
+-- The header button, just left of Blizzard's close button, above the window.
+-- It shows when the panel would and is collapsed.
+function TP:PlaceExpand()
+	local button, window = self.expandButton, _G.PlayerSpellsFrame
+	if not button then return end
+	local close = window and window.CloseButton
+	if close then
+		button:ClearAllPoints()
+		button:SetPoint('RIGHT', close, 'LEFT', -2, 0)
+		button:SetFrameStrata(window:GetFrameStrata())
+		button:SetFrameLevel(window:GetFrameLevel() + 5600)
 	end
-	local points = right == not self:IsCollapsed()
-	panel.arrow.icon:SetTexture(points and st.icons.chevronRight or st.icons.chevronLeft)
+	button:SetShown(close and self:IsCollapsed() and self.panel and self:ShouldShow() and true or false)
 end
 
 ------------------------------------------------------------------ drawing
 
--- The title and the body, in the collapsed or the open layout.
+-- Collapsed, the panel is hidden and the header button shows in its place.
 function TP:ApplyCollapsed()
 	local panel = self.panel
-	local collapsed = self:IsCollapsed()
-	for _, part in ipairs({ panel.heading, panel.select, panel.count }) do part:SetShown(not collapsed) end
-	panel.strip:SetShown(collapsed)
-	panel.footer:SetShown(not collapsed)
-	panel.scroll:SetShown(not collapsed)
-	if collapsed then
-		panel.off:Hide()
-		panel.hint:Hide()
-		panel.empty:Hide()
-		panel.line:Hide()
+	if self:IsCollapsed() then
+		panel:Hide()
+	elseif self:ShouldShow() then
+		panel:Show()
 	end
-	if self.view then panel.strip:SetText(TP.StripText(self.view)) end
 	if self.side then self:Place() end
+	self:PlaceExpand()
 end
 
 function TP:SetCollapsed(on)
@@ -455,7 +490,6 @@ function TP:DrawPanel(view)
 	panel.title:SetHeight(config.headers.height)
 	panel.select.text:SetText(plan and plan.name or 'No plan')
 	panel.count:SetText(view.summary and ('%d/%d'):format(view.summary.learned, view.summary.total) or '')
-	panel.strip:SetText(TP.StripText(view))
 
 	local top = config.headers.height + PAD
 	panel.hint:SetShown(self.planning and not self:IsCollapsed() and true or false)
@@ -544,7 +578,6 @@ function TP:PaintColors()
 	panel.off:SetTextColor(muted:GetRGB())
 	panel.hint:SetTextColor(muted:GetRGB())
 	panel.empty:SetTextColor(muted:GetRGB())
-	panel.strip:SetTextColor(normal:GetRGB())
 	panel.line:SetColorTexture(st:Color('accent'):GetRGB())
 	panel.arrow.icon:SetVertexColor(muted:GetRGB())
 end
