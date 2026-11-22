@@ -642,6 +642,23 @@ function SpyFix.make(opts)
 	end
 	Spy.CreateKoSButton = spy_fn(Spy.CreateKoSButton)
 
+	-- Spy:ToggleKOSPlayer(add, name): the KoS list's add or remove (the click handler's call).
+	function Spy:ToggleKOSPlayer(add, name)
+		SpyPerCharDB.KOSData[name] = add and true or nil
+	end
+	Spy.ToggleKOSPlayer = spy_fn(Spy.ToggleKOSPlayer)
+
+	-- Forever.lua's Spy:EnemyPlayerName(unit): the unit's name when it is an enemy player, nil
+	-- when it is not or when the client keeps its name, kind or hostility secret (stub.units).
+	function Spy:EnemyPlayerName(unit)
+		local u = stub.units[unit]
+		if not u then return nil end
+		for _, v in ipairs({ u.player or false, u.enemy or false, u.name or '' }) do
+			if issecretvalue and issecretvalue(v) then return nil end
+		end
+		if u.player and u.enemy and type(u.name) == 'string' then return u.name end
+	end
+
 	if not opts.noStats then build_stats(opts) end
 	if not opts.noWindow then
 		Spy:CreateMainWindow()
