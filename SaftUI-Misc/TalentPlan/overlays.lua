@@ -51,50 +51,65 @@ end
 
 -- Blizzard's own talent glow (the art its talent buttons use for a node that
 -- can be bought: added light, pulsing in and out over 0.72 seconds), on the
--- glow frame's own texture and animation. Made the first time the Blizzard
--- theme asks, never written onto a Blizzard frame.
+-- glow frame's own texture and animation, never written onto a Blizzard frame.
+-- Blizzard picks the atlas by the button's art set (square, circle, choice,
+-- apex...), so the button's own `Glow` texture is read for its atlas name
+-- (a read only; the circle's is the fallback) and the texture takes that
+-- atlas's size, centred on the button, as Blizzard's does. Made only for a
+-- glow that shows (nine in ten of the ~80 buttons never do).
 local GLOW_ATLAS = 'talents-node-circle-greenglow'
-local GLOW_SPREAD = 12
 -- Added light, as the game draws this art. A glow, not an interaction state
 -- (the states scan, S3, forbids a literal ADD blend for those).
 local GLOW_BLEND = 'ADD'
 
-local function GlowArt(frame)
-	if frame.glowTexture then return frame.glowTexture end
-	local texture = frame:CreateTexture(nil, 'OVERLAY')
-	texture:SetAtlas(GLOW_ATLAS)
-	texture:SetBlendMode(GLOW_BLEND)
-	texture:SetPoint('TOPLEFT', frame, 'TOPLEFT', -GLOW_SPREAD, GLOW_SPREAD)
-	texture:SetPoint('BOTTOMRIGHT', frame, 'BOTTOMRIGHT', GLOW_SPREAD, -GLOW_SPREAD)
-	frame.glowTexture = texture
-	if frame.CreateAnimationGroup then
-		local group = frame:CreateAnimationGroup()
-		group:SetLooping('REPEAT')
-		local up = group:CreateAnimation('Alpha')
-		up:SetTarget(texture)
-		up:SetFromAlpha(0)
-		up:SetToAlpha(1)
-		up:SetDuration(0.36)
-		up:SetOrder(1)
-		up:SetSmoothing('OUT')
-		local down = group:CreateAnimation('Alpha')
-		down:SetTarget(texture)
-		down:SetFromAlpha(1)
-		down:SetToAlpha(0)
-		down:SetDuration(0.36)
-		down:SetOrder(2)
-		down:SetSmoothing('IN')
-		frame.glowAnim = group
+local function GlowAtlas(button)
+	local own = button.Glow
+	local name = type(own) == 'table' and own.GetAtlas and own:GetAtlas()
+	return type(name) == 'string' and name ~= '' and name or GLOW_ATLAS
+end
+
+local function GlowArt(frame, atlas)
+	local texture = frame.glowTexture
+	if not texture then
+		texture = frame:CreateTexture(nil, 'OVERLAY')
+		texture:SetBlendMode(GLOW_BLEND)
+		texture:SetPoint('CENTER', frame, 'CENTER')
+		frame.glowTexture = texture
+		if frame.CreateAnimationGroup then
+			local group = frame:CreateAnimationGroup()
+			group:SetLooping('REPEAT')
+			local up = group:CreateAnimation('Alpha')
+			up:SetTarget(texture)
+			up:SetFromAlpha(0)
+			up:SetToAlpha(1)
+			up:SetDuration(0.36)
+			up:SetOrder(1)
+			up:SetSmoothing('OUT')
+			local down = group:CreateAnimation('Alpha')
+			down:SetTarget(texture)
+			down:SetFromAlpha(1)
+			down:SetToAlpha(0)
+			down:SetDuration(0.36)
+			down:SetOrder(2)
+			down:SetSmoothing('IN')
+			frame.glowAnim = group
+		end
+	end
+	if frame.glowAtlas ~= atlas then
+		frame.glowAtlas = atlas
+		texture:SetAtlas(atlas, true)
 	end
 	return texture
 end
 
 -- The waiting node's highlight in the panel's theme: under Blizzard a glow,
 -- under Thick and Thin the border.
-local function SetGlowLook(frame, blizzard)
+local function SetGlowLook(rec, blizzard)
+	local frame = rec.glow
+	local on = blizzard and frame:IsShown()
 	for _, texture in ipairs(frame.edges) do texture:SetShown(not blizzard) end
-	if blizzard then
-		GlowArt(frame):Show()
+	if on then
+		GlowArt(frame, GlowAtlas(rec.button)):Show()
 		if frame.glowAnim and not frame.glowAnim:IsPlaying() then frame.glowAnim:Play() end
 	elseif frame.glowTexture then
 		if frame.glowAnim then frame.glowAnim:Stop() end
@@ -246,7 +261,7 @@ function TP:PaintOverlays()
 	for _, rec in pairs(records) do
 		PaintEdges(rec.light, nr, ng, nb)
 		PaintEdges(rec.glow, ar, ag, ab)
-		SetGlowLook(rec.glow, blizzard)
+		SetGlowLook(rec, blizzard)
 	end
 end
 

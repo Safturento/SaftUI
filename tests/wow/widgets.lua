@@ -63,6 +63,10 @@ local TYPES = {
 	MaskTexture = { 'Object', 'ScriptRegion', 'Region', 'Texture', 'MaskTexture' },
 	FontString = { 'Object', 'ScriptRegion', 'Region', 'FontInstance', 'FontString' },
 	Font = { 'Object', 'FontInstance', 'Font' },
+	-- Animations: a frame's group (Frame:CreateAnimationGroup) and the Alpha
+	-- animation it makes. Nothing runs by time here: a test reads IsPlaying.
+	AnimationGroup = { 'Object', 'AnimationGroup' },
+	Alpha = { 'Object', 'Animation', 'Alpha' },
 }
 
 -- The scripts each group has. SetScript, HookScript and GetScript error on
@@ -106,6 +110,7 @@ local Object, ScriptRegion, Region, Frame, Button, GameTooltip, Texture, FontIns
 	API.Texture, API.FontInstance, API.FontString
 local CheckButton, ScrollFrame, Slider, StatusBar = API.CheckButton, API.ScrollFrame, API.Slider, API.StatusBar
 local EditBox, Cooldown, Masked = API.EditBox, API.Cooldown, API.Masked
+local AnimationGroup, Animation, Alpha = API.AnimationGroup, API.Animation, API.Alpha
 
 ------------------------------------------------------------------ helpers
 
@@ -225,6 +230,10 @@ local function changing_visibility(widget, change)
 	for i, w in ipairs(tree) do
 		local now = is_visible(states[w])
 		if now ~= before[i] then
+			-- the game stops a frame's animation groups when it hides
+			if not now then
+				for _, group in ipairs(states[w].anim_groups or {}) do states[group].playing = false end
+			end
 			run_script(w, now and 'OnShow' or 'OnHide')
 		end
 	end
@@ -996,6 +1005,48 @@ function Frame.CreateMaskTexture(self, s, name, layer, inherits, sublevel)
 end
 
 function Frame.GetChildren(self, s) return unpack(s.children) end
+------------------------------------------------------------------ animations
+
+function Frame.CreateAnimationGroup(self, s, name, inherits)
+	local group, gs = new_widget('AnimationGroup', name, self)
+	gs.animations, gs.playing, gs.looping = {}, false, 'NONE'
+	s.anim_groups = s.anim_groups or {}
+	table.insert(s.anim_groups, group)
+	return group
+end
+function Frame.GetAnimationGroups(self, s) return unpack(s.anim_groups or {}) end
+
+function AnimationGroup.CreateAnimation(self, s, typeName, name)
+	if typeName ~= 'Alpha' then usage(s, ('CreateAnimation(): animation type %s is not stubbed'):format(tostring(typeName))) end
+	local animation, as = new_widget('Alpha', name, self)
+	as.group = self
+	table.insert(s.animations, animation)
+	return animation
+end
+-- Nothing runs by time. Hiding the frame stops its groups (changing_visibility),
+-- so a test shows the frame and plays the group again.
+function AnimationGroup.Play(self, s) s.playing = true end
+function AnimationGroup.Stop(self, s) s.playing = false end
+function AnimationGroup.Finish(self, s) s.playing = false end
+function AnimationGroup.Pause(self, s) s.playing = false end
+function AnimationGroup.IsPlaying(self, s) return s.playing end
+function AnimationGroup.SetLooping(self, s, kind) s.looping = kind end
+function AnimationGroup.GetLooping(self, s) return s.looping end
+function AnimationGroup.GetAnimations(self, s) return unpack(s.animations) end
+
+function Animation.SetTarget(self, s, target) s.target = target end
+function Animation.GetTarget(self, s) return s.target end
+function Animation.SetDuration(self, s, v) s.duration = number_arg(s, v, 'duration') end
+function Animation.GetDuration(self, s) return s.duration or 0 end
+function Animation.SetOrder(self, s, v) s.order = number_arg(s, v, 'order') end
+function Animation.GetOrder(self, s) return s.order or 1 end
+function Animation.SetSmoothing(self, s, v) s.smoothing = v end
+function Animation.GetSmoothing(self, s) return s.smoothing or 'NONE' end
+function Alpha.SetFromAlpha(self, s, v) s.from_alpha = number_arg(s, v, 'fromAlpha') end
+function Alpha.GetFromAlpha(self, s) return s.from_alpha or 0 end
+function Alpha.SetToAlpha(self, s, v) s.to_alpha = number_arg(s, v, 'toAlpha') end
+function Alpha.GetToAlpha(self, s) return s.to_alpha or 0 end
+
 function Frame.GetNumChildren(self, s) return #s.children end
 function Frame.GetRegions(self, s) return unpack(s.regions) end
 function Frame.GetNumRegions(self, s) return #s.regions end
