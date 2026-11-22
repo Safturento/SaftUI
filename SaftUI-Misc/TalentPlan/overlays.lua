@@ -177,7 +177,10 @@ function TP:DrawOverlays(view)
 		SetCatcher(rec, self.planning and true or false)
 	end
 	for _, rec in pairs(records) do
-		if not live[rec] then HideAll(rec) end
+		if not live[rec] then
+			rec.nodeID = nil -- a released pool button names no node (Light skips it)
+			HideAll(rec)
+		end
 	end
 	self:PaintOverlays()
 end

@@ -259,6 +259,8 @@ test('overlays follow a re-bound button', function()
 	PSF.redraw(); stub.run_timers()
 	local waiting = TP.view.rows[TP.view.summary.waiting].nodeID
 	eq(waiting, SH.ID['Elemental Weapons'])
+	check(TP.overlays[a].glow:IsShown(), 'the waiting node moved to a, and so did its glow')
+	check(not TP.overlays[b].glow:IsShown(), 'and left b')
 	check(TP.overlays[a].glow:IsShown() == (a._node == waiting), 'glow follows the node, not the button')
 	check(TP.overlays[b].glow:IsShown() == (b._node == waiting))
 	eq(TP.overlays[a].nodeID, oldB)
@@ -308,5 +310,31 @@ test('planning turns off when the window hides', function()
 	for _, r in pairs(TP.overlays) do check(not r.catcher:IsShown(), 'catcher hidden') end
 	PSF.talents:Show(); PSF.window:Hide(); stub.run_timers()
 	check(not TP.planning)
+	clean()
+end)
+
+test('a missing step has no overlay and the waiting node still glows', function() -- Review Focus 1
+	world({ tree = { ranks = TWELVE } })
+	local plan = guide_plan()
+	table.insert(plan.steps, 3, 999999)
+	open()
+	for _, r in pairs(TP.overlays) do check(r.nodeID ~= 999999, 'no record for the missing node') end
+	local row = TP.view.rows[TP.view.summary.waiting]
+	check(TP.view.tree.nodes[row.nodeID], 'waiting is a real node')
+	check(PSF.byNode[row.nodeID] and TP.overlays[PSF.byNode[row.nodeID]].glow:IsShown(), 'glow on its button')
+	clean()
+end)
+
+test('a released pool button is not lit', function()
+	world({ tree = { ranks = TWELVE } })
+	guide_plan()
+	open()
+	local button = PSF.byNode[SH.ID['Thundering Strikes']]
+	for i, b in ipairs(PSF.buttons) do if b == button then table.remove(PSF.buttons, i) break end end
+	PSF.redraw(); stub.run_timers()
+	eq(TP.overlays[button].nodeID, nil, 'a released button names no node')
+	stub.fire_script(row(1), 'OnEnter')
+	check(not TP.overlays[button].light:IsShown(), 'not lit')
+	check(not TP.overlays[button].glow:IsShown() and not TP.overlays[button].dim:IsShown())
 	clean()
 end)
