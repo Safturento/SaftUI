@@ -378,23 +378,29 @@ end
 -- centered, and the icon after it; Blizzard's text is faded and only read.
 local function SplitTabText(text)
 	text = type(text) == 'string' and text or ''
-	local atlas = text:match('|A:([^:|]+)')
+	-- |A:name:height:width...|a (CreateAtlasMarkup): the size Blizzard asked for.
+	local atlas, h, w = text:match('|A:([^:|]+):?(%d*):?(%d*)')
 	text = text:gsub('|A.-|a', ''):gsub('|c%x%x%x%x%x%x%x%x', ''):gsub('|r', '')
-	return (text:gsub('^%s+', ''):gsub('%s+$', '')), atlas
+	return (text:gsub('^%s+', ''):gsub('%s+$', '')), atlas, tonumber(w), tonumber(h)
 end
 
 local function SyncLabel(tab)
 	local entry = boxes[tab]
 	if not entry or not entry.label then return end
 	local on = Active()
-	local word, atlas = '', nil
-	if on and tab.Text and tab.Text.GetText then word, atlas = SplitTabText(tab.Text:GetText()) end
+	local word, atlas, w, h = '', nil, nil, nil
+	if on and tab.Text and tab.Text.GetText then word, atlas, w, h = SplitTabText(tab.Text:GetText()) end
 	local font = SkinFont()
 	if font then entry.label:SetFontObject(font) end
 	entry.label:SetText(word)
 	entry.label:SetShown(on and word ~= '')
 	if atlas and on then
-		entry.icon:SetAtlas(atlas, true)
+		if w and h and w > 0 and h > 0 then
+			entry.icon:SetAtlas(atlas)
+			entry.icon:SetSize(w, h)
+		else
+			entry.icon:SetAtlas(atlas, true)
+		end
 		entry.icon:Show()
 	else
 		entry.icon:Hide()

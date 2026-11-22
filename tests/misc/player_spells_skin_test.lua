@@ -420,6 +420,8 @@ test('on: the spec tab\'s word is centered on the tab, the check or lock hangs a
 	eq(points.CENTER.relative, box, 'the word is centered on the tab\'s box')
 	eq(points.CENTER.x, 0)
 	check(icon and icon:IsShown(), 'the check')
+	eq(icon:GetWidth(), 20, 'the width the markup asks for')
+	eq(icon:GetHeight(), 15, 'the height the markup asks for')
 	local ip = points_of(icon)
 	eq(ip.LEFT.relative, label)
 	eq(ip.LEFT.relpoint, 'RIGHT')
