@@ -5,4 +5,5 @@
 	<Script file="store.lua"/>
 	<Script file="data.lua"/>
 	<Script file="panel.lua"/>
+	<Script file="import.lua"/>
 </Ui>
