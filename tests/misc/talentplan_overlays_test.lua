@@ -405,6 +405,12 @@ test('under Thick and Thin the waiting node keeps its border and has no glow tex
 		check(glow:IsShown(), name)
 		check(edges_shown(glow), name .. ': the border shows')
 		check(not (glow.glowTexture and glow.glowTexture:IsShown()), name .. ': no glow texture')
+		-- the border is the light's (a panel row's hover), pulsing to the face's own and back
+		local lr, lg, lb = st:Color('text', 'normal'):GetRGB()
+		local c = stub.state(glow.edges[1]).color_texture
+		eq(('%.2f %.2f %.2f'):format(c[1], c[2], c[3]), ('%.2f %.2f %.2f'):format(lr, lg, lb), name .. ": the light's color")
+		check(glow.edgeAnim and glow.edgeAnim:IsPlaying(), name .. ': it pulses')
+		eq(stub.state(glow.edgeAnim).looping, 'BOUNCE')
 		clean()
 	end
 end)
@@ -417,6 +423,7 @@ test('switching the theme changes the highlight at once, back and forth', functi
 	check(edges_shown(glow) and not (glow.glowTexture and glow.glowTexture:IsShown()), 'Thick: border')
 	T.theme('blizzard', function() st:ColorsChanged('theme') end)
 	check(not edges_shown(glow) and glow.glowTexture:IsShown(), 'Blizzard: glow, on the colors callback')
+	check(not glow.edgeAnim:IsPlaying(), 'the border stops pulsing under Blizzard')
 	T.theme('thin', function() st:ColorsChanged('theme') end)
 	check(edges_shown(glow) and not glow.glowTexture:IsShown(), 'Thin: border again')
 	st.config.profile.theme.name = 'blizzard'
