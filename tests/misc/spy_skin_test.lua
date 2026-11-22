@@ -396,10 +396,11 @@ test('InvertSpy: the panel runs from the window top to the title bar, the line a
 	local panel = panel_of(window)
 	local points = {}
 	for i = 1, panel:GetNumPoints() do
-		local point, rel, relpoint = panel:GetPoint(i)
-		points[point] = { rel, relpoint }
+		local point, rel, relpoint, x, y = panel:GetPoint(i)
+		points[point] = { rel, relpoint, x, y }
 	end
 	eq(points.TOPLEFT[1], window, 'from the window\'s top')
+	eq(points.TOPLEFT[4], -34, 'where Spy\'s rows and inverted background start, 34 down')
 	eq(points.BOTTOMRIGHT[1], window.TitleBar, 'to the title bar\'s bottom')
 	local line
 	for _, region in ipairs({ panel:GetRegions() }) do
@@ -429,9 +430,28 @@ test('a font call that errors does not leave the hook off', function()
 	local row = Spy.MainWindow.Rows[1]
 	local face = st:FontValues(st.config.profile.skinning.font)
 	stub.refused_fonts[face] = 'error'
-	pcall(Spy.SetFontSize, Spy, row.LeftText, 15) -- the skin's SetFont raises
+	-- Spy's own SetFont is on another file and works; the skin's, on SaftUI's face, raises
+	local ok = pcall(row.LeftText.SetFont, row.LeftText, [[Fonts\FRIZQT__.TTF]], 15, '')
+	check(not ok, 'the skin\'s own font call raised')
 	stub.refused_fonts[face] = nil
-	Spy:SetFontSize(row.LeftText, 14)
+	row.LeftText:SetFont([[Fonts\FRIZQT__.TTF]], 14, '')
 	eq(({ row.LeftText:GetFont() })[1], face, 'the hook still puts SaftUI\'s face on the next size')
 	eq(({ row.LeftText:GetFont() })[2], 14, 'at that size')
+end)
+
+test('a toggled InvertSpy without a reload leaves the panel on the real bar', function()
+	world()
+	SpyFix.make()
+	enable()
+	local window = Spy.MainWindow
+	local panel = panel_of(window)
+	Spy.db.profile.InvertSpy = true -- the option only writes the db; the bar is where it was made
+	Spy:ManageBarsDisplayed()
+	local points = {}
+	for i = 1, panel:GetNumPoints() do
+		local point, rel = panel:GetPoint(i)
+		points[point] = rel
+	end
+	eq(points.TOPLEFT, window.TitleBar, 'still from the title bar at the top')
+	eq(points.BOTTOMRIGHT, window, 'to the window bottom')
 end)

@@ -171,8 +171,13 @@ local function build_window(opts)
 
 	local background = window:CreateTexture(nil, 'BACKGROUND')
 	background:SetTexture([[Interface\CHARACTERFRAME\UI-Party-Background]])
-	background:SetPoint('TOPLEFT', window, 'TOPLEFT', 0, -32)
-	background:SetPoint('BOTTOMRIGHT', window, 'BOTTOMRIGHT', 0, 2)
+	if profile.InvertSpy then -- Widgets.lua
+		background:SetPoint('TOPLEFT', window, 'TOPLEFT', 0, -34)
+		background:SetPoint('BOTTOMRIGHT', window, 'BOTTOMRIGHT', 0, 0)
+	else
+		background:SetPoint('TOPLEFT', window, 'TOPLEFT', 0, -32)
+		background:SetPoint('BOTTOMRIGHT', window, 'BOTTOMRIGHT', 0, 2)
+	end
 	own(window, 'Background', background)
 
 	local bar = CreateFrame('Frame', 'SpyTitleBarFrame', window, 'BackdropTemplate')

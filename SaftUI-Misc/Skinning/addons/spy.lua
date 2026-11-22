@@ -247,6 +247,13 @@ function SP:FlatRows()
 	end
 end
 
+-- Whether Spy anchored its title bar at the window's bottom (its InvertSpy option, read
+-- when the window was made: a toggle takes a reload), from where the bar actually is.
+local function IsInverted(bar)
+	local point = type(bar) == 'table' and bar.GetPoint and bar:GetPoint(1)
+	return point == 'BOTTOMLEFT' or point == 'BOTTOMRIGHT'
+end
+
 -- What Spy puts back on every ApplyBorderStyle and ManageBarsDisplayed: its title bar's
 -- backdrop, its gold ForeverBorder on the window and the title bar, its own background.
 function SP:RestyleMain()
@@ -260,8 +267,7 @@ function SP:RestyleMain()
 	if window.ForeverBorder then window.ForeverBorder:Hide() end
 	if window.Background and window.Background.SetAlpha then window.Background:SetAlpha(0) end
 	-- The Invert option moved the title bar: the panel goes where it is now.
-	local invert = Spy().db and Spy().db.profile and Spy().db.profile.InvertSpy or false
-	if placers[window] and panels[window] and inverted[window] ~= invert then placers[window](window) end
+	if placers[window] and panels[window] and inverted[window] ~= IsInverted(bar) then placers[window](window) end
 end
 
 -- Draws what each of Spy's windows is made of. Tasks that follow fill these; each
@@ -278,13 +284,15 @@ function SP:SkinMain()
 	if type(bar) == 'table' then
 		placers[window] = function(w)
 			local panel = panels[w]
-			local invert = Spy().db and Spy().db.profile and Spy().db.profile.InvertSpy or false
+			local invert = IsInverted(bar)
 			inverted[w] = invert
 			panel:ClearAllPoints()
 			local line = dividerOf[panel]
 			if line then line:ClearAllPoints() end
 			if invert then
-				panel:SetPoint('TOPLEFT', w, 'TOPLEFT', 0, 0)
+				-- The rows start 34 down, where Spy's own inverted Background does.
+				local _, _, _, x, y = w.Background and w.Background:GetPoint(1)
+				panel:SetPoint('TOPLEFT', w, 'TOPLEFT', x or 0, y or -34)
 				panel:SetPoint('BOTTOMRIGHT', bar, 'BOTTOMRIGHT', 0, 0)
 				if line then
 					line:SetPoint('BOTTOMLEFT', bar, 'TOPLEFT', 0, 0)
