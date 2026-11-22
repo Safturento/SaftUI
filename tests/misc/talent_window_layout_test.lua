@@ -83,8 +83,17 @@ local function make_frame(groupsOf)
 		end
 	end
 	frame.BackgroundBorder = CreateFrame('Frame', nil, frame)
-	frame.DividerHorizontalLeft = CreateFrame('Frame', nil, frame)
-	frame.DividerHorizontalLeft:SetSize(100, 20)
+	-- Camelot's DividerHorizontalLeft and Right: atlas sized (here 600 wide, so
+	-- 600 either side of the border's centre, wider than the narrowed window's
+	-- 390), one ending at the border's centre, the other starting there.
+	frame.DividerHorizontalLeft = frame:CreateTexture(nil, 'OVERLAY')
+	frame.DividerHorizontalLeft:SetSize(600, 20)
+	frame.DividerHorizontalLeft:SetPoint('RIGHT', frame.BackgroundBorder, 'CENTER')
+	frame.DividerHorizontalLeft:SetTexCoord(0.1, 0.9, 0.2, 0.8)
+	frame.DividerHorizontalRight = frame:CreateTexture(nil, 'OVERLAY')
+	frame.DividerHorizontalRight:SetSize(600, 20)
+	frame.DividerHorizontalRight:SetPoint('LEFT', frame.BackgroundBorder, 'CENTER')
+	frame.DividerHorizontalRight:SetTexCoord(0.1, 0.9, 0.2, 0.8)
 	frame.DividerVerticalLeft = CreateFrame('Frame', nil, frame)
 	frame.DividerVerticalRight = CreateFrame('Frame', nil, frame)
 	frame.DividerVerticalLeft:SetPoint('TOP', frame.BackgroundBorder, 'TOPLEFT', 402, -74)
@@ -111,6 +120,65 @@ local function centers(buttons)
 	table.sort(out)
 	return out
 end
+
+test('the horizontal dividers are cut off at the narrowed window\'s edges', function()
+	local window, frame = make_frame()
+	st.config.profile.talentwindow.compact = true
+	TW.frame = nil
+	TW:Install()
+	frame:LoadTalentTreeInternal()
+	-- the layout's width is 780: 390 each side of the centre
+	local left, right = frame.DividerHorizontalLeft, frame.DividerHorizontalRight
+	eq(left:GetWidth(), 390, 'left ends at the left edge')
+	eq(right:GetWidth(), 390, 'right ends at the right edge')
+	eq(left:GetHeight(), 20, 'height kept')
+	-- the art is cropped, not squashed: the outer 210 of 600 (0.35 of the 0.8 span) is cut
+	local ulx, uly, llx, lly, urx, ury, lrx, lry = left:GetTexCoord()
+	near(ulx, 0.1 + 0.8 * (210 / 600)); near(urx, 0.9); eq(uly, 0.2); eq(lly, 0.8)
+	ulx, uly, llx, lly, urx, ury, lrx, lry = right:GetTexCoord()
+	near(ulx, 0.1); near(urx, 0.9 - 0.8 * (210 / 600)); eq(ury, 0.2); eq(lry, 0.8)
+	-- the inner ends stay on the centre
+	local point, rel, relPoint = left:GetPoint()
+	eq(point, 'RIGHT'); eq(rel, frame.BackgroundBorder); eq(relPoint, 'CENTER')
+	-- a second pass crops from the same original, not the cropped one
+	frame:LoadTalentTreeInternal()
+	eq(left:GetWidth(), 390)
+	near(select(1, left:GetTexCoord()), 0.1 + 0.8 * (210 / 600))
+end)
+
+test('a divider already narrower than the half window is left alone', function()
+	local window, frame = make_frame()
+	frame.DividerHorizontalLeft:SetWidth(300)
+	frame.DividerHorizontalRight:SetWidth(300)
+	st.config.profile.talentwindow.compact = true
+	TW.frame = nil
+	TW:Install()
+	frame:LoadTalentTreeInternal()
+	eq(frame.DividerHorizontalLeft:GetWidth(), 300)
+	eq(select(1, frame.DividerHorizontalLeft:GetTexCoord()), 0.1)
+end)
+
+test('Revert puts the horizontal dividers back', function()
+	local window, frame, buttons = make_frame()
+	st.config.profile.talentwindow.compact = true
+	TW.frame = nil
+	TW:Install()
+	frame:LoadTalentTreeInternal()
+	eq(frame.DividerHorizontalLeft:GetWidth(), 390)
+	local n = 0
+	for button in pairs(buttons) do
+		n = n + 1
+		local info = button:GetNodeInfo()
+		local spread = { groupIDs = {}, posX = (70 + 400 * ((n - 1) % 3) + 100 * math.floor((n - 1) / 3) + 49) * 10, posY = info.posY }
+		function button:GetNodeInfo() return spread end
+	end
+	frame:LoadTalentTreeInternal()
+	for _, d in ipairs({ frame.DividerHorizontalLeft, frame.DividerHorizontalRight }) do
+		eq(d:GetWidth(), 600, 'width back')
+		local ulx, uly, _, lly, urx = d:GetTexCoord()
+		near(ulx, 0.1); near(urx, 0.9); eq(uly, 0.2); eq(lly, 0.8)
+	end
+end)
 
 test('Apply moves the talents, headers and dividers and narrows the window', function()
 	local window, frame, buttons = make_frame()
