@@ -72,6 +72,8 @@ local function nextID()
 end
 
 function S.New(name, specGroup)
+	name = (name or ''):match('^%s*(.-)%s*$')
+	if name == '' then name = 'New plan' end
 	local plan = M.NewPlan(nextID(), M.UniqueName(names(), name))
 	S.Plans()[plan.id] = plan
 	S.SetActive(specGroup, plan.id)

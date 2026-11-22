@@ -26,3 +26,9 @@ test('a choice pointing at a plan that is gone reads as none', function()
 	S.Char().active[1] = 42
 	eq(S.Active(1), nil)
 end)
+
+test('New trims the name, and an empty one is New plan', function()
+	local a = S.New('  Padded  ', 1); eq(a.name, 'Padded')
+	local b = S.New('Padded', 1); eq(b.name, 'Padded 2', 'the trimmed name is the one that is taken')
+	eq(S.New('   ', 1).name, 'New plan')
+end)

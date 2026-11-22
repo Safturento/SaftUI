@@ -4,4 +4,5 @@
 	<Script file="parser.lua"/>
 	<Script file="store.lua"/>
 	<Script file="data.lua"/>
+	<Script file="panel.lua"/>
 </Ui>
