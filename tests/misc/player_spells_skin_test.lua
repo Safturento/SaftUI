@@ -22,11 +22,12 @@ local st, SK, skin, profile, window, talents, book
 local function art()
 	local out = {
 		window.NineSlice, window.Bg, window.TopTileStreaks, window.PortraitContainer,
-		talents.BackgroundBorder, talents.DividerHorizontalLeft, talents.DividerHorizontalRight,
+		talents.Background, talents.BackgroundBorder, talents.DividerHorizontalLeft, talents.DividerHorizontalRight,
 		talents.DividerVerticalLeft, talents.DividerVerticalRight, talents.ClassCurrencyDisplay.Border,
 		talents.SearchBox.Left, talents.SearchBox.Middle, talents.SearchBox.Right,
 		book.SearchBox.Left,
 	}
+	for _, header in ipairs(talents.treeHeaders) do out[#out + 1] = header.Divider end
 	for _, getter in ipairs({ 'GetNormalTexture', 'GetPushedTexture', 'GetHighlightTexture', 'GetDisabledTexture' }) do
 		out[#out + 1] = window.CloseButton[getter](window.CloseButton)
 	end
@@ -126,8 +127,9 @@ end)
 test('on: the spec backgrounds stay as Blizzard has them', function()
 	world('forever')
 	local before = PSF.alphas()
+	eq(#before, 3, 'the class art and its two overlays; the header and footer art is not spec art')
 	eq(before[1], 1)
-	eq(before[2], 1)
+	eq(before[2], 0)
 	eq(before[3], 0)
 	for _, t in ipairs(PSF.specart) do check(t:IsShown(), 'shown') end
 	-- through a theme switch and back
@@ -137,23 +139,92 @@ test('on: the spec backgrounds stay as Blizzard has them', function()
 	for i = 1, #before do eq(after[i], before[i], 'spec art ' .. i) end
 end)
 
-test('on: lines stand where the dividers were, anchored to them', function()
-	world('forever')
-	local holder
+-- SaftUI's lines: a holder over TalentsFrame with the bar and the bottom line, and
+-- a clip frame (one frame in it, holding the two vertical lines).
+local function line_set()
 	for _, kid in ipairs({ talents:GetChildren() }) do
-		if kid:GetFrameLevel() >= talents:GetFrameLevel() and kid:GetNumRegions() == 3 then holder = kid end
-	end
-	check(holder, 'a frame of SaftUI\'s holds the lines')
-	local anchored = {}
-	for _, region in ipairs({ holder:GetRegions() }) do
-		for i = 1, region:GetNumPoints() do
-			local _, relative = region:GetPoint(i)
-			anchored[relative] = true
+		if kid:GetFrameLevel() >= talents:GetFrameLevel() and kid:GetNumRegions() == 2 and kid:GetNumChildren() == 1 then
+			local clip = kid:GetChildren()
+			local host = clip:GetChildren()
+			local bar, bottom = kid:GetRegions()
+			local left, right = host:GetRegions()
+			return { holder = kid, bar = bar, bottom = bottom, clip = clip, host = host, left = left, right = right }
 		end
 	end
-	check(anchored[talents.DividerVerticalLeft], 'a line follows the left divider')
-	check(anchored[talents.DividerVerticalRight], 'a line follows the right divider')
-	check(anchored[talents.BackgroundBorder], 'the top bar line follows the border')
+end
+
+local function points_of(region)
+	local out = {}
+	for i = 1, region:GetNumPoints() do
+		local point, relative, relpoint, x, y = region:GetPoint(i)
+		out[point] = { relative = relative, relpoint = relpoint, x = x or 0, y = y or 0 }
+	end
+	return out
+end
+
+test('on: the header and footer art is faded, the spec art is not, and the headers\' gold dividers are faded', function()
+	world('forever')
+	eq(talents.Background:GetAlpha(), 0, 'the dark header and footer art')
+	eq(talents.ClassBackground:GetAlpha(), 1, 'the class art stays')
+	for i, header in ipairs(talents.treeHeaders) do eq(header.Divider:GetAlpha(), 0, 'header ' .. i .. '\'s divider') end
+	eq(talents.treeHeaders[1].Name:GetAlpha(), 1, 'the header\'s name stays')
+end)
+
+test('on: a header the pool hands out again has its divider faded too, and off puts them back', function()
+	world('forever')
+	talents:RefreshTreeHeaders()
+	for i, header in ipairs(talents.treeHeaders) do eq(header.Divider:GetAlpha(), 0, 'header ' .. i) end
+	T.theme('blizzard', function() SK:UpdateConfig() end)
+	for i, header in ipairs(talents.treeHeaders) do eq(header.Divider:GetAlpha(), 1, 'back ' .. i) end
+	eq(talents.Background:GetAlpha(), 1)
+	T.theme('thick', function() SK:UpdateConfig() end)
+	for i, header in ipairs(talents.treeHeaders) do eq(header.Divider:GetAlpha(), 0, 'again ' .. i) end
+end)
+
+test('on: the top and bottom lines are the spec art\'s own top and bottom edges, so the art fills exactly between them', function()
+	world('forever')
+	local set = line_set()
+	check(set, 'a frame of SaftUI\'s holds the lines')
+	local art = talents.ClassBackground
+	local bar, bottom = points_of(set.bar), points_of(set.bottom)
+	eq(bar.TOPLEFT.relative, art)
+	eq(bar.TOPLEFT.relpoint, 'TOPLEFT')
+	eq(bar.TOPLEFT.y, 0)
+	eq(bar.TOPRIGHT.relative, art)
+	eq(bar.TOPRIGHT.relpoint, 'TOPRIGHT')
+	eq(bottom.BOTTOMLEFT.relative, art)
+	eq(bottom.BOTTOMLEFT.relpoint, 'BOTTOMLEFT')
+	eq(bottom.BOTTOMLEFT.y, 0)
+	eq(bottom.BOTTOMRIGHT.relative, art)
+	eq(bottom.BOTTOMRIGHT.relpoint, 'BOTTOMRIGHT')
+	check(set.bar:GetHeight() > 0 and set.bottom:GetHeight() > 0, 'both have a thickness')
+	eq(set.bar:IsShown(), true)
+	eq(set.bottom:IsShown(), true)
+end)
+
+test('on: the vertical lines start where Blizzard\'s dividers do (under the tree headers) and are clipped to the art', function()
+	world('forever')
+	local set = line_set()
+	eq(set.clip:DoesClipChildren(), true, 'a clip frame stops anything past the art')
+	local clip = points_of(set.clip)
+	eq(clip.TOPLEFT.relative, talents.ClassBackground)
+	eq(clip.BOTTOMRIGHT.relative, talents.ClassBackground)
+	for key, divider in pairs({ left = talents.DividerVerticalLeft, right = talents.DividerVerticalRight }) do
+		local points = points_of(set[key])
+		eq(points.TOP.relative, divider, key .. ': on the divider\'s x and top')
+		eq(points.TOP.relpoint, 'TOP')
+		eq(points.TOP.y, 0, key .. ': from the top of Blizzard\'s divider, not the top bar')
+		eq(points.BOTTOM, nil, key .. ': no end on the divider: the clip ends it at the bottom line')
+		check(set[key]:GetHeight() >= talents.ClassBackground:GetHeight(), key .. ': long enough to reach the bottom line')
+	end
+end)
+
+test('on: a vertical line follows its divider when the compact layout moves it', function()
+	world('forever')
+	local set = line_set()
+	talents.DividerVerticalLeft:ClearAllPoints()
+	talents.DividerVerticalLeft:SetPoint('TOP', talents.BackgroundBorder, 'TOPLEFT', 262, -74)
+	eq(points_of(set.left).TOP.relative, talents.DividerVerticalLeft, 'still on it')
 end)
 
 test('on: the loadout menu is left alone (Camelot hides it)', function()
@@ -161,35 +232,6 @@ test('on: the loadout menu is left alone (Camelot hides it)', function()
 	local dropdown = talents.LoadSystem.Dropdown
 	eq(dropdown.Background:GetAlpha(), 1)
 	eq(dropdown:GetNumChildren(), 0)
-end)
-
-test('on: a vertical line is on its divider\'s x, whichever x the compact layout gives it', function()
-	world('forever')
-	local holder
-	for _, kid in ipairs({ talents:GetChildren() }) do
-		if kid:GetNumRegions() == 3 then holder = kid end
-	end
-	for _, divider in ipairs({ talents.DividerVerticalLeft, talents.DividerVerticalRight }) do
-		local found = 0
-		for _, line in ipairs({ holder:GetRegions() }) do
-			local points = {}
-			for i = 1, line:GetNumPoints() do
-				local point, relative = line:GetPoint(i)
-				if relative == divider then points[point] = true end
-			end
-			if points.TOP and points.BOTTOM then found = found + 1 end
-		end
-		eq(found, 1, 'one line with both ends on the divider')
-	end
-	-- the layout moves a divider (SetPoint TOP on the border): the line follows, still both ends on it
-	talents.DividerVerticalLeft:ClearAllPoints()
-	talents.DividerVerticalLeft:SetPoint('TOP', talents.BackgroundBorder, 'TOPLEFT', 262, -74)
-	for _, line in ipairs({ holder:GetRegions() }) do
-		for i = 1, line:GetNumPoints() do
-			local _, relative = line:GetPoint(i)
-			check(relative == talents.DividerVerticalLeft or relative == talents.DividerVerticalRight or relative == talents.BackgroundBorder, 'still on a divider or the border')
-		end
-	end
 end)
 
 test('on: the title is in the Window titles font and centered', function()
@@ -321,6 +363,101 @@ test('the search box\'s box is the border\'s 20 high, centered in the 30 high bo
 	local _, _, _, x1, cy1 = c:GetPoint(1)
 	eq(cy1, -3, 'its top is the window\'s top, not above it')
 	eq(x1, 3)
+end)
+
+test('on: Unspent Talents: the box holds the label and the number, inside the window, on the search box\'s right edge', function()
+	world('forever')
+	local display = talents.ClassCurrencyDisplay
+	local box
+	for _, kid in ipairs({ display:GetChildren() }) do
+		if kid:GetFrameLevel() < display:GetFrameLevel() then box = kid end
+	end
+	check(box and box:IsShown(), 'a box under the display')
+	local points = points_of(box)
+	-- its left is the label's left (the label is wider than the border art), not the border's
+	eq(points.TOPLEFT.relative, display.UnspentLabel, 'starts at the label')
+	check(points.TOPLEFT.x < 0, 'with room before the label')
+	-- its right is the search box's right edge: an edge frame on the border's right, in by what Blizzard's XML puts between them (32 - 20)
+	local edge = points.BOTTOMRIGHT.relative
+	local edgePoint = points_of(edge)
+	eq(edgePoint.RIGHT.relative, display.Border)
+	eq(edgePoint.RIGHT.relpoint, 'RIGHT')
+	eq(edgePoint.RIGHT.x, -12, 'the search box ends 12 left of the border\'s right: SearchBox -32, display -20')
+	-- symmetric about the label's middle line, so neither text is cut
+	eq(points.TOPLEFT.y, -points.BOTTOMRIGHT.y)
+	check(points.TOPLEFT.y > 0, 'taller than the text')
+end)
+
+test('on: the Unspent Talents number is in SaftUI\'s font, keeps its color, and Blizzard\'s font is back off', function()
+	world('forever')
+	local number = talents.ClassCurrencyDisplay.CurrentAmountContainer.CurrencyAmount
+	local font = st:FontObject(profile.skinning.font)
+	eq(number:GetFontObject(), font)
+	eq(talents.ClassCurrencyDisplay.UnspentLabel:GetFontObject(), font)
+	local r, g, b = number:GetTextColor()
+	check(near(r, 0.1) and near(g, 1) and near(b, 0.1), 'the green Blizzard set for points to spend')
+	T.theme('blizzard', function() SK:UpdateConfig() end)
+	eq(number:GetFontObject(), GameFontNormal, 'the font it had')
+end)
+
+-- A spec tab (ClassTalentsFrameTabMixin): its text carries the check or the lock as
+-- an inline atlas, so Blizzard's centered text is the word and the icon together.
+test('on: the spec tab\'s word is centered on the tab, the check or lock hangs after it', function()
+	world('forever')
+	local tab = talents.TabSystem.tabs[1]
+	tab.Text:SetText('Primary |A:Talents-Checkmark-c60:15:20|a')
+	tab:SetTabSelected(true)
+	local box = tab:GetChildren()
+	local label, icon
+	for _, region in ipairs({ box:GetRegions() }) do
+		if region:GetObjectType() == 'FontString' then label = region end
+		if region:GetObjectType() == 'Texture' and region:GetAtlas() == 'Talents-Checkmark-c60' then icon = region end
+	end
+	check(label, 'a label of SaftUI\'s')
+	eq(label:GetText(), 'Primary', 'the word alone')
+	eq(tab.Text:GetAlpha(), 0, 'Blizzard\'s text (word and icon) is faded')
+	local points = points_of(label)
+	eq(points.CENTER.relative, box, 'the word is centered on the tab\'s box')
+	eq(points.CENTER.x, 0)
+	check(icon and icon:IsShown(), 'the check')
+	eq(icon:GetWidth(), 20, 'the width the markup asks for')
+	eq(icon:GetHeight(), 15, 'the height the markup asks for')
+	local ip = points_of(icon)
+	eq(ip.LEFT.relative, label)
+	eq(ip.LEFT.relpoint, 'RIGHT')
+	check(ip.LEFT.x > 0, 'after the word')
+	eq(label:GetFontObject(), st:FontObject(profile.skinning.font))
+end)
+
+test('on: the spec tab\'s label follows the text: a lock for a locked tab, no icon for a plain one, markup and color codes dropped', function()
+	world('forever')
+	local tab = talents.TabSystem.tabs[2]
+	local box = tab:GetChildren()
+	local function parts()
+		local label, icon
+		for _, region in ipairs({ box:GetRegions() }) do
+			if region:GetObjectType() == 'FontString' then label = region end
+			if region:GetObjectType() == 'Texture' and region:GetAtlas() ~= nil then icon = region end
+		end
+		return label, icon
+	end
+	tab.Text:SetText('|cff808080Secondary|r |A:Talents-lock-c60:14:10|a')
+	tab:SetTabEnabled(false)
+	local label, icon = parts()
+	eq(label:GetText(), 'Secondary')
+	eq(icon:GetAtlas(), 'Talents-lock-c60')
+	check(icon:IsShown(), 'the lock')
+	tab.Text:SetText('Secondary')
+	tab:SetTabEnabled(true)
+	label, icon = parts()
+	eq(label:GetText(), 'Secondary')
+	check(not icon or not icon:IsShown(), 'no icon')
+	-- the other tab systems keep Blizzard's text
+	eq(window.TabSystem.tabs[1].Text:GetAlpha(), 1)
+	eq(book.CategoryTabSystem.tabs[1].Text:GetAlpha(), 1)
+	T.theme('blizzard', function() SK:UpdateConfig() end)
+	eq(tab.Text:GetAlpha(), 1, 'Blizzard\'s text back')
+	check(not label:IsShown(), 'ours hidden')
 end)
 
 test('off: nothing is touched, hooked or made', function()

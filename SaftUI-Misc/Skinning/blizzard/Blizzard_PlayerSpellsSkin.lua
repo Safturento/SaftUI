@@ -9,9 +9,10 @@ local PS = SK:NewModule('Blizzard_PlayerSpellsSkin')
 	window keeps Blizzard's look: every piece below is put back as it was, and
 	SaftUI's pieces are hidden. Forever only: OnEnable hooks nothing on retail.
 
-	The spec backgrounds stay Blizzard's: TalentsFrame's .Background,
-	.ClassBackground, .OverlayBackgroundRight and .OverlayBackgroundMid (and the
-	clouds and particles over them) are never touched. So are the talent buttons
+	The spec backgrounds stay Blizzard's: TalentsFrame's .ClassBackground,
+	.OverlayBackgroundRight and .OverlayBackgroundMid (and the clouds and
+	particles over them) are never touched. (.Background is not one: it is the dark
+	header and footer art around them, and is faded.) So are the talent buttons
 	and the lines between them, the tree headers, the hero talents, the Reset and
 	Undo icon buttons, the Maximize button, the Settings and Search options
 	dropdown arrows, and the spellbook's page art.
@@ -29,17 +30,29 @@ local PS = SK:NewModule('Blizzard_PlayerSpellsSkin')
 	    SaftUI's (kind close) with a Lucide X, inside the window's top edge (Camelot's
 	    button is 28 square and sits 3 above it); .TabSystem's tabs (hidden on Forever,
 	    where the tab system isn't available, but skinned all the same).
-	  - TalentsFrame (.TalentsFrame): .BackgroundBorder (the gold frame), the two
-	    horizontal dividers (.DividerHorizontalLeft and Right, the top bar's
-	    ornament) and the two vertical dividers (.DividerVerticalLeft and Right)
-	    faded by alpha, never hidden or moved (the compact layout anchors the
-	    vertical dividers, the headers and the search box to them), and SaftUI's
-	    lines drawn on a frame of its own: a line along the top bar's bottom, and one
-	    under each vertical divider's top down to the art's bottom, so a move of the
-	    .TabSystem (the spec tabs) as tabs; .SearchBox
+	  - TalentsFrame (.TalentsFrame): .Background (the dark header and footer art),
+	    .BackgroundBorder (the gold frame), the two horizontal dividers
+	    (.DividerHorizontalLeft and Right, the top bar's ornament) and the two
+	    vertical dividers (.DividerVerticalLeft and Right) faded by alpha, never
+	    hidden or moved (the compact layout anchors the vertical dividers, the
+	    headers and the search box to them), and each tree header's .Divider (the
+	    small gold line under its name, which joined across the three trees is the
+	    long glowing line under the headers), faded again after every
+	    RefreshTreeHeaders. SaftUI's lines are drawn on a frame of its own: one
+	    along the spec art's top edge (.ClassBackground, which is exactly as wide as
+	    the frame, so as wide as the compact window) and one along its bottom edge,
+	    so the art fills exactly between them (nothing of Blizzard's is cropped or
+	    moved), and one down each vertical divider from where Blizzard's divider
+	    starts (under the tree headers), in a frame that clips to the art, so it ends
+	    at the bottom line and nothing runs past the window's edges. .TabSystem (the
+	    spec tabs) as tabs, whose word is SaftUI's own label centered on the tab,
+	    with the check or lock (an inline atlas in Blizzard's text, read and faded)
+	    as a texture after it; .SearchBox
 	    as an edit box (the border's 20 high, centered in the template's 30 high box);
-	    .ClassCurrencyDisplay (Unspent talents) with its .Border
-	    faded and a box of SaftUI's where it was; .ApplyButton, .InspectCopyButton
+	    .ClassCurrencyDisplay (Unspent talents) with its .Border faded, a box of
+	    SaftUI's from the label's left to the search box's right edge (an edge
+	    frame of SaftUI's on the border's right) and both texts in the Skinning
+	    font; .ApplyButton, .InspectCopyButton
 	    and .ActiveSpec.ActivateButton as buttons. .LoadSystem (the loadout menu) is
 	    left alone: Camelot hides it.
 	  - SpellBookFrame (the same window's other tab): .SearchBox and
@@ -66,8 +79,9 @@ local PS = SK:NewModule('Blizzard_PlayerSpellsSkin')
 	never sets (checked in Blizzard_SharedXML's TabSystemTemplates.lua, the
 	templates and this window's Lua: they only show and hide the tab pieces).
 	Every step is nil-guarded so a region this client lacks skips its step.
-	The hooks: hooksecurefunc on each tab system's AddTab (a tab acquired later)
-	and on each tab's SetTabSelected and SetTabEnabled; HookScript on the buttons, tabs and boxes'
+	The hooks: hooksecurefunc on each tab system's AddTab (a tab acquired later),
+	on each tab's SetTabSelected and SetTabEnabled (and UpdateTabText on the spec
+	tabs, which sets the check or lock), and on TalentsFrame's RefreshTreeHeaders; HookScript on the buttons, tabs and boxes'
 	OnEnter, OnLeave, OnMouseDown, OnMouseUp, OnEnable, OnDisable and the search
 	boxes' OnEditFocusGained and OnEditFocusLost, which only set states on
 	SaftUI's own boxes.
@@ -79,8 +93,9 @@ local TAB_ART = { 'Left', 'Middle', 'Right', 'LeftActive', 'MiddleActive', 'Righ
 	'LeftHighlight', 'MiddleHighlight', 'RightHighlight',
 	'SquareBackground', 'SquareBackgroundActive', 'SquareBackgroundActiveGlow' } -- the last three: icon tabs (square mode)
 local WINDOW_ART = { 'NineSlice', 'Bg', 'TopTileStreaks', 'PortraitContainer' }
--- The gold frame and the dividers' ornaments (TalentsFrame's own regions).
-local TALENT_ART = { 'BackgroundBorder', 'DividerHorizontalLeft', 'DividerHorizontalRight',
+-- The dark header and footer art (Background, 70 above and 36 under the spec art),
+-- the gold frame and the dividers' ornaments (TalentsFrame's own regions).
+local TALENT_ART = { 'Background', 'BackgroundBorder', 'DividerHorizontalLeft', 'DividerHorizontalRight',
 	'DividerVerticalLeft', 'DividerVerticalRight' }
 local CLOSE_STATES = { 'GetNormalTexture', 'GetPushedTexture', 'GetHighlightTexture', 'GetDisabledTexture' }
 -- The three state fonts UIPanelButtonNoTooltipTemplate gives a button.
@@ -93,7 +108,14 @@ local TITLE_DROP = 11 -- the title's center, down from the window's top: the mid
 local SEARCH_LEFT = 5 -- Blizzard's search border starts this far left of the box
 local SEARCH_HEIGHT = 20 -- and is this high, centered in the template's 30 high box
 local CLOSE_INSET = 3 -- the close box in from its 28 square button
-local BAR_DROP = 4 -- DividerHorizontalLeft's TOP, down from the border's top (Camelot XML)
+local LINE_LENGTH = 4000 -- a vertical line's length: the clip frame cuts it at the spec art's bottom
+-- Unspent talents: the search box ends this far left of the display's art (Camelot XML:
+-- SearchBox -32 from the frame's right, the display -20), and the box stands this far
+-- before the label and this far above and under its middle line.
+local SEARCH_ALIGN = 12
+local CURRENCY_PAD = 10
+local CURRENCY_HALF = 14
+local LABEL_GAP = 4 -- a spec tab's check or lock, after its word
 
 -- What SaftUI made or styled, keyed by Blizzard's frames (weak keys).
 local weak = { __mode = 'k' }
@@ -103,7 +125,9 @@ local alphas = setmetatable({}, weak)  -- region -> the alpha it had before Saft
 local saved = setmetatable({}, weak)   -- text or button -> the fonts (and color, anchors) Blizzard had
 local hooked = setmetatable({}, weak)  -- frame -> true once its hooks are on
 local hovered = setmetatable({}, weak) -- button -> true while the mouse is over it
-local lines = setmetatable({}, weak)   -- TalentsFrame -> { holder, bar, left, right }
+local lines = setmetatable({}, weak)   -- TalentsFrame -> { holder, clip, host, bar, bottom, left, right }
+local headerArt = setmetatable({}, weak) -- a tree header's Divider -> true, while SaftUI has faded it
+local edges = setmetatable({}, weak)     -- the currency display -> the edge frame its box ends on
 
 local installed, styled = false, false
 
@@ -215,7 +239,21 @@ local function GetBox(target, shape, opts)
 	boxes[target] = entry
 	local states = { wire = false }
 	if shape == 'box' then states.edge = 'theme' end
-	for key, value in pairs(opts or {}) do states[key] = value end
+	local labelled
+	for key, value in pairs(opts or {}) do
+		if key == 'label' then labelled = value else states[key] = value end
+	end
+	if labelled then
+		-- the tab's own word, centered, and its check or lock after it: SaftUI's
+		-- (Blizzard's text is the word and the icon as one centered line)
+		entry.label = box:CreateFontString(nil, 'OVERLAY')
+		entry.label:SetFontObject(SkinFont() or _G.GameFontNormal)
+		entry.label:SetPoint('CENTER', box, 'CENTER', 0, 0)
+		entry.icon = box:CreateTexture(nil, 'OVERLAY')
+		entry.icon:SetPoint('LEFT', entry.label, 'RIGHT', LABEL_GAP, 0)
+		entry.icon:Hide()
+		states.text = entry.label
+	end
 	if shape == 'tab' then
 		st:AddStates(box, 'tab', states)
 	else
@@ -334,36 +372,78 @@ local function SyncTab(tab)
 	st:SetState(entry.box, 'disabled', Active() and not selected and tab.IsEnabled and not tab:IsEnabled() or false)
 end
 
-local function StyleTab(tab, active)
+-- A spec tab's word and icon: Camelot's text is the word and an inline atlas (the
+-- check of the active spec, the lock of the one not yet open) as one centered line,
+-- so the word sits left of the middle. SaftUI's label shows the word alone,
+-- centered, and the icon after it; Blizzard's text is faded and only read.
+local function SplitTabText(text)
+	text = type(text) == 'string' and text or ''
+	-- |A:name:height:width...|a (CreateAtlasMarkup): the size Blizzard asked for.
+	local atlas, h, w = text:match('|A:([^:|]+):?(%d*):?(%d*)')
+	text = text:gsub('|A.-|a', ''):gsub('|c%x%x%x%x%x%x%x%x', ''):gsub('|r', '')
+	return (text:gsub('^%s+', ''):gsub('%s+$', '')), atlas, tonumber(w), tonumber(h)
+end
+
+local function SyncLabel(tab)
+	local entry = boxes[tab]
+	if not entry or not entry.label then return end
+	local on = Active()
+	local word, atlas, w, h = '', nil, nil, nil
+	if on and tab.Text and tab.Text.GetText then word, atlas, w, h = SplitTabText(tab.Text:GetText()) end
+	local font = SkinFont()
+	if font then entry.label:SetFontObject(font) end
+	entry.label:SetText(word)
+	entry.label:SetShown(on and word ~= '')
+	if atlas and on then
+		if w and h and w > 0 and h > 0 then
+			entry.icon:SetAtlas(atlas)
+			entry.icon:SetSize(w, h)
+		else
+			entry.icon:SetAtlas(atlas, true)
+		end
+		entry.icon:Show()
+	else
+		entry.icon:Hide()
+	end
+end
+
+local function SyncTabs(tab)
+	SyncTab(tab)
+	SyncLabel(tab)
+end
+
+local function StyleTab(tab, active, labelled)
 	if not tab then return end
 	if not boxes[tab] and not active then return end
-	DrawBox(tab, active, 'tab', 'control', Fill(tab))
-	if active and not hooked[tab] and tab.SetTabSelected then
-		hooksecurefunc(tab, 'SetTabSelected', Guarded(SyncTab))
-	end
-	if active and not hooked[tab] and tab.SetTabEnabled then
-		hooksecurefunc(tab, 'SetTabEnabled', Guarded(SyncTab))
+	DrawBox(tab, active, 'tab', 'control', Fill(tab), labelled and { label = true } or nil)
+	if active and not hooked[tab] then
+		for _, method in ipairs({ 'SetTabSelected', 'SetTabEnabled', 'UpdateTabText' }) do
+			if tab[method] and (method ~= 'UpdateTabText' or labelled) then
+				hooksecurefunc(tab, method, Guarded(SyncTabs))
+			end
+		end
 	end
 	if active then HookMouse(tab, false) end
 	hovered[tab] = hovered[tab] and active or nil
 	SetHover(tab)
-	SyncTab(tab)
+	SyncTabs(tab)
 	FadeAll(tab, TAB_ART, active)
+	if boxes[tab] and boxes[tab].label then Fade(tab.Text, active) end
 end
 
-local function StyleTabs(system, active)
+local function StyleTabs(system, active, labelled)
 	if not system or type(system.tabs) ~= 'table' then return end
-	for _, tab in ipairs(system.tabs) do Apply(StyleTab, tab, active) end
+	for _, tab in ipairs(system.tabs) do Apply(StyleTab, tab, active, labelled) end
 end
 
 -- A tab acquired after the skin: the system's own AddTab, post-hooked once.
-local function HookTabSystem(system)
+local function HookTabSystem(system, labelled)
 	if not system or hooked[system] or not system.AddTab then return end
 	hooked[system] = true
 	hooksecurefunc(system, 'AddTab', Guarded(function(self)
 		if not Active() or type(self.tabs) ~= 'table' then return end
 		if PS:Deferred() then return end
-		StyleTab(self.tabs[#self.tabs], true)
+		StyleTab(self.tabs[#self.tabs], true, labelled)
 	end))
 end
 
@@ -397,17 +477,38 @@ local function StyleSearchBox(box, active)
 	SetFocus(box, active and box.HasFocus and box:HasFocus() or false)
 end
 
--- Unspent talents: its Border (a texture) faded, a box where it was.
+-- Unspent talents: its Border (a texture) faded, and a box of SaftUI's that holds
+-- the label and the number: from the label's left (it is wider than the border
+-- art, which is why a box on the border crossed it) to the search box's right
+-- edge, centered on the label's middle line and inside the window. The right
+-- end is an edge frame of SaftUI's, on the border's right (the display's own
+-- anchor, -20 from the frame's right) in by what Camelot's XML puts between that
+-- and the search box (-32): Blizzard's texts stay where they are. Both texts in
+-- the Skinning font (the number keeps the color Blizzard gave it: green with
+-- points to spend, grey without).
 local function StyleCurrency(display, active)
 	if not display then return end
 	local border = display.Border
 	if not boxes[display] and not active then return end
 	if active and not border then return end
+	local label = display.UnspentLabel
 	DrawBox(display, active, 'box', 'control', function(frame)
-		frame:SetPoint('TOPLEFT', border, 'TOPLEFT', 0, 0)
-		frame:SetPoint('BOTTOMRIGHT', border, 'BOTTOMRIGHT', 0, 0)
+		local edge = edges[display]
+		if not edge then
+			edge = st:CreateFrame('Frame', nil, display)
+			edge:SetSize(1, 1)
+			edges[display] = edge
+		end
+		edge:ClearAllPoints()
+		edge:SetPoint('RIGHT', border, 'RIGHT', -SEARCH_ALIGN, 0)
+		frame:SetPoint('TOPLEFT', label or border, label and 'LEFT' or 'TOPLEFT', -CURRENCY_PAD, CURRENCY_HALF)
+		frame:SetPoint('BOTTOMRIGHT', edge, 'RIGHT', 0, -CURRENCY_HALF)
 	end)
+	if edges[display] then edges[display]:SetShown(active) end
 	Fade(border, active)
+	PutFont(label, active, false, true, 'SystemFont_Shadow_Med1')
+	local container = display.CurrentAmountContainer
+	PutFont(container and container.CurrencyAmount, active, false, true, 'Game32Font_Shadow2')
 end
 
 -- The close button: its four textures faded, a box of SaftUI's (kind close) with
@@ -484,50 +585,63 @@ local function BorderColor()
 	return st:ThemeBorderColor(theme)
 end
 
+local LINE_KEYS = { 'bar', 'bottom', 'left', 'right' }
+
 local function PaintLines(set)
 	local r, g, b = BorderColor()
 	if not r then return end
-	for _, key in ipairs({ 'bar', 'left', 'right' }) do
+	for _, key in ipairs(LINE_KEYS) do
 		if set[key] then set[key]:SetColorTexture(r, g, b, 1) end
 	end
 end
 
--- SaftUI's lines where the ornaments were: a flat line along the top bar's
--- bottom, and one along each vertical divider (anchored to the divider, so the compact layout's move of it moves the line).
+-- SaftUI's lines where the ornaments were, on a frame of SaftUI's over TalentsFrame:
+-- a flat line along the top edge of the spec art (ClassBackground, which runs the
+-- window's width inside its border, so the compact layout's narrower window
+-- narrows it) and one along its bottom edge, so the art fills exactly between
+-- them, and one down each vertical divider, from where Blizzard's divider starts
+-- (under the tree headers) to the bottom line. A vertical line hangs on its
+-- divider's top (the compact layout moves the divider, and the line follows),
+-- longer than the art, in a frame that clips to the art: the clip ends it at the
+-- bottom line and stops anything past the window's edges.
 local function StyleLines(talents, active)
 	local set = lines[talents]
+	local art = talents.ClassBackground
 	if not set then
-		if not active then return end
-		local border = talents.BackgroundBorder
-		if not border then return end
+		if not active or not art then return end
 		local holder = st:CreateFrame('Frame', nil, talents)
 		holder:SetAllPoints(talents)
-		set = { holder = holder }
+		local clip = st:CreateFrame('Frame', nil, holder)
+		clip:SetClipsChildren(true)
+		local host = st:CreateFrame('Frame', nil, clip)
+		host:SetAllPoints(clip)
+		set = { holder = holder, clip = clip, host = host }
+		set.bar = holder:CreateTexture(nil, 'ARTWORK')
+		set.bottom = holder:CreateTexture(nil, 'ARTWORK')
+		set.left = host:CreateTexture(nil, 'ARTWORK')
+		set.right = host:CreateTexture(nil, 'ARTWORK')
 		lines[talents] = set
-		for _, key in ipairs({ 'bar', 'left', 'right' }) do
-			set[key] = holder:CreateTexture(nil, 'ARTWORK')
-		end
 	end
 	set.holder:SetShown(active)
-	if not active then return end
-	local border = talents.BackgroundBorder
+	if not active or not art then return end
 	local line = st:DrawLineSize(set.holder)
-	local height = talents.DividerHorizontalLeft and talents.DividerHorizontalLeft.GetHeight and talents.DividerHorizontalLeft:GetHeight()
-	if not height or issecretvalue(height) then height = 24 end
-	local y = -(BAR_DROP + height / 2)
 	set.bar:ClearAllPoints()
-	set.bar:SetPoint('TOPLEFT', border, 'TOPLEFT', 0, y)
-	set.bar:SetPoint('TOPRIGHT', border, 'TOPRIGHT', 0, y)
+	set.bar:SetPoint('TOPLEFT', art, 'TOPLEFT', 0, 0)
+	set.bar:SetPoint('TOPRIGHT', art, 'TOPRIGHT', 0, 0)
 	set.bar:SetHeight(line)
+	set.bottom:ClearAllPoints()
+	set.bottom:SetPoint('BOTTOMLEFT', art, 'BOTTOMLEFT', 0, 0)
+	set.bottom:SetPoint('BOTTOMRIGHT', art, 'BOTTOMRIGHT', 0, 0)
+	set.bottom:SetHeight(line)
+	set.clip:ClearAllPoints()
+	set.clip:SetPoint('TOPLEFT', art, 'TOPLEFT', 0, 0)
+	set.clip:SetPoint('BOTTOMRIGHT', art, 'BOTTOMRIGHT', 0, 0)
 	for key, divider in pairs({ left = talents.DividerVerticalLeft, right = talents.DividerVerticalRight }) do
 		local texture = set[key]
 		texture:ClearAllPoints()
 		if divider then
-			-- both points on the divider, so the line is on its x (the compact
-			-- layout moves the divider), and as tall as its art
 			texture:SetPoint('TOP', divider, 'TOP', 0, 0)
-			texture:SetPoint('BOTTOM', divider, 'BOTTOM', 0, 0)
-			texture:SetWidth(line)
+			texture:SetSize(line, LINE_LENGTH)
 			texture:Show()
 		else
 			texture:Hide()
@@ -536,10 +650,38 @@ local function StyleLines(talents, active)
 	PaintLines(set)
 end
 
+-- Each tree header's small gold divider (Camelot's ClassTalentTreeHeaderTemplate
+-- .Divider, 60 right of and 20 under the header: joined across the three trees
+-- they make the long glowing line under the headers, past the window's left
+-- edge): faded by alpha (Blizzard never sets it), the headers themselves alone.
+-- The pool hands headers out again on every RefreshTreeHeaders (a post-hook).
+local function StyleHeaders(talents, active)
+	if active then
+		for _, header in ipairs(talents.treeHeaders or {}) do
+			if header.Divider then
+				headerArt[header.Divider] = true
+				Fade(header.Divider, true)
+			end
+		end
+	else
+		for divider in pairs(headerArt) do Fade(divider, false) end
+	end
+end
+
+local function HookTreeHeaders(talents)
+	if hooked[talents] or type(talents.RefreshTreeHeaders) ~= 'function' then return end
+	hooked[talents] = true
+	hooksecurefunc(talents, 'RefreshTreeHeaders', Guarded(function(self)
+		if not Active() or PS:Deferred() then return end
+		StyleHeaders(self, true)
+	end))
+end
+
 local function StyleTalents(talents, active)
 	FadeAll(talents, TALENT_ART, active)
+	StyleHeaders(talents, active)
 	StyleLines(talents, active)
-	StyleTabs(talents.TabSystem, active)
+	StyleTabs(talents.TabSystem, active, true)
 	StyleSearchBox(talents.SearchBox, active)
 	StyleCurrency(talents.ClassCurrencyDisplay, active)
 	StyleButton(talents.ApplyButton, active)
@@ -588,7 +730,10 @@ function PS:Install()
 	if installed or not window then return end
 	installed = true
 	HookTabSystem(window.TabSystem)
-	if window.TalentsFrame then HookTabSystem(window.TalentsFrame.TabSystem) end
+	if window.TalentsFrame then
+		HookTabSystem(window.TalentsFrame.TabSystem, true)
+		HookTreeHeaders(window.TalentsFrame)
+	end
 	if window.SpellBookFrame then HookTabSystem(window.SpellBookFrame.CategoryTabSystem) end
 	self:StyleAll()
 end

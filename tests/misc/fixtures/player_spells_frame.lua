@@ -212,6 +212,11 @@ local function tab_system(parent, key, top)
 		for _, part in ipairs(TAB_HIGHLIGHT) do
 			texture(tab, part, 'HIGHLIGHT', 0.4) -- the XML's alpha
 		end
+		-- the button's own text (ButtonText, parentKey Text); Camelot's spec tabs add
+		-- an inline atlas for the check or the lock (ClassTalentsFrameTabMixin:GetTabText)
+		rawset(tab, 'Text', tab:CreateFontString(nil, 'OVERLAY', 'GameFontNormal'))
+		tab.Text:SetPoint('CENTER', tab, 'CENTER', 0, 0)
+		tab.Text:SetText(text)
 		rawset(tab, 'isSelected', false)
 		rawset(tab, 'isTabOnTop', top or false)
 		rawset(tab, 'tabID', #self.tabs + 1)
@@ -312,7 +317,9 @@ function PSF.build_chrome()
 	rawset(talents, 'specBackgrounds', {})
 	PSF.specart = {}
 	local base = texture(talents, 'Background', 'BACKGROUND')
-	PSF.specart[#PSF.specart + 1] = base
+	-- 'Talents-Background-c60': the dark art of the header above and the footer
+	-- below the spec art (70 above ClassBackground's top, 36 under its bottom)
+	PSF.background = base
 	for i, key in ipairs({ 'ClassBackground', 'OverlayBackgroundRight', 'OverlayBackgroundMid' }) do
 		local t = texture(talents, key, 'BACKGROUND', i == 1 and 1 or 0)
 		talents.specBackgrounds[#talents.specBackgrounds + 1] = t
@@ -340,16 +347,47 @@ function PSF.build_chrome()
 	tab_system(talents, 'TabSystem', true)
 	talents.TabSystem:SetPoint('BOTTOMLEFT', border, 'TOPLEFT', 70, -4)
 
+	-- RefreshTreeHeaders (Camelot ClassTalentsFrameMixin): the pool hands out the
+	-- headers again, each with its small gold Divider (Talents-small-divider-c60,
+	-- BOTTOM 60, -20 of the header) at full alpha. 3 trees.
+	rawset(talents, 'treeHeaders', {})
+	rawset(talents, 'RefreshTreeHeaders', function(self)
+		rawset(self, 'treeHeaders', {})
+		for i = 1, 3 do
+			local header = CreateFrame('Frame', nil, self)
+			header:SetSize(48, 48)
+			header:SetPoint('CENTER', border, 'TOPLEFT', 140 + (i - 1) * 400, -90)
+			local divider = texture(header, 'Divider', 'OVERLAY')
+			divider:SetSize(500, 8)
+			divider:SetPoint('BOTTOM', header, 'BOTTOM', 60, -20)
+			rawset(header, 'Name', header:CreateFontString(nil, 'OVERLAY', 'GameFontNormal'))
+			lock_tree(header)
+			self.treeHeaders[i] = header
+		end
+	end)
+	talents:RefreshTreeHeaders()
+
 	local currency = frame(talents, 'ClassCurrencyDisplay')
 	currency:SetSize(120, 36)
 	currency:SetPoint('TOPRIGHT', border, 'TOPRIGHT', -20, -6)
 	local cb = texture(currency, 'Border', 'ARTWORK')
 	cb:SetSize(64, 36)
 	cb:SetPoint('RIGHT')
-	currency:CreateFontString(nil, 'ARTWORK', 'GameFontNormal')
+	-- Camelot's ClassTalentCurrencyDisplayTemplate: the label's RIGHT is the border's
+	-- LEFT + 60, the amount's container is the border's RIGHT - 4, the amount in
+	-- Game32Font_Shadow2 (the fixture's GameFontNormal stands for it)
+	local label = currency:CreateFontString(nil, 'ARTWORK', 'GameFontNormal')
+	label:SetPoint('RIGHT', cb, 'LEFT', 60, 0)
+	label:SetText('Unspent Talents')
+	rawset(currency, 'UnspentLabel', label)
 	local amount = frame(currency, 'CurrentAmountContainer')
 	amount:SetSize(48, 36)
 	amount:SetPoint('RIGHT', cb, 'RIGHT', -4, 0)
+	local number = amount:CreateFontString(nil, 'ARTWORK', 'GameFontNormal')
+	number:SetPoint('CENTER')
+	number:SetText('1')
+	number:SetTextColor(0.1, 1, 0.1)
+	rawset(amount, 'CurrencyAmount', number)
 
 	local spec = frame(talents, 'ActiveSpec')
 	spec:SetSize(164, 24)
