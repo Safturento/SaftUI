@@ -295,6 +295,21 @@ local function build_stats(opts)
 		fs:SetFont(FONT, 12, '')
 	end
 
+	-- The backdrop frames Spy's OnLoad scripts make on the window, the content and the filter box.
+	local function backdrop_child(owner, key)
+		local child = CreateFrame('Frame', nil, owner, 'BackdropTemplate')
+		child:SetAllPoints()
+		child:SetBackdrop({ bgFile = [[Interface\Tooltips\UI-Tooltip-Background]] })
+		own(owner, key, child)
+	end
+	-- A button's label: the stub Button has no GetFontString, as the game's does.
+	local function label(owner)
+		local fs = owner:CreateFontString(nil, 'OVERLAY', 'GameFontNormal')
+		fs:SetFont(FONT, 12, '')
+		own(owner, 'GetFontString', function() return fs end)
+	end
+	backdrop_child(frame, 'StatsFrame')
+
 	local icon = CreateFrame('Frame', 'SpyStatsFrameIcon', frame)
 	icon:SetSize(80, 80)
 	local close = CreateFrame('Button', 'SpyStatsFrameTopCloseButton', frame)
@@ -318,9 +333,11 @@ local function build_stats(opts)
 		end
 		refresh:SetHighlightTexture([[Interface\Buttons\UI-Panel-Button-Highlight]])
 		refresh:SetNormalFontObject(GameFontNormal)
+		label(refresh)
 
 		local content = CreateFrame('Frame', 'SpyStatsTabFrameTabContentFrame', tabs, 'BackdropTemplate')
 		content:SetAllPoints()
+		backdrop_child(content, 'ContentFrame')
 		local scroll = CreateFrame('ScrollFrame', 'SpyStatsTabFrameTabContentFrameScrollFrame', content)
 		scroll:SetPoint('TOPLEFT', 8, -30)
 		scroll:SetPoint('BOTTOMRIGHT', -26, 8)
@@ -336,10 +353,12 @@ local function build_stats(opts)
 		for _, key in ipairs({ 'Name', 'Level', 'Rank', 'Class', 'Guild', 'Wins', 'Loses', 'Reason' }) do
 			local sort = CreateFrame('Button', 'SpyStatsPlayers' .. key .. 'Sort', headers)
 			sort:SetNormalFontObject(GameFontNormal)
+			label(sort)
 		end
 		for _, key in ipairs({ 'List', 'Time', 'Zone' }) do
 			local sort = CreateFrame('Button', 'SpyStats' .. key .. 'Sort', headers)
 			sort:SetNormalFontObject(GameFontNormal)
+			label(sort)
 		end
 		local list = CreateFrame('Frame', 'SpyStatsPlayerHistoryFrameListFrame', history)
 		for i = 1, 34 do
@@ -357,6 +376,7 @@ local function build_stats(opts)
 		local filter = CreateFrame('EditBox', 'SpyStatsFilterBox', frame)
 		filter:SetSize(150, 26)
 		filter:SetAutoFocus(false)
+		backdrop_child(filter, 'FilterBox')
 		for _, key in ipairs({ 'Kos', 'Realm', 'WinsLoses', 'Reason' }) do
 			local check = CreateFrame('CheckButton', 'SpyStats' .. key .. 'Checkbox', frame)
 			check:SetSize(26, 26)
