@@ -371,7 +371,7 @@ test("a size change reaches the plates through the nameplate's config update", f
 	UF:UpdateConfig('nameplate')
 	eq(size_set(), driver_size(UF, 180, 16), 'the new size')
 	-- On screen (a size times its effective scale): the frame keeps UIParent's
-	-- scale and its plate WorldFrame's (pixels.lua), so their own units differ.
+	-- scale (pixels.lua), and the plate the scale the game gives it.
 	local function onScreen(region)
 		local width, height = region:GetSize()
 		local scale = region:GetEffectiveScale()

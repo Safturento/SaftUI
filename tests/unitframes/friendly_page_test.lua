@@ -52,6 +52,8 @@ local FRIENDLY_BOX_DESC = "Draws friendly nameplates with the Enemy nameplates p
 local FRIENDLY_OFF_TABS = 'Health,Castbar,Auras'
 local ENEMY_OFF_TABS = FRIENDLY_OFF_TABS
 
+local T = load_test_file("lib/theme_helpers.lua")
+
 local function world(client)
 	local st, UF = NP.world(client or 'forever')
 	load_saftui('SaftUI-Core/Libraries/Ace3/AceConfig-3.0/AceConfigRegistry-3.0/AceConfigRegistry-3.0.lua')
@@ -180,7 +182,7 @@ end)
 test('the Enemy page: Nameplates, Threat when solo, its box, Theme, Background, Width and Height; Friendly plates is on the Friendly page', function()
 	local st, UF = world('forever')
 	local root, view = page(UF, 'nameplate')
-	eq(keys(view), 'enable,threat_solo,use_friendly,theme,background,width,height' .. ENEMY_PARTS, 'in order, no centred line with no box checked')
+	eq(keys(view), 'enable,threat_solo,use_friendly,theme,background,width,height,target_color,hover_highlight,hover_color' .. ENEMY_PARTS, 'in order, no centred line with no box checked')
 	local general = root.Unitframes.args.nameplate.args.general.args
 	eq(general.use_friendly.name, ENEMY_BOX, "the box's name")
 	eq(general.use_friendly.desc, ENEMY_BOX_DESC, "the box's desc")
@@ -199,7 +201,7 @@ test("the Friendly page: Friendly plates, its box, Theme, Background, Width and 
 		local root, view = page(UF, 'friendlynameplate')
 		local config = root.Unitframes.args.friendlynameplate
 		local general = config.args.general.args
-		eq(keys(view), 'friendly,use_enemy,theme,background,width,height' .. FRIENDLY_PARTS, client .. ': in order, no centred line with no box checked')
+		eq(keys(view), 'friendly,use_enemy,theme,background,width,height,target_color,hover_highlight,hover_color' .. FRIENDLY_PARTS, client .. ': in order, no centred line with no box checked')
 		for key, name in pairs({ friendly = 'Friendly plates', use_enemy = FRIENDLY_BOX, theme = 'Theme',
 				background = 'Background', width = 'Width', height = 'Height' }) do
 			eq(general[key].name, name, client .. ': ' .. key .. ' is ' .. name)
@@ -252,6 +254,39 @@ test("the Friendly page's settings are the friendly config's, and re-apply the p
 	eq(table.concat(applied, ','), 'friendlynameplate,friendlynameplate,friendlynameplate.Health', 'each re-applies the friendly plates')
 	UF.UpdateConfig = real
 	eq(#take_errors(), 0, 'no error')
+end)
+
+test("Target color, Highlight on hover and Hover color are each page's own, and re-apply its plates", function()
+	for _, pick in ipairs({ 'nameplate', 'friendlynameplate' }) do
+		local st, UF = world('forever')
+		UF:SpawnNameplates()
+		local P = UF:GetProfileConfig()
+		local other = pick == 'nameplate' and 'friendlynameplate' or 'nameplate'
+		local root, view = page(UF, pick)
+		eq(row_for(view, 'target_color').name, 'Target color', pick .. ': Target color')
+		eq(row_for(view, 'hover_highlight').name, 'Highlight on hover', pick .. ': Highlight on hover')
+		eq(row_for(view, 'hover_color').name, 'Hover color', pick .. ': Hover color')
+		eq(T.text(SaftUI.OptionsModel.Get(root, row_for(view, 'target_color'))), '1.00,1.00,1.00', pick .. ': white by default')
+		local applied = {}
+		local real = UF.UpdateConfig
+		UF.UpdateConfig = function(self, unit, element)
+			applied[#applied + 1] = tostring(unit)
+			return real(self, unit, element)
+		end
+		SaftUI.OptionsModel.Set(root, row_for(view, 'target_color'), 1, 0, 0)
+		SaftUI.OptionsModel.Set(root, row_for(view, 'hover_color'), 0, 1, 0)
+		UF.UpdateConfig = real
+		eq(T.text(P[pick].target_color.r, P[pick].target_color.g, P[pick].target_color.b), '1.00,0.00,0.00', pick .. ': target saved')
+		eq(T.text(P[pick].hover_color.r, P[pick].hover_color.g, P[pick].hover_color.b), '0.00,1.00,0.00', pick .. ': hover saved')
+		eq(T.text(P[other].target_color.r, P[other].target_color.g, P[other].target_color.b), '1.00,1.00,1.00', pick .. ": the other page's untouched")
+		eq(table.concat(applied, ','), pick .. ',' .. pick, pick .. ': each re-applies its plates')
+		-- Hover off: its colour can't be changed.
+		check(set(UF, pick, 'hover_highlight', false), pick .. ': hover off')
+		eq(P[pick].hover_highlight, false, pick .. ': saved')
+		_, view = page(UF, pick)
+		eq(row_for(view, 'hover_color').disabled, true, pick .. ': Hover color disabled')
+		eq(#take_errors(), 0, pick .. ': no error')
+	end
 end)
 
 test("Friendly plates reads and writes nameplate.friendly and sets the game's friendly plates", function()
@@ -319,7 +354,7 @@ test("checking a box: the page's tabs stay where they are, disabled but General 
 
 		-- The Enemy page shows everything, its box disabled, with no line.
 		root, view = page(UF, 'nameplate')
-		eq(keys(view), 'enable,threat_solo,use_friendly,theme,background,width,height' .. ENEMY_PARTS, client .. ': the Enemy page whole, no line')
+		eq(keys(view), 'enable,threat_solo,use_friendly,theme,background,width,height,target_color,hover_highlight,hover_color' .. ENEMY_PARTS, client .. ': the Enemy page whole, no line')
 		eq(tabs(view), ENEMY_TABS, client .. ': and its tabs')
 		eq(disabled_tabs(view), '', client .. ': none disabled')
 		check(set(UF, 'friendlynameplate', 'use_enemy', false), client .. ': unchecked')
@@ -352,7 +387,7 @@ test("checking a box: the page's tabs stay where they are, disabled but General 
 
 		-- The Friendly page shows everything, its box disabled.
 		root, view = page(UF, 'friendlynameplate')
-		eq(keys(view), 'friendly,use_enemy,theme,background,width,height' .. FRIENDLY_PARTS, client .. ': the Friendly page whole, no line')
+		eq(keys(view), 'friendly,use_enemy,theme,background,width,height,target_color,hover_highlight,hover_color' .. FRIENDLY_PARTS, client .. ': the Friendly page whole, no line')
 		eq(disabled_tabs(view), '', client .. ': its tabs enabled')
 		check(set(UF, 'nameplate', 'use_friendly', false), client .. ': the Enemy box unchecked')
 		eq(view_of(UF, enemyChosen).tab, 'Castbar', client .. ': unchecked: the Castbar tab chosen before opens')
@@ -444,7 +479,7 @@ test('unchecking brings the settings back as they were', function()
 	eq(UF:GetProfileConfig().friendlynameplate.theme, 'thin', 'the hidden settings are kept')
 	check(set(UF, 'friendlynameplate', 'use_enemy', false), 'and unchecked')
 	local _, view = page(UF, 'friendlynameplate')
-	eq(keys(view), 'friendly,use_enemy,theme,background,width,height' .. FRIENDLY_PARTS, 'General whole again')
+	eq(keys(view), 'friendly,use_enemy,theme,background,width,height,target_color,hover_highlight,hover_color' .. FRIENDLY_PARTS, 'General whole again')
 	eq(tabs(view), FRIENDLY_TABS, 'and the tabs')
 	eq(disabled_tabs(view), '', 'every one enabled')
 	eq(get(UF, 'friendlynameplate', 'theme'), 'thin', 'Theme as it was')
@@ -455,7 +490,7 @@ test('unchecking brings the settings back as they were', function()
 	eq(UF:GetProfileConfig().nameplate.height, 24, 'the hidden settings are kept')
 	check(set(UF, 'nameplate', 'use_friendly', false), 'and unchecked')
 	_, view = page(UF, 'nameplate')
-	eq(keys(view), 'enable,threat_solo,use_friendly,theme,background,width,height' .. ENEMY_PARTS, 'General whole again')
+	eq(keys(view), 'enable,threat_solo,use_friendly,theme,background,width,height,target_color,hover_highlight,hover_color' .. ENEMY_PARTS, 'General whole again')
 	eq(tabs(view), ENEMY_TABS, 'and the tabs')
 	eq(disabled_tabs(view), '', 'every one enabled')
 	eq(get(UF, 'nameplate', 'theme'), 'thick', 'Theme as it was')
@@ -605,7 +640,7 @@ test("with Use enemy nameplates' settings checked the Parts section hides, and c
 		local root, view = page(UF, 'friendlynameplate')
 		local parts = root.Unitframes.args.friendlynameplate.args.general.args.parts
 		eq(type(parts.hidden), 'function', client .. ': the section has a hidden rule, none of its rows kept')
-		eq(keys(view), 'friendly,use_enemy,theme,background,width,height' .. FRIENDLY_PARTS, client .. ': drawn unchecked')
+		eq(keys(view), 'friendly,use_enemy,theme,background,width,height,target_color,hover_highlight,hover_color' .. FRIENDLY_PARTS, client .. ': drawn unchecked')
 
 		check(set(UF, 'friendlynameplate', 'use_enemy', true), client .. ': checked')
 		_, view = page(UF, 'friendlynameplate')
@@ -619,7 +654,7 @@ test("with Use enemy nameplates' settings checked the Parts section hides, and c
 
 		check(set(UF, 'friendlynameplate', 'use_enemy', false), client .. ': unchecked')
 		_, view = page(UF, 'friendlynameplate')
-		eq(keys(view), 'friendly,use_enemy,theme,background,width,height' .. FRIENDLY_PARTS, client .. ': every row back')
+		eq(keys(view), 'friendly,use_enemy,theme,background,width,height,target_color,hover_highlight,hover_color' .. FRIENDLY_PARTS, client .. ': every row back')
 	end
 end)
 

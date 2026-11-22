@@ -467,10 +467,10 @@ test('a secret scale leaves the frame as it is, and the size as the config has i
 	restore()
 	check(ok, tostring(err))
 
-	-- A zero scale (WorldFrame's) gives the config's too.
-	WorldFrame:SetScale(0)
-	eq(driver(UF, 200, 20), '200x20', 'a zero scale')
-	WorldFrame:SetScale(1)
+	-- A zero scale (UIParent's) gives the config's too, an odd size left odd.
+	UIParent.GetEffectiveScale = function() return 0 end
+	eq(driver(UF, 201, 21), '201x21', 'a zero scale')
+	UIParent.GetEffectiveScale = nil
 
 	-- Readable again, the next scale change pins it.
 	start_uiscale({ mode = 'auto', size = 1 })
@@ -557,8 +557,10 @@ test("the plate size is the config's in UIParent pixels", function()
 	eq(UIParent:GetEffectiveScale(), 768 / stub.screen_height, "UIParent's: one unit a pixel")
 	local frame = enemy('nameplate1')
 	local plate = C_NamePlate.GetNamePlateForUnit('nameplate1')
-	check(near(stub.nameplate_size[1], 200 * 768 / stub.screen_height) and near(stub.nameplate_size[2], 20 * 768 / stub.screen_height),
-		'the size in WorldFrame units: ' .. size())
+	-- In UI units, never WorldFrame's: the game reads the size as uiUnit, and a
+	-- size in WorldFrame's units put the plates off centre and their click
+	-- area off the drawn bar (seen in game 2026-11-19).
+	eq(size(), '200x20', 'the size in UI units')
 
 	-- In physical pixels: a unit times its effective scale is 768ths of the
 	-- screen's height.
@@ -585,15 +587,15 @@ test("the plate size is the config's in UIParent pixels", function()
 	WorldFrame:SetScale(1)
 end)
 
--- The size the driver was given, in physical pixels: WorldFrame's units times
--- its scale, in 768ths of the screen's height.
+-- The size the driver was given, in physical pixels: UI units (the game's
+-- uiUnit) times UIParent's scale, in 768ths of the screen's height.
 local function driver_pixels(UF, width, height)
 	local w, h = UF.PlateDriverSize(width, height)
-	local per = WorldFrame:GetEffectiveScale() * stub.screen_height / 768
+	local per = UIParent:GetEffectiveScale() * stub.screen_height / 768
 	return w * per, h * per
 end
 
-test("the driver's size: 200 x 20 is 150 x 16 pixels at 0.75 and 310 x 32 at 1.55; at k 1 today's floats, rawequal", function()
+test("the driver's size: 200 x 20 is 150 x 16 pixels at 0.75 and 310 x 32 at 1.55; at k 1 the config's, rawequal", function()
 	local st, UF = world('forever')
 	local function pixels(k, width, height)
 		use_scale(k)
@@ -603,18 +605,17 @@ test("the driver's size: 200 x 20 is 150 x 16 pixels at 0.75 and 310 x 32 at 1.5
 	eq(pixels(0.75, 200, 20), '150.0000 x 16.0000', '0.75: the 15 pixels of a 20 high bar made 16')
 	eq(pixels(1.55, 200, 20), '310.0000 x 32.0000', '1.55')
 	eq(pixels(1.25, 200, 20), '250.0000 x 26.0000', '1.25: 25 made 26 (a half goes up)')
-	-- At k = 1 it is the config's size times the ratio, bit for bit.
+	-- At k = 1 it is the config's size, bit for bit (an even one).
 	use_scale(1)
-	local ratio = UIParent:GetEffectiveScale() / WorldFrame:GetEffectiveScale()
 	for _, size in ipairs({ { 200, 20 }, { 240, 24 }, { 160, 14 }, { 180, 18 }, { 128, 12 }, { 2, 2 } }) do
 		local w, h = UF.PlateDriverSize(size[1], size[2])
-		check(rawequal(w, size[1] * ratio) and rawequal(h, size[2] * ratio), size[1] .. ' x ' .. size[2] .. ': the config times the ratio, to the bit')
+		check(rawequal(w, size[1]) and rawequal(h, size[2]), size[1] .. ' x ' .. size[2] .. ': the config, to the bit')
 	end
-	-- WorldFrame at another scale: the pixels are the same.
+	-- WorldFrame at another scale: the size and the pixels are the same.
 	use_scale(0.75)
 	WorldFrame:SetScale(1.25)
 	local w, h = driver_pixels(UF, 200, 20)
-	eq(('%.4f x %.4f'):format(w, h), '150.0000 x 16.0000', "WorldFrame's own scale is turned back")
+	eq(('%.4f x %.4f'):format(w, h), '150.0000 x 16.0000', "WorldFrame's own scale changes nothing")
 	WorldFrame:SetScale(1)
 	eq(#take_errors(), 0, 'no errors')
 end)

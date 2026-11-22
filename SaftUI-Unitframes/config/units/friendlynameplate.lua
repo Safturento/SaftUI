@@ -21,6 +21,12 @@ st.defaults.unitframes.profiles["**"].friendlynameplate = {
     -- Draw enemy plates from this page too: Enemy nameplates' counterpart box
     -- is use_friendly. Never both (the page keeps one off).
     use_enemy = false,
+    -- The plates' borders (nameplates/target.lua): the target's colour, and
+    -- the colour of the plate under the cursor while hover_highlight is on
+    -- (the hovered target keeps the target's).
+    target_color = { r = 1, g = 1, b = 1 },
+    hover_highlight = true,
+    hover_color = { r = 0.4, g = 0.7, b = 1 },
     -- The subtext under the name (nameplates/subtext.lua): an NPC's title or a
     -- player's guild, grey, centred 2 under the name. Enable is always true and
     -- not an option on the page (UF:ElementWanted needs it): the two boxes

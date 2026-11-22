@@ -2,19 +2,46 @@ local st = SaftUI
 local UF = st:GetModule('Unitframes')
 
 --[[
-	The target's border on its nameplate: a bright line round the current
-	target's health bar, so it stands out among the plates. Under Thick and Thin
-	it's a white line (the border st:SetBorderColor colours); under the Blizzard
-	theme it's Blizzard's own target art (the control 'nameplatetarget',
-	SaftUI-Core/themeart_data.lua), drawn round the bar on a frame of SaftUI's.
+	The target's border on its nameplate, and the hovered plate's: a coloured
+	line round the current target's health bar, so it stands out among the
+	plates, and another round the plate under the cursor, so it's clear which
+	unit a click will target. Under Thick and Thin it's the border st:SetBorderColor
+	colours, in the plate config's target_color (white by default) or
+	hover_color; under the Blizzard theme it's Blizzard's own target art (the
+	control 'nameplatetarget', SaftUI-Core/themeart_data.lua), drawn round the
+	bar on a frame of SaftUI's, tinted by the same colours.
 
-	The target's plate is found by its frame (C_NamePlate.GetNamePlateForUnit),
-	never by UnitIsUnit, which the game may answer with a secret value for a
-	unit on a plate.
+	The hovered target keeps the target's look: hovering it changes nothing a
+	click would. Hover can be turned off (hover_highlight). Each plate reads
+	its own config, Enemy or Friendly nameplates' (frame.base_unit).
+
+	The target's and the hovered plate are found by their frames
+	(C_NamePlate.GetNamePlateForUnit of 'target' and 'mouseover'), never by
+	UnitIsUnit, which the game may answer with a secret value for a unit on a
+	plate. UPDATE_MOUSEOVER_UNIT says when the cursor comes onto a unit, but
+	nothing says when it leaves, so while a plate is hovered a ticker looks
+	again every HOVER_POLL seconds, and stops once nothing is.
 ]]
 
--- The border's colour on the target under Thick and Thin.
-local WHITE = { 1, 1, 1, 1 }
+-- The colours when a plate's config has none.
+local WHITE = { r = 1, g = 1, b = 1 }
+local HOVER = { r = 0.4, g = 0.7, b = 1 }
+
+-- How often, in seconds, the hovered plate is looked up while one is.
+local HOVER_POLL = 0.05
+
+-- The config a plate's frame is drawn from (Enemy or Friendly nameplates'),
+-- or nil before it has one.
+local function PlateConfig(frame)
+	local key = frame.base_unit
+	return key and UF:GetProfileConfig()[key] or nil
+end
+
+-- r, g, b of a config colour, else of fallback.
+local function RGB(color, fallback)
+	color = type(color) == 'table' and color or fallback
+	return color.r or 1, color.g or 1, color.b or 1
+end
 
 -- Whether a plate's health bar carries the border: drawn, and shown by its
 -- config. A bar its config has off (a friend's name-only plate, nameplates.lua)
@@ -43,6 +70,14 @@ end
 function UF:IsPlateTarget(frame)
 	local plate = C_NamePlate.GetNamePlateForUnit('target')
 	return plate ~= nil and frame:GetParent() == plate
+end
+
+-- The plate under the cursor, as last looked up: C_NamePlate's frame, or nil.
+local hovered
+
+-- Whether a plate's frame is on the plate under the cursor.
+function UF:IsPlateHovered(frame)
+	return hovered ~= nil and frame:GetParent() == hovered
 end
 
 -- The frame holding a plate's target art: a child of the plate's frame, two
@@ -108,15 +143,27 @@ function UF:UpdatePlateTarget(frame)
 		return
 	end
 
-	local target = self:IsPlateTarget(frame)
+	-- The look: the target's, else the hovered plate's (while hover is on),
+	-- else none.
+	local config = PlateConfig(frame)
+	local r, g, b
+	if self:IsPlateTarget(frame) then
+		r, g, b = RGB(config and config.target_color, WHITE)
+	elseif self:IsPlateHovered(frame) and not (config and config.hover_highlight == false) then
+		r, g, b = RGB(config and config.hover_color, HOVER)
+	end
+
 	if theme == 'blizzard' then
 		st:SetBorderColor(border)
-		if target then
+		if r then
 			local control = st.ThemeArt.Control('nameplatetarget')
 			local texture = art.texture
 			local left, top, right, bottom = unpack(control.offsets)
 			texture:SetAtlas(control.atlas)
-			texture:SetVertexColor(1, 1, 1, 1)
+			-- White keeps Blizzard's own art; another colour tints it, on its
+			-- grey so the atlas's own hue (Forever's is yellow) doesn't mix in.
+			texture:SetDesaturated(not (r == 1 and g == 1 and b == 1))
+			texture:SetVertexColor(r, g, b, 1)
 			texture:ClearAllPoints()
 			texture:SetPoint('TOPLEFT', source, 'TOPLEFT', left, top)
 			texture:SetPoint('BOTTOMRIGHT', source, 'BOTTOMRIGHT', right, bottom)
@@ -125,8 +172,8 @@ function UF:UpdatePlateTarget(frame)
 			art:Hide()
 		end
 	else
-		if target then
-			st:SetBorderColor(border, unpack(WHITE))
+		if r then
+			st:SetBorderColor(border, r, g, b, 1)
 		else
 			st:SetBorderColor(border)
 		end
@@ -137,9 +184,52 @@ end
 UF:RegisterPlateCallback('added', function(frame) UF:UpdatePlateTarget(frame) end)
 UF:RegisterPlateCallback('updated', function(frame) UF:UpdatePlateTarget(frame) end)
 
--- The target changed: every plate is checked again.
+-- Redraws the plates on the two given plates (C_NamePlate's frames).
+local function UpdatePlatesOn(one, two)
+	UF:ForEachPlate(function(frame)
+		local plate = frame:GetParent()
+		if plate ~= nil and (plate == one or plate == two) then UF:UpdatePlateTarget(frame) end
+	end)
+end
+
+-- Looks the hovered plate up again; when it changed, redraws the plate it
+-- left and the one it's on. The ticker runs only while a plate is hovered.
+-- Whether either nameplate page has Highlight on hover on: off on both, the
+-- ticker never runs.
+local function HoverWanted()
+	local profile = UF:GetProfileConfig()
+	for _, key in ipairs({ 'nameplate', 'friendlynameplate' }) do
+		local config = profile[key]
+		if config and config.hover_highlight ~= false then return true end
+	end
+	return false
+end
+
+local ticker
+local function CheckHover()
+	local plate = HoverWanted() and C_NamePlate.GetNamePlateForUnit('mouseover') or nil
+	if plate ~= hovered then
+		local old = hovered
+		hovered = plate
+		UpdatePlatesOn(old, plate)
+	end
+	if hovered and not ticker then
+		ticker = C_Timer.NewTicker(HOVER_POLL, CheckHover)
+	elseif not hovered and ticker then
+		ticker:Cancel()
+		ticker = nil
+	end
+end
+
+-- The target changed: every plate is checked again. The cursor came onto a
+-- unit: the hovered plate is looked up.
 local events = CreateFrame('Frame')
 events:RegisterEvent('PLAYER_TARGET_CHANGED')
-events:SetScript('OnEvent', function()
-	UF:ForEachPlate(function(frame) UF:UpdatePlateTarget(frame) end)
+events:RegisterEvent('UPDATE_MOUSEOVER_UNIT')
+events:SetScript('OnEvent', function(_, event)
+	if event == 'UPDATE_MOUSEOVER_UNIT' then
+		CheckHover()
+	else
+		UF:ForEachPlate(function(frame) UF:UpdatePlateTarget(frame) end)
+	end
 end)

@@ -612,6 +612,9 @@ end
 --     last set (every plate takes it), nil until one is set.
 --   stub.nameplate_target: the unit token whose plate is the target's
 --     (C_NamePlate.GetNamePlateForUnit('target')), nil for none.
+--   stub.nameplate_mouseover: the same for the unit under the cursor
+--     ('mouseover'); set it, then fire UPDATE_MOUSEOVER_UNIT. The game fires
+--     nothing when the cursor leaves a unit.
 --   stub.add_nameplate(unit, opts) -> plate: the game shows unit ('nameplateN')
 --     on a plate and fires NAME_PLATE_UNIT_ADDED. The plate is a new one,
 --     numbered after the last, unless opts.plate = n hands it NamePlate<n>
@@ -684,6 +687,7 @@ end
 -- centre), and units other than nameplateN and the target.
 stub.nameplate_size = nil
 stub.nameplate_target = nil
+stub.nameplate_mouseover = nil
 stub.on_nameplate_frame = nil
 
 do
@@ -693,11 +697,15 @@ do
 	local plates = {}
 	local byUnit = {}  -- the plate showing each unit token
 
-	-- The plate record for a unit token: 'target' is stub.nameplate_target's.
+	-- The plate record for a unit token: 'target' is stub.nameplate_target's,
+	-- 'mouseover' stub.nameplate_mouseover's.
 	local function record_for(unit)
 		unit = unit:lower()
 		if unit == 'target' then
 			unit = stub.nameplate_target
+			if not unit then return nil end
+		elseif unit == 'mouseover' then
+			unit = stub.nameplate_mouseover
 			if not unit then return nil end
 		end
 		return byUnit[unit]
@@ -784,9 +792,27 @@ do
 		}
 	end
 
+	-- A plate's units are UI units: the game takes its size as uiUnit
+	-- (C_NamePlate.SetNamePlateSize) and draws the plate at UIParent's
+	-- effective scale, whatever WorldFrame's (seen in game 2026-11-19: a size
+	-- of 200 x 20 gives a plate whose GetWidth and GetHeight are 200 and 20,
+	-- as are those of SaftUI's frame on it, pinned to UIParent's scale). So
+	-- each plate ignores WorldFrame's scale and takes UIParent's, taken again
+	-- when the plate is made and whenever a size is set (SaftUI sets it again
+	-- after every scale change). A secret scale leaves the plate's as it is.
+	local function plate_scale(frame)
+		local scale = UIParent:GetEffectiveScale()
+		if issecretvalue(scale) then return end
+		frame:SetIgnoreParentScale(true)
+		frame:SetScale(scale)
+	end
+
 	local function set_size(width, height)
 		stub.nameplate_size = { width, height }
-		for _, plate in pairs(plates) do plate.frame:SetSize(width, height) end
+		for _, plate in pairs(plates) do
+			plate_scale(plate.frame)
+			plate.frame:SetSize(width, height)
+		end
 	end
 
 	C_NamePlate = {}
@@ -861,6 +887,7 @@ do
 			-- Anchor restricted, as the game's plates are (widgets.lua):
 			-- SaftUI can't measure the plate or anything anchored to it.
 			stub.restrict_anchors(frame)
+			plate_scale(frame)
 			if stub.nameplate_size then frame:SetSize(stub.nameplate_size[1], stub.nameplate_size[2]) end
 			frame:Hide()
 			record = { frame = frame, hit_points = {} }

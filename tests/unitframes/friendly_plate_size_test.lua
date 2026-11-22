@@ -34,9 +34,9 @@
 -- The world is nameplate_world.lua's (see its top): real unit frame files over
 -- oUF's stand-in (fixtures/ouf.lua). The plates, their size and their click
 -- area are tests/wow/game.lua's. A plate's frame is pinned to UIParent's scale
--- (pixels.lua) and its plate is the WorldFrame's child, so rects are compared
--- in the screen's units (screen, below), and a frame's own size is in
--- UIParent's units, where one is a pixel.
+-- (pixels.lua) and its plate is the WorldFrame's child at the scale the game
+-- gives it, so rects are compared in the screen's units (screen, below), and a
+-- frame's own size is in UIParent's units, where one is a pixel.
 local NP = load_test_file('unitframes/nameplate_world.lua')
 
 local CLIENTS = { 'forever', 'retail' }

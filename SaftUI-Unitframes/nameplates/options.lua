@@ -159,6 +159,44 @@ local function PlateBox(unit, order, name, desc)
 	return box, sourced
 end
 
+-- The border colour options of a nameplate page's General tab (unit, its
+-- config key), for nameplates/target.lua: the target's colour, whether the
+-- plate under the cursor is marked, and its colour. A colour is saved as
+-- r, g and b in its table in the page's config.
+local function BorderColorOptions(unit, args)
+	local G = st.Config.generators
+	local function Config() return UF:GetProfileConfig()[unit] end
+	local function Color(order, key, name, desc)
+		return {
+			order = order,
+			name = name,
+			desc = desc,
+			type = 'color',
+			size = 'small',
+			saved = UF.SavedAt(unit, key),
+			get = function()
+				local color = Config()[key]
+				return color.r, color.g, color.b
+			end,
+			set = function(_, r, g, b)
+				-- Written into the table AceDB made, never a new one: a unit's
+				-- config has ['**'] defaults, which a new table wouldn't have.
+				local color = Config()[key]
+				color.r, color.g, color.b = r, g, b
+				UF:UpdateConfig(unit)
+			end,
+		}
+	end
+	args.target_color = Color(7, 'target_color', 'Target color',
+		"The border round your target's nameplate. White keeps the Blizzard theme's own target art.")
+	args.hover_highlight = G.toggle(8, 'Highlight on hover',
+		"Colors the border of the nameplate under your cursor, so you can see which unit a click will target. Your target keeps its own color.", 'small')
+	args.hover_color = Color(9, 'hover_color', 'Hover color', "The border round the nameplate under your cursor.")
+	args.hover_color.disabled = function()
+		return OtherNameplateAddon() ~= nil or not Config().hover_highlight
+	end
+end
+
 --[[
 	The Enemy nameplates page's General tab (the nameplate unit, nameplates/):
 	the plates' own settings, read from the profile at call time. There's no
@@ -201,6 +239,7 @@ local function NameplateGeneral()
 		width = G.width(5, "Enemy nameplates' width: the health bar and the area you click. The game stacks every nameplate at this size."),
 		height = G.height(6, "Enemy nameplates' height: the health bar and the area you click. The game stacks every nameplate at this size."),
 	}
+	BorderColorOptions('nameplate', args)
 	-- Width and Height have a get that hands on to the group's, so its saved reaches them.
 	HideWhileChecked('nameplate', args, PLATE_PAGES.nameplate.keptGeneral)
 
@@ -252,6 +291,7 @@ local function FriendlyNameplateGeneral()
 		width = G.width(5, "Friendly nameplates' width, centred on the plate: the area you click. While enemy nameplates use this page, the game stacks every nameplate at this size."),
 		height = G.height(6, "Friendly nameplates' height, centred on the plate: the area you click. While enemy nameplates use this page, the game stacks every nameplate at this size."),
 	}
+	BorderColorOptions('friendlynameplate', args)
 	HideWhileChecked('friendlynameplate', args, PLATE_PAGES.friendlynameplate.keptGeneral)
 
 	return {

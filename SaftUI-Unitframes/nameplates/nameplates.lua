@@ -442,29 +442,32 @@ local function OnPlateEvent(_, event, unit)
 end
 
 -- The size handed to oUF's driver for the config's width and height. The
--- config's size is in UIParent's units, and SaftUI's frame on each plate is
--- pinned to UIParent's scale (pixels.lua). The plates (NamePlate1, ...) are
--- WorldFrame's children and take their size in its units, so the size is
--- counted in UIParent's pixels, made a whole, even number of them on each axis
--- (the plates' rule, config/units/nameplate.lua, which holds in units only at a
--- scale of 1: a 20 high bar is 15 pixels at 0.75), and turned into those units:
--- the plate, where the game takes the clicks, and SaftUI's frame covering it
--- are then that many pixels. At a scale of 1 it is the config's size times the
--- ratio, as it was. A secret or zero scale, or an unknown pixel, gives the
--- config's size as it is.
+-- game takes a plate's size in UI units (C_NamePlate.SetNamePlateSize's
+-- arguments are uiUnit, NamePlateDocumentation.lua; Blizzard passes the sizes
+-- its own plates are drawn at), which are UIParent's, the units the config's
+-- size is in. So the size is the config's, counted in UIParent's pixels and
+-- made a whole, even number of them on each axis (the plates' rule,
+-- config/units/nameplate.lua, which holds in units only at a scale of 1: a 20
+-- high bar is 15 pixels at 0.75), and handed over in UIParent's units: the
+-- plate, where the game takes the clicks, and SaftUI's frame covering it,
+-- pinned to UIParent's scale (pixels.lua), are then that many pixels. It is
+-- never turned into WorldFrame's units: the game places a plate and clamps its
+-- click area by the size it was given read as UI units, so a size in
+-- WorldFrame's (half as big at 1440p, where UIParent's scale is 768/1440 of
+-- WorldFrame's) put each plate off its unit's centre and its click area off
+-- the drawn bar, and no click on a plate targeted (seen in game 2026-11-19).
+-- At a scale of 1 it is the config's size. A secret or zero scale, or an
+-- unknown pixel, gives the config's size as it is.
 function UF.PlateDriverSize(width, height)
-	local ui, world = UIParent:GetEffectiveScale(), WorldFrame:GetEffectiveScale()
-	if issecretvalue(ui) or issecretvalue(world) or ui == 0 or world == 0 then
-		return width, height
-	end
-	local pixel = st:GetPixelSize(UIParent)
+	local scale = UIParent:GetEffectiveScale()
+	if issecretvalue(scale) or scale == 0 then return width, height end
+	local pixel = st:PixelFromScale(scale)
 	if not pixel then return width, height end
-	local ratio = ui / world
 	-- 2 * floor(n / 2 + 0.5), the count first trimmed to 1e-4, as Task 1's pixel
 	-- helpers trim a length (PixelsToLength), so a count that is 15 less float
 	-- noise (20 / 1.3333) is 15 and not 14.99999, and a tie settles one way.
 	local function Even(n) return 2 * math.floor(math.floor(n * 10000 + 0.5) / 10000 / 2 + 0.5) end
-	return Even(width / pixel) * pixel * ratio, Even(height / pixel) * pixel * ratio
+	return Even(width / pixel) * pixel, Even(height / pixel) * pixel
 end
 
 -- Sets every plate's size through oUF's driver, from the enemy look's config:
