@@ -346,6 +346,8 @@ function TP:BuildPanel()
 	w.insert:Hide()
 	w.drawDrag = function() TP:DrawDrag() end
 	self.dragWidget = w
+	-- a hide (the window closing, an inspect) ends a held drag with no move
+	panel:HookScript('OnHide', function() TP.DragParts.StopDrag(w) end)
 
 	return panel
 end
@@ -522,6 +524,10 @@ function TP:PaintColors()
 		header.dot:SetColorTexture(tint[1], tint[2], tint[3])
 		header.name:SetTextColor(normal:GetRGB())
 		header.range:SetTextColor(muted:GetRGB())
+		for _, dot in ipairs(header.handle.dots) do dot:SetColorTexture(muted:GetRGB()) end
+	end
+	for _, entry in ipairs(panel.rows) do
+		for _, dot in ipairs(entry.frame.handle.dots) do dot:SetColorTexture(muted:GetRGB()) end
 	end
 	local w = self.dragWidget
 	if w and w.insert:IsShown() then w.insert:SetColorTexture(st:Color('accent'):GetRGB()) end

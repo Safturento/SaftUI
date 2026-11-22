@@ -310,3 +310,27 @@ test('moving the selected step moves the selection with it', function()
 	eq(TP.selected, 4)
 	clean()
 end)
+
+test('a drag held while the panel hides ends with no move, and a new drag works', function()
+	world()
+	local plan = plan20()
+	open()
+	local before = table.concat(plan.steps, ',')
+	stub.mouse_buttons.LeftButton = true
+	stub.fire_script(entry(1).handle, 'OnMouseDown', 'LeftButton')
+	local w = TP.dragWidget
+	check(w.drag ~= nil, 'a drag starts')
+	PSF.talents:Hide()
+	check(w.drag == nil, 'the hide ended it')
+	check(not w.ghost:IsShown(), 'the ghost is gone')
+	PSF.talents:Show(); stub.run_timers()
+	local l, b, width, h = entry(5):GetRect()
+	local scale = entry(5):GetEffectiveScale()
+	stub.cursor_x, stub.cursor_y = (l + width / 2) * scale, (b + 0.25 * h) * scale
+	stub.mouse_buttons.LeftButton = nil
+	stub.fire_script(entry(1).handle, 'OnMouseUp', 'LeftButton')
+	eq(table.concat(plan.steps, ','), before, 'the release moves nothing')
+	drag(1, entry(6), true) -- the first five steps are one talent, so go past them
+	check(table.concat(plan.steps, ',') ~= before, 'a new drag works')
+	clean()
+end)
