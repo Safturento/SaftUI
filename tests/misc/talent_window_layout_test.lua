@@ -146,16 +146,15 @@ test('the horizontal dividers are cut off at the narrowed window\'s edges', func
 	near(select(1, left:GetTexCoord()), 0.1 + 0.8 * (210 / 600))
 end)
 
-test('a divider already narrower than the half window is left alone', function()
+test('a narrower divider loses the same 210, in proportion', function()
 	local window, frame = make_frame()
 	frame.DividerHorizontalLeft:SetWidth(300)
-	frame.DividerHorizontalRight:SetWidth(300)
 	st.config.profile.talentwindow.compact = true
 	TW.frame = nil
 	TW:Install()
 	frame:LoadTalentTreeInternal()
-	eq(frame.DividerHorizontalLeft:GetWidth(), 300)
-	eq(select(1, frame.DividerHorizontalLeft:GetTexCoord()), 0.1)
+	eq(frame.DividerHorizontalLeft:GetWidth(), 90)
+	near(select(1, frame.DividerHorizontalLeft:GetTexCoord()), 0.1 + 0.8 * (210 / 300))
 end)
 
 test('Revert puts the horizontal dividers back', function()

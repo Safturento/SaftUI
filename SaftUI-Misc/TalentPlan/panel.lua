@@ -120,8 +120,8 @@ end
 -- to PlayerSpellsFrame's close button by TP:PlaceExpand.
 local EXPAND_SIZE = 22
 
-local function NewExpandButton()
-	local button = st:CreateButton('SaftUI_TalentPlanExpand', UIParent, nil, 'theme', 'theme')
+local function NewExpandButton(parent)
+	local button = st:CreateButton('TalentPlanExpand', parent, nil, 'theme', 'theme')
 	button:SetSize(EXPAND_SIZE, EXPAND_SIZE)
 	button.icon = button:CreateTexture(nil, 'OVERLAY')
 	button.icon:SetTexture(st.icons.panelLeftOpen)
@@ -137,6 +137,9 @@ local function NewExpandButton()
 		GameTooltip:Show()
 	end)
 	button:SetScript('OnLeave', function(self) HideTip(self) end)
+	-- a box button already has its states (a glyph's would be a second set), so the
+	-- icon is only tinted Muted, as the arrow's rest, and again by PaintColors
+	button.icon:SetVertexColor(Muted())
 	button:Hide()
 	return button
 end
@@ -298,7 +301,8 @@ function TP:BuildPanel()
 	panel.headers = {} -- the pooled phase headers, by phase
 	panel.entries = {} -- { frame, kind, index | phase } in display order, for the drag
 	self.panel = panel
-	self.expandButton = self.expandButton or NewExpandButton()
+	-- a child of TalentsFrame like the panel: it scales with the window and hides with the tab
+	self.expandButton = self.expandButton or NewExpandButton(talents)
 
 	-- the title strip
 	local title = st:CreateFrame('Frame', nil, panel)
@@ -429,8 +433,7 @@ function TP:PlaceExpand()
 	if close then
 		button:ClearAllPoints()
 		button:SetPoint('RIGHT', close, 'LEFT', -2, 0)
-		button:SetFrameStrata(window:GetFrameStrata())
-		button:SetFrameLevel(window:GetFrameLevel() + 5600)
+		button:SetFrameLevel(close:GetFrameLevel() + 1)
 	end
 	button:SetShown(close and self:IsCollapsed() and self.panel and self:ShouldShow() and true or false)
 end
@@ -456,7 +459,10 @@ function TP:SetCollapsed(on)
 	if on then self:SetPlanning(false) end
 	if self.panel then
 		self:ApplyCollapsed()
-		if not on then self:Refresh() end
+		if not on then
+			self.fresh = true -- expanding scrolls to the waiting step
+			self:Refresh()
+		end
 	end
 end
 
@@ -580,6 +586,7 @@ function TP:PaintColors()
 	panel.empty:SetTextColor(muted:GetRGB())
 	panel.line:SetColorTexture(st:Color('accent'):GetRGB())
 	panel.arrow.icon:SetVertexColor(muted:GetRGB())
+	if self.expandButton then self.expandButton.icon:SetVertexColor(muted:GetRGB()) end
 end
 
 function TP:OnColorsChanged(group)

@@ -186,12 +186,11 @@ local horizontalHome = {}
 -- left, DividerHorizontalRight starts there and reaches right, each as wide as
 -- its atlas (useAtlasSize) and Blizzard's window is as wide as two of them. In
 -- the narrower window they stick out past its sides, so each is cut at the
--- window's edge, half the layout's width from the centre: the width set to that
--- and the outer part of the art cropped in proportion, not stretched. Nothing
+-- window's edge: each loses half of what the window lost (current.delta), the
+-- width set to that and the outer part of the art cropped in proportion, not stretched. Nothing
 -- to cut when the art is already no wider.
 local function CropDividers(frame, layout)
 	if not layout then return end
-	local half = layout.width / 2
 	for _, key in ipairs({ 'DividerHorizontalLeft', 'DividerHorizontalRight' }) do
 		local divider = frame[key]
 		if divider and divider.GetTexCoord and divider.SetTexCoord then
@@ -200,9 +199,11 @@ local function CropDividers(frame, layout)
 				home = { width = divider:GetWidth(), coords = { divider:GetTexCoord() } }
 				horizontalHome[divider] = home
 			end
-			if home.width > half + 0.01 and home.width > 0 then
+			-- cut by what the window lost: half of the narrowing from each side
+			local width = home.width - (current and current.delta or 0) / 2
+			if width < home.width - 0.01 and width > 0 then
 				local c = { unpack(home.coords) }
-				local keep = half / home.width
+				local keep = width / home.width
 				if key == 'DividerHorizontalLeft' then
 					-- the outer end is the left one: its x coordinates move in
 					c[1] = home.coords[1] + (home.coords[5] - home.coords[1]) * (1 - keep)
@@ -211,8 +212,12 @@ local function CropDividers(frame, layout)
 					c[5] = home.coords[1] + (home.coords[5] - home.coords[1]) * keep
 					c[7] = home.coords[3] + (home.coords[7] - home.coords[3]) * keep
 				end
-				divider:SetWidth(half)
+				divider:SetWidth(width)
 				divider:SetTexCoord(unpack(c))
+			else
+				-- nothing to cut: Blizzard's, not an earlier crop
+				divider:SetWidth(home.width)
+				divider:SetTexCoord(unpack(home.coords))
 			end
 		end
 	end
