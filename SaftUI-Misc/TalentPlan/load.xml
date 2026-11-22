@@ -3,4 +3,5 @@
 	<Script file="model.lua"/>
 	<Script file="parser.lua"/>
 	<Script file="store.lua"/>
+	<Script file="data.lua"/>
 </Ui>

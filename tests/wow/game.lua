@@ -1360,3 +1360,6 @@ end
 -- The quest log's API (SaftUI-Tracker's tests): stub.quests, C_QuestLog's
 -- functions and the old quest globals.
 load_test_file('wow/quests.lua')
+
+-- The talent trees' API (SaftUI-Misc's talent plan tests): stub.traits, C_Traits and the rest.
+load_test_file('wow/traits.lua')
