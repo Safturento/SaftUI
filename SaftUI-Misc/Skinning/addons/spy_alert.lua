@@ -10,7 +10,7 @@ local L = SP.lib
 --   is the panel's border, so an alert reads at a glance. Spy:ApplyBorderStyle puts
 --   a backdrop (and, classic, a white border) on the alert again; it is cleared again.
 -- - The icon is a frame whose backdrop is the icon (bgFile), set on every alert: it
---   is kept and given a thin border of SaftUI's.
+--   is kept, cropped, and given a thin border of SaftUI's.
 -- Every piece is type-checked first; one a Spy version lacks keeps Spy's look.
 
 local ICON_THEME, ICON_BACKGROUND = 'thin', 'none'
@@ -96,6 +96,14 @@ function SP:SkinAlert()
 			local level = icon:GetFrameLevel()
 			if not issecretvalue(level) then frame:SetFrameLevel(level + 1) end
 		end
+		-- The icon is the backdrop's Center texture: cropped as st:SkinIcon crops, and again
+		-- whenever Spy sets the backdrop (which makes or resets it).
+		local function Crop()
+			local center = icon.Center
+			if type(center) == 'table' and center.SetTexCoord then st:SkinIcon(center) end
+		end
+		hooksecurefunc(icon, 'SetBackdrop', Crop)
+		Crop()
 	end
 
 	L.HookFont(alert.Title, 'title')

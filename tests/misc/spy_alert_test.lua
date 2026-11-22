@@ -124,6 +124,25 @@ test('alert_icon_framed', function()
 	eq(st:DrawnTheme(frame), 'thin', 'still thin after a theme change')
 end)
 
+test('alert_icon_cropped', function()
+	world()
+	stub.backdrop_pieces = true
+	SpyFix.make()
+	enable()
+	local icon = Spy.AlertWindow.Icon
+	-- The game's backdrop makes the Center itself, as a field; the locked fixture frame only lets Spy write it.
+	rawset(icon, 'Center', icon:CreateTexture(nil, 'BACKGROUND'))
+	local trim = st.config.profile.misc.icon_trim
+	check(trim > 0, 'the default trim crops')
+	Spy:ShowAlert('kos', 'Bob', nil, 'Here')
+	check(icon.Center, 'the icon backdrop has its art')
+	eq((icon.Center:GetTexCoord()), trim, 'cropped after Spy sets the icon')
+	icon.Center:SetTexCoord(0, 1, 0, 1) -- the backdrop's own reset
+	eq((icon.Center:GetTexCoord()), trim, 'cropped again after a reset')
+	stub.backdrop_pieces = false
+	eq(#take_errors(), 0, 'no error reported')
+end)
+
 test('alert_fonts', function()
 	world()
 	SpyFix.make()

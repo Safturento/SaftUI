@@ -264,7 +264,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **Why noticed:** the Spy skin (branch `spy-skin`, spec `docs/superpowers/specs/2026-11-22-spy-skin-design.md`) was built and reviewed from Spy's source and a fixture, never run against Spy itself.
 
-**Anchors:** `SaftUI-Misc/Skinning/addons/spy.lua` (module, Nearby window), `spy_alert.lua` (alert popup), `spy_kos.lua` (Kill on Sight button), `spy_stats.lua` (Statistics window); `tests/misc/spy_skin_test.lua`, `spy_alert_test.lua`, `spy_kos_test.lua`, `tests/misc/fixtures/spy_world.lua`; `.agents/taint.md` (the third-party note).
+**Anchors:** `SaftUI-Misc/Skinning/addons/spy.lua` (module, Nearby window), `spy_alert.lua` (alert popup), `spy_kos.lua` (Kill on Sight button), `spy_stats.lua` (Statistics window); `tests/misc/spy_skin_test.lua`, `spy_alert_test.lua`, `spy_kos_test.lua`, `spy_stats_test.lua`, `tests/misc/fixtures/spy_world.lua`; `.agents/taint.md` (the third-party note).
 
 **What's been considered:** the checks, in the order they are cheapest to run:
 
@@ -278,6 +278,9 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 8. **Kill on Sight button.** With SaftUI's unit frames, target an enemy player: the button shows at the target frame's top right (it never showed before). Clicking it toggles KoS (the icon and Spy's list follow). It hides with no target or a non-player, and follows the target frame when it moves in `/sui edit`. In a battleground, target an enemy: no error (secret values) and the button still follows.
 9. **Toggle off and reload.** Skinning → Spy off, `/reload`: Spy looks as it did. On again and `/reload`: skinned. With Skinning's Theme set to Blizzard, Spy keeps its own look.
 10. **Theme live.** With the skin on, change the Skinning Theme, Background and font: Spy's windows follow at once, an open Statistics window too.
+
+11. **Refresh button label face** (final review M1). `SpyStatsRefreshButton` inherits `UIPanelButtonTemplate`, whose Normal, Highlight and Disabled font objects the client applies to its label without the Lua `SetFontObject`, so the skin's hook never fires. Hover it, `Disable()` it, and let Spy's blink run on new data: does the label drop SaftUI's face? If so, hand the button SaftUI's family with `SetNormalFontObject`, `SetHighlightFontObject` and `SetDisabledFontObject` (method calls, no fields). The sort headers have only a NormalFont and shouldn't be affected.
+12. **Target frame disabled** (final review M8). With Unitframes loaded and Target's Enable off, `SaftUI_Target` still exists, parked far off screen, so `spy_kos.lua`'s `Home()` re-homes the Kill on Sight button off screen. Blizzard's target frame is disabled by oUF either way, so nothing that worked is lost; check it, and if it matters, check the unit's `enable` in `Home()`.
 
 **Shape of work:** the owner runs the checks; each failure is fixed on its own, probably small, in the one file named above. Delete this entry when they pass.
 

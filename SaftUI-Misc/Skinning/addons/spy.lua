@@ -5,7 +5,7 @@ local SK = st:GetModule('Skinning')
 -- SaftUI's look: its Nearby window, the alert popup, the Statistics window and
 -- the Kill on Sight button, in the Skinning page's Theme, Background and font.
 -- Its pieces are kept in side tables keyed by Spy's frames; nothing is written
--- onto a Spy frame, and a script is only ever hooked, never replaced.
+-- onto a Spy frame but its post-hooks, and a script is only ever hooked, never replaced.
 --
 -- What it relies on Spy doing (names checked against Spy 1.3.8-forever28):
 -- - Spy loads by ADDON_LOADED 'Spy'. SpyStatsFrame exists at its load,
@@ -150,7 +150,8 @@ local function ApplyFont(fs)
 		end
 	end)
 	applyingFont = false
-	if not ok then error(err, 0) end
+	-- Reported, not raised: this runs inside Spy's own call, which carries on.
+	if not ok then geterrorhandler()(err) end
 end
 
 local function HookFont(fs, kind)

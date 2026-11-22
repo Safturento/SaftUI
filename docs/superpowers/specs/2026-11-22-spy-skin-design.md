@@ -34,9 +34,10 @@ Restyle, in SaftUI's look, every visible piece of Spy:
    still reads at a glance.
 3. **Statistics window** (`SpyStatsFrame`, `SpyStats.xml`): a SaftUI panel and header, SaftUI
    close cross, its `UIPanelButtonTemplate` buttons (Refresh and the like) as SaftUI buttons,
-   the tab(s), the search box (`st:StyleEditBox`), the check boxes, the sort headers as
-   flat header cells, the list lines' hover in the Accent's states, and the
-   `FauxScrollFrame`'s bar through `st:SkinScrollBar`. Its drop-down menu stays Blizzard's.
+   the tab(s), the search box (a SaftUI Panel round it, R11), the check boxes, the sort headers
+   as flat header cells and the list lines' hover in the Accent's states. The
+   `FauxScrollFrame`'s bar stays Spy's, as its drop-down menu stays Blizzard's (R12:
+   `st:SkinScrollBar` would write a field onto the bar).
 4. **KoS button** (`Spy_KoSButton`): a small SaftUI icon button (skull) in place of the
    minimap-style ring. Spy parents it to Blizzard's `TargetFrame` and refreshes it from a
    post-hook on `TargetFrame.Update`. With SaftUI's unit frames on, oUF disables Blizzard's

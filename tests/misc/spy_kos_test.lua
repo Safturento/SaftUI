@@ -46,6 +46,8 @@ local function world(opts)
 	if opts.saftui then
 		SaftUI_Target = CreateFrame('Button', 'SaftUI_Target', UIParent)
 		SaftUI_Target:SetSize(200, 40)
+		SaftUI_Target.TextOverlay = CreateFrame('Frame', nil, SaftUI_Target)
+		SaftUI_Target.TextOverlay:SetFrameLevel(99)
 	else
 		SaftUI_Target = nil
 	end
@@ -74,6 +76,21 @@ test('kos_rehomed_on_saftui_target', function()
 	eq(x, -2); eq(y, -2)
 	eq(kos:GetWidth(), 16); eq(kos:GetHeight(), 16)
 	eq(kos.Background:GetAlpha(), 0); eq(kos.Border:GetAlpha(), 0)
+	eq(#take_errors(), 0)
+end)
+
+test('kos_button_over_target_overlay_and_box_under_it', function()
+	world({ saftui = true })
+	local kos = Spy.KoSButton
+	local top = SaftUI_Target.TextOverlay:GetFrameLevel()
+	for _, c in ipairs({ SaftUI_Target:GetChildren() }) do
+		if c ~= kos then top = math.max(top, c:GetFrameLevel()) end
+	end
+	check(kos:GetFrameLevel() > top, 'the button is above the target frame\'s highest overlay')
+	local box
+	for _, c in ipairs({ kos:GetChildren() }) do if c.SetBackdrop and not SpyFix.is_spy(c) then box = c end end
+	check(box, 'the box exists')
+	eq(box:GetFrameLevel(), kos:GetFrameLevel() - 1, 'the box is one level under the button')
 	eq(#take_errors(), 0)
 end)
 

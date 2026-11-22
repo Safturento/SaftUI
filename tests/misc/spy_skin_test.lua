@@ -430,9 +430,12 @@ test('a font call that errors does not leave the hook off', function()
 	local row = Spy.MainWindow.Rows[1]
 	local face = st:FontValues(st.config.profile.skinning.font)
 	stub.refused_fonts[face] = 'error'
-	-- Spy's own SetFont is on another file and works; the skin's, on SaftUI's face, raises
+	-- Spy's own SetFont is on another file and works; the skin's, on SaftUI's face, errors:
+	-- reported through the error handler, not raised inside Spy's call
+	take_errors()
 	local ok = pcall(row.LeftText.SetFont, row.LeftText, [[Fonts\FRIZQT__.TTF]], 15, '')
-	check(not ok, 'the skin\'s own font call raised')
+	check(ok, 'Spy\'s call carried on')
+	eq(#take_errors(), 1, 'the skin\'s own font error was reported')
 	stub.refused_fonts[face] = nil
 	row.LeftText:SetFont([[Fonts\FRIZQT__.TTF]], 14, '')
 	eq(({ row.LeftText:GetFont() })[1], face, 'the hook still puts SaftUI\'s face on the next size')

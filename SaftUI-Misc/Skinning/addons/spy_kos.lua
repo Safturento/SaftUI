@@ -47,6 +47,16 @@ local function Rehome(button)
 	if not target or rehomed[button] == target then return rehomed[button] ~= nil end
 	rehomed[button] = target
 	button:SetParent(target)
+	-- SetParent put the button at the target's level + 1, with its health and power bars; Spy's
+	-- raise against Blizzard's frame is gone. Over them and the text overlay, and the box a level under.
+	local level = target:GetFrameLevel()
+	local overlay = target.TextOverlay and target.TextOverlay:GetFrameLevel() or 0
+	if not (issecretvalue(level) or issecretvalue(overlay)) then
+		local raised = max(level + 10, overlay + 1)
+		button:SetFrameLevel(raised)
+		local box = L.panels[button]
+		if box then box:SetFrameLevel(raised - 1) end
+	end
 	button:ClearAllPoints()
 	button:SetPoint('TOPRIGHT', target, 'TOPRIGHT', -INSET, -INSET)
 	button:SetSize(SIZE, SIZE)
