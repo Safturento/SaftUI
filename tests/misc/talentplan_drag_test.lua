@@ -1,6 +1,6 @@
--- Phases and the drag in SaftUI-Misc/TalentPlan/panel.lua and drag.lua: the
--- Phases button, the headers and their menu, the level colors, and a handle's
--- drag. The world is the panel test's (see talentplan_panel_test.lua), with a
+-- The drag in SaftUI-Misc/TalentPlan/panel.lua and drag.lua: a handle's drag
+-- and the panel's steps-only list (phases in a saved plan are not drawn or
+-- touched). The world is the panel test's (see talentplan_panel_test.lua), with a
 -- menu stand-in that has submenus.
 -- ScrollFrameTemplate's scroll bar (as tests/bags/scrollframe_test.lua).
 local T = load_test_file('lib/theme_helpers.lua')
@@ -159,95 +159,27 @@ local function drag(from, onto, lower)
 	stub.fire_script(entry(from).handle, 'OnMouseUp', 'LeftButton')
 end
 
-test('the Phases button adds a named, colored header at the selection', function()
+test('a saved phase draws no header, no row is shifted by it, and the footer has no Phases button', function()
 	world()
 	local plan = plan20()
+	plan.phases = { { at = 3, name = 'Core', color = 'blue' } }
 	open()
-	TP.selected = 3
-	stub.click(TP.panel.phasesButton, 'LeftButton')
-	eq(W.ConfirmText(), 'Name the phase')
-	eq(W.PromptBox():GetText(), 'Phase 1')
-	answer('Core')
-	eq(#plan.phases, 1)
-	eq(plan.phases[1].at, 3); eq(plan.phases[1].name, 'Core'); eq(plan.phases[1].color, 'blue')
-	local header = TP.panel.headers[1]
-	check(header:IsShown(), 'the header shows')
-	eq(header.name:GetText(), 'Core')
-	eq(header.range:GetText(), '12-29')
-	eq(header.pos, 3, 'between step 2 and step 3')
-	eq(header.dot:GetWidth(), 8)
-	eq(#TP.panel.entries, 21)
-	clean()
-end)
-
-test('the Phases button with no selection starts at step 1, and with no plan does nothing', function()
-	world()
-	open()
-	stub.click(TP.panel.phasesButton, 'LeftButton')
-	eq(W.PromptBox(), nil, 'no plan, no prompt')
-	local plan = plan20()
-	TP:Refresh()
-	stub.click(TP.panel.phasesButton, 'LeftButton')
-	answer('First')
-	eq(plan.phases[1].at, 1)
-	stub.click(TP.panel.phasesButton, 'LeftButton')
-	eq(W.PromptBox():GetText(), 'Phase 2')
-	answer('Second')
-	eq(plan.phases[2].color, 'orange', 'the next color not in use')
-	eq(TP.panel.headers[1].range:GetText(), '', 'an empty phase reads blank')
-	eq(TP.panel.headers[2].range:GetText(), '10-29')
-	clean()
-end)
-
-test("a phase's rows wear its color on the level", function()
-	world()
-	local plan = plan20()
-	plan.phases[1] = { at = 3, name = 'Core', color = 'blue' }
-	open()
-	local blue = M.PHASE_RGB.blue
-	local r, g, b = row(3).level:GetTextColor()
-	eq(r, blue[1]); eq(g, blue[2]); eq(b, blue[3])
-	r, g, b = row(20).level:GetTextColor()
-	eq(r, blue[1], 'to the end')
+	eq(#TP.panel.entries, 20, 'the list is just the steps')
+	eq(TP.panel.headers, nil, 'no pooled headers')
+	eq(TP.panel.phasesButton, nil, 'no Phases button')
+	eq(entry(3), row(3), 'step 3 is the third entry')
 	local normal = st:Color('text', 'normal')
-	eq(select(1, row(2).level:GetTextColor()), normal.r, 'before the phase: Text > Normal')
-
+	eq(select(1, row(5).level:GetTextColor()), normal.r, 'level is Text > Normal, not a phase color')
+	eq(plan.phases[1].at, 3, 'the data is left alone')
 	clean()
 end)
 
-test('the header menu renames, recolors and removes', function()
+test('dragging a row reorders the plan, the ghost and the line show, and a saved phase is untouched', function()
 	world()
 	local plan = plan20()
-	plan.phases[1] = { at = 3, name = 'Core', color = 'blue' }
+	plan.phases = { { at = 3, name = 'Core', color = 'blue' } }
 	open()
-	stub.click(TP.panel.headers[1], 'RightButton')
-	local menu = opened[#opened]
-	eq(texts(menu), 'Rename|Color|Remove phase')
-	choose(item(menu, 'Rename'))
-	eq(W.PromptBox():GetText(), 'Core')
-	answer('Main')
-	eq(plan.phases[1].name, 'Main'); eq(TP.panel.headers[1].name:GetText(), 'Main')
-	local colors = item(menu, 'Color')
-	eq(#colors.list, 5)
-	eq(colors.list[1].text, 'Blue'); eq(colors.list[5].text, 'Green')
-	check(colors.list[1].a(), 'blue is the current one')
-	colors.list[4].b()
-	eq(plan.phases[1].color, 'red')
-	local red = M.PHASE_RGB.red
-	eq(select(1, row(5).level:GetTextColor()), red[1], 'the rows follow')
-	choose(item(menu, 'Remove phase'))
-	eq(#plan.phases, 0)
-	check(not TP.panel.headers[1]:IsShown(), 'the header is gone')
-	eq(#plan.steps, 20, 'the steps stay')
-	clean()
-end)
-
-test('dragging a row reorders the plan, the ghost and the line show, and the header regroups', function()
-	world()
-	local plan = plan20()
-	plan.phases[1] = { at = 3, name = 'Core', color = 'blue' }
-	open()
-	-- entries: s1 s2 H s3 ...; step 1 to just under step 3 (entry 4)
+	-- step 1 to just under step 3
 	local first, third = plan.steps[1], plan.steps[3]
 	stub.mouse_buttons.LeftButton = true
 	stub.fire_script(entry(1).handle, 'OnMouseDown', 'LeftButton')
@@ -255,8 +187,8 @@ test('dragging a row reorders the plan, the ghost and the line show, and the hea
 	check(w.drag ~= nil, 'a drag starts')
 	check(w.ghost:IsShown(), 'the ghost shows')
 	eq(w.ghost.text:GetText(), TP.StepLabel(TP.view.rows[1], TP.view.tree.nodes[first]))
-	local l, b, width, h = entry(4):GetRect()
-	local scale = entry(4):GetEffectiveScale()
+	local l, b, width, h = entry(3):GetRect()
+	local scale = entry(3):GetEffectiveScale()
 	stub.cursor_x, stub.cursor_y = (l + width / 2) * scale, (b + 0.25 * h) * scale
 	TP:DrawDrag()
 	check(w.insert:IsShown(), 'the insert line shows')
@@ -265,14 +197,8 @@ test('dragging a row reorders the plan, the ghost and the line show, and the hea
 	check(not w.ghost:IsShown() and not w.insert:IsShown(), 'both gone')
 	eq(plan.steps[3], first, 'step 1 now third')
 	eq(plan.steps[2], third)
-	eq(plan.phases[1].at, 2, 'the header stays before the old third step')
+	eq(plan.phases[1].at, 3, 'the saved phase is left as it was')
 	stub.run_timers()
-	eq(TP.panel.headers[1].pos, 2)
-	-- the header dragged to the top
-	drag(2, entry(1), false)
-	eq(plan.phases[1].at, 1)
-	-- a step dropped at the very end leaves the headers sensible
-	drag(1, entry(#TP.panel.entries), true)
 	clean()
 end)
 

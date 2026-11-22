@@ -735,7 +735,7 @@ git commit -m "misc: light, glow and dim talent plan nodes, and plan by clicking
 
 ---
 
-### Task 8: Drag reorder and phases
+### Task 8: Drag reorder and phases (phases retired later: the panel is steps only, `M.MoveStep` replaced `M.MoveEntry`)
 
 **Files:**
 - Modify: `SaftUI-Misc/TalentPlan/model.lua`: the entries, moves and phases
@@ -889,7 +889,7 @@ Leave out `README.md` if the freshness check left it unchanged.
 5. Level up and learn the waiting talent, but don't Apply yet: the row says pending. Apply: it is checked, and the next row waits and glows.
 6. **E1**: with `/dump C_Traits.GetNodeInfo(C_ClassTalents.GetActiveConfigID(), <a node ID>)`, compare `activeRank`, `currentRank` and `ranksPurchased` before and after staging a rank, and tell the builder.
 7. Collapse the panel: it leaves no strip and a small button shows in the title bar just left of the close button; hovering it names the plan and the waiting step, a click opens the panel. `/reload`: still collapsed. The panel clears the window's gold border on the left and on the right.
-8. Drag a rank 2 above its rank 1: the R numbers swap. Add a phase, rename it, recolor it and drag it.
+8. Drag a rank 2 above its rank 1: the R numbers swap. The panel shows no phases and no Phases button (a plan saved with phases still lists only its steps, in order). The title strip's plan button shows a name like "Enhancement leveling" in full, and the footer's Plan, Import and dots fill the width evenly.
 9. Set Dim talents not in the plan off: the dim goes at once. Set Enable off: the panel and every overlay go.
 10. Compact talent window: the gaps at the window's sides and between the three specs equal the gap between talents.
 11. The headers are centred over their trees. The two horizontal divider lines end at the narrowed window's edges, not past them.

@@ -118,6 +118,8 @@ Computed from the live ranks, not from the character's level alone, so a player 
 
 ### Phases
 
+**Retired.** The panel no longer draws, adds or edits phases and has no Phases button; a plan saved with phases keeps them in its data, unread. The title strip is the collapse arrow, the plan select button (it takes the room, no heading) and the count. The text below is the original design.
+
 - A phase is a header before a step: a name and one of five colors (**My call**: the board's blue, orange, yellow, red, plus green). Its rows run to the next header. Rows before the first header have no phase.
 - Phases are optional; a plan with none shows a plain list.
 

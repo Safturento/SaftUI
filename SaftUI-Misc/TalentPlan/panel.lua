@@ -9,13 +9,13 @@ local M, S = TP.Model, TP.Store
 	Blizzard frame (.agents/taint.md rule 1): the panel and every part of it
 	are SaftUI's, and TP:Dock only reads the window's rect.
 
-	From the top: the title strip (the collapse arrow, "Leveling plan", the plan
-	select button, the count), the rows in a scroll frame, the off plan line, and
-	the footer (Plan, Import, Phases and the dots menu). Collapsed, the panel is
+	From the top: the title strip (the collapse arrow, the plan select button,
+	which takes the room between it and the count, and the count), the rows in a scroll frame, the off plan line, and
+	the footer (Plan, Import and the dots menu). Collapsed, the panel is
 	hidden and a small button of SaftUI's (TP.expandButton) shows in the window's
 	title bar, just left of Blizzard's close button; its tooltip names the plan
 	and the waiting step, and a click opens the panel again. TP.panel.rows[i] = { frame,
-	kind, index } is the pooled row of step i, for the drag (Task 8);
+	index } is the pooled row of step i, for the drag (Task 8);
 	TP.selected is the step the new steps go after, or nil (Task 7).
 ]]
 
@@ -31,6 +31,7 @@ TP.Layout = L
 
 local PAD = 4 -- the room round the rows and between the strips' parts
 local ICON = 16
+local FOOTER_DOTS = 24 -- the footer's dots button; Plan and Import split the rest
 local CHECK = 12
 local CHECK_ART = [[Interface\RaidFrame\ReadyCheck-Ready]]
 local OFF_LINE = 16 -- the room the off plan line keeps above the footer
@@ -153,7 +154,7 @@ local function RowTip(row)
 end
 
 -- Where entry position pos sits in the list: every row and header is one
--- ROW_HEIGHT, steps and phase headers alike.
+-- ROW_HEIGHT.
 local function PlaceAt(frame, content, pos)
 	local y = -(pos - 1) * L.ROW_HEIGHT
 	frame.pos = pos
@@ -162,7 +163,7 @@ local function PlaceAt(frame, content, pos)
 	frame:SetPoint('TOPRIGHT', content, 'TOPRIGHT', 0, y)
 end
 
--- A row's or header's drag handle, at its left; its press starts the drag.
+-- A row's drag handle, at its left; its press starts the drag.
 local function NewHandle(row)
 	local handle = TP.DragParts.Handle(row, L.ROW_HEIGHT)
 	handle:SetPoint('LEFT', row, 'LEFT', 2, 0)
@@ -224,9 +225,8 @@ end
 
 -- One step in a row: the level, the icon, the name, and on the right the rank
 -- or the state's tag, or a check once learned.
-local function FillRow(row, step, node, phase)
+local function FillRow(row, step, node)
 	row.index, row.state, row.nodeID, row.block, row.waiting = step.index, step.state, step.nodeID, step.block, step.waiting
-	row.phaseColor = phase and phase.color
 	row.level:SetText(('%2d'):format(step.level))
 	st:SetState(row, 'selected', step.waiting and true or false)
 	row.check:SetShown(step.state == 'learned')
@@ -254,38 +254,6 @@ local function FillRow(row, step, node, phase)
 	row.tag:SetText(tag)
 end
 
--- A phase header: a dot in its color, the name, and the range of levels it
--- covers (empty while it has no steps).
-local function NewHeader(content)
-	local header = CreateFrame('Button', nil, content)
-	header:SetHeight(L.ROW_HEIGHT)
-	header:RegisterForClicks('RightButtonUp')
-	header.handle = NewHandle(header)
-	header.dot = header:CreateTexture(nil, 'ARTWORK')
-	header.dot:SetSize(8, 8)
-	header.dot:SetPoint('LEFT', header.handle, 'RIGHT', PAD, 0)
-	header.range = st:CreateFontString(header, 'pixel')
-	header.range:SetJustifyH('RIGHT')
-	header.range:SetPoint('RIGHT', header, 'RIGHT', -PAD, 0)
-	header.name = st:CreateFontString(header, 'normal')
-	header.name:SetJustifyH('LEFT')
-	header.name:SetWordWrap(false)
-	header.name:SetPoint('LEFT', header.dot, 'RIGHT', PAD, 0)
-	header.name:SetPoint('RIGHT', header.range, 'LEFT', -PAD, 0)
-	header:SetScript('OnClick', function(self, button)
-		if button == 'RightButton' then TP:OpenPhaseMenu(self) end
-	end)
-	return header
-end
-
-local function FillHeader(header, plan, k)
-	local phase = plan.phases[k]
-	header.phase, header.color = k, phase.color
-	header.name:SetText(phase.name)
-	local first, last = M.PhaseRange(plan, k)
-	header.range:SetText(first and ('%d-%d'):format(first, last) or '')
-end
-
 ------------------------------------------------------------------ building
 
 function TP:BuildPanel()
@@ -298,8 +266,7 @@ function TP:BuildPanel()
 	panel:SetClampedToScreen(true)
 	st:SetBackdrop(panel, config.panels.theme, config.panels.background, 'window')
 	panel.rows = {}
-	panel.headers = {} -- the pooled phase headers, by phase
-	panel.entries = {} -- { frame, kind, index | phase } in display order, for the drag
+	panel.entries = {} -- { frame, index } in display order, for the drag
 	self.panel = panel
 	-- a child of TalentsFrame like the panel: it scales with the window and hides with the tab
 	self.expandButton = self.expandButton or NewExpandButton(talents)
@@ -314,14 +281,14 @@ function TP:BuildPanel()
 
 	panel.arrow = NewArrow(title)
 	panel.arrow:SetPoint('LEFT', title, 'LEFT', PAD + 2, 0)
-	panel.heading = st:CreateFontString(title, 'heading', 'Leveling plan')
-	panel.heading:SetPoint('LEFT', panel.arrow, 'RIGHT', PAD, 0)
 	panel.count = st:CreateFontString(title, 'pixel')
 	panel.count:SetJustifyH('RIGHT')
 	panel.count:SetPoint('RIGHT', title, 'RIGHT', -PAD - 2, 0)
+	-- the plan's name takes everything between the arrow and the count; a
+	-- heading beside it left the name "Impor..."
 	panel.select = st:CreateButton(nil, title, 'No plan', 'theme', 'theme', 'pixel')
 	panel.select:SetHeight(config.headers.height - 8)
-	panel.select:SetPoint('LEFT', panel.heading, 'RIGHT', PAD * 2, 0)
+	panel.select:SetPoint('LEFT', panel.arrow, 'RIGHT', PAD, 0)
 	panel.select:SetPoint('RIGHT', panel.count, 'LEFT', -PAD, 0)
 	panel.select:SetScript('OnClick', function(self) TP:OpenPlanMenu(self) end)
 
@@ -333,17 +300,18 @@ function TP:BuildPanel()
 	-- the footer and the line above it
 	st:CreateFooter(panel)
 	local footer = panel.footer
+	-- Plan and Import share what the dots leave: the margins and gaps are PAD
+	local FOOTER_BUTTON = (L.WIDTH - PAD * 4 - FOOTER_DOTS) / 2
 	local function FooterButton(text, anchor)
 		local button = st:CreateButton(nil, footer, text, 'theme', 'theme', 'pixel')
-		button:SetSize(56, config.headers.height - 8)
+		button:SetSize(FOOTER_BUTTON, config.headers.height - 8)
 		if anchor then button:SetPoint('LEFT', anchor, 'RIGHT', PAD, 0) else button:SetPoint('LEFT', footer, 'LEFT', PAD, 0) end
 		return button
 	end
 	panel.planButton = FooterButton('Plan')
 	panel.importButton = FooterButton('Import', panel.planButton)
-	panel.phasesButton = FooterButton('Phases', panel.importButton)
 	panel.dots = st:CreateButton(nil, footer, nil, 'theme', 'theme')
-	panel.dots:SetSize(24, config.headers.height - 8)
+	panel.dots:SetSize(FOOTER_DOTS, config.headers.height - 8)
 	panel.dots:SetPoint('RIGHT', footer, 'RIGHT', -PAD, 0)
 	panel.dots.icon = panel.dots:CreateTexture(nil, 'OVERLAY')
 	panel.dots.icon:SetTexture(st.icons.ellipsis)
@@ -376,8 +344,6 @@ function TP:BuildPanel()
 	panel.line = panel.content:CreateTexture(nil, 'OVERLAY')
 	panel.line:SetHeight(2)
 	panel.line:Hide()
-
-	panel.phasesButton:SetScript('OnClick', function() TP:OnPhasesButton() end)
 
 	-- the drag: the widget the shared parts work on (the panel is its frame)
 	local w = { frame = panel }
@@ -474,19 +440,10 @@ end
 local function Row(panel, index)
 	local entry = panel.rows[index]
 	if not entry then
-		entry = { frame = NewRow(panel.content, index), kind = 'step', index = index }
+		entry = { frame = NewRow(panel.content, index), index = index }
 		panel.rows[index] = entry
 	end
 	return entry
-end
-
-local function Header(panel, k)
-	local header = panel.headers[k]
-	if not header then
-		header = NewHeader(panel.content)
-		panel.headers[k] = header
-	end
-	return header
 end
 
 -- Everything the view says. Colors are set last, by PaintColors.
@@ -512,25 +469,16 @@ function TP:DrawPanel(view)
 	panel.empty:SetPoint('TOPLEFT', panel, 'TOPLEFT', PAD * 2, -top - PAD)
 
 	local count = rows and #rows or 0
-	local list = plan and M.Entries(plan) or {}
 	panel.entries = {}
-	for pos, e in ipairs(list) do
-		local frame
-		if e.kind == 'step' then
-			local entry = Row(panel, e.index)
-			frame = entry.frame
-			FillRow(frame, rows[e.index], view.tree.nodes[rows[e.index].nodeID], plan.phases[M.PhaseOf(plan, e.index)])
-		else
-			frame = Header(panel, e.phase)
-			FillHeader(frame, plan, e.phase)
-		end
-		PlaceAt(frame, panel.content, pos)
+	for i = 1, count do
+		local frame = Row(panel, i).frame
+		FillRow(frame, rows[i], view.tree.nodes[rows[i].nodeID])
+		PlaceAt(frame, panel.content, i)
 		frame:Show()
-		panel.entries[pos] = { frame = frame, kind = e.kind, index = e.index, phase = e.phase }
+		panel.entries[i] = { frame = frame, index = i }
 	end
 	for i = count + 1, #panel.rows do panel.rows[i].frame:Hide() end
-	for k = (plan and #plan.phases or 0) + 1, #panel.headers do panel.headers[k]:Hide() end
-	panel.scroll:SetContentSize(panel.contentWidth, math.max(1, #list * L.ROW_HEIGHT))
+	panel.scroll:SetContentSize(panel.contentWidth, math.max(1, count * L.ROW_HEIGHT))
 	panel.empty:SetShown(not plan and not self:IsCollapsed())
 
 	local off = plan and M.OffPlan(plan, view.tree.nodes) or 0
@@ -565,20 +513,8 @@ function TP:PaintColors()
 		local row = entry.frame
 		local color = row.state == 'learned' and muted or row.state == 'missing' and danger or normal
 		row.name:SetTextColor(color:GetRGB())
-		local tint = row.phaseColor and M.PHASE_RGB[row.phaseColor]
-		if tint then
-			row.level:SetTextColor(tint[1], tint[2], tint[3])
-		else
-			row.level:SetTextColor((row.state == 'learned' and muted or normal):GetRGB())
-		end
+		row.level:SetTextColor((row.state == 'learned' and muted or normal):GetRGB())
 		row.tag:SetTextColor(muted:GetRGB())
-	end
-	for _, header in ipairs(panel.headers) do
-		local tint = M.PHASE_RGB[header.color or ''] or { normal:GetRGB() }
-		header.dot:SetColorTexture(tint[1], tint[2], tint[3])
-		header.name:SetTextColor(normal:GetRGB())
-		header.range:SetTextColor(muted:GetRGB())
-		for _, dot in ipairs(header.handle.dots) do dot:SetColorTexture(muted:GetRGB()) end
 	end
 	for _, entry in ipairs(panel.rows) do
 		for _, dot in ipairs(entry.frame.handle.dots) do dot:SetColorTexture(muted:GetRGB()) end
@@ -682,7 +618,7 @@ function TP:OpenDotsMenu(button)
 		end)
 		root:CreateButton('Clear steps', function()
 			Dialogs().Confirm(('Clear every step of "%s"?'):format(plan.name), function()
-				plan.steps, plan.phases = {}, {}
+				plan.steps = {}
 				TP:Refresh()
 			end)
 		end)
@@ -699,63 +635,10 @@ function TP:PaintPlanButton()
 	if self.panel then st:SetButtonPressed(self.panel.planButton, self.planning) end
 end
 
------------------------------------------------------------------- phases
-
-local function Capitalized(text) return text:sub(1, 1):upper() .. text:sub(2) end
-
-local function PhaseName(text)
-	text = (text or ''):match('^%s*(.-)%s*$')
-	return text ~= '' and text or nil
-end
-
--- Phases: a header before the selected step (before the first with none).
-function TP:OnPhasesButton()
-	local plan = self.view and self.view.plan
-	if not plan then return end
-	local at = self.selected or 1
-	Dialogs().Prompt('Name the phase', ('Phase %d'):format(#plan.phases + 1), function(text)
-		local name = PhaseName(text)
-		if not name or self.view == nil or self.view.plan ~= plan then return end
-		M.AddPhase(plan, at, name, M.NextColor(plan))
-		self:Refresh()
-	end, { accept = 'Add', cancel = 'Cancel' })
-end
-
-function TP:OpenPhaseMenu(header)
-	local plan = self.view and self.view.plan
-	local k = header.phase
-	if not (MenuUtil and plan and plan.phases[k]) then return end
-	local phase = plan.phases[k]
-	MenuUtil.CreateContextMenu(header, function(owner, root)
-		root:CreateButton('Rename', function()
-			Dialogs().Prompt('Name the phase', phase.name, function(text)
-				local name = PhaseName(text)
-				if name then phase.name = name end
-				TP:Refresh()
-			end, { accept = 'Rename', cancel = 'Cancel' })
-		end)
-		local colors = root:CreateButton('Color')
-		for _, color in ipairs(M.PHASE_COLORS) do
-			colors:CreateRadio(Capitalized(color), function() return phase.color == color end, function()
-				phase.color = color
-				TP:Refresh()
-			end)
-		end
-		root:CreateButton('Remove phase', function()
-			for i, p in ipairs(plan.phases) do
-				if p == phase then M.RemovePhase(plan, i) break end
-			end
-			TP:Refresh()
-		end)
-	end)
-end
-
 ------------------------------------------------------------------ drag
 
 -- What an entry says on the ghost.
 local function EntryLabel(self, record)
-	local plan = self.view.plan
-	if record.kind == 'phase' then return plan.phases[record.phase].name end
 	local row = self.view.rows[record.index]
 	return TP.StepLabel(row, self.view.tree.nodes[row.nodeID])
 end
@@ -795,7 +678,7 @@ function TP:StartDrag(pos)
 	if not (w and panel and panel:IsShown() and view and view.plan) or w.drag then return end
 	local record = panel.entries[pos]
 	if not record then return end
-	w.drag = { from = pos, kind = record.kind, index = record.index, phase = record.phase, plan = view.plan }
+	w.drag = { from = pos, index = record.index, plan = view.plan }
 	TP.DragParts.ShowGhost(w, EntryLabel(self, record), L.ROW_HEIGHT)
 	self:DrawDrag()
 end
@@ -810,8 +693,8 @@ function TP:EndDrag()
 	TP.DragParts.StopDrag(w)
 	if not (place and panel:IsShown() and view and view.plan == drag.plan) then return end
 	local record = panel.entries[drag.from]
-	if not (record and record.kind == drag.kind and record.index == drag.index and record.phase == drag.phase) then return end
-	local map = M.MoveEntry(drag.plan, drag.from, place)
+	if not (record and record.index == drag.index) then return end
+	local map = M.MoveStep(drag.plan, drag.from, place)
 	if self.selected then self.selected = map[self.selected] or self.selected end
 	self:QueueRefresh()
 end
