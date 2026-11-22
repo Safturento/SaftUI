@@ -37,6 +37,7 @@ st.defaults.tooltip = {
 -- (Skinning/blizzard/Blizzard_ObjectiveTracker.lua), off and on live.
 -- color_picker skins Blizzard's color picker (Skinning/blizzard/Blizzard_ColorPicker.lua),
 -- off and on live.
+-- spy skins the Spy addon (Skinning/addons/spy.lua); off or on takes a reload.
 st.defaults.skinning = {
 	font = 'pixel',
 	theme = 'theme',
@@ -44,6 +45,7 @@ st.defaults.skinning = {
 	cooldown_manager = true,
 	objective_tracker = true,
 	color_picker = true,
+	spy = true,
 }
 
 -- Blizzard's objective tracker (Skinning/blizzard/Blizzard_ObjectiveTrackerPosition.lua

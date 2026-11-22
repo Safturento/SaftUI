@@ -484,7 +484,21 @@ test('Skinning: a page with the shared Theme, Background and font, which re-appl
 	eq(reapplied, 5, 'and re-applies the skins')
 	profile.skinning.color_picker = true
 
+	-- Spy turns the Spy skin on or off, after a reload.
+	local spy = general.args.spy
+	eq(spy.type, 'toggle', 'Spy is a toggle')
+	check(spy.desc:find('Requires a reload', 1, true) ~= nil, 'its tooltip says it needs a reload')
+	eq(general.get(info_for('spy')), true, 'on by default')
+	printed = {}
+	function st:Print(...) printed[#printed + 1] = table.concat({ ... }, ' ') end
+	spy.set(info_for('spy'), false)
+	st.Print = print_
+	eq(profile.skinning.spy, false, 'Spy writes skinning.spy')
+	eq(reapplied, 5, 'and re-applies no skin')
+	eq(printed[1], 'Reload your UI to apply.', 'it says to reload')
+	profile.skinning.spy = true
+
 	eq(layout({ Skinning = tree }, 'Skinning'),
-		'theme:normal 1, background:normal 2, font:normal 1, cooldown_manager:normal 2, objective_tracker:normal 1, color_picker:normal 2',
-		'Theme | Background, Font | Cooldown Manager, Objective tracker, Color picker')
+		'theme:normal 1, background:normal 2, font:normal 1, cooldown_manager:normal 2, objective_tracker:normal 1, color_picker:normal 2, spy:normal 1',
+		'Theme | Background, Font | Cooldown Manager, Objective tracker, Color picker, Spy')
 end)

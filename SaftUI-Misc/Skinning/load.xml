@@ -4,6 +4,7 @@
 	<Script file="addons/weakauras.lua"/>
 	<Script file="addons/hekili.lua"/>
 	<Script file="addons/restedxp.lua"/>
+	<Script file="addons/spy.lua"/>
 	<Script file="blizzard/Blizzard_BuffFrame.lua"/>
 	<Script file="blizzard/Blizzard_BuffFramePosition.lua"/>
 	<Script file="blizzard/Blizzard_SwingTimer.lua"/>
