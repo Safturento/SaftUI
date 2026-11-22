@@ -18,4 +18,5 @@ durability.lua
 durabilitytooltip.lua
 hearthzone.lua
 movable.lua
+TalentPlan\load.xml
 Skinning\load.xml

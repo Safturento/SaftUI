@@ -1415,3 +1415,21 @@ test('a disabled button gets no OnEnter or OnLeave unless it set SetMotionScript
 	stub.fire_script(button, 'OnShow')
 	eq(shown, 1, "OnShow is no motion script")
 end)
+
+test('the trait stubs: a fresh stub.traits per world, and an argument that is not a number errors with its Usage', function()
+	reset_world()
+	eq(#stub.traits.calls, 0, 'no calls yet')
+	eq(C_ClassTalents.GetActiveConfigID(), nil, 'no config in a fresh world')
+	for _, call in ipairs({
+		function() C_Traits.GetNodeInfo('x', 1) end,
+		function() C_Traits.GetNodeInfo(1, 'x') end,
+		function() C_Traits.GetTreeNodes('x') end,
+		function() C_Spell.GetSpellName('x') end,
+		function() C_SpecializationInfo.GetCombatConfigIDForSpecGroup('1') end,
+	}) do
+		local ok, err = pcall(call)
+		eq(ok, false, 'a non-number errors')
+		check(tostring(err):find('Usage: ', 1, true), 'with its Usage line: ' .. tostring(err))
+	end
+	eq(C_Traits.GetNodeInfo(1, 2), nil, 'an unknown node gives nil')
+end)

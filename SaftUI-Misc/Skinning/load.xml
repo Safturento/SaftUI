@@ -18,6 +18,7 @@
 	<Script file="blizzard/Blizzard_ObjectiveTrackerPosition.lua"/>
 	<Script file="blizzard/Blizzard_WeeklyRewards.lua"/>
 	<Script file="blizzard/Blizzard_WorldMap.lua"/>
+	<Script file="blizzard/Blizzard_PlayerSpellsLayout.lua"/>
 	<Script file="blizzard/ZoneText.lua"/>
 	<Script file="blizzard/ZoneFactions.lua"/>
 <!--	<Include file="Addons\addons.xml"/>-->

@@ -1469,6 +1469,10 @@ function EditBox.SetText(self, s, text)
 	if changed then run_script(self, 'OnTextChanged', false) end
 end
 function EditBox.GetText(self, s) return s.text or '' end
+-- A multi-line box takes Enter as a new line instead of OnEnterPressed (not
+-- mimicked: this stub types no keys).
+function EditBox.SetMultiLine(self, s, multiLine) s.multi_line = multiLine and true or false end
+function EditBox.IsMultiLine(self, s) return s.multi_line == true end
 -- The cap on how many letters the box takes (0 is no cap, the default). Only
 -- remembered: this stub doesn't cut text that is set or typed past it.
 function EditBox.SetMaxLetters(self, s, n) s.max_letters = number_arg(s, n, 'maxLetters') end

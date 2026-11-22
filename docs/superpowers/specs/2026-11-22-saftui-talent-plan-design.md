@@ -135,6 +135,10 @@ A "Talent plan" page in `/sui` under Misc (**My call**): Enable (default on), Di
 
 The owner, 2026-11-22: "can we make the talent frame movable?". `PlayerSpellsFrame` joins the windows `SaftUI-Misc/movable.lua` already makes draggable (`SettingsPanel`, `AddonList`, `TransmogFrame`), with `addon = 'Blizzard_PlayerSpells'` since it loads on demand. It moves the way those do today: dragged by the mouse, clamped to the screen, and back in Blizzard's spot the next time it opens, since the game lays out its panels on each show (**My call**, to match the others; remembering the spot is a followup if wanted). The plan panel re-docks when the window is dropped. This part ships first and on its own, since it is one line in an existing list.
 
+### A compact talent window
+
+Revised 2026-11-22. The owner: "there's so much empty space currently on the frame, can we reduce it a bit so that the spacing between the talents and the edges separating the specs (and the side of the window) is the same as the spacing between talents?" SaftUI moves each tree's talents sideways so the gap between a tree's outer talents and the dividers (and the window's sides) equals the gap between two talents, centers the tree headers and dividers on the new regions, and narrows the window to match. Post-hooks and plain widget calls only, on by default, with a check box to turn it off (a `/reload` puts Blizzard's layout back). The height is left alone (**My call**). Plan Task 10.
+
 ## Where it lives
 
 **My call:** `SaftUI-Misc/TalentPlan/`, a new module beside the other Blizzard-frame additions, with the parser and the row-state model in their own files so `tests/misc/` can test them without the frame. The builder may pick another home if `.agents/architecture.md` says otherwise.

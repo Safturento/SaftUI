@@ -1,0 +1,353 @@
+-- SaftUI-Misc/TalentPlan/overlays.lua: the light, glow, dim and catcher over
+-- Blizzard's talent buttons, and planning by clicking. The world is the panel
+-- test's (see it for what is real and what is made by hand).
+--
+-- Real: Misc's TalentPlan files, Core's helpers and theme engine, the options
+-- window's dialogs (Confirm and Prompt), movable.lua (so the window's own
+-- OnMouseUp hook is there when the panel docks). Made by hand: Blizzard's talent
+-- window (misc/fixtures/player_spells_frame.lua, every frame locked, so a
+-- field or a SetScript written onto one fails), the trait stubs
+-- (tests/wow/traits.lua, filled by the shaman fixture), the game's menu
+-- (MenuUtil, which records the generator's items so a test chooses them) and
+-- ScrollFrameTemplate's scroll bar (as tests/bags/scrollframe_test.lua).
+local T = load_test_file('lib/theme_helpers.lua')
+local SH = load_test_file('misc/fixtures/talentplan_shaman.lua')
+local PSF = load_test_file('misc/fixtures/player_spells_frame.lua')
+local GUIDE = read_test_source('misc/fixtures/talentplan_guide_enhancement.txt')
+
+local st, TP, S, M, W
+local opened
+
+-- The game's menu: CreateContextMenu(owner, generator) calls the generator
+-- with a root; its items are kept in order in opened[i] = { owner, list }.
+local function menu_stand_in()
+	opened = {}
+	_G.MenuUtil = {
+		CreateContextMenu = function(owner, generator)
+			local root = { owner = owner, list = {} }
+			local function add(kind, text, a, b)
+				local item = { kind = kind, text = text, a = a, b = b }
+				root.list[#root.list + 1] = item
+				return item
+			end
+			local description = {}
+			function description:CreateButton(text, onClick) return add('button', text, onClick) end
+			function description:CreateRadio(text, isSelected, setSelected) return add('radio', text, isSelected, setSelected) end
+			function description:CreateDivider() return add('divider') end
+			generator(owner, description)
+			opened[#opened + 1] = root
+			return root
+		end,
+	}
+end
+
+local function item(root, text)
+	for _, entry in ipairs(root.list) do
+		if entry.text == text then return entry end
+	end
+	error('no menu item ' .. text, 2)
+end
+
+local function texts(root)
+	local out = {}
+	for i, entry in ipairs(root.list) do out[i] = entry.kind == 'divider' and '-' or entry.text end
+	return table.concat(out, '|')
+end
+
+local function choose(entry)
+	if entry.kind == 'radio' then entry.b() else entry.a() end
+end
+
+-- A fresh world: the forever client with Core's helpers, the options window's
+-- widgets, Misc's defaults, the talent plan's files, the shaman's tree,
+-- Blizzard's talent window and the module enabled. opts.before runs between
+-- the window's making and the module's enabling (the addon already loaded).
+local function world(opts)
+	opts = opts or {}
+	st = T.client('forever')
+	stub.class, stub.level = 'SHAMAN', 27
+	st.config.global, st.config.char = {}, {}
+	load_options_widgets()
+	load_saftui('SaftUI-Misc/config.lua')
+	apply_defaults()
+	st.SkinScrollBar = function() end
+	local create = CreateFrame
+	_G.CreateFrame = function(frameType, name, parent, template, ...)
+		if template ~= 'ScrollFrameTemplate' then return create(frameType, name, parent, template, ...) end
+		local frame = create(frameType, name, parent, nil, ...)
+		local bar = create('Frame', nil, frame)
+		bar:SetWidth(8)
+		bar:SetPoint('TOPLEFT', frame, 'TOPRIGHT', 6, -2)
+		bar:SetPoint('BOTTOMLEFT', frame, 'BOTTOMRIGHT', 6, 5)
+		bar.SetHideIfUnscrollable = function() end
+		frame.ScrollBar = bar
+		return frame
+	end
+	load_saftui('SaftUI-Core/Widgets/scrollframe.lua')
+	if not _G.GameTooltip then create('GameTooltip', 'GameTooltip', UIParent, 'GameTooltipTemplate') end
+	for _, file in ipairs({ 'talentplan', 'model', 'parser', 'store', 'data', 'drag', 'panel', 'import', 'overlays' }) do
+		load_saftui('SaftUI-Misc/TalentPlan/' .. file .. '.lua')
+	end
+	load_saftui('SaftUI-Misc/movable.lua')
+	TP = st:GetModule('TalentPlan')
+	S, M, W = TP.Store, TP.Model, st.OptionsWidgets
+	TP.Data.ResetSnapshots()
+	SH.install(opts.tree)
+	create('Frame', 'SettingsPanel', UIParent)
+	create('Frame', 'AddonList', UIParent)
+	PSF.build()
+	menu_stand_in()
+	if opts.before then opts.before() end
+	st:GetModule('Movable'):Enable() -- made first, so enabled first (AceAddon's module order)
+	TP:Enable()
+	if not opts.before then PSF.load() end
+end
+
+-- The owner's guide's first 20 steps as the active plan of spec tab 1.
+local function guide_plan()
+	local plan = S.New('Enhancement', 1)
+	local steps = TP.Parse(GUIDE, SH.NAMES).steps
+	for i = 1, 20 do plan.steps[i] = steps[i] end
+	return plan
+end
+
+local TWELVE = { ['Thundering Strikes'] = 5, ['Mental Dexterity'] = 3, ['Ancestral Knowledge'] = 2,
+	['Shamanistic Focus'] = 1, ['Elemental Weapons'] = 1 }
+
+local function open()
+	PSF.open()
+	stub.run_timers()
+end
+
+local function J(list) return table.concat(list, ',') end
+local function row(i) return TP.panel.rows[i].frame end
+local function rec(name) return TP.overlays[PSF.byNode[SH.ID[name]]] end
+
+local function clean()
+	eq(#take_errors(), 0, 'no errors')
+	eq(#stub.traits.calls, 0, 'nothing bought, refunded or committed')
+end
+
+local function steps_of(plan, name)
+	local out = {}
+	for i, id in ipairs(plan.steps) do if id == SH.ID[name] then out[#out + 1] = i end end
+	return out
+end
+
+test('catchers cover their buttons only while planning', function()
+	world()
+	open()
+	local count = 0
+	for button, r in pairs(TP.overlays) do
+		count = count + 1
+		check(not r.catcher:IsShown(), 'hidden')
+		check(not r.catcher:IsMouseEnabled(), 'and mouse-disabled')
+	end
+	check(count >= 23, 'a record per button')
+	TP:SetPlanning(true)
+	for button, r in pairs(TP.overlays) do
+		check(r.catcher:IsShown() and r.catcher:IsMouseEnabled(), 'shown and mouse-enabled')
+		eq(r.catcher:GetFrameLevel(), button:GetFrameLevel() + 10)
+		eq(J({ r.catcher:GetRect() }), J({ button:GetRect() }), 'the same rect')
+		for _, part in ipairs({ r.light, r.glow, r.dim }) do check(not part:IsMouseEnabled(), 'overlays take no mouse') end
+		eq(r.dim:GetFrameLevel(), button:GetFrameLevel() + 4)
+		eq(r.glow:GetFrameLevel(), button:GetFrameLevel() + 5)
+		eq(r.light:GetFrameLevel(), button:GetFrameLevel() + 6)
+	end
+	check(TP.panel.hint:IsShown(), 'the planning line shows')
+	TP:SetPlanning(false)
+	for _, r in pairs(TP.overlays) do check(not r.catcher:IsShown(), 'hidden again') end
+	clean()
+end)
+
+test('a planning click plans and never reaches Blizzard\'s button', function()
+	world()
+	open()
+	TP:SetPlanning(true)
+	local flurry = rec('Flurry')
+	stub.click(flurry.catcher, 'LeftButton')
+	stub.click(flurry.catcher, 'LeftButton')
+	local plan = S.Active(1)
+	eq(J(plan.steps), J({ SH.ID.Flurry, SH.ID.Flurry }))
+	eq(TP.view.rows[2].rank, 2)
+	stub.click(flurry.catcher, 'RightButton')
+	eq(#plan.steps, 1)
+	eq(TP:PlanClick(SH.ID.Mindfulness, 'RightButton'), nil, 'nothing to remove')
+	eq(PSF.clicks[SH.ID.Flurry], nil, 'Blizzard never saw a click')
+	clean()
+end)
+
+test('a click goes after the selected row', function()
+	world()
+	local plan = S.New('P', 1)
+	local a, b = SH.ID['Stormstrike'], SH.ID['Spirit Weapons']
+	plan.steps = { a, b, b }
+	open()
+	TP:SetPlanning(true)
+	stub.click(row(1), 'LeftButton')
+	eq(TP.selected, 1)
+	stub.click(rec('Flurry').catcher, 'LeftButton')
+	eq(TP.selected, 2, 'the selection moves to the new step')
+	stub.click(rec('Mindfulness').catcher, 'LeftButton')
+	eq(J(plan.steps), J({ a, SH.ID.Flurry, SH.ID.Mindfulness, b, b }))
+	clean()
+end)
+
+test('a maxed node does nothing and says so', function()
+	world()
+	open()
+	TP:SetPlanning(true)
+	local focus = rec('Shamanistic Focus')
+	eq(TP:PlanClick(SH.ID['Shamanistic Focus'], 'LeftButton'), 'added')
+	eq(TP:PlanClick(SH.ID['Shamanistic Focus'], 'LeftButton'), 'maxed')
+	eq(#S.Active(1).steps, 1)
+	local lines = TP.CatcherLines(S.Active(1), SH.ID['Shamanistic Focus'], TP.view.tree.nodes[SH.ID['Shamanistic Focus']])
+	eq(lines[1], 'Shamanistic Focus')
+	eq(lines[2], 'Rank 1 at level 10')
+	eq(lines[#lines], 'All 1 ranks are planned.')
+	local open_lines = TP.CatcherLines(S.Active(1), SH.ID.Flurry, TP.view.tree.nodes[SH.ID.Flurry])
+	eq(J(open_lines), 'Flurry,Click: add the next rank. Right-click: remove the last one.')
+	stub.fire_script(focus.catcher, 'OnEnter')
+	eq(GameTooltip:GetOwner(), focus.catcher)
+	eq(stub.state(GameTooltip).texts[#stub.state(GameTooltip).texts], 'All 1 ranks are planned.')
+	stub.fire_script(focus.catcher, 'OnLeave')
+	check(not GameTooltip:IsShown())
+	clean()
+end)
+
+test('glow on the waiting node, dim on unplanned ones, light on hover', function()
+	world({ tree = { ranks = TWELVE } })
+	guide_plan()
+	open()
+	local waiting = TP.view.rows[TP.view.summary.waiting].nodeID
+	for button, r in pairs(TP.overlays) do
+		eq(r.glow:IsShown(), r.nodeID == waiting, 'glow only on the waiting node')
+		eq(r.dim:IsShown(), TP.view.tree.nodes[r.nodeID] ~= nil and M.PlannedRanks(TP.view.plan, r.nodeID) == 0, 'dim on the unplanned')
+		check(not r.light:IsShown(), 'no light yet')
+	end
+	check(rec('Improved Lightning Shield').dim:IsShown())
+	check(not rec('Thundering Strikes').dim:IsShown())
+	TP.config.dim = false
+	TP:Refresh()
+	check(not rec('Improved Lightning Shield').dim:IsShown(), 'dim off')
+	TP.config.dim = true
+	TP:Refresh()
+	stub.fire_script(row(1), 'OnEnter')
+	check(rec('Thundering Strikes').light:IsShown(), 'light on the row node')
+	check(not rec('Flurry').light:IsShown())
+	stub.fire_script(row(1), 'OnLeave')
+	check(not rec('Thundering Strikes').light:IsShown())
+	clean()
+end)
+
+test('an empty plan dims nothing', function()
+	world()
+	S.New('Empty', 1)
+	open()
+	for _, r in pairs(TP.overlays) do check(not r.dim:IsShown()) end
+	clean()
+end)
+
+test('overlays follow a re-bound button', function()
+	world({ tree = { ranks = TWELVE } })
+	guide_plan()
+	open()
+	local a, b = PSF.byNode[SH.ID.Flurry], PSF.byNode[SH.ID['Elemental Weapons']]
+	local oldA, oldB = a._node, b._node
+	PSF.rebind(a, oldB)
+	PSF.rebind(b, oldA)
+	PSF.redraw(); stub.run_timers()
+	local waiting = TP.view.rows[TP.view.summary.waiting].nodeID
+	eq(waiting, SH.ID['Elemental Weapons'])
+	check(TP.overlays[a].glow:IsShown(), 'the waiting node moved to a, and so did its glow')
+	check(not TP.overlays[b].glow:IsShown(), 'and left b')
+	check(TP.overlays[a].glow:IsShown() == (a._node == waiting), 'glow follows the node, not the button')
+	check(TP.overlays[b].glow:IsShown() == (b._node == waiting))
+	eq(TP.overlays[a].nodeID, oldB)
+	check(TP.overlays[a].dim:IsShown() == (M.PlannedRanks(TP.view.plan, oldB) == 0))
+	check(TP.overlays[b].dim:IsShown() == (M.PlannedRanks(TP.view.plan, oldA) == 0))
+	clean()
+end)
+
+test('a button redraw redraws the overlays through the one callback', function()
+	local seen = {}
+	world({ before = function()
+		local register = EventRegistry.RegisterCallback
+		EventRegistry.RegisterCallback = function(self, event, func, owner, ...)
+			local key = event .. '/' .. tostring(owner)
+			seen[key] = (seen[key] or 0) + 1
+			return register(self, event, func, owner, ...)
+		end
+		PSF.load()
+	end })
+	open()
+	for key, n in pairs(seen) do eq(n, 1, key .. ' is registered once (a second one with the same owner would replace the first)') end
+	check(seen['TalentFrameBase.ButtonsUpdated/' .. tostring(TP)], 'the module registered it')
+	local plan = S.New('P', 1)
+	plan.steps = { SH.ID.Flurry }
+	PSF.redraw(); stub.run_timers()
+	check(not rec('Flurry').dim:IsShown() and rec('Mindfulness').dim:IsShown(), 'the overlays were redrawn')
+	clean()
+end)
+
+test('hiding the panel clears the view and ends planning', function()
+	world()
+	open()
+	TP:SetPlanning(true)
+	PSF.window:SetInspecting('target'); stub.run_timers()
+	eq(TP.view, nil, 'the view is cleared')
+	check(not TP.planning, 'planning is off')
+	for _, r in pairs(TP.overlays) do check(not r.catcher:IsShown() and not r.dim:IsShown() and not r.glow:IsShown()) end
+	clean()
+end)
+
+test('collapsing the panel ends planning, so no catcher swallows a tree click', function()
+	world()
+	open()
+	TP:SetPlanning(true)
+	check(TP.planning, 'planning is on')
+	TP:SetCollapsed(true)
+	check(not TP.planning, 'planning is off')
+	for _, r in pairs(TP.overlays) do
+		check(not r.catcher:IsShown() and not r.catcher:IsMouseEnabled(), 'no catcher takes the mouse')
+	end
+	clean()
+end)
+
+test('planning turns off when the window hides', function()
+	world()
+	open()
+	TP:SetPlanning(true)
+	PSF.talents:Hide()
+	check(not TP.planning)
+	for _, r in pairs(TP.overlays) do check(not r.catcher:IsShown(), 'catcher hidden') end
+	PSF.talents:Show(); PSF.window:Hide(); stub.run_timers()
+	check(not TP.planning)
+	clean()
+end)
+
+test('a missing step has no overlay and the waiting node still glows', function() -- Review Focus 1
+	world({ tree = { ranks = TWELVE } })
+	local plan = guide_plan()
+	table.insert(plan.steps, 3, 999999)
+	open()
+	for _, r in pairs(TP.overlays) do check(r.nodeID ~= 999999, 'no record for the missing node') end
+	local row = TP.view.rows[TP.view.summary.waiting]
+	check(TP.view.tree.nodes[row.nodeID], 'waiting is a real node')
+	check(PSF.byNode[row.nodeID] and TP.overlays[PSF.byNode[row.nodeID]].glow:IsShown(), 'glow on its button')
+	clean()
+end)
+
+test('a released pool button is not lit', function()
+	world({ tree = { ranks = TWELVE } })
+	guide_plan()
+	open()
+	local button = PSF.byNode[SH.ID['Thundering Strikes']]
+	for i, b in ipairs(PSF.buttons) do if b == button then table.remove(PSF.buttons, i) break end end
+	PSF.redraw(); stub.run_timers()
+	eq(TP.overlays[button].nodeID, nil, 'a released button names no node')
+	stub.fire_script(row(1), 'OnEnter')
+	check(not TP.overlays[button].light:IsShown(), 'not lit')
+	check(not TP.overlays[button].glow:IsShown() and not TP.overlays[button].dim:IsShown())
+	clean()
+end)
