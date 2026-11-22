@@ -46,7 +46,7 @@ local function Update(f)
 	f.import:SetEnabled(#f.result.steps > 0)
 	-- the box grows with its text, so the scroll frame can scroll to the end
 	f.measure:SetText(text == '' and ' ' or text)
-	f.box:SetHeight(math.max(BOX_HEIGHT, f.measure:GetStringHeight() + 8))
+	f.scroll:SetContentSize(f.boxWidth, math.max(BOX_HEIGHT, f.measure:GetStringHeight() + 8))
 end
 
 local function SetMode(f, mode)
@@ -65,6 +65,7 @@ function TP:CloseImport()
 	f.box:ClearFocus()
 	f.name:ClearFocus()
 	f:Hide()
+	if not InCombatLockdown() then f.keys:SetPropagateKeyboardInput(true) end
 end
 
 local function Build()
@@ -89,6 +90,7 @@ local function Build()
 	scroll:SetContentSize(WIDTH - PAD * 2 - st:ScrollBarRoom(scroll), BOX_HEIGHT)
 	box:SetWidth(WIDTH - PAD * 2 - st:ScrollBarRoom(scroll))
 	f.box, f.scroll = box, scroll
+	f.boxWidth = WIDTH - PAD * 2 - st:ScrollBarRoom(scroll)
 
 	local hint = st:CreateFontString(box, 'normal', "Paste a guide's talent order")
 	hint:SetPoint('TOPLEFT', box, 'TOPLEFT', 6, -6)
@@ -151,6 +153,8 @@ local function Build()
 	-- (so it hears keys only while shown); any other key goes on to the game.
 	local keys = CreateFrame('Frame', nil, f)
 	keys:EnableKeyboard(true)
+	keys:SetPropagateKeyboardInput(true)
+	f.keys = keys
 	keys:SetScript('OnKeyDown', function(self, key)
 		if InCombatLockdown() then return end
 		local escape = key == 'ESCAPE' and not GetCurrentKeyBoardFocus()
