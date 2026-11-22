@@ -7,6 +7,14 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-22 — Talent plan: remember the talent window's spot](#2026-11-22--talent-plan-remember-the-talent-windows-spot)
+  - [2026-11-22 — Talent plan: check a whole plan against the tree](#2026-11-22--talent-plan-check-a-whole-plan-against-the-tree)
+  - [2026-11-22 — Talent plan: choice nodes and hero talents in a plan](#2026-11-22--talent-plan-choice-nodes-and-hero-talents-in-a-plan)
+  - [2026-11-22 — Move the drag parts to Core](#2026-11-22--move-the-drag-parts-to-core)
+  - [2026-11-22 — Talent plan, experiment E1: which node field is the committed rank](#2026-11-22--talent-plan-experiment-e1-which-node-field-is-the-committed-rank)
+  - [2026-11-22 — `C_Traits.GetNodeInfo` of a node not in the tree](#2026-11-22--c_traitsgetnodeinfo-of-a-node-not-in-the-tree)
+  - [2026-11-22 — Small polish in the talent plan](#2026-11-22--small-polish-in-the-talent-plan)
+  - [2026-11-22 — Talent window compact toggle needs a reload](#2026-11-22--talent-window-compact-toggle-needs-a-reload)
   - [2026-11-17 — UI scale: pixel fonts are unreadable below 100%](#2026-11-17--ui-scale-pixel-fonts-are-unreadable-below-100)
   - [2026-11-17 — UI scale: pixel fonts look wrong in a window at k 1](#2026-11-17--ui-scale-pixel-fonts-look-wrong-in-a-window-at-k-1)
   - [2026-11-17 — Cooldown Manager: SaftUI's own settings instead of Blizzard's Edit Mode ones](#2026-11-17--cooldown-manager-saftuis-own-settings-instead-of-blizzards-edit-mode-ones)
@@ -256,6 +264,118 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-22 — Talent plan: remember the talent window's spot
+
+**What:** Today the talent window goes back to Blizzard's spot on every open, so a window the player dragged (to make room for the panel) is put back each time.
+
+**Why noticed:** Task 9 of the talent plan, from the spec's "A movable talent window".
+
+**Anchors:** `docs/superpowers/specs/2026-11-22-saftui-talent-plan-design.md` (A movable talent window), `SaftUI-Misc/movable.lua`, `SaftUI-Misc/TalentPlan/talentplan.lua` (`TP:Dock`).
+
+**What's been considered:** Saving the spot would be a position in the profile or the char data, put back when the window opens. Left out of the first build so the panel's docking was checked first.
+
+**Shape of work:** Small: a saved position, read on the window's open, with a reset in the page.
+
+**Open questions:** Should it be per character or in the profile, and does Blizzard's own window-position memory fight it?
+
+### 2026-11-22 — Talent plan: check a whole plan against the tree
+
+**What:** A plan is not checked against the tree's rules: point gates (points spent in a tree before a row opens) and prerequisites (a talent that needs another first) are not read, so a plan can name an order the game won't allow.
+
+**Why noticed:** Task 9 of the talent plan; the spec's non-goal.
+
+**Anchors:** `docs/superpowers/specs/2026-11-22-saftui-talent-plan-design.md` (Non-goals), `SaftUI-Misc/TalentPlan/data.lua` (`D.BlockReason`), `SaftUI-Misc/TalentPlan/model.lua`.
+
+**What's been considered:** `D.BlockReason` says why a node can't be bought now, from the live tree. A check of a whole plan would replay the steps offline against the tree's gates, with no C_Traits calls.
+
+**Shape of work:** Medium: a pure replay in `model.lua` with the gates in the read tree, and a warning line on the rows it finds.
+
+**Open questions:** Which steps does the guide order treat as legal that the replay would flag (a plan written for another patch)?
+
+### 2026-11-22 — Talent plan: choice nodes and hero talents in a plan
+
+**What:** A plan cannot hold a choice node (a node with two entries) or a hero talent: `D.Read` skips them, so an imported step naming one is unmatched.
+
+**Why noticed:** Task 9 of the talent plan.
+
+**Anchors:** `SaftUI-Misc/TalentPlan/data.lua` (`D.Read`: skipped nodes), `SaftUI-Misc/TalentPlan/parser.lua`.
+
+**What's been considered:** A choice step would need the chosen entry saved with the node, and hero talents a sub tree read. Neither exists on the leveling talents the plan was built for.
+
+**Shape of work:** Medium: a step carries an entry, the panel and the overlays name it, and the read includes sub tree nodes.
+
+**Open questions:** Does Forever's tree have either at the levels the plan covers?
+
+### 2026-11-22 — Move the drag parts to Core
+
+**What:** `SaftUI-Bags/dragparts.lua` and `SaftUI-Misc/TalentPlan/drag.lua` are two copies of one shape (the handle, the ghost and the drop line).
+
+**Why noticed:** Task 8 of the talent plan, which copied the Bags file because Misc can't depend on Bags.
+
+**Anchors:** `SaftUI-Bags/dragparts.lua`, `SaftUI-Misc/TalentPlan/drag.lua`, `tests/misc/talentplan_panel_test.lua`.
+
+**What's been considered:** Core is the one place both addons load after, so one copy there (with the text from `st:CreateFontString`) would serve both; the Bags copy uses the options window's text.
+
+**Shape of work:** Small to medium: move, point both callers at it, keep both addons' drag tests.
+
+**Open questions:** Does Bags' text, from the options window's helpers, need the same font rule as the panel's?
+
+### 2026-11-22 — Talent plan, experiment E1: which node field is the committed rank
+
+**What:** The game's node info has `activeRank`, `currentRank` and `ranksPurchased`, and which of them is the committed rank (before staged changes) is not known. `D.CommittedRank` works it out with a snapshot instead.
+
+**Why noticed:** Task 9 of the talent plan; the in-game checklist's step 6.
+
+**Anchors:** `SaftUI-Misc/TalentPlan/data.lua` (`D.CommittedRank`, the snapshots), the in-game checklist in `docs/superpowers/plans/2026-11-22-saftui-talent-plan.md`.
+
+**What's been considered:** The snapshot rule is right whichever field it is, but costs a table and a guess for a node first read with a change staged.
+
+**Shape of work:** Small: if `activeRank` is the committed rank, replace the snapshot rule with it and delete the snapshots and `D.ResetSnapshots`.
+
+**Open questions:** The owner's `/dump C_Traits.GetNodeInfo(...)` before and after staging a rank.
+
+### 2026-11-22 — `C_Traits.GetNodeInfo` of a node not in the tree
+
+**What:** The test stub returns nil for a node ID not in the tree; the real game's answer is unverified.
+
+**Why noticed:** Task 9 of the talent plan.
+
+**Anchors:** `tests/wow/traits.lua`, `SaftUI-Misc/TalentPlan/data.lua` (`D.Read`).
+
+**What's been considered:** `D.Read` guards a nil node info, so a different answer (an empty table) would be read as a node with no name and skipped.
+
+**Shape of work:** Small: one in-game `/dump` of a node ID from another class, then make the stub match.
+
+**Open questions:** What does Forever return (nil, or a table with no fields)?
+
+### 2026-11-22 — Small polish in the talent plan
+
+**What:** Several small things left in the talent plan: the import dialog and the rows use no pixel font; the import hint's color is not refreshed on a theme change; `SetMode` copies the radio's internals; the tooltips' colors are hard-coded; the learned rows' level is tinted by the phase color; `StripText` says "No plan" for an empty plan; and the icon is read with `select(2, GetSpellTexture)`.
+
+**Why noticed:** The reviews of the talent plan's tasks, collected at Task 9.
+
+**Anchors:** `SaftUI-Misc/TalentPlan/import.lua` (the dialog, `SetMode`), `SaftUI-Misc/TalentPlan/panel.lua` (the rows, `StripText`), `SaftUI-Misc/TalentPlan/overlays.lua` (the catcher tooltips), `SaftUI-Misc/TalentPlan/data.lua` (the icon).
+
+**What's been considered:** None is a bug the owner would see at 100%; each is a place the panel differs from SaftUI's other windows.
+
+**Shape of work:** Small: seven edits, each with a test where one fits.
+
+**Open questions:** None.
+
+### 2026-11-22 — Talent window compact toggle needs a reload
+
+**What:** Switching Compact talent window on or off with a window already built leaves a mixed layout (some talents moved, some not) until a /reload, and nothing guards a gap of 0 or less (a tree so wide the gaps come out negative).
+
+**Why noticed:** Task 10 of the talent plan; the page's description says it takes effect after a /reload.
+
+**Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_PlayerSpellsLayout.lua` (`Enabled`, `Apply`), `SaftUI-Misc/TalentPlan/options.lua`, `tests/misc/talent_window_layout_test.lua`.
+
+**What's been considered:** The skin reads `talentwindow.compact` once, when it installs. Putting Blizzard's layout back would need each moved button's own position, which the skin never reads back.
+
+**Shape of work:** Small to medium: re-run Blizzard's layout on a switch (`LoadTalentTreeInternal`'s inputs), and clamp the gap to a floor.
+
+**Open questions:** Can the layout be redone from outside Blizzard's code without a taint?
 
 ### 2026-11-17 — UI scale: pixel fonts are unreadable below 100%
 

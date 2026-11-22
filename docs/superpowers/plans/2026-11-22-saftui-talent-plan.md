@@ -891,7 +891,12 @@ Leave out `README.md` if the freshness check left it unchanged.
 7. Collapse the panel: the strip shows the waiting step. `/reload`: still collapsed.
 8. Drag a rank 2 above its rank 1: the R numbers swap. Add a phase, rename it, recolor it and drag it.
 9. Set Dim talents not in the plan off: the dim goes at once. Set Enable off: the panel and every overlay go.
-10. `/console taintLog 1`, use all of the above, learn a talent, `/reload`: nothing in `Logs/taint.log` blames SaftUI for `Blizzard_PlayerSpells` or `Blizzard_SharedTalentUI`.
+10. Compact talent window: the gaps at the window's sides and between the three specs equal the gap between talents.
+11. The headers are centred over their trees.
+12. Switch to the Spellbook tab: it keeps Blizzard's width.
+13. Turn off Compact talent window (`/sui` > Talent plan > General) and `/reload`: Blizzard's layout is back.
+14. The import dialog: Esc closes it, and keybinds still work while it is open.
+15. `/console taintLog 1`, use all of the above, learn a talent, `/reload`: nothing in `Logs/taint.log` blames SaftUI for `Blizzard_PlayerSpells` or `Blizzard_SharedTalentUI`.
 
 ## Execution
 
