@@ -176,11 +176,15 @@ function Sim.Check(shape, real)
 	for _, id in ipairs(ids) do
 		local node, r = shape.nodes[id], real[id]
 		local gate = GateMet(shape, node, spent)
-		if r.isAvailable ~= nil and r.isAvailable ~= gate then
+		local edge = EdgesMet(shape, node, ranks)
+		-- the game says it can be had and the rules say gated or locked, or the game
+		-- says it can't and the rules say selectable (both met). A node the game holds
+		-- back for another reason (its level) is not told from these: a character below
+		-- max level sees extra lines.
+		if r.isAvailable ~= nil and r.isAvailable ~= gate and (r.isAvailable or edge) then
 			out[#out + 1] = { nodeID = id, field = 'gated', game = r.isAvailable, sim = gate }
 		end
-		local edge = EdgesMet(shape, node, ranks)
-		if r.meetsEdgeRequirements ~= nil and r.meetsEdgeRequirements ~= edge then
+		if r.meetsEdgeRequirements ~= nil and r.meetsEdgeRequirements ~= edge and (r.meetsEdgeRequirements or gate) then
 			out[#out + 1] = { nodeID = id, field = 'locked', game = r.meetsEdgeRequirements, sim = edge }
 		end
 	end

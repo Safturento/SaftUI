@@ -196,6 +196,7 @@ function TP:RunCheck()
 		st:Print("The plan's rules agree with the game.")
 		return
 	end
+	st:Print('A character below max level may see extra lines: the game also holds nodes back for level, which the rules do not model.')
 	for _, d in ipairs(bad) do
 		local node = tree.shape.nodes[d.nodeID]
 		st:Print(('%s (%d): the game says %s %s, the rules say %s.'):format(node.name or 'a node', d.nodeID,

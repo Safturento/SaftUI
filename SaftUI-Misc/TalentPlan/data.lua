@@ -17,8 +17,8 @@ local TP = st:GetModule('TalentPlan')
 	every read of a node with no staged change.
 
 	tree.shape is the tree's shape for the plan's rules (simulate.lua): groups
-	(the tree's displayed groups by order), budget (the tree currency's maximum,
-	when there is one), hideSingle, and every visible node that is not in a hero
+	(the tree's displayed groups by order), hideSingle (no budget: a plan runs
+	to max level, so no step is refused for points), and every visible node that is not in a hero
 	sub tree, plannable or not: { maxRanks, cost, group (the first of its groupIDs
 	the tree lists, else nil), gates, parents (its incoming edges), plannable, posY,
 	name }. A node's gates are its conditions with isGate and spentAmountRequired;
@@ -128,8 +128,7 @@ function D.Read(specGroup)
 		listed[g.groupID] = true
 	end
 	table.sort(shape.groups, function(a, b) return (a.order or 0) < (b.order or 0) end)
-	local currency = C_Traits.GetTreeCurrencyInfo and C_Traits.GetTreeCurrencyInfo(readFrom, treeID, false)
-	shape.budget = currency and currency[1] and currency[1].maxQuantity or nil
+	-- no budget: a plan runs to max level, so a levelling character's plan is never refused for points
 
 	for _, nodeID in ipairs(C_Traits.GetTreeNodes(treeID) or {}) do
 		local info = C_Traits.GetNodeInfo(readFrom, nodeID)
@@ -142,7 +141,10 @@ function D.Read(specGroup)
 				end
 			end
 			local costs = C_Traits.GetNodeCost and C_Traits.GetNodeCost(readFrom, nodeID)
-			shape.nodes[nodeID] = { maxRanks = info.maxRanks or 1, cost = costs and costs[1] and costs[1].amount or 1,
+			-- the same fallback as the plannable node's below: the node's, else its one entry's, else 1
+			local only = info.entryIDs and #info.entryIDs == 1 and C_Traits.GetEntryInfo(readFrom, info.entryIDs[1])
+			shape.nodes[nodeID] = { maxRanks = info.maxRanks or (only and only.maxRanks) or 1,
+				cost = costs and costs[1] and costs[1].amount or 1,
 				group = GroupOf(info, listed), gates = gates, parents = parents, plannable = false, posY = info.posY }
 			order[#order + 1] = nodeID
 			edges[nodeID] = info.visibleEdges

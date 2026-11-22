@@ -89,7 +89,7 @@ The face is redrawn on the next frame (`C_Timer.After(0)`, one pass) after: `Eve
 ```
 shape = {
   groups = { { id, name, order }, ... },          -- C_Traits.GetGroupDisplayInfoByTreeID(treeID), by orderIndex
-  budget = number|nil,                            -- the tree currency's maxQuantity, when the game gives one
+  budget = nil,                                   -- never read: a plan runs to max level (Sim honours one when set)
   nodes = { [nodeID] = {
     maxRanks, cost,                               -- cost: GetNodeCost's amount (1 when empty)
     group,                                        -- the first of info.groupIDs that is a displayed group, else nil
@@ -155,5 +155,6 @@ Normal mode: `TP:PlanDisplay` gives nil, so the face shows the real state; the o
 2. **Do Forever's nodes carry their gate as a condition?** The reader already relies on it (`D.BlockReason`); if Forever puts the gate only in `GetTreeInfo().gates` (by `topLeftNodeID` and `posY`), the reader maps each gate to the nodes at or below its top-left node's `posY` in the same group. The check shows which.
 3. **Choice and sub tree nodes on Forever.** Assumed absent from Camelot's class trees; if one exists it keeps Blizzard's art.
 4. **Prerequisites need the parent maxed?** Classic's rule, and Blizzard's `isActive` edges on Forever are expected to agree; the check shows it.
-5. **The budget.** Whether `GetTreeCurrencyInfo` gives a `maxQuantity` on Forever. Without one, nothing is refused for points (the plan's length is the owner's).
+5. **The budget.** Decided: none. A plan runs to max level, so `data.lua` never reads `GetTreeCurrencyInfo` and nothing is refused for points (the plan's length is the owner's). `Sim` still honours a `shape.budget` when one is set; nil turns it off.
+7. **Granted (free) nodes.** Some nodes may be granted by the game (a free first rank, a starting talent) and carry ranks that cost no point or can't be refunded. The simulation counts every planned rank at its cost and doesn't know which nodes are granted; `/sui tp check` and the face of such a node may disagree with the game. Unchecked.
 6. **"Top left".** Read as each node's top-left corner for its planned count, and the window's top-left for the total. If the owner meant only one, the other goes.

@@ -105,13 +105,22 @@ test('the shape holds groups, gates, edges and costs', function()
 	eq(#stub.traits.calls, 0)
 end)
 
-test('a cost, a budget and hideSingleRankNumbers come from the game', function()
+test('a cost and hideSingleRankNumbers come from the game, and a point budget is never set', function()
 	SH.install({ shape = true })
 	stub.traits.costs[SH.ID.Flurry] = { { ID = 800, amount = 2 } }
 	stub.traits.currency = { { traitCurrencyID = 800, quantity = 5, maxQuantity = 31, spent = 0 } }
 	stub.traits.tree_info[501] = { hideSingleRankNumbers = true }
 	local shape = D.Read(1).shape
-	eq(shape.nodes[SH.ID.Flurry].cost, 2); eq(shape.budget, 31); eq(shape.hideSingle, true)
+	eq(shape.nodes[SH.ID.Flurry].cost, 2); eq(shape.hideSingle, true)
+	eq(shape.budget, nil, 'a plan runs to max level')
+end)
+
+test('a node with no maxRanks takes its entry\'s in the shape and in the nodes alike', function()
+	SH.install({ shape = true })
+	local id = SH.ID.Flurry
+	stub.traits.nodes[1001][id].maxRanks = nil
+	local t = D.Read(1)
+	eq(t.nodes[id].maxRanks, 5); eq(t.shape.nodes[id].maxRanks, 5)
 end)
 
 test('a node whose group the tree does not list has no group', function()

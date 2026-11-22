@@ -312,14 +312,29 @@ function TP:PaintTotal()
 		if self.total then self.total:Hide() end
 		return
 	end
-	if not self.total then
-		self.total = st:CreateFontString(Layer(), st.config.profile.skinning.font)
+	local talents = self:TalentsFrame()
+	if not self.totalFrame then
+		-- its own frame, so it can sit above Camelot's child frames of the window
+		self.totalFrame = CreateFrame('Frame', nil, talents)
+		self.totalFrame:SetAllPoints(talents)
+		self.totalFrame:EnableMouse(false)
+		self.total = st:CreateFontString(self.totalFrame, st.config.profile.skinning.font)
 		self.total:SetJustifyH('LEFT')
-		self.total:SetPoint('TOPLEFT', self:TalentsFrame(), 'TOPLEFT', 12, -10)
+		self.total:SetPoint('TOPLEFT', talents, 'TOPLEFT', 12, -10)
 	end
+	local top = talents:GetFrameLevel()
+	for _, child in ipairs({ talents:GetChildren() }) do
+		if child ~= self.totalFrame then top = math.max(top, child:GetFrameLevel()) end
+	end
+	self.totalFrame:SetFrameLevel(top + 5)
+	st:ApplyFont(self.total, st.config.profile.skinning.font) -- again: the font may have changed
 	self.total:SetText(table.concat(TP.TotalLines(view.tree.shape, view.sim), '\n'))
 	self.total:SetTextColor(st:Color('text', 'normal'):GetRGB())
 	self.total:Show()
+end
+
+function TP:OnFontsChanged()
+	if self.total and self.total:IsShown() then self:PaintTotal() end
 end
 
 function TP:PaintOverlays()
@@ -410,6 +425,8 @@ function TP:PlanClick(nodeID, mouse)
 		end
 		result = 'removed'
 	elseif mouse == 'LeftButton' then
+		-- a selection with no plan, or past the plan's end, would leave a hole in the steps
+		if not plan or (self.selected and (self.selected < 1 or self.selected > #plan.steps)) then self.selected = nil end
 		if plan and M.PlannedRanks(plan, nodeID) >= node.maxRanks then return 'maxed' end
 		local ok, reason = TP.Sim.CanAdd(shape, steps, nodeID, plan and self.selected or nil)
 		if not ok then

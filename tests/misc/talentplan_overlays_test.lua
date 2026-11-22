@@ -752,7 +752,8 @@ test('the plan check lists a node where the rules and the game disagree', functi
 	st.Print = function(_, ...) said[#said + 1] = table.concat({ ... }, ' ') end
 	TP:RunCheck()
 	st.Print = print_
-	check(said[1]:find('Flurry', 1, true), 'names the node: ' .. tostring(said[1]))
+	check(said[#said]:find('Flurry', 1, true), 'names the node: ' .. tostring(said[#said]))
+	check(said[1]:find('below max level', 1, true), 'and warns of level lines')
 	-- and when they agree
 	stub.traits.nodes[1001][SH.ID.Flurry].isAvailable = true
 	said = {}
@@ -760,5 +761,31 @@ test('the plan check lists a node where the rules and the game disagree', functi
 	TP:RunCheck()
 	st.Print = print_
 	eq(said[1], "The plan's rules agree with the game.")
+	clean()
+end)
+
+test('a stale selection never leaves a hole in a new plan', function()
+	world()
+	open()
+	TP:SetPlanning(true)
+	TP.selected = 5 -- no plan: nothing to be selected in
+	eq(TP:PlanClick(SH.ID.Flurry, 'LeftButton'), 'added')
+	eq(J(S.Active(1).steps), tostring(SH.ID.Flurry))
+	TP.selected = 9 -- past the end
+	eq(TP:PlanClick(SH.ID.Mindfulness, 'LeftButton'), 'added')
+	eq(#S.Active(1).steps, 2)
+	for i = 1, 2 do check(S.Active(1).steps[i] ~= nil, 'no hole') end
+	clean()
+end)
+
+test('the window total sits above the window\'s child frames', function()
+	world({ tree = { shape = true } })
+	open()
+	TP:SetPlanning(true)
+	local top = 0
+	for _, child in ipairs({ TP:TalentsFrame():GetChildren() }) do
+		if child ~= TP.totalFrame then top = math.max(top, child:GetFrameLevel()) end
+	end
+	check(TP.totalFrame:GetFrameLevel() > top, 'above every other child')
 	clean()
 end)
