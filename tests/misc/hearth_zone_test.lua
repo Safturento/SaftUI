@@ -25,6 +25,7 @@ local function world()
 	GetRealZoneText = function() return place.zone end
 	GetSubZoneText = function() return place.sub end
 	GetMinimapZoneText = function() return place.minimap end
+	C_Map = nil -- no map: GetRealZoneText
 	Enum.TooltipDataType = { Item = 0, Spell = 1, Toy = 19 }
 	post, toy_post, spell_post = nil, nil, nil
 	_G.TooltipDataProcessor = {
@@ -95,7 +96,7 @@ end)
 
 test('a zone learned for another bind does not count', function()
 	world()
-	st.config.char.hearth = { location = 'Stoutlager Inn', zone = 'Loch Modan' }
+	st.config.char.hearth = { location = 'Stoutlager Inn', zone = 'Loch Modan', version = 2 }
 	eq(HZ:Zone(), nil, 'stale')
 	eq(shown(hearth_data())[1], 'Zone: not known yet. Hearth there once to learn it.', 'not the old zone')
 	clean()
@@ -103,7 +104,7 @@ end)
 
 test('any item that names the bind gets the line; others and city binds do not', function()
 	world()
-	st.config.char.hearth = { location = "Lion's Pride Inn", zone = 'Elwynn Forest' }
+	st.config.char.hearth = { location = "Lion's Pride Inn", zone = 'Elwynn Forest', version = 2 }
 	local toy = { id = 1234, lines = { { leftText = 'Toy' }, { leftText = "Use: Returns you to Lion's Pride Inn." } } }
 	eq(shown(toy)[1], 'Zone: Elwynn Forest', 'an item whose Use: line names the bind')
 	eq(toy_post, post, 'toy tooltips take the same post-call')
@@ -112,7 +113,7 @@ test('any item that names the bind gets the line; others and city binds do not',
 	eq(#shown({ id = 2589, lines = { { leftText = 'Linen Cloth' } } }), 0, 'another item')
 	eq(#shown(nil), 0, 'no data')
 	place.bind, place.zone = 'Stormwind City', 'Stormwind City'
-	st.config.char.hearth = { location = 'Stormwind City', zone = 'Stormwind City' }
+	st.config.char.hearth = { location = 'Stormwind City', zone = 'Stormwind City', version = 2 }
 	eq(#shown(hearth_data()), 0, 'the bind is its zone')
 	-- A city bind arriving in the city's inn subzone: learned by the zone's name.
 	st.config.char.hearth = nil
@@ -154,7 +155,7 @@ end
 
 test('Astral Recall, the hearth spell and the hearthstone toys get the line', function()
 	world()
-	st.config.char.hearth = { location = "Lion's Pride Inn", zone = 'Elwynn Forest' }
+	st.config.char.hearth = { location = "Lion's Pride Inn", zone = 'Elwynn Forest', version = 2 }
 	check(spell_post, 'a post-call for spells')
 	eq(shown_by(spell_post, { id = 556, lines = { { leftText = 'Astral Recall' } } })[1], 'Zone: Elwynn Forest', 'Astral Recall by ID')
 	eq(shown_by(spell_post, { id = 8690, lines = {} })[1], 'Zone: Elwynn Forest', "the Hearthstone's spell")
@@ -166,6 +167,30 @@ test('Astral Recall, the hearth spell and the hearthstone toys get the line', fu
 		'a hearthstone toy by ID, whatever its text')
 	eq(shown_by(toy_post, { id = 777777, lines = { { leftText = 'Custom Hearth' },
 		{ leftText = "Use: Returns you to Lion's Pride Inn." } } })[1], 'Zone: Elwynn Forest', 'an unlisted toy by its Use: line')
+	clean()
+end)
+
+test('the zone is the world zone from the map, not the inn\'s own area', function()
+	world()
+	-- Forever's Farholde Keep: the inn's area is its own "zone" by name, inside a Micro map under a Zone map.
+	place.bind, place.zone, place.sub, place.minimap = 'Farholde Keep', 'Farholde Keep', 'Farholde Keep', 'Farholde Keep'
+	local maps = {
+		[900] = { name = 'Farholde Keep', mapType = 5, parentMapID = 800 },
+		[800] = { name = 'Farhold Valley', mapType = 3, parentMapID = 700 },
+		[700] = { name = 'Kalimdor', mapType = 2, parentMapID = 947 },
+	}
+	C_Map = { GetBestMapForUnit = function() return 900 end, GetMapInfo = function(id) return maps[id] end }
+	stub.fire_event('HEARTHSTONE_BOUND')
+	eq(HZ:Zone(), 'Farhold Valley', 'the first Zone map up from the inn')
+	eq(shown(hearth_data())[1], 'Zone: Farhold Valley', 'the line')
+	-- On a continent map with no zone: GetRealZoneText.
+	C_Map.GetBestMapForUnit = function() return 700 end
+	place.zone = 'Somewhere'
+	stub.fire_event('HEARTHSTONE_BOUND')
+	eq(HZ:Zone(), 'Somewhere', 'no zone map: the game\'s zone text')
+	-- A record from before the map (no version) is not trusted.
+	st.config.char.hearth = { location = 'Farholde Keep', zone = 'Farholde Keep' }
+	eq(HZ:Zone(), nil, 'an old record')
 	clean()
 end)
 

@@ -8,7 +8,11 @@ local HZ = st:NewModule('HearthZone')
 	st.config.char.hearth = { location = the bind's name, zone = its zone }:
 
 	  - when the player binds (HEARTHSTONE_BOUND): the player is at the
-	    innkeeper, so the zone they stand in (GetRealZoneText) is the bind's;
+	    innkeeper, so the zone they stand in is the bind's. The zone is the
+	    world zone from the map (C_Map: the player's map, walked up through
+	    its parents past any Micro, Dungeon or Orphan map to the first Zone
+	    map), since GetRealZoneText can name the inn's own area (Forever's
+	    Farholde Keep); GetRealZoneText only when there is no map;
 	  - whenever the player stands in the bind's own area (the zone events and
 	    the loading screen, with GetSubZoneText or GetMinimapZoneText equal to
 	    the bind's name), which every hearth home ends in. So a character
@@ -62,6 +66,27 @@ end
 
 local function Call(fn) return fn and Text(fn()) end
 
+-- Records written before the zone came from the map hold the inn's area for
+-- some binds, so only this version counts.
+local VERSION = 2
+
+-- The world zone the player stands in: the first Zone map up from the
+-- player's map, else GetRealZoneText.
+function HZ:WorldZone()
+	local zoneType = Enum and Enum.UIMapType and Enum.UIMapType.Zone or 3
+	local mapID = C_Map and C_Map.GetBestMapForUnit and st.PlainNumber(C_Map.GetBestMapForUnit('player'))
+	for _ = 1, 10 do
+		if not mapID or mapID == 0 then break end
+		local info = C_Map.GetMapInfo(mapID)
+		if type(info) ~= 'table' then break end
+		local mapType = st.PlainNumber(info.mapType)
+		if not mapType or mapType < zoneType then break end -- a continent or above: no zone
+		if mapType == zoneType then return Text(info.name) end
+		mapID = st.PlainNumber(info.parentMapID)
+	end
+	return Call(GetRealZoneText)
+end
+
 -- The per-character record, made on first use.
 function HZ:Store()
 	local char = st.config.char
@@ -74,10 +99,10 @@ function HZ:BindLocation() return Call(GetBindLocation) end
 
 -- Takes the zone the player stands in as the bind's.
 function HZ:Learn()
-	local location, zone = self:BindLocation(), Call(GetRealZoneText)
+	local location, zone = self:BindLocation(), self:WorldZone()
 	if not (location and zone) then return end
 	local store = self:Store()
-	store.location, store.zone = location, zone
+	store.location, store.zone, store.version = location, zone, VERSION
 end
 
 -- Standing in the bind's own area: learn its zone.
@@ -94,7 +119,7 @@ end
 function HZ:Zone()
 	local location = self:BindLocation()
 	local store = st.config.char and st.config.char.hearth
-	if not (location and type(store) == 'table' and store.location == location) then return end
+	if not (location and type(store) == 'table' and store.location == location and store.version == VERSION) then return end
 	return Text(store.zone)
 end
 
