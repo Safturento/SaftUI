@@ -24,7 +24,7 @@ local function art()
 		window.NineSlice, window.Bg, window.TopTileStreaks, window.PortraitContainer,
 		talents.BackgroundBorder, talents.DividerHorizontalLeft, talents.DividerHorizontalRight,
 		talents.DividerVerticalLeft, talents.DividerVerticalRight, talents.ClassCurrencyDisplay.Border,
-		talents.LoadSystem.Dropdown.Background, talents.SearchBox.Left, talents.SearchBox.Middle, talents.SearchBox.Right,
+		talents.SearchBox.Left, talents.SearchBox.Middle, talents.SearchBox.Right,
 		book.SearchBox.Left,
 	}
 	for _, getter in ipairs({ 'GetNormalTexture', 'GetPushedTexture', 'GetHighlightTexture', 'GetDisabledTexture' }) do
@@ -37,7 +37,8 @@ local function art()
 	for _, system in ipairs({ window.TabSystem, talents.TabSystem, book.CategoryTabSystem }) do
 		for _, tab in ipairs(system.tabs) do
 			for _, part in ipairs({ 'Left', 'Middle', 'Right', 'LeftActive', 'MiddleActive', 'RightActive',
-					'LeftHighlight', 'MiddleHighlight', 'RightHighlight' }) do
+					'LeftHighlight', 'MiddleHighlight', 'RightHighlight', 'SquareBackground', 'SquareBackgroundActive',
+					'SquareBackgroundActiveGlow' }) do
 				out[#out + 1] = tab[part]
 			end
 		end
@@ -102,7 +103,7 @@ test('on: SaftUI backdrops are behind the window, the buttons, the tabs and the 
 	check(panel, 'the window has a panel under it')
 	check(panel:IsShown(), 'shown')
 	for _, frame in ipairs({ talents.ApplyButton, talents.InspectCopyButton, talents.ActiveSpec.ActivateButton, window.CloseButton,
-			talents.LoadSystem.Dropdown, talents.SearchBox, book.SearchBox, talents.ClassCurrencyDisplay,
+			talents.SearchBox, book.SearchBox, talents.ClassCurrencyDisplay,
 			talents.TabSystem.tabs[1], window.TabSystem.tabs[1], book.CategoryTabSystem.tabs[1] }) do
 		check(child_of(frame)[1] and child_of(frame)[1]:IsShown(), 'a box under ' .. tostring(frame:GetObjectType()))
 	end
@@ -155,6 +156,42 @@ test('on: lines stand where the dividers were, anchored to them', function()
 	check(anchored[talents.BackgroundBorder], 'the top bar line follows the border')
 end)
 
+test('on: the loadout menu is left alone (Camelot hides it)', function()
+	world('forever')
+	local dropdown = talents.LoadSystem.Dropdown
+	eq(dropdown.Background:GetAlpha(), 1)
+	eq(dropdown:GetNumChildren(), 0)
+end)
+
+test('on: a vertical line is on its divider\'s x, whichever x the compact layout gives it', function()
+	world('forever')
+	local holder
+	for _, kid in ipairs({ talents:GetChildren() }) do
+		if kid:GetNumRegions() == 3 then holder = kid end
+	end
+	for _, divider in ipairs({ talents.DividerVerticalLeft, talents.DividerVerticalRight }) do
+		local found = 0
+		for _, line in ipairs({ holder:GetRegions() }) do
+			local points = {}
+			for i = 1, line:GetNumPoints() do
+				local point, relative = line:GetPoint(i)
+				if relative == divider then points[point] = true end
+			end
+			if points.TOP and points.BOTTOM then found = found + 1 end
+		end
+		eq(found, 1, 'one line with both ends on the divider')
+	end
+	-- the layout moves a divider (SetPoint TOP on the border): the line follows, still both ends on it
+	talents.DividerVerticalLeft:ClearAllPoints()
+	talents.DividerVerticalLeft:SetPoint('TOP', talents.BackgroundBorder, 'TOPLEFT', 262, -74)
+	for _, line in ipairs({ holder:GetRegions() }) do
+		for i = 1, line:GetNumPoints() do
+			local _, relative = line:GetPoint(i)
+			check(relative == talents.DividerVerticalLeft or relative == talents.DividerVerticalRight or relative == talents.BackgroundBorder, 'still on a divider or the border')
+		end
+	end
+end)
+
 test('on: the title is in the Window titles font and centered', function()
 	world('forever')
 	local text = window.TitleContainer.TitleText
@@ -200,6 +237,90 @@ test('on: the addon loading after SaftUI is skinned when it loads', function()
 	eq(talents.BackgroundBorder:GetAlpha(), 1, 'not yet')
 	PSF.load()
 	eq(talents.BackgroundBorder:GetAlpha(), 0)
+end)
+
+-- In combat PlayerSpellsFrame is protected (a secure button of the spellbook's,
+-- and protection spreads to its parents): nothing is made or placed on it then.
+local function protect(frame)
+	rawset(frame, 'IsProtected', function() return true, true end)
+end
+
+test('protected window in combat: StyleAll waits for the end of combat, whole', function()
+	world('forever', { off = true })
+	profile.skinning.talent_window = true
+	protect(window)
+	stub.in_combat = true
+	skin:Install()
+	eq(window:GetNumChildren(), 7, 'nothing made in combat')
+	for i, region in ipairs(art()) do check(region:GetAlpha() > 0, 'region ' .. i) end
+	stub.in_combat = false
+	stub.fire_event('PLAYER_REGEN_ENABLED')
+	check(window:GetNumChildren() > 7, 'the pass ran at the end of combat')
+	for i, region in ipairs(art()) do eq(region:GetAlpha(), 0, 'region ' .. i) end
+end)
+
+test('protected window in combat: a tab added then is skinned with the rest after, none half-skinned', function()
+	world('forever')
+	protect(window)
+	stub.in_combat = true
+	talents.TabSystem:AddTab('Three')
+	local tab = talents.TabSystem.tabs[3]
+	eq(tab.Left:GetAlpha(), 1, 'untouched in combat')
+	eq(tab:GetNumChildren(), 0, 'no box in combat')
+	stub.in_combat = false
+	stub.fire_event('PLAYER_REGEN_ENABLED')
+	eq(tab.Left:GetAlpha(), 0)
+	eq(tab:GetNumChildren(), 1)
+	check(tab:GetChildren():IsShown(), 'its box')
+end)
+
+test('an unprotected window is styled in combat at once', function()
+	world('forever')
+	stub.in_combat = true
+	talents.TabSystem:AddTab('Three')
+	eq(talents.TabSystem.tabs[3].Left:GetAlpha(), 0)
+	stub.in_combat = false
+end)
+
+test('a locked tab is dimmed and takes no hover; the selected one is not dimmed', function()
+	world('forever')
+	local tab = talents.TabSystem.tabs[1]
+	local box = tab:GetChildren()
+	tab:SetTabEnabled(false)
+	eq(st:GetState(box, 'disabled'), true)
+	stub.fire_script(tab, 'OnEnter', true)
+	eq(st:GetState(box, 'hover'), false, 'no hover while disabled')
+	tab:SetTabEnabled(true)
+	eq(st:GetState(box, 'disabled'), false)
+	local selected = talents.TabSystem.tabs[2]
+	eq(st:GetState(selected:GetChildren(), 'disabled'), false, 'a selected tab (disabled by the game) is not dimmed')
+	eq(st:GetState(selected:GetChildren(), 'selected'), true)
+end)
+
+test('the search box keeps the color it has through the font change', function()
+	world('forever', { late = true })
+	talents.SearchBox.Instructions:SetTextColor(0.2, 0.3, 0.4)
+	PSF.load()
+	local r, g, b = talents.SearchBox.Instructions:GetTextColor()
+	check(near(r, 0.2) and near(g, 0.3) and near(b, 0.4), 'the color Blizzard had')
+end)
+
+test('the search box\'s box is the border\'s 20 high, centered in the 30 high box; the close box sits inside the window', function()
+	world('forever')
+	local function box_of(frame)
+		for _, kid in ipairs({ frame:GetChildren() }) do
+			if kid:GetFrameLevel() < frame:GetFrameLevel() then return kid end
+		end
+	end
+	local b = box_of(talents.SearchBox)
+	local _, _, _, _, y1 = b:GetPoint(1)
+	local _, _, _, _, y2 = b:GetPoint(2)
+	eq(y1, -5)
+	eq(y2, 5)
+	local c = box_of(window.CloseButton)
+	local _, _, _, x1, cy1 = c:GetPoint(1)
+	eq(cy1, -3, 'its top is the window\'s top, not above it')
+	eq(x1, 3)
 end)
 
 test('off: nothing is touched, hooked or made', function()

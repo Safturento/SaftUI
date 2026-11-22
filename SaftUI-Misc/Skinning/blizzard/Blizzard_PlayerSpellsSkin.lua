@@ -23,10 +23,11 @@ local PS = SK:NewModule('Blizzard_PlayerSpellsSkin')
 	  - PlayerSpellsFrame: SaftUI's panel behind it (st:SetBackdropIn, kind panel,
 	    a child one level under it, anchored to the frame's own edges, so it
 	    follows the width Blizzard and the compact layout (Blizzard_PlayerSpellsLayout.lua)
-	    give the window); .NineSlice, .Bg, .TopTileStreaks and .PortraitContainer
+	    give the window, placed by the engine and not moved after); .NineSlice, .Bg, .TopTileStreaks and .PortraitContainer
 	    (the portrait) faded; .TitleContainer.TitleText in the Window titles font,
 	    centered on the window; .CloseButton's four textures faded under a box of
-	    SaftUI's (kind close) with a Lucide X; .TabSystem's tabs (hidden on Forever,
+	    SaftUI's (kind close) with a Lucide X, inside the window's top edge (Camelot's
+	    button is 28 square and sits 3 above it); .TabSystem's tabs (hidden on Forever,
 	    where the tab system isn't available, but skinned all the same).
 	  - TalentsFrame (.TalentsFrame): .BackgroundBorder (the gold frame), the two
 	    horizontal dividers (.DividerHorizontalLeft and Right, the top bar's
@@ -35,20 +36,28 @@ local PS = SK:NewModule('Blizzard_PlayerSpellsSkin')
 	    vertical dividers, the headers and the search box to them), and SaftUI's
 	    lines drawn on a frame of its own: a line along the top bar's bottom, and one
 	    under each vertical divider's top down to the art's bottom, so a move of the
-	    divider moves the line. .TabSystem (the spec tabs) as tabs; .SearchBox
-	    as an edit box; .ClassCurrencyDisplay (Unspent talents) with its .Border
+	    .TabSystem (the spec tabs) as tabs; .SearchBox
+	    as an edit box (the border's 20 high, centered in the template's 30 high box);
+	    .ClassCurrencyDisplay (Unspent talents) with its .Border
 	    faded and a box of SaftUI's where it was; .ApplyButton, .InspectCopyButton
-	    and .ActiveSpec.ActivateButton as buttons; .LoadSystem.Dropdown (the loadout
-	    menu) with its .Background faded and a box in its place.
+	    and .ActiveSpec.ActivateButton as buttons. .LoadSystem (the loadout menu) is
+	    left alone: Camelot hides it.
 	  - SpellBookFrame (the same window's other tab): .SearchBox and
-	    .CategoryTabSystem's tabs, the same as above.
+	    .CategoryTabSystem's tabs, the same as above. Those are icon tabs in square
+	    mode (SetSquareMode), whose art is SquareBackground, SquareBackgroundActive and
+	    SquareBackgroundActiveGlow: faded with the rest.
 	  Buttons and the edit box are drawn as the color picker's are
 	  (Blizzard_ColorPicker.lua): the art faded by alpha, a box of SaftUI's (a child
 	  one level under the button) with the interaction states, the Skinning font.
 	  A tab is a 'tab' state frame, selected as the tab is (a post-hook on its own
 	  SetTabSelected).
 
-	Taint (.agents/taint.md rules 1 to 3, 23). Post-hooks and HookScript only,
+	Taint (.agents/taint.md rules 1 to 3, 6, 23). PlayerSpellsFrame is protected on
+	Forever: SpellBookFrame.AssistedCombatRotationSpellFrame.Button inherits
+	SecureFrameTemplate, and protection spreads to its parents. So nothing is made,
+	placed or shown on it in combat: StyleAll, and the styling of a tab the AddTab
+	hook would do, wait for the end of combat (st:QueueAfterCombat), whole, so no
+	tab is half-skinned. Post-hooks and HookScript only,
 	each in xpcall to geterrorhandler() so an error never unwinds Blizzard's own
 	code (Guarded); nothing is written onto a Blizzard frame or table (SaftUI's
 	state is in weak tables keyed by Blizzard's frames); no function of Blizzard's
@@ -67,7 +76,8 @@ local PS = SK:NewModule('Blizzard_PlayerSpellsSkin')
 local BUTTON_ART = { 'Left', 'Middle', 'Right' }
 local BOX_ART = { 'Left', 'Middle', 'Right' } -- InputBoxVisualTemplate's border
 local TAB_ART = { 'Left', 'Middle', 'Right', 'LeftActive', 'MiddleActive', 'RightActive',
-	'LeftHighlight', 'MiddleHighlight', 'RightHighlight' }
+	'LeftHighlight', 'MiddleHighlight', 'RightHighlight',
+	'SquareBackground', 'SquareBackgroundActive', 'SquareBackgroundActiveGlow' } -- the last three: icon tabs (square mode)
 local WINDOW_ART = { 'NineSlice', 'Bg', 'TopTileStreaks', 'PortraitContainer' }
 -- The gold frame and the dividers' ornaments (TalentsFrame's own regions).
 local TALENT_ART = { 'BackgroundBorder', 'DividerHorizontalLeft', 'DividerHorizontalRight',
@@ -81,6 +91,8 @@ local BUTTON_FONTS = {
 }
 local TITLE_DROP = 11 -- the title's center, down from the window's top: the middle of Blizzard's 20 high title bar (less a pixel)
 local SEARCH_LEFT = 5 -- Blizzard's search border starts this far left of the box
+local SEARCH_HEIGHT = 20 -- and is this high, centered in the template's 30 high box
+local CLOSE_INSET = 3 -- the close box in from its 28 square button
 local BAR_DROP = 4 -- DividerHorizontalLeft's TOP, down from the border's top (Camelot XML)
 
 -- What SaftUI made or styled, keyed by Blizzard's frames (weak keys).
@@ -109,7 +121,14 @@ local function Active()
 	local config = Profile().skinning
 	return config.talent_window and not st:IsBlizzardLook(config.theme, config.background) or false
 end
-function PS:IsActive() return Active() end
+function PS:IsActive() return installed and Active() end
+
+-- How far the panel behind the window reaches outside it, for the talent plan's
+-- panel to stand clear of (it adds its own gap).
+function PS:Inset()
+	local theme, background = Look()
+	return st:ThemeInset(theme, background, 'panel')
+end
 
 local function Apply(fn, ...) xpcall(fn, geterrorhandler(), ...) end
 
@@ -156,30 +175,28 @@ local function FadeAll(parent, keys, active)
 end
 
 -- SaftUI's font on a font string or edit box (anything with SetFontObject), or
--- what Blizzard had back. keepColor keeps the color it shows through the change
--- (a placeholder is colored by Blizzard's XML, which the font's own color would
--- replace).
+-- what Blizzard had back. keepColor puts the color the text has now back after
+-- the change (a font object's own color would replace it: a placeholder's grey,
+-- or the enabled and disabled colors Blizzard gives a box), never a color read
+-- earlier.
 local function PutFont(target, active, title, keepColor, fallback)
 	if not target or not target.SetFontObject then return end
+	local r, g, b, a
+	if keepColor and target.GetTextColor then
+		r, g, b, a = target:GetTextColor()
+		if issecretvalue(r) then r = nil end
+	end
 	if active then
 		if not saved[target] then
-			local entry = { font = Named(target.GetFontObject and target:GetFontObject()) }
-			if target.GetTextColor then
-				local r, g, b, a = target:GetTextColor()
-				if r and not issecretvalue(r) then entry.color = { r, g, b, a } end
-			end
-			saved[target] = entry
+			saved[target] = { font = Named(target.GetFontObject and target:GetFontObject()) }
 		end
 		local font = title and TitleFont() or SkinFont()
 		if font then target:SetFontObject(font) end
-		local color = saved[target].color
-		if keepColor and color then target:SetTextColor(unpack(color)) end
 	elseif saved[target] then
 		local font = saved[target].font or (fallback and _G[fallback])
 		if font then target:SetFontObject(font) end
-		local color = saved[target].color
-		if color then target:SetTextColor(unpack(color)) end
 	end
+	if r then target:SetTextColor(r, g, b, a) end
 end
 
 ------------------------------------------------------------------ boxes
@@ -310,7 +327,11 @@ end
 local function SyncTab(tab)
 	local entry = boxes[tab]
 	if not entry or st:GetState(entry.box, 'selected') == nil then return end
-	st:SetState(entry.box, 'selected', Active() and tab.isSelected == true or false)
+	local selected = Active() and tab.isSelected == true or false
+	st:SetState(entry.box, 'selected', selected)
+	-- A tab the game disabled (a locked spec) is dimmed and takes no hover; a
+	-- selected tab is disabled too, but is the one that shows selected.
+	st:SetState(entry.box, 'disabled', Active() and not selected and tab.IsEnabled and not tab:IsEnabled() or false)
 end
 
 local function StyleTab(tab, active)
@@ -319,6 +340,9 @@ local function StyleTab(tab, active)
 	DrawBox(tab, active, 'tab', 'control', Fill(tab))
 	if active and not hooked[tab] and tab.SetTabSelected then
 		hooksecurefunc(tab, 'SetTabSelected', Guarded(SyncTab))
+	end
+	if active and not hooked[tab] and tab.SetTabEnabled then
+		hooksecurefunc(tab, 'SetTabEnabled', Guarded(SyncTab))
 	end
 	if active then HookMouse(tab, false) end
 	hovered[tab] = hovered[tab] and active or nil
@@ -338,6 +362,7 @@ local function HookTabSystem(system)
 	hooked[system] = true
 	hooksecurefunc(system, 'AddTab', Guarded(function(self)
 		if not Active() or type(self.tabs) ~= 'table' then return end
+		if PS:Deferred() then return end
 		StyleTab(self.tabs[#self.tabs], true)
 	end))
 end
@@ -356,8 +381,10 @@ local function StyleSearchBox(box, active)
 	if not box then return end
 	if not boxes[box] and not active then return end
 	DrawBox(box, active, 'box', 'control', function(frame)
-		frame:SetPoint('TOPLEFT', box, 'TOPLEFT', -SEARCH_LEFT, 0)
-		frame:SetPoint('BOTTOMRIGHT', box, 'BOTTOMRIGHT', 0, 0)
+		local height = box.GetHeight and box:GetHeight()
+		local drop = height and not issecretvalue(height) and math.max(0, (height - SEARCH_HEIGHT) / 2) or 0
+		frame:SetPoint('TOPLEFT', box, 'TOPLEFT', -SEARCH_LEFT, -drop)
+		frame:SetPoint('BOTTOMRIGHT', box, 'BOTTOMRIGHT', 0, drop)
 	end)
 	if active and not hooked[box] and box.HookScript then
 		hooked[box] = true
@@ -365,7 +392,7 @@ local function StyleSearchBox(box, active)
 		box:HookScript('OnEditFocusLost', Guarded(function(self) SetFocus(self, false) end))
 	end
 	FadeAll(box, BOX_ART, active)
-	PutFont(box, active, false, false, 'GameFontHighlightSmall')
+	PutFont(box, active, false, true, 'GameFontHighlightSmall')
 	PutFont(box.Instructions, active, false, true, 'GameFontDisableSmall')
 	SetFocus(box, active and box.HasFocus and box:HasFocus() or false)
 end
@@ -381,18 +408,6 @@ local function StyleCurrency(display, active)
 		frame:SetPoint('BOTTOMRIGHT', border, 'BOTTOMRIGHT', 0, 0)
 	end)
 	Fade(border, active)
-end
-
--- The loadout menu (WowStyle1DropdownTemplate): its Background faded, a box on its
--- own rect. The arrow and the text stay Blizzard's.
-local function StyleDropdown(dropdown, active)
-	if not dropdown then return end
-	if not boxes[dropdown] and not active then return end
-	DrawBox(dropdown, active, 'box', 'control', Fill(dropdown))
-	if active then HookMouse(dropdown, true) end
-	hovered[dropdown] = hovered[dropdown] and active or nil
-	SetHover(dropdown)
-	Fade(dropdown.Background, active)
 end
 
 -- The close button: its four textures faded, a box of SaftUI's (kind close) with
@@ -411,7 +426,12 @@ local function StyleClose(button, active)
 		closeGlyphs[button] = x
 		st:AddStates(entry.box, 'box', { glyph = x, glyphRest = function() return st:Color('text', 'muted'):GetRGB() end })
 	end
-	DrawBox(button, active, 'box', 'close', Fill(button))
+	-- Camelot's button is 28 square and sits 3 above the window's top: the box is
+	-- the part inside it, 3 in from the other sides, so it stays inside the panel.
+	DrawBox(button, active, 'box', 'close', function(frame)
+		frame:SetPoint('TOPLEFT', button, 'TOPLEFT', CLOSE_INSET, -CLOSE_INSET)
+		frame:SetPoint('BOTTOMRIGHT', button, 'BOTTOMRIGHT', -CLOSE_INSET, CLOSE_INSET)
+	end)
 	if active then HookMouse(button, true) end
 	hovered[button] = hovered[button] and active or nil
 	SetHover(button)
@@ -450,13 +470,6 @@ local function StyleWindow(window, active)
 	local panel = panels[window]
 	if panel then
 		panel:SetShown(active)
-		if active then
-			-- On the window's own edges, so it follows its width and height.
-			panel:ClearAllPoints()
-			local inset = st:ThemeInset(theme, background, 'panel')
-			panel:SetPoint('TOPLEFT', window, 'TOPLEFT', -inset, inset)
-			panel:SetPoint('BOTTOMRIGHT', window, 'BOTTOMRIGHT', inset, -inset)
-		end
 	end
 	FadeAll(window, WINDOW_ART, active)
 	StyleTitle(window, active)
@@ -480,8 +493,7 @@ local function PaintLines(set)
 end
 
 -- SaftUI's lines where the ornaments were: a flat line along the top bar's
--- bottom, and one from each vertical divider's top down to the art's bottom
--- (anchored to the divider, so the compact layout's move of it moves the line).
+-- bottom, and one along each vertical divider (anchored to the divider, so the compact layout's move of it moves the line).
 local function StyleLines(talents, active)
 	local set = lines[talents]
 	if not set then
@@ -511,8 +523,10 @@ local function StyleLines(talents, active)
 		local texture = set[key]
 		texture:ClearAllPoints()
 		if divider then
+			-- both points on the divider, so the line is on its x (the compact
+			-- layout moves the divider), and as tall as its art
 			texture:SetPoint('TOP', divider, 'TOP', 0, 0)
-			texture:SetPoint('BOTTOM', border, 'BOTTOM', 0, 0)
+			texture:SetPoint('BOTTOM', divider, 'BOTTOM', 0, 0)
 			texture:SetWidth(line)
 			texture:Show()
 		else
@@ -532,8 +546,6 @@ local function StyleTalents(talents, active)
 	StyleButton(talents.InspectCopyButton, active)
 	local spec = talents.ActiveSpec
 	StyleButton(spec and spec.ActivateButton, active)
-	local load = talents.LoadSystem
-	StyleDropdown(load and load.Dropdown, active)
 end
 
 local function StyleSpellBook(book, active)
@@ -543,6 +555,17 @@ end
 
 ------------------------------------------------------------------ all of it
 
+-- In combat the window is protected (see the header): says so and queues a
+-- whole pass for the end of combat.
+function PS:Deferred()
+	local window = _G.PlayerSpellsFrame
+	if InCombatLockdown() and window and window.IsProtected and window:IsProtected() then
+		st:QueueAfterCombat('playerspellsskin', function() PS:StyleAll() end)
+		return true
+	end
+	return false
+end
+
 -- Puts the look on the window, or Blizzard's back (only once SaftUI has styled
 -- it: with the toggle off at load, or under the Blizzard theme, it is never
 -- touched). Widget calls only, on frames that aren't protected.
@@ -551,10 +574,7 @@ function PS:StyleAll()
 	if not window then return end
 	local active = Active()
 	if not active and not styled then return end
-	if InCombatLockdown() and window.IsProtected and window:IsProtected() then
-		st:QueueAfterCombat('playerspellsskin', function() PS:StyleAll() end)
-		return
-	end
+	if self:Deferred() then return end
 	styled = true
 	Apply(StyleWindow, window, active)
 	if window.TalentsFrame then Apply(StyleTalents, window.TalentsFrame, active) end
@@ -576,7 +596,19 @@ end
 -- A profile change, the Skinning page's Theme, Background or font: the look
 -- again, or Blizzard's, at once. The toggle itself takes a reload.
 function PS:UpdateConfig()
-	if installed then self:StyleAll() end
+	if installed then
+		self:StyleAll()
+		self:PlaceTalentPlan()
+	end
+end
+
+-- The talent plan's panel stands clear of the window's border (PS:Inset under the
+-- skin, Blizzard's art otherwise): it places itself again after a look change.
+function PS:PlaceTalentPlan()
+	local ok, TP = pcall(st.GetModule, st, 'TalentPlan')
+	if ok and TP and TP.panel and TP.Place and not (InCombatLockdown() and TP.panel:IsProtected()) then
+		Apply(TP.Place, TP)
+	end
 end
 
 -- A theme recolor: the lines take the border color again.

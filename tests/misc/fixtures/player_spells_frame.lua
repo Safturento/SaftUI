@@ -206,6 +206,9 @@ local function tab_system(parent, key, top)
 		local tab = CreateFrame('Button', nil, self)
 		tab:SetSize(100, 32)
 		for _, part in ipairs(TAB_ART) do texture(tab, part, 'BACKGROUND') end
+		for _, part in ipairs({ 'SquareBackground', 'SquareBackgroundActive', 'SquareBackgroundActiveGlow' }) do
+			texture(tab, part, 'ARTWORK'):Hide() -- icon tabs (square mode) show these
+		end
 		for _, part in ipairs(TAB_HIGHLIGHT) do
 			texture(tab, part, 'HIGHLIGHT', 0.4) -- the XML's alpha
 		end
@@ -216,6 +219,12 @@ local function tab_system(parent, key, top)
 			rawset(t, 'isSelected', selected)
 			for _, part in ipairs({ 'Left', 'Middle', 'Right' }) do t[part]:SetShown(not selected) end
 			for _, part in ipairs({ 'LeftActive', 'MiddleActive', 'RightActive' }) do t[part]:SetShown(selected) end
+			t:SetEnabled(not selected and not t.forceDisabled)
+		end)
+		rawset(tab, 'forceDisabled', false)
+		rawset(tab, 'SetTabEnabled', function(t, enabled)
+			rawset(t, 'forceDisabled', not enabled)
+			t:SetEnabled(not t.isSelected and enabled)
 		end)
 		tab:SetNormalFontObject(GameFontNormal)
 		rawset(self.tabs, #self.tabs + 1, tab)
@@ -242,7 +251,7 @@ end
 -- magnifier, Instructions.
 local function search_box(parent, key)
 	local box = frame(parent, key, 'EditBox')
-	box:SetSize(176, 20)
+	box:SetSize(184, 30) -- SpellSearchBoxTemplate; the border art is 20 high
 	box:SetFontObject(GameFontHighlightSmall)
 	for _, part in ipairs({ 'Left', 'Middle', 'Right' }) do texture(box, part, 'BACKGROUND') end
 	texture(box, 'searchIcon', 'OVERLAY')
@@ -287,8 +296,8 @@ function PSF.build_chrome()
 	text:SetText('Talents')
 	rawset(title, 'TitleText', text)
 	local close = frame(window, 'CloseButton', 'Button')
-	close:SetSize(24, 24)
-	close:SetPoint('TOPRIGHT', 0, 0)
+	close:SetSize(28, 28) -- Camelot's UIPanelCloseButtonDefaultAnchorsMixin:OnLoad
+	close:SetPoint('TOPRIGHT', 0, 3)
 	for _, state in ipairs({ 'Normal', 'Pushed', 'Highlight', 'Disabled' }) do
 		close['Set' .. state .. 'Texture'](close, [[Interface\Buttons\UI-Panel-MinimizeButton-Up]])
 	end

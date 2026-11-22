@@ -415,7 +415,12 @@ end
 function TP:Place()
 	local panel, window = self.panel, _G.PlayerSpellsFrame
 	local right = (self.side or 'RIGHT') == 'RIGHT'
-	local x = right and L.BORDER_RIGHT + L.GAP or -(L.BORDER_LEFT + L.GAP)
+	-- Under the talent window skin (Blizzard_PlayerSpellsSkin.lua) the border art
+	-- is gone and SaftUI's panel reaches its own inset outside the window: clear of
+	-- that, plus the gap, instead of Blizzard's NineSlice.
+	local ok, skin = pcall(function() return st:GetModule('Skinning'):GetModule('Blizzard_PlayerSpellsSkin') end)
+	local inset = ok and skin and skin.IsActive and skin:IsActive() and skin:Inset() or nil
+	local x = right and (inset or L.BORDER_RIGHT) + L.GAP or -((inset or L.BORDER_LEFT) + L.GAP)
 	local top, bottom, near = right and 'TOPLEFT' or 'TOPRIGHT', right and 'BOTTOMLEFT' or 'BOTTOMRIGHT', right and 'TOPRIGHT' or 'TOPLEFT'
 	panel:ClearAllPoints()
 	panel:SetPoint(top, window, near, x, 0)

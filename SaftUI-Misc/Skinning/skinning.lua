@@ -110,7 +110,7 @@ function SK:GetConfigTable()
 						order = 7,
 						name = 'Talent window',
 						type = 'toggle',
-						desc = "Draw the talent window's frame in SaftUI's look: its border, title bar and close button, the search box, Unspent talents, the Apply and loadout controls, the tabs and the dividers, in this page's Theme, Background and font. Each spec's background art, and the talents, stay Blizzard's. Off, or while this page's Theme is Blizzard, it keeps Blizzard's look. Requires a reload.",
+						desc = "Draw the talent window's frame in SaftUI's look: its border, title bar and close button, the search box, Unspent talents, the Apply and Copy buttons, the tabs and the dividers, in this page's Theme, Background and font. Each spec's background art, and the talents, stay Blizzard's. Off, or while this page's Theme is Blizzard, it keeps Blizzard's look. Requires a reload.",
 						set = function(info, value)
 							self.config[info[#info]] = value
 							st:Print('Reload your UI to apply.')
