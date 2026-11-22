@@ -158,3 +158,6 @@ Tasks 1 and 2 share no file and run in parallel. Task 3 runs after both.
 8. Turn Skinning > Talent window off in a session: faces go, Blizzard's numbers come back.
 9. Open the window in combat for the first time in a session: no error; faces appear after combat. `Logs/taint.log` blames nothing of SaftUI's for `Blizzard_SharedTalentUI`.
 10. Search a talent name: note whether the match is still visible (the followup).
+11. Planning on, hover a talent: its face lights (the catcher's hover), Blizzard's tooltip is replaced by the plan's (name, ranks planned, the click hint). A refused click leaves the reason in red as the tooltip's last line until the pointer leaves.
+12. A one rank talent with the tree hiding single rank numbers: no planned number on it in planning mode.
+13. Import a plan in the wrong order: the step reads "blocked" in the panel with its reason on hover; the plan still counts it.

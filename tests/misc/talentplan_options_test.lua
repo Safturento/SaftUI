@@ -6,7 +6,7 @@ local PSF = load_test_file('misc/fixtures/player_spells_frame.lua')
 
 local st, TP, R
 
-local FILES = { 'talentplan', 'model', 'parser', 'store', 'data', 'drag', 'panel', 'import', 'overlays' }
+local FILES = { 'talentplan', 'model', 'simulate', 'parser', 'store', 'data', 'drag', 'panel', 'import', 'overlays' }
 
 local function world(client)
 	st = T.client(client or 'forever')

@@ -85,7 +85,7 @@ local function world(opts)
 	end
 	load_saftui('SaftUI-Core/Widgets/scrollframe.lua')
 	if not _G.GameTooltip then create('GameTooltip', 'GameTooltip', UIParent, 'GameTooltipTemplate') end
-	for _, file in ipairs({ 'talentplan', 'model', 'parser', 'store', 'data', 'drag', 'panel', 'import', 'overlays' }) do
+	for _, file in ipairs({ 'talentplan', 'model', 'simulate', 'parser', 'store', 'data', 'drag', 'panel', 'import', 'overlays' }) do
 		load_saftui('SaftUI-Misc/TalentPlan/' .. file .. '.lua')
 	end
 	load_saftui('SaftUI-Misc/movable.lua')
@@ -98,6 +98,15 @@ local function world(opts)
 	PSF.build()
 	menu_stand_in()
 	if opts.before then opts.before() end
+	if opts.faces then -- the skin and the faces module, enabled before the plan (TP:OnEnable gives the faces its source)
+		st.config.profile.skinning.theme = 'thick'
+		stub.installed_addons.Blizzard_PlayerSpells = true
+		load_saftui('SaftUI-Misc/Skinning/skinning.lua')
+		load_saftui('SaftUI-Misc/Skinning/blizzard/Blizzard_PlayerSpellsSkin.lua')
+		load_saftui('SaftUI-Misc/Skinning/blizzard/Blizzard_TalentFaces.lua')
+		st:GetModule('Skinning'):Enable()
+		st:GetModule('TalentFaces'):Enable()
+	end
 	st:GetModule('Movable'):Enable() -- made first, so enabled first (AceAddon's module order)
 	TP:Enable()
 	if not opts.before then PSF.load() end
@@ -495,5 +504,261 @@ test('hiding the glow stops its pulse and showing it plays again', function()
 	check(glow:IsShown() and glow.glowAnim:IsPlaying(), 'and a draw that shows it plays it again')
 	TP:HideOverlays()
 	check(not glow:IsShown() and not glow.glowAnim:IsPlaying(), 'the panel going stops it')
+	clean()
+end)
+
+------------------------------------------------------------ the tree's rules
+
+local function click_n(name, n)
+	for _ = 1, n do eq(TP:PlanClick(SH.ID[name], 'LeftButton'), 'added') end
+end
+
+local function last_line(tip) local t = stub.state(tip).texts; return t[#t] end
+
+test('a planning click the tree forbids is refused', function()
+	world({ tree = { shape = true } })
+	open()
+	TP:SetPlanning(true)
+	local flurry = rec('Flurry') -- Enhancement, row 2: five points in Enhancement first
+	stub.fire_script(flurry.catcher, 'OnEnter')
+	stub.click(flurry.catcher, 'LeftButton')
+	eq(S.Active(1), nil, 'no plan was made')
+	eq(last_line(GameTooltip), 'Needs 5 points in Enhancement first.')
+	local result, reason = TP:PlanClick(SH.ID.Flurry, 'LeftButton')
+	eq(result, 'refused'); eq(reason, 'Needs 5 points in Enhancement first.')
+	-- a point in another group doesn't count for it
+	eq(TP:PlanClick(SH.ID['Call of Flame'], 'LeftButton'), 'added')
+	eq(TP:PlanClick(SH.ID.Flurry, 'LeftButton'), 'refused')
+	-- five row 1 points in Enhancement, then row 2
+	click_n('Thundering Strikes', 5)
+	eq(TP:PlanClick(SH.ID.Flurry, 'LeftButton'), 'added')
+	eq(#S.Active(1).steps, 7)
+	stub.fire_script(flurry.catcher, 'OnLeave')
+	clean()
+	eq(next(PSF.clicks), nil, 'Blizzard never saw a click')
+end)
+
+test('the refusal is in the tooltip in Danger and goes with the next good click', function()
+	world({ tree = { shape = true } })
+	open()
+	TP:SetPlanning(true)
+	local c = rec('Flurry').catcher
+	stub.fire_script(c, 'OnEnter')
+	check(last_line(GameTooltip) ~= 'Needs 5 points in Enhancement first.', 'not before a click')
+	stub.click(c, 'LeftButton')
+	local lines = stub.state(GameTooltip).texts
+	eq(lines[#lines], 'Needs 5 points in Enhancement first.')
+	local danger = { st:Color('text', 'danger'):GetRGB() }
+	local color = stub.state(GameTooltip).colors[#lines]
+	eq(J({ color[1], color[2], color[3] }), J(danger), 'in Text > Danger')
+	TP:PlanClick(SH.ID['Thundering Strikes'], 'LeftButton')
+	stub.fire_script(c, 'OnEnter')
+	check(last_line(GameTooltip) ~= 'Needs 5 points in Enhancement first.', 'gone')
+	local pure = TP.CatcherLines(nil, SH.ID.Flurry, { name = 'Flurry', maxRanks = 5 }, 'Why.')
+	eq(pure[#pure], 'Why.')
+	eq(TP.CatcherLines(nil, SH.ID.Flurry, { name = 'Flurry', maxRanks = 5 })[3], nil, 'no refusal, no line')
+	clean()
+end)
+
+test('a node whose prerequisite is a choice node is never available', function()
+	world({ tree = { shape = true } })
+	open()
+	TP:SetPlanning(true)
+	-- Totemic Focus (Restoration, row 2) has the choice node as its parent
+	local ok = TP:PlanClick(SH.ID['Totemic Focus'], 'LeftButton')
+	eq(ok, 'refused')
+	clean()
+end)
+
+test('a right-click a later step needs is refused', function()
+	world({ tree = { shape = true } })
+	open()
+	TP:SetPlanning(true)
+	click_n('Thundering Strikes', 5)
+	click_n('Flurry', 1)
+	local before = J(S.Active(1).steps)
+	local result, reason = TP:PlanClick(SH.ID['Thundering Strikes'], 'RightButton')
+	eq(result, 'refused'); eq(reason, 'Other planned talents need this rank.')
+	eq(J(S.Active(1).steps), before, 'nothing changed')
+	eq(TP:PlanClick(SH.ID.Flurry, 'RightButton'), 'removed')
+	eq(TP:PlanClick(SH.ID['Thundering Strikes'], 'RightButton'), 'removed', 'free once Flurry is gone')
+	eq(#S.Active(1).steps, 4)
+	eq(TP:PlanClick(SH.ID.Mindfulness, 'RightButton'), nil, 'a node not in the plan: nothing to remove')
+	clean()
+end)
+
+test('a right-click removes the step the rules judged, the last of the node', function()
+	world({ tree = { shape = true } })
+	open()
+	TP:SetPlanning(true)
+	click_n('Thundering Strikes', 5)
+	local plan = S.Active(1)
+	table.insert(plan.steps, 2, SH.ID['Mental Dexterity']) -- TS, MD, TS, TS, TS, TS
+	TP:Refresh()
+	eq(TP:PlanClick(SH.ID['Thundering Strikes'], 'RightButton'), 'removed')
+	eq(J(plan.steps), J({ SH.ID['Thundering Strikes'], SH.ID['Mental Dexterity'], SH.ID['Thundering Strikes'],
+		SH.ID['Thundering Strikes'], SH.ID['Thundering Strikes'] }), 'the last Thundering Strikes went')
+	clean()
+end)
+
+test('planning shows the plan, not the real tree', function()
+	world({ tree = { shape = true, ranks = { Flurry = 5 } }, faces = true })
+	open()
+	local flurry = PSF.byNode[SH.ID.Flurry]
+	PSF.set_state(flurry, 6, '5') -- Blizzard's real: maxed, 5
+	stub.run_timers()
+	eq(TP:PlanDisplay(SH.ID.Flurry), nil, 'not planning: the real state')
+	local face = st:GetModule('TalentFaces').faces[flurry]
+	check(not face.overlay:IsShown(), 'the real state: maxed, no dim')
+	TP:SetPlanning(true)
+	stub.run_timers()
+	local d = TP:PlanDisplay(SH.ID.Flurry)
+	eq(d.state, 'gated'); eq(d.planned, 0)
+	local ts = TP:PlanDisplay(SH.ID['Thundering Strikes'])
+	eq(ts.state, 'selectable'); eq(ts.planned, 0)
+	eq(face.overlay:GetAlpha(), 0.7, 'the face shows the plan: gated')
+	eq(face.rank:GetAlpha(), 0.3, 'the real rank faded')
+	eq(face.rank:GetText(), '5')
+	local tsface = st:GetModule('TalentFaces').faces[PSF.byNode[SH.ID['Thundering Strikes']]]
+	check(tsface.planned:IsShown(), 'a selectable node shows its planned 0')
+	eq(tsface.planned:GetText(), '0')
+	click_n('Thundering Strikes', 5)
+	click_n('Flurry', 2)
+	stub.run_timers()
+	d = TP:PlanDisplay(SH.ID.Flurry)
+	eq(d.state, 'selectable', "Blizzard's order: can take another rank beats partial"); eq(d.planned, 2)
+	eq(face.planned:GetText(), '2')
+	eq(TP:PlanDisplay(130).state, 'disabled', 'the choice node is in the shape, never plannable')
+	eq(TP:PlanDisplay(999), nil, 'a node the shape does not know shows its real state')
+	TP:SetPlanning(false)
+	stub.run_timers()
+	eq(TP:PlanDisplay(SH.ID.Flurry), nil)
+	check(not face.overlay:IsShown(), 'planning off: the real maxed again')
+	check(not face.planned:IsShown())
+	clean()
+end)
+
+test('a one rank node shows no planned number when the tree hides them', function()
+	world({ tree = { shape = true } })
+	stub.traits.tree_info[501] = { hideSingleRankNumbers = true }
+	open()
+	TP:SetPlanning(true)
+	local focus = SH.ID['Shamanistic Focus'] -- one rank, row 1 of Enhancement
+	eq(TP:PlanDisplay(focus).state, 'selectable')
+	eq(TP:PlanDisplay(focus).planned, nil, 'no number for a one rank node')
+	eq(TP:PlanDisplay(SH.ID['Thundering Strikes']).planned, 0, 'a tiered node keeps it')
+	clean()
+end)
+
+test('the node of a group the tree does not list counts the tree', function()
+	world({ tree = { shape = true } })
+	stub.traits.nodes[1001][SH.ID.Flurry].groupIDs = { 999 }
+	open()
+	TP:SetPlanning(true)
+	-- five points anywhere: Flurry's gate counts the whole tree
+	click_n('Call of Flame', 3)
+	eq(TP:PlanClick(SH.ID.Flurry, 'LeftButton'), 'refused')
+	click_n('Elemental Devastation', 2)
+	eq(TP:PlanClick(SH.ID.Flurry, 'LeftButton'), 'added')
+	clean()
+end)
+
+test('the window total', function()
+	world({ tree = { shape = true } })
+	open()
+	check(TP.total == nil or not TP.total:IsShown(), 'nothing outside planning')
+	TP:SetPlanning(true)
+	eq(TP.total:GetText(), 'Planned: 0 points\nElemental 0 · Enhancement 0 · Restoration 0')
+	click_n('Thundering Strikes', 5)
+	click_n('Flurry', 1)
+	eq(TP.total:GetText(), 'Planned: 6 points\nElemental 0 · Enhancement 6 · Restoration 0')
+	check(TP.total:IsShown())
+	local point, relative = TP.total:GetPoint(1)
+	eq(point, 'TOPLEFT'); eq(relative, TP:TalentsFrame())
+	TP:SetPlanning(false)
+	check(not TP.total:IsShown(), 'hidden when planning ends')
+	TP:SetPlanning(true)
+	check(TP.total:IsShown())
+	PSF.talents:Hide()
+	check(not TP.total:IsShown(), 'and with the window')
+	clean()
+end)
+
+test('the window total with no groups is the tree total only', function()
+	world()
+	open()
+	TP:SetPlanning(true)
+	click_n('Flurry', 2)
+	eq(TP.total:GetText(), 'Planned: 2 points')
+	clean()
+end)
+
+test('no plan dim while planning', function()
+	world({ tree = { ranks = TWELVE } })
+	guide_plan()
+	open()
+	check(rec('Improved Lightning Shield').dim:IsShown(), 'the dim in normal mode')
+	TP:SetPlanning(true)
+	for _, r in pairs(TP.overlays) do check(not r.dim:IsShown(), 'off while planning') end
+	TP:SetPlanning(false)
+	check(rec('Improved Lightning Shield').dim:IsShown(), 'and back')
+	clean()
+end)
+
+test('the catcher\'s hover lights the face', function()
+	world({ tree = { shape = true }, faces = true })
+	open()
+	TP:SetPlanning(true)
+	stub.run_timers()
+	local face = st:GetModule('TalentFaces').faces[PSF.byNode[SH.ID.Flurry]]
+	local c = rec('Flurry').catcher
+	stub.fire_script(c, 'OnEnter')
+	check(st:GetState(face.face, 'hover'), 'hover on')
+	stub.fire_script(c, 'OnLeave')
+	check(not st:GetState(face.face, 'hover'), 'hover off')
+	clean()
+end)
+
+test('SetPlanning asks the faces for a draw and the module gives them its source', function()
+	world({ tree = { shape = true }, faces = true })
+	open()
+	local TF = st:GetModule('TalentFaces')
+	local face = TF.faces[PSF.byNode[SH.ID.Flurry]]
+	check(not face.planned:IsShown())
+	TP:SetPlanning(true)
+	stub.run_timers()
+	eq(face.overlay:GetAlpha(), 0.7)
+	clean()
+end)
+
+test('the plan check lists a node where the rules and the game disagree', function()
+	world({ tree = { shape = true, ranks = { ['Thundering Strikes'] = 5 } } })
+	-- the game's word on the gates: five points are in Enhancement only
+	for _, info in pairs(stub.traits.nodes[1001]) do
+		local spent = info.groupIDs and info.groupIDs[1] == SH.GROUP.Enhancement and 5 or 0
+		for _, cond in ipairs(info.conditionIDs) do
+			info.isAvailable = spent >= stub.traits.conditions[cond].spentAmountRequired
+		end
+	end
+	-- and it says Flurry (row 2) is not available although five points are in Enhancement
+	stub.traits.nodes[1001][SH.ID.Flurry].isAvailable = false
+	-- Stormstrike's parent, Spirit Weapons, is not maxed: the game agrees
+	stub.traits.nodes[1001][SH.ID.Stormstrike].meetsEdgeRequirements = false
+	stub.traits.nodes[1001][SH.ID['Improved Stormstrike']].meetsEdgeRequirements = false
+	stub.traits.nodes[1001][SH.ID['Totemic Focus']].meetsEdgeRequirements = false -- its parent is a choice node
+	open()
+	local said = {}
+	local print_ = st.Print
+	st.Print = function(_, ...) said[#said + 1] = table.concat({ ... }, ' ') end
+	TP:RunCheck()
+	st.Print = print_
+	check(said[1]:find('Flurry', 1, true), 'names the node: ' .. tostring(said[1]))
+	-- and when they agree
+	stub.traits.nodes[1001][SH.ID.Flurry].isAvailable = true
+	said = {}
+	st.Print = function(_, ...) said[#said + 1] = table.concat({ ... }, ' ') end
+	TP:RunCheck()
+	st.Print = print_
+	eq(said[1], "The plan's rules agree with the game.")
 	clean()
 end)

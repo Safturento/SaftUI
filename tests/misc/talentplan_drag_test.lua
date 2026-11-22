@@ -86,7 +86,7 @@ local function world(opts)
 	end
 	load_saftui('SaftUI-Core/Widgets/scrollframe.lua')
 	if not _G.GameTooltip then create('GameTooltip', 'GameTooltip', UIParent, 'GameTooltipTemplate') end
-	for _, file in ipairs({ 'talentplan', 'model', 'parser', 'store', 'data', 'drag', 'panel', 'import', 'overlays' }) do
+	for _, file in ipairs({ 'talentplan', 'model', 'simulate', 'parser', 'store', 'data', 'drag', 'panel', 'import', 'overlays' }) do
 		load_saftui('SaftUI-Misc/TalentPlan/' .. file .. '.lua')
 	end
 	load_saftui('SaftUI-Misc/movable.lua')

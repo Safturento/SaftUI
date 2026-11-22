@@ -12,6 +12,10 @@
 	    spells = { [spellID] = { name, icon } },
 	    conditions = { [condID] = { isGate, isMet, spentAmountRequired } },
 	    staged = { [configID] = { purchases = {}, refunds = {} } },
+	    tree_info = { [treeID] = { gates = { { topLeftNodeID, conditionID } }, hideSingleRankNumbers } },
+	    groups = { [treeID] = { { groupID, orderIndex, displayName } } },
+	    costs = { [nodeID] = { { ID, amount } } },       -- none: the node costs 1
+	    currency = { { traitCurrencyID, quantity, maxQuantity, spent } },
 	    unspent = false, calls = {} }
 
 	`calls` gets the name of every PurchaseRank, RefundRank and CommitConfig
@@ -21,7 +25,8 @@
 	Where each function comes from: names, arguments and return shapes are in
 	Blizzard_APIDocumentationGenerated on the `forever` branch of
 	Gethe/wow-ui-source, read 2026-11-22: SharedTraitsDocumentation.lua
-	(C_Traits: GetConfigInfo, GetTreeNodes, GetNodeInfo, GetEntryInfo,
+	(C_Traits: GetConfigInfo, GetTreeNodes, GetTreeInfo,
+	GetGroupDisplayInfoByTreeID, GetNodeCost, GetTreeCurrencyInfo, GetNodeInfo, GetEntryInfo,
 	GetDefinitionInfo, GetConditionInfo, GetStagedChanges, PurchaseRank,
 	RefundRank, CommitConfig and the TraitNodeInfo, TraitCondInfo,
 	TraitEntryInfo, TraitDefinitionInfo and TraitConfigInfo structures),
@@ -48,7 +53,8 @@ C_Spell = C_Spell or {}
 
 function stub.reset_traits()
 	stub.traits = { active_group = 1, group_configs = {}, configs = {}, trees = {}, nodes = {},
-		entries = {}, definitions = {}, spells = {}, conditions = {}, staged = {}, unspent = false, calls = {} }
+		entries = {}, definitions = {}, spells = {}, conditions = {}, staged = {}, unspent = false, calls = {},
+		tree_info = {}, groups = {}, costs = {}, currency = {} }
 end
 stub.reset_traits()
 
@@ -89,6 +95,49 @@ do
 		return copy
 	end
 
+	-- { ID, gates = { { topLeftNodeID, conditionID } }, hideSingleRankNumbers }
+	function T.GetTreeInfo(configID, treeID)
+		number_arg(configID, 'local treeInfo = C_Traits.GetTreeInfo(configID, treeID)')
+		number_arg(treeID, 'local treeInfo = C_Traits.GetTreeInfo(configID, treeID)')
+		local info = stub.traits.tree_info[treeID] or {}
+		return { ID = treeID, gates = info.gates or {}, hideSingleRankNumbers = info.hideSingleRankNumbers == true,
+			cannotRefund = false }
+	end
+
+	-- A list of { groupID, treeID, orderIndex, displayName }.
+	function T.GetGroupDisplayInfoByTreeID(treeID)
+		number_arg(treeID, 'local displayInfos = C_Traits.GetGroupDisplayInfoByTreeID(treeID)')
+		local out = {}
+		for i, g in ipairs(stub.traits.groups[treeID] or {}) do
+			out[i] = { groupID = g.groupID, treeID = treeID, skillLineID = 0, orderIndex = g.orderIndex,
+				displayName = g.displayName, icon = 0 }
+		end
+		return out
+	end
+
+	-- A list of { ID, amount }.
+	function T.GetNodeCost(configID, nodeID)
+		number_arg(configID, 'local costs = C_Traits.GetNodeCost(configID, nodeID)')
+		number_arg(nodeID, 'local costs = C_Traits.GetNodeCost(configID, nodeID)')
+		local out = {}
+		for i, c in ipairs(stub.traits.costs[nodeID] or {}) do out[i] = { ID = c.ID, amount = c.amount } end
+		return out
+	end
+
+	-- A list of { traitCurrencyID, quantity, maxQuantity, spent }.
+	function T.GetTreeCurrencyInfo(configID, treeID, excludeStagedChanges)
+		number_arg(configID, 'local treeCurrencyInfo = C_Traits.GetTreeCurrencyInfo(configID, treeID, excludeStagedChanges)')
+		number_arg(treeID, 'local treeCurrencyInfo = C_Traits.GetTreeCurrencyInfo(configID, treeID, excludeStagedChanges)')
+		if type(excludeStagedChanges) ~= 'boolean' then
+			error('Usage: local treeCurrencyInfo = C_Traits.GetTreeCurrencyInfo(configID, treeID, excludeStagedChanges)', 2)
+		end
+		local out = {}
+		for i, c in ipairs(stub.traits.currency or {}) do
+			out[i] = { traitCurrencyID = c.traitCurrencyID, quantity = c.quantity, maxQuantity = c.maxQuantity, spent = c.spent or 0 }
+		end
+		return out
+	end
+
 	function T.GetEntryInfo(configID, entryID)
 		number_arg(configID, 'local entryInfo = C_Traits.GetEntryInfo(configID, entryID)')
 		number_arg(entryID, 'local entryInfo = C_Traits.GetEntryInfo(configID, entryID)')
@@ -111,7 +160,8 @@ do
 		local cond = stub.traits.conditions[condID]
 		if not cond then return nil end
 		return { condID = condID, isAlwaysMet = false, isMet = cond.isMet == true, isGate = cond.isGate == true,
-			isSufficient = false, type = 0, spentAmountRequired = cond.spentAmountRequired }
+			isSufficient = false, type = 0, spentAmountRequired = cond.spentAmountRequired,
+			traitCurrencyID = cond.traitCurrencyID }
 	end
 
 	-- nodeIDsWithPurchases, nodeIDsWithRefunds, nodeIDsWithSelectionSwaps; nothing when none is staged.

@@ -151,6 +151,7 @@ local function RowTip(row)
 	end
 	if row.state == 'pending' then return 'Staged. Press Apply in the talent window to learn it.' end
 	if row.waiting and row.block then return row.block end
+	if row.simBlock then return row.simBlock end
 end
 
 -- Where entry position pos sits in the list: every row and header is one
@@ -225,8 +226,12 @@ end
 
 -- One step in a row: the level, the icon, the name, and on the right the rank
 -- or the state's tag, or a check once learned.
-local function FillRow(row, step, node)
+-- simStep is the simulation's word on the step (view.sim.steps[i]): one the tree's
+-- rules wouldn't have allowed at that point of the plan (an import or a drag can
+-- make one) reads blocked with the rule's reason, unless the game has learned it.
+local function FillRow(row, step, node, simStep)
 	row.index, row.state, row.nodeID, row.block, row.waiting = step.index, step.state, step.nodeID, step.block, step.waiting
+	row.simBlock = simStep and not simStep.ok and step.state ~= 'learned' and simStep.reason or nil
 	row.level:SetText(('%2d'):format(step.level))
 	st:SetState(row, 'selected', step.waiting and true or false)
 	row.check:SetShown(step.state == 'learned')
@@ -246,6 +251,8 @@ local function FillRow(row, step, node)
 		if step.state == 'pending' then
 			tag = 'pending'
 		elseif step.waiting and step.block then
+			tag = 'blocked'
+		elseif row.simBlock then
 			tag = 'blocked'
 		elseif node.maxRanks > 1 then
 			tag = ('R%d'):format(step.rank)
@@ -472,7 +479,7 @@ function TP:DrawPanel(view)
 	panel.entries = {}
 	for i = 1, count do
 		local frame = Row(panel, i).frame
-		FillRow(frame, rows[i], view.tree.nodes[rows[i].nodeID])
+		FillRow(frame, rows[i], view.tree.nodes[rows[i].nodeID], view.sim and view.sim.steps[rows[i].index])
 		PlaceAt(frame, panel.content, i)
 		frame:Show()
 		panel.entries[i] = { frame = frame, index = i }
