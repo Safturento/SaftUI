@@ -32,6 +32,7 @@
 	  - Spy:CreateKoSButton() makes Spy.KoSButton on the global TargetFrame
 	    (Background, Icon, Border, a highlight texture).
 	  - SpyPerCharDB = { KOSData = {} }.
+	opts.noFamily has the game lack CreateFontFamily (Spy then uses SetFont); opts.invert sets the InvertSpy option.
 	opts.renamed drops pieces, as a Spy version that renamed them would: the
 	window's StatsButton, the alert's Icon, SpyStatsFrame's TabFrame, the KoS
 	button's Border, and Spy.AlertWindow itself (the CreateMainWindow still builds
@@ -118,10 +119,36 @@ local function button(parent, name, w, h, textures)
 	return b
 end
 
+-- A text on a font object of its own, as Spy's ApplyFont leaves it (never a SetFont,
+-- which in game and in the stubs outlives a SetFontObject).
 local function text(parent, template)
 	local fs = parent:CreateFontString(nil, 'OVERLAY', template or 'GameFontNormal')
-	fs:SetFont(FONT, 12, '')
+	local object = CreateFont()
+	object:SetFont(FONT, 12, '')
+	fs:SetFontObject(object)
 	return fs
+end
+
+-- Fonts.lua's alphabet files, and CreateFontFamily: a font object whose roman font is
+-- the first member's, remembering the others for GetFontObjectForAlphabet.
+local ALPHABET_FILES = {
+	korean = [[Fonts\2002.TTF]], simplifiedchinese = [[Fonts\ARKai_T.ttf]],
+	traditionalchinese = [[Fonts\BLEI00D.TTF]], russian = [[Fonts\FRIZQT___CYR.TTF]],
+}
+local function create_font_family(_, members)
+	local family = CreateFont()
+	local others = {}
+	for _, member in ipairs(members) do
+		if member.alphabet == 'roman' then
+			family:SetFont(member.file, member.height, member.flags)
+		else
+			local object = CreateFont()
+			object:SetFont(member.file, member.height, member.flags)
+			others[member.alphabet] = object
+		end
+	end
+	rawset(family, 'GetFontObjectForAlphabet', function(_, alphabet) return others[alphabet] end)
+	return family
 end
 
 ---------------------------------------------------------------- the main window
@@ -150,8 +177,13 @@ local function build_window(opts)
 
 	local bar = CreateFrame('Frame', 'SpyTitleBarFrame', window, 'BackdropTemplate')
 	bar:SetFrameStrata('BACKGROUND')
-	bar:SetPoint('TOPLEFT', window, 'TOPLEFT', 0, -11)
-	bar:SetPoint('TOPRIGHT', window, 'TOPRIGHT', 0, -11)
+	if profile.InvertSpy then -- Widgets.lua: the title bar under the window
+		bar:SetPoint('BOTTOMLEFT', window, 'BOTTOMLEFT', 0, -21)
+		bar:SetPoint('BOTTOMRIGHT', window, 'BOTTOMRIGHT', 0, -21)
+	else
+		bar:SetPoint('TOPLEFT', window, 'TOPLEFT', 0, -11)
+		bar:SetPoint('TOPRIGHT', window, 'TOPRIGHT', 0, -11)
+	end
 	bar:SetHeight(22)
 	bar:SetBackdrop(TOOLTIP)
 	bar:SetBackdropColor(0, 0, 0, 1)
@@ -353,7 +385,7 @@ function SpyFix.make(opts)
 		renamed = opts.renamed,
 		db = { profile = {
 			MainWindow = { RowHeight = 14, RowSpacing = 0, TextHeight = 12, Position = plain },
-			ResizeSpyLimit = 10, ShowKoSButton = true, WindowBorder = opts.border or 'classic', InvertSpy = false,
+			ResizeSpyLimit = 10, ShowKoSButton = true, WindowBorder = opts.border or 'classic', InvertSpy = opts.invert or false,
 		} },
 		ListAmountDisplayed = 0,
 		Colors = {},
@@ -371,9 +403,24 @@ function SpyFix.make(opts)
 	end
 
 	-- Display.lua: Spy:SetFontSize(fontString, size) keeps the face, asks for the size.
+	-- Fonts.lua: Spy:ApplyFont builds a font family around the face (roman and the
+	-- four alphabets' files) and sets it with SetFontObject; with no CreateFontFamily
+	-- it falls back to SetFont. opts.noFamily has the game lack CreateFontFamily.
+	if not opts.noFamily then CreateFontFamily = create_font_family else CreateFontFamily = nil end
+	function Spy:ApplyFont(fs, file, height, flags)
+		if not CreateFontFamily then return fs:SetFont(file, height, flags) end
+		local members = { { alphabet = 'roman', file = file, height = height, flags = flags } }
+		for alphabet, alternate in pairs(ALPHABET_FILES) do
+			members[#members + 1] = { alphabet = alphabet, file = alternate, height = height, flags = flags }
+		end
+		local r, g, b, a = fs:GetTextColor()
+		fs:SetFontObject(CreateFontFamily('SpyFontFamily', members))
+		if r then fs:SetTextColor(r, g, b, a) end
+	end
+	-- MainWindow.lua: Spy:SetFontSize keeps the face and flags, asks for the size.
 	function Spy:SetFontSize(fs, size)
 		local face, _, flags = fs:GetFont()
-		fs:SetFont(face or FONT, size, flags)
+		Spy:ApplyFont(fs, face or FONT, size, flags)
 	end
 
 	function Spy:CreateMainWindow()
@@ -408,7 +455,16 @@ function SpyFix.make(opts)
 		right:SetPoint('RIGHT', status, 'RIGHT', -2, 0)
 		own(row, 'RightText', right)
 		Spy:SetFontSize(right, math.max(profile.RowHeight * 0.65, profile.RowHeight - 12))
-		own(row, 'ClassIcon', status:CreateTexture(nil, 'ARTWORK'))
+		local icon = status:CreateTexture(nil, 'ARTWORK')
+		-- The game resets a texture's coordinates when an atlas is set (Display.lua's
+		-- setClassIcon calls SetTexCoord, then SetAtlas), with no SetTexCoord call to hook.
+		local set_atlas = icon.SetAtlas
+		rawset(icon, 'SetAtlas', function(self, ...)
+			local result = set_atlas(self, ...)
+			stub.state(self).tex_coord = nil
+			return result
+		end)
+		own(row, 'ClassIcon', icon)
 		own(row, 'Marker', status:CreateTexture(nil, 'OVERLAY'))
 		lock_tree(status)
 	end
@@ -453,6 +509,9 @@ function SpyFix.make(opts)
 		row.RightText:SetText(desc)
 		row.StatusBar:SetValue(value or 100)
 		local color = colorclass and RAID_CLASS_COLORS and RAID_CLASS_COLORS[colorclass]
+		-- Display.lua's setClassIcon: the coordinates, then the atlas
+		row.ClassIcon:SetTexCoord(0, 1, 0, 1)
+		row.ClassIcon:SetAtlas('classicon-' .. tostring(colorclass or 'unknown'):lower())
 		row.StatusBar:SetStatusBarColor(color and color.r or 0.5, color and color.g or 0.5, color and color.b or 0.5, 0.8)
 		row:Show()
 	end

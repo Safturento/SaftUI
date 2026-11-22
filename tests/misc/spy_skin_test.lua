@@ -138,47 +138,18 @@ test('the Skinning page has the toggle, on by default', function()
 	check(args.spy and args.spy.type == 'toggle' and args.spy.order > args.color_picker.order, 'a toggle after the color picker')
 end)
 
--- Every call the skin made on Spy's window or a row's geometry (the window is
--- secure): none but Spy's own may be there.
-local function skin_geometry()
-	local bad = {}
-	for _, call in ipairs(SpyFix.geometry_calls) do
-		if not call.from_spy then bad[#bad + 1] = call.method end
-	end
-	return bad
-end
-
--- Spies on st:SetBackdropIn: the (frame, theme, background, kind) each call drew.
-local function watch_draws()
-	local real, calls = st.SetBackdropIn, {}
-	st.SetBackdropIn = function(self, backdrops, frame, theme, background, kind)
-		calls[#calls + 1] = { frame = frame, theme = theme, background = background, kind = kind }
-		return real(self, backdrops, frame, theme, background, kind)
-	end
-	return calls
-end
-
-local function draws_of(calls, frame)
-	local out = {}
-	for _, call in ipairs(calls) do
-		if call.frame == frame then out[#out + 1] = call end
-	end
-	return out
-end
-
 test('a theme change draws the panel again, in the new theme', function()
 	world()
 	SpyFix.make()
 	enable()
 	local panel = panel_of(Spy.MainWindow)
-	local calls = watch_draws()
+	local before = st:DrawnTheme(panel)
 	st.config.profile.skinning.theme = 'thin'
 	SK:UpdateConfig()
 	eq(panel_of(Spy.MainWindow), panel, 'the same panel, drawn again')
-	local drawn = draws_of(calls, Spy.MainWindow)
-	check(#drawn >= 1, 'the window panel was drawn again')
-	eq(drawn[#drawn].theme, 'thin', 'in the theme the page now has')
-	eq(drawn[#drawn].kind, 'panel', 'as a panel')
+	eq(st:DrawnTheme(panel), 'thin', 'drawn in the theme the page now has')
+	check(before ~= 'thin', 'which it was not before')
+	eq(st:DrawnKind(panel), 'panel', 'as a panel')
 	eq(#take_errors(), 0, 'no error reported')
 end)
 
@@ -187,13 +158,12 @@ test('a row border is redrawn as a control, not a panel', function()
 	SpyFix.make()
 	enable()
 	local bar = Spy.MainWindow.Rows[1].StatusBar
-	local calls = watch_draws()
+	local border = panel_of(bar)
+	eq(st:DrawnKind(border), 'control', 'a control to begin with')
 	st.config.profile.skinning.theme = 'thin'
 	SK:UpdateConfig()
-	local drawn = draws_of(calls, bar)
-	check(#drawn >= 1, 'the row border was drawn again')
-	eq(drawn[#drawn].kind, 'control', 'still a control')
-	eq(drawn[#drawn].theme, 'thin', 'in the new theme')
+	eq(st:DrawnKind(border), 'control', 'still a control')
+	eq(st:DrawnTheme(border), 'thin', 'in the new theme')
 end)
 
 ---------------------------------------------------------------- the Nearby window
@@ -352,9 +322,116 @@ test('Spy in combat: the skin touches no geometry', function()
 	Spy:ApplyBorderStyle()
 	Spy:CreateRow(12)
 	eq(#take_errors(), 0, 'no error reported')
-	eq(table.concat(skin_geometry(), ','), '', 'no geometry call from anywhere but Spy')
 	for _, call in ipairs(SpyFix.geometry_calls) do
 		check(call.from_spy == true, call.method .. ' on the window or a row came from Spy')
 	end
 	stub.in_combat = false
+end)
+
+test('the Skinning font applies live', function()
+	world()
+	SpyFix.make()
+	enable()
+	local row = Spy.MainWindow.Rows[1]
+	local before = row.LeftText:GetFont()
+	st.config.profile.skinning.font = 'heading'
+	SK:UpdateConfig()
+	local want = st:FontValues('heading')
+	eq(row.LeftText:GetFont(), want, 'the row text wears the new face')
+	check(before ~= want, 'which it did not before')
+	eq(#take_errors(), 0, 'no error reported')
+end)
+
+test('SaftUI\'s face keeps the other alphabets of Spy\'s font family', function()
+	world()
+	SpyFix.make()
+	enable()
+	local row = Spy.MainWindow.Rows[1]
+	Spy:SetFontSize(row.LeftText, 13)
+	eq(({ row.LeftText:GetFont() })[1], (st:FontValues(st.config.profile.skinning.font)), 'roman: SaftUI\'s face')
+	eq(({ row.LeftText:GetFont() })[2], 13, 'at Spy\'s size')
+	local russian = row.LeftText:GetFontObject():GetFontObjectForAlphabet('russian')
+	eq((russian:GetFont()), [[Fonts\FRIZQT___CYR.TTF]], 'Cyrillic keeps its file')
+	eq(select(2, russian:GetFont()), 13, 'at the same size')
+	st.config.profile.skinning.font = 'pixel'
+	SK:UpdateConfig()
+	local again = row.LeftText:GetFontObject():GetFontObjectForAlphabet('russian')
+	eq((again:GetFont()), [[Fonts\FRIZQT___CYR.TTF]], 'and after the face changes')
+end)
+
+test('without CreateFontFamily the face is set with SetFont', function()
+	world()
+	SpyFix.make({ noFamily = true })
+	enable()
+	local row = Spy.MainWindow.Rows[1]
+	Spy:SetFontSize(row.LeftText, 13)
+	eq(({ row.LeftText:GetFont() })[1], (st:FontValues(st.config.profile.skinning.font)), 'SaftUI\'s face')
+	eq(({ row.LeftText:GetFont() })[2], 13, 'Spy\'s size')
+	eq(#take_errors(), 0, 'no error reported')
+end)
+
+test('the resize grips are glyphs drawn by the states', function()
+	world()
+	SpyFix.make({ noWindow = true })
+	local shapes = {}
+	enable()
+	local real = st.AddStates
+	st.AddStates = function(self, frame, shape, opts)
+		shapes[frame] = shape
+		return real(self, frame, shape, opts)
+	end
+	stub.fire_event('ADDON_LOADED', 'Spy')
+	Spy:CreateMainWindow()
+	for _, key in ipairs({ 'DragBottomRight', 'DragBottomLeft', 'DragTopRight', 'DragTopLeft' }) do
+		eq(shapes[Spy.MainWindow[key]], 'glyph', key)
+	end
+	eq(#take_errors(), 0, 'no error reported')
+end)
+
+test('InvertSpy: the panel runs from the window top to the title bar, the line above it', function()
+	world()
+	SpyFix.make({ invert = true })
+	enable()
+	local window = Spy.MainWindow
+	local panel = panel_of(window)
+	local points = {}
+	for i = 1, panel:GetNumPoints() do
+		local point, rel, relpoint = panel:GetPoint(i)
+		points[point] = { rel, relpoint }
+	end
+	eq(points.TOPLEFT[1], window, 'from the window\'s top')
+	eq(points.BOTTOMRIGHT[1], window.TitleBar, 'to the title bar\'s bottom')
+	local line
+	for _, region in ipairs({ panel:GetRegions() }) do
+		if region:GetObjectType() == 'Texture' and region:GetNumPoints() > 0 then
+			local point, rel, relpoint = region:GetPoint(1)
+			if rel == window.TitleBar then line = { point, relpoint } end
+		end
+	end
+	check(line, 'a divider anchored to the title bar')
+	eq(line[1], 'BOTTOMLEFT', 'above the title bar')
+	eq(line[2], 'TOPLEFT', 'on its top edge')
+	eq(#take_errors(), 0, 'no error reported')
+end)
+
+test('a class atlas set after Spy\'s coordinates keeps the crop', function()
+	world()
+	SpyFix.make()
+	enable()
+	Spy:SetBar(1, 'Name', 'Mage', 100, 'class', 'MAGE')
+	eq((Spy.MainWindow.Rows[1].ClassIcon:GetTexCoord()), st.config.profile.misc.icon_trim, 'cropped after SetAtlas reset it')
+end)
+
+test('a font call that errors does not leave the hook off', function()
+	world()
+	SpyFix.make({ noFamily = true })
+	enable()
+	local row = Spy.MainWindow.Rows[1]
+	local face = st:FontValues(st.config.profile.skinning.font)
+	stub.refused_fonts[face] = 'error'
+	pcall(Spy.SetFontSize, Spy, row.LeftText, 15) -- the skin's SetFont raises
+	stub.refused_fonts[face] = nil
+	Spy:SetFontSize(row.LeftText, 14)
+	eq(({ row.LeftText:GetFont() })[1], face, 'the hook still puts SaftUI\'s face on the next size')
+	eq(({ row.LeftText:GetFont() })[2], 14, 'at that size')
 end)

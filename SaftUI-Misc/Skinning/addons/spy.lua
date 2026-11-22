@@ -31,6 +31,8 @@ local fontState = setmetatable({}, weak) -- Spy's font string -> { kind = 'text'
 local tinted = setmetatable({}, weak)  -- texture -> true: drawn in Text > Muted
 local dividers = setmetatable({}, weak) -- SaftUI's divider textures
 local dividerOf = setmetatable({}, weak) -- SaftUI's panel -> its divider (a key only)
+local grips = setmetatable({}, weak)   -- Spy's resize grips the skin drew
+local inverted = setmetatable({}, weak) -- Spy's window -> whether its panel was placed for InvertSpy
 local skinnedRows = setmetatable({}, weak) -- Spy's row -> true once skinned
 local applyingFont = false             -- the skin's own SetFont isn't taken for Spy's
 
@@ -95,7 +97,37 @@ local function MakeDivider(frame)
 	return tex
 end
 
--- Spy asks for a size with SetFont or SetFontObject (Spy:SetFontSize, its options): the
+-- Spy puts each text on a font family that switches file per alphabet (Spy Forever's
+-- Fonts.lua: Russian and CJK names have no glyphs in one roman file), so a bare SetFont
+-- with SaftUI's face would draw them as squares. The skin builds a family of its own: the
+-- roman member is SaftUI's face and outline, the other alphabets keep the files of the
+-- font object Spy set, all at Spy's size. One family per face, size, outline and files.
+local ALPHABETS = { 'korean', 'simplifiedchinese', 'traditionalchinese', 'russian' }
+local families, familyCount = {}, 0
+
+local function Family(fs, face, size, outline)
+	if not CreateFontFamily then return end
+	local object = fs.GetFontObject and fs:GetFontObject()
+	if not (object and object.GetFontObjectForAlphabet) then return end
+	local key, members = face .. '|' .. size .. '|' .. outline, { { alphabet = 'roman', file = face, height = size, flags = outline } }
+	for _, alphabet in ipairs(ALPHABETS) do
+		local alternate = object:GetFontObjectForAlphabet(alphabet)
+		local file = alternate and alternate:GetFont()
+		if file then
+			members[#members + 1] = { alphabet = alphabet, file = file, height = size, flags = outline }
+			key = key .. '|' .. alphabet .. '=' .. file
+		end
+	end
+	if #members == 1 then return end -- no other alphabet to keep: a plain SetFont does as well
+	if families[key] == nil then
+		familyCount = familyCount + 1
+		local ok, family = pcall(CreateFontFamily, 'SaftUISpyFont' .. familyCount, members)
+		families[key] = ok and family or false
+	end
+	return families[key] or nil
+end
+
+-- Spy asks for a size with SetFontObject (Spy:ApplyFont's family) or SetFont: the
 -- skin keeps that size and puts SaftUI's face and outline on it. kind 'title' is the
 -- Window titles font, 'text' the Skinning page's.
 local function ApplyFont(fs)
@@ -104,9 +136,21 @@ local function ApplyFont(fs)
 	local _, _, fontName = SP:GetStyle()
 	if state.kind == 'title' then fontName = st.config.profile.headers.font end
 	local face, _, outline = st:FontValues(fontName)
+	outline = outline or ''
 	applyingFont = true
-	fs:SetFont(face, state.size, outline)
+	local ok, err = pcall(function()
+		local family = Family(fs, face, state.size, outline)
+		if family and fs.SetFontObject then
+			-- A font object brings its own color: Spy's is put back.
+			local r, g, b, a = fs:GetTextColor()
+			fs:SetFontObject(family)
+			if r then fs:SetTextColor(r, g, b, a) end
+		else
+			fs:SetFont(face, state.size, outline)
+		end
+	end)
 	applyingFont = false
+	if not ok then error(err, 0) end
 end
 
 local function HookFont(fs, kind)
@@ -151,19 +195,23 @@ local function SkinIconButton(button, icon)
 	st:AddStates(button, 'icon', { pieces = { hover = button:GetHighlightTexture() } })
 end
 
--- A resize grip: SaftUI's corner arrow, flipped to its corner, in Text > Muted.
+-- A resize grip: SaftUI's corner arrow, flipped to its corner, as st:EnableResizing draws
+-- SaftUI's own: a 'glyph', its three textures one picture in Text > Muted at rest and the
+-- helper's tones under the mouse and held.
 local function SkinGrip(grip, flip)
 	if type(grip) ~= 'table' or not grip.SetNormalTexture then return end
-	for _, setter in ipairs({ 'SetNormalTexture', 'SetPushedTexture', 'SetHighlightTexture' }) do
-		grip[setter](grip, st.textures.cornerbr)
-	end
-	for _, getter in ipairs({ 'GetNormalTexture', 'GetPushedTexture', 'GetHighlightTexture' }) do
-		local tex = grip[getter](grip)
-		if tex then
-			tex:SetTexCoord(unpack(flip))
-			Tint(tex)
-		end
-	end
+	grip:SetNormalTexture(st.textures.cornerbr)
+	grip:SetPushedTexture(st.textures.cornerbr)
+	grip:SetHighlightTexture(st.textures.cornerbr)
+	local normal, pushed, highlight = grip:GetNormalTexture(), grip:GetPushedTexture(), grip:GetHighlightTexture()
+	highlight:SetBlendMode('BLEND')
+	for _, tex in ipairs({ normal, pushed, highlight }) do tex:SetTexCoord(unpack(flip)) end
+	st:AddStates(grip, 'glyph', {
+		glyph = { normal, pushed, highlight },
+		glyphRest = MutedRGB,
+	})
+	st:PaintStates(grip)
+	grips[grip] = true
 end
 
 -- A row: a flat bar with a thin border (Spy keeps the bar's color), SaftUI's face
@@ -178,7 +226,14 @@ function SP:SkinRow(row)
 	Panel(bar, 'control', 'none')
 	HookFont(row.LeftText, 'text')
 	HookFont(row.RightText, 'text')
-	if row.ClassIcon then st:SkinIcon(row.ClassIcon) end
+	local icon = row.ClassIcon
+	if icon then
+		st:SkinIcon(icon)
+		-- Spy sets the class atlas after its coordinates, which resets them: the crop again.
+		if icon.SetAtlas then
+			hooksecurefunc(icon, 'SetAtlas', function(self) st:SkinIcon(self) end)
+		end
+	end
 end
 
 -- Puts SaftUI's bar texture back on every row (Spy sets its own on its texture option
@@ -204,6 +259,9 @@ function SP:RestyleMain()
 	end
 	if window.ForeverBorder then window.ForeverBorder:Hide() end
 	if window.Background and window.Background.SetAlpha then window.Background:SetAlpha(0) end
+	-- The Invert option moved the title bar: the panel goes where it is now.
+	local invert = Spy().db and Spy().db.profile and Spy().db.profile.InvertSpy or false
+	if placers[window] and panels[window] and inverted[window] ~= invert then placers[window](window) end
 end
 
 -- Draws what each of Spy's windows is made of. Tasks that follow fill these; each
@@ -213,23 +271,39 @@ function SP:SkinMain()
 	local window = Spy() and Spy().MainWindow
 	if type(window) ~= 'table' then return end
 
-	-- One panel from the title bar to the window's bottom, which follows the last shown row.
+	-- One panel from the title bar to the window's bottom, which follows the last shown row
+	-- (inverted, the title bar is at the bottom and the panel runs from the window's top to
+	-- it), and a line between the title bar and the rows.
 	local bar = window.TitleBar
 	if type(bar) == 'table' then
 		placers[window] = function(w)
 			local panel = panels[w]
+			local invert = Spy().db and Spy().db.profile and Spy().db.profile.InvertSpy or false
+			inverted[w] = invert
 			panel:ClearAllPoints()
-			panel:SetPoint('TOPLEFT', bar, 'TOPLEFT', 0, 0)
-			panel:SetPoint('BOTTOMRIGHT', w, 'BOTTOMRIGHT', 0, 0)
+			local line = dividerOf[panel]
+			if line then line:ClearAllPoints() end
+			if invert then
+				panel:SetPoint('TOPLEFT', w, 'TOPLEFT', 0, 0)
+				panel:SetPoint('BOTTOMRIGHT', bar, 'BOTTOMRIGHT', 0, 0)
+				if line then
+					line:SetPoint('BOTTOMLEFT', bar, 'TOPLEFT', 0, 0)
+					line:SetPoint('BOTTOMRIGHT', bar, 'TOPRIGHT', 0, 0)
+				end
+			else
+				panel:SetPoint('TOPLEFT', bar, 'TOPLEFT', 0, 0)
+				panel:SetPoint('BOTTOMRIGHT', w, 'BOTTOMRIGHT', 0, 0)
+				if line then
+					line:SetPoint('TOPLEFT', bar, 'BOTTOMLEFT', 0, 0)
+					line:SetPoint('TOPRIGHT', bar, 'BOTTOMRIGHT', 0, 0)
+				end
+			end
 		end
 	end
 	local panel = Panel(window)
 	if panel and type(bar) == 'table' and not dividerOf[panel] then
-		-- Under the title bar, a line in the theme's border color (a texture of SaftUI's panel).
-		local line = MakeDivider(panel)
-		line:SetPoint('TOPLEFT', bar, 'BOTTOMLEFT', 0, 0)
-		line:SetPoint('TOPRIGHT', bar, 'BOTTOMRIGHT', 0, 0)
-		dividerOf[panel] = line
+		dividerOf[panel] = MakeDivider(panel)
+		placers[window](window)
 	end
 	SP:RestyleMain()
 
@@ -311,6 +385,7 @@ function SP:UpdateConfig()
 		if kinds[frame] then Draw(frame) end
 	end
 	for tex in pairs(dividers) do ColorDivider(tex) end
+	for fs in pairs(fontState) do ApplyFont(fs) end
 end
 
 -- A shared font or a font setting changed (st:FontsChanged): the Skinning font on
@@ -325,6 +400,7 @@ end
 function SP:OnColorsChanged()
 	if not installed then return end
 	for tex in pairs(tinted) do tex:SetVertexColor(MutedRGB()) end
+	for grip in pairs(grips) do st:PaintStates(grip) end
 	for tex in pairs(dividers) do ColorDivider(tex) end
 end
 
