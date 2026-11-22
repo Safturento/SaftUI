@@ -140,7 +140,9 @@ function Sim.CanAdd(shape, steps, nodeID, after)
 	if not run.steps[at].ok then return false, run.steps[at].reason end
 	for i = at + 1, #new do
 		if before.steps[i - 1].ok and not run.steps[i].ok then
-			return false, Needed(shape, new[i], i - 1)
+			-- an insert only spends more, so what it breaks later is the budget or a
+			-- rank cap: that step's own reason says which
+			return false, run.steps[i].reason
 		end
 	end
 	return true

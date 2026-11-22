@@ -71,28 +71,19 @@ end
 -- spec sits in a row above it or was itself allowed by that count: the spec's
 -- total gives the same answer, which is what Sim counts (node.group). The
 -- nodes' own conditions are not read for this: Forever's don't say isGate.
-D.POINTS_PER_ROW = 5
+-- A row is ROW_HEIGHT of posY from the spec's top row, rounded, so a node a few
+-- units off is in its row and a row with no visible node still counts.
+D.POINTS_PER_ROW, D.ROW_HEIGHT = 5, 600
 local function RowGates(shape)
-	-- 'tree' holds every node's row, for a node with no listed group (it counts the tree)
-	local ys = { tree = {} }
+	-- 'tree' is the top of every node, for a node with no listed group (it counts the tree)
+	local top = {}
 	for _, node in pairs(shape.nodes) do
 		local y = node.posY or 0
-		ys.tree[y] = true
-		if node.group then
-			ys[node.group] = ys[node.group] or {}
-			ys[node.group][y] = true
-		end
-	end
-	local rowOf = {}
-	for key, set in pairs(ys) do
-		local list = {}
-		for y in pairs(set) do list[#list + 1] = y end
-		table.sort(list)
-		rowOf[key] = {}
-		for i, y in ipairs(list) do rowOf[key][y] = i - 1 end
+		top.tree = math.min(top.tree or y, y)
+		if node.group then top[node.group] = math.min(top[node.group] or y, y) end
 	end
 	for _, node in pairs(shape.nodes) do
-		local row = rowOf[node.group or 'tree'][node.posY or 0]
+		local row = math.max(0, math.floor(((node.posY or 0) - top[node.group or 'tree']) / D.ROW_HEIGHT + 0.5))
 		node.row = row
 		node.gates = row > 0 and { { required = D.POINTS_PER_ROW * row } } or {}
 	end

@@ -116,7 +116,7 @@ test('CanAdd follows the order', function()
 	-- an insert that starves a later step is refused
 	s.budget = 6
 	ok, why = Sim.CanAdd(s, concat(times(a1, 5), { a3 }), a2, 0)
-	eq(ok, false); eq(why, 'Other planned talents need this rank.')
+	eq(ok, false); eq(why, 'No points left: the last one comes at level 60.')
 end)
 
 test('CanRemove refuses a rank a later step needs', function()
@@ -133,7 +133,7 @@ test('with levels, a refusal names the talent and level that need the rank; 51 p
 	eq(ok, false); eq(why, 'a3 at level 15 needs this rank.')
 	s.budget = 6
 	ok, why = Sim.CanAdd(s, concat(times(a1, 5), { a3 }), a2, 0)
-	eq(ok, false); eq(why, 'a3 at level 15 needs this rank.')
+	eq(ok, false); eq(why, 'No points left: the last one comes at level 60.', 'an insert that starves a later step says so')
 	s.budget = 51
 	local full = concat(times(a1, 5), times(a2, 3), times(b1, 2))
 	for _ = 1, 41 do full[#full + 1] = b2 end -- the plan's count, not a legal plan: only the budget matters here

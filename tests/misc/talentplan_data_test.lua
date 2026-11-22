@@ -95,7 +95,7 @@ test('the shape holds groups, gates, edges and costs', function()
 	eq(#ss.parents, 1); eq(ss.parents[1].nodeID, SH.ID['Spirit Weapons']); eq(ss.parents[1].type, 3)
 	eq(shape.nodes[SH.ID['Improved Stormstrike']].parents[1].nodeID, SH.ID.Stormstrike)
 	local flurry = shape.nodes[SH.ID.Flurry] -- row 2 of Enhancement
-	eq(flurry.gates[1].required, 5); eq(flurry.group, SH.GROUP.Enhancement); eq(flurry.posY, 50)
+	eq(flurry.gates[1].required, 5); eq(flurry.group, SH.GROUP.Enhancement); eq(flurry.posY, 2730)
 	eq(flurry.maxRanks, 5); eq(flurry.cost, 1); eq(flurry.plannable, true); eq(flurry.name, 'Flurry')
 	eq(#shape.nodes[SH.ID['Thundering Strikes']].gates, 0, 'row 1 has no gate')
 	local choice = shape.nodes[130]
@@ -149,4 +149,13 @@ test('row gates come from the rows, 5 points a row in the spec, whatever the con
 	-- rows are counted in each spec by its own posY: a spec whose rows start lower still starts at 0
 	for nodeID = 116, 121 do stub.traits.nodes[1001][nodeID].posY = stub.traits.nodes[1001][nodeID].posY + 600 end
 	eq(D.Read(1).shape.nodes[SH.ID['Call of Flame']].row, 0)
+	-- a row is 600 from the spec's top, rounded: a few units off is the same row, and a row
+	-- with no visible node still counts, so the rows below keep their gates
+	local info = stub.traits.nodes[1001]
+	info[SH.ID.Flurry].posY = 2730 + 7
+	for i = 11, 15 do info[100 + i].posY = 2130 + 3 * 600 end -- Enhancement's third row moved to the fourth
+	shape = D.Read(1).shape
+	eq(shape.nodes[SH.ID.Flurry].row, 1, 'jitter')
+	eq(shape.nodes[SH.ID['Spirit Weapons']].row, 3, 'an empty row between')
+	eq(shape.nodes[SH.ID['Spirit Weapons']].gates[1].required, 15)
 end)
