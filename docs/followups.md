@@ -371,7 +371,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_PlayerSpellsLayout.lua` (`Enabled`, `Apply`), `SaftUI-Misc/TalentPlan/options.lua`, `tests/misc/talent_window_layout_test.lua`.
 
-**What's been considered:** The skin reads `talentwindow.compact` once, when it installs. Putting Blizzard's layout back would need each moved button's own position, which the skin never reads back.
+**What's been considered:** The skin always installs its hooks (on Forever) and reads `talentwindow.compact` on each layout pass, so a mid-session switch half applies: buttons go back on Blizzard's next layout pass, but the narrower width set on `TalentsFrame` and the window is never undone. Putting Blizzard's layout back would need each moved button's own position, which the skin never reads back.
 
 **Shape of work:** Small to medium: re-run Blizzard's layout on a switch (`LoadTalentTreeInternal`'s inputs), and clamp the gap to a floor.
 

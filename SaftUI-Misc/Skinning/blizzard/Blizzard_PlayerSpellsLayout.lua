@@ -15,8 +15,12 @@
 -- read back after a shift: they come from each button's node info (posX) and
 -- the pan offset, the same numbers ApplyPosition uses.
 --
--- Off (talentwindow.compact false): nothing is moved. A /reload puts Blizzard's
--- layout back, a window already shown keeps the compact one until then.
+-- WoW Forever only (OnEnable hooks nothing on retail).
+--
+-- Off (talentwindow.compact false): nothing is moved. The setting is read on
+-- each layout pass, so switching it in a session leaves a mixed layout (buttons
+-- go back on Blizzard's next layout pass, the narrower width stays); a /reload
+-- puts Blizzard's layout back.
 local st = SaftUI
 local TW = st:NewModule('TalentWindow')
 
@@ -225,5 +229,6 @@ function TW:Install()
 end
 
 function TW:OnEnable()
+	if not st.forever then return end -- Forever only: nothing is hooked on retail
 	st:OnBlizzardAddon('Blizzard_PlayerSpells', function() self:Install() end)
 end

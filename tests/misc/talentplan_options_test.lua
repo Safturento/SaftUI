@@ -92,6 +92,7 @@ test('Enable off hides the panel and overlays', function()
 	check(not TP.panel:IsShown(), 'the panel is hidden')
 	eq(TP.planning, false, 'planning is off')
 	eq(TP.view, nil)
+	check(next(TP.overlays), 'overlays exist')
 	for _, r in pairs(TP.overlays) do
 		check(not r.catcher:IsShown(), 'no catcher')
 		check(not r.light:IsShown() and not r.glow:IsShown() and not r.dim:IsShown(), 'no overlay')

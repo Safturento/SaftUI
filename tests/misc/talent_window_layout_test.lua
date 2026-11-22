@@ -169,3 +169,26 @@ test('compact off moves nothing', function()
 	eq(frame:GetWidth(), 1212)
 	eq(window:GetWidth(), 1218)
 end)
+
+test('on retail nothing is hooked and the width is Blizzard\'s', function()
+	use_client('retail')
+	load_core_helpers()
+	apply_defaults()
+	load_saftui('SaftUI-Misc/config.lua')
+	apply_defaults()
+	load_saftui('SaftUI-Misc/Skinning/blizzard/Blizzard_PlayerSpellsLayout.lua')
+	st = SaftUI
+	TW = st:GetModule('TalentWindow')
+	local window, frame, buttons = make_frame()
+	st.config.profile.talentwindow.compact = true
+	local isLoaded = C_AddOns.IsAddOnLoaded
+	C_AddOns.IsAddOnLoaded = function(name) return name == 'Blizzard_PlayerSpells' or isLoaded(name) end
+	TW:OnEnable()
+	C_AddOns.IsAddOnLoaded = isLoaded
+	frame:LoadTalentTreeInternal()
+	window:UpdateSize()
+	eq(TW.frame, nil, 'not installed')
+	eq(centers(buttons)[1], 70, 'talents where Blizzard puts them')
+	eq(frame:GetWidth(), 1212)
+	eq(window:GetWidth(), 1218)
+end)

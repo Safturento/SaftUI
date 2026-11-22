@@ -896,7 +896,11 @@ Leave out `README.md` if the freshness check left it unchanged.
 12. Switch to the Spellbook tab: it keeps Blizzard's width.
 13. Turn off Compact talent window (`/sui` > Talent plan > General) and `/reload`: Blizzard's layout is back.
 14. The import dialog: Esc closes it, and keybinds still work while it is open.
-15. `/console taintLog 1`, use all of the above, learn a talent, `/reload`: nothing in `Logs/taint.log` blames SaftUI for `Blizzard_PlayerSpells` or `Blizzard_SharedTalentUI`.
+15. Compact window: the arrows (straight and diagonal) still join their nodes.
+16. Compact window: learning a talent, Apply and switching spec tabs keep the layout.
+17. Compact window: the art looks right at the narrower width.
+18. Compact window: dragging the window works, and the talent plan panel docks beside the narrower window.
+19. `/console taintLog 1`, use all of the above, learn a talent, `/reload`: nothing in `Logs/taint.log` blames SaftUI for `Blizzard_PlayerSpells` or `Blizzard_SharedTalentUI`.
 
 ## Execution
 

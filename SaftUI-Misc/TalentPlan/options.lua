@@ -5,8 +5,9 @@ local TP = st:GetModule('TalentPlan')
 -- such as Durability, sit there; optionslayout.lua's CATEGORIES has no Misc).
 -- Forever only, as the plan is: nil on retail. The compact talent window's
 -- switch is on this page too, but it is saved in talentwindow (the skin in
--- Skinning/blizzard/Blizzard_PlayerSpellsLayout.lua reads it once, when it
--- installs), so it has its own get, set and saved path.
+-- Skinning/blizzard/Blizzard_PlayerSpellsLayout.lua reads it on each layout
+-- pass; switching it in a session leaves a mixed layout until a /reload), so it
+-- has its own get, set and saved path.
 function TP:GetConfigTable()
 	if not st.forever then return end
 	local generators = st.Config.generators
