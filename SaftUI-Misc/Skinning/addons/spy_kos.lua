@@ -123,10 +123,8 @@ function SP:SkinKoS()
 	SP:UpdateKoS()
 end
 
--- Colors changed: the icon's tone again (spy.lua's handler runs first).
-local colorsChanged = SP.OnColorsChanged
-function SP:OnColorsChanged(group, ...)
-	if colorsChanged then colorsChanged(self, group, ...) end
+-- Colors changed: the icon's tone again (spy.lua's OnColorsChanged runs this after its own).
+L.OnColors(function(group)
 	if group ~= nil and group ~= 'text' then return end
 	for _, icon in pairs(skinned) do Paint(icon) end
-end
+end)

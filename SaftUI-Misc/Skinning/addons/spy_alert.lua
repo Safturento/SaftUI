@@ -69,9 +69,7 @@ local function Install()
 	end)
 	-- spy.lua's redraw (a Skinning page change or a profile change) paints the panel in
 	-- the theme's border again.
-	Hook(SP, 'UpdateConfig', function()
-		Run(function() ColorBorder(L.panels[Alert()]) end)
-	end)
+	L.OnConfig(function() ColorBorder(L.panels[Alert()]) end)
 	Hook(spy, 'ShowAlert', function() Run(Clear) end)
 	Hook(spy, 'ApplyBorderStyle', function() Run(Clear) end)
 end

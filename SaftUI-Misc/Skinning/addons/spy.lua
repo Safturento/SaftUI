@@ -328,7 +328,13 @@ end
 -- (spy_alert.lua, spy_stats.lua, spy_kos.lua, loaded after this one). They
 -- define SP:SkinAlert, SP:SkinStats and SP:SkinKoS; Setup looks those up when
 -- it runs, after every file has loaded.
+local configCallbacks, colorCallbacks = {}, {}
+
 SP.lib = {
+	-- The other files' refresh callbacks: SP:UpdateConfig and SP:OnColorsChanged run
+	-- them, each on its own, so one that errors does not stop the rest.
+	OnConfig = function(fn) configCallbacks[#configCallbacks + 1] = fn end,
+	OnColors = function(fn) colorCallbacks[#colorCallbacks + 1] = fn end,
 	weak = weak,
 	panels = panels,
 	placers = placers,
@@ -409,6 +415,7 @@ function SP:UpdateConfig()
 	end
 	for tex in pairs(dividers) do ColorDivider(tex) end
 	for fs in pairs(fontState) do ApplyFont(fs) end
+	for _, fn in ipairs(configCallbacks) do xpcall(fn, geterrorhandler()) end
 end
 
 -- A shared font or a font setting changed (st:FontsChanged): the Skinning font on
@@ -420,11 +427,12 @@ end
 
 -- A color changed (st:ColorsChanged): what is colored from the theme or the text
 -- colors, colored again.
-function SP:OnColorsChanged()
+function SP:OnColorsChanged(group, key)
 	if not installed then return end
 	for tex in pairs(tinted) do tex:SetVertexColor(MutedRGB()) end
 	for grip in pairs(grips) do st:PaintStates(grip) end
 	for tex in pairs(dividers) do ColorDivider(tex) end
+	for _, fn in ipairs(colorCallbacks) do xpcall(fn, geterrorhandler(), group, key) end
 end
 
 -- Off (Skinning -> Spy), or under the Blizzard theme, nothing is hooked or touched.

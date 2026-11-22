@@ -174,3 +174,16 @@ test('alert_nothing_written_on_spy_frames', function()
 	SK:UpdateConfig()
 	eq(#take_errors(), 0, 'every Spy frame is locked: no field written, no script replaced')
 end)
+
+test('alert_border_recolored_by_the_config_registry', function()
+	world()
+	SpyFix.make()
+	enable()
+	local panel = panel_of(Spy.AlertWindow)
+	local colors = Spy.Colors.table.Alert
+	Spy:ShowAlert('kos', 'Bob', nil, 'Here')
+	panel:SetBackdropBorderColor(0.1, 0.2, 0.3, 1)
+	SP:UpdateConfig() -- the registered callback puts the alert's color back
+	same(rgb(panel), colors['KOS Border'], 'the border is the alert color again')
+	eq(#take_errors(), 0, 'no error reported')
+end)
