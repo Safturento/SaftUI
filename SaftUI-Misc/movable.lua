@@ -2,12 +2,14 @@ local st = SaftUI
 local MV = st:NewModule('Movable')
 
 -- A window with an addon belongs to a load-on-demand Blizzard addon (both
--- clients: Blizzard_Transmog is LoadOnDemand), so it is made movable when that
+-- clients: Blizzard_Transmog is LoadOnDemand; Blizzard_PlayerSpells is too,
+-- checked in the forever source on 2026-11-22), so it is made movable when that
 -- addon loads, if it isn't there at login.
 local frames = {
     { name = 'SettingsPanel' },
     { name = 'AddonList' },
     { name = 'TransmogFrame', addon = 'Blizzard_Transmog' },
+    { name = 'PlayerSpellsFrame', addon = 'Blizzard_PlayerSpells' },
 }
 
 local function MakeMovable(frameName)

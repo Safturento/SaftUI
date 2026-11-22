@@ -1,6 +1,7 @@
 -- SaftUI-Misc/movable.lua makes Blizzard's windows movable. A window of a
 -- load-on-demand addon (TransmogFrame, in Blizzard_Transmog on both clients,
--- checked in Blizzard's source) is made movable when its addon loads, and the
+-- and PlayerSpellsFrame, in Blizzard_PlayerSpells, checked in Blizzard's
+-- source) is made movable when its addon loads, and the
 -- module prints nothing about a window that isn't there yet.
 --
 -- Real: movable.lua and Core's st:EnableMoving. Blizzard's windows are plain
@@ -54,4 +55,22 @@ test('Blizzard_Transmog loading again does not make it movable twice', function(
 	st.EnableMoving = real
 	eq(calls, 0, 'EnableMoving not called again')
 	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("PlayerSpellsFrame is movable once Blizzard_PlayerSpells loads, with no print", function()
+	local talents = window('PlayerSpellsFrame')
+	check(not talents:IsMovable(), 'not movable before its addon loads')
+	local lines = printed_by(function() stub.fire_event('ADDON_LOADED', 'Blizzard_PlayerSpells') end)
+	eq(#take_errors(), 0, 'no errors')
+	check(talents:IsMovable(), 'movable when Blizzard_PlayerSpells loads')
+	eq(#lines, 0, 'nothing printed')
+end)
+
+test('PlayerSpellsFrame already there at login is movable at once', function()
+	reset_world()
+	load_saftui('SaftUI-Misc/movable.lua')
+	local talents = CreateFrame('Frame', 'PlayerSpellsFrame', UIParent)
+	window('SettingsPanel'); window('AddonList')
+	SaftUI:GetModule('Movable'):Enable()
+	check(talents:IsMovable(), 'movable at enable')
 end)
