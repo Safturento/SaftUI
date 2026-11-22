@@ -47,7 +47,7 @@ test('Layout is nil without buttons or columns', function()
 	eq(TW.Layout({ { 70 } }, 40), nil)
 end)
 
--- Stand-ins: three trees of group ids 11, 12, 13, four columns each, one row.
+-- Stand-ins: three trees in Blizzard's 400 wide regions, four columns each, one row.
 local function make_frame(groupsOf)
 	local window = CreateFrame('Frame', 'PlayerSpellsFrame', UIParent)
 	window.talentsWidth = 1218
@@ -87,6 +87,8 @@ local function make_frame(groupsOf)
 	frame.DividerHorizontalLeft:SetSize(100, 20)
 	frame.DividerVerticalLeft = CreateFrame('Frame', nil, frame)
 	frame.DividerVerticalRight = CreateFrame('Frame', nil, frame)
+	frame.DividerVerticalLeft:SetPoint('TOP', frame.BackgroundBorder, 'TOPLEFT', 402, -74)
+	frame.DividerVerticalRight:SetPoint('TOP', frame.BackgroundBorder, 'TOPLEFT', 802, -74)
 	for t = 0, 2 do
 		for c = 0, 3 do
 			local button = CreateFrame('Button', nil, parent)
@@ -169,6 +171,38 @@ test('the window is never narrowed to nothing', function()
 	window:UpdateSize()
 	eq(frame:GetWidth(), 1212 - 420, 'a second pass narrows no further')
 	eq(window:GetWidth(), 1218 - 420)
+end)
+
+test('a pass the layout can\'t use puts Blizzard\'s layout back', function()
+	local window, frame, buttons = make_frame()
+	st.config.profile.talentwindow.compact = true
+	local _, _, _, blizzardDivider = frame.DividerVerticalLeft:GetPoint()
+	TW.frame = nil
+	TW:Install()
+	frame:LoadTalentTreeInternal()
+	eq(frame:GetWidth(), 1212 - 420, 'first pass compacts')
+	-- Next pass: the talents are spread so wide the layout would not narrow.
+	for button in pairs(buttons) do
+		local info = button:GetNodeInfo()
+		local spread = { groupIDs = {}, posX = info.posX, posY = info.posY }
+		function button:GetNodeInfo() return spread end
+	end
+	local n = 0
+	for button in pairs(buttons) do
+		n = n + 1
+		local info = button:GetNodeInfo()
+		info.posX = (70 + 400 * ((n - 1) % 3) + 100 * math.floor((n - 1) / 3) + 49) * 10
+	end
+	frame:LoadTalentTreeInternal()
+	window:UpdateSize()
+	for button in pairs(buttons) do
+		local _, _, _, x = button:GetPoint()
+		eq(x, button:GetNodeInfo().posX / 10 - 49, 'talent at Blizzard\'s x')
+	end
+	eq(frame:GetWidth(), 1212, 'talents frame back to Blizzard\'s width')
+	eq(window:GetWidth(), 1218, 'window back to Blizzard\'s width')
+	local _, _, _, x = frame.DividerVerticalLeft:GetPoint()
+	eq(x, blizzardDivider, 'divider back')
 end)
 
 test('the spellbook keeps Blizzard width', function()
