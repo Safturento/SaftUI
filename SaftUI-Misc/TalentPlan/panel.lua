@@ -687,7 +687,12 @@ end
 function TP:DropAllowed(drag, place)
 	local shape = self.view and self.view.tree and self.view.tree.shape
 	if not (shape and drag and drag.plan) then return true end
-	return TP.Sim.CanMove(shape, drag.plan.steps, drag.from, place)
+	-- DrawDrag asks every frame: the answer is kept for the spot until it moves
+	if drag.askedAt ~= place then
+		drag.askedAt = place
+		drag.ok, drag.reason = TP.Sim.CanMove(shape, drag.plan.steps, drag.from, place)
+	end
+	return drag.ok, drag.reason
 end
 
 -- A press on a handle. Only while the panel shows a plan (TP.view can be

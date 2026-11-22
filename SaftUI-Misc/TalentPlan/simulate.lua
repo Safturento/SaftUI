@@ -168,7 +168,8 @@ function Sim.CanRemove(shape, steps, nodeID)
 end
 
 -- Would moving step `from` to `to` (a drag in the panel) leave every step that
--- is legal now still legal? The moved step itself must be legal where it lands.
+-- is legal now still legal? The moved step too, if it is legal now (a step
+-- already broken may move anywhere: the drag is how it gets fixed).
 -- ok, or false and the first broken step's reason, with its talent and level.
 function Sim.CanMove(shape, steps, from, to)
 	local n = #steps
