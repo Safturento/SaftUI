@@ -896,3 +896,35 @@ Leave out `README.md` if the freshness check left it unchanged.
 ## Execution
 
 Plan complete. Recommended: **subagent-driven**. The tasks build on each other's interfaces (`TP.view`, the store and the model), Tasks 5 and 7 touch Blizzard's frames where a shipped taint bug is the costliest mistake, and each task's reviewer should check taint against the forever source as `.agents/workflow.md` asks.
+
+---
+
+### Task 10: A compact talent window
+
+Added 2026-11-22 at the owner's request: "there's so much empty space currently on the frame, can we reduce it a bit so that the spacing between the talents and the edges separating the specs (and the side of the window) is the same as the spacing between talents?" Spec: "A compact talent window" (Revised note). Independent of Tasks 5 to 9; built in parallel on branch `tp-compact`.
+
+How Blizzard lays the window out on Forever (forever source, 2026-11-22; paths under `Interface/AddOns/`):
+- Each button: `ClassTalentsFrameMixin:UpdateTalentButtonPosition(button)` (`Blizzard_PlayerSpells/ClassTalents/Blizzard_ClassTalentsFrame.lua:712-728`) does `ClearAllPoints`, `SetPoint('CENTER', ButtonsParent, 'TOPLEFT')` and `TalentButtonUtil.ApplyPosition` (`Blizzard_SharedTalentUI/Blizzard_SharedTalentUtil.lua:501-516`): x = posX/10 − panOffsetX, y = −posY/10 + panOffsetY. Zoom is fixed at 1. Every path (pool acquire in `InstantiateTalentButton`, `UpdateAllTalentButtonPositions`, tab switch, commit reload) ends in that method.
+- Edges and arrows are anchored to button centers, so they follow a sideways move. Gates anchor RIGHT to the button's LEFT.
+- Tree headers: `ClassTalentsFrameMixin:RefreshTreeHeaders` (`Blizzard_PlayerSpells/Camelot/ClassTalents/Blizzard_ClassTalentsFrame.lua:79-109`) anchors `treeHeaders[i]` CENTER on `BackgroundBorder` TOPLEFT at x = 140 + (i−1)·400, y = −100, on every `UpdateTreeCurrencyInfo`.
+- Art is XML only (`Camelot/ClassTalents/Blizzard_ClassTalentsFrame.xml` ~295-341): `Background`, `ClassBackground`, `BackgroundBorder`, horizontal dividers, and `DividerVerticalLeft` / `DividerVerticalRight` at the horizontal dividers' CENTER ±95, y −60 (read the XML for exact names and anchors).
+- Size: `talentsWidth` 1218 (`Camelot/Blizzard_PlayerSpellsFrame.xml:9-10`), applied by `PlayerSpellsFrameMixin:UpdateSize` (`Blizzard_PlayerSpells/Blizzard_PlayerSpellsFrame.lua:433-443`) from `TalentsFrame:OnShow`; `TalentsFrame` is 1212×681 in XML.
+- Purchase and commit (`C_Traits.PurchaseRank`, `CommitConfig`) are not protected (`AllowedWhenUntainted` arguments only). Nothing in the window is secure.
+
+**Files:**
+- Create: `SaftUI-Misc/Skinning/blizzard/Blizzard_PlayerSpellsLayout.lua` (add it to `SaftUI-Misc/Skinning/load.xml` after `Blizzard_WorldMap.lua`)
+- Modify: `SaftUI-Misc/config.lua`: append `st.defaults.talentwindow = { compact = true }` with a comment
+- Test: `tests/misc/talent_window_layout_test.lua`
+
+**Interfaces:**
+- Produces: `TW.Layout(trees, size)` (pure; `TW` is the module `st:GetModule('TalentWindow')`): `trees` is a list, left to right, of lists of button center x offsets (Blizzard's, relative to ButtonsParent TOPLEFT); `size` the button width. Returns `{ gap, pitch, cols, region, dx = { [i] = number }, dividers = { x1, x2, ... }, width }`, where `pitch` is the smallest distinct x step over all trees (equal within 1px), `gap = pitch − size`, `cols` the largest column count of any tree, a tree's region `= cols·size + (cols−1)·gap + 2·gap`, tree i's leftmost button center lands at `(i−1)·region + gap + size/2`, the dividers sit at region boundaries, and `width = #trees · region`. Returns nil when there are no buttons or fewer than two distinct x values.
+- Produces: `TW:Apply()`: reads the buttons (`TalentsFrame:EnumerateAllTalentButtons()`, each one's tree from `button:GetNodeInfo().groupIDs[1]` read only, ordered by the headers' order or by mean x), runs `TW.Layout`, then re-anchors with the plain C methods only.
+- A setting `st.config.profile.talentwindow.compact` (default true). Off: nothing is moved (a `/reload` puts Blizzard's layout back; say so in a comment). Task 9's page gets a check box for it ("Compact talent window").
+
+- [ ] **Step 1: Write the failing test** `tests/misc/talent_window_layout_test.lua`: three trees of 4 columns at Blizzard-like positions (pitch 60, size 40, trees starting at x 70, 470, 870) give `gap = 20`, `cols = 4`, region `= 4·40 + 3·20 + 2·20 = 260`, `dx[1] = (0 + 20 + 20) − 70 = −30`, `dx[2] = (260 + 40) − 470 = −170`, `dx[3] = (520 + 40) − 870 = −310`, dividers `{ 260, 520 }`, width 780; a tree with only 2 columns used still gets the same region (cols is the max); nil for no buttons. Plus a frame test on stubs: after `TW:Apply()` each fake button's CENTER x moved by its tree's dx, `PlayerSpellsFrame`'s width is the compact one, and with `compact = false` nothing moves.
+- [ ] **Step 2: Run it** — `tests/run tests/misc/talent_window_layout_test.lua`: FAIL (module missing).
+- [ ] **Step 3: Implement** the module with `st:OnBlizzardAddon('Blizzard_PlayerSpells', ...)` and post-hooks only (`.agents/taint.md` rules 1 to 3): `hooksecurefunc(TalentsFrame, 'UpdateTalentButtonPosition', ...)` adds the button's tree dx to the anchor Blizzard just set (read it with `GetPoint`, set it again with the plain `SetPoint`); `hooksecurefunc(TalentsFrame, 'RefreshTreeHeaders', ...)` centers each header over its region; the vertical dividers move to the region boundaries; a post-hook on `PlayerSpellsFrame:UpdateSize` sets the frame's width to Blizzard's width minus (Blizzard's tree area width − `width`), and `TalentsFrame`'s width the same way. The layout is worked out once per tree load from Blizzard's own positions (before the shift), never from shifted ones. Never write a Lua field onto a Blizzard frame or table; keep per-button state in a weak table of SaftUI's. Never call `GetAndCacheNodeInfo`.
+- [ ] **Step 4: Run the test**: PASS; then `tests/run -j4`.
+- [ ] **Step 5: Commit** `misc: a compact talent window`.
+
+In-game checks (Task 9's list): T1 the gaps between talents, dividers and window sides look equal on each spec tab; T2 arrows (straight and diagonal) still join their talents; T3 learning, Apply and switching spec tabs keep the layout; T4 the art reads fine at the narrower width; T5 dragging the window still works, and the talent plan panel docks beside the narrower window; T6 `/console taintLog 1` then using the window: no SaftUI blame.
