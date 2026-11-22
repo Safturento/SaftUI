@@ -87,7 +87,7 @@ local function Enabled()
 	return config and config.compact
 end
 
--- The layout the last Apply made: { layout =, index = { [groupID] = tree } }.
+-- The layout the last Apply made: { layout =, index = { [region] = tree } }.
 local current
 
 -- Which tree a node is in: the 400 wide region Blizzard put it in (1 for the
@@ -147,6 +147,9 @@ local function SetX(region, x)
 	region:SetPoint(point, rel, relPoint, x, y)
 end
 
+-- The dividers' anchors before SaftUI moved them (SaftUI's own table).
+local dividerHome = {}
+
 -- The tree headers over their regions and the vertical dividers on the borders.
 local function PlaceDecor(frame, layout)
 	if not layout then return end
@@ -164,6 +167,9 @@ local function PlaceDecor(frame, layout)
 	local top = -4 - horizontal:GetHeight() / 2 - 60
 	for i, divider in ipairs({ left or false, right or false }) do
 		if divider and layout.dividers[i] then
+			-- Blizzard's own anchor (its XML's), read before the first move, so
+			-- Revert can put it back.
+			if not dividerHome[divider] then dividerHome[divider] = { divider:GetPoint() } end
 			divider:ClearAllPoints()
 			divider:SetPoint('TOP', border, 'TOPLEFT', layout.dividers[i] + BORDER_INSET, top)
 		end
@@ -183,6 +189,24 @@ local function PlaceWidths(frame, layout)
 	PlayerSpellsFrame:SetWidth((PlayerSpellsFrame.talentsWidth or PlayerSpellsFrame:GetWidth()) - delta)
 end
 
+-- Puts back what earlier passes changed, for a pass the layout can't use:
+-- each talent at Blizzard's x, the widths Blizzard had, the dividers'
+-- anchors. The headers go back on their own (RefreshTreeHeaders).
+local function Revert(frame, entries)
+	current = nil
+	for _, e in ipairs(entries) do SetX(e.button, e.x) end
+	if appliedWidth then
+		frame:SetWidth(baseWidth)
+		PlayerSpellsFrame:SetWidth(PlayerSpellsFrame.talentsWidth or PlayerSpellsFrame:GetWidth())
+		baseWidth, appliedWidth = nil, nil
+	end
+	for divider, home in pairs(dividerHome) do
+		divider:ClearAllPoints()
+		divider:SetPoint(unpack(home))
+	end
+	wipe(dividerHome)
+end
+
 function TW:Apply()
 	local frame = self.frame
 	if not frame or not Enabled() then return end
@@ -191,7 +215,7 @@ function TW:Apply()
 	local size = first and first.button:GetWidth() or 40
 	if not size or size <= 0 then size = 40 end
 	local result = Compute(entries, size)
-	if not result then return end
+	if not result then return Revert(frame, entries) end
 	current = result
 	local layout = result.layout
 	-- Only ever narrower, and never past a tree's own talents: anything else
@@ -199,8 +223,7 @@ function TW:Apply()
 	local trees = #layout.dx
 	if layout.gap <= 0 or layout.width >= trees * BLIZZARD_REGION
 		or (frame.treeHeaders and #frame.treeHeaders > 0 and trees > #frame.treeHeaders) then
-		current = nil
-		return
+		return Revert(frame, entries)
 	end
 	for _, e in ipairs(entries) do
 		local dx = layout.dx[result.index[e.group]]
