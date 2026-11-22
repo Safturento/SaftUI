@@ -38,6 +38,8 @@ st.defaults.tooltip = {
 -- color_picker skins Blizzard's color picker (Skinning/blizzard/Blizzard_ColorPicker.lua),
 -- off and on live.
 -- spy skins the Spy addon (Skinning/addons/spy.lua); off or on takes a reload.
+-- talent_window skins WoW Forever's talent window (Skinning/blizzard/Blizzard_PlayerSpellsSkin.lua;
+-- Forever only, off or on takes a reload, the Theme and Background live).
 st.defaults.skinning = {
 	font = 'pixel',
 	theme = 'theme',
@@ -46,6 +48,7 @@ st.defaults.skinning = {
 	objective_tracker = true,
 	color_picker = true,
 	spy = true,
+	talent_window = true,
 }
 
 -- Blizzard's objective tracker (Skinning/blizzard/Blizzard_ObjectiveTrackerPosition.lua
