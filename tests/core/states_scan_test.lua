@@ -53,6 +53,7 @@ local ALLOWED = {
 	['SaftUI-Minimap/microbuttons.lua'] = { count = 1, kind = 'piece', reason = "the character micro button has no highlight of its own: it is given an empty HIGHLIGHT-layer texture, which MicroMenu.SkinHighlight then replaces" },
 	['SaftUI-Minimap/micromenuitems.lua'] = { count = 1, kind = 'piece', reason = "MicroMenu.SkinHighlight: the flat highlight on a Blizzard button, made once, handed to the setter with BLEND, and registered with the helper as the hover piece" },
 	['SaftUI-Misc/Skinning/addons/spy.lua'] = { count = 4, kind = 'piece', reason = "SkinIconButton: Spy's icon buttons (a third-party addon's) get SaftUI's icon as the pushed art, which the game shows, and the flat BLEND highlight, registered with the helper as the hover piece (the pushed art is not: the helper would flatten it); SkinGrip: the resize grips' pushed and highlight textures are glyph pictures the game shows, colored by the helper's glyph shape, as st:EnableResizing's" },
+	['SaftUI-Misc/Skinning/addons/spy_stats.lua'] = { count = 1, kind = 'piece', reason = "SkinLine: the Statistics list's lines (a third-party addon's) get the flat BLEND highlight in place of Spy's highlight bar, registered with the helper as the hover piece" },
 	['SaftUI-Misc/totemskin.lua'] = { count = 4, kind = 'piece', reason = "the totem buttons' highlight, pushed and checked textures are SaftUI's own flat ones (CreateStateTexture) handed to the setters; the helper adopts them (game = true); the flyout arrow's highlight too" },
 }
 
