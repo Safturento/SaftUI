@@ -900,7 +900,8 @@ Leave out `README.md` if the freshness check left it unchanged.
 16. Compact window: learning a talent, Apply and switching spec tabs keep the layout.
 17. Compact window: the art looks right at the narrower width.
 18. Compact window: dragging the window works, and the talent plan panel docks beside the narrower window.
-19. `/console taintLog 1`, use all of the above, learn a talent, `/reload`: nothing in `Logs/taint.log` blames SaftUI for `Blizzard_PlayerSpells` or `Blizzard_SharedTalentUI`.
+19. Click the panel's empty space (between and below the rows): it doesn't clear your target. Collapse the panel while planning: planning ends and the tree's talents take clicks again.
+20. `/console taintLog 1`, use all of the above, learn a talent, `/reload`: nothing in `Logs/taint.log` blames SaftUI for `Blizzard_PlayerSpells` or `Blizzard_SharedTalentUI`.
 
 ## Execution
 

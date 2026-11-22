@@ -301,6 +301,19 @@ test('hiding the panel clears the view and ends planning', function()
 	clean()
 end)
 
+test('collapsing the panel ends planning, so no catcher swallows a tree click', function()
+	world()
+	open()
+	TP:SetPlanning(true)
+	check(TP.planning, 'planning is on')
+	TP:SetCollapsed(true)
+	check(not TP.planning, 'planning is off')
+	for _, r in pairs(TP.overlays) do
+		check(not r.catcher:IsShown() and not r.catcher:IsMouseEnabled(), 'no catcher takes the mouse')
+	end
+	clean()
+end)
+
 test('planning turns off when the window hides', function()
 	world()
 	open()

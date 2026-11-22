@@ -25,12 +25,13 @@ local DEFAULT_NAME = 'Imported'
 function TP:ApplyImport(result, mode, name, group)
 	local plan = mode == 'replace' and S.Active(group) or nil
 	if plan then
-		plan.steps, plan.phases = result.steps, {}
+		plan.steps, plan.phases = { unpack(result.steps) }, {}
 	else
 		name = (name or ''):match('^%s*(.-)%s*$')
 		plan = S.New(name ~= '' and name or DEFAULT_NAME, group)
-		plan.steps = result.steps
+		plan.steps = { unpack(result.steps) }
 	end
+	self.selected = nil -- the old plan's row number means nothing in the new steps
 	self:QueueRefresh()
 	return plan
 end

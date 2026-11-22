@@ -136,6 +136,21 @@ test('new makes a named, active plan', function()
 	eq(TP:ApplyImport(r, 'new', 'Mine', 1).name, 'Mine')
 end)
 
+test('replace clears the selection, copies the steps, and the next planning click appends', function()
+	world()
+	open()
+	local plan = S.New('Enhancement', 1)
+	plan.steps = { SH.ID['Stormstrike'], SH.ID['Spirit Weapons'] }
+	TP.selected = 1
+	local result = guide()
+	plan = TP:ApplyImport(result, 'replace', '', 1)
+	eq(TP.selected, nil, 'no selected row')
+	check(plan.steps ~= result.steps, 'the steps are a copy')
+	TP:PlanClick(SH.ID.Flurry, 'LeftButton')
+	eq(plan.steps[#plan.steps], SH.ID.Flurry, 'appended at the end')
+	eq(#result.steps, 51, 'the result is untouched')
+end)
+
 test('replace with no plan makes one', function()
 	world()
 	open()

@@ -110,8 +110,8 @@ local function RowTip(row)
 	if row.state == 'missing' then
 		return "This talent isn't in your class's tree any more. Right-click to delete the step."
 	end
-	if row.waiting and row.block then return row.block end
 	if row.state == 'pending' then return 'Staged. Press Apply in the talent window to learn it.' end
+	if row.waiting and row.block then return row.block end
 end
 
 -- Where entry position pos sits in the list: every row and header is one
@@ -256,6 +256,7 @@ function TP:BuildPanel()
 	local config = st.config.profile
 	local panel = st:CreateFrame('Frame', 'SaftUI_TalentPlan', talents)
 	panel:SetWidth(L.WIDTH)
+	panel:EnableMouse(true) -- its empty space must not pass a click to the world (a target clear)
 	panel:SetClampedToScreen(true)
 	st:SetBackdrop(panel, config.panels.theme, config.panels.background, 'window')
 	panel.rows = {}
@@ -415,6 +416,9 @@ end
 
 function TP:SetCollapsed(on)
 	S.Char().collapsed = on and true or false
+	-- the footer and hint go with the body, so planning ends: a catcher left on
+	-- would swallow every tree click with nothing to say why
+	if on then self:SetPlanning(false) end
 	if self.panel then
 		self:ApplyCollapsed()
 		if not on then self:Refresh() end

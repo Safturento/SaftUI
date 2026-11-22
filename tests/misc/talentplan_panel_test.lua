@@ -128,6 +128,25 @@ local function clean()
 	eq(#stub.traits.calls, 0, 'nothing bought, refunded or committed')
 end
 
+test('the panel takes the mouse, so a click on its empty space is not the world\'s', function()
+	world()
+	open()
+	check(TP.panel:IsMouseEnabled(), 'mouse enabled')
+end)
+
+test('a pending waiting row says staged, not what blocks it', function()
+	world({ tree = { ranks = TWELVE } })
+	guide_plan()
+	local node = stub.traits.nodes[1001][SH.ID['Elemental Weapons']]
+	node.ranksPurchased = 2
+	node.canPurchaseRank = false -- no points left: the block would read "No talent points to spend."
+	stub.traits.staged[1001] = { purchases = { SH.ID['Elemental Weapons'] }, refunds = {} }
+	open()
+	eq(row(13).tag:GetText(), 'pending')
+	stub.fire_script(row(13), 'OnEnter')
+	eq(stub.state(GameTooltip).texts[1], 'Staged. Press Apply in the talent window to learn it.')
+end)
+
 test('the panel shows with the Talents tab and hides while inspecting', function() -- Review Focus 3
 	world()
 	check(TP.panel == nil, 'nothing is built before the window shows')

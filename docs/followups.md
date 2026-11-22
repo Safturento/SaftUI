@@ -329,7 +329,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **Anchors:** `SaftUI-Misc/TalentPlan/data.lua` (`D.CommittedRank`, the snapshots), the in-game checklist in `docs/superpowers/plans/2026-11-22-saftui-talent-plan.md`.
 
-**What's been considered:** The snapshot rule is right whichever field it is, but costs a table and a guess for a node first read with a change staged.
+**What's been considered:** The snapshot rule is right whichever field it is, but costs a table and a guess for a node first read with a change staged. The snapshot can also go stale: if the panel was off across a commit and a rank is then staged, the learned step shows pending (`data.lua`, the snapshot read in `D.Read`); `activeRank`, if it is the committed rank, would remove that.
 
 **Shape of work:** Small: if `activeRank` is the committed rank, replace the snapshot rule with it and delete the snapshots and `D.ResetSnapshots`.
 
@@ -351,7 +351,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 ### 2026-11-22 — Small polish in the talent plan
 
-**What:** Several small things left in the talent plan: the import dialog and the rows use no pixel font; the import hint's color is not refreshed on a theme change; `SetMode` copies the radio's internals; the tooltips' colors are hard-coded; the learned rows' level is tinted by the phase color; `StripText` says "No plan" for an empty plan; and the icon is read with `select(2, GetSpellTexture)`.
+**What:** Several small things left in the talent plan: the import dialog and the rows use no pixel font; the import hint's color is not refreshed on a theme change; `SetMode` copies the radio's internals; the tooltips' colors are hard-coded; the learned rows' level is tinted by the phase color; `StripText` says "No plan" for an empty plan; and the icon is read with `select(2, GetSpellTexture)`. The parser (Task 3) has its own minors: a preamble word on the first matched line, a preamble level taken as the last level, two warnings for a rank past the maximum, a shadowed `text` local, and no test for a curly apostrophe. The row menu captures `index` when it opens (`panel.lua`, the menu's handlers), so a refresh while it is open could make a choice remove another step.
 
 **Why noticed:** The reviews of the talent plan's tasks, collected at Task 9.
 
