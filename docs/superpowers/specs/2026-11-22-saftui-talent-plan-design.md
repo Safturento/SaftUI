@@ -108,6 +108,7 @@ Computed from the live ranks, not from the character's level alone, so a player 
 - The parser reads the text in order and finds talent names from the character's class tree (case-insensitive, punctuation and extra spaces ignored, longest name first so "Improved Stormstrike" wins over "Stormstrike"). After a name, "Rank N" (or "R N", or "N/M") says the rank; a number before a name is a level and is only used to check the order. Anything else is skipped.
 - Each name found becomes one step: its next rank in the plan so far. A "Rank N" that disagrees with that, or a level that skips or repeats, is a warning, not an error.
 - Before saving, the dialog shows the result: steps found, the level range, and the warnings and the text it couldn't match (a few lines, then "and N more"). The owner presses Import to keep it.
+- **The real text** (the owner's copy of the Enhancement guide, 2026-11-22, kept as `tests/misc/fixtures/talentplan_guide_enhancement.txt`): a "Talent Order" header line, then one token per line: the level, the talent's name, and "Rank N" on its own line. A one-rank talent has no Rank line ("20 / Shamanistic Focus"). The parser must read this exact shape (51 steps, levels 10 to 60, the header skipped silently) as well as the same tokens on one line ("10 Thundering Strikes Rank 1"). Whether every name matches Forever's tree is in-game check 2.
 - Guides from other trees or a different class: names that aren't in this class's tree are reported as unmatched, never guessed.
 
 ### Reorder
