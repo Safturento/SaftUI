@@ -113,6 +113,9 @@ function PSF.build(opts)
 		end
 	end)
 	rawset(talents, 'ButtonsParent', parent)
+	-- TalentFrameBaseMixin:ReleaseTalentButton (the pool takes a button back; the
+	-- fixture's pool is fixed, a test removes the button from PSF.buttons itself)
+	rawset(talents, 'ReleaseTalentButton', function() end)
 
 	-- one button a node, as the tree reads (the first config's tree)
 	local config = configOf(1)

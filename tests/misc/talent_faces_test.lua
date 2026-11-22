@@ -406,3 +406,69 @@ test('nothing on retail', function()
 		for _, region in ipairs(fadeable(b)) do eq(region:GetAlpha(), 1, 'untouched') end
 	end
 end)
+
+test('an Invisible button has no face, even in planning', function()
+	world()
+	open()
+	local b = PSF.buttons[1]
+	TF:SetPlanSource(function() return { state = 'selectable', planned = 1 } end)
+	stub.run_timers()
+	check(shown(b), 'a face with a display')
+	PSF.set_state(b, 7, '')
+	stub.run_timers()
+	check(not shown(b), 'Invisible wins over the plan')
+	for _, region in ipairs(fadeable(b)) do eq(region:GetAlpha(), 1, 'put back') end
+	clean()
+end)
+
+test('a released button\'s face and fades go at once', function()
+	world()
+	open()
+	local b = PSF.buttons[1]
+	check(shown(b))
+	PSF.talents:ReleaseTalentButton(b)
+	check(not shown(b), 'hidden by the post-hook, no timer')
+	for _, region in ipairs(fadeable(b)) do eq(region:GetAlpha(), 1, 'put back') end
+	clean()
+end)
+
+test('the mask goes on once, and on the hover piece too', function()
+	world()
+	look('blizzard')
+	open()
+	local b = PSF.buttons[1]
+	b.IconMask:Show()
+	b.IconMask:SetAtlas('talents-node-circle-mask')
+	TF:SetPlanSource(function() return { state = 'selectable', planned = 1 } end)
+	stub.run_timers()
+	TF:Draw()
+	local r = TF.faces[b]
+	eq(r.icon:GetNumMaskTextures(), 1)
+	eq(r.overlay:GetNumMaskTextures(), 1)
+	eq(r.hover:GetNumMaskTextures(), 1, 'the hover is cut round too')
+	clean()
+end)
+
+test('nothing is made or drawn in combat, and retail never draws', function()
+	world()
+	open()
+	local drawn = 0
+	local template, restyle = st.SetTemplate, st.RestyleStates
+	st.SetTemplate = function(...) drawn = drawn + 1; return template(...) end
+	st.RestyleStates = function(...) drawn = drawn + 1; return restyle(...) end
+	stub.in_combat = true
+	PSF.set_state(PSF.buttons[1], 4, '')
+	stub.run_timers()
+	eq(drawn, 0, 'no backdrop and no states in combat')
+	stub.in_combat = false
+	stub.fire_event('PLAYER_REGEN_ENABLED')
+	stub.run_timers()
+	check(drawn > 0, 'drawn after combat')
+	st.SetTemplate, st.RestyleStates = template, restyle
+
+	world({ client = 'retail' })
+	TF:Draw()
+	TF:Queue()
+	stub.run_timers()
+	check(next(TF.faces) == nil, 'no faces on retail')
+end)

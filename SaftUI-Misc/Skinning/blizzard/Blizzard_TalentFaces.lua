@@ -81,12 +81,14 @@ local function ReadStates()
 			if type(base[name]) == 'number' then TF.STATE[base[name]] = key end
 		end
 	end
+	TF.INVISIBLE = type(base) == 'table' and type(base.Invisible) == 'number' and base.Invisible or 7
 	for key in pairs(NUMBER) do NUMBER[key] = nil end
 	for number, key in pairs(TF.STATE) do
 		if not NUMBER[key] or number > NUMBER[key] then NUMBER[key] = number end
 	end
 end
 ReadStates()
+TF.ReadStates = ReadStates -- once at Install and on a look change, never per draw
 
 -- What a state looks like (the spec's table): the border (a color { group, key },
 -- 'accent', or nil: the theme's own), the rank's color, the overlay's alpha (nil:
@@ -286,11 +288,17 @@ local function Mask(rec, button, on)
 		rec.mask:ClearAllPoints()
 		rec.mask:SetAllPoints(button.IconMask)
 		rec.mask:SetAtlas(atlas)
-		rec.icon:AddMaskTexture(rec.mask)
-		rec.overlay:AddMaskTexture(rec.mask)
-	elseif rec.mask then
+		if not rec.masked then
+			rec.masked = true
+			rec.icon:AddMaskTexture(rec.mask)
+			rec.overlay:AddMaskTexture(rec.mask)
+			rec.hover:AddMaskTexture(rec.mask)
+		end
+	elseif rec.mask and rec.masked then
+		rec.masked = false
 		rec.icon:RemoveMaskTexture(rec.mask)
 		rec.overlay:RemoveMaskTexture(rec.mask)
+		rec.hover:RemoveMaskTexture(rec.mask)
 	end
 end
 
@@ -318,14 +326,20 @@ local function Dress(rec, button, mode, state, planned, display)
 	local config = Profile().skinning
 	local theme, background = config.theme, config.background
 	local inset = 0
+	-- nothing is drawn by the theme engine in combat (the window is protected):
+	-- the backdrop and the states' look wait for the end of it
+	local combat = InCombatLockdown()
+	if combat then
+		st:QueueAfterCombat('talentfaces', function() TF:Draw() end)
+	end
 	if mode == 'saftui' then
-		st:SetTemplate(face, theme, background, 'action')
+		if not combat then st:SetTemplate(face, theme, background, 'action') end
 		inset = st:ThemeInset(theme, background, 'action') or 0
 		rec.drawn = true
 		rec.icon:ClearAllPoints()
 		st:SetInside(rec.icon, inset)
 	else
-		if rec.drawn then
+		if rec.drawn and not combat then
 			st:SetTemplate(face, 'none', background, 'action')
 			rec.drawn = false
 		end
@@ -414,7 +428,7 @@ local function Dress(rec, button, mode, state, planned, display)
 	rec.mode = mode
 	rec.face:Show()
 	-- after the theme drew the face: the states read its look again
-	st:RestyleStates(face)
+	if not combat then st:RestyleStates(face) end
 	Fade(rec, button, true)
 end
 
@@ -445,9 +459,9 @@ end
 -- that aren't (released) or that have none to show go, with their fades.
 function TF:Draw()
 	queued = false
+	if not st.forever or not self.talents then return end
 	local talents = TalentsFrame()
 	if not talents or not talents.EnumerateAllTalentButtons then return end
-	ReadStates()
 	if not talents:IsShown() then
 		for _, rec in pairs(faces) do HideFace(rec) end
 		return
@@ -456,7 +470,8 @@ function TF:Draw()
 	for button in talents:EnumerateAllTalentButtons() do
 		local nodeID = button.GetNodeID and button:GetNodeID()
 		local plain = nodeID ~= nil and Plain(button)
-		local display = plain and Display(nodeID) or nil
+		-- an Invisible button (7) draws no face, plan or not
+		local display = plain and button.visualState ~= TF.INVISIBLE and Display(nodeID) or nil
 		if display then anyDisplay = true end
 		entries[#entries + 1] = { button = button, nodeID = nodeID, plain = plain, display = display }
 	end
@@ -501,7 +516,7 @@ end
 
 -- A draw on the next frame, once however many ask.
 function TF:Queue()
-	if queued then return end
+	if queued or not st.forever or not self.talents then return end
 	queued = true
 	C_Timer.After(0, function()
 		queued = false
@@ -517,7 +532,7 @@ function TF:Look()
 	if source and talents and talents.EnumerateAllTalentButtons then
 		for button in talents:EnumerateAllTalentButtons() do
 			local nodeID = button.GetNodeID and button:GetNodeID()
-			if nodeID and Plain(button) and Display(nodeID) then return 'blizzard' end
+			if nodeID and Plain(button) and button.visualState ~= TF.INVISIBLE and Display(nodeID) then return 'blizzard' end
 		end
 	end
 	return nil
@@ -546,6 +561,14 @@ function TF:Install()
 	self.talents = talents
 	talents:HookScript('OnShow', Guarded(function() TF:Queue() end))
 	talents:HookScript('OnHide', Guarded(function() TF:Queue() end))
+	ReadStates()
+	-- a button the pool takes back: its face and fades go at once
+	if type(talents.ReleaseTalentButton) == 'function' then
+		hooksecurefunc(talents, 'ReleaseTalentButton', Guarded(function(_, button)
+			local rec = button and faces[button]
+			if rec then HideFace(rec) end
+		end))
+	end
 	local queue = Guarded(function() TF:Queue() end)
 	EventRegistry:RegisterCallback('TalentFrameBase.ButtonsUpdated', queue, self)
 	EventRegistry:RegisterCallback('TalentFrameBase.ConfigUpdated', queue, self)
@@ -555,7 +578,10 @@ end
 -- A profile change, the Skinning page's look (the talent window skin asks too), a
 -- recolor or a font change: every face again.
 function TF:UpdateConfig()
-	if self.talents then self:Queue() end
+	if self.talents then
+		ReadStates()
+		self:Queue()
+	end
 end
 TF.OnColorsChanged = TF.UpdateConfig
 TF.OnFontsChanged = TF.UpdateConfig
