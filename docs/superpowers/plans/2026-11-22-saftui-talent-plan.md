@@ -580,7 +580,7 @@ What the panel is (spec, "The panel"; the settled parts are in bold):
   - Above the footer is the off-plan line: `'1 point off plan'`, `('%d points off plan'):format(n)`, or hidden at 0.
 - **The plan select menu.** A radio item per plan in `S.List()` (checked when it is the active plan), a divider, then `'New plan'`, which calls `S.New('New plan', group)`.
 - **Empty state.** With no plan for the tab, the rows are replaced by `"No leveling plan for this spec tab. Import a guide's talent order, or press Plan and click talents in the order you'll take them."`. Import and Plan stay. Plan with no plan first calls `S.New('New plan', group)`.
-- **Collapse.** `SetCollapsed(true)` saves `S.Char().collapsed`. It hides the body and footer and leaves a strip `WIDTH` wide and as tall as the title (`st.config.profile.headers.height`), on the same side. The strip holds `TP.StripText(view)` and the expand arrow. The saved state is applied on every show.
+- **Collapse.** `SetCollapsed(true)` saves `S.Char().collapsed`. It hides the whole panel (no strip) and shows `TP.expandButton`, a SaftUI button on `TalentsFrame` anchored RIGHT to LEFT of `PlayerSpellsFrame.CloseButton` (the talents tab, not inspecting, enabled, as the panel would show; hidden with the window). Its tooltip names the plan and `TP.StripText(view)`; a click calls `SetCollapsed(false)`. The saved state is applied on every show. The panel clears the window's border art by `L.BORDER_LEFT` (13) and `L.BORDER_RIGHT` (2) plus `L.GAP` (4), from the NineSlice layout of `PortraitFrameTemplate` (Camelot's override moves the right corners in 2).
 - **On show.** Dock, refresh, then `ScrollToWaiting()` on that show only, not on later refreshes.
 
 - [ ] **Step 1: Write the fixture `tests/misc/fixtures/player_spells_frame.lua`.**
@@ -611,7 +611,7 @@ What the panel is (spec, "The panel"; the settled parts are in bold):
   - `missing steps read as missing and can be deleted` (Review Focus 1): put node 999 in the plan. Its row text is `'Missing talent'`, and its menu's `'Remove step'` removes it from `plan.steps`.
   - `off-plan line`: one rank in a node the plan never takes reads `'1 point off plan'`, and two read `'2 points off plan'`.
   - `empty state and New plan`: with no plan, the empty text shows exactly as written above. The select menu's `'New plan'` makes `S.Active(1).name == 'New plan'`.
-  - `collapse keeps the waiting step in the strip, per character`: With the plan and ranks of `rows show the plan's states`, `TP:SetCollapsed(true)` makes the strip text `'22 Elemental Weapons R2'`. `S.Char().collapsed` is true. Hide and show: still collapsed.
+  - `collapse moves the panel to a header button, per character`: With the plan and ranks of `rows show the plan's states`, `TP:SetCollapsed(true)` hides the panel and shows the header button, whose tooltip has the plan's name and `'22 Elemental Weapons R2'`. `S.Char().collapsed` is true. Hide and show: still collapsed; inspecting or closing hides the button; a click expands.
   - `StepLabel and StripText` (pure): a one-rank node has no `R`, and an all-learned view gives `'Plan complete'`.
   - `ScrollOffset`: `eq(TP.Layout.ScrollOffset(30, 20, 600, 1020), 380)`, `eq(TP.Layout.ScrollOffset(1, 20, 600, 1020), 0)`, `eq(TP.Layout.ScrollOffset(51, 20, 600, 1020), 420)`.
   - `nothing is written onto Blizzard's frames, and nothing is bought`: the lock gives no errors (`eq(#take_errors(), 0)`) across the cases above, and `eq(#stub.traits.calls, 0)`.
@@ -700,7 +700,7 @@ Plus any `tests/wow/widgets.lua` change.
 
 What each overlay is. All of them have `SetAllPoints(button)` and are mouse-disabled except the catcher.
 - **light**: four 2-line textures in Text > Normal around the node, shown for `TP:Light(nodeID)` only. The level is `button:GetFrameLevel() + 6`.
-- **glow**: four 2-line textures in the Accent, shown on the waiting row's node while the panel shows. The level is `+ 5`.
+- **glow**: four 2-line textures in the Accent, shown on the waiting row's node while the panel shows. The level is `+ 5`. Changed 2026-11-22: under the Blizzard theme (the panel's `config.panels.theme`, via `st:IsBlizzardLook`) the glow is instead one ADD-blend texture of the atlas the button's own `Glow` names (the circle's, `talents-node-circle-greenglow`, without one) with a looping 0.36 s Alpha in and out, on the glow frame itself, and the edges are hidden; `TP:PaintOverlays` sets it on every draw and theme change.
 - **dim**: a black texture at alpha 0.6 (`SetColorTexture(0, 0, 0, 0.6)`), shown on every node with `PlannedRanks == 0` while the panel shows and `config.dim` is on. The level is `+ 4`. A plan with no steps dims nothing.
 - **catcher**: a Button at level `+ 10`, `RegisterForClicks('LeftButtonUp', 'RightButtonUp')`. It is shown and mouse-enabled only while planning; otherwise it is hidden and `EnableMouse(false)`.
   - `OnClick` calls `TP:PlanClick(nodeID, mouse)`.
@@ -888,11 +888,11 @@ Leave out `README.md` if the freshness check left it unchanged.
 4. Planning mode: click and right-click nodes. Steps are added and removed, and no rank is ever bought, even with unspent points.
 5. Level up and learn the waiting talent, but don't Apply yet: the row says pending. Apply: it is checked, and the next row waits and glows.
 6. **E1**: with `/dump C_Traits.GetNodeInfo(C_ClassTalents.GetActiveConfigID(), <a node ID>)`, compare `activeRank`, `currentRank` and `ranksPurchased` before and after staging a rank, and tell the builder.
-7. Collapse the panel: the strip shows the waiting step. `/reload`: still collapsed.
+7. Collapse the panel: it leaves no strip and a small button shows in the title bar just left of the close button; hovering it names the plan and the waiting step, a click opens the panel. `/reload`: still collapsed. The panel clears the window's gold border on the left and on the right.
 8. Drag a rank 2 above its rank 1: the R numbers swap. Add a phase, rename it, recolor it and drag it.
 9. Set Dim talents not in the plan off: the dim goes at once. Set Enable off: the panel and every overlay go.
 10. Compact talent window: the gaps at the window's sides and between the three specs equal the gap between talents.
-11. The headers are centred over their trees.
+11. The headers are centred over their trees. The two horizontal divider lines end at the narrowed window's edges, not past them.
 12. Switch to the Spellbook tab: it keeps Blizzard's width.
 13. Turn off Compact talent window (`/sui` > Talent plan > General) and `/reload`: Blizzard's layout is back.
 14. The import dialog: Esc closes it, and keybinds still work while it is open.
@@ -902,13 +902,14 @@ Leave out `README.md` if the freshness check left it unchanged.
 18. Compact window: dragging the window works, and the talent plan panel docks beside the narrower window.
 19. Click the panel's empty space (between and below the rows): it doesn't clear your target. Collapse the panel while planning: planning ends and the tree's talents take clicks again.
 20. `/console taintLog 1`, use all of the above, learn a talent, `/reload`: nothing in `Logs/taint.log` blames SaftUI for `Blizzard_PlayerSpells` or `Blizzard_SharedTalentUI`.
-21. Talent window skin (Skinning > Talent window, on by default; needs a `/reload` to switch): the window's border, title bar, portrait, close button and the gold frame around the art are SaftUI's look; each spec's background art is still Blizzard's. The title reads in the Window titles font, centered.
-22. Skin: the close button closes the window and tints on hover; the search box shows an Accent edge while you type; Unspent talents sits in a SaftUI box; Apply, Copy and the loadout dropdown are SaftUI boxes (Apply dims while there is nothing to apply, and still glows yellow when it needs attention); the spec tabs show the active one selected.
-23. Skin: switch spec tabs, learn a talent, Apply: nothing reverts, the tabs stay skinned after switching spec groups and after closing and reopening the window.
-24. Skin plus the compact window: the vertical lines follow the dividers' new places, the horizontal line runs the art's width, and the panel behind the window follows the narrower width (nothing sticks out at the sides). Drag the window: the skin and the talent plan panel move with it.
-25. Skin: open the Spellbook tab: the frame, the search box and the category tabs are SaftUI's; the book's page art is Blizzard's. Check the Maximize button (Blizzard's red art) still looks acceptable beside the SaftUI close button, and the loadout dropdown's arrow too.
-26. Skin: set Skinning > Theme to Blizzard: every piece goes back to Blizzard's look at once. Set it back: the skin returns. Turn Talent window off and `/reload`: all of Blizzard's look.
-27. Skin: `/console taintLog 1`, open the window in and out of combat, switch tabs, Apply, `/reload`: nothing in `Logs/taint.log` blames SaftUI for `Blizzard_PlayerSpells`. The window opens and the Apply button works in combat (no `ADDON_ACTION_BLOCKED`).
+21. The waiting talent's highlight: under the Blizzard theme it is a pulsing green glow (the glow art Blizzard picked for the node's shape, added light) with no border; under Thick and Thin it is the 2 line Accent border. Switch the theme in `/sui` with the talent window open: the highlight changes at once. Check a square (active), a circle and a choice talent: each glow fits its node.
+22. Talent window skin (Skinning > Talent window, on by default; needs a `/reload` to switch): the window's border, title bar, portrait, close button and the gold frame around the art are SaftUI's look; each spec's background art is still Blizzard's. The title reads in the Window titles font, centered.
+23. Skin: the close button closes the window and tints on hover; the search box shows an Accent edge while you type; Unspent talents sits in a SaftUI box; Apply, Copy and the loadout dropdown are SaftUI boxes (Apply dims while there is nothing to apply, and still glows yellow when it needs attention); the spec tabs show the active one selected.
+24. Skin: switch spec tabs, learn a talent, Apply: nothing reverts, the tabs stay skinned after switching spec groups and after closing and reopening the window.
+25. Skin plus the compact window: the vertical lines follow the dividers' new places, the horizontal line runs the art's width, and the panel behind the window follows the narrower width (nothing sticks out at the sides). Drag the window: the skin and the talent plan panel move with it.
+26. Skin: open the Spellbook tab: the frame, the search box and the category tabs are SaftUI's; the book's page art is Blizzard's. Check the Maximize button (Blizzard's red art) still looks acceptable beside the SaftUI close button, and the loadout dropdown's arrow too.
+27. Skin: set Skinning > Theme to Blizzard: every piece goes back to Blizzard's look at once. Set it back: the skin returns. Turn Talent window off and `/reload`: all of Blizzard's look.
+28. Skin: `/console taintLog 1`, open the window in and out of combat, switch tabs, Apply, `/reload`: nothing in `Logs/taint.log` blames SaftUI for `Blizzard_PlayerSpells`. The window opens and the Apply button works in combat (no `ADDON_ACTION_BLOCKED`).
 
 ## Execution
 

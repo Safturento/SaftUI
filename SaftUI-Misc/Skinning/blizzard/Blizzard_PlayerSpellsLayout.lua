@@ -4,8 +4,9 @@
 -- talents sit far from the dividers between the specs and from the window's
 -- sides. This moves each talent sideways so the gap between a talent and a
 -- divider (or the window's side) is the gap between talents, moves the tree
--- headers and the vertical dividers to match, and narrows the window by what
--- that saved.
+-- headers and the vertical dividers to match, crops the two horizontal dividers
+-- (SetWidth and SetTexCoord, at the narrowed window's edges), and narrows the
+-- window by what that saved.
 --
 -- Post-hooks and plain methods only (.agents/taint.md rules 1 to 3): nothing is
 -- written onto a Blizzard frame or table (SaftUI's own state is in locals), no
@@ -176,6 +177,60 @@ local function PlaceDecor(frame, layout)
 	end
 end
 
+-- The horizontal dividers' size and texture coordinates before SaftUI cropped
+-- them (SaftUI's own table, read before the first change, so Revert and every
+-- later pass start from Blizzard's).
+local horizontalHome = {}
+
+-- Camelot's DividerHorizontalLeft ends at the border's centre and reaches out
+-- left, DividerHorizontalRight starts there and reaches right, each as wide as
+-- its atlas (useAtlasSize) and Blizzard's window is as wide as two of them. In
+-- the narrower window they stick out past its sides, so each is cut at the
+-- window's edge: each loses half of what the window lost (current.delta), the
+-- width set to that and the outer part of the art cropped in proportion, not stretched. Nothing
+-- to cut when the art is already no wider.
+local function CropDividers(frame, layout)
+	if not layout then return end
+	for _, key in ipairs({ 'DividerHorizontalLeft', 'DividerHorizontalRight' }) do
+		local divider = frame[key]
+		if divider and divider.GetTexCoord and divider.SetTexCoord then
+			local home = horizontalHome[divider]
+			if not home then
+				home = { width = divider:GetWidth(), coords = { divider:GetTexCoord() } }
+				horizontalHome[divider] = home
+			end
+			-- cut by what the window lost: half of the narrowing from each side
+			local width = home.width - (current and current.delta or 0) / 2
+			if width < home.width - 0.01 and width > 0 then
+				local c = { unpack(home.coords) }
+				local keep = width / home.width
+				if key == 'DividerHorizontalLeft' then
+					-- the outer end is the left one: its x coordinates move in
+					c[1] = home.coords[1] + (home.coords[5] - home.coords[1]) * (1 - keep)
+					c[3] = home.coords[3] + (home.coords[7] - home.coords[3]) * (1 - keep)
+				else
+					c[5] = home.coords[1] + (home.coords[5] - home.coords[1]) * keep
+					c[7] = home.coords[3] + (home.coords[7] - home.coords[3]) * keep
+				end
+				divider:SetWidth(width)
+				divider:SetTexCoord(unpack(c))
+			else
+				-- nothing to cut: Blizzard's, not an earlier crop
+				divider:SetWidth(home.width)
+				divider:SetTexCoord(unpack(home.coords))
+			end
+		end
+	end
+end
+
+local function RestoreDividers()
+	for divider, home in pairs(horizontalHome) do
+		divider:SetWidth(home.width)
+		divider:SetTexCoord(unpack(home.coords))
+	end
+	wipe(horizontalHome)
+end
+
 local baseWidth, appliedWidth
 local function PlaceWidths(frame, layout)
 	if not layout then return end
@@ -205,6 +260,7 @@ local function Revert(frame, entries)
 		divider:SetPoint(unpack(home))
 	end
 	wipe(dividerHome)
+	RestoreDividers()
 end
 
 function TW:Apply()
@@ -231,6 +287,7 @@ function TW:Apply()
 	end
 	PlaceWidths(frame, layout)
 	PlaceDecor(frame, layout)
+	CropDividers(frame, layout)
 end
 
 -- A hook runs in the middle of Blizzard's own code: an error in it would stop

@@ -132,6 +132,7 @@ function TP:HidePanel()
 	self.view = nil
 	self:HideOverlays()
 	if self.panel then self.panel:Hide() end
+	if self.expandButton then self.expandButton:Hide() end
 end
 
 -- Reads the talent tree and draws. The one place that does either.
@@ -149,7 +150,10 @@ function TP:Refresh()
 		return
 	end
 	local panel = self:BuildPanel()
-	if not panel:IsShown() then
+	if self:IsCollapsed() then
+		panel:Hide() -- the header button stands in for it
+		self:Dock()
+	elseif not panel:IsShown() then
 		panel:Show()
 		self:Dock()
 	end
