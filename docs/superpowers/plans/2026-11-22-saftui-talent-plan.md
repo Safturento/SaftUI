@@ -700,7 +700,7 @@ Plus any `tests/wow/widgets.lua` change.
 
 What each overlay is. All of them have `SetAllPoints(button)` and are mouse-disabled except the catcher.
 - **light**: four 2-line textures in Text > Normal around the node, shown for `TP:Light(nodeID)` only. The level is `button:GetFrameLevel() + 6`.
-- **glow**: four 2-line textures in the Accent, shown on the waiting row's node while the panel shows. The level is `+ 5`.
+- **glow**: four 2-line textures in the Accent, shown on the waiting row's node while the panel shows. The level is `+ 5`. Changed 2026-11-22: under the Blizzard theme (the panel's `config.panels.theme`, via `st:IsBlizzardLook`) the glow is instead one ADD-blend texture of the atlas the button's own `Glow` names (the circle's, `talents-node-circle-greenglow`, without one) with a looping 0.36 s Alpha in and out, on the glow frame itself, and the edges are hidden; `TP:PaintOverlays` sets it on every draw and theme change.
 - **dim**: a black texture at alpha 0.6 (`SetColorTexture(0, 0, 0, 0.6)`), shown on every node with `PlannedRanks == 0` while the panel shows and `config.dim` is on. The level is `+ 4`. A plan with no steps dims nothing.
 - **catcher**: a Button at level `+ 10`, `RegisterForClicks('LeftButtonUp', 'RightButtonUp')`. It is shown and mouse-enabled only while planning; otherwise it is hidden and `EnableMouse(false)`.
   - `OnClick` calls `TP:PlanClick(nodeID, mouse)`.
@@ -902,6 +902,7 @@ Leave out `README.md` if the freshness check left it unchanged.
 18. Compact window: dragging the window works, and the talent plan panel docks beside the narrower window.
 19. Click the panel's empty space (between and below the rows): it doesn't clear your target. Collapse the panel while planning: planning ends and the tree's talents take clicks again.
 20. `/console taintLog 1`, use all of the above, learn a talent, `/reload`: nothing in `Logs/taint.log` blames SaftUI for `Blizzard_PlayerSpells` or `Blizzard_SharedTalentUI`.
+21. The waiting talent's highlight: under the Blizzard theme it is a pulsing green glow (the glow art Blizzard picked for the node's shape, added light) with no border; under Thick and Thin it is the 2 line Accent border. Switch the theme in `/sui` with the talent window open: the highlight changes at once. Check a square (active), a circle and a choice talent: each glow fits its node.
 
 ## Execution
 

@@ -351,3 +351,149 @@ test('a released pool button is not lit', function()
 	check(not TP.overlays[button].glow:IsShown() and not TP.overlays[button].dim:IsShown())
 	clean()
 end)
+
+-- The waiting node's highlight: a glow under the Blizzard theme, the border
+-- under Thick and Thin. The theme is the panel's (config.panels.theme: 'theme'
+-- follows SaftUI's, or an override).
+local function edges_shown(part)
+	for _, texture in ipairs(part.edges) do
+		if texture:IsShown() then return true end
+	end
+	return false
+end
+
+local function waiting_glow()
+	local waiting = TP.view.rows[TP.view.summary.waiting].nodeID
+	for _, r in pairs(TP.overlays) do
+		if r.nodeID == waiting then return r.glow end
+	end
+end
+
+test('under the Blizzard theme the waiting node glows and has no border', function()
+	world({ tree = { ranks = TWELVE } })
+	guide_plan()
+	st.config.profile.theme.name = 'blizzard'
+	open()
+	local glow = waiting_glow()
+	check(glow:IsShown())
+	check(glow.glowTexture and glow.glowTexture:IsShown(), 'the glow texture shows')
+	eq(glow.glowTexture:GetBlendMode(), 'ADD', 'added light, as the game draws its own')
+	check(glow.glowTexture:GetAtlas(), 'Blizzard art')
+	check(not edges_shown(glow), 'the border edges are hidden')
+	for _, r in pairs(TP.overlays) do
+		check(not r.glow.glowTexture or not r.glow.glowTexture:IsShown() or r.glow == glow or not r.glow:IsShown())
+	end
+	clean()
+end)
+
+test('under Thick and Thin the waiting node keeps its border and has no glow texture', function()
+	for _, name in ipairs({ 'thick', 'thin' }) do
+		world({ tree = { ranks = TWELVE } })
+		guide_plan()
+		st.config.profile.theme.name = name
+		open()
+		local glow = waiting_glow()
+		check(glow:IsShown(), name)
+		check(edges_shown(glow), name .. ': the border shows')
+		check(not (glow.glowTexture and glow.glowTexture:IsShown()), name .. ': no glow texture')
+		clean()
+	end
+end)
+
+test('switching the theme changes the highlight at once, back and forth', function()
+	world({ tree = { ranks = TWELVE } })
+	guide_plan()
+	open()
+	local glow = waiting_glow()
+	check(edges_shown(glow) and not (glow.glowTexture and glow.glowTexture:IsShown()), 'Thick: border')
+	T.theme('blizzard', function() st:ColorsChanged('theme') end)
+	check(not edges_shown(glow) and glow.glowTexture:IsShown(), 'Blizzard: glow, on the colors callback')
+	T.theme('thin', function() st:ColorsChanged('theme') end)
+	check(edges_shown(glow) and not glow.glowTexture:IsShown(), 'Thin: border again')
+	st.config.profile.theme.name = 'blizzard'
+	TP:UpdateConfig() -- what Config:UpdateConfig runs for the module
+	stub.run_timers()
+	check(not edges_shown(glow) and glow.glowTexture:IsShown(), 'Blizzard through the profile update')
+	clean()
+end)
+
+test("the panel's own Theme override decides, not SaftUI's", function()
+	world({ tree = { ranks = TWELVE } })
+	guide_plan()
+	st.config.profile.theme.name = 'thick'
+	st.config.profile.panels.theme = 'blizzard'
+	open()
+	local glow = waiting_glow()
+	check(glow.glowTexture and glow.glowTexture:IsShown() and not edges_shown(glow), 'override Blizzard: glow')
+	st.config.profile.panels.theme = 'theme'
+	st.config.profile.theme.name = 'blizzard'
+	st.config.profile.panels.theme = 'thin'
+	TP:PaintOverlays()
+	check(edges_shown(glow) and not glow.glowTexture:IsShown(), 'override Thin under Blizzard: border')
+	clean()
+end)
+
+test('the glow pulses with an animation', function()
+	world({ tree = { ranks = TWELVE } })
+	guide_plan()
+	st.config.profile.theme.name = 'blizzard'
+	open()
+	local glow = waiting_glow()
+	check(glow.glowAnim and glow.glowAnim:IsPlaying(), 'the pulse plays')
+	T.theme('thick', function() st:ColorsChanged('theme') end)
+	check(not glow.glowAnim:IsPlaying(), 'and stops with the border')
+	clean()
+end)
+
+test("the glow takes the atlas of the button's own Glow, the circle's without one", function()
+	world({ tree = { ranks = TWELVE } })
+	guide_plan()
+	st.config.profile.theme.name = 'blizzard'
+	local waiting_button
+	open()
+	local glow = waiting_glow()
+	eq(glow.glowTexture:GetAtlas(), 'talents-node-circle-greenglow', 'no Glow on the button: circle')
+	for button, r in pairs(TP.overlays) do
+		if r.glow == glow then waiting_button = button end
+	end
+	local holder = CreateFrame('Frame')
+	local own = holder:CreateTexture()
+	own:SetAtlas('talents-node-square-greenglow')
+	rawset(waiting_button, 'Glow', own)
+	TP:DrawOverlays(TP.view)
+	eq(glow.glowTexture:GetAtlas(), 'talents-node-square-greenglow', 'a square button: the square glow')
+	own:SetAtlas('talents-node-choice-greenglow')
+	TP:DrawOverlays(TP.view)
+	eq(glow.glowTexture:GetAtlas(), 'talents-node-choice-greenglow', 'a choice button: the choice glow')
+	clean()
+end)
+
+test('the glow art is made only for the glow that shows', function()
+	world({ tree = { ranks = TWELVE } })
+	guide_plan()
+	st.config.profile.theme.name = 'blizzard'
+	open()
+	local glow, made = waiting_glow(), 0
+	for _, r in pairs(TP.overlays) do
+		if r.glow.glowTexture then made = made + 1 end
+		if r.glow ~= glow then check(not r.glow.glowAnim, 'no animation on a node that does not glow') end
+	end
+	eq(made, 1, 'one glow texture, on the waiting node')
+	clean()
+end)
+
+test('hiding the glow stops its pulse and showing it plays again', function()
+	world({ tree = { ranks = TWELVE } })
+	guide_plan()
+	st.config.profile.theme.name = 'blizzard'
+	open()
+	local glow = waiting_glow()
+	check(glow.glowAnim:IsPlaying(), 'plays')
+	glow:Hide()
+	check(not glow.glowAnim:IsPlaying(), 'hiding stops it')
+	TP:DrawOverlays(TP.view) -- the waiting node's glow is shown again
+	check(glow:IsShown() and glow.glowAnim:IsPlaying(), 'and a draw that shows it plays it again')
+	TP:HideOverlays()
+	check(not glow:IsShown() and not glow.glowAnim:IsPlaying(), 'the panel going stops it')
+	clean()
+end)
