@@ -498,7 +498,21 @@ test('Skinning: a page with the shared Theme, Background and font, which re-appl
 	eq(printed[1], 'Reload your UI to apply.', 'it says to reload')
 	profile.skinning.spy = true
 
+	-- Talent window (WoW Forever's, the skin of Blizzard_PlayerSpellsSkin.lua) is a toggle that needs a reload too.
+	local talent = general.args.talent_window
+	eq(talent.type, 'toggle', 'Talent window is a toggle')
+	check(talent.desc:find('Requires a reload', 1, true) ~= nil, 'its tooltip says it needs a reload')
+	eq(general.get(info_for('talent_window')), true, 'on by default')
+	printed = {}
+	function st:Print(...) printed[#printed + 1] = table.concat({ ... }, ' ') end
+	talent.set(info_for('talent_window'), false)
+	st.Print = print_
+	eq(profile.skinning.talent_window, false, 'Talent window writes skinning.talent_window')
+	eq(reapplied, 5, 'and re-applies no skin')
+	eq(printed[1], 'Reload your UI to apply.', 'it says to reload')
+	profile.skinning.talent_window = true
+
 	eq(layout({ Skinning = tree }, 'Skinning'),
-		'theme:normal 1, background:normal 2, font:normal 1, cooldown_manager:normal 2, objective_tracker:normal 1, color_picker:normal 2, spy:normal 1',
-		'Theme | Background, Font | Cooldown Manager, Objective tracker, Color picker, Spy')
+		'theme:normal 1, background:normal 2, font:normal 1, cooldown_manager:normal 2, objective_tracker:normal 1, color_picker:normal 2, spy:normal 1, talent_window:normal 2',
+		'Theme | Background, Font | Cooldown Manager, Objective tracker, Color picker, Spy, Talent window')
 end)
