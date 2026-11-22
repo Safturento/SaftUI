@@ -146,8 +146,12 @@ test('replace clears the selection, copies the steps, and the next planning clic
 	plan = TP:ApplyImport(result, 'replace', '', 1)
 	eq(TP.selected, nil, 'no selected row')
 	check(plan.steps ~= result.steps, 'the steps are a copy')
-	TP:PlanClick(SH.ID.Flurry, 'LeftButton')
-	eq(plan.steps[#plan.steps], SH.ID.Flurry, 'appended at the end')
+	-- the guide spends all 51 points: a 52nd is refused
+	eq(TP:PlanClick(SH.ID.Flurry, 'LeftButton'), 'refused', 'no point after level 60')
+	local last = table.remove(plan.steps)
+	TP:PlanClick(last, 'LeftButton')
+	eq(plan.steps[#plan.steps], last, 'appended at the end')
+	eq(#plan.steps, 51)
 	eq(#result.steps, 51, 'the result is untouched')
 end)
 

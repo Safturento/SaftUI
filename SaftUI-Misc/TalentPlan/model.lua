@@ -12,6 +12,10 @@ local M = {}
 TP.Model = M
 
 M.FIRST_LEVEL = 10
+-- one point a level from FIRST_LEVEL to LAST_LEVEL: 51 points (Forever's
+-- trait currency, SourcedMax 51), so a plan holds at most POINTS steps
+M.LAST_LEVEL = 60
+M.POINTS = M.LAST_LEVEL - M.FIRST_LEVEL + 1
 
 function M.NewPlan(id, name)
 	return { id = id, name = name, steps = {} }

@@ -15,7 +15,7 @@
 	opts.shape = true gives the tree the shape the planning rules read: three
 	groups (SH.GROUP: Elemental 701, Enhancement 702, Restoration 703, in that
 	order), the nodes spread over them (Enhancement 101 to 115, Elemental 116 to
-	121, Restoration 122 and 123), five to a row (posY 0, 50, 100), a gate on
+	121, Restoration 122 and 123), five to a row (posY 2130, 2730, 3330: Forever's 600 apart), a gate on
 	each row after the first (isGate, spentAmountRequired 5 per row above, a
 	condition of the node), two prerequisite edges, fixture data (Spirit
 	Weapons to Stormstrike, Stormstrike to Improved Stormstrike, type 3), and
@@ -58,7 +58,7 @@ function SH.shape(tr)
 	local nodes = tr.nodes[CONFIG]
 	local function place(nodeID, group, row)
 		local info = nodes[nodeID]
-		info.groupIDs, info.posY = { group }, (row - 1) * 50
+		info.groupIDs, info.posY = { group }, 2130 + (row - 1) * 600 -- Forever's rows: 2130, 2730, ...
 		if row > 1 then
 			local cond = 9000 + nodeID
 			tr.conditions[cond] = { isGate = true, isMet = false, spentAmountRequired = 5 * (row - 1), traitCurrencyID = 800 }
