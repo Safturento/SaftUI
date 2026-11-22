@@ -69,10 +69,10 @@ function SK:GetConfigTable()
 				end,
 				args = {
 					theme = generators.theme(1,
-						"The border and background of the frames SaftUI skins: the buff icons, the swing timer bars, the Cooldown Manager, the objective tracker's bars and buttons, the color picker, Hekili and WeakAuras. Under Blizzard the objective tracker and the color picker keep Blizzard's own look."),
+						"The border and background of the frames SaftUI skins: the buff icons, the swing timer bars, the Cooldown Manager, the objective tracker's bars and buttons, the color picker, Hekili, WeakAuras and Spy. Under Blizzard the objective tracker and the color picker keep Blizzard's own look."),
 					background = generators.background(1.5),
 					font = generators.font(2,
-						"The font of the text on the frames SaftUI skins: the buff icons, the swing timer bars, the Cooldown Manager, the color picker and the item levels on the character frame."),
+						"The font of the text on the frames SaftUI skins: the buff icons, the swing timer bars, the Cooldown Manager, the color picker, Spy and the item levels on the character frame."),
 					cooldown_manager = {
 						order = 3,
 						name = 'Cooldown Manager',
@@ -94,6 +94,16 @@ function SK:GetConfigTable()
 						name = 'Color picker',
 						type = 'toggle',
 						desc = "Draw Blizzard's color picker in SaftUI's look: a panel in this page's Theme and Background, SaftUI's buttons and hex box, and this page's font. Off, or while this page's Theme is Blizzard, it keeps Blizzard's look. Applies at once.",
+					},
+					spy = {
+						order = 6,
+						name = 'Spy',
+						type = 'toggle',
+						desc = "Draw the Spy addon's Nearby window, alert, Statistics window and Kill on Sight button in SaftUI's look, in this page's Theme, Background and font. While on, Spy's Border and window colors are not used. Off, or while this page's Theme is Blizzard, Spy keeps its own look. Requires a reload.",
+						set = function(info, value)
+							self.config[info[#info]] = value
+							st:Print('Reload your UI to apply.')
+						end,
 					},
 				},
 			},

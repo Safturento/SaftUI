@@ -7,6 +7,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-22 — Spy skin: in-game checks](#2026-11-22--spy-skin-in-game-checks)
+  - [2026-11-22 — Spy skin: shared Skinning helpers](#2026-11-22--spy-skin-shared-skinning-helpers)
   - [2026-11-17 — UI scale: pixel fonts are unreadable below 100%](#2026-11-17--ui-scale-pixel-fonts-are-unreadable-below-100)
   - [2026-11-17 — UI scale: pixel fonts look wrong in a window at k 1](#2026-11-17--ui-scale-pixel-fonts-look-wrong-in-a-window-at-k-1)
   - [2026-11-17 — Cooldown Manager: SaftUI's own settings instead of Blizzard's Edit Mode ones](#2026-11-17--cooldown-manager-saftuis-own-settings-instead-of-blizzards-edit-mode-ones)
@@ -256,6 +258,48 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-22 — Spy skin: in-game checks
+
+**What:** check the Spy skin in game, on WoW Forever with Spy 1.3.8-forever28 and `/sui` → Skinning → Spy on (the default). None of this can be tested outside the game: the Lua tests use a model of Spy's frames.
+
+**Why noticed:** the Spy skin (branch `spy-skin`, spec `docs/superpowers/specs/2026-11-22-spy-skin-design.md`) was built and reviewed from Spy's source and a fixture, never run against Spy itself.
+
+**Anchors:** `SaftUI-Misc/Skinning/addons/spy.lua` (module, Nearby window), `spy_alert.lua` (alert popup), `spy_kos.lua` (Kill on Sight button), `spy_stats.lua` (Statistics window); `tests/misc/spy_skin_test.lua`, `spy_alert_test.lua`, `spy_kos_test.lua`, `spy_stats_test.lua`, `tests/misc/fixtures/spy_world.lua`; `.agents/taint.md` (the third-party note).
+
+**What's been considered:** the checks, in the order they are cheapest to run:
+
+1. **Nearby list.** With a few enemies nearby, the window is a SaftUI panel in the Skinning Theme with a divider under the title, Lucide icons on its buttons, the title in the Window titles font, rows in SaftUI's bar texture, and the resize grip drawn, with a hover. Drag the window and resize it by the grip: Spy still moves and sizes it. InvertSpy on: the panel and divider lay out correctly with the list growing up.
+2. **Border setting, each value.** Spy's Border option, each value in turn: the panel doesn't go back to Spy's look or show a doubled border. Spy's color options (window, border, bar colors) against the skin: not used while the skin is on, and changing them breaks nothing. Spy's bar texture option keeps SaftUI's texture.
+3. **Row targeting in combat.** Click a row in combat: it targets as before, with no `ADDON_ACTION_BLOCKED` and no error. Row hover still draws in combat.
+4. **Class icons.** A row's class icon on the atlas path crops without a stretched or offset icon.
+5. **Names in other alphabets.** A Russian name and a Chinese or Korean name on a row render, not as squares (the per-alphabet font family).
+6. **The alert, one of each kind.** Trigger an alert of each kind Spy has (stealth, KoS, player warning and the rest): the popup is a SaftUI panel with that kind's border color, the icon has a thin SaftUI border, the text is in SaftUI's font.
+7. **The Statistics window.** Open it from the Nearby window: the panel, header divider, close icon, the Refresh and other panel buttons, the filter box, check boxes and sort headers in SaftUI's look, and list lines that hover. The tabs switch, each header sorts, search narrows the list. The Refresh button blinks on new data as Spy's does. The scroll bar and the drop-down stay Spy's and Blizzard's (known, not a fault).
+8. **Kill on Sight button.** With SaftUI's unit frames, target an enemy player: the button shows at the target frame's top right (it never showed before). Clicking it toggles KoS (the icon and Spy's list follow). It hides with no target or a non-player, and follows the target frame when it moves in `/sui edit`. In a battleground, target an enemy: no error (secret values) and the button still follows.
+9. **Toggle off and reload.** Skinning → Spy off, `/reload`: Spy looks as it did. On again and `/reload`: skinned. With Skinning's Theme set to Blizzard, Spy keeps its own look.
+10. **Theme live.** With the skin on, change the Skinning Theme, Background and font: Spy's windows follow at once, an open Statistics window too.
+
+11. **Refresh button label face** (final review M1). `SpyStatsRefreshButton` inherits `UIPanelButtonTemplate`, whose Normal, Highlight and Disabled font objects the client applies to its label without the Lua `SetFontObject`, so the skin's hook never fires. Hover it, `Disable()` it, and let Spy's blink run on new data: does the label drop SaftUI's face? If so, hand the button SaftUI's family with `SetNormalFontObject`, `SetHighlightFontObject` and `SetDisabledFontObject` (method calls, no fields). The sort headers have only a NormalFont and shouldn't be affected.
+12. **Target frame disabled** (final review M8). With Unitframes loaded and Target's Enable off, `SaftUI_Target` still exists, parked far off screen, so `spy_kos.lua`'s `Home()` re-homes the Kill on Sight button off screen. Blizzard's target frame is disabled by oUF either way, so nothing that worked is lost; check it, and if it matters, check the unit's `enable` in `Home()`.
+
+**Shape of work:** the owner runs the checks; each failure is fixed on its own, probably small, in the one file named above. Delete this entry when they pass.
+
+**Open questions:** none known. Whether the Statistics scroll bar and drop-down should get SaftUI's look (`st:SkinScrollBar` writes a field onto the bar, so they were left) is the owner's call once they have seen it.
+
+### 2026-11-22 — Spy skin: shared Skinning helpers
+
+**What:** the Spy skin and the RestedXP skin each carry near-copies of the same small pieces: a one-pixel divider under a title, a texture tinted in Text > Muted that follows color changes, and a font hook that restyles a font string while keeping the size the addon asked for. Lift them into shared Skinning helpers and have both skins use them.
+
+**Why noticed:** the Spy skin's review (2026-11-22): its font path diverged from RestedXP's, and the divider and muted helpers were left duplicated to keep that branch small.
+
+**Anchors:** `SaftUI-Misc/Skinning/addons/restedxp.lua`, `SaftUI-Misc/Skinning/addons/spy.lua` (`Tint`, `MutedRGB`, the dividers, `fontState`) and `SP.lib` (what the `spy_*.lua` files share); `tests/misc/restedxp_panel_test.lua`, `tests/misc/spy_skin_test.lua`.
+
+**What's been considered:** the two skins differ on purpose in how they keep a font (Spy keeps a per-alphabet family, RestedXP sets one face), so only the divider and the muted tint are clean to share; the font hook might stay per skin or take the family as an option. The Cooldown Manager and color picker skins may hold the same pieces, worth a look before choosing the shape.
+
+**Shape of work:** a small refactor with no visible change: add the helpers (in `skinning.lua` or a small file it loads), move both skins onto them, run both skins' tests.
+
+**Open questions:** whether the font hook is worth sharing given the family; where the helpers live.
 
 ### 2026-11-17 — UI scale: pixel fonts are unreadable below 100%
 
