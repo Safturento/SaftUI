@@ -28,9 +28,10 @@ end
 -- Is the node's gate met? false, required, scope name when not.
 local function GateMet(shape, node, spent)
 	for _, gate in ipairs(node.gates or {}) do
-		local have = node.group and (spent[node.group] or 0) or (spent.total or 0)
+		local scope = node.group and groupName(shape, node.group) -- a group the shape doesn't list counts the tree
+		local have = scope and (spent[node.group] or 0) or (spent.total or 0)
 		if have < gate.required then
-			return false, gate.required, node.group and groupName(shape, node.group) or nil
+			return false, gate.required, scope
 		end
 	end
 	return true
@@ -90,7 +91,7 @@ end
 local function NodeState(shape, ranks, spent, id, errored)
 	local node = shape.nodes[id]
 	local rank = ranks[id] or 0
-	if errored then return 'error' end
+	if errored then return 'error', errored end
 	if node.plannable and rank >= node.maxRanks then return 'maxed' end
 	local ok, reason, kind = Legal(shape, ranks, spent, id)
 	if ok then return 'selectable', nil end
@@ -103,7 +104,7 @@ function Sim.Run(shape, steps)
 	for i, id in ipairs(steps or {}) do
 		local ok, reason = Legal(shape, ranks, spent, id)
 		out[i] = { ok = ok, reason = (not ok) and reason or nil }
-		if not ok then bad[id] = true end
+		if not ok then bad[id] = bad[id] or reason end
 		Spend(shape, ranks, spent, id)
 	end
 	local nodes = {}
@@ -115,7 +116,7 @@ function Sim.Run(shape, steps)
 end
 
 local function Insert(steps, nodeID, after)
-	local out, at = {}, after == nil and #steps or math.min(after, #steps)
+	local out, at = {}, after == nil and #steps or math.max(0, math.min(after, #steps))
 	for i = 1, at do out[#out + 1] = steps[i] end
 	out[#out + 1] = nodeID
 	for i = at + 1, #steps do out[#out + 1] = steps[i] end
@@ -142,7 +143,7 @@ function Sim.CanRemove(shape, steps, nodeID)
 	for i = #steps, 1, -1 do
 		if steps[i] == nodeID then last = i; break end
 	end
-	if not last then return false, 'Other planned talents need this rank.' end
+	if not last then return false, 'Not in the plan.' end
 	local before = Sim.Run(shape, steps)
 	local new = {}
 	for i, id in ipairs(steps) do if i ~= last then new[#new + 1] = id end end
