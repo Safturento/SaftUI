@@ -1,0 +1,150 @@
+Talent Order
+10
+Thundering Strikes
+Rank 1
+11
+Thundering Strikes
+Rank 2
+12
+Thundering Strikes
+Rank 3
+13
+Thundering Strikes
+Rank 4
+14
+Thundering Strikes
+Rank 5
+15
+Mental Dexterity
+Rank 1
+16
+Mental Dexterity
+Rank 2
+17
+Mental Dexterity
+Rank 3
+18
+Ancestral Knowledge
+Rank 1
+19
+Ancestral Knowledge
+Rank 2
+20
+Shamanistic Focus
+21
+Elemental Weapons
+Rank 1
+22
+Elemental Weapons
+Rank 2
+23
+Elemental Weapons
+Rank 3
+24
+Ancestral Knowledge
+Rank 3
+25
+Stormstrike
+26
+Improved Ghost Wolf
+Rank 1
+27
+Improved Ghost Wolf
+Rank 2
+28
+Flurry
+Rank 1
+29
+Flurry
+Rank 2
+30
+Improved Stormstrike
+Rank 1
+31
+Improved Stormstrike
+Rank 2
+32
+Mental Quickness
+Rank 1
+33
+Mental Quickness
+Rank 2
+34
+Spirit Weapons
+35
+Maelstrom Weapon
+Rank 1
+36
+Tidal Focus
+Rank 1
+37
+Tidal Focus
+Rank 2
+38
+Tidal Focus
+Rank 3
+39
+Tidal Focus
+Rank 4
+40
+Tidal Focus
+Rank 5
+41
+Mindfulness
+Rank 1
+42
+Mindfulness
+Rank 2
+43
+Mindfulness
+Rank 3
+44
+Concussion
+Rank 1
+45
+Concussion
+Rank 2
+46
+Concussion
+Rank 3
+47
+Concussion
+Rank 4
+48
+Concussion
+Rank 5
+49
+Call of Flame
+Rank 1
+50
+Call of Flame
+Rank 2
+51
+Call of Flame
+Rank 3
+52
+Elemental Devastation
+Rank 1
+53
+Elemental Devastation
+Rank 2
+54
+Elemental Devastation
+Rank 3
+55
+Elemental Focus
+56
+Reverberation
+Rank 1
+57
+Reverberation
+Rank 2
+58
+Reverberation
+Rank 3
+59
+Trial by Fire
+Rank 1
+60
+Trial by Fire
+Rank 2
