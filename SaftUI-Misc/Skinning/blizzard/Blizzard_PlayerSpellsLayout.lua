@@ -90,15 +90,24 @@ end
 -- The layout the last Apply made: { layout =, index = { [groupID] = tree } }.
 local current
 
--- Each button's tree and Blizzard's x, as { button =, group =, x = } (heroes and
--- buttons without a group are left alone).
+-- Which tree a node is in: the 400 wide region Blizzard put it in (1 for the
+-- left), from Blizzard's own x. Not the node's groupIDs: on Forever a node's
+-- groups are gates and choice sets as well as its spec, in no set order, and
+-- a node can have none (in game 22 Nov: grouping by groupIDs[1] made a tree
+-- of each node and narrowed the window to nothing). Heroes are left alone.
+local function TreeOf(info, panX)
+	if not (info and info.posX) or info.subTreeID then return nil end
+	return math.floor((info.posX / 10 - panX) / BLIZZARD_REGION) + 1
+end
+
+-- Each button's tree and Blizzard's x, as { button =, group =, x = }.
 local function Read(frame)
 	local panX = frame:GetPanOffset()
 	local entries = {}
 	for button in frame:EnumerateAllTalentButtons() do
 		local info = button:GetNodeInfo()
-		local group = info and not info.subTreeID and info.groupIDs and info.groupIDs[1]
-		if group and info.posX then
+		local group = TreeOf(info, panX)
+		if group then
 			entries[#entries + 1] = { button = button, group = group, x = info.posX / 10 - panX }
 		end
 	end
@@ -185,6 +194,14 @@ function TW:Apply()
 	if not result then return end
 	current = result
 	local layout = result.layout
+	-- Only ever narrower, and never past a tree's own talents: anything else
+	-- is a read the layout doesn't understand, so Blizzard's stays.
+	local trees = #layout.dx
+	if layout.gap <= 0 or layout.width >= trees * BLIZZARD_REGION
+		or (frame.treeHeaders and #frame.treeHeaders > 0 and trees > #frame.treeHeaders) then
+		current = nil
+		return
+	end
 	for _, e in ipairs(entries) do
 		local dx = layout.dx[result.index[e.group]]
 		if dx then SetX(e.button, e.x + dx) end
@@ -209,9 +226,10 @@ function TW:Install()
 	hooksecurefunc(frame, 'UpdateTalentButtonPosition', Guarded(function(f, button)
 		if not current or not Enabled() then return end
 		local info = button:GetNodeInfo()
-		local group = info and not info.subTreeID and info.groupIDs and info.groupIDs[1]
+		local panX = f:GetPanOffset()
+		local group = TreeOf(info, panX)
 		local dx = group and current.layout.dx[current.index[group] or 0]
-		if dx and info.posX then SetX(button, info.posX / 10 - (f:GetPanOffset()) + dx) end
+		if dx then SetX(button, info.posX / 10 - panX + dx) end
 	end))
 	hooksecurefunc(frame, 'LoadTalentTreeInternal', Guarded(function() self:Apply() end))
 	hooksecurefunc(frame, 'RefreshTreeHeaders', Guarded(function(f)

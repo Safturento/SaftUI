@@ -48,7 +48,7 @@ test('Layout is nil without buttons or columns', function()
 end)
 
 -- Stand-ins: three trees of group ids 11, 12, 13, four columns each, one row.
-local function make_frame()
+local function make_frame(groupsOf)
 	local window = CreateFrame('Frame', 'PlayerSpellsFrame', UIParent)
 	window.talentsWidth = 1218
 	window:SetSize(1218, 700)
@@ -91,7 +91,7 @@ local function make_frame()
 		for c = 0, 3 do
 			local button = CreateFrame('Button', nil, parent)
 			button:SetSize(40, 40)
-			local info = { groupIDs = { 11 + t }, posX = (70 + 400 * t + 60 * c + 49) * 10, posY = 1000 }
+			local info = { groupIDs = groupsOf and groupsOf(t, c) or { 11 + t }, posX = (70 + 400 * t + 60 * c + 49) * 10, posY = 1000 }
 			function button:GetNodeInfo() return info end
 			buttons[button] = true
 		end
@@ -130,6 +130,45 @@ test('Apply moves the talents, headers and dividers and narrows the window', fun
 	eq(window:GetWidth(), 1218 - 420)
 	window:UpdateSize()
 	eq(window:GetWidth(), 1218 - 420, 'UpdateSize keeps the narrow width')
+end)
+
+-- Forever's nodes don't carry their spec as groupIDs[1]: a node can be in
+-- groups of its own (gates, choice sets), or none. The tree is the 400 wide
+-- region Blizzard put the node in, so grouping never follows groupIDs.
+local function expect_compact(groupsOf, label)
+	local window, frame, buttons = make_frame(groupsOf)
+	st.config.profile.talentwindow.compact = true
+	TW.frame = nil
+	TW:Install()
+	frame:LoadTalentTreeInternal()
+	local xs = centers(buttons)
+	eq(xs[1], 40, label)
+	eq(xs[12], 740, label)
+	eq(frame:GetWidth(), 1212 - 420, label)
+	eq(window:GetWidth(), 1218 - 420, label)
+end
+
+test('a group of its own on every node still gives three trees', function()
+	local n = 0
+	expect_compact(function() n = n + 1; return { 900 + n } end, 'own groups')
+end)
+
+test('nodes with no group, or one group across specs, still give three trees', function()
+	expect_compact(function() return {} end, 'no groups')
+	expect_compact(function() return { 5 } end, 'one shared group')
+end)
+
+test('the window is never narrowed to nothing', function()
+	local window, frame = make_frame()
+	st.config.profile.talentwindow.compact = true
+	TW.frame = nil
+	TW:Install()
+	frame:LoadTalentTreeInternal()
+	check(frame:GetWidth() > 0 and window:GetWidth() > 0)
+	frame:LoadTalentTreeInternal()
+	window:UpdateSize()
+	eq(frame:GetWidth(), 1212 - 420, 'a second pass narrows no further')
+	eq(window:GetWidth(), 1218 - 420)
 end)
 
 test('the spellbook keeps Blizzard width', function()
