@@ -200,3 +200,10 @@ st.defaults.talentplan = {
 	enable = true,
 	dim = true,
 }
+
+-- The compact talent window (Skinning/blizzard/Blizzard_PlayerSpellsLayout.lua):
+-- the talents, the headers and the dividers moved so the gaps are even, and the
+-- window narrowed. Off leaves Blizzard's layout (a /reload puts it back).
+st.defaults.talentwindow = {
+	compact = true,
+}
