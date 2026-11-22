@@ -114,6 +114,11 @@ function D.Read(specGroup)
 	local tree = { specGroup = specGroup, configID = configID, treeID = treeID, active = active,
 		level = configID and UnitLevel('player') or nil, nodes = {}, names = {} }
 
+	-- a point to spend now: the tree currency's quantity, the number Blizzard's
+	-- Unspent Talents shows (ClassCurrencyDisplay), staged changes counted
+	local currency = configID and C_Traits.GetTreeCurrencyInfo and C_Traits.GetTreeCurrencyInfo(configID, treeID, false)
+	tree.unspent = (currency and currency[1] and currency[1].quantity or 0) > 0
+
 	local purchases, refunds
 	if configID then
 		local p, r = C_Traits.GetStagedChanges(configID)
