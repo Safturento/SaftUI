@@ -192,3 +192,11 @@ st.defaults.auras = {
 		count = { font = 'pixel', size = pixel.font_size, outline = pixel.font_outline, point = 'BOTTOMRIGHT', rel_point = 'BOTTOMRIGHT', x_off = 0, y_off = 1 },
 	},
 }
+
+-- The talent plan (TalentPlan/). The plans are not in the profile: they are
+-- account wide, per class, in st.config.global.talentplan, and the plan each
+-- spec tab shows is per character, in st.config.char.talentplan.
+st.defaults.talentplan = {
+	enable = true,
+	dim = true,
+}
