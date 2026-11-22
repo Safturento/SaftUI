@@ -255,6 +255,7 @@ function TP:BuildPanel()
 	panel.dots.icon:SetSize(ICON, ICON)
 	panel.dots.icon:SetPoint('CENTER')
 	panel.planButton:SetScript('OnClick', function() TP:OnPlanButton() end)
+	panel.importButton:SetScript('OnClick', function() TP:OpenImport() end)
 	panel.dots:SetScript('OnClick', function(self) TP:OpenDotsMenu(self) end)
 
 	panel.off = st:CreateFontString(panel, 'pixel')
