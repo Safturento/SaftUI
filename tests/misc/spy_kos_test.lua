@@ -5,7 +5,24 @@
 local SpyFix = load_test_file('misc/fixtures/spy_world.lua')
 local T = load_test_file('lib/theme_helpers.lua')
 
+local S = load_test_file('lib/secrets.lua')
+
 local st, SK, SP
+
+-- The target's hostility and name aren't in the stubs: each case defines them and puts
+-- every global it touched back when it is done.
+local saved = {}
+for _, name in ipairs({ 'UnitIsEnemy', 'GetUnitName', 'SaftUI_Target', 'issecretvalue', 'UnitIsPlayer' }) do saved[name] = _G[name] end
+local savedUnits = stub.units
+local savedTest = test
+local function test(name, fn)
+	savedTest(name, function()
+		local ok, err = pcall(fn)
+		for k, v in pairs(saved) do _G[k] = v end
+		stub.units = savedUnits
+		if not ok then error(err, 0) end
+	end)
+end
 
 local ON = [[Interface\AddOns\Spy\Textures\button-on.tga]]
 local OFF = [[Interface\AddOns\Spy\Textures\button-off.tga]]
@@ -22,6 +39,8 @@ local function world(opts)
 	SP = SK:GetModule('Spy')
 	-- Not in the stubs: the target's hostility and name.
 	function UnitIsEnemy(a, b) local u = stub.units[b == 'player' and a or b]; return u and u.enemy or false end
+	-- (the stub's UnitIsPlayer turns the field into a plain boolean; a secret must get through)
+	function UnitIsPlayer(unit) local u = stub.units[unit]; return u and u.player or false end
 	function GetUnitName(unit) local u = stub.units[unit]; return u and u.name end
 	stub.units = {}
 	if opts.saftui then
@@ -30,7 +49,9 @@ local function world(opts)
 	else
 		SaftUI_Target = nil
 	end
-	SpyFix.make()
+	SpyFix.make(opts)
+	if opts.noEnemyName then Spy.EnemyPlayerName = nil end
+	if opts.noToggle then Spy.ToggleKOSPlayer = nil end
 	SK:Enable()
 	stub.fire_event('ADDON_LOADED', 'Spy')
 end
@@ -121,5 +142,48 @@ test('kos_skinned_once_and_box_drawn', function()
 	eq(n, 1, 'one SaftUI box')
 	Spy:CreateKoSButton() -- already made: nothing again
 	SP:SkinKoS()
+	eq(#take_errors(), 0)
+end)
+
+test('kos_secret_target_hides_with_no_error', function()
+	local restore = S.install()
+	for _, opts in ipairs({ { saftui = true }, { saftui = true, noEnemyName = true } }) do
+		world(opts)
+		restore = S.install()
+		local kos = Spy.KoSButton
+		target({ name = 'Foe', player = true, enemy = true })
+		check(kos:IsShown(), 'readable: shown')
+		target({ name = 'Foe', player = true, enemy = S.secret('hostility') })
+		check(not kos:IsShown(), 'secret hostility: hidden')
+		target({ name = S.secret('name'), player = true, enemy = true })
+		check(not kos:IsShown(), 'secret name: hidden')
+		target({ name = 'Foe', player = S.secret('kind'), enemy = true })
+		check(not kos:IsShown(), 'secret kind: hidden')
+		eq(#take_errors(), 0, 'no error')
+	end
+	restore()
+end)
+
+test('kos_colors_repaint_icon', function()
+	world({ saftui = true })
+	local icon = Spy.KoSButton.Icon
+	target({ name = 'Foe', player = true, enemy = true })
+	Spy:ToggleKOSPlayer(true, 'Foe')
+	icon:SetVertexColor(1, 1, 1)
+	SP:OnColorsChanged('text')
+	local d = { st:Color('text', 'danger'):GetRGB() }
+	check(same(rgb(icon), d[1], d[2], d[3]), 'a text color change repaints')
+	icon:SetVertexColor(1, 1, 1)
+	SP:OnColorsChanged('theme')
+	check(same(rgb(icon), 1, 1, 1), 'another group leaves it')
+	eq(#take_errors(), 0)
+end)
+
+test('kos_missing_pieces_skipped', function()
+	world({ saftui = true, noToggle = true })
+	target({ name = 'Foe', player = true, enemy = true })
+	check(Spy.KoSButton:IsShown(), 'works without ToggleKOSPlayer')
+	eq(#take_errors(), 0)
+	world({ renamed = true })
 	eq(#take_errors(), 0)
 end)
