@@ -1,6 +1,6 @@
 # SaftUI talent plan: a leveling order beside the talent window
 
-Date: 2026-11-22. Status: draft for the owner's review. Lines marked "My call" are the controller's, for the owner to check.
+Date: 2026-11-22. Status: draft for the owner's review (revised 2026-11-22 with the owner's answers on the side, collapsing and a movable window). Lines marked "My call" are the controller's, for the owner to check.
 
 Mockups: the "Talent Leveling Plan" board (https://claude.ai/artifact/KQy7Hvy2WL3PJPJ1WnMWp2), option A.
 
@@ -73,9 +73,9 @@ The owner picked A ("I really like A").
 - A SaftUI panel (Theme and Background like SaftUI's other windows) as tall as the talent window, on its right edge, about 250 wide (**My call**). Title "Leveling plan", the plan's name as a select (the plans for this class, plus New plan), and the count of steps learned out of the plan's steps ("18/51").
 - Below the title, the rows, scrolling. A row: level (tabular), the talent's icon, the name in the talent color, and "R2" when the node has more than one rank. A phase header: color dot, name, its level range.
 - Footer buttons: **Plan** (planning mode on and off), **Import**, **Phases** (add a phase at the selected row), and a dots menu with Rename, Duplicate, Delete plan, and Clear steps.
-- A collapse button on the talent window's title bar (a SaftUI button anchored there) hides and shows the panel; the choice is saved (**My call**).
+- **Collapsible** (the owner, 2026-11-22: "lets make that list collapsible"). A collapse arrow on the panel's title folds it to a narrow strip on the same side, as tall as the title bar, that shows only the waiting step ("27 Improved Ghost Wolf R2") and an expand arrow (**My call** on the strip's content). The state is saved per character (**My call**).
 - The panel shows only while the Talents tab shows and the window isn't inspecting.
-- If the panel would run off the right edge of the screen, it docks to the window's left edge instead (**My call**).
+- **Side** (the owner, 2026-11-22: "put it to the right or left depending on the position of the talent frame"). The panel docks to whichever side of the talent window has more room on screen, decided each time the window shows and each time it is dropped after a drag. When neither side has room for the whole panel, it takes the side with more room and the screen clamp pushes it over the window's edge.
 
 ### Row states
 
@@ -129,7 +129,11 @@ Computed from the live ranks, not from the character's level alone, so a player 
 
 ### Settings
 
-A "Talent plan" page in `/sui` under Misc (**My call**): Enable (default on), Dim talents not in the plan (default on), Dock side (Auto, Right, Left).
+A "Talent plan" page in `/sui` under Misc (**My call**): Enable (default on), Dim talents not in the plan (default on).
+
+### A movable talent window
+
+The owner, 2026-11-22: "can we make the talent frame movable?". `PlayerSpellsFrame` joins the windows `SaftUI-Misc/movable.lua` already makes draggable (`SettingsPanel`, `AddonList`, `TransmogFrame`), with `addon = 'Blizzard_PlayerSpells'` since it loads on demand. It moves the way those do today: dragged by the mouse, clamped to the screen, and back in Blizzard's spot the next time it opens, since the game lays out its panels on each show (**My call**, to match the others; remembering the spot is a followup if wanted). The plan panel re-docks when the window is dropped. This part ships first and on its own, since it is one line in an existing list.
 
 ## Where it lives
 
