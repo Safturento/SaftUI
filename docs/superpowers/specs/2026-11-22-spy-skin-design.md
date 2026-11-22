@@ -21,6 +21,13 @@ Restyle, in SaftUI's look, every visible piece of Spy:
    icon buttons (Lucide icons, `st:AddStates` hover); the four resize grips as a quiet SaftUI
    grip; the rows (`Spy_MainWindow_Bar<n>`, a `StatusBar` per row) on SaftUI's flat bar
    texture with SaftUI's thin border. Spy keeps the class color it gives each bar.
+   Spy Forever's own extras (`Display.lua`) stay: the class icon at the start of a row is
+   cropped as SaftUI crops icons, and the KoS, guild and tag markers are left as they are.
+   Its **Border** setting (`WindowBorder`: classic, forever, none; `Spy:ApplyBorderStyle`)
+   is overridden while the skin is on: a post-hook on `ApplyBorderStyle` and
+   `ManageBarsDisplayed` clears the title bar's and the alert's backdrops again and hides the
+   gold `ForeverBorder` frame, and SaftUI's panel follows the rows shown (the window has no
+   backdrop of its own; its edge was the title bar's).
 2. **Alert popup** (`Spy_AlertWindow`): a SaftUI panel, the icon (a backdrop of an icon) cropped
    and framed as `st:SkinIcon` does, title, name and location texts in SaftUI's fonts. Spy's
    alert colors (KoS red, stealth, and so on) stay as the panel's border tint, so an alert
@@ -52,7 +59,10 @@ settings) are left as they are.
 
 ## Anti-goals
 
-- Breaking targeting from a row in combat. Rows are `SecureActionButtonTemplate` buttons
+- Breaking targeting from a row in combat. Spy Forever says the window itself is protected
+  once it holds secure buttons (`Widgets.lua`: "a window holding secure buttons is protected,
+  StartMoving is refused in combat"), so the skin never sizes or places `Spy_MainWindow`
+  either; SaftUI's panel is a child anchored to it. Rows are `SecureActionButtonTemplate` buttons
   (`SpySecureActionButtonTemplate`). The skin never sizes, places, shows, hides or reparents
   a row or anything anchored to one, and never `SetScript`s it. It only restyles the
   StatusBar and font strings inside, and those writes are not protected.
@@ -108,7 +118,10 @@ settings) are left as they are.
 
 ## Source note
 
-Spy Forever's code is not public (CurseForge, all rights reserved). The design is built on
-the public TBC fork Spy-KOS-Sync 2.0.9 (github.com/Superduper09/Spy-KOS-Sync), which shares
-Spy 1.3.x's frame code. The owner's installed copy should be read before the build to
-confirm the frame names above.
+Spy Forever's code is not public (CurseForge, all rights reserved). This design was checked
+against the owner's installed copy, **Spy 1.3.8-forever28** (`E:\Games\World of
+Warcraft\_forever_\Interface\AddOns\Spy`, read 2026-11-22): `Widgets.lua`,
+`MainWindow.lua`, `Display.lua`, `SpyStats.xml`, `Colors.lua`. Test fixtures model those
+frames; no Spy code is copied into the repo. Also confirmed: SaftUI's oUF
+(`Libraries/oUF/blizzard.lua`, `handleFrame`) unregisters `TargetFrame`'s events and sets it
+`alwaysBlocked`, which is why Spy's KoS button never shows with SaftUI's unit frames.
