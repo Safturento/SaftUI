@@ -11,10 +11,12 @@ local TP = st:GetModule('TalentPlan')
 	no config of its own is read through the active config's tree with every rank
 	0 and no level: the plan shows every step as upcoming.
 
-	`staged` is the rank in the tree now (ranksPurchased, which counts changes
-	not yet committed) and `committed` the rank before them. The game doesn't say
-	the committed rank, so a snapshot is kept of each node's ranksPurchased on
-	every read of a node with no staged change.
+	`staged` is the rank in the tree now, changes not yet committed counted
+	(currentRank, the number Blizzard's button shows; ranksPurchased without it),
+	and `committed` the rank before them (activeRank, what Blizzard's IsMaxed
+	reads). Without an activeRank, a snapshot is kept of each node's rank on
+	every read of a node with no staged change. (ranksPurchased once counted a
+	point the window didn't show: "1 point off plan" in a talent with none.)
 
 	tree.shape is the tree's shape for the plan's rules (simulate.lua): groups
 	(the tree's displayed groups by order), budget (51: one point a level from
@@ -36,7 +38,15 @@ local snapshots = {}
 
 function D.ResetSnapshots() snapshots = {} end
 
--- stagedKind is nil, 'purchase' or 'refund'; known is the snapshot, if any.
+-- The rank the talent window shows, staged changes counted: currentRank, as
+-- Blizzard's button draws (TalentButtonSpend's rankShown), else ranksPurchased.
+function D.StagedRank(info)
+	if type(info.currentRank) == 'number' then return info.currentRank end
+	return info.ranksPurchased or 0
+end
+
+-- The committed rank when the game gives no activeRank: stagedKind is nil,
+-- 'purchase' or 'refund'; known is the snapshot, if any.
 function D.CommittedRank(purchased, stagedKind, known)
 	if stagedKind == nil then return purchased end
 	if known ~= nil then return known end
@@ -153,7 +163,7 @@ function D.Read(specGroup)
 				group = GroupOf(info, listed), gates = gates, parents = parents, plannable = false, posY = info.posY }
 			order[#order + 1] = nodeID
 			edges[nodeID] = info.visibleEdges
-			tree.real[nodeID] = { rank = info.ranksPurchased or 0, isAvailable = info.isAvailable,
+			tree.real[nodeID] = { rank = D.StagedRank(info), isAvailable = info.isAvailable,
 				meetsEdgeRequirements = info.meetsEdgeRequirements }
 		end
 		if info and info.isVisible and not info.subTreeID and info.entryIDs and #info.entryIDs == 1 then
@@ -168,10 +178,15 @@ function D.Read(specGroup)
 				local maxRanks = info.maxRanks or entry.maxRanks or 1
 				local committed, staged = 0, 0
 				if configID then
-					staged = info.ranksPurchased or 0
-					local kind = purchases[nodeID] and 'purchase' or refunds[nodeID] and 'refund' or nil
-					if kind == nil then snapshots[configID][nodeID] = staged end
-					committed = D.CommittedRank(staged, kind, snapshots[configID][nodeID])
+					staged = D.StagedRank(info)
+					if type(info.activeRank) == 'number' then
+						-- the game's own committed rank (Blizzard's IsMaxed reads it)
+						committed = info.activeRank
+					else
+						local kind = purchases[nodeID] and 'purchase' or refunds[nodeID] and 'refund' or nil
+						if kind == nil then snapshots[configID][nodeID] = staged end
+						committed = D.CommittedRank(staged, kind, snapshots[configID][nodeID])
+					end
 				end
 				local block
 				if staged < maxRanks then
