@@ -159,3 +159,19 @@ test('row gates come from the rows, 5 points a row in the spec, whatever the con
 	eq(shape.nodes[SH.ID['Spirit Weapons']].row, 3, 'an empty row between')
 	eq(shape.nodes[SH.ID['Spirit Weapons']].gates[1].required, 15)
 end)
+
+test("a rank is the window's: currentRank staged, activeRank committed, never ranksPurchased past them", function()
+	SH.install()
+	local info = stub.traits.nodes[1001][SH.ID['Thundering Strikes']]
+	-- the game counts a purchase the window doesn't show: the window's numbers win
+	info.ranksPurchased, info.currentRank, info.activeRank = 1, 0, 0
+	local n = D.Read(1).nodes[SH.ID['Thundering Strikes']]
+	eq(n.staged, 0); eq(n.committed, 0)
+	-- a staged purchase on top of two learned ranks
+	info.ranksPurchased, info.currentRank, info.activeRank = 3, 3, 2
+	n = D.Read(1).nodes[SH.ID['Thundering Strikes']]
+	eq(n.staged, 3); eq(n.committed, 2)
+	-- without them, ranksPurchased as before
+	info.currentRank, info.activeRank = nil, nil
+	eq(D.Read(1).nodes[SH.ID['Thundering Strikes']].staged, 3)
+end)
