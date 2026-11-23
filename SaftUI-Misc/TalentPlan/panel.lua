@@ -481,6 +481,8 @@ function TP:DrawPanel(view)
 		local frame = Row(panel, i).frame
 		FillRow(frame, rows[i], view.tree.nodes[rows[i].nodeID], view.sim and view.sim.steps[rows[i].index])
 		PlaceAt(frame, panel.content, i)
+		-- the order changes only while planning: the handle shows only then
+		frame.handle:SetShown(self.planning and true or false)
 		frame:Show()
 		panel.entries[i] = { frame = frame, index = i }
 	end
@@ -695,10 +697,11 @@ function TP:DropAllowed(drag, place)
 	return drag.ok, drag.reason
 end
 
--- A press on a handle. Only while the panel shows a plan (TP.view can be
--- stale while it is hidden).
+-- A press on a handle. Only while planning, and while the panel shows a plan
+-- (TP.view can be stale while it is hidden).
 function TP:StartDrag(pos)
 	local w, panel, view = self.dragWidget, self.panel, self.view
+	if not self.planning then return end
 	if not (w and panel and panel:IsShown() and view and view.plan) or w.drag then return end
 	local record = panel.entries[pos]
 	if not record then return end
