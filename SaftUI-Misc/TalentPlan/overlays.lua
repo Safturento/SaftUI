@@ -32,6 +32,13 @@ TP.overlays = records
 local LINE = 2
 local LEVEL = { DIM = 4, GLOW = 5, LIGHT = 6, CATCHER = 10 }
 
+-- Is the node lit: lit is one node ID, or a set of them (the off plan line).
+local function IsLit(lit, nodeID)
+	if lit == nil or nodeID == nil then return false end
+	if type(lit) == 'table' then return lit[nodeID] == true end
+	return lit == nodeID
+end
+
 local function Edges(frame)
 	local list = {}
 	local function edge(p1, p2, w, h)
@@ -278,7 +285,7 @@ function TP:DrawOverlays(view)
 		if nodes[rec.nodeID] then
 			rec.dim:SetShown(dimOn and M.PlannedRanks(plan, rec.nodeID) == 0 or false)
 			rec.glow:SetShown(waiting ~= nil and waiting.nodeID == rec.nodeID)
-			rec.light:SetShown(self.lit ~= nil and self.lit == rec.nodeID)
+			rec.light:SetShown(IsLit(self.lit, rec.nodeID))
 		else
 			rec.dim:Hide()
 			rec.glow:Hide()
@@ -396,11 +403,28 @@ function TP:HideOverlays()
 	self:QueueFaces()
 end
 
+-- Light a node, or a set { [nodeID] = true }, or nothing (nil).
 function TP:Light(nodeID)
 	self.lit = nodeID
 	for _, rec in pairs(records) do
-		rec.light:SetShown(nodeID ~= nil and rec.nodeID == nodeID and self.view ~= nil)
+		rec.light:SetShown(IsLit(nodeID, rec.nodeID) and self.view ~= nil)
 	end
+end
+
+-- The off plan line's tooltip: each talent learned past the plan and by how
+-- many points, and a light on each on the tree.
+function TP:ShowOffPlan(owner)
+	local list = self.offList or {}
+	if #list == 0 then return end
+	GameTooltip:SetOwner(owner, 'ANCHOR_TOP')
+	GameTooltip:AddLine('Learned, not in the plan')
+	local set = {}
+	for _, e in ipairs(list) do
+		set[e.nodeID] = true
+		GameTooltip:AddDoubleLine(e.name, e.extra == 1 and '1 point' or ('%d points'):format(e.extra), 1, 1, 1, 1, 1, 1)
+	end
+	GameTooltip:Show()
+	self:Light(set)
 end
 
 function TP:SetPlanning(on)

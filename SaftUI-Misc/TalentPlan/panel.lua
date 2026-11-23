@@ -332,6 +332,16 @@ function TP:BuildPanel()
 	panel.off:SetJustifyH('LEFT')
 	panel.off:SetPoint('BOTTOMLEFT', footer, 'TOPLEFT', PAD + 2, 2)
 	panel.off:Hide()
+	-- under the mouse, the line names the talents and lights them on the tree
+	panel.offHit = CreateFrame('Frame', nil, panel)
+	panel.offHit:SetAllPoints(panel.off)
+	panel.offHit:EnableMouse(true)
+	panel.offHit:Hide()
+	panel.offHit:SetScript('OnEnter', function(self) TP:ShowOffPlan(self) end)
+	panel.offHit:SetScript('OnLeave', function(self)
+		if GameTooltip:IsOwned(self) then GameTooltip:Hide() end
+		TP:Light(nil)
+	end)
 
 	-- the rows
 	local scroll = st:CreateScrollFrame(panel)
@@ -490,9 +500,12 @@ function TP:DrawPanel(view)
 	panel.scroll:SetContentSize(panel.contentWidth, math.max(1, count * L.ROW_HEIGHT))
 	panel.empty:SetShown(not plan and not self:IsCollapsed())
 
-	local off = plan and M.OffPlan(plan, view.tree.nodes) or 0
+	local offList, off = {}, 0
+	if plan then offList, off = M.OffPlanNodes(plan, view.tree.nodes) end
+	self.offList = offList
 	panel.off:SetText(off == 1 and '1 point off plan' or ('%d points off plan'):format(off))
 	panel.off:SetShown(off > 0 and not self:IsCollapsed())
+	panel.offHit:SetShown(panel.off:IsShown())
 
 	self:PlaceSelection()
 	self:ApplyCollapsed()
