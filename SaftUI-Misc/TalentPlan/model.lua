@@ -127,12 +127,23 @@ function M.States(plan, nodes, level)
 end
 
 -- Ranks taken beyond what the plan wants, summed over the nodes.
-function M.OffPlan(plan, nodes)
-	local n = 0
+-- The talents with learned ranks the plan doesn't have: { { nodeID, name,
+-- extra } }, by name, and the points off plan in all.
+function M.OffPlanNodes(plan, nodes)
+	local list, n = {}, 0
 	for nodeID, node in pairs(nodes) do
-		n = n + math.max(0, (node.committed or 0) - M.PlannedRanks(plan, nodeID))
+		local extra = math.max(0, (node.committed or 0) - M.PlannedRanks(plan, nodeID))
+		if extra > 0 then
+			list[#list + 1] = { nodeID = nodeID, name = node.name or tostring(nodeID), extra = extra }
+			n = n + extra
+		end
 	end
-	return n
+	table.sort(list, function(a, b) return a.name < b.name end)
+	return list, n
+end
+
+function M.OffPlan(plan, nodes)
+	return select(2, M.OffPlanNodes(plan, nodes))
 end
 
 -- base, then base .. ' 2', ' 3', ... ; names is a set of names in use.

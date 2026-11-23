@@ -319,6 +319,23 @@ test('off-plan line', function()
 	flurry.ranksPurchased = 2
 	TP:Refresh()
 	eq(TP.panel.off:GetText(), '2 points off plan')
+	-- under the mouse it names the talent and lights it on the tree
+	check(TP.panel.offHit:IsShown(), 'the line takes the mouse')
+	stub.fire_script(TP.panel.offHit, 'OnEnter')
+	check(GameTooltip:IsShown() and GameTooltip:IsOwned(TP.panel.offHit), 'a tooltip')
+	local texts = table.concat(stub.state(GameTooltip).texts, '|')
+	check(texts:find('Tidal Focus', 1, true), 'names the talent: ' .. texts)
+	local rights = {}
+	for _, r in pairs(stub.state(GameTooltip).rights) do rights[#rights + 1] = r end
+	eq(table.concat(rights, '|'), '2 points', 'and its points')
+	local lit
+	for _, rec in pairs(TP.overlays) do
+		if rec.nodeID == SH.ID['Tidal Focus'] then lit = rec.light:IsShown() end
+	end
+	check(lit, 'the talent is lit on the tree')
+	stub.fire_script(TP.panel.offHit, 'OnLeave')
+	check(not GameTooltip:IsShown(), 'the tooltip goes')
+	for _, rec in pairs(TP.overlays) do check(not rec.light:IsShown(), 'no light left') end
 	clean()
 end)
 
