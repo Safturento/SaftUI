@@ -117,8 +117,11 @@ end
 local TWELVE = { ['Thundering Strikes'] = 5, ['Mental Dexterity'] = 3, ['Ancestral Knowledge'] = 2,
 	['Shamanistic Focus'] = 1, ['Elemental Weapons'] = 1 }
 
+-- The window open in planning mode: a plan's order changes only while planning.
 local function open()
 	PSF.open()
+	stub.run_timers()
+	TP:SetPlanning(true)
 	stub.run_timers()
 end
 
@@ -256,6 +259,8 @@ test('a drag held while the panel hides ends with no move, and a new drag works'
 	stub.mouse_buttons.LeftButton = nil
 	stub.fire_script(entry(1).handle, 'OnMouseUp', 'LeftButton')
 	eq(table.concat(plan.steps, ','), before, 'the release moves nothing')
+	TP:SetPlanning(true) -- the hide ended planning too
+	stub.run_timers()
 	drag(1, entry(6), true) -- the first five steps are one talent, so go past them
 	check(table.concat(plan.steps, ',') ~= before, 'a new drag works')
 	clean()
@@ -288,5 +293,24 @@ test("a drop the tree's rules refuse changes nothing, says why, and its line sho
 	drag(2, entry(4), true)
 	eq(table.concat(plan.steps, ','), before, 'the same talent: the order reads the same')
 	stub.run_timers()
+	clean()
+end)
+
+test('outside planning mode the handles hide and a press on one starts no drag', function()
+	world()
+	local plan = plan20()
+	PSF.open()
+	stub.run_timers()
+	check(not entry(1).handle:IsShown(), 'no handle')
+	local before = table.concat(plan.steps, ',')
+	drag(1, entry(4), true)
+	check(TP.dragWidget == nil or TP.dragWidget.drag == nil, 'no drag')
+	eq(table.concat(plan.steps, ','), before, 'the order is as it was')
+	TP:SetPlanning(true)
+	stub.run_timers()
+	check(entry(1).handle:IsShown(), 'planning: the handles show')
+	TP:SetPlanning(false)
+	stub.run_timers()
+	check(not entry(1).handle:IsShown(), 'and hide again')
 	clean()
 end)
