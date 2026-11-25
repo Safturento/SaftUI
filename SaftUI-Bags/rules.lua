@@ -25,8 +25,9 @@ local INV = st:GetModule('Inventory')
 	params, a group of an unknown op or with no items table, or a rule that isn't
 	a table is UNREADABLE: it matches nothing, negated or not, and never errors.
 	So is a block with nothing set yet: a list block (quality, slot, binding,
-	expansion, items, subclass) with nothing picked, a level block with no
-	number, a yes/no block with neither. A new block of those types starts that
+	expansion, items, subclass) with nothing picked, a group block with no
+	group (or one no group has), a level block with no number, a yes/no block
+	with neither. A new block of those types starts that
 	way (R.BLOCKS' new), so no block matches everything as it is made.
 	An OR skips its unreadable children: OR(unreadable, X) is X, and an OR with
 	no readable child (empty, or all unreadable) is unreadable. An AND with any
@@ -275,6 +276,20 @@ describers.items = function(node)
 	return 'Item is one of ' .. n .. (n == 1 and ' item' or ' items')
 end
 
+-- An item group (itemgroups.lua): the set is this client's, taken once here.
+-- A group id that isn't a string, or that no group has, can't be read.
+compilers.group = function(node)
+	local IG = INV.ItemGroups
+	if not IG or not IG.Label(node.group) then return nil end
+	local set = IG.Set(node.group)
+	return function(info) return info.itemID ~= nil and set[info.itemID] == true end
+end
+describers.group = function(node)
+	local IG = INV.ItemGroups
+	if node.group == nil then return 'Item group is (none)' end
+	return 'Item group is ' .. ((IG and IG.Label(node.group)) or tostring(node.group))
+end
+
 local function level_block(field)
 	return function(node)
 		local min, max = node.min, node.max
@@ -382,6 +397,7 @@ R.BLOCKS = {
 	{ id = 'reagent', label = 'Crafting reagent', new = function() return {} end },
 	{ id = 'vendorprice', label = 'Has vendor price', new = function() return {} end },
 	{ id = 'items', label = 'Item is one of', new = function() return { ids = {} } end },
+	{ id = 'group', label = 'Item group is', new = function() return {} end },
 	{ id = 'oldgear', label = 'Old gear for my level',
 		new = function() return { levels = 10, expansion = 9, share = 0.9 } end },
 	{ id = 'protected', label = 'Protected', new = function() return {} end },

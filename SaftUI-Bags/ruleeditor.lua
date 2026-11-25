@@ -47,7 +47,7 @@ local INV = st:GetModule('Inventory')
 	    captions, fields = { [name] = control } }
 	top is the row's from the editor's top, and height its lines times 26.
 	fields are named for the params they set: text and word; class and
-	subclasses; qualities, slots, states and expansions; mode, min and max;
+	subclasses; group; qualities, slots, states and expansions; mode, min and max;
 	value; ids and id; levels, expansion and share; note; and an add row's
 	addBlock and addGroup.
 
@@ -57,6 +57,7 @@ local INV = st:GetModule('Inventory')
 
 local R = INV.Rules
 local IC = INV.ItemClasses
+local IG = INV.ItemGroups
 local W, OB, OM = st.OptionsWidgets, st.OptionsBody, st.OptionsModel
 
 local floor, max = math.floor, math.max
@@ -218,6 +219,12 @@ local function SubclassEntries(class)
 	local out = {}
 	if not is_num(class) then return out end
 	for _, sub in ipairs(IC.Subclasses(class)) do out[#out + 1] = { key = sub.id, label = sub.name } end
+	return out
+end
+
+local function GroupEntries()
+	local out = {}
+	for _, group in ipairs(IG.Groups()) do out[#out + 1] = { key = group.id, label = group.label } end
 	return out
 end
 
@@ -598,6 +605,22 @@ local function ClassField(lay, node)
 end
 
 FIELDS.class = ClassField
+
+-- The item group, picked from a list.
+FIELDS.group = function(lay, node)
+	local w, path = lay.w, lay.path
+	-- A group this version doesn't know (a later version's) shows its id, as the describer does.
+	local text = IG.Label(node.group) or (type(node.group) == 'string' and node.group) or 'Pick a group'
+	lay:Field('group', FIELD_WIDTH, text, function(field)
+		local now = NodeNow(w, path)
+		W.OpenList(field, GroupEntries(), now and now.group, function(group)
+			EditNode(w, path, function(n)
+				if n.group == group then return false end
+				n.group = group
+			end)
+		end)
+	end)
+end
 
 FIELDS.subclass = function(lay, node)
 	local w, path = lay.w, lay.path

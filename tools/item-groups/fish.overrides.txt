@@ -1,0 +1,15 @@
+# Hand corrections to the Fish item group. See tools/item-groups.cjs.
+#   +<itemID> <name>   add an item the rules miss
+#   -<itemID> <name>   drop an item the rules pick (always wins)
+
+# Cooking reagent, but not a fish.
+-5468 Soft Frenzy Flesh
+
+# Cooking reagent (oil), not a fish.
+-6370 Blackmouth Oil
+
+# Seasonal cooking reagent, not a fish.
+-273295 Seasonal Fish Steaks
+
+# A fish with no fishy icon and not a reagent of any recipe.
++13757 Lightning Eel

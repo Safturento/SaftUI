@@ -40,7 +40,7 @@ Enum.AccountCurrencyTransferResult = Enum.AccountCurrencyTransferResult
 load_saftui('SaftUI-Core/Utilities/utilities.lua')
 load_saftui('SaftUI-Bags/config.lua')
 apply_defaults()
-for _, file in ipairs({ 'inventory', 'itemclasses', 'rules', 'currencies', 'categorydefaults', 'categories', 'category', 'views',
+for _, file in ipairs({ 'inventory', 'itemclasses', 'itemgroups', 'rules', 'currencies', 'categorydefaults', 'categories', 'category', 'views',
 	'container', 'header', 'layout', 'search', 'containers/warbandbank', 'slot', 'movers', 'options' }) do
 	load_saftui('SaftUI-Bags/' .. file .. '.lua')
 end

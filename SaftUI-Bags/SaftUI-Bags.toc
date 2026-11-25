@@ -7,6 +7,8 @@
 config.lua
 inventory.lua
 itemclasses.lua
+itemgroups_data.lua
+itemgroups.lua
 rules.lua
 currencies.lua
 categorydefaults.lua

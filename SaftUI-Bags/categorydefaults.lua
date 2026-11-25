@@ -104,6 +104,8 @@ local DEFAULTS = {
 		classEnum('Battlepet')) },
 	{ id = 'Housing', rule = OR(class('Housing')) },
 	{ id = 'Mounts', rule = OR(subclass('Mount')) },
+	-- Fish goes before the food, which would take it by its subclass.
+	{ id = 'Fish', rule = OR({ block = 'group', group = 'fish' }) },
 	{ id = 'Flasks/Potions/Food', rule = OR(subclass('Flasks & Phials', 'Potions', 'Food & Drink')) },
 	{ id = 'Gems/Enchants', rule = OR(class('Gem'), subclass('Item Enhancement')) },
 	{ id = 'Consumables', rule = OR(class('Consumable')) },
