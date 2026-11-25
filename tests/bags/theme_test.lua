@@ -64,6 +64,7 @@ local function fresh(client)
 		or { MaxQuantity = 1, NoValidSourceCharacter = 2, CannotUseCurrency = 3 }
 	load_saftui('SaftUI-Bags/inventory.lua')
 	load_saftui('SaftUI-Bags/itemclasses.lua')
+	load_saftui('SaftUI-Bags/itemgroups.lua')
 	load_saftui('SaftUI-Bags/rules.lua')
 	load_saftui('SaftUI-Bags/currencies.lua')
 	load_saftui('SaftUI-Bags/categorydefaults.lua')

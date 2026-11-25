@@ -445,7 +445,7 @@ test('tree helpers and labels', function()
 	local ids = {}
 	for i, t in ipairs(R.BLOCKS) do ids[i] = t.id; eq(type(t.label), 'string', t.id .. ' label'); eq(type(t.new()), 'table', t.id .. ' new') end
 	eq(table.concat(ids, ','),
-		'tooltip,name,nameis,class,subclass,quality,ilvl,reqlevel,slot,binding,expansion,reagent,vendorprice,items,oldgear,protected',
+		'tooltip,name,nameis,class,subclass,quality,ilvl,reqlevel,slot,binding,expansion,reagent,vendorprice,items,group,oldgear,protected',
 		'the block picker order')
 	eq(R.BlockType('ilvl').label, 'Item level', 'BlockType'); eq(R.BlockType('nope'), nil, 'unknown BlockType')
 	_G.EXPANSION_NAME3 = 'Wrath'

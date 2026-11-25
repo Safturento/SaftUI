@@ -48,7 +48,7 @@ function W.fresh(client, core)
 	apply_defaults()
 	-- slot.lua post-hooks Blizzard's stack split button at load.
 	_G.StackSplitFrameOkay_Click = function() end
-	for _, file in ipairs({ 'inventory', 'itemclasses', 'rules', 'categorydefaults', 'categories', 'tooltipscanner', 'category',
+	for _, file in ipairs({ 'inventory', 'itemclasses', 'itemgroups', 'rules', 'categorydefaults', 'categories', 'tooltipscanner', 'category',
 		'slot', 'views' }) do
 		load_saftui('SaftUI-Bags/' .. file .. '.lua')
 	end

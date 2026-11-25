@@ -34,7 +34,7 @@ C_Item = {
 
 load_saftui('SaftUI-Bags/config.lua')
 apply_defaults()
-for _, file in ipairs({ 'inventory', 'itemclasses', 'rules', 'dragparts', 'ruleeditor' }) do
+for _, file in ipairs({ 'inventory', 'itemclasses', 'itemgroups', 'rules', 'dragparts', 'ruleeditor' }) do
 	load_saftui('SaftUI-Bags/' .. file .. '.lua')
 end
 local INV = st:GetModule('Inventory')
