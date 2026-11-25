@@ -473,6 +473,21 @@ test("each block type's fields set its params", function()
 	eq(ed.w.rows[1].fields.class.text:GetText(), 'Trade Goods', 'class: shows its name')
 	done(ed)
 
+	-- Item group is: Pick a group, a list of the groups.
+	ed, row, f = one(blk('group'))
+	eq(f.group.text:GetText(), 'Pick a group', 'group: none picked')
+	click(f.group)
+	eq(table.concat(list_labels(), ','), 'Fish', 'group: the groups')
+	pick('Fish')
+	eq(ed.stored.items[1].block, 'group', 'group: still a group block')
+	eq(ed.stored.items[1].group, 'fish', 'group: the id is stored')
+	eq(ed.w.rows[1].fields.group.text:GetText(), 'Fish', 'group: shows its label')
+	local sets = #ed.sets
+	click(ed.w.rows[1].fields.group)
+	pick('Fish')
+	eq(#ed.sets, sets, 'group: the same pick changes nothing')
+	done(ed)
+
 	-- Subclass is: the class, then a check list of its subclasses.
 	ed, row, f = one(blk('subclass', { subclasses = {} }))
 	eq(f.subclasses.text:GetText(), 'Pick subclasses', 'subclass: none picked')
