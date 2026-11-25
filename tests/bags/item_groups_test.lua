@@ -13,7 +13,6 @@ local function world(client, data)
 	INV = W.fresh(client)
 	INV.ItemGroupsData = data
 	R, IG = INV.Rules, INV.ItemGroups
-	INV.CategoryDefaults.Reset()
 	W.bag(0, 200, 'Backpack')
 	W.container('bag')
 	nextSlot = 0

@@ -26,8 +26,6 @@ local GROUPS = {
 	{ id = 'fish', label = 'Fish' },
 }
 
-local EMPTY = {}
-
 function IG.Groups()
 	return GROUPS
 end
@@ -44,5 +42,6 @@ function IG.Set(id)
 	local client = type(data) == 'table' and data[st.forever and 'forever' or 'retail']
 	local set = type(client) == 'table' and type(id) == 'string' and client[id]
 	if type(set) == 'table' then return set end
-	return EMPTY
+	-- A new table each time, so a caller that wrote to one couldn't fill every empty group.
+	return {}
 end

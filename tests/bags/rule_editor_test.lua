@@ -487,6 +487,9 @@ test("each block type's fields set its params", function()
 	pick('Fish')
 	eq(#ed.sets, sets, 'group: the same pick changes nothing')
 	done(ed)
+	ed, row, f = one(blk('group', { group = 'cooking' }))
+	eq(f.group.text:GetText(), 'cooking', 'group: an unknown group shows its id')
+	done(ed)
 
 	-- Subclass is: the class, then a check list of its subclasses.
 	ed, row, f = one(blk('subclass', { subclasses = {} }))

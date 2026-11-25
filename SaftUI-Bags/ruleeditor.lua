@@ -609,7 +609,9 @@ FIELDS.class = ClassField
 -- The item group, picked from a list.
 FIELDS.group = function(lay, node)
 	local w, path = lay.w, lay.path
-	lay:Field('group', FIELD_WIDTH, IG.Label(node.group) or 'Pick a group', function(field)
+	-- A group this version doesn't know (a later version's) shows its id, as the describer does.
+	local text = IG.Label(node.group) or (type(node.group) == 'string' and node.group) or 'Pick a group'
+	lay:Field('group', FIELD_WIDTH, text, function(field)
 		local now = NodeNow(w, path)
 		W.OpenList(field, GroupEntries(), now and now.group, function(group)
 			EditNode(w, path, function(n)
