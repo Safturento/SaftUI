@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-25 — Bag item groups: the next groups after Fish](#2026-11-25--bag-item-groups-the-next-groups-after-fish)
   - [2026-11-22 — Spy skin: in-game checks](#2026-11-22--spy-skin-in-game-checks)
   - [2026-11-22 — Spy skin: shared Skinning helpers](#2026-11-22--spy-skin-shared-skinning-helpers)
   - [2026-11-22 — Talent plan: remember the talent window's spot](#2026-11-22--talent-plan-remember-the-talent-windows-spot)
@@ -269,6 +270,20 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-25 — Bag item groups: the next groups after Fish
+
+**What:** More item groups for the bags' "Item group is" block, now that Fish is the proof: Cooking ingredients (meat, spices, eggs and the rest a Cooking recipe takes), mats per profession (one group each, Alchemy herbs, Blacksmithing ore and bars, Leatherworking leather and hides, Tailoring cloth, Enchanting dusts and essences, Engineering parts), fishing gear (poles, lures, bait, the fishing hats and lines), and trophy fish (the "17 Pound Catfish" kind, and the Bloated fish).
+
+**Why noticed:** The user wants useful categories in the bags, not Blizzard's scattered item classes. While designing the Fish group (2026-11-25), they chose to prove the idea on one group first and add the rest once Fish works well in game. The generator and the block were built so a new group is only data and a few rules in the generator, not new runtime code.
+
+**Anchors:** `docs/superpowers/specs/2026-11-25-bag-item-groups-fish-design.md` (Non-goals list these), `tools/item-groups.cjs` (where each group's selection rules go), `tools/item-groups/fish.overrides.txt` (the corrections file pattern, one per group), `SaftUI-Bags/itemgroups.lua` (`IG.Groups()`, the labels), `SaftUI-Bags/itemgroups_data.lua` (generated), `SaftUI-Bags/categorydefaults.lua` (a default per group, if one is wanted).
+
+**What's been considered:** The Fish selection is class + fish icon or word + used by a Cooking, Alchemy or Fishing recipe (or named `Raw `), minus a list of bad words, then a small overrides file; the list leans exclusive, since a wrong item in a category is worse than a missing one. Profession mats can come almost straight from `SpellReagents` joined to `SkillLineAbility` by profession (a reagent of that profession's recipes), but many items are reagents of several professions, so the groups overlap and the category order decides. Cooking ingredients overlap Fish (raw fish are Cooking reagents): the Cooking group should leave out the Fish group, or Fish must stay above it. Fishing gear has no reagent link; it needs item class and subclass (Fishing Poles, 2/20) plus names or spell effects for lures. Wowhead is out (its terms forbid scraping). Retail has no data yet; retail groups would need the same tables from a `wow` build and a second key in the data file.
+
+**Shape of work:** One spec and plan for the batch, then per group: its rules in the generator with a unit test, its overrides file, its label in `IG.Groups()`, a rerun, and (if wanted) a default category placed by the order rules. The runtime and editor need nothing new. Probably two or three small tasks, after the user has lived with Fish in game.
+
+**Open questions:** Which groups get a default category and which are only offered in the block? Where does each default sit in the order (before Trade Goods, surely, but relative to each other)? Should overlapping groups be exclusive (each item in one group) or overlapping, with the order deciding? Do trophy fish get their own group or a "Fishing" group with the gear?
 
 ### 2026-11-22 — Spy skin: in-game checks
 

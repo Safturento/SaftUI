@@ -1,7 +1,7 @@
 ---
 name: testing
 description: SaftUI's Lua test suite in tests/ - running it, writing tests, the WoW stub rules, and when tests are required
-last_updated: 2026-11-22
+last_updated: 2026-11-25
 covers:
   - 'tests/**'
 ---
@@ -20,6 +20,7 @@ covers:
 - A git worktree with no `tests/.venv` of its own uses the main checkout's (`<git common dir>/../tests/.venv`) when that exists, and makes its own only if neither does.
 - A file's loading, and each of its cases, may run 4 billion Lua instructions (the biggest unit today runs about 300 million, a few seconds), then the harness stops it with an error naming the file and case, so an endless loop fails instead of hanging the run.
 - **The limit does not follow coroutines.** Lua 5.1's `debug.sethook` is per coroutine, so code running inside a coroutine (a `coroutine.wrap` body, or anything resumed from a test) is not counted, and an endless loop there hangs the run instead of failing it. Keep a loop a test drives out of coroutines, or bound it by hand.
+- **The tools' tests.** `tests/tools/*.test.cjs` are Node tests of the asset and data tools (today `item_groups.test.cjs`, the item group generator's selection, overrides, CSV parsing and output), run with `node --test tests/tools/item_groups.test.cjs` (Node 24 takes files or globs, not a folder). `tests/run` doesn't run them; run them when you change a tool.
 - `tests/run --self-check` checks the runner itself: it runs each file in `tests/lib/runner_fixtures/` (no `_test` suffix, so discovery skips them) and asserts the passing one exits 0 and every broken one (a syntax error, no cases, a case with no checks, a failing check, an error in a case, an endless loop) exits 1 with its own failure text in the output and no Python traceback. It also runs the runner with a hidden `--crash-for-self-check=main`, `--crash-for-self-check=run_file` (serial, and in a worker) and `--crash-for-self-check=worker_death` (a worker that exits before running its file) and `--crash-for-self-check=worker_exit` (a worker that exits non-zero after sending its result): a crash before any file runs, one inside running a file, and a dead worker. It asserts each comes out as a crash (exit 70), not a pass or a caught failure. It asserts that `-j1` and `-j2` give the same report and exit status for all the fixtures, and that a bad `-j` value exits 2. A Python exception anywhere in the runner is a crash; a Lua error inside the harness is that file's failure (exit 1). Run it after touching `runner.py`, `harness.lua`'s `run_file` or `tests/run`; a new failure mode gets a fixture and a line in `FIXTURE_EXPECTED` in `runner.py` (exit status and expected output text). The scaled run has its own lines, `SCALED_EXPECTED` (a fixture, flags, `SAFTUI_TEST_SCALE`, exit status, text the output has and lacks): `scaled_ok.lua` in its rotation and under `--scales=all`, `scaled_fail_155.lua` failing at 1.55 only, and an unknown `SAFTUI_TEST_SCALE` exiting 2. The self-check runs with `SAFTUI_TEST_SCALE` taken out of the environment.
 
 | Path | What it is |
