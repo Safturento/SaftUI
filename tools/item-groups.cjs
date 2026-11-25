@@ -162,10 +162,8 @@ async function main() {
 	if (!build) {
 		if (args.from) throw new Error('--from needs --build (the build goes in the file header)')
 		const builds = JSON.parse(await fetchText('https://wago.tools/api/builds'))
-		const list = Array.isArray(builds) ? builds : Object.values(builds).flat()
-		const wowf = list.find(b => /^wowf/.test(b.product || '') || b.branch === 'wowf')
-			|| (builds.wowf && builds.wowf[0])
-		if (!wowf || !wowf.version) throw new Error('no wowf build found at wago.tools/api/builds')
+		const wowf = builds && Array.isArray(builds.wowf) ? builds.wowf[0] : undefined
+		if (!wowf || !wowf.version) throw new Error('wago.tools/api/builds has no wowf build (expected builds.wowf[0].version)')
 		build = wowf.version
 	}
 	const tables = {}
