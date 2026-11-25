@@ -740,9 +740,7 @@ test('filters.lua is gone, and nothing reads INV.filters', function()
 		'the data files in the TOC, in order')
 	for _, file in ipairs(files) do
 		local source = read_saftui_source('SaftUI-Bags/' .. file)
-		-- itemgroups_data.lua is generated (tools/item-groups.cjs) and committed
-		-- by the ticket that runs it; the TOC names it before that.
-		check(source ~= nil or file == 'itemgroups_data.lua', file .. ' exists')
+		check(source ~= nil, file .. ' exists')
 		if source then
 			for _, word in ipairs({ 'INV.filters', 'self.filters', 'AddFilter', 'AUTO_VENDOR_CATEGORIES',
 				'ItemRack', 'upgradeQualities', 'REAGENTBANK_CONTAINER', 'customItemLists', 'expacAbbreviations' }) do
