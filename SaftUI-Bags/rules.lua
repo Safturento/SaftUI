@@ -280,13 +280,14 @@ end
 -- A group id that isn't a string, or that no group has, can't be read.
 compilers.group = function(node)
 	local IG = INV.ItemGroups
-	if not IG.Label(node.group) then return nil end
+	if not IG or not IG.Label(node.group) then return nil end
 	local set = IG.Set(node.group)
 	return function(info) return info.itemID ~= nil and set[info.itemID] == true end
 end
 describers.group = function(node)
 	local IG = INV.ItemGroups
-	return 'Item group is ' .. (IG.Label(node.group) or tostring(node.group))
+	if node.group == nil then return 'Item group is (none)' end
+	return 'Item group is ' .. ((IG and IG.Label(node.group)) or tostring(node.group))
 end
 
 local function level_block(field)
