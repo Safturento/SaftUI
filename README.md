@@ -67,6 +67,7 @@ SaftUI sizes itself to your screen: it is laid out for a screen 1440 pixels high
 
 - Plain Lua and XML, with no build step. Edit, then `/reload` in game.
 - `tests/run` runs the Lua tests in `tests/`. They check SaftUI's logic on Lua 5.1 against stubbed WoW API, and the first run sets up `tests/.venv` with Python's lupa. They're for agents and development: changes are still checked in game, where BugSack is recommended for reading errors.
+- The bags' item groups (`SaftUI-Bags/itemgroups_data.lua`) are generated, not hand-written: `node tools/item-groups.cjs` rebuilds them from the latest WoW Forever build's game tables on wago.tools (Node 24, no packages to install; `--from <folder>` reads already-downloaded tables). Rerun it after a content patch. Its own tests run with `node --test tests/tools/item_groups.test.cjs`.
 - Blizzard's UI source for reference: [Gethe/wow-ui-source](https://github.com/Gethe/wow-ui-source), on the `forever` and `live` branches.
 - Agent and contributor conventions are in [`AGENTS.md`](AGENTS.md) and `.agents/`. Design specs, plans and the followups queue are in `docs/`.
 
