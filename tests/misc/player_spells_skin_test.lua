@@ -460,6 +460,55 @@ test('on: the spec tab\'s label follows the text: a lock for a locked tab, no ic
 	check(not label:IsShown(), 'ours hidden')
 end)
 
+-- A font object puts a text's alpha back: Blizzard's SetTabSelected sets the tab's
+-- normal font, and the button swaps in its highlight font under the mouse. The
+-- fixture's SetAlpha(1) stands in for that.
+test('on: the spec tab\'s own text stays faded after Blizzard sets its font again', function()
+	world('forever')
+	local tab = talents.TabSystem.tabs[1]
+	tab.Text:SetText('Primary |A:Talents-Checkmark-c60:15:20|a')
+	tab:SetTabSelected(true)
+	eq(tab.Text:GetAlpha(), 0)
+	tab.Text:SetAlpha(1) -- SetNormalFontObject in SetTabSelected
+	tab:SetTabSelected(false)
+	eq(tab.Text:GetAlpha(), 0, 'faded again after SetTabSelected')
+	tab.Text:SetAlpha(1) -- the highlight font under the mouse
+	local box = tab:GetChildren()
+	local onUpdate = box:GetScript('OnUpdate')
+	check(onUpdate, 'the box watches the text')
+	onUpdate(box, 0)
+	eq(tab.Text:GetAlpha(), 0, 'faded again before the frame is drawn')
+	-- the other tab systems' texts are never touched
+	window.TabSystem.tabs[1].Text:SetAlpha(1)
+	eq(window.TabSystem.tabs[1].Text:GetAlpha(), 1)
+	-- off: Blizzard's text back, and the box (and so its OnUpdate) hidden
+	T.theme('blizzard', function() SK:UpdateConfig() end)
+	eq(tab.Text:GetAlpha(), 1, 'Blizzard\'s text back')
+	check(not box:IsShown(), 'the box hidden, so it no longer runs')
+end)
+
+-- A see-through theme left the Activate button black over the spec art: the boxes
+-- are filled Solid, as st:SkinButton draws a button, unless the Skinning page's
+-- Background is Transparent.
+test('on: the buttons\' and tabs\' boxes are filled Solid under a see-through theme', function()
+	world('forever')
+	st.config.profile.theme.transparent = true
+	SK:UpdateConfig()
+	local function box_of(frame)
+		for _, kid in ipairs({ frame:GetChildren() }) do
+			if kid:GetFrameLevel() < frame:GetFrameLevel() then return kid end
+		end
+	end
+	for _, frame in ipairs({ talents.ActiveSpec.ActivateButton, talents.ApplyButton, talents.TabSystem.tabs[1] }) do
+		local _, _, _, a = box_of(frame):GetBackdropColor()
+		eq(a, 1, 'solid')
+	end
+	profile.skinning.background = 'transparent'
+	SK:UpdateConfig()
+	local _, _, _, a = box_of(talents.ActiveSpec.ActivateButton):GetBackdropColor()
+	check(a < 1, 'Transparent chosen on the Skinning page is kept')
+end)
+
 test('off: nothing is touched, hooked or made', function()
 	world('forever', { off = true })
 	local list = art()
