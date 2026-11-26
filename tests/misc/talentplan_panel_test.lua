@@ -718,8 +718,13 @@ test("Allocate points stages the plan's next points in order until the game refu
 		'the three steps after the twelve learned, in order')
 	check(printed[#printed]:find('Allocated 3 points. Press Apply Changes to learn them.', 1, true), printed[#printed])
 	-- again with none left: nothing bought
+	stub.traits.currency = { { traitCurrencyID = 800, quantity = 0, maxQuantity = 51, spent = 15 } }
 	eq(TP:Allocate(), 0)
-	check(printed[#printed]:find('No points to allocate.', 1, true))
+	check(printed[#printed]:find('No points allocated. No points left.', 1, true), printed[#printed])
+	-- points left, but the game refuses the next step: it is named
+	stub.traits.currency[1].quantity = 2
+	eq(TP:Allocate(), 0)
+	check(printed[#printed]:find("(level 25) can't be taken yet.", 1, true), printed[#printed])
 	-- in combat, or on the other spec's tab: refused before any purchase
 	points = 5
 	stub.in_combat = true

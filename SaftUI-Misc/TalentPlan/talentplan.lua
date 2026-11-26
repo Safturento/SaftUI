@@ -236,8 +236,22 @@ function TP:Allocate()
 		st:Print('Switch to this spec to allocate its points.')
 		return 'inactive'
 	end
-	local configID = C_ClassTalents.GetActiveConfigID()
-	if not configID then return 'inactive' end
+	-- the config the window shows and applies: Camelot's is the spec group's
+	-- combat config (its SetTab), as data.lua reads it
+	local talents = self:TalentsFrame()
+	local configID = talents and talents.GetConfigID and talents:GetConfigID()
+		or C_SpecializationInfo.GetCombatConfigIDForSpecGroup(group) or C_ClassTalents.GetActiveConfigID()
+	if not configID then
+		st:Print("The talent window isn't ready yet.")
+		return 'inactive'
+	end
+	-- while Apply's cast runs, or when the talents can't change here, the game's
+	-- own buttons don't buy either
+	if (talents and talents.IsCommitInProgress and talents:IsCommitInProgress())
+		or (C_ClassTalents.CanEditTalents and not C_ClassTalents.CanEditTalents()) then
+		st:Print("Talents can't change right now.")
+		return 'locked'
+	end
 	local want, count, stopped = {}, 0, nil
 	for i, nodeID in ipairs(plan.steps) do
 		want[nodeID] = (want[nodeID] or 0) + 1
@@ -250,11 +264,25 @@ function TP:Allocate()
 			count = count + 1
 		end
 	end
+	-- why it stopped: out of points, or the next step isn't allowed yet
+	local why
+	if stopped then
+		local currency = C_Traits.GetTreeCurrencyInfo and self.view and self.view.tree
+			and C_Traits.GetTreeCurrencyInfo(configID, self.view.tree.treeID, false)
+		local left = currency and currency[1] and currency[1].quantity
+		local node = self.view and self.view.tree and self.view.tree.nodes[plan.steps[stopped]]
+		if left == 0 then
+			why = 'No points left.'
+		elseif node then
+			why = ('%s (level %d) can\'t be taken yet.'):format(node.name, self.Model.Level(stopped))
+		end
+	end
 	if count == 0 then
-		st:Print(stopped and 'No points to allocate.' or 'Every step of the plan is allocated.')
+		st:Print(stopped and ('No points allocated. ' .. (why or '')) or 'Every step of the plan is allocated.')
 	else
 		st:Print(('Allocated %d %s. Press Apply Changes to learn %s.'):format(count,
-			count == 1 and 'point' or 'points', count == 1 and 'it' or 'them'))
+			count == 1 and 'point' or 'points', count == 1 and 'it' or 'them')
+			.. (stopped and why and why ~= 'No points left.' and (' Stopped: ' .. why) or ''))
 	end
 	self:QueueRefresh()
 	return count, stopped
