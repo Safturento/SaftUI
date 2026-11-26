@@ -47,7 +47,11 @@ local PS = SK:NewModule('Blizzard_PlayerSpellsSkin')
 	    at the bottom line and nothing runs past the window's edges. .TabSystem (the
 	    spec tabs) as tabs, whose word is SaftUI's own label centered on the tab,
 	    with the check or lock (an inline atlas in Blizzard's text, read and faded)
-	    as a texture after it; .SearchBox
+	    as a texture after it. A font object puts a text's alpha back (Blizzard's
+	    SetTabSelected sets the tab's normal font, the button swaps in its highlight
+	    font under the mouse), so Blizzard's text is faded again after each of the
+	    tab's hooks and on every frame its box shows (an OnUpdate of SaftUI's box
+	    that only reads the alpha, and sets it to 0 when a font put it back); .SearchBox
 	    as an edit box (the border's 20 high, centered in the template's 30 high box);
 	    .ClassCurrencyDisplay (Unspent talents) with its .Border faded, a box of
 	    SaftUI's from the label's left to the search box's right edge (an edge
@@ -62,6 +66,9 @@ local PS = SK:NewModule('Blizzard_PlayerSpellsSkin')
 	  Buttons and the edit box are drawn as the color picker's are
 	  (Blizzard_ColorPicker.lua): the art faded by alpha, a box of SaftUI's (a child
 	  one level under the button) with the interaction states, the Skinning font.
+	  Every box is filled Solid, as st:SkinButton draws a button (the kit's raised
+	  fill), unless the Skinning page's Background is Transparent: a see-through
+	  theme left the Activate button black over the spec art.
 	  A tab is a 'tab' state frame, selected as the tab is (a post-hook on its own
 	  SetTabSelected).
 
@@ -136,6 +143,14 @@ local function Profile() return st.config.profile end
 local function Look()
 	local config = Profile().skinning
 	return config.theme, config.background
+end
+
+-- A box's Background: Solid, as st:SkinButton draws a button, so a button or tab
+-- is the same fill over the spec art as over the panel whatever the theme's
+-- transparency; Transparent chosen on the Skinning page is kept.
+local function BoxBackground(background)
+	if background == 'transparent' then return background end
+	return 'solid'
 end
 
 -- Whether the window wears SaftUI's look now: the toggle on and the Skinning
@@ -253,6 +268,15 @@ local function GetBox(target, shape, opts)
 		entry.icon:SetPoint('LEFT', entry.label, 'RIGHT', LABEL_GAP, 0)
 		entry.icon:Hide()
 		states.text = entry.label
+		-- A font object puts Blizzard's text's alpha back (SetTabSelected's normal
+		-- font, the highlight font under the mouse): faded again before each frame
+		-- is drawn, while the box shows (only while the skin is on). Reads the
+		-- alpha; sets it only when a font put it back.
+		box:SetScript('OnUpdate', function()
+			local text = target.Text
+			local alpha = text and text.GetAlpha and text:GetAlpha()
+			if alpha and not issecretvalue(alpha) and alpha > 0 then text:SetAlpha(0) end
+		end)
 	end
 	if shape == 'tab' then
 		st:AddStates(box, 'tab', states)
@@ -271,7 +295,7 @@ local function DrawBox(target, active, shape, kind, place, opts)
 		entry = GetBox(target, shape, opts)
 	end
 	local theme, background = Look()
-	st:SetTemplate(entry.box, active and theme or 'none', background, kind)
+	st:SetTemplate(entry.box, active and theme or 'none', BoxBackground(background), kind)
 	entry.box:SetShown(active)
 	if active then
 		entry.box:ClearAllPoints()
@@ -390,6 +414,8 @@ local function SyncLabel(tab)
 	local on = Active()
 	local word, atlas, w, h = '', nil, nil, nil
 	if on and tab.Text and tab.Text.GetText then word, atlas, w, h = SplitTabText(tab.Text:GetText()) end
+	-- Blizzard's own update set the tab's font, which put its text's alpha back
+	if on then Fade(tab.Text, true) end
 	local font = SkinFont()
 	if font then entry.label:SetFontObject(font) end
 	entry.label:SetText(word)
