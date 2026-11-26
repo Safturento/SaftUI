@@ -426,7 +426,7 @@ test('the dots menu renames, duplicates, deletes and clears', function()
 	open()
 	stub.click(TP.panel.dots, 'LeftButton')
 	local menu = opened[#opened]
-	eq(texts(menu), 'Rename|Duplicate|Delete plan|Clear steps')
+	eq(texts(menu), 'Allocate points|-|Rename|Duplicate|Delete plan|Clear steps')
 
 	choose(item(menu, 'Rename'))
 	local dialog = W.GetDialogFrames()
@@ -691,4 +691,44 @@ test('an out-of-order step shows blocked with its reason', function()
 	TP:Refresh()
 	eq(row(6).tag:GetText(), 'R1')
 	clean()
+end)
+
+test("Allocate points stages the plan's next points in order until the game refuses, and applies nothing", function()
+	world({ tree = { ranks = TWELVE } })
+	local plan = guide_plan()
+	open()
+	-- a game with three points to spend: each purchase stages one rank
+	local points, bought = 3, {}
+	local real = C_Traits.PurchaseRank
+	C_Traits.PurchaseRank = function(configID, nodeID)
+		eq(configID, 1001, 'the active config')
+		if points == 0 then return false end
+		points = points - 1
+		bought[#bought + 1] = nodeID
+		local info = stub.traits.nodes[1001][nodeID]
+		info.ranksPurchased = (info.ranksPurchased or 0) + 1
+		return true
+	end
+	local printed = {}
+	local realPrint = print
+	_G.print = function(...) printed[#printed + 1] = table.concat({ ... }, ' ') end
+	stub.click(TP.panel.dots, 'LeftButton')
+	choose(item(opened[#opened], 'Allocate points'))
+	eq(table.concat(bought, ','), table.concat({ plan.steps[13], plan.steps[14], plan.steps[15] }, ','),
+		'the three steps after the twelve learned, in order')
+	check(printed[#printed]:find('Allocated 3 points. Press Apply Changes to learn them.', 1, true), printed[#printed])
+	-- again with none left: nothing bought
+	eq(TP:Allocate(), 0)
+	check(printed[#printed]:find('No points to allocate.', 1, true))
+	-- in combat, or on the other spec's tab: refused before any purchase
+	points = 5
+	stub.in_combat = true
+	eq(TP:Allocate(), 'combat')
+	stub.in_combat = false
+	stub.traits.active_group = 2
+	eq(TP:Allocate(), 'inactive')
+	stub.traits.active_group = 1
+	eq(#bought, 3, 'nothing more bought')
+	C_Traits.PurchaseRank, _G.print = real, realPrint
+	eq(#take_errors(), 0, 'no errors')
 end)

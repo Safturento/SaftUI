@@ -213,3 +213,49 @@ if st.Config and st.Config.AddSubcommand then
 		end
 	end)
 end
+
+--[[
+	The plan's Allocate (the dots menu): stages the plan's next points in the
+	talent window, in the plan's order, as if each were clicked there, and never
+	applies them: Blizzard's Apply Changes learns them. Each point is
+	C_Traits.PurchaseRank on the active config, the one trait writer the plan
+	calls (.agents/taint.md rule 23), out of combat only, on the active spec's
+	tab only. The talent window hears TRAIT_NODE_CHANGED and draws them itself.
+	It stops at the first point the game refuses: no point left, or a step the
+	tree doesn't allow yet. 'combat' | 'inactive' | 'noplan' | count, stoppedAt.
+]]
+function TP:Allocate()
+	if InCombatLockdown() then
+		st:Print("Talents can't change in combat.")
+		return 'combat'
+	end
+	local group = self:ViewedGroup()
+	local plan = group and self.Store.Active(group)
+	if not (plan and #plan.steps > 0) then return 'noplan' end
+	if C_SpecializationInfo.GetActiveSpecGroup() ~= group then
+		st:Print('Switch to this spec to allocate its points.')
+		return 'inactive'
+	end
+	local configID = C_ClassTalents.GetActiveConfigID()
+	if not configID then return 'inactive' end
+	local want, count, stopped = {}, 0, nil
+	for i, nodeID in ipairs(plan.steps) do
+		want[nodeID] = (want[nodeID] or 0) + 1
+		local info = C_Traits.GetNodeInfo(configID, nodeID)
+		if info and self.Data.StagedRank(info) < want[nodeID] then
+			if not C_Traits.PurchaseRank(configID, nodeID) then
+				stopped = i
+				break
+			end
+			count = count + 1
+		end
+	end
+	if count == 0 then
+		st:Print(stopped and 'No points to allocate.' or 'Every step of the plan is allocated.')
+	else
+		st:Print(('Allocated %d %s. Press Apply Changes to learn %s.'):format(count,
+			count == 1 and 'point' or 'points', count == 1 and 'it' or 'them'))
+	end
+	self:QueueRefresh()
+	return count, stopped
+end

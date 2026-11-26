@@ -619,6 +619,9 @@ function TP:OpenDotsMenu(button)
 	if not (MenuUtil and plan) then return end
 	local group = self:ViewedGroup()
 	MenuUtil.CreateContextMenu(button, function(owner, root)
+		-- stages the next points in the talent window; Apply Changes learns them
+		root:CreateButton('Allocate points', function() TP:Allocate() end)
+		root:CreateDivider()
 		root:CreateButton('Rename', function()
 			Dialogs().Prompt('Rename the plan', plan.name, function(text)
 				local ok, why = S.Rename(plan, text)
