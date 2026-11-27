@@ -115,6 +115,39 @@ function TR.QuestsTab()
 	return tab
 end
 
+-- The Colors tab: a color per part of the tracker (colors.lua). A part with no
+-- color of its own shows the color it follows, and has no reset icon; picking
+-- one saves it, and its reset clears it, so the part follows again. A pick
+-- only paints (TR:SetPartColor), nothing is drawn again.
+function TR.ColorsTab()
+	local args = {}
+	for i, part in ipairs(TR.COLOR_PARTS) do
+		local key = part.key
+		local follows = part.follows == 'bar' and "Blizzard's progress blue"
+			or ('Global settings > Colors > Text > %s'):format(part.follows == 'muted' and 'Muted' or 'Text')
+		args[key] = {
+			order = i,
+			name = part.name,
+			desc = ('%s Until you pick one it follows %s.'):format(part.desc, follows),
+			type = 'color',
+			size = 'small',
+			get = function() return TR.PartColor(key) end,
+			set = function(_, r, g, b) TR:SetPartColor(key, r, g, b) end,
+			default = {
+				differs = function() return TR.PartColored(key) end,
+				reset = function() TR:SetPartColor(key, nil) end,
+				value = function() return TR.PartFallback(key) end,
+			},
+		}
+	end
+	args.note = {
+		order = #TR.COLOR_PARTS + 1,
+		type = 'description',
+		name = 'Finished and failed objectives take Global settings > Colors > Objectives.',
+	}
+	return TR.Tab(2.5, 'Colors', args)
+end
+
 -- The Items tab: where the quest item buttons sit and how they look. Every row
 -- saves into tracker.items and runs TR:UpdateConfig, whose refresh draws the
 -- rows and (out of combat) the buttons again; a change in combat waits for the
@@ -387,6 +420,7 @@ function TR:GetConfigTable()
 		args = {
 			general = general,
 			quests = TR.QuestsTab(),
+			colors = TR.ColorsTab(),
 			items = TR.ItemsTab(),
 			visibility = TR.VisibilityTab(),
 			blizzard = TR.BlizzardTab(),

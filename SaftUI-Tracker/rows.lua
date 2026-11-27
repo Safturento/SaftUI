@@ -114,11 +114,16 @@ end
 ------------------------------------------------------------------ colors
 
 -- The color of a state of a text: Text > Normal, the two Objectives colors,
--- Text > Muted, Text > Strong, the accent (Theme > Accent), or the quest's difficulty
--- color. Read at draw time and never kept, so a Colors tab change is seen by
--- the next draw and by TR:ColorRows.
+-- Text > Muted, Text > Strong, the accent (Theme > Accent), the quest's difficulty
+-- color, or one of the tracker's own part colors (colors.lua: 'title',
+-- 'objective', 'zone', 'current_zone', each following a Text color until the
+-- player picks one). Read at draw time and never kept, so a Colors change is
+-- seen by the next draw and by TR:ColorRows.
+local PART_STATE = { title = true, objective = true, zone = true, current_zone = true }
+
 local function StateColor(state, difficulty)
 	local colors = Colors()
+	if PART_STATE[state] then return TR.PartColor(state) end
 	if state == 'completed' then return colors.objectives.completed:GetRGB() end
 	if state == 'failed' then return colors.objectives.failed:GetRGB() end
 	if state == 'muted' then return st:Color('text', 'muted'):GetRGB() end
@@ -126,6 +131,13 @@ local function StateColor(state, difficulty)
 	if state == 'accent' then return st:Color('accent'):GetRGB() end
 	if state == 'difficulty' and difficulty then return difficulty.r, difficulty.g, difficulty.b end
 	return st:Color('text', 'normal'):GetRGB()
+end
+
+-- A quest line's state as it is painted: the model's 'normal' (a line not
+-- finished) is the Colors tab's Objectives color.
+local function LineState(state)
+	if state == 'normal' then return 'objective' end
+	return state
 end
 
 local function Paint(fs, state, difficulty)
@@ -144,6 +156,12 @@ local function PaintAccent(tex)
 	else
 		tex:SetVertexColor(r, g, b, 1)
 	end
+end
+
+-- A progress bar's fill in the Colors tab's Progress bars color.
+local function PaintBar(fill)
+	local r, g, b = TR.PartColor('bar')
+	fill:SetVertexColor(r, g, b, 1)
 end
 
 -- A texture drawn in the accent, painted again by TR:ColorRows.
@@ -165,6 +183,7 @@ function TR:ColorRows()
 		if fs.trState then Paint(fs, fs.trState, fs.trDiff) end
 	end
 	for _, tex in ipairs(self.accents) do PaintAccent(tex) end
+	for _, fill in ipairs(self.barFills) do PaintBar(fill) end
 end
 
 ------------------------------------------------------------------ fonts
@@ -300,10 +319,10 @@ function TR:DashWidth()
 end
 
 -- The progress bar of a line: SaftUI's bar (a backdrop drawn as kind 'bar' in
--- the page's Theme and Background, the flat texture) in Blizzard's progress
--- blue, with the percent centered on it in the Pixel font. The fill is a
+-- the page's Theme and Background, the flat texture) in the Colors tab's
+-- Progress bars color (Blizzard's progress blue until one is picked, PaintBar
+-- above), with the percent centered on it in the Pixel font. The fill is a
 -- texture sized in whole pixels.
-local BAR_COLOR = { 0.26, 0.42, 1 }
 
 function TR:PartBar(row, part)
 	local bar = part.bar
@@ -312,7 +331,8 @@ function TR:PartBar(row, part)
 	bar:SetSize(1, L.BAR)
 	local fill = bar:CreateTexture(nil, 'ARTWORK')
 	fill:SetTexture(st.BLANK_TEX)
-	fill:SetVertexColor(BAR_COLOR[1], BAR_COLOR[2], BAR_COLOR[3], 1)
+	PaintBar(fill)
+	self.barFills[#self.barFills + 1] = fill
 	fill:SetPoint('TOPLEFT', bar, 'TOPLEFT', 0, 0)
 	fill:SetHeight(L.BAR)
 	bar.fill = fill
@@ -665,7 +685,7 @@ local function DrawZone(self, row, entry, p, width)
 		row.chevron:SetDown(group.collapsed)
 	end
 	TR.SetText(row.title, group.title)
-	Paint(row.title, group.current and 'normal' or 'muted')
+	Paint(row.title, group.current and 'current_zone' or 'zone')
 	TR.SetText(row.count, tostring(group.count))
 	Paint(row.count, 'muted')
 	Shown(row.pin, group.current and true or false)
@@ -682,7 +702,7 @@ local function DrawPopup(self, row, entry, p, width)
 	local popup = entry.popup
 	row.questID, row.popupKind = popup.id, popup.kind
 	Paint(row.label, 'accent')
-	Paint(row.title, 'normal')
+	Paint(row.title, 'title')
 	Place(row.title, row, L.POPUP_BAR + L.FOCUS_GAP, p.labelHeight + L.LINE_GAP)
 end
 
@@ -694,7 +714,7 @@ local function TitleState(quest, settings)
 	if TR.Model.Finished(quest) then return 'completed' end
 	if quest.failed then return 'failed' end
 	if settings.difficulty and quest.difficultyColor then return 'difficulty', quest.difficultyColor end
-	return 'normal'
+	return 'title'
 end
 
 local function DrawIcon(self, row, quest, entry)
@@ -801,14 +821,14 @@ local function DrawQuest(self, row, entry, p, width)
 			if part.bar then Shown(part.bar, false) end
 			Shown(part.fs, true)
 			Place(part.fs, row, x, lp.y)
-			Paint(part.fs, line.state)
+			Paint(part.fs, LineState(line.state))
 			-- An objective's dash is its own font string, so a secret text needs no
 			-- join; the text's later lines align under the text, not the dash.
 			if line.kind == 'objective' then
 				local dash = self:PartDash(part)
 				Place(dash, row, titleX + L.INDENT, lp.y)
 				TR.SetText(dash, '-')
-				Paint(dash, line.state)
+				Paint(dash, LineState(line.state))
 				Shown(dash, true)
 			elseif part.dash then
 				Shown(part.dash, false)
@@ -887,7 +907,7 @@ function TR:TickTimers()
 				local text, state = TR.TimerLine(left)
 				local fs = row.parts[index].fs
 				if TR.SetText(fs, text) then
-					Paint(fs, state)
+					Paint(fs, LineState(state))
 					if self:Measure(row, fs, text, row.lineWidth) ~= row.timerHeight then dirty = true end
 				end
 			end
@@ -933,7 +953,7 @@ function TR:BuildRows()
 	for _, kind in ipairs(ROW_KINDS) do
 		self.pools[kind] = { rows = {}, free = {}, byKey = {} }
 	end
-	self.fontStrings, self.accents, self.fonts = {}, {}, {}
+	self.fontStrings, self.accents, self.fonts, self.barFills = {}, {}, {}, {}
 	self.fontStamp, self.pass, self.timedRows = 0, 0, 0
 	self.entries, self.placed = {}, {}
 	self.metrics = { width = 0, spacing = 0, icons = false, itemSize = 0 }

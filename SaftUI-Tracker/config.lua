@@ -24,6 +24,9 @@ st.defaults.tracker = {
 		fade_alpha = 0.3, hover = true, background_hover = false, scrollbar_hover = true, items = false,
 	},
 	blizzard = { mode = 'place' },
+	-- The Colors tab's part colors (colors.lua): { r, g, b } per part once one
+	-- is picked; a part with none follows a Global settings > Colors color.
+	colors = {},
 }
 
 -- The key bindings screen: a SaftUI header (SaftUI-Tracker/Bindings.xml) and
