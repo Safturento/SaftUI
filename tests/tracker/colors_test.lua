@@ -93,6 +93,28 @@ RW.both('a pick paints its part at once, with no frame, text or measure; reset f
 	eq(fill(TR), '0.26 0.42 1.00', "the bar back in Blizzard's blue")
 end)
 
+RW.both("the picker's Cancel, which sets the color it opened with, leaves a following part following; a profile switch repaints the bar", function(st, TR)
+	log(TR)
+	TR:Refresh()
+	local args = tab(TR).args
+	args.header.set(nil, args.header.get())
+	args.bar.set(nil, args.bar.get())
+	check(not args.header.default.differs(), 'the header still follows')
+	check(not args.bar.default.differs(), 'the bar still follows')
+	colors(st).text.normal:SetRGB(0.9, 0.8, 0.7)
+	TR:OnColorsChanged('text')
+	eq(RW.color(TR.header.title), '0.90 0.80 0.70', 'and a Text change reaches it')
+	-- A drag that saved steps, then Cancel back to the opening color: following again.
+	args.bar.set(nil, 0.5, 0.5, 0.5)
+	check(args.bar.default.differs(), 'a drag step is saved')
+	args.bar.set(nil, 0.26, 0.42, 1)
+	check(not args.bar.default.differs(), 'Cancel after a drag follows again')
+	-- A profile's own bar color reaches a drawn bar on the next draw.
+	st.config.profile.tracker.colors.bar = { r = 0.1, g = 0.2, b = 0.3 }
+	TR:Refresh()
+	eq(fill(TR), '0.10 0.20 0.30', 'the bar drawn in the new color')
+end)
+
 RW.both('Color by difficulty wins over a picked title color; off, the pick shows', function(st, TR)
 	stub.real_zone_text = 'A'
 	Q.set({ Q.header('A'), Q.quest(1, { title = 'Hard', difficulty = Enum.RelativeContentDifficulty.Difficult }) }, { 1 })

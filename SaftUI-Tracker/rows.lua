@@ -158,10 +158,14 @@ local function PaintAccent(tex)
 	end
 end
 
--- A progress bar's fill in the Colors tab's Progress bars color.
+-- A progress bar's fill in the Colors tab's Progress bars color, set only
+-- when it changed (a draw paints it too, so a profile switch reaches it).
 local function PaintBar(fill)
 	local r, g, b = TR.PartColor('bar')
-	fill:SetVertexColor(r, g, b, 1)
+	if fill.trR ~= r or fill.trG ~= g or fill.trB ~= b then
+		fill.trR, fill.trG, fill.trB = r, g, b
+		fill:SetVertexColor(r, g, b, 1)
+	end
 end
 
 -- A texture drawn in the accent, painted again by TR:ColorRows.
@@ -806,6 +810,7 @@ local function DrawQuest(self, row, entry, p, width)
 			Shown(part.fs, false)
 			if part.dash then Shown(part.dash, false) end
 			Shown(bar, true)
+			PaintBar(bar.fill)
 			Place(bar, row, x, lp.y)
 			Size(bar, p.lineWidth, L.BAR)
 			local percent = math.min(math.max(PlainNumber(line.value) or 0, 0), 100)

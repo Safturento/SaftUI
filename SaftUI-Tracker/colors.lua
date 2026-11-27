@@ -60,11 +60,21 @@ function TR.PartColored(key)
 	return Saved(key) ~= nil
 end
 
+local function Byte(v) return math.floor((v or 0) * 255 + 0.5) end
+
 -- Saves a part's color (r nil clears it: the part follows again) and paints
--- what the tracker colors itself.
+-- what the tracker colors itself. A color that is the one the part follows
+-- (to the byte) clears the save, so the part follows: the color picker commits
+-- every drag step and its Cancel and Esc hand the row back the color it opened
+-- with, which for a following part is its fallback, so a cancelled pick must
+-- not leave that color saved as the player's own.
 function TR:SetPartColor(key, r, g, b)
 	local config = st.config.profile.tracker
 	if type(config.colors) ~= 'table' then config.colors = {} end
+	if r ~= nil then
+		local fr, fg, fb = TR.PartFallback(key)
+		if Byte(r) == Byte(fr) and Byte(g) == Byte(fg) and Byte(b) == Byte(fb) then r = nil end
+	end
 	if r == nil then
 		config.colors[key] = nil
 	else
