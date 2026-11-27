@@ -10,6 +10,14 @@ local USE_LOCAL = 'timeMgrUseLocalTime'
 -- setting out of combat only, .agents/taint.md), nil when none waits.
 local pending
 
+-- A change of the setting from anywhere else (Blizzard's own box, /console)
+-- drops a choice still waiting, so the end of the fight doesn't undo it.
+local watcher = CreateFrame('Frame')
+watcher:RegisterEvent('CVAR_UPDATE')
+watcher:SetScript('OnEvent', function(_, _, name)
+    if name == USE_LOCAL then pending = nil end
+end)
+
 -- True while the clock shows local time
 function MicroMenu:ClockIsLocal()
     if pending ~= nil then return pending end
@@ -47,10 +55,13 @@ function MicroMenu:SetClockLocal(isLocal)
         -- Blizzard's own box does this after its toggle: the alarm is checked
         -- against the other time now
         if TimeManager_StartCheckingAlarm then TimeManager_StartCheckingAlarm() end
-        if TimeManagerLocalTimeCheck then TimeManagerLocalTimeCheck:SetChecked(isLocal) end
-    else
+    end
+    -- Its toggle flips its cached copy, which can be out of step with the
+    -- setting if something else set it since: then the setting directly.
+    if (C_CVar.GetCVarBool(USE_LOCAL) == true) ~= isLocal then
         C_CVar.SetCVar(USE_LOCAL, isLocal and '1' or '0')
     end
+    if TimeManagerLocalTimeCheck then TimeManagerLocalTimeCheck:SetChecked(isLocal) end
 end
 
 function MicroMenu:ToggleClockTime()
@@ -96,9 +107,12 @@ function MicroMenu:ShowClockTooltip(button)
     GameTooltip:SetPoint('TOPLEFT', button, 'BOTTOMLEFT', 0, -8)
     GameTooltip:ClearLines()
     local isLocal = self:ClockIsLocal()
-    GameTooltip:AddLine(isLocal and 'Local time' or 'Realm time', 1, 1, 1)
-    GameTooltip:AddDoubleLine('Realm time', (GameTime_GetGameTime(true)), 1, 0.82, 0, 1, 1, 1)
-    GameTooltip:AddDoubleLine('Local time', (GameTime_GetLocalTime(true)), 1, 0.82, 0, 1, 1, 1)
+    -- Blizzard's own words for the two, as its clock's tooltip has them
+    local realm = TIMEMANAGER_TOOLTIP_REALMTIME or 'Realm time:'
+    local localTime = TIMEMANAGER_TOOLTIP_LOCALTIME or 'Local time:'
+    GameTooltip:AddLine(isLocal and 'Showing local time' or 'Showing realm time', 1, 1, 1)
+    GameTooltip:AddDoubleLine(realm, (GameTime_GetGameTime(true)), 1, 0.82, 0, 1, 1, 1)
+    GameTooltip:AddDoubleLine(localTime, (GameTime_GetLocalTime(true)), 1, 0.82, 0, 1, 1, 1)
     GameTooltip:AddLine(' ')
     GameTooltip:AddLine('Click: calendar', 0.7, 0.7, 0.7)
     GameTooltip:AddLine('Right-click: show ' .. (isLocal and 'realm' or 'local') .. ' time', 0.7, 0.7, 0.7)

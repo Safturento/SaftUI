@@ -40,6 +40,21 @@ local function fresh()
 	stub.cvars.timeMgrUseLocalTime = '0'
 	TimeManager_ToggleLocalTime, TimeManager_StartCheckingAlarm, TimeManagerLocalTimeCheck = nil, nil, nil
 	TimeManager_Toggle, TimeManager_LoadUI, TimeManagerFrame = nil, nil, nil
+	GameTimeFrame.OnClick = function() calls[#calls + 1] = 'calendar' end
+	ToggleCalendar = nil
+end
+
+-- Blizzard's time manager as loaded: its toggle flips its own cached copy
+local function load_time_manager(cached)
+	local box = {}
+	TimeManagerLocalTimeCheck = { SetChecked = function(_, v) box.checked = v end }
+	function TimeManager_ToggleLocalTime()
+		calls[#calls + 1] = 'toggle'
+		cached = not cached
+		C_CVar.SetCVar('timeMgrUseLocalTime', cached and '1' or '0')
+	end
+	function TimeManager_StartCheckingAlarm() calls[#calls + 1] = 'alarm' end
+	return box
 end
 
 local function shown()
@@ -72,17 +87,11 @@ end)
 
 test('with the time manager loaded, its own toggle switches it', function()
 	fresh()
-	local checked
-	TimeManagerLocalTimeCheck = { SetChecked = function(_, v) checked = v end }
-	function TimeManager_ToggleLocalTime()
-		calls[#calls + 1] = 'toggle'
-		C_CVar.SetCVar('timeMgrUseLocalTime', stub.cvars.timeMgrUseLocalTime == '1' and '0' or '1')
-	end
-	function TimeManager_StartCheckingAlarm() calls[#calls + 1] = 'alarm' end
+	local box = load_time_manager(false)
 	click('RightButton')
 	eq(calls[1], 'toggle', "Blizzard's toggle")
 	eq(calls[2], 'alarm', 'the alarm checked against the new time')
-	eq(checked, true, 'its box checked')
+	eq(box.checked, true, 'its box checked')
 	eq(stub.cvars.timeMgrUseLocalTime, '1', 'the setting says local')
 end)
 
@@ -137,11 +146,62 @@ test('the tooltip names both times and the clicks', function()
 	stub.fire_script(button, 'OnEnter')
 	check(GameTooltip:IsOwned(button), 'the clock owns the tooltip')
 	local s = stub.state(GameTooltip)
-	eq(s.texts[1], 'Realm time', 'the title is the time shown')
+	eq(s.texts[1], 'Showing realm time', 'the title is the time shown')
 	local all = table.concat(s.texts, '|')
 	check(all:find('Right-click: show local time', 1, true), 'the right click hint')
 	click('RightButton')
-	eq(stub.state(GameTooltip).texts[1], 'Local time', 'redrawn after a switch')
+	eq(stub.state(GameTooltip).texts[1], 'Showing local time', 'redrawn after a switch')
 	stub.fire_script(button, 'OnLeave')
 	check(not GameTooltip:IsShown(), 'hidden on leave')
+end)
+
+test('a switch in combat goes through the time manager after the fight', function()
+	fresh()
+	local box = load_time_manager(false)
+	stub.in_combat = true
+	click('RightButton')
+	eq(#calls, 0, 'nothing of Blizzard run in combat')
+	stub.in_combat = false
+	stub.fire_event('PLAYER_REGEN_ENABLED')
+	eq(calls[1], 'toggle', "Blizzard's toggle after the fight")
+	eq(stub.cvars.timeMgrUseLocalTime, '1', 'local')
+	eq(box.checked, true, 'its box checked')
+end)
+
+test("Blizzard's box in combat drops a choice still waiting", function()
+	fresh()
+	stub.in_combat = true
+	click('RightButton')
+	eq(shown(), '13:00', 'local shown')
+	stub.set_cvar_secure('timeMgrUseLocalTime', '1')
+	stub.set_cvar_secure('timeMgrUseLocalTime', '0')
+	eq(shown(), '21:00', 'the setting again')
+	stub.in_combat = false
+	stub.fire_event('PLAYER_REGEN_ENABLED')
+	eq(stub.cvars.timeMgrUseLocalTime, '0', "Blizzard's choice kept")
+end)
+
+test("a time manager whose cache is out of step still switches", function()
+	fresh()
+	local box = load_time_manager(true) -- it thinks local; the setting says realm
+	click('RightButton')
+	eq(stub.cvars.timeMgrUseLocalTime, '1', 'local all the same')
+	eq(box.checked, true, 'its box checked')
+end)
+
+test('without GameTimeFrame.OnClick a left click toggles the calendar', function()
+	fresh()
+	GameTimeFrame.OnClick = nil
+	function ToggleCalendar() calls[#calls + 1] = 'toggle calendar' end
+	click('LeftButton')
+	eq(calls[1], 'toggle calendar', 'the calendar')
+end)
+
+test('Shift-click does nothing when the time manager fails to load', function()
+	fresh()
+	stub.shift_down = true
+	function TimeManager_LoadUI() return false end
+	click('LeftButton')
+	eq(#calls, 0, 'nothing opened')
+	eq(#take_errors(), 0, 'no error')
 end)
