@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-27 — Tracker colors: the same parts on Blizzard's tracker skin](#2026-11-27--tracker-colors-the-same-parts-on-blizzards-tracker-skin)
   - [2026-11-25 — Bag item groups: the next groups after Fish](#2026-11-25--bag-item-groups-the-next-groups-after-fish)
   - [2026-11-22 — Spy skin: in-game checks](#2026-11-22--spy-skin-in-game-checks)
   - [2026-11-22 — Spy skin: shared Skinning helpers](#2026-11-22--spy-skin-shared-skinning-helpers)
@@ -270,6 +271,20 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-27 — Tracker colors: the same parts on Blizzard's tracker skin
+
+**What:** SaftUI's own tracker now has a Colors tab (header, current zone, zones, quest titles, objectives, progress bars). Blizzard's tracker, while Skinning > Objective tracker is on and SaftUI's tracker is off, still colors those in Blizzard's own colors; only Completed and Failed reach it.
+
+**Why noticed:** building the Colors tab (2026-11-27, the user asked for color customization for the quest tracker skin). SaftUI's tracker is on by default and the one the user plays with, so the tab was built there first.
+
+**Anchors:** `SaftUI-Tracker/colors.lua` (`TR.COLOR_PARTS`, `TR.PartColor`), `SaftUI-Misc/Skinning/blizzard/Blizzard_ObjectiveTracker.lua` (`OT:StatusColor`, `ColorLine`, the header's font), `Blizzard_ObjectiveTrackerPosition.lua` (its `/sui` page).
+
+**What's been considered:** reading `tracker.colors` from the skin, so one set of picks covers both trackers. Blizzard colors its lines through `colorStyle` (OBJECTIVE_TRACKER_COLOR) and brightens them under the mouse, so a part color would have to go on after Blizzard's own, as `ColorLine` does for Completed and Failed, and give the hover back.
+
+**Shape of work:** one small task: the skin's line, header and bar colors from `TR.PartColor` (or a shared reader in Core if SaftUI-Tracker isn't loaded), a hover rule, and tests beside `tests/misc/` objective tracker skin tests.
+
+**Open questions:** does anyone run Blizzard's tracker with the skin now that SaftUI's is on by default? If not, this can be abandoned.
 
 ### 2026-11-25 — Bag item groups: the next groups after Fish
 

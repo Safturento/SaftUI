@@ -703,7 +703,7 @@ end
 function TR:ColorHeader(group)
 	local header = self.header
 	if not header then return end
-	header.title:SetTextColor(st:Color('text', 'normal'):GetRGB())
+	header.title:SetTextColor(TR.PartColor('header'))
 	header.count:SetTextColor(st:Color('text', 'muted'):GetRGB())
 	if group == nil or group == 'theme' then header.line:SetVertexColor(LineColor()) end
 	for chevron in pairs(chevrons) do PaintChevron(chevron) end

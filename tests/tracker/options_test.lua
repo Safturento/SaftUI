@@ -39,7 +39,7 @@ test('the page: Tracker under Info, its tabs in order, General first with the sw
 	eq(enable.name, "SaftUI's tracker")
 	eq(enable.desc, "Draws your quests in SaftUI's own tracker, grouped by zone, in place of Blizzard's objective tracker. Changes after a reload.")
 	eq(enable.default.value(), true, 'its default: on')
-	local orders = { quests = 2, items = 3, visibility = 4, blizzard = 5 }
+	local orders = { quests = 2, colors = 2.5, items = 3, visibility = 4, blizzard = 5 }
 	local seen = 0
 	for key, tab in pairs(page.args) do
 		if key ~= 'general' and key ~= 'tracked_by' then
@@ -70,7 +70,9 @@ test('every option has a desc and no width; every value option has a default tha
 		end
 		check(option.width == nil, where .. ' has no Ace width')
 		check(not (option.type == 'execute' and tostring(option.name):find('Reset')), where .. ' is no Reset button')
-		if VALUE_TYPES[option.type] then
+		-- The Colors tab's rows follow a color until one is picked, with a hand
+		-- default of their own (colors_test.lua).
+		if VALUE_TYPES[option.type] and path[1] ~= 'colors' then
 			values = values + 1
 			check(type(option.default) == 'table', where .. ' has a default')
 			local key = path[#path]

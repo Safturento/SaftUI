@@ -7,6 +7,7 @@
 
 config.lua
 init.lua
+colors.lua
 model.lua
 groups.lua
 layout.lua
