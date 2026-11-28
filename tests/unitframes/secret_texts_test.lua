@@ -131,6 +131,27 @@ test('the name tag reads no UnitIsUnit: the 2019 target mark is gone, the target
 	check(not read_saftui_source('SaftUI-Unitframes/tags.lua'):find('UnitIsUnit', 1, true), 'not in tags.lua')
 end)
 
+test('a secret UnitIsPlayer on an enemy plate is never read with the class colours off, and counts as unknown with one on', function()
+	local name = P.target.name
+	name.allCaps, name.showLevel, name.color_hostile = false, false, true
+	name.colorClass, name.colorClassNPC, name.colorClassPet = false, false, false
+	local real, reads = UnitIsPlayer, 0
+	UnitIsPlayer = function() reads = reads + 1; return S.secret('ISPLAYER') end
+	stub.units.target = { name = 'Mob', level = 22, reaction = 2 }
+	local ok, text = pcall(tag, 'target', 'target', 'target')
+	UnitIsPlayer = real
+	check(ok, tostring(text))
+	eq(reads, 0, 'not asked with the flags off')
+	eq(text, '|cff' .. st.StringFormat:ToHex(st.config.profile.colors.text.danger:GetRGB()) .. 'Mob|r')
+	name.colorClassNPC = true
+	UnitIsPlayer = function() return S.secret('ISPLAYER') end
+	ok, text = pcall(tag, 'target', 'target', 'target')
+	UnitIsPlayer = real
+	name.colorClassNPC = false
+	check(ok, tostring(text))
+	eq(text, '|cff' .. st.StringFormat:ToHex(st.config.profile.colors.text.danger:GetRGB()) .. 'Mob|r', 'a secret player flag leaves the hostile colour')
+end)
+
 test('a secret name keeps the plain level part before it, and a class colour around it', function()
 	local name = P.target.name
 	name.allCaps, name.showLevel, name.color_hostile, name.colorClass = false, true, false, true

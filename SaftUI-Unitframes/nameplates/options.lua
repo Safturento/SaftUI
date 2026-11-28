@@ -319,6 +319,10 @@ function UF.SetUpPlatePage(unit, config_table)
 	if plate then
 		-- The unit frame profile and Manage, without Copy from.
 		config_table.pickerControl = { type = 'group', name = '', args = UF.GenerateProfileControl() }
+		-- The preview plate under the picker line (preview.lua, loaded after
+		-- this file; read when the page is built, so it's there). The guard is
+		-- for test worlds that load options.lua without preview.lua.
+		config_table.pickerBand = UF.PlatePreviewBand and UF.PlatePreviewBand(unit) or nil
 		if unit == 'nameplate' then
 			config_table.name = 'Enemy nameplates'
 			config_table.args.general = NameplateGeneral()

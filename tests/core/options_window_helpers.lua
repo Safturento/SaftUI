@@ -14,7 +14,7 @@
 -- of what is drawn (size_of, rgba), theme, and the pieces of the fill row
 -- page (FillRowsTable, FillRowsModule).
 --
--- hideTarget, ufProfile, ufProfiles, ufManaged, ufPickerLabel, ufPickerControl
+-- hideTarget, ufProfile, ufProfiles, ufManaged, ufPickerLabel, ufPickerControl, ufPickerBand
 -- and columns are the modules' state, read when a page's table is built. They are globals,
 -- not locals, so a case in any file that sets one (hideTarget = true) reaches
 -- the modules here.
@@ -41,6 +41,8 @@ ufProfiles = { Main = 'Main', Alt = 'Alt' } -- the dropdown's values, read each 
 ufManaged = 0 -- Manage's clicks
 ufPickerLabel = nil -- the page's pickerLabel, when a test sets one
 ufPickerControl = nil -- the player's pickerControl (SaftUI's field), when a test sets one
+ufSubtabs = false -- the player's Extra tab, with two subtabs, when a test sets it
+ufPickerBand = nil -- the player's pickerBand (SaftUI's field), when a test sets one
 
 local function UnitTable(unit, name)
 	local cfg = uf[unit]
@@ -50,6 +52,7 @@ local function UnitTable(unit, name)
 		childGroups = 'tab',
 		hidden = unit == 'target' and function() return hideTarget end or nil,
 		pickerControl = unit == 'player' and ufPickerControl or nil,
+		pickerBand = unit == 'player' and ufPickerBand or nil,
 		args = {
 			copy = { name = 'Copy from', type = 'execute', order = -99, func = function() end },
 			general = {
@@ -79,6 +82,13 @@ local function UnitTable(unit, name)
 					},
 				},
 			},
+			extra = ufSubtabs and {
+				order = 2, name = 'Extra', type = 'group', childGroups = 'tab',
+				args = {
+					one = { order = 1, name = 'One', type = 'group', args = { a = { type = 'toggle', name = 'A', get = function() return true end, set = function() end } } },
+					two = { order = 2, name = 'Two', type = 'group', args = { b = { type = 'toggle', name = 'B', get = function() return true end, set = function() end } } },
+				},
+			} or nil,
 		},
 	}
 end
