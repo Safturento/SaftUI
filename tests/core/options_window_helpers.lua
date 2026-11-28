@@ -41,6 +41,7 @@ ufProfiles = { Main = 'Main', Alt = 'Alt' } -- the dropdown's values, read each 
 ufManaged = 0 -- Manage's clicks
 ufPickerLabel = nil -- the page's pickerLabel, when a test sets one
 ufPickerControl = nil -- the player's pickerControl (SaftUI's field), when a test sets one
+ufSubtabs = false -- the player's Extra tab, with two subtabs, when a test sets it
 ufPickerBand = nil -- the player's pickerBand (SaftUI's field), when a test sets one
 
 local function UnitTable(unit, name)
@@ -81,6 +82,13 @@ local function UnitTable(unit, name)
 					},
 				},
 			},
+			extra = ufSubtabs and {
+				order = 2, name = 'Extra', type = 'group', childGroups = 'tab',
+				args = {
+					one = { order = 1, name = 'One', type = 'group', args = { a = { type = 'toggle', name = 'A', get = function() return true end, set = function() end } } },
+					two = { order = 2, name = 'Two', type = 'group', args = { b = { type = 'toggle', name = 'B', get = function() return true end, set = function() end } } },
+				},
+			} or nil,
 		},
 	}
 end

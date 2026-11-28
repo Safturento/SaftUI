@@ -813,11 +813,13 @@ end
 ------------------------------------------------------------------ a pick's band
 
 -- A pick's band (its group's pickerBand, SaftUI's field: OM.BuildView's
--- view.picker.band): a strip F.band holds under the picker's line, over the body,
--- BAND_GAP under the line. Its height is asked (band.height(width)) only when
--- the page, tab, subtab, pick or body width changed since the last band drawn
--- (S.bandKey, S.bandHeight; a render with no band forgets them), so what a band measures never moves the settings
--- under the cursor between a set and the render it asks for; nil or 0 is no
+-- view.picker.band): a strip F.band holds under the picker's line, over the
+-- body, BAND_GAP under the line. Its height is asked (band.height(width)) only
+-- when the page, tab, subtab, pick or body width changed since the last band
+-- drawn (S.bandKey, S.bandHeight; a render with no band forgets them), so what
+-- a band measures never moves the settings under the cursor between a set and
+-- the render it asks for. The height is made whole as a row's is
+-- (OB.WholeHeight), so the body under it stays on whole pixels; nil or 0 is no
 -- band. band.draw runs on every render that shows it, band.refresh in a drag
 -- (Changed), band.release when a render shows none (or another) after one was
 -- shown, and when the window hides. S.bandShown is the band drawn now.
@@ -845,7 +847,7 @@ local function DrawBand(view, bottom)
 	if key ~= S.bandKey then
 		local ok, height = xpcall(band.height, geterrorhandler(), S.bodyWidth)
 		S.bandKey = key
-		S.bandHeight = ok and tonumber(height) or 0
+		S.bandHeight = ok and tonumber(height) and OB.WholeHeight(tonumber(height)) or 0
 	end
 	local height = S.bandHeight
 	if not height or height <= 0 then
