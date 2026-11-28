@@ -247,6 +247,28 @@ test('band: draw centres the bar under the holder top and release hides', functi
 	eq(#take_errors(), 0)
 end)
 
+test('band: every level is relative to the holder', function()
+	local st, UF = world()
+	local band = UF.PlatePreviewBand('nameplate')
+	local h = holder(774, 150)
+	h:SetFrameLevel(50)
+	band.draw(h, 774, 150)
+	local frame = UF:PlatePreviewFrame('nameplate')
+	local highest = 0
+	for _, name in ipairs({ 'Health', 'Castbar' }) do
+		local level = frame[name]:GetFrameLevel()
+		assert(level > 50, name .. ' under the holder: ' .. level)
+		highest = math.max(highest, level)
+	end
+	assert(frame.Castbar.Icon:GetFrameLevel() > 50, 'cast icon')
+	assert(frame:GetFrameLevel() > 50, 'frame')
+	assert(frame.TextOverlay:GetFrameLevel() > highest, 'texts over the bars')
+	-- Again on a refresh (a slider drag).
+	band.refresh(h)
+	assert(frame.Health:GetFrameLevel() > 50)
+	eq(#take_errors(), 0)
+end)
+
 test('band: the page has it', function()
 	local st, UF = world()
 	local args = UF:GetConfigTable().args

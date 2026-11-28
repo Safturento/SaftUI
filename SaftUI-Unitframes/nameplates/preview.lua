@@ -254,6 +254,32 @@ local function Measure(page, parent)
 	return frame, above, below
 end
 
+-- The updaters give a part the absolute level its config names (UF:UpdateElementLevel,
+-- about 2 to 7), right on a plate, under the /sui window's own frames here. So
+-- once the frame is in the holder every such level is the holder's plus its
+-- own, the text overlay goes over the highest of them, and the frame's box is
+-- drawn again over them all (ThemeArt.LevelAbove, as on a plate). Real plates
+-- are left as they are.
+local function RelevelUnder(frame, holder)
+	local base = holder:GetFrameLevel()
+	frame:SetFrameLevel(base + 1)
+	local top = base + 1
+	local function raise(part)
+		local level = part.config and part.config.framelevel
+		if level and part.SetFrameLevel then
+			part:SetFrameLevel(base + level)
+			top = math.max(top, base + level)
+		end
+	end
+	for _, element in pairs(frame.elements) do
+		raise(element)
+		for _, icon in pairs(element.icons or {}) do raise(icon) end
+	end
+	frame.TextOverlay:SetFrameLevel(top + 1)
+	local config = frame.config
+	st:SetBackdrop(frame, config.theme, config.background, UF.UnitKind(frame.base_unit))
+end
+
 local bands = {}
 
 -- The band a plate page carries (SetUpPlatePage): one table per page, since
@@ -278,9 +304,7 @@ function UF.PlatePreviewBand(page)
 		local x = frameX - barX
 		local y = -(BAND_MARGIN + above) + (frameTop - barTop)
 		frame:SetPoint('TOP', holder, 'TOP', x, y)
-		-- Texts above the bars, relative to the holder's level (the plates'
-		-- fixed 99 could sit over or under the window's own frames).
-		frame.TextOverlay:SetFrameLevel(holder:GetFrameLevel() + 10)
+		RelevelUnder(frame, holder)
 		frame:Show()
 	end
 
