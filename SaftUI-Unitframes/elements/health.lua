@@ -4,50 +4,66 @@ local UF = st:GetModule('Unitframes')
 -- A secret health (enemy nameplates in restricted content) can't be
 -- subtracted, divided or compared here: the game works out what the text
 -- shows, and only the text that's shown is worked out.
+-- The health text of a plain (not secret) health: Hide full, Dead, Deficit,
+-- Percent, then the value, with the percent after it on a boss when asked. The
+-- nameplate preview shows its sample health through this too.
+function UF.PlainHealthText(config, current, max, dead, isBoss)
+	if config.hide_full and max - current == 0 then
+		return ''
+	elseif dead then
+		return 'Dead'
+	elseif config.deficit then
+		-- Blank at zero, as the game's TruncateWhenZero is.
+		local deficit = max - current
+		return deficit == 0 and '' or '-' .. deficit
+	elseif config.percent then
+		return ('%.0f'):format(current / max * 100)
+	end
+	local text = current
+	if config.short then
+		text = UF.ShortNumber(current)
+	end
+	if config.boss_percent and isBoss then
+		text = ('%s | %s'):format(text, ('%.1f'):format(current / max * 100))
+	end
+	return tostring(text)
+end
+
 local function PostUpdateHealth(health, unit, current, max)
 	if health.text then
 		local config = health.config.text
 		local secret = issecretvalue(current) or issecretvalue(max)
-		local deficit
-		if config.deficit then
-			-- Plain or secret, the game blanks a zero, so a full health shows no -0.
-			deficit = C_StringUtil.TruncateWhenZero(secret and UnitHealthMissing(unit) or max - current)
-		end
-
-		-- No game function tells an addon whether a secret deficit is zero, so
-		-- Hide full applies to a plain health only: a secret health shows its text.
-		if config.hide_full and not secret and max - current == 0 then
-			health.text:SetText('')
-		elseif UnitIsDead(unit) then
-			health.text:SetText('Dead')
-		elseif config.deficit then
-			health.text:SetText(C_StringUtil.WrapString(deficit, '-'))
-		elseif config.percent then
-			-- Rounded the same way for a plain and a secret health: the game
-			-- rounds a secret one and Lua can't floor it.
-			if secret then
-				health.text:SetFormattedText('%.0f', UnitHealthPercent(unit, true, CurveConstants.ScaleTo100))
-			else
-				health.text:SetFormattedText('%.0f', current / max * 100)
-			end
-		else
-			local text = current
-			if config.short then
-				text = UF.ShortNumber(current)
-			end
-
+		if not secret then
 			-- A secret level can't be compared with -1: no percent then.
 			local level = config.boss_percent and UnitLevel(unit)
-			if level and not issecretvalue(level) and level == -1 then
-				if secret then
+			local isBoss = level and not issecretvalue(level) and level == -1
+			health.text:SetText(UF.PlainHealthText(config, current, max, UnitIsDead(unit), isBoss))
+		else
+			-- No game function tells an addon whether a secret deficit is zero,
+			-- so Hide full applies to a plain health only: a secret health
+			-- shows its text.
+			if UnitIsDead(unit) then
+				health.text:SetText('Dead')
+			elseif config.deficit then
+				-- The game blanks a zero deficit.
+				local deficit = C_StringUtil.TruncateWhenZero(UnitHealthMissing(unit))
+				health.text:SetText(C_StringUtil.WrapString(deficit, '-'))
+			elseif config.percent then
+				-- The game rounds a secret percent and Lua can't floor it.
+				health.text:SetFormattedText('%.0f', UnitHealthPercent(unit, true, CurveConstants.ScaleTo100))
+			else
+				local text = current
+				if config.short then
+					text = UF.ShortNumber(current)
+				end
+
+				local level = config.boss_percent and UnitLevel(unit)
+				if level and not issecretvalue(level) and level == -1 then
 					health.text:SetFormattedText('%s | %.1f', text, UnitHealthPercent(unit, true, CurveConstants.ScaleTo100))
-					text = nil
 				else
-					text = ("%s | %s"):format(text, ('%.1f'):format(current / max * 100))
+					health.text:SetText(text)
 				end
 			end
-
-			if text then health.text:SetText(text) end
 		end
 	end
 

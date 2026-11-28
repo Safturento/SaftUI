@@ -44,15 +44,18 @@ local function LevelPart(config, level, playerLevel, classification)
 	return text .. ' '
 end
 
--- The colour code that starts the name, or nil to leave it uncoloured.
-local function NameColor(config, unit, reaction)
-	if (config.colorClass and (UnitIsPlayer(unit) or UnitInPartyIsAI(unit)))
-			or (config.colorClassNPC and not (UnitIsPlayer(unit) or UnitInPartyIsAI(unit)))
-			or (config.colorClassPet and UnitPlayerControlled(unit) and not UnitIsPlayer(unit)) then
+-- The colour code that starts the name, or nil to leave it uncoloured. info is
+-- NameParts': isPlayer, isPet, class and reaction, each nil when unknown.
+local function NameColor(config, info)
+	local reaction = info.reaction
+	if (config.colorClass and info.isPlayer)
+			or (config.colorClassNPC and not info.isPlayer)
+			or (config.colorClassPet and info.isPet) then
 		-- A secret class can't index the colors (as oUF's health element notes,
-		-- the class can be secret on retail): the name is then left uncoloured.
-		local _, class = UnitClass(unit)
-		local classColor = not issecretvalue(class) and class and UF.oUF.colors.class[class]
+		-- the class can be secret on retail): the caller passes none then and
+		-- the name is left uncoloured.
+		local class = info.class
+		local classColor = class and UF.oUF.colors.class[class]
 		return classColor and '|cff' .. st.StringFormat:ToHex(classColor:GetRGB())
 	elseif reaction then
 		if config.color_hostile and reaction < 3 then
@@ -64,6 +67,28 @@ local function NameColor(config, unit, reaction)
 			return reactionColor and '|cff' .. st.StringFormat:ToHex(reactionColor:GetRGB())
 		end
 	end
+end
+
+-- What goes around a unit's name: the level part, then the colour code and its
+-- end. config is a unit's name table; info = { level, playerLevel,
+-- classification, reaction, isPlayer, isPet, class }, plain values, nil for
+-- one unknown or secret. The preview and the tag both come here.
+function UF.NameParts(config, info)
+	local prefix, suffix = LevelPart(config, info.level, info.playerLevel, info.classification), ''
+	local color = NameColor(config, info)
+	if color then
+		prefix, suffix = prefix .. color, '|r'
+	end
+	return prefix, suffix
+end
+
+-- The plain name between its parts: in capitals when asked, cut to maxLength.
+function UF.FormatName(config, name, prefix, suffix)
+	name = name or ''
+	if config.allCaps then
+		name = strupper(name)
+	end
+	return prefix .. st.StringFormat:UTF8strsub(name, config.maxLength) .. suffix
 end
 
 UF.oUF.Tags.Events['st:name'] = 'UNIT_NAME_UPDATE UNIT_LEVEL PLAYER_LEVEL_UP UNIT_FACTION'
@@ -83,20 +108,19 @@ UF.oUF.Tags.Methods['st:name'] = function(unit, realUnit, baseUnit)
 	local reaction = st.Plain(UnitReaction(unit, 'player'))
 	local classification = st.Plain(UnitClassification(unit))
 
-	local prefix, suffix = LevelPart(config, level, playerLevel, classification), ''
-	local color = NameColor(config, unit, reaction)
-	if color then
-		prefix, suffix = prefix .. color, '|r'
-	end
+	local isPlayer = UnitIsPlayer(unit) or UnitInPartyIsAI(unit)
+	local _, class = UnitClass(unit)
+	local prefix, suffix = UF.NameParts(config, {
+		level = level, playerLevel = playerLevel, classification = classification, reaction = reaction,
+		isPlayer = isPlayer,
+		isPet = UnitPlayerControlled(unit) and not UnitIsPlayer(unit),
+		class = not issecretvalue(class) and class or nil,
+	})
 
 	local name = UnitName(unit)
 	if issecretvalue(name) then
 		return C_StringUtil.WrapString(name, prefix, suffix)
 	end
 
-	name = name or ''
-	if config.allCaps then
-		name = strupper(name)
-	end
-	return prefix .. st.StringFormat:UTF8strsub(name, config.maxLength) .. suffix
+	return UF.FormatName(config, name, prefix, suffix)
 end
