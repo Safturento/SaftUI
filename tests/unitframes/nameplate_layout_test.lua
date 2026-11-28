@@ -136,8 +136,8 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		local group = debuffs.groups[debuffs.groupKey]
 		eq(group.options.maxFrameCount, 6, 'up to 6')
 		eq(group.options.size, 20, '20px')
-		eq(group.filter, 'HARMFUL|INCLUDE_NAME_PLATE_ONLY', "a plate's debuffs")
-		eq(group.candidateFilters and group.candidateFilters.isFromPlayerOrPlayerPet, true, "only yours and your pet's")
+		eq(group.filter, 'HARMFUL|PLAYER|INCLUDE_NAME_PLATE_ONLY', "a plate's debuffs, only yours")
+		eq(group.candidateFilters and group.candidateFilters.isFromPlayerOrPlayerPet, true, "and from a player")
 
 		eq(buffs.enabled, true, 'buffs on')
 		eq(P.buffs.purgeable, true, 'Only buffs I can purge on')

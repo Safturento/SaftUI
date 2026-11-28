@@ -166,18 +166,27 @@ end
 -- group shows (auraType 'Buffs' or 'Debuffs', config the element's config):
 --   * Buffs with Only buffs I can purge: UF.PurgeFilter's.
 --   * Debuffs on a nameplate: nameplate-only debuffs too, which plain HARMFUL
---     leaves out. Only mine checks each aura's own flag, so the pet's debuffs
---     stay, as Blizzard's plates show them.
+--     leaves out. Only mine adds PLAYER and the aura's own flag, as on any
+--     other unit: the flag alone let every player's debuffs through, since
+--     isFromPlayerOrPlayerPet is true for any player's aura on an enemy
+--     (Blizzard's TargetFrameAuraContainer reads it that way, both clients;
+--     the user's report of 2026-11-28). Whether PLAYER keeps the pet's
+--     debuffs on Forever is an in-game check (docs/followups.md).
 --   * Otherwise every buff or debuff. Only mine adds PLAYER, and checks each
---     aura's own flag too: Forever leaves sourceUnit nil on other players'
---     auras, and its PLAYER filter keeps every one of them. On retail the two
+--     aura's own flag too: on a party member Forever leaves sourceUnit nil
+--     and its PLAYER filter keeps every buff (the flag is right there). On an
+--     enemy it's the other way round: PLAYER filters and the flag is true for
+--     any player's debuff. Together they hold on both. On retail the two
 --     agree.
 function UF.AuraFilter(unitframe, auraType, config)
 	if auraType == 'Buffs' and config.purgeable then
 		return UF.PurgeFilter(UF:KnownRemovals())
 	end
 	if auraType == 'Debuffs' and unitframe.isNamePlate then
-		return 'HARMFUL|INCLUDE_NAME_PLATE_ONLY', config.onlyShowPlayer and { isFromPlayerOrPlayerPet = true } or nil
+		if config.onlyShowPlayer then
+			return 'HARMFUL|PLAYER|INCLUDE_NAME_PLATE_ONLY', { isFromPlayerOrPlayerPet = true }
+		end
+		return 'HARMFUL|INCLUDE_NAME_PLATE_ONLY', nil
 	end
 	local filter = auraType == 'Buffs' and 'HELPFUL' or 'HARMFUL'
 	if config.onlyShowPlayer then
