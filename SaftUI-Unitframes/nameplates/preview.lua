@@ -56,10 +56,6 @@ local frames = {}
 
 local function IsFriendlyPage(page) return page == 'friendlynameplate' end
 
-local function AsColor(color)
-	if type(color) == 'table' and color.GetRGB then return color end
-end
-
 -- The sample's class: a friendly page's is the player's own.
 local function SampleClass(sample)
 	if sample.class then return sample.class end
@@ -112,31 +108,12 @@ function UF:PlatePreviewFrame(page)
 	return frame
 end
 
--- The health bar's colour for the sample, in the order oUF's health element
--- uses (grouppreview.lua's FillPreviewFrame has the same).
-local function HealthColor(config, sample, class)
-	local colors = UF.oUF.colors
-	local byClass = sample.player and config.colorClass or (not sample.player and config.colorClassNPC)
-	if byClass then return AsColor(colors.class[class]) end
-	if config.colorReaction then return AsColor(colors.reaction[sample.reaction]) end
-	if config.colorHealth then return AsColor(colors.health) end
-end
-
 local function FillHealth(frame, sample, class)
 	local health = frame.Health
 	local config = health.config
 	health:SetMinMaxValues(0, sample.maxHealth)
 	health:SetValue(sample.health)
-	if config.colorCustom and config.customColor then
-		health:SetStatusBarColor(UF.UnpackColor(config.customColor))
-	else
-		local color = HealthColor(config, sample, class)
-		if color then health:SetStatusBarColor(color:GetRGB()) end
-	end
-	if config.bg and config.bg.enable then
-		local mu = config.bg.multiplier or 1
-		health.bg:SetVertexColor(mu, mu, mu)
-	end
+	UF.ApplyPreviewHealthColor(health, { player = sample.player, reaction = sample.reaction, class = class })
 	if health.text and config.text.enable then
 		health.text:SetText(UF.PlainHealthText(config.text, sample.health, sample.maxHealth, false, false))
 	end
@@ -148,7 +125,7 @@ local function FillName(frame, sample, class)
 	if not config.enable then return end
 	local level = PlainLevel()
 	local prefix, suffix = UF.NameParts(config, {
-		level = level and level + 1, playerLevel = level, classification = sample.classification,
+		level = (sample.player and level or level and level + 1), playerLevel = level, classification = sample.classification,
 		reaction = sample.reaction, isPlayer = sample.player, isPet = false, class = class,
 	})
 	name:SetText(UF.FormatName(config, sample.name, prefix, suffix))
@@ -236,6 +213,11 @@ local function ShownRegions(frame)
 	return regions
 end
 
+-- A whole number of pixels, a hair either side of one counting as it.
+local function Whole(value)
+	return math.ceil(value - 0.001)
+end
+
 -- How far the shown parts reach above the health bar's top and below its
 -- bottom, in pixels (0 for a side nothing reaches past). A rect the game
 -- hasn't laid out is left out.
@@ -247,16 +229,13 @@ function UF.PlatePreviewExtent(frame)
 	for _, region in ipairs(ShownRegions(frame)) do
 		local top, bottom = region:GetTop(), region:GetBottom()
 		if top and bottom then
-			above = math.max(above, top - barTop)
-			below = math.max(below, barBottom - bottom)
+			-- Whole pixels per region: a text's edges are fractional in the
+			-- game, and the bar must land on a whole pixel under them.
+			above = math.max(above, Whole(top - barTop))
+			below = math.max(below, Whole(barBottom - bottom))
 		end
 	end
 	return above, below
-end
-
--- A whole number of pixels, a hair either side of one counting as it.
-local function Whole(value)
-	return math.ceil(value - 0.001)
 end
 
 -- Anchors the frame (to anything laid out) so its parts have rects to measure.
@@ -293,11 +272,21 @@ function UF.PlatePreviewBand(page)
 		-- The bar's centre goes under the holder's, its top below the margin
 		-- and the highest part.
 		frame:ClearAllPoints()
-		frame:SetPoint('TOP', holder, 'TOP', frameX - barX, -(BAND_MARGIN + above) + (frameTop - barTop))
+		-- The bar's top lands on a whole pixel under the holder's: the margin
+		-- and the extent are whole, and the frame's offset to its bar is
+		-- taken as it is, so the bar's own fraction cancels.
+		local x = frameX - barX
+		local y = -(BAND_MARGIN + above) + (frameTop - barTop)
+		frame:SetPoint('TOP', holder, 'TOP', x, y)
+		-- Texts above the bars, relative to the holder's level (the plates'
+		-- fixed 99 could sit over or under the window's own frames).
+		frame.TextOverlay:SetFrameLevel(holder:GetFrameLevel() + 10)
 		frame:Show()
 	end
 
 	bands[page] = {
+		-- The window passes the body's width, which a plate's size doesn't
+		-- depend on (a wider plate is clipped at the band's edges).
 		height = function()
 			if UF:NameplateAddon() then return nil end
 			local frame, above, below = Measure(page, UIParent)

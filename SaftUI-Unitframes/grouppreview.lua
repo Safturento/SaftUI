@@ -119,6 +119,41 @@ local function ColorsByClass(config, member)
 	return config.colorClassNPC
 end
 
+-- The health bar's color for a made-up unit, in the order of oUF's health
+-- element: Disconnected, class (players: Class, others: NPC class), reaction,
+-- health. member has player, reaction, class and offline. A color object or
+-- nil. The nameplate preview (nameplates/preview.lua) calls this too.
+function UF.PreviewHealthColor(config, member)
+	local colors = UF.oUF.colors
+	local color
+	if config.colorDisconnected and member.offline then
+		color = colors.disconnected
+	elseif ColorsByClass(config, member) then
+		color = colors.class[member.class]
+	elseif config.colorReaction then
+		color = colors.reaction[member.reaction]
+	elseif config.colorHealth then
+		color = colors.health
+	end
+	return AsColor(color)
+end
+
+-- Colors a preview's health bar and its background as the real bar does: the
+-- custom color over any other, else PreviewHealthColor's.
+function UF.ApplyPreviewHealthColor(health, member)
+	local config = health.config
+	local color = UF.PreviewHealthColor(config, member)
+	if config.colorCustom and config.customColor then
+		health:SetStatusBarColor(UF.UnpackColor(config.customColor))
+	elseif color then
+		health:SetStatusBarColor(color:GetRGB())
+	end
+	if config.bg.enable then
+		local mu = config.bg.multiplier or 1
+		health.bg:SetVertexColor(mu, mu, mu)
+	end
+end
+
 -- One preview frame, with the same pieces UF.ConstructUnit and the element
 -- constructors give a real button (made with the same helpers), minus
 -- everything oUF drives: health and power bars with their texts, the name
@@ -185,27 +220,7 @@ local function FillPreviewFrame(frame, member)
 	local healthValue = member.offline and 1 or member.dead and 0 or member.health
 	health:SetMinMaxValues(0, 1)
 	health:SetValue(healthValue)
-
-	local color
-	if healthConfig.colorDisconnected and member.offline then
-		color = colors.disconnected
-	elseif ColorsByClass(healthConfig, member) then
-		color = classColor
-	elseif healthConfig.colorReaction then
-		color = colors.reaction[member.reaction]
-	elseif healthConfig.colorHealth then
-		color = colors.health
-	end
-	color = AsColor(color)
-	if healthConfig.colorCustom and healthConfig.customColor then
-		health:SetStatusBarColor(UF.UnpackColor(healthConfig.customColor))
-	elseif color then
-		health:SetStatusBarColor(color:GetRGB())
-	end
-	if healthConfig.bg.enable then
-		local mu = healthConfig.bg.multiplier or 1
-		health.bg:SetVertexColor(mu, mu, mu)
-	end
+	UF.ApplyPreviewHealthColor(health, member)
 
 	local textConfig = healthConfig.text
 	if health.text and textConfig.enable then

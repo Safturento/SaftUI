@@ -25,6 +25,7 @@ local function world(client)
 	return st, UF, UF:GetProfileConfig()
 end
 
+local function rgb(r, g, b) return table.concat({ r, g, b }, ',') end
 local function hex(st, color) return '|cff' .. st.StringFormat:ToHex(color:GetRGB()) end
 
 -- A holder as the window's band is: a frame the band draws in.
@@ -62,6 +63,8 @@ test('preview: every part on by default shows on the Enemy page', function()
 	eq(frame.Name:GetText(), hex(st, st:Color('text', 'danger')) .. 'Thornfang Ravager|r')
 	eq(frame.Health.text:GetText(), UF.PlainHealthText(config.nameplate.health.text, 180000, 250000))
 	eq(frame.Threat:GetText(), '87%')
+	eq(rgb(frame.Health:GetStatusBarColor()), table.concat({ UF.oUF.colors.reaction[2]:GetRGB() }, ','), 'reaction colour')
+	eq(frame.Castbar.Icon.texture:GetTexture(), 136197)
 	eq(frame.RaidTargetIndicator.raidIndex, 8, 'skull')
 	eq(frame.QuestIndicator:GetTexture(), [[Interface\TargetingFrame\PortraitQuestBadge]])
 	eq(#take_errors(), 0)
@@ -107,6 +110,10 @@ test('preview: Friendly page shows no threat and draws from Friendly config', fu
 	eq(frame.Threat:IsShown(), false)
 	eq(frame.Castbar.Text:GetText(), 'Flash Heal')
 	eq(frame.Castbar.Icon.texture:GetTexture(), 135907)
+	local class = select(2, UnitClass('player'))
+	if config.friendlynameplate.health.colorClass then
+		eq(rgb(frame.Health:GetStatusBarColor()), table.concat({ UF.oUF.colors.class[class]:GetRGB() }, ','), 'class colour')
+	end
 	eq(#take_errors(), 0)
 end)
 
@@ -147,17 +154,26 @@ end)
 test('preview: a profile switch reads the new tables', function()
 	local st, UF, config = world()
 	local frame = styled(UF, 'nameplate')
+	local function gap() return frame.Health:GetBottom() - frame.Castbar:GetTop() end
 	eq(frame:GetWidth(), 200)
+	eq(gap(), 6)
 	-- A switch swaps the profile's tables (UF:UpdateConfig): the next style
 	-- reads the new ones, never a table cached from the old.
-	local old = config.nameplate
-	local new = {}
-	for k, v in pairs(old) do new[k] = v end
+	local function copy(t)
+		if type(t) ~= 'table' or t.GetRGB then return t end
+		local out = {}
+		for k, v in pairs(t) do out[k] = copy(v) end
+		return out
+	end
+	local new = copy(config.nameplate)
 	new.width = 260
-	UF:GetProfileConfig().nameplate = new
-	UF:StylePlatePreview('nameplate')
+	new.castbar.position.y_off = -9
+	config.nameplate = new
+	styled(UF, 'nameplate')
 	eq(frame:GetWidth(), 260)
 	eq(frame.Health:GetWidth(), 260)
+	eq(frame.Castbar.config, new.castbar)
+	eq(gap(), 9)
 	eq(#take_errors(), 0)
 end)
 
@@ -178,6 +194,39 @@ test('band: height from the extent', function()
 	local want = math.min(200, math.max(120, above + 20 + below + 24))
 	eq(height, math.ceil(want - 0.001))
 	assert(height >= 120 and height <= 200, height)
+	eq(#take_errors(), 0)
+end)
+
+test('band: a moved part and the cap', function()
+	local st, UF, config = world()
+	local band = UF.PlatePreviewBand('nameplate')
+	-- The raid mark is 48 above the bar and the castbar 18 under it by
+	-- default: 48 + 20 + 18 + 24 = 110, the minimum 120 shows.
+	eq(band.height(774), 120)
+	-- The castbar 40 under the bar (12 tall): below = 52; 48 + 20 + 52 + 24.
+	config.nameplate.castbar.position.y_off = -40
+	eq(band.height(774), 144)
+	-- 90 under: 48 + 20 + 102 + 24 = 194; 120 under: capped at 200.
+	config.nameplate.castbar.position.y_off = -90
+	eq(band.height(774), 194)
+	config.nameplate.castbar.position.y_off = -120
+	eq(band.height(774), 200)
+	eq(#take_errors(), 0)
+end)
+
+test('band: a fractional edge still puts the bar on a whole pixel', function()
+	local st, UF, config = world()
+	local band = UF.PlatePreviewBand('nameplate')
+	-- The threat text 6.4 above the bar, the bar itself 0.5 down in the frame.
+	config.nameplate.threat.position.y_off = 6.4
+	config.nameplate.health.position.y_off = -0.5
+	local height = band.height(774)
+	local h = holder(774, height)
+	band.draw(h, 774, height)
+	local frame = UF:PlatePreviewFrame('nameplate')
+	local drop = h:GetTop() - frame.Health:GetTop()
+	eq(drop, math.floor(drop), 'whole pixels under the holder: ' .. drop)
+	eq(band.height(774) % 1, 0)
 	eq(#take_errors(), 0)
 end)
 
