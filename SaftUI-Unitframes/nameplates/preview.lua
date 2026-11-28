@@ -406,30 +406,52 @@ end
 local function Measure(page, parent)
 	local frame = UF:StylePlatePreview(page)
 	AnchorTemporarily(frame, parent)
+	-- Shown just for the measuring, so the parts have rects, then as it was.
+	local wasShown = frame:IsShown()
+	frame:Show()
 	local above, below = UF.PlatePreviewExtent(frame)
+	if not wasShown then frame:Hide() end
 	return frame, above, below
 end
 
--- The updaters give a part the absolute level its config names (UF:UpdateElementLevel,
--- about 2 to 7), right on a plate, under the /sui window's own frames here. So
--- once the frame is in the holder every such level is the holder's plus its
--- own, the text overlay goes over the highest of them, and the frame's box is
--- drawn again over them all (ThemeArt.LevelAbove, as on a plate). Real plates
--- are left as they are.
+-- The updaters give a part the absolute level its config names (UF:UpdateElementLevel;
+-- 10 to 20 by default, 0 to 99 allowed), right on a plate, under the /sui window's
+-- own frames here. Under a holder near the window's top those levels would draw
+-- over its pop-ups (the collapsed sidebar's search pop is at main + 20), so the
+-- distinct configured levels are ranked and given the holder's level + 1, + 2 and
+-- on in the same order (at most 15 ranks), the aura buttons' cooldowns and the
+-- text overlay go over them, and everything stays under the holder + 19. The
+-- frame's box is drawn again over them all (ThemeArt.LevelAbove, as on a plate).
+-- Real plates are left as they are.
+local MAX_RANKS = 15
 local function RelevelUnder(frame, holder)
 	local base = holder:GetFrameLevel()
 	frame:SetFrameLevel(base + 1)
 	local top = base + 1
-	local function raise(part)
+	local parts, seen, levels = {}, {}, {}
+	local function collect(part)
 		local level = part.config and part.config.framelevel
 		if level and part.SetFrameLevel then
-			part:SetFrameLevel(base + level)
-			top = math.max(top, base + level)
+			parts[#parts + 1] = { part, level }
+			if not seen[level] then
+				seen[level] = true
+				levels[#levels + 1] = level
+			end
 		end
 	end
 	for _, element in pairs(frame.elements) do
-		raise(element)
-		for _, icon in pairs(element.icons or {}) do raise(icon) end
+		collect(element)
+		for _, icon in pairs(element.icons or {}) do collect(icon) end
+	end
+	table.sort(levels)
+	local rank = {}
+	for i, level in ipairs(levels) do rank[level] = math.min(i, MAX_RANKS) end
+	for _, entry in ipairs(parts) do
+		local level = base + rank[entry[2]]
+		entry[1]:SetFrameLevel(level)
+		top = math.max(top, level)
+	end
+	for _, element in pairs(frame.elements) do
 		-- An aura area's buttons sit just over their area.
 		for _, button in ipairs(element.buttons or {}) do
 			button:SetFrameLevel(element:GetFrameLevel() + 1)
@@ -453,10 +475,12 @@ function UF.PlatePreviewBand(page)
 		local frame, above = Measure(page, holder)
 		frame:SetParent(holder)
 		AnchorTemporarily(frame, holder)
+		-- Shown first (the holder clips it) so its rects are laid out.
+		frame:Show()
 		local bar = frame.Health
-		local frameTop, barTop = frame:GetTop(), bar:GetTop()
-		local frameX = (frame:GetLeft() + frame:GetRight()) / 2
-		local barX = (bar:GetLeft() + bar:GetRight()) / 2
+		local frameTop, barTop = frame:GetTop() or 0, bar:GetTop() or 0
+		local frameX = ((frame:GetLeft() or 0) + (frame:GetRight() or 0)) / 2
+		local barX = ((bar:GetLeft() or 0) + (bar:GetRight() or 0)) / 2
 		-- The bar's centre goes under the holder's, its top below the margin
 		-- and the highest part.
 		frame:ClearAllPoints()
@@ -476,7 +500,7 @@ function UF.PlatePreviewBand(page)
 		height = function()
 			if UF:NameplateAddon() then return nil end
 			local frame, above, below = Measure(page, UIParent)
-			local height = above + frame.Health:GetHeight() + below + 2 * BAND_MARGIN
+			local height = above + (frame.Health:GetHeight() or 0) + below + 2 * BAND_MARGIN
 			return Whole(math.min(BAND_MAX, math.max(BAND_MIN, height)))
 		end,
 		draw = function(holder) Place(holder) end,

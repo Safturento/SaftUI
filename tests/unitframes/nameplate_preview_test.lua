@@ -269,6 +269,33 @@ test('band: every level is relative to the holder', function()
 	eq(#take_errors(), 0)
 end)
 
+test('band: a part at level 99 stays under the window pop-ups', function()
+	local st, UF, config = world()
+	config.nameplate.health.framelevel = 99
+	local band = UF.PlatePreviewBand('nameplate')
+	local h = holder(774, 150)
+	h:SetFrameLevel(102)
+	band.draw(h, 774, 150)
+	local frame = UF:PlatePreviewFrame('nameplate')
+	local highest = 0
+	local function check(f, name)
+		local level = f:GetFrameLevel()
+		assert(level < 121, name .. ' under holder + 19: ' .. level)
+		highest = math.max(highest, level)
+	end
+	for _, name in ipairs({ 'Health', 'Castbar', 'Debuffs', 'Buffs' }) do
+		check(frame[name], name)
+		for _, button in ipairs(frame[name].buttons or {}) do
+			check(button, name .. ' button')
+			highest = math.max(highest, button:GetFrameLevel() + 1)
+		end
+	end
+	assert(frame.Health:GetFrameLevel() > 102, 'over the holder')
+	assert(frame.TextOverlay:GetFrameLevel() > highest, 'texts above the bars')
+	assert(frame.TextOverlay:GetFrameLevel() < 121, 'overlay under holder + 19')
+	eq(#take_errors(), 0)
+end)
+
 test('band: the page has it', function()
 	local st, UF = world()
 	local args = UF:GetConfigTable().args
