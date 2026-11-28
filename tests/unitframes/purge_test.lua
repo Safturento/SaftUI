@@ -448,13 +448,13 @@ end)
 
 ------------------------------------------------------------------ nameplate debuffs
 
-test("nameplate debuffs: nameplate-only debuffs in, Only mine by the aura's own flag, the pet's in", function()
+test("nameplate debuffs: nameplate-only debuffs in, Only mine by PLAYER and the aura's own flag", function()
 	for _, client in ipairs({ 'forever', 'retail' }) do
 		world(client)
 		local plate = make_unit_frame('SaftUI_PurgePlate', 'target', { 'Debuffs' })
 		plate.isNamePlate = true
 		local target = make_unit_frame('SaftUI_PurgeTarget', 'target', { 'Debuffs' })
-		eq(filters(UF.AuraFilter(plate, 'Debuffs', { onlyShowPlayer = true })), 'HARMFUL|INCLUDE_NAME_PLATE_ONLY; isFromPlayerOrPlayerPet=true', client .. ': a plate, Only mine')
+		eq(filters(UF.AuraFilter(plate, 'Debuffs', { onlyShowPlayer = true })), 'HARMFUL|PLAYER|INCLUDE_NAME_PLATE_ONLY; isFromPlayerOrPlayerPet=true', client .. ': a plate, Only mine (the flag alone keeps every player\'s)')
 		eq(filters(UF.AuraFilter(plate, 'Debuffs', { onlyShowPlayer = false })), 'HARMFUL|INCLUDE_NAME_PLATE_ONLY; nil', client .. ': a plate, every debuff')
 		eq(filters(UF.AuraFilter(target, 'Debuffs', { onlyShowPlayer = true })), 'HARMFUL|PLAYER; isFromPlayerOrPlayerPet=true', client .. ': another unit unchanged')
 		eq(filters(UF.AuraFilter(target, 'Debuffs', { onlyShowPlayer = false })), 'HARMFUL; nil', client .. ': another unit, every debuff')

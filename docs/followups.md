@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-28 — Nameplates: Only mine and the pet's debuffs](#2026-11-28--nameplates-only-mine-and-the-pets-debuffs)
   - [2026-11-27 — Tracker colors: the same parts on Blizzard's tracker skin](#2026-11-27--tracker-colors-the-same-parts-on-blizzards-tracker-skin)
   - [2026-11-25 — Bag item groups: the next groups after Fish](#2026-11-25--bag-item-groups-the-next-groups-after-fish)
   - [2026-11-22 — Spy skin: in-game checks](#2026-11-22--spy-skin-in-game-checks)
@@ -271,6 +272,20 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-28 — Nameplates: Only mine and the pet's debuffs
+
+**What:** Only mine on enemy plates now uses `HARMFUL|PLAYER|INCLUDE_NAME_PLATE_ONLY` with the `isFromPlayerOrPlayerPet` candidate filter, as the target frame does. Before, the plate used the flag alone so the player's pet's debuffs would stay, and that let every player's debuffs through. The open question is whether Forever's `PLAYER` filter keeps the pet's debuffs (a warlock's or hunter's pet) or drops them.
+
+**Why noticed:** The user reported (2026-11-28) that Only mine on nameplate debuffs didn't filter while the target frame's did. Blizzard's `TargetFrameAuraContainer` (both clients) treats `isFromPlayerOrPlayerPet` as "from any player" on enemies, so the flag can't tell the player's debuffs from another player's.
+
+**Anchors:** `SaftUI-Unitframes/aurafilters.lua` (`UF.AuraFilter`), `.agents/clients.md` (Auras on other players), `tests/unitframes/purge_test.lua` ("nameplate debuffs").
+
+**What's been considered:** keeping the flag alone (wrong for anyone grouped or near other players); `nameplateShowPersonal` as a candidate filter (a spell flag, not a caster check, so it doesn't say whose debuff it is either).
+
+**Shape of work:** an in-game check, then nothing or a small change. As a warlock or hunter with the pet attacking a mob, out of combat: `/run local f=C_UnitAuras.GetAuraDataByIndex for i=1,40 do local a=f('target',i,'HARMFUL|PLAYER') if not a then break end print(i,a.name,a.sourceUnit) end` and compare with `'HARMFUL'`. If the pet's debuffs are missing under `PLAYER`, the plate loses them under Only mine (the target frame already does).
+
+**Open questions:** Does `PLAYER` on Forever count the pet as the player? If not, is losing the pet's debuffs on plates acceptable, or is there a filter that keeps the player's and pet's alone?
 
 ### 2026-11-27 — Tracker colors: the same parts on Blizzard's tracker skin
 
