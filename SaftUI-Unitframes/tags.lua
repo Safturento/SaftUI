@@ -45,11 +45,12 @@ local function LevelPart(config, level, playerLevel, classification)
 end
 
 -- The colour code that starts the name, or nil to leave it uncoloured. info is
--- NameParts': isPlayer, isPet, class and reaction, each nil when unknown.
+-- NameParts': isPlayer (false for a non-player, nil when unknown: colorClassNPC
+-- needs the false), isPet, class and reaction, each nil when unknown.
 local function NameColor(config, info)
 	local reaction = info.reaction
 	if (config.colorClass and info.isPlayer)
-			or (config.colorClassNPC and not info.isPlayer)
+			or (config.colorClassNPC and info.isPlayer == false)
 			or (config.colorClassPet and info.isPet) then
 		-- A secret class can't index the colors (as oUF's health element notes,
 		-- the class can be secret on retail): the caller passes none then and
@@ -108,13 +109,29 @@ UF.oUF.Tags.Methods['st:name'] = function(unit, realUnit, baseUnit)
 	local reaction = st.Plain(UnitReaction(unit, 'player'))
 	local classification = st.Plain(UnitClassification(unit))
 
-	local isPlayer = UnitIsPlayer(unit) or UnitInPartyIsAI(unit)
-	local _, class = UnitClass(unit)
+	-- Read only behind the flags that use them, as the game can hand these
+	-- back secret on an enemy plate: a secret one counts as unknown (nil).
+	local isPlayer, isPet, class
+	if config.colorClass or config.colorClassNPC or config.colorClassPet then
+		local function plain(value)
+			if issecretvalue(value) then return nil end
+			return value
+		end
+		local player, ai = plain(UnitIsPlayer(unit)), plain(UnitInPartyIsAI(unit))
+		if player ~= nil then
+			isPlayer = (player or ai) and true or false
+		elseif ai then
+			isPlayer = true
+		end
+		local controlled = plain(UnitPlayerControlled(unit))
+		if controlled ~= nil and player ~= nil then
+			isPet = controlled and not player
+		end
+		class = plain(select(2, UnitClass(unit)))
+	end
 	local prefix, suffix = UF.NameParts(config, {
 		level = level, playerLevel = playerLevel, classification = classification, reaction = reaction,
-		isPlayer = isPlayer,
-		isPet = UnitPlayerControlled(unit) and not UnitIsPlayer(unit),
-		class = not issecretvalue(class) and class or nil,
+		isPlayer = isPlayer, isPet = isPet, class = class,
 	})
 
 	local name = UnitName(unit)

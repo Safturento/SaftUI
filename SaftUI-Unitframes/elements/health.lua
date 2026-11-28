@@ -1,9 +1,6 @@
 local st = SaftUI
 local UF = st:GetModule('Unitframes')
 
--- A secret health (enemy nameplates in restricted content) can't be
--- subtracted, divided or compared here: the game works out what the text
--- shows, and only the text that's shown is worked out.
 -- The health text of a plain (not secret) health: Hide full, Dead, Deficit,
 -- Percent, then the value, with the percent after it on a boss when asked. The
 -- nameplate preview shows its sample health through this too.
@@ -29,6 +26,9 @@ function UF.PlainHealthText(config, current, max, dead, isBoss)
 	return tostring(text)
 end
 
+-- A secret health (enemy nameplates in restricted content) can't be
+-- subtracted, divided or compared here: the game works out what the text
+-- shows, and only the text that's shown is worked out.
 local function PostUpdateHealth(health, unit, current, max)
 	if health.text then
 		local config = health.config.text

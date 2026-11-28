@@ -51,6 +51,23 @@ test('a player with colorClass gets the class colour', function()
 	eq(prefix, '', 'no class known')
 end)
 
+test('colorClassNPC colours a non-player, colorClassPet a pet, color_friendly a friendly', function()
+	local prefix = UF.NameParts({ colorClassNPC = true }, { isPlayer = false, class = 'MAGE' })
+	eq(prefix, hex(st.config.profile.colors.class.MAGE))
+	eq(UF.NameParts({ colorClassNPC = true }, { class = 'MAGE' }), '', 'unknown is not an NPC')
+	prefix = UF.NameParts({ colorClassPet = true }, { isPlayer = false, isPet = true, class = 'HUNTER' })
+	eq(prefix, hex(st.config.profile.colors.class.HUNTER))
+	prefix = UF.NameParts({ color_friendly = true }, { reaction = 5 })
+	eq(prefix, hex(UF.oUF.colors.reaction[5]))
+end)
+
+test('a level part and a colour join in that order', function()
+	local prefix, suffix = UF.NameParts({ showLevel = true, showMaxLevel = true, showSameLevel = true, color_hostile = true },
+		{ level = 62, playerLevel = 60, reaction = 2 })
+	eq(prefix, st.StringFormat:ColorString('62', st:Color('text', 'caution'):GetRGB()) .. ' ' .. hex(st:Color('text', 'danger')))
+	eq(suffix, '|r')
+end)
+
 test('FormatName puts in capitals, cuts and joins', function()
 	eq(UF.FormatName({ allCaps = true, maxLength = 4 }, 'Thrall', '<', '>'), '<THRA>')
 	eq(UF.FormatName({ maxLength = 5 }, nil, 'a', 'b'), 'ab')
