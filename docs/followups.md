@@ -678,6 +678,8 @@ It prints, for each shown row: the card's hover state, whether the Layer shows, 
 
 **Open questions:** what the owner dislikes about today's window and what they want from it (compact rows, quality color instead of the quality word, item level or price, where it opens); a skin or SaftUI's own frame.
 
+**Progress 2026-11-28 (branch `loot-compact-rows`):** the owner asked for, and got, the first concrete changes: no quality word, the name on one line across the card (truncated), shorter rows and a wider window (300 against Blizzard's 220), and the icon beside its card as on the roll bars, with the loot feed's entries changed to match. The rows are shorter by scaling Blizzard's scroll box (0.75), because the row height is a Lua field Edit Mode's path reads (`.agents/taint.md` rule 18), so it stays a skin. Not confirmed in game yet: the scaled texts' sharpness, the scroll range with many rows, and no taint from looting in combat. Whatever else the owner wants from a redesign is still open.
+
 ### 2026-11-16 — The tracker's wrapped text, one line short: the cause is inferred, not seen in the game
 
 **What:** a quest's text that wraps to three lines was laid out as two, so the third line drew over the next quest's title. The fix keeps the rows' kept heights per scale; whether that was the whole cause is for the game to say.

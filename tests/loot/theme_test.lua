@@ -202,15 +202,17 @@ test("the feed draws its entries as panels, their icons as slots and its buttons
 	eq(drawn(item.icon), 'theme,solid,slot', 'its icon, as a slot')
 	eq(drawn(feed.filterButton), 'theme,solid,control', 'the Filter button, as a control')
 	eq(drawn(feed.reset_button), 'theme,solid,control', 'the scroll reset button')
-	eq(T.offset(item.progressBar, 'BOTTOMLEFT'), '2.00,0.00', "the progress bar starts past the icon's Thick border")
+	-- The icon stands outside the entry's card, 7 to its left (as a roll bar's),
+	-- and the progress bar runs along the card's own bottom edge.
+	eq(select(2, item.icon:GetPoint(1)), item, 'the icon is placed by the card')
+	eq(T.offset(item.icon, 'RIGHT'), '-7.00,0.00', 'left of it, 7 apart')
+	eq(item:GetWidth(), profile.loot.feed.width - profile.loot.feed.item_height - 7, 'the card and its icon fill the feed\'s width')
+	eq(select(2, item.progressBar:GetPoint(1)), item, 'the progress bar starts at the card')
+	eq(T.offset(item.progressBar, 'BOTTOMLEFT'), '0.00,0.00', 'at its left edge')
 
 	profile.loot.feed.theme = 'thin'
 	LT:UpdateLootFeedConfig()
 	eq(drawn(item), 'thin,solid,panel', 'a new Theme reaches the entries')
-	eq(T.offset(item.progressBar, 'BOTTOMLEFT'), '1.00,0.00', "and the progress bar starts past Thin's")
-	profile.loot.feed.theme = 'none'
-	LT:UpdateLootFeedConfig()
-	eq(T.offset(item.progressBar, 'BOTTOMLEFT'), '0.00,0.00', 'and right at the icon with no border')
 	profile.loot.feed.theme = 'theme'
 	LT:UpdateLootFeedConfig()
 end)

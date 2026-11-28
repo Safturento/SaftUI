@@ -37,15 +37,28 @@ local LT = st:GetModule('Loot')
 	  - LootFrame: SaftUI's panel behind it (st:SetBackdropIn, kind panel), with
 	    .NineSlice and .Bg faded; the title in the Window titles font; the close
 	    button's four textures faded and a Lucide cross of SaftUI's over it.
+	  - The compact layout (Layout, after every Resize): the scroll box scaled to
+	    ROW_SCALE and anchored again by its own offsets over the scale, the window
+	    WINDOW_WIDTH wide (plus the scroll bar's 16 when the rows overflow) and as
+	    tall as its scaled rows, up to Blizzard's panelMaxHeight; the scroll bar
+	    shown when they overflow. Blizzard's row height is the view's element
+	    extent, a Lua field LootFrame:Open reads before Edit Mode's
+	    ApplySystemAnchor, so it is never written; scaling the box is a C call.
 	  - Each row: a card of SaftUI's (kind panel) in place of .NameFrame,
-	    .BorderFrame, .QualityStripe and the click textures, all faded; the card
+	    .BorderFrame, .QualityStripe, .QualityText and the click textures, all
+	    faded; the card runs from ICON_GAP right of the icon to the row's right
+	    edge, as tall as the icon (as a roll bar's), and is scaled back up by
+	    1 / ROW_SCALE, as is the slot, so their borders stay on whole pixels; it
 	    tints (the states' hover) while the mouse is over the row; its border
-	    stays the theme's. The icon in a
+	    stays the theme's. The name (.Text) is anchored across the card on one
+	    line (no wrap, cut short with an ellipsis), and the item button's hit
+	    rect reaches over the card. The icon in a
 	    slot of SaftUI's (st:SetBackdropIn on .Item, kind slot) whose border is the
 	    item's quality color (st:QualityColor), with .IconBorder, the normal and
 	    pushed textures faded, the icon cropped by Icon zoom and its round mask
-	    taken off. The texts (.Text, .QualityText, the count) in the Loot window's
-	    Font.
+	    taken off. The texts (.Text, the count) in the Loot window's Font made
+	    larger by 1 / ROW_SCALE (SaftUILootPopupFont, a font object of SaftUI's),
+	    so they draw at the font's own size in the scaled rows.
 	Left as Blizzard's: the scroll bar, the shadows at the scroll box's edges,
 	the quest and profession overlays on an icon, a row's text color (Blizzard's
 	quality color, put on in Init and put back after the font), the gamepad pieces
@@ -63,10 +76,13 @@ local LT = st:GetModule('Loot')
 	Blizzard never sets (the NineSlice, Bg, the card, the click textures, the
 	icon's border and normal and pushed textures, the close button's textures),
 	fonts (SetFontObject, which is not a protected function:
-	.agents/taint.md rule 1), tex coords and masks on the icon, and the made
+	.agents/taint.md rule 1), tex coords and masks on the icon, the compact
+	layout's geometry (the scroll box's scale, anchors and width, the window's
+	width and height, never its anchors, the scroll bar's shown state, a name's
+	anchors, size, wrap and justify, an item button's hit rect), and the made
 	child frames and textures. The hooks are post-hooks only: `hooksecurefunc` on
 	the scroll box's Update (which Blizzard calls after it has acquired a row
-	for any reason) and on each row's Init (which Blizzard calls again on
+	for any reason), on LootFrame's Resize (every open) and on each row's Init (which Blizzard calls again on
 	LOOT_SLOT_CHANGED), and HookScript on LootFrame's OnShow and on each row's
 	.Item (OnEnter, OnLeave) and the close button (OnEnter, OnLeave). Every step
 	runs in xpcall, so an error stops nothing of Blizzard's. Nothing here is
@@ -85,13 +101,32 @@ local LT = st:GetModule('Loot')
 local BLIZZARD_FONTS = {
 	title = 'GameFontNormal',          -- DefaultPanelBaseTemplate's TitleText
 	name = 'GameFontNormal',           -- LootFrameItemElementTemplate's and the money one's Text
-	quality = 'GameFontWhiteTiny2',    -- QualityText
 	count = 'NumberFontNormal',        -- ItemButton's Count
 }
 
 -- The close button's four state textures (Button's C getters).
 local CLOSE_TEXTURES = { 'GetNormalTexture', 'GetPushedTexture', 'GetDisabledTexture', 'GetHighlightTexture' }
 local CLOSE_ICON = 20 -- Lucide's x is a 10 px cross in the middle of its 20
+
+-- The compact layout (owner's ask, 2026-11-28: shorter rows, a wider window, the
+-- name on one line to the right edge, no quality word, the icon outside the card
+-- as on the roll bars). Blizzard's row height is the view's element extent, a
+-- Lua field that LootFrame:Open reads before Edit Mode's ApplySystemAnchor, so
+-- it is never written: the scroll box is scaled down instead (a C call on a
+-- plain frame), and SaftUI's own pieces in it are scaled back up, so their
+-- borders stay on whole pixels and the texts take a font made larger by the same
+-- factor.
+local ROW_SCALE = 0.75
+local WINDOW_WIDTH = 300     -- Blizzard's panelWidth is 220
+-- Blizzard's own numbers (LootFrame.lua's locals, ScrollingFlatPanel.lua's and
+-- .xml's), read 2026-11-28 on Gethe/wow-ui-source `forever`.
+local ROW_EXTENT, ROW_SPACING, ROW_PAD = 46, 2, 6
+local SCROLLBAR_WIDTH = 16
+local BOX_LEFT, BOX_TOP, BOX_BOTTOM = 4, -22, 4 -- the scroll box's anchors
+local CHROME = 26 + 20       -- Resize's anchors and extra: the title and the margins
+local ICON_RIGHT = 5 + 37    -- the item button's left offset and width in a row
+local ICON_GAP = 7           -- between the icon's frame and the card's, as rollbar.lua's
+local TEXT_PAD = 5           -- the name's inset in the card, as rollbar.lua's
 
 -- What SaftUI made or changed, keyed by Blizzard's frames and regions (weak
 -- keys: nothing is written onto them to remember it).
@@ -111,6 +146,12 @@ local alphas = setmetatable({}, weak)
 local fonts = setmetatable({}, weak)
 local coords = setmetatable({}, weak)
 local masks = setmetatable({}, weak)
+-- The geometry Blizzard had before the compact layout, put back by a restore:
+-- the scroll box's scale and anchors, a text's anchors, size, wrap and vertical
+-- justify, an item button's hit rect.
+local boxes = setmetatable({}, weak)
+local texts = setmetatable({}, weak)
+local hits = setmetatable({}, weak)
 
 local installed = false
 -- Bumped by every change of the skin's settings, so a row styled before is
@@ -213,7 +254,84 @@ local function SetLevel(frame, reference, delta)
 	if level ~= nil and not issecretvalue(level) then frame:SetFrameLevel(max(0, level + delta)) end
 end
 
+-- A region's anchors as GetPoint gives them, to put back.
+local function ReadPoints(region)
+	local list = {}
+	for i = 1, region:GetNumPoints() do list[i] = { region:GetPoint(i) } end
+	return list
+end
+
+local function PutPoints(region, list)
+	region:ClearAllPoints()
+	for _, point in ipairs(list) do region:SetPoint(unpack(point)) end
+end
+
+-- The Loot window's font, made larger by the rows' scale so a text in the scaled
+-- scroll box draws at the font's own size: a font object of SaftUI's, set from
+-- the chosen one each time it is asked for.
+local scaledFont
+local function ScaledFont()
+	local base = st:FontObject(Config().font)
+	scaledFont = scaledFont or CreateFont('SaftUILootPopupFont')
+	scaledFont:SetFontObject(base)
+	local path, size, flags = base:GetFont()
+	if path and type(size) == 'number' then scaledFont:SetFont(path, size / ROW_SCALE, flags) end
+	return scaledFont
+end
+LT.PopupFont = function() return scaledFont end -- for tests and /run probes
+
 ------------------------------------------------------------------ the window
+
+-- The number of rows the window holds now (the scroll box's data provider, a
+-- read of Blizzard's Lua).
+local function RowCount(frame)
+	local ok, count = pcall(frame.ScrollBox.GetDataProviderSize or error, frame.ScrollBox)
+	return ok and type(count) == 'number' and count or 0
+end
+
+-- The window's size and the scroll box's scale, as Resize leaves them (Blizzard's
+-- sums from its own constants), or the compact layout's: rows scaled by
+-- ROW_SCALE in a window WINDOW_WIDTH wide, no taller than Blizzard's
+-- panelMaxHeight. Only C calls on plain frames (SetScale, SetPoint, SetWidth,
+-- SetHeight, SetShown): LootFrame's SetPoint is Edit Mode's override, so the
+-- window itself is never anchored, only sized (neither is overridden).
+local function Layout(frame, active)
+	local box = frame.ScrollBox
+	if not box or not box.SetScale then return end
+	if not active and not boxes[box] then return end
+	-- A closed window is sized by its next open's Resize, and Edit Mode gives
+	-- the window its own height (UpdateShownState): neither is laid out here.
+	if active and (not frame:IsShown() or frame.isInEditMode) then return end
+	local count = RowCount(frame)
+	local rows = math.max(count * ROW_EXTENT + math.max(count - 1, 0) * ROW_SPACING, ROW_EXTENT)
+	local maxHeight = type(frame.panelMaxHeight) == 'number' and frame.panelMaxHeight or 290
+	local panelWidth = type(frame.panelWidth) == 'number' and frame.panelWidth or 220
+	local scale, width, height
+	if active then
+		if not boxes[box] then boxes[box] = { scale = box:GetScale(), points = ReadPoints(box) } end
+		scale, width = ROW_SCALE, WINDOW_WIDTH
+		height = (rows + 2 * ROW_PAD) * scale + CHROME - 2 * ROW_PAD
+		box:SetScale(scale)
+		box:ClearAllPoints()
+		box:SetPoint('TOPLEFT', frame, 'TOPLEFT', BOX_LEFT / scale, BOX_TOP / scale)
+		box:SetPoint('BOTTOM', frame, 'BOTTOM', 0, BOX_BOTTOM / scale)
+	else
+		local saved = boxes[box]
+		boxes[box] = nil
+		scale, width = saved.scale or 1, panelWidth
+		height = rows + CHROME
+		box:SetScale(scale)
+		PutPoints(box, saved.points)
+	end
+	-- The rows overflow when they and the paddings, scaled, are taller than the
+	-- scroll box the window leaves them (its height less the box's anchors).
+	height = math.min(height, maxHeight)
+	local scrolls = (rows + 2 * ROW_PAD) * scale > height + BOX_TOP - BOX_BOTTOM
+	frame:SetHeight(height)
+	frame:SetWidth(width + (scrolls and SCROLLBAR_WIDTH or 0))
+	box:SetWidth((width - ROW_PAD) / scale)
+	if frame.ScrollBar and frame.ScrollBar.SetShown then frame.ScrollBar:SetShown(scrolls) end
+end
 
 local function CloseColor(hover)
 	if hover then return st:Color('text', 'danger'):GetRGB() end
@@ -265,6 +383,7 @@ local function StyleWindow(frame, active)
 	local title = frame.TitleContainer and frame.TitleContainer.TitleText
 	PutFont(title, 'title', active, st:FontObject(st.config.profile.headers.font), false)
 	StyleClose(frame, active)
+	Layout(frame, active)
 end
 
 ------------------------------------------------------------------ the rows
@@ -328,11 +447,16 @@ local function StyleCard(element, active)
 	local theme, background = Look()
 	if active then
 		-- The holder is the card's inside: the theme's border is drawn outside
-		-- it, so the border reaches the row's edge and no further.
+		-- it. It runs from ICON_GAP right of the icon to the row's right edge
+		-- (its border inside the row), as tall as the icon, as a roll bar's
+		-- does. Scaled back up from the rows' scale, so its offsets and border
+		-- are in the window's own pixels.
 		local inset = st:ThemeInset(theme, background, 'panel')
+		holder:SetScale(1 / ROW_SCALE)
 		holder:ClearAllPoints()
-		holder:SetPoint('TOPLEFT', element, 'TOPLEFT', inset, -inset)
-		holder:SetPoint('BOTTOMRIGHT', element, 'BOTTOMRIGHT', -inset, inset)
+		holder:SetPoint('TOPLEFT', element.Item, 'TOPRIGHT', ICON_GAP, 0)
+		holder:SetPoint('BOTTOMLEFT', element.Item, 'BOTTOMRIGHT', ICON_GAP, 0)
+		holder:SetPoint('RIGHT', element, 'RIGHT', -inset, 0)
 		-- One level under the row, so its own texts and the icon lie over the
 		-- card; the card's backdrop is made one under that, and under the slot's.
 		SetLevel(holder, element, -1)
@@ -386,6 +510,8 @@ local function StyleSlot(element, active)
 	if backdrop then
 		backdrop:SetShown(active)
 		if active then
+			-- In the window's own pixels, as the card (StyleCard).
+			backdrop:SetScale(1 / ROW_SCALE)
 			-- Over the card's, under the icon (the item's own level).
 			SetLevel(backdrop, item, -1)
 			Round(backdrop)
@@ -399,21 +525,68 @@ local function StyleSlot(element, active)
 	StyleIcon(item, active)
 end
 
+-- The name on one line from the card's left to its right, cut short with an
+-- ellipsis when it is still too long; Blizzard's anchors, size, wrap and
+-- vertical justify put back by a restore. The offsets are in the scaled row's
+-- units, so TEXT_PAD is divided by the scale.
+local function PlaceName(element, active)
+	local text, holder = element.Text, cards[element]
+	if not text or not text.SetPoint then return end
+	if active and holder then
+		if not texts[text] then
+			local width, height = text:GetSize()
+			texts[text] = {
+				points = ReadPoints(text), width = width, height = height,
+				wrap = text.CanWordWrap and text:CanWordWrap(), justify = text:GetJustifyV(),
+			}
+		end
+		text:ClearAllPoints()
+		text:SetPoint('LEFT', holder, 'LEFT', TEXT_PAD / ROW_SCALE, 0)
+		text:SetPoint('RIGHT', holder, 'RIGHT', -TEXT_PAD / ROW_SCALE, 0)
+		text:SetWordWrap(false)
+		text:SetJustifyV('MIDDLE')
+	elseif not active and texts[text] then
+		local saved = texts[text]
+		texts[text] = nil
+		PutPoints(text, saved.points)
+		text:SetSize(saved.width, saved.height)
+		text:SetWordWrap(saved.wrap ~= false)
+		text:SetJustifyV(saved.justify)
+	end
+end
+
+-- The item button's click area over the whole card (Blizzard's reaches 157 past
+-- the icon, its row's width less the icon in a 220 window), or Blizzard's back.
+local function PlaceHit(element, active)
+	local item = element.Item
+	if not item.SetHitRectInsets then return end
+	if active then
+		if not hits[item] then hits[item] = { item:GetHitRectInsets() } end
+		local row = (WINDOW_WIDTH - ROW_PAD) / ROW_SCALE - 2 * ROW_PAD
+		item:SetHitRectInsets(0, -(row - ICON_RIGHT), 0, 0)
+	elseif hits[item] then
+		item:SetHitRectInsets(unpack(hits[item]))
+		hits[item] = nil
+	end
+end
+
 local function StyleElement(element, active)
 	if not element.Item then return end -- a row with no item (an empty slot's)
-	local font = st:FontObject(Config().font)
+	local font = active and ScaledFont() or nil
 
 	Fade(element.NameFrame, active)
 	Fade(element.BorderFrame, active)
 	Fade(element.QualityStripe, active)
+	Fade(element.QualityText, active)
 	Fade(element.HighlightNameFrame, active)
 	Fade(element.PushedNameFrame, active)
 
 	StyleCard(element, active)
 	StyleSlot(element, active)
+	PlaceName(element, active)
+	PlaceHit(element, active)
 
 	PutFont(element.Text, 'name', active, font, true)
-	PutFont(element.QualityText, 'quality', active, font, true)
 	PutFont(element.Item.Count, 'count', active, font, true)
 end
 
@@ -495,7 +668,23 @@ local function Install()
 	if not scrollBox or not scrollBox.ScrollTarget or type(scrollBox.Update) ~= 'function' then return end
 	installed = true
 	hooksecurefunc(scrollBox, 'Update', function() Apply(Sweep) end)
-	frame:HookScript('OnShow', function() Apply(Sweep) end)
+	-- Blizzard sizes the window in Resize (on every open) from its own row
+	-- height: the compact layout sizes it again after.
+	if type(frame.Resize) == 'function' then
+		hooksecurefunc(frame, 'Resize', function()
+			if not Active() then return end
+			if not st:CanMoveNow(frame) then
+				st:QueueAfterCombat('LootPopupLayout', function() Apply(Layout, frame, Active()) end)
+				return
+			end
+			Apply(Layout, frame, true)
+		end)
+	end
+	frame:HookScript('OnShow', function()
+		Apply(Sweep)
+		-- Laid out again whenever it shows (Layout skips a hidden window).
+		if Active() and st:CanMoveNow(frame) then Apply(Layout, frame, true) end
+	end)
 end
 
 ------------------------------------------------------------------ the module

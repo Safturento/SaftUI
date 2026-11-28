@@ -383,10 +383,30 @@ function LF.build(opts)
 	target:SetAllPoints(box)
 	rawset(box, 'ScrollTarget', target)
 	rawset(box, 'Update', function() LF.updates = LF.updates + 1 end)
+	-- ScrollBoxListMixin's GetDataProviderSize, a read: the rows in use.
+	rawset(box, 'GetDataProviderSize', function() return #LF.active end)
 	rawset(frame, 'ScrollBox', box)
 	LF.scroll_target, LF.scroll_box = target, box
 	local bar = CreateFrame('Frame', nil, frame)
 	rawset(frame, 'ScrollBar', bar)
+	-- LootFrame.xml's KeyValues, and ScrollingFlatPanelMixin:Resize as Blizzard
+	-- runs it on every open (its height from 46 px rows, its width from
+	-- panelWidth). A call from outside the fixture's drivers is SaftUI's (LF.stray).
+	rawset(frame, 'panelWidth', 220)
+	rawset(frame, 'panelMaxHeight', 290)
+	rawset(frame, 'Resize', function(self)
+		if driving == 0 then LF.stray[#LF.stray + 1] = 'Resize' end
+		drive(function()
+			local n = #LF.active
+			local rows = math.max(n * 46 + math.max(n - 1, 0) * 2, 46)
+			local height = math.min(rows + 46, 290)
+			local scrolls = rows + 46 > 290
+			self:SetHeight(height)
+			self:SetWidth(220 + (scrolls and 16 or 0))
+			bar:SetShown(scrolls)
+			box:SetWidth(214)
+		end)
+	end)
 
 	-- The frame's OnShow is Blizzard's (it registers the slot events).
 	frame:SetScript('OnShow', function() LF.shown = (LF.shown or 0) + 1 end)
@@ -414,6 +434,8 @@ function LF.open(slots)
 			LF.active[#LF.active + 1] = row
 		end
 		LF.scroll_box:Update()
+		-- ScrollingFlatPanelMixin.Open: Resize after the rows are set.
+		LF.frame:Resize()
 	end)
 end
 
