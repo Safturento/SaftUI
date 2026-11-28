@@ -27,6 +27,7 @@ local ALLOWED = {
 	['SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua'] = { reason = "the buff and debuff frames' own font objects", calls = { font = 1 } },
 	['SaftUI-Chat/chatframe.lua'] = { reason = "Blizzard's chat frames, which take a face, size and flags and have no font object of SaftUI's", calls = { frame = 1 } },
 	['SaftUI-Misc/tooltip.lua'] = { reason = "Blizzard's tooltip lines, copied onto each as it shows", calls = { line = 1 } },
+	['SaftUI-Loot/popup.lua'] = { reason = "the loot window's scaled rows' font object of SaftUI's (the Loot window's font at its size over the rows' scale), a font object's SetFont, never a text's", calls = { scaledFont = 1 } },
 	['SaftUI-Misc/Skinning/addons/restedxp.lua'] = { reason = "RestedXP's texts, its timers' bars and the hook that notices its own SetFont (another addon's font strings)", calls = { fs = 1, bar = 1, ["'SetFont'"] = 1 } },
 	['SaftUI-Misc/Skinning/addons/spy.lua'] = { reason = "Spy's texts (another addon's font strings), which keep the size Spy asks for and take SaftUI's face and outline, and the hook that notices Spy's own SetFont", calls = { fs = 1, ["'SetFont'"] = 1 } },
 	['SaftUI-Core/Dev/fontdemo.lua'] = { reason = 'the temporary font demo, to be deleted', any = true },

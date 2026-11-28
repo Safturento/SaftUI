@@ -32,6 +32,8 @@ end
 -- 20 px button: Lucide's funnel fills 20 of its 24 grid, the arrow 14, so 16
 -- leaves the funnel 13 px wide and each a few px of the button round it.
 local ICON_SIZE = 16
+-- Between an entry's icon and its card, as between a roll bar's (rollbar.lua).
+local ICON_GAP = 7
 
 -- The icon's rest color, Text -> Normal (the states put it back after a hover).
 local function IconRest()
@@ -576,7 +578,8 @@ local function BuildTooltip(self)
 
 	GameTooltip:SetOwner(self, 'ANCHOR_NONE')
 	GameTooltip:ClearAllPoints()
-	GameTooltip:SetPoint('BOTTOMRIGHT', self, 'BOTTOMLEFT', -10, 0)
+	-- Left of the icon, which stands outside the entry's card.
+	GameTooltip:SetPoint('BOTTOMRIGHT', self.icon or self, 'BOTTOMLEFT', -10, 0)
 	if self.link then
 		GameTooltip:SetHyperlink(self.link)
 	else
@@ -680,14 +683,18 @@ function LT:UpdateLootFeedConfig()
 		-- Lowering max_items leaves the extra items behind; keep them out of sight.
 		if i > config.max_items then item:Hide() end
 
-		item:SetSize(config.width, config.item_height)
+		-- The entry is the card; its icon sits outside it on the left, ICON_GAP
+		-- away, as a roll bar's does (rollbar.lua), so the two borders stand
+		-- apart. The click area reaches over the icon too.
+		item:SetSize(config.width - config.item_height - ICON_GAP, config.item_height)
+		item:SetHitRectInsets(-(config.item_height + ICON_GAP), 0, 0, 0)
 		item.text:SetFontObject(font_obj)
-		item.text:SetPoint('LEFT', item.icon, 'RIGHT', 10, 0)
+		item.text:SetPoint('LEFT', item, 'LEFT', 10, 0)
 		item.text:SetPoint('RIGHT', item.rightText, 'LEFT', -10, 0)
 		item.text:SetJustifyH('LEFT')
 		item.text:SetWordWrap(false)
 
-		item.timer:SetPoint('RIGHT', item, 'LEFT', -20, 0)
+		item.timer:SetPoint('RIGHT', item.icon, 'LEFT', -20, 0)
 		item.timer:SetFontObject(font_obj)
 		item.timer:SetJustifyH('LEFT')
 
@@ -706,17 +713,14 @@ function LT:UpdateLootFeedConfig()
 		item.count:SetPoint('BOTTOMRIGHT', item.icon, 0, 2)
 
 		item.icon:SetSize(config.item_height, config.item_height)
-		item.icon:SetPoint('LEFT', item)
+		item.icon:ClearAllPoints()
+		item.icon:SetPoint('RIGHT', item, 'LEFT', -ICON_GAP, 0)
 		st:SkinIcon(item.icon)
 		st:SetBackdrop(item, config.theme, config.background, 'panel')
 
-		-- Along the bottom edge of the text panel. The panel's visible left edge is
-		-- the icon's border, which st:SetBackdrop draws outside the icon (2px for
-		-- Thick, 1px for Thin, none for None), so start right after it and run to
-		-- the entry's right edge.
-		local iconBorder = st:ThemeInset(config.theme, config.background, 'slot')
+		-- Along the bottom edge of the card, from its left edge to its right.
 		item.progressBar:ClearAllPoints()
-		item.progressBar:SetPoint('BOTTOMLEFT', item.icon, 'BOTTOMRIGHT', iconBorder, 0)
+		item.progressBar:SetPoint('BOTTOMLEFT', item, 'BOTTOMLEFT', 0, 0)
 		item.progressBar:SetPoint('BOTTOMRIGHT', item, 'BOTTOMRIGHT', 0, 0)
 		item.progressBar:SetHeight(1)
 	end

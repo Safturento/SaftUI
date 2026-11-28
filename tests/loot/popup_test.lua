@@ -131,6 +131,10 @@ local function check_blizzard(where)
 	end
 	local panel = panel_of(frame)
 	check(not panel or not panel:IsShown(), where .. ': SaftUI\'s panel is not shown')
+	eq(frame.ScrollBox:GetScale(), 1, where .. ': the rows are at Blizzard\'s scale')
+	eq(frame.ScrollBox:GetWidth(), 214, where .. ': the scroll box is Blizzard\'s width')
+	eq(select(4, frame.ScrollBox:GetPoint(1)), 4, where .. ': and anchored where Blizzard anchors it')
+	check(frame:GetWidth() == 220 or frame:GetWidth() == 236, where .. ': the window is Blizzard\'s width')
 	for _, child in ipairs(own_children(frame.ClosePanelButton)) do
 		check(not child:IsShown(), where .. ': SaftUI\'s cross is not shown')
 	end
@@ -144,7 +148,14 @@ local function check_blizzard(where)
 		eq(row.Item:GetNormalTexture():GetAlpha(), 1, label .. ': the normal texture')
 		eq(row.Text:GetFontObject(), GameFontNormal, label .. ': the name font')
 		eq(row.Item.Count:GetFontObject(), NumberFontNormal, label .. ': the count font')
-		if row.QualityText then eq(row.QualityText:GetFontObject(), GameFontWhiteTiny2, label .. ': the quality font') end
+		if row.QualityText then
+			eq(row.QualityText:GetFontObject(), GameFontWhiteTiny2, label .. ': the quality font')
+			eq(row.QualityText:GetAlpha(), 1, label .. ': the quality word shows')
+		end
+		check(row.Text:CanWordWrap(), label .. ': the name wraps, as Blizzard\'s does')
+		eq(select(2, row.Text:GetPoint(1)), row.Item, label .. ': the name is anchored as Blizzard anchors it')
+		eq(T.text(row.Text:GetSize()), T.text(150, 30), label .. ': at Blizzard\'s size')
+		eq(T.text(row.Item:GetHitRectInsets()), T.text(0, 0, 0, 0), label .. ': the icon\'s click area is as built')
 		eq(T.text(row.Item.icon:GetTexCoord()), T.text(0, 0, 0, 1, 1, 0, 1, 1), label .. ': the icon shows the whole texture')
 		eq(row.Item.icon:GetNumMaskTextures(), LF.client == 'forever' and 1 or 0,
 			label .. ': the icon has the mask Blizzard gave it (Forever\'s round one, none on retail)')
@@ -174,7 +185,15 @@ local function check_skinned(where)
 	check(visible(cross), where .. ': the cross is shown')
 	eq(own_regions(cross)[1]:GetTexture(), st.icons.x, where .. ': the cross is Lucide\'s x')
 
-	local font = st:FontObject(profile.loot.popup.font)
+	-- The compact layout: rows scaled down in a wider window, the texts in the
+	-- Loot window's font made larger by the same factor.
+	local box = frame.ScrollBox
+	eq(box:GetScale(), 0.75, where .. ': the rows are scaled down')
+	eq(frame:GetWidth(), 300 + (frame.ScrollBar:IsShown() and 16 or 0), where .. ': the window is wider')
+	eq(box:GetWidth(), 294 / 0.75, where .. ': and so is the scroll box, in its scaled units')
+	local font = LT.PopupFont()
+	local base = st:FontObject(profile.loot.popup.font)
+	eq(select(2, font:GetFont()), select(2, base:GetFont()) / 0.75, where .. ': the rows\' font is the Loot window\'s, made larger by the scale')
 	for i, row in ipairs(rows()) do
 		local label = where .. ', row ' .. i
 		eq(row.NameFrame:GetAlpha(), 0, label .. ': Blizzard\'s card is faded')
@@ -193,7 +212,13 @@ local function check_skinned(where)
 		eq(drawn(row.Item), look .. 'slot', label .. ': the icon is in a slot')
 		eq(row.Text:GetFontObject(), font, label .. ': the name is in the Loot window\'s font')
 		eq(row.Item.Count:GetFontObject(), font, label .. ': so is the count')
-		if row.QualityText then eq(row.QualityText:GetFontObject(), font, label .. ': so is the quality label') end
+		if row.QualityText then eq(row.QualityText:GetAlpha(), 0, label .. ': the quality word is faded') end
+		check(not row.Text:CanWordWrap(), label .. ': the name stays on one line')
+		eq(holder:GetScale(), 1 / 0.75, label .. ': the card is in the window\'s own pixels')
+		eq(slot:GetScale(), 1 / 0.75, label .. ': so is the slot')
+		eq(holder:GetPoint(1) and select(2, holder:GetPoint(1)), row.Item, label .. ': the card starts right of the icon')
+		eq(select(2, row.Text:GetPoint(1)), holder, label .. ': the name runs across the card')
+		eq(select(2, row.Item:GetHitRectInsets()), -(294 / 0.75 - 12 - 42), label .. ': the icon\'s click area covers the card')
 		local trim = profile.misc.icon_trim
 		eq(T.text(row.Item.icon:GetTexCoord()), T.text(trim, trim, trim, 1 - trim, 1 - trim, trim, 1 - trim, 1 - trim), label .. ': the icon is cropped')
 		eq(row.Item.icon:GetNumMaskTextures(), 0, label .. ': its round mask is off')
@@ -211,7 +236,11 @@ end
 local function open() LF.open(SLOTS) end
 
 local function clean()
-	local allowed = { SetAlpha = true, SetFontObject = true, SetTextColor = true, SetTexCoord = true, RemoveMaskTexture = true, AddMaskTexture = true, HookScript = true }
+	-- The compact layout's C calls on plain frames and regions (none on
+	-- LootFrame is Edit Mode's: SetWidth and SetHeight aren't overridden).
+	local allowed = { SetAlpha = true, SetFontObject = true, SetTextColor = true, SetTexCoord = true, RemoveMaskTexture = true, AddMaskTexture = true, HookScript = true,
+		SetScale = true, ClearAllPoints = true, SetPoint = true, SetWidth = true, SetHeight = true, SetSize = true, SetShown = true,
+		SetWordWrap = true, SetJustifyV = true, SetHitRectInsets = true }
 	for _, call in ipairs(LF.calls) do
 		check(allowed[call], 'SaftUI called ' .. call .. ' on one of Blizzard\'s loot widgets')
 	end
@@ -436,6 +465,36 @@ test('the toggle goes both ways live: off puts Blizzard\'s window back, on skins
 	clean()
 end)
 
+test('the compact layout: a short window for few rows, Blizzard\'s max height and the scroll bar for many, Blizzard\'s size back when off', function()
+	world('forever')
+	LF.open({ { kind = 'item', quality = 2 }, { kind = 'item', quality = 3 } })
+	-- Two 46 px rows and their 2 px gap with the 6 px paddings, scaled, and the
+	-- title and margins.
+	eq(LF.frame:GetHeight(), (2 * 46 + 2 + 12) * 0.75 + 46 - 12, 'two rows: the window fits them')
+	check(not LF.frame.ScrollBar:IsShown(), 'and has no scroll bar')
+	eq(LF.frame:GetWidth(), 300, 'at the compact width')
+	local seven = {}
+	for i = 1, 7 do seven[i] = { kind = 'item', quality = 1 } end
+	LF.open(seven)
+	eq(LF.frame:GetHeight(), 290, 'seven rows: Blizzard\'s max height')
+	check(not LF.frame.ScrollBar:IsShown(), 'and they all fit, so no scroll bar')
+	eq(LF.frame:GetWidth(), 300, 'nor its room')
+	local many = {}
+	for i = 1, 12 do many[i] = { kind = 'item', quality = 1, name = 'Thing ' .. i } end
+	LF.open(many)
+	eq(LF.frame:GetHeight(), 290, 'twelve rows: Blizzard\'s max height')
+	check(LF.frame.ScrollBar:IsShown(), 'with the scroll bar')
+	eq(LF.frame:GetWidth(), 316, 'and room for it')
+	profile.loot.popup.enable = false
+	LT:UpdatePopup()
+	eq(LF.frame:GetHeight(), 290, 'off: Blizzard\'s height for twelve rows')
+	eq(LF.frame:GetWidth(), 236, 'and Blizzard\'s width with its scroll bar')
+	LF.open({ { kind = 'item', quality = 2 } })
+	eq(LF.frame:GetHeight(), 46 + 46, 'opened while off: Blizzard\'s own Resize, untouched')
+	eq(LF.frame:GetWidth(), 220, 'at Blizzard\'s width')
+	clean()
+end)
+
 test('a font change reaches the open window, a Window titles font change the title', function()
 	world('forever')
 	open()
@@ -443,7 +502,8 @@ test('a font change reaches the open window, a Window titles font change the tit
 	st:FontsChanged()
 	check_skinned('Small text')
 	for _, row in ipairs(rows()) do
-		eq(row.Text:GetFontObject(), st:FontObject('pixel'), 'the name is in Small text')
+		eq(row.Text:GetFontObject(), LT.PopupFont(), 'the name is in the rows\' font')
+		eq(select(2, LT.PopupFont():GetFont()), select(2, st:FontObject('pixel'):GetFont()) / 0.75, 'which is Small text, made larger by the scale')
 	end
 	profile.headers.font = 'pixel'
 	st:FontsChanged()
@@ -507,12 +567,17 @@ test('a window another addon made protected is styled when combat ends, not in i
 	check_blizzard('protected, in combat')
 	-- Only the hook on the window's OnShow (HookScript is not a protected
 	-- function); nothing styled, and the one call the game blocked is the
-	-- fixture's own Show (Blizzard's secure code shows it in combat).
+	-- fixture's own Show and Resize (Blizzard's secure code shows and sizes it
+	-- in combat).
 	eq(table.concat(LF.calls, ','), 'HookScript', 'SaftUI only hooked the window in combat')
-	eq(#stub.blocked, 1, 'one call blocked')
-	eq(stub.blocked[1][2], 'Show', 'the fixture\'s Show')
+	local names = {}
+	for _, call in ipairs(stub.blocked) do names[#names + 1] = call[2] end
+	eq(table.concat(names, ','), 'Show,SetHeight,SetWidth', 'the calls blocked are the fixture\'s Show and Resize')
 	stub.in_combat = false
 	stub.fire_event('PLAYER_REGEN_ENABLED')
+	-- The fixture's Show was blocked; the game's secure code would have shown
+	-- it, so it shows now, and is laid out as it shows.
+	LF.show()
 	check_skinned('after combat')
 	clean()
 end)
