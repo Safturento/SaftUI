@@ -429,3 +429,26 @@ test('auras: levels follow the holder and a real plate is untouched', function()
 	eq(UF.AuraButtonSize(frame, frame.Debuffs.config), 20)
 	eq(#take_errors(), 0)
 end)
+
+test("auras: the dark line over the border follows the theme as a real button's", function()
+	local st, UF, config = world()
+	local function line(button)
+		for _, region in ipairs({ button:GetRegions() }) do
+			if region:IsObjectType('Texture') and region ~= button.Icon and region ~= button.Border then
+				return region
+			end
+		end
+	end
+	local debuffs = config.nameplate.debuffs
+	debuffs.theme = 'thick'
+	local frame = styled(UF, 'nameplate')
+	local button = frame.Debuffs.buttons[1]
+	local inner = line(button)
+	assert(inner, 'a line under Thick')
+	eq(inner:IsShown(), true, 'shown under Thick')
+	eq(rgb(inner:GetVertexColor()), rgb(unpack(st.config.profile.templates.thick.altbordercolor)), "Thick's outer border colour")
+	debuffs.theme = 'thin'
+	UF:StylePlatePreview('nameplate')
+	eq(line(button):IsShown(), false, 'hidden under Thin')
+	eq(#take_errors(), 0)
+end)

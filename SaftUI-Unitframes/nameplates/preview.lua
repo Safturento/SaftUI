@@ -79,6 +79,7 @@ local AURA_SAMPLE = {
 local DISPEL_COLORS = {
 	Magic = { 0.2, 0.6, 1 }, Curse = { 0.6, 0, 1 }, Disease = { 0.6, 0.4, 0 }, Poison = { 0, 0.6, 0 },
 }
+-- The stealable border is an approximation of Blizzard's art (a plain tint).
 local STEALABLE_COLOR = { 0.2, 0.6, 1 }
 local AURA_DURATION, AURA_ELAPSED = 30, 10 -- the swipe, part way
 
@@ -199,10 +200,11 @@ local function FillAuraButton(area, button, index, sample)
 	-- The border's colour: a type's or the stealable one, only where the area
 	-- colours that. StyleButton has drawn it for the theme.
 	local color
-	if area.name == 'Debuffs' and config.friend and (config.friend.colorTypes or (config.enemy and config.enemy.colorTypes)) then
-		color = DISPEL_COLORS[sample.types[index] or '']
-	elseif area.name == 'Buffs' and index == sample.stealable
-			and ((config.friend and config.friend.colorStealable) or (config.enemy and config.enemy.colorStealable)) then
+	if area.name == 'Debuffs' and UF.AuraEither(config, 'colorTypes') then
+		local dispel = sample.types[index]
+		local oUF = UF.oUF and UF.oUF.colors and UF.oUF.colors.dispel and UF.oUF.colors.dispel[dispel]
+		color = oUF and { oUF:GetRGB() } or DISPEL_COLORS[dispel or '']
+	elseif area.name == 'Buffs' and index == sample.stealable and UF.AuraEither(config, 'colorStealable') then
 		color = STEALABLE_COLOR
 	end
 	if color then
@@ -431,7 +433,8 @@ local function RelevelUnder(frame, holder)
 		-- An aura area's buttons sit just over their area.
 		for _, button in ipairs(element.buttons or {}) do
 			button:SetFrameLevel(element:GetFrameLevel() + 1)
-			top = math.max(top, button:GetFrameLevel())
+			-- The cooldown is a child of the button, one over it.
+			top = math.max(top, button:GetFrameLevel() + 1)
 		end
 	end
 	frame.TextOverlay:SetFrameLevel(top + 1)

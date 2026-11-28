@@ -53,6 +53,7 @@ UF.AuraAreaSize = getAreaSize
 local function eitherHostility(config, key)
 	return (config.friend and config.friend[key]) or (config.enemy and config.enemy[key]) or false
 end
+UF.AuraEither = eitherHostility
 
 -- Every button each aura element has made, so a config update can restyle them.
 local buttonsByElement = setmetatable({}, { __mode = 'k' })
@@ -83,8 +84,8 @@ end
 -- outer border color, and hides it otherwise. The line isn't part of the
 -- backdrop the theme engine draws, so the engine runs this again after every
 -- theme recolor and redraw (st:KeepOwnColors, from PostCreateButton).
-local function ColorInnerLine(button)
-	local inner, auras = innerLines[button], buttonElements[button]
+local function ColorInnerLine(button, owner)
+	local inner, auras = innerLines[button], owner or buttonElements[button]
 	if not (inner and auras) then return end
 	local look = st:ResolveTheme(auras.config.theme, auras.config.background)
 	if look and look.name == 'thick' then
@@ -151,7 +152,7 @@ local function StyleButton(auras, button)
 			end
 		end
 		-- Shown only under Thick, so hidden under Blizzard.
-		ColorInnerLine(button)
+		ColorInnerLine(button, auras)
 	end
 
 	if button.Count then
