@@ -1,7 +1,7 @@
 -- The preview plate at the top of the Enemy and Friendly nameplates pages
 -- (SaftUI-Unitframes/nameplates/preview.lua):
 --   - one plain frame per page, built from the registered parts that take a
---     plate (not the aura areas yet), styled from the page's config, or the
+--     plate (the aura areas drawn by the preview itself), styled from the page's config, or the
 --     source page's while its box is checked, through the real updaters, and
 --     filled with made-up data;
 --   - a part its config turns off is hidden, the threat text shows on the
@@ -58,8 +58,8 @@ test('preview: every part on by default shows on the Enemy page', function()
 	eq(frame.Castbar.Icon:IsShown(), true, 'cast icon')
 	eq(frame.Castbar.Text:GetText(), 'Shadow Bolt')
 	eq(frame.Castbar.Text:IsShown(), true)
-	eq(frame.Buffs, nil, 'no aura areas yet')
-	eq(frame.Debuffs, nil)
+	eq(frame.Buffs:IsShown(), true, 'buffs')
+	eq(frame.Debuffs:IsShown(), true, 'debuffs')
 	eq(frame.Name:GetText(), hex(st, st:Color('text', 'danger')) .. 'Thornfang Ravager|r')
 	eq(frame.Health.text:GetText(), UF.PlainHealthText(config.nameplate.health.text, 180000, 250000))
 	eq(frame.Threat:GetText(), '87%')
@@ -279,4 +279,153 @@ test('band: the page has it', function()
 		eq(type(band.draw), 'function')
 		eq(band, UF.PlatePreviewBand(page))
 	end
+end)
+
+-- The aura areas: plain frames holding made-up icon buttons.
+local function shownButtons(area)
+	local list = {}
+	for _, button in ipairs(area.buttons) do
+		if button:IsShown() then list[#list + 1] = button end
+	end
+	return list
+end
+
+test('auras: default debuffs', function()
+	local st, UF, config = world()
+	local frame = styled(UF, 'nameplate')
+	local area = frame.Debuffs
+	local buttons = shownButtons(area)
+	eq(#buttons, 6)
+	for _, button in ipairs(buttons) do
+		eq(button:GetWidth(), 20)
+		eq(button:GetHeight(), 20)
+	end
+	-- 6 x 20 + 5 x 6 = 150, one row of 20.
+	eq(area:GetWidth(), 150)
+	eq(area:GetHeight(), 20)
+	eq(UF.AuraAreaSize(frame, config.nameplate.debuffs), 150)
+	eq(area.unitframe, frame)
+	eq(area.name, 'Debuffs')
+	eq(area.GetConfig(), config.nameplate.debuffs)
+	-- Its bottom-left 6 above the bar's top-left.
+	eq(area:GetLeft(), frame.Health:GetLeft())
+	eq(area:GetBottom(), frame.Health:GetTop() + 6)
+	-- Each step is a size plus the spacing to the right, the first at the left.
+	eq(buttons[1]:GetLeft(), area:GetLeft())
+	eq(buttons[2]:GetLeft(), area:GetLeft() + 26)
+	eq(buttons[6]:GetRight(), area:GetRight())
+	eq(buttons[1]:GetBottom(), area:GetBottom())
+	-- Made-up icons, the stacks 3, 2 and 5 on the second, fourth and sixth.
+	eq(buttons[1].Icon:GetTexture(), 136207)
+	eq(buttons[2].Count:GetText(), '3')
+	eq(buttons[1].Count:IsShown(), false)
+	eq(buttons[6].Count:GetText(), '5')
+	eq(#take_errors(), 0)
+end)
+
+test('auras: default buffs', function()
+	local st, UF = world()
+	local frame = styled(UF, 'nameplate')
+	local area = frame.Buffs
+	local buttons = shownButtons(area)
+	eq(#buttons, 4)
+	-- 6 right of the bar, level with its top.
+	eq(area:GetLeft(), frame.Health:GetRight() + 6)
+	eq(area:GetTop(), frame.Health:GetTop())
+	eq(area:GetWidth(), 4 * 20 + 3 * 6)
+	eq(buttons[1]:GetTop(), area:GetTop())
+	eq(buttons[4]:GetRight(), area:GetRight())
+	eq(buttons[1].Icon:GetTexture(), 135987)
+	eq(#take_errors(), 0)
+end)
+
+test('auras: max 8, per row 4, grow left and down', function()
+	local st, UF, config = world()
+	local debuffs = config.nameplate.debuffs
+	debuffs.max, debuffs.per_row = 8, 4
+	debuffs.grow_right, debuffs.grow_up = false, false
+	debuffs.initial_anchor = 'TOPRIGHT'
+	local frame = styled(UF, 'nameplate')
+	local area = frame.Debuffs
+	local buttons = shownButtons(area)
+	eq(#buttons, 6, 'the sample has six')
+	-- Two rows of four: 4 x 20 + 3 x 6 = 98 by 2 x 20 + 6 = 46.
+	eq(area:GetWidth(), 98)
+	eq(area:GetHeight(), 46)
+	-- Right to left, then the next row 26 lower.
+	eq(buttons[1]:GetRight(), area:GetRight())
+	eq(buttons[1]:GetTop(), area:GetTop())
+	eq(buttons[2]:GetRight(), area:GetRight() - 26)
+	eq(buttons[4]:GetRight(), area:GetRight() - 78)
+	eq(buttons[5]:GetRight(), area:GetRight())
+	eq(buttons[5]:GetTop(), area:GetTop() - 26)
+	eq(buttons[6]:GetRight(), area:GetRight() - 26)
+	-- A max under the sample's count shows fewer.
+	debuffs.max = 3
+	styled(UF, 'nameplate')
+	eq(#shownButtons(area), 3)
+	eq(#take_errors(), 0)
+end)
+
+test('auras: off hides the area', function()
+	local st, UF, config = world()
+	local frame = styled(UF, 'nameplate')
+	eq(frame.Debuffs:IsShown(), true)
+	config.nameplate.debuffs.enable = false
+	UF:StylePlatePreview('nameplate')
+	eq(frame.Debuffs:IsShown(), false)
+	eq(#shownButtons(frame.Debuffs), 6, 'the buttons stay on the hidden area')
+	eq(frame.Debuffs.buttons[1]:IsVisible(), false)
+	config.nameplate.buffs.enable = false
+	UF:StylePlatePreview('nameplate')
+	eq(frame.Buffs:IsShown(), false)
+	eq(#take_errors(), 0)
+end)
+
+test('auras: the timer shows only when on', function()
+	local st, UF, config = world()
+	local frame = styled(UF, 'nameplate')
+	local cooldown = frame.Debuffs.buttons[1].Cooldown
+	local timer = config.nameplate.debuffs.cooldown.timer
+	timer.enable = false
+	UF:StylePlatePreview('nameplate')
+	eq(cooldown:GetHideCountdownNumbers(), true)
+	timer.enable = true
+	UF:StylePlatePreview('nameplate')
+	eq(cooldown:GetHideCountdownNumbers(), false)
+	eq(#take_errors(), 0)
+end)
+
+test('auras: band height grows with a second row', function()
+	local st, UF, config = world()
+	local band = UF.PlatePreviewBand('nameplate')
+	eq(band.height(774), 120)
+	-- Debuffs: one row of 20 sits 6 above the bar, 26 up, under the raid
+	-- mark's 48. Two rows (per row 3 of 6): 20 + 6 + 20 = 46, 6 above: 52.
+	-- 52 + 20 + 18 + 24 = 114: the minimum.
+	config.nameplate.debuffs.per_row = 3
+	eq(band.height(774), 120)
+	-- Size 40: two rows are 40 + 6 + 40 = 86, 6 above: 92. 92 + 20 + 18 + 24 = 154.
+	config.nameplate.debuffs.size = 40
+	eq(band.height(774), 154)
+	-- The cap.
+	config.nameplate.debuffs.size = 80
+	eq(band.height(774), 200)
+	eq(#take_errors(), 0)
+end)
+
+test('auras: levels follow the holder and a real plate is untouched', function()
+	local st, UF = world()
+	local band = UF.PlatePreviewBand('nameplate')
+	local h = holder(774, 150)
+	h:SetFrameLevel(50)
+	band.draw(h, 774, 150)
+	local frame = UF:PlatePreviewFrame('nameplate')
+	for _, name in ipairs({ 'Debuffs', 'Buffs' }) do
+		assert(frame[name]:GetFrameLevel() > 50, name)
+		assert(frame[name].buttons[1]:GetFrameLevel() > 50, name .. ' button')
+		assert(frame.TextOverlay:GetFrameLevel() > frame[name].buttons[1]:GetFrameLevel())
+	end
+	eq(UF.AuraButtonSize(frame, frame.Debuffs.config), 20)
+	eq(#take_errors(), 0)
 end)

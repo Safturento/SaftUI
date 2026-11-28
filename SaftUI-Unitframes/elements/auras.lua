@@ -36,6 +36,20 @@ local function getButtonSize(unitframe, config)
 		or config.size
 end
 
+-- The aura area's own size from its config: a row of Per row buttons and as
+-- many rows as Max needs. UpdateConfig sizes the container by it, and the
+-- preview plate's aura areas (nameplates/preview.lua) by the same sums.
+local function getAreaSize(unitframe, config)
+	local size = getButtonSize(unitframe, config)
+	local num_rows = ceil(config.max / config.per_row)
+	local width = config.per_row * size + (config.per_row - 1) * config.spacing
+	local height = num_rows * size + (num_rows - 1) * config.spacing
+	return width, height
+end
+
+UF.AuraButtonSize = getButtonSize
+UF.AuraAreaSize = getAreaSize
+
 local function eitherHostility(config, key)
 	return (config.friend and config.friend[key]) or (config.enemy and config.enemy[key]) or false
 end
@@ -177,6 +191,10 @@ local function StyleButton(auras, button)
 	end
 end
 
+-- StyleButton is given a plain button with Icon, Count and Cooldown by the
+-- preview plate's aura areas, which have no container.
+UF.StyleAuraButton = StyleButton
+
 local function PostCreateButton(auras, button)
 	-- Blizzard's AuraContainer made the button: the Blizzard theme puts none of its
 	-- art on it, but on a holder of SaftUI's. Before its first draw.
@@ -271,11 +289,9 @@ local function UpdateConfig(unitframe, aura_type)
 	if not enabled then return end
 
 	local config = auras.config
-	local size = getButtonSize(unitframe, config)
-	local num_rows = ceil(config.max / config.per_row)
-	local width = config.per_row * size + (config.per_row - 1) * config.spacing
+	local width, height = getAreaSize(unitframe, config)
 
-	auras:SetHeight(num_rows * size + (num_rows - 1) * config.spacing)
+	auras:SetHeight(height)
 	auras:SetWidth(width)
 
 	auras.elementSpacing = config.spacing

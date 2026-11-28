@@ -11,13 +11,21 @@ local UF = st:GetModule('Unitframes')
 	The frame is SaftUI's own plain one, as the group test previews are
 	(grouppreview.lua): no oUF frame, no unit, nothing secure or Blizzard's, so
 	it is safe in combat. Its parts are the registered constructors' (the
-	aura areas aside: they have their own preview), placed, sized and themed by
+	aura areas aside, below), placed, sized and themed by
 	the real updaters (UF:UpdateElement and each element's UpdateConfig) from
 	the same config a real plate of that kind reads (UF.PlateConfigKey: the
 	page's, or the source page's while its box is checked), so a setting moves
 	a part here as it does on a plate. Only what oUF would fill from a unit is
 	filled by hand below, through the same helpers where the real code has
 	them (UF.NameParts, UF.FormatName, UF.PlainHealthText).
+
+	The aura areas are plain frames of the preview's own: the real ones are
+	Blizzard's AuraContainer, which shows only real auras and whose buttons
+	are restricted (.agents/taint.md rule 11). Each holds sample icon buttons,
+	plain frames with Icon, Count and Cooldown as a container's buttons have,
+	styled by the real StyleButton (UF.StyleAuraButton), the area sized by the
+	real sums (UF.AuraAreaSize) and its buttons laid out by the area's Initial
+	anchor, Per row, Spacing and growth.
 
 	Styled from the page itself (draw runs on every render of the page, refresh
 	in a slider drag), never from UF:UpdateConfig, so a change made in combat
@@ -48,9 +56,31 @@ local SAMPLE_THREAT = '87%'
 local RAID_MARK = 8 -- skull
 local QUEST_TEXTURE = [[Interface\TargetingFrame\PortraitQuestBadge]]
 
--- The parts left out of the preview frame: the aura areas, which the preview
--- draws by itself (they are Blizzard's AuraContainer on a real plate).
-local NOT_BUILT = { Buffs = true, Debuffs = true }
+-- The aura areas, which the preview draws by itself (they are Blizzard's
+-- AuraContainer on a real plate) instead of building the registered part.
+local AURA_AREAS = { Buffs = true, Debuffs = true }
+
+-- Each area's sample icons, and the stacks they show (nil: none).
+local AURA_SAMPLE = {
+	Debuffs = {
+		icons = { 136207, 136118, 136139, 136096, 132155, 132204 },
+		counts = { nil, 3, nil, 2, nil, 5 },
+		-- A dispel type each, where the area colours by type (the last two
+		-- have none).
+		types = { 'Magic', 'Curse', 'Disease', 'Poison' },
+	},
+	Buffs = {
+		icons = { 135987, 135932, 136078, 135953 },
+		counts = {},
+		-- The first is stealable, where the area colours stealable.
+		stealable = 1,
+	},
+}
+local DISPEL_COLORS = {
+	Magic = { 0.2, 0.6, 1 }, Curse = { 0.6, 0, 1 }, Disease = { 0.6, 0.4, 0 }, Poison = { 0, 0.6, 0 },
+}
+local STEALABLE_COLOR = { 0.2, 0.6, 1 }
+local AURA_DURATION, AURA_ELAPSED = 30, 10 -- the swipe, part way
 
 local frames = {}
 
@@ -67,6 +97,38 @@ end
 local function PlainLevel()
 	local level = UnitLevel('player')
 	return type(level) == 'number' and level or nil
+end
+
+-- One sample icon button: a plain frame with what StyleButton styles and the
+-- container's buttons have (Icon, Count, Cooldown), and the dispel or stealable
+-- border's texture.
+local function BuildAuraButton(area)
+	local button = CreateFrame('Frame', nil, area)
+	button.Icon = button:CreateTexture(nil, 'ARTWORK')
+	button.Icon:SetAllPoints(button)
+	st:SkinIcon(button.Icon)
+	button.Border = button:CreateTexture(nil, 'BACKGROUND')
+	button.Cooldown = CreateFrame('Cooldown', nil, button, 'CooldownFrameTemplate')
+	button.Cooldown:SetAllPoints(button)
+	button.Count = button:CreateFontString(nil, 'OVERLAY')
+	return button
+end
+
+-- An aura area: a plain frame with the fields UF:UpdateElement and the styling
+-- read (config, GetConfig, name, unitframe). It is sized by UF.AuraAreaSize,
+-- not by its config's size (noSize), and its buttons are its own: made as the
+-- area first needs them.
+local function BuildAuraArea(frame, name)
+	local area = CreateFrame('Frame', nil, frame)
+	local key = string.lower(name)
+	area.name = name
+	area.unitframe = frame
+	area.noSize = true
+	area.buttons = {}
+	area.GetConfig = function(_, unit) return frame:GetConfig(unit)[key] end
+	area.config = area.GetConfig()
+	frame[name] = area
+	return area
 end
 
 -- Builds one page's frame, with the pieces UF.ConstructUnit gives a plate's
@@ -91,8 +153,12 @@ local function Build(page)
 	-- draws from: UF.ConstructUnit's note), except those not built.
 	frame.elements = {}
 	for name, funcs in pairs(UF.elements) do
-		if not NOT_BUILT[name] and ((not funcs.ValidUnit) or funcs.ValidUnit('nameplate')) then
-			frame.elements[name] = funcs.Constructor(frame, name)
+		if (not funcs.ValidUnit) or funcs.ValidUnit('nameplate') then
+			if AURA_AREAS[name] then
+				frame.elements[name] = BuildAuraArea(frame, name)
+			else
+				frame.elements[name] = funcs.Constructor(frame, name)
+			end
 		end
 	end
 	frame:Hide()
@@ -106,6 +172,87 @@ function UF:PlatePreviewFrame(page)
 		frames[page] = frame
 	end
 	return frame
+end
+
+-- Puts button number index (1-based) of an area where its config says: the
+-- first at the Initial anchor, each next one a size plus the spacing along the
+-- row, a row on after Per row, in the growth's directions.
+local function PlaceAuraButton(area, button, index, size)
+	local config = area.config
+	local step = size + config.spacing
+	local column = (index - 1) % config.per_row
+	local row = math.floor((index - 1) / config.per_row)
+	local anchor = config.initial_anchor or 'TOPLEFT'
+	button:ClearAllPoints()
+	button:SetPoint(anchor, area, anchor,
+		column * step * (config.grow_right and 1 or -1),
+		row * step * (config.grow_up and 1 or -1))
+end
+
+local function FillAuraButton(area, button, index, sample)
+	local config = area.config
+	button.Icon:SetTexture(sample.icons[index])
+	local count = sample.counts[index]
+	button.Count:SetText(count and tostring(count) or '')
+	button.Count:SetShown(count ~= nil)
+
+	-- The border's colour: a type's or the stealable one, only where the area
+	-- colours that. StyleButton has drawn it for the theme.
+	local color
+	if area.name == 'Debuffs' and config.friend and (config.friend.colorTypes or (config.enemy and config.enemy.colorTypes)) then
+		color = DISPEL_COLORS[sample.types[index] or '']
+	elseif area.name == 'Buffs' and index == sample.stealable
+			and ((config.friend and config.friend.colorStealable) or (config.enemy and config.enemy.colorStealable)) then
+		color = STEALABLE_COLOR
+	end
+	if color then
+		button.Border:SetVertexColor(color[1], color[2], color[3])
+		button.Border:Show()
+	else
+		button.Border:Hide()
+	end
+
+	-- The swipe part way, held there: a timer text, when it is on, reads the
+	-- time left at that point.
+	local cooldown = button.Cooldown
+	if config.cooldown.enable then
+		cooldown:SetCooldown(GetTime() - AURA_ELAPSED, AURA_DURATION)
+		if cooldown.Pause then cooldown:Pause() end
+		cooldown:Show()
+	else
+		cooldown:Hide()
+	end
+end
+
+-- Styles one aura area from its config: placed and shown as UF:UpdateElement
+-- does, sized by UF.AuraAreaSize, and its buttons (the sample's count, at most
+-- Max) styled, laid out and filled.
+local function StyleAuraArea(frame, name)
+	local area = frame[name]
+	local sample = AURA_SAMPLE[name]
+	local enabled = UF:UpdateElement(area)
+	local config = area.config
+	local width, height = UF.AuraAreaSize(frame, config)
+	area:SetSize(width, height)
+	if not enabled then return end
+
+	local size = UF.AuraButtonSize(frame, config)
+	local wanted = math.min(config.max, #sample.icons)
+	for index = 1, #sample.icons do
+		local button = area.buttons[index]
+		if index <= wanted then
+			if not button then
+				button = BuildAuraButton(area)
+				area.buttons[index] = button
+			end
+			UF.StyleAuraButton(area, button)
+			PlaceAuraButton(area, button, index, size)
+			FillAuraButton(area, button, index, sample)
+			button:Show()
+		elseif button then
+			button:Hide()
+		end
+	end
 end
 
 local function FillHealth(frame, sample, class)
@@ -182,7 +329,13 @@ function UF:StylePlatePreview(page)
 	st:SetSize(frame, config.width, config.height)
 	for name, element in pairs(frame.elements) do
 		local update = self.elements[name].UpdateConfig
-		if update then update(frame, name) else self:UpdateElement(element) end
+		if AURA_AREAS[name] then
+			StyleAuraArea(frame, name)
+		elseif update then
+			update(frame, name)
+		else
+			self:UpdateElement(element)
+		end
 	end
 	st:SetBackdrop(frame, config.theme, config.background, UF.UnitKind(frame.base_unit))
 
@@ -207,6 +360,7 @@ local function ShownRegions(frame)
 			add(element)
 			for _, text in pairs(element.textElements or {}) do add(text) end
 			for _, icon in pairs(element.icons or {}) do add(icon) end
+			for _, button in ipairs(element.buttons or {}) do add(button) end
 		end
 	end
 	if frame.Health and frame.Health.text then add(frame.Health.text) end
@@ -274,6 +428,11 @@ local function RelevelUnder(frame, holder)
 	for _, element in pairs(frame.elements) do
 		raise(element)
 		for _, icon in pairs(element.icons or {}) do raise(icon) end
+		-- An aura area's buttons sit just over their area.
+		for _, button in ipairs(element.buttons or {}) do
+			button:SetFrameLevel(element:GetFrameLevel() + 1)
+			top = math.max(top, button:GetFrameLevel())
+		end
 	end
 	frame.TextOverlay:SetFrameLevel(top + 1)
 	local config = frame.config
