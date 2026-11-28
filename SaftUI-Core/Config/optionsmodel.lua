@@ -190,6 +190,14 @@ local st = SaftUI
 	picker, while that pick is shown. BuildView hands the picked one on as
 	view.picker.control, and Search finds its options on the pick's path,
 	which opens the page at that pick.
+
+	A pick's group may also carry a pickerBand (SaftUI's own field, never in
+	its args): { height = function(width) -> number|nil, draw = function(holder,
+	width, height), refresh = function(holder) (optional), release =
+	function(holder) (optional) }, a strip the window draws under the picker's
+	line, over the rows, while that pick is shown (optionswindow.lua). BuildView
+	hands the picked one on as view.picker.band; it has no options, so Search
+	has nothing of it.
 ]]
 
 local OM = {}
@@ -637,7 +645,8 @@ end
 	  tabs = { {key, name, desc, disabled} }, tab,
 	  subtabs = { ... }, subtab,
 	  picker = { name, values = { {key, name, desc, disabled} }, selected,
-	             control = the picked group's pickerControl (a table) or nil } or nil,
+	             control = the picked group's pickerControl (a table) or nil,
+	             band = the picked group's pickerBand (a table) or nil } or nil,
 	  sections = { { title, note, rows = { row } } },
 	  footer = the page group's footer (a table) or nil }
 	tabs and subtabs are empty when there are none. The picker's name is the
@@ -674,11 +683,13 @@ function OM.BuildView(root, pageKey, selection)
 				pickerName = Text(GetMember('name', level.group, options, level.path))
 			end
 			local control = level.child and level.child.pickerControl
+			local band = level.child and level.child.pickerBand
 			view.picker = {
 				name = pickerName,
 				values = level.list,
 				selected = key,
 				control = type(control) == 'table' and control or nil,
+				band = type(band) == 'table' and band or nil,
 			}
 		elseif level.slot == 'tab' then
 			view.tabs, view.tab = level.list, key

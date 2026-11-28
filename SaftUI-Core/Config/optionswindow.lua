@@ -532,6 +532,9 @@ local function Changed(ok, err, isDragging, widget)
 		-- Meanwhile the other rows follow the drag in place (a preview of the
 		-- value, a row it disables), leaving the dragged slider be.
 		xpcall(function() pageBody:Refresh(widget) end, geterrorhandler())
+		-- The pick's band follows too, as a preview of the value.
+		local band = S.bandShown
+		if band and band.refresh then xpcall(function() band.refresh(F.band) end, geterrorhandler()) end
 		return
 	end
 	dragging = false
@@ -807,6 +810,70 @@ local function DrawPickerControl(picker, top)
 	return top + FIELD_HEIGHT
 end
 
+------------------------------------------------------------------ a pick's band
+
+-- A pick's band (its group's pickerBand, SaftUI's field: OM.BuildView's
+-- view.picker.band): a strip F.band holds under the picker's line, over the body,
+-- BAND_GAP under the line. Its height is asked (band.height(width)) only when
+-- the page, tab, subtab, pick or body width changed since the last band drawn
+-- (S.bandKey, S.bandHeight; a render with no band forgets them), so what a band measures never moves the settings
+-- under the cursor between a set and the render it asks for; nil or 0 is no
+-- band. band.draw runs on every render that shows it, band.refresh in a drag
+-- (Changed), band.release when a render shows none (or another) after one was
+-- shown, and when the window hides. S.bandShown is the band drawn now.
+local BAND_GAP = 12
+
+-- Takes the band away: releases it if one was shown, and hides its holder.
+local function HideBand()
+	local band = S.bandShown
+	S.bandShown, S.bandKey, S.bandHeight = nil, nil, nil
+	if F.band then F.band:Hide() end
+	if band and band.release then xpcall(function() band.release(F.band) end, geterrorhandler()) end
+end
+
+-- picker's band (a page's view.picker, its line ending at bottom) drawn, if it
+-- has one and a height; returns the bottom of the band, or of the line when
+-- there is none.
+local function DrawBand(view, bottom)
+	local band = view.picker and view.picker.band
+	if not band then
+		HideBand()
+		return bottom
+	end
+	local key = format('%s|%s|%s|%s|%s', tostring(state.page), tostring(view.tab), tostring(view.subtab),
+		tostring(view.picker.selected), tostring(S.bodyWidth))
+	if key ~= S.bandKey then
+		local ok, height = xpcall(band.height, geterrorhandler(), S.bodyWidth)
+		S.bandKey = key
+		S.bandHeight = ok and tonumber(height) or 0
+	end
+	local height = S.bandHeight
+	if not height or height <= 0 then
+		-- No band, but the answer stays asked for this key.
+		HideBand()
+		S.bandKey, S.bandHeight = key, 0
+		return bottom
+	end
+	-- Another band after one: the first goes first (its key was this one's).
+	if S.bandShown and S.bandShown ~= band then
+		local keep = S.bandHeight
+		HideBand()
+		S.bandKey, S.bandHeight = key, keep
+	end
+	S.bandShown = band
+	local top = bottom + BAND_GAP
+	local holder = F.band
+	holder:ClearAllPoints()
+	holder:SetPoint('TOPLEFT', F.main, 'TOPLEFT', PAD, -top)
+	holder:SetSize(S.bodyWidth, height)
+	-- The panel look under Thick and Thin; Blizzard's has none.
+	F.bandFill:SetColorTexture(unpack(OB.PANEL_FILL))
+	F.bandFill:SetShown(not S.blizzard)
+	holder:Show()
+	xpcall(function() band.draw(holder, S.bodyWidth, height) end, geterrorhandler())
+	return top + height
+end
+
 ------------------------------------------------------------------ the body
 
 -- The page's rows, and its footer control and a pick's control with them.
@@ -908,6 +975,7 @@ local function DrawPage()
 		ReleaseAll(pools.subtab)
 		F.subLine:Hide()
 		S.HidePicker()
+		HideBand()
 		PlaceBody(top + TAB_HEIGHT)
 		return
 	end
@@ -932,6 +1000,7 @@ local function DrawPage()
 	else
 		S.HidePicker()
 	end
+	bottom = DrawBand(view, bottom)
 	PlaceBody(bottom)
 	-- A fill row stretches to what the body shows.
 	local visible = F.body:GetHeight() or 0
@@ -954,6 +1023,7 @@ local function DrawSearch(pages)
 	ReleaseAll(pools.subtab)
 	F.subLine:Hide()
 	S.HidePicker()
+	HideBand()
 	PlaceBody(top + TAB_HEIGHT)
 
 	local names = {}
@@ -1245,6 +1315,7 @@ local function Draw()
 	if mini then
 		-- The bar: the page's and the tab's names and nothing else drawn. The
 		-- scroll offsets stay as they were, for growing back.
+		HideBand()
 		S.DrawMini(MiniNames())
 		return
 	end
@@ -1294,6 +1365,7 @@ local function OnHide()
 	ClearSearch()
 	S.ClosePop()
 	ReleaseBody()
+	HideBand()
 	W.CloseList()
 	W.CancelConfirm()
 	OW:SetStatus(nil)
@@ -1475,6 +1547,14 @@ local function BuildMain(window)
 	pools.pickerLabel = Pool(function() return Text(main, 'field') end)
 	F.pickerLabels = pools.pickerLabel.used -- the names of its widgets that aren't buttons
 	S.HidePicker()
+
+	-- A pick's band, under the picker's line (DrawBand): it clips what it draws.
+	local band = CreateFrame('Frame', nil, main)
+	band:SetClipsChildren(true)
+	band:Hide()
+	F.band = band
+	F.bandFill = band:CreateTexture(nil, 'BACKGROUND')
+	F.bandFill:SetAllPoints(band)
 
 	-- The body.
 	local body = CreateFrame('ScrollFrame', nil, main)
